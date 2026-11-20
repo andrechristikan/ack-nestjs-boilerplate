@@ -3,10 +3,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import {
-    EnumActivityLogAction,
-    EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type {
     Workspace,
     WorkspaceMember,
@@ -22,11 +19,13 @@ import type { WorkspaceSwitchRequestDto } from '@modules/workspace/dtos/request/
 import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceSwitchUseCase } from '@modules/workspace/use-cases/workspace.switch.use-case';
 import {
-    buildUser,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspace,
+    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceSwitchUseCase', () => {
@@ -38,30 +37,8 @@ describe('WorkspaceSwitchUseCase', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx = mock<IDatabaseTransactionClient>();
     const entry = buildActivityLogCreateManyEffect('entry');
-    const workspace: Workspace = {
-        id: 'workspace-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: 'user-1',
-        deletedAt: null,
-        deletedBy: null,
-        name: 'Acme',
-        slug: 'acme-team',
-        description: null,
-        isPublic: false,
-    };
-    const workspaceMember: WorkspaceMember = {
-        id: 'member-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        workspaceId: 'workspace-1',
-        userId: 'user-1',
-        role: EnumWorkspaceMemberRole.member,
-        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-    };
+    const workspace: Workspace = buildWorkspace();
+    const workspaceMember: WorkspaceMember = buildWorkspaceMember('user-1');
     const workspaceContext: IWorkspaceContext = {
         workspaceId: 'workspace-1',
         workspace,
@@ -77,7 +54,6 @@ describe('WorkspaceSwitchUseCase', () => {
     let useCase: WorkspaceSwitchUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect.mockReturnValue(entry);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never

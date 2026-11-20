@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -8,20 +9,26 @@ import type { IDatabaseData } from '@common/database/interfaces/database.extensi
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { RequestActorStoreKey } from '@common/request/constants/request.constant';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 import { extractDatabaseExtension } from '@test/unit/helpers/test.unit.database.helper';
 import { EnumDatabaseAuditField } from '@common/database/enums/database.enum';
 
 describe('DatabaseExtensionFactory', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
 
     let factory: DatabaseExtensionFactory;
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
 
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 DatabaseExtensionFactory,
@@ -29,7 +36,11 @@ describe('DatabaseExtensionFactory', () => {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
                 },
-                { provide: HelperDateService, useValue: helperDateService },
+                HelperDateService,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
@@ -284,7 +295,7 @@ describe('DatabaseExtensionFactory', () => {
         describe('model.$allModels.softDelete', () => {
             it('fills deletedAt, deletedBy and updatedBy when data is absent', async () => {
                 const now = new Date('2026-01-01T00:00:00.000Z');
-                helperDateService.create.mockReturnValue(now);
+                vi.setSystemTime(now);
                 requestStoreService.get.mockReturnValue('actor-1');
                 const ext = extractDatabaseExtension(factory);
                 const update = vi.fn().mockResolvedValue('soft-deleted');
@@ -328,7 +339,6 @@ describe('DatabaseExtensionFactory', () => {
                         updatedBy: 'other-actor',
                     },
                 });
-                expect(helperDateService.create).not.toHaveBeenCalled();
             });
         });
 

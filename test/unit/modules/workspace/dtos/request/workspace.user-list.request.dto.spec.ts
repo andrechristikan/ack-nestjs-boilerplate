@@ -26,9 +26,13 @@ describe('WorkspaceUserListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceUserListRequestSchema.parse({ extra: true })
-        ).toThrow();
+        const result = WorkspaceUserListRequestSchema.safeParse({
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the module search description', () => {
@@ -66,15 +70,25 @@ describe('WorkspaceUserListRequestSchema', () => {
         'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            WorkspaceUserListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            WorkspaceUserListRequestSchema.safeParse({ orderBy }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             WorkspaceUserListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

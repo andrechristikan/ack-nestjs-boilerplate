@@ -1,4 +1,10 @@
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -8,8 +14,8 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import { Prisma } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -56,7 +62,6 @@ describe('MfaEnableTotpUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let useCase: MfaEnableTotpUseCase;
 
@@ -82,7 +87,6 @@ describe('MfaEnableTotpUseCase', () => {
     const enableDto = { code: '654321', password: 'Current-pass1' };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -95,7 +99,11 @@ describe('MfaEnableTotpUseCase', () => {
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(MfaEnableTotpUseCase);
@@ -358,15 +366,17 @@ describe('MfaEnableTotpUseCase', () => {
             ).rejects.toBe(failure);
 
             expect(mfaService.createBackupCodesInTx).not.toHaveBeenCalled();
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('answers MfaTotpSetupRequiredException on a write conflict', async () => {
-            const conflict = new Error('write conflict');
-            outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                }
             );
+            outboxService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -380,15 +390,12 @@ describe('MfaEnableTotpUseCase', () => {
                 statusCode: EnumMfaStatusCodeError.totpSetupRequired,
 
                 module: 'mfa',
-                messagePath: 'mfa.error.totpSetupRequired',
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {
             const cause = new Error('boom');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

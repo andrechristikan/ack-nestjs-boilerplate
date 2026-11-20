@@ -19,52 +19,80 @@ describe('WorkspaceUpdateRequestSchema', () => {
     });
 
     it('rejects a body missing the name', () => {
-        expect(() =>
-            WorkspaceUpdateRequestSchema.parse({
-                description: payload.description,
-            })
-        ).toThrow();
+        const result = WorkspaceUpdateRequestSchema.safeParse({
+            description: payload.description,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects a body missing the description', () => {
-        expect(() =>
-            WorkspaceUpdateRequestSchema.parse({ name: payload.name })
-        ).toThrow();
+        const result = WorkspaceUpdateRequestSchema.safeParse({
+            name: payload.name,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['description'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a null name', () => {
-        expect(() =>
-            WorkspaceUpdateRequestSchema.parse({ ...payload, name: null })
-        ).toThrow();
+        const result = WorkspaceUpdateRequestSchema.safeParse({
+            ...payload,
+            name: null,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects an empty name', () => {
-        expect(() =>
-            WorkspaceUpdateRequestSchema.parse({ ...payload, name: '' })
-        ).toThrow();
+        const result = WorkspaceUpdateRequestSchema.safeParse({
+            ...payload,
+            name: '',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a name over 150 characters', () => {
-        expect(() =>
-            WorkspaceUpdateRequestSchema.parse({
-                ...payload,
-                name: 'a'.repeat(151),
-            })
-        ).toThrow();
+        const result = WorkspaceUpdateRequestSchema.safeParse({
+            ...payload,
+            name: 'a'.repeat(151),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects a description over 500 characters', () => {
-        expect(() =>
-            WorkspaceUpdateRequestSchema.parse({
-                ...payload,
-                description: 'a'.repeat(501),
-            })
-        ).toThrow();
+        const result = WorkspaceUpdateRequestSchema.safeParse({
+            ...payload,
+            description: 'a'.repeat(501),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['description'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceUpdateRequestSchema.parse({ ...payload, extra: true })
-        ).toThrow();
+        const result = WorkspaceUpdateRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

@@ -12,3 +12,12 @@ export function buildConfigService(
         get: configGet as ConfigService['get'],
     });
 }
+
+export function stubConfigValues(
+    configService: MockProxy<ConfigService>,
+    values: Record<string, unknown>
+): void {
+    vi.mocked(configService.get).mockImplementation(
+        ((key: string) => values[key]) as ConfigService['get']
+    );
+}

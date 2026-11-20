@@ -42,6 +42,13 @@ describe('NotificationUserSettingResponseSchema', () => {
     });
 
     it('rejects a missing settings field', () => {
-        expect(() => NotificationUserSettingResponseSchema.parse({})).toThrow();
+        const result = NotificationUserSettingResponseSchema.safeParse({});
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['settings'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

@@ -21,8 +21,12 @@ describe('ActivityLogInviteMetadataSchema', () => {
     });
 
     it('rejects a payload matching neither branch', () => {
-        expect(() =>
-            ActivityLogInviteMetadataSchema.parse({ extra: true })
-        ).toThrow();
+        const result = ActivityLogInviteMetadataSchema.safeParse({
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'invalid_union' }),
+        ]);
     });
 });

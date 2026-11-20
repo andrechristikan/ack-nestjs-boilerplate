@@ -32,8 +32,7 @@ export async function createFileCsvValidationPipe<
 >(
     schema: TSchema,
     options: IFileCsvValidationOptions,
-    configService: MockProxy<ConfigService>,
-    helperArrayService: MockProxy<HelperArrayService>
+    configService: MockProxy<ConfigService>
 ): Promise<
     PipeTransform<
         unknown[],
@@ -51,7 +50,7 @@ export async function createFileCsvValidationPipe<
         providers: [
             PipeClass,
             { provide: ConfigService, useValue: configService },
-            { provide: HelperArrayService, useValue: helperArrayService },
+            HelperArrayService,
         ],
     }).compile();
 

@@ -1,30 +1,23 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
 import { FeatureFlagCacheSchema } from '@modules/feature-flag/constants/feature-flag.constant';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('FeatureFlagCache', () => {
-    const configGet = vi.fn<(key: string) => string | number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
 
     let cache: FeatureFlagCache;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, string | number> = {
-                'featureFlag.keyPattern': 'FeatureFlag:{key}',
-                'featureFlag.cacheTtlInMs': 3600000,
-                'featureFlag.leaseKeyPattern': 'FeatureFlag:Lease:{key}',
-                'featureFlag.leaseTtlInMs': 10000,
-            };
-            return values[key];
+        configService = buildConfigService({
+            'featureFlag.keyPattern': 'FeatureFlag:{key}',
+            'featureFlag.cacheTtlInMs': 3600000,
+            'featureFlag.leaseKeyPattern': 'FeatureFlag:Lease:{key}',
+            'featureFlag.leaseTtlInMs': 10000,
         });
 
         const module: TestingModule = await Test.createTestingModule({
@@ -40,7 +33,9 @@ describe('FeatureFlagCache', () => {
     describe('cacheTtlInMs', () => {
         it('reads the TTL from featureFlag.cacheTtlInMs', () => {
             expect(cache.cacheTtlInMs).toBe(3600000);
-            expect(configGet).toHaveBeenCalledWith('featureFlag.cacheTtlInMs');
+            expect(configService.get).toHaveBeenCalledWith(
+                'featureFlag.cacheTtlInMs'
+            );
         });
     });
 

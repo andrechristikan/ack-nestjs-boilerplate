@@ -1,6 +1,9 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import type { Request } from 'express';
+import geoIp from 'geoip-lite';
+import { UAParser } from 'ua-parser-js';
+import { RequestUtil } from '@common/request/utils/request.util';
 import type { UserAgent } from '@generated/prisma-client/client';
 
 vi.mock('ua-parser-js', () => ({
@@ -33,20 +36,9 @@ const emptyResult: IUAParserResult = {
 };
 
 describe('RequestUtil', () => {
-    let UAParser: typeof import('ua-parser-js').UAParser;
-    let geoIp: typeof import('geoip-lite');
-    let RequestUtil: typeof import('@common/request/utils/request.util').RequestUtil;
-    let util: InstanceType<typeof RequestUtil>;
+    let util: RequestUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        vi.resetModules();
-        ({ UAParser } = await import('ua-parser-js'));
-        ({ default: geoIp } = (await import('geoip-lite')) as unknown as {
-            default: typeof import('geoip-lite');
-        });
-        ({ RequestUtil } = await import('@common/request/utils/request.util'));
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [RequestUtil],
         }).compile();

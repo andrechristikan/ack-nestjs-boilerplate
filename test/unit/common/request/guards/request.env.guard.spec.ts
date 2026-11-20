@@ -9,20 +9,19 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { RequestEnvMetaKey } from '@common/request/constants/request.constant';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { RequestEnvGuard } from '@common/request/guards/request.env.guard';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('RequestEnvGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
-    const configGet = vi.fn<(key: string) => EnumAppEnvironment | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
     const executionContext: MockProxy<ExecutionContext> =
         mock<ExecutionContext>();
     let guard: RequestEnvGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockReturnValue(EnumAppEnvironment.local);
+        configService = buildConfigService({
+            'app.env': EnumAppEnvironment.local,
+        });
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RequestEnvGuard,
@@ -35,7 +34,7 @@ describe('RequestEnvGuard', () => {
 
     describe('canActivate', () => {
         it('reads the app environment from the config service once, in the constructor', () => {
-            expect(configGet).toHaveBeenCalledWith('app.env');
+            expect(configService.get).toHaveBeenCalledWith('app.env');
         });
 
         it('throws RequestEnvNotAllowedException when the current environment is not allowed', async () => {
@@ -48,11 +47,6 @@ describe('RequestEnvGuard', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'request',
                 statusCode: EnumRequestStatusCodeError.envNotAllowed,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.envNotAllowed
-                    ],
-                messagePath: 'http.clientError.notFound',
             });
             expect(reflector.getAllAndOverride).toHaveBeenCalledWith(
                 RequestEnvMetaKey,

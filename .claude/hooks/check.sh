@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Harness check, run by ack-harness and by reviewer at Depth harness, never as a hook. Prints one line per defect and
-# exits 1 when it printed any: JSON, hook syntax and exec bits, the roster and Jev off blocks, frontmatter, word budgets
-# (.claude/rules/harness.md), all-caps emphasis, retired names, cited paths, and the copied-skill lock.
+# exits 1 when it printed any: JSON, hook syntax and exec bits, the roster and Jev off blocks, frontmatter, word budgets and
+# the path-scoped rules binding one src file (.claude/rules/harness.md), all-caps emphasis, retired names, cited paths, and the copied-skill lock.
 # Copied skills (skills-lock.json) are checked for presence only: their text is not ours to hold to these rules.
 set -uo pipefail
 
@@ -81,6 +81,38 @@ for path in sorted(set(ours)):
                 # settings.local.json is the owner's, gitignored, and absent from a fresh clone
                 if not os.path.exists(ref) and not ref.endswith('.local.json'):
                     out.append(f'{path}:{n}: cites {ref}, which does not exist')
+
+# One src file is bound by at most 16 path-scoped rules and 9500 words of them (.claude/rules/harness.md).
+import fnmatch, subprocess
+
+def seg_match(pat, segs):
+    if not pat:
+        return not segs
+    if pat[0] == '**':
+        return any(seg_match(pat[1:], segs[i:]) for i in range(len(segs) + 1))
+    return bool(segs) and fnmatch.fnmatchcase(segs[0], pat[0]) and seg_match(pat[1:], segs[1:])
+
+def glob_match(g, path):
+    if '/' not in g:
+        return fnmatch.fnmatchcase(os.path.basename(path), g)
+    return seg_match(g.split('/'), path.split('/'))
+
+scoped = []
+for rule in sorted(glob.glob('.claude/rules/*.md')):
+    text = open(rule, encoding='utf-8').read()
+    head = text.split('---')[1] if text.startswith('---\n') else ''
+    head = head.split('paths:', 1)[1] if 'paths:' in head else ''
+    globs = [m.strip('"\'') for m in re.findall(r'^\s+-\s+(.+?)\s*$', head, re.M)]
+    if globs:
+        scoped.append((rule, globs, len(text.split())))
+tracked = subprocess.run(['git', 'ls-files', '--cached', '--others', '--exclude-standard', 'src'], capture_output=True, text=True).stdout.split('\n')
+for f in tracked:
+    if not f.endswith('.ts'):
+        continue
+    bound = [(rule, words) for rule, globs, words in scoped if any(glob_match(g, f) for g in globs)]
+    total = sum(words for _, words in bound)
+    if len(bound) > 16 or total > 9500:
+        out.append(f'{f}: {len(bound)} scoped rules, {total} words, budget 16 rules / 9500 words')
 
 print('\n'.join(out), end='\n' if out else '')
 sys.exit(1 if out else 0)

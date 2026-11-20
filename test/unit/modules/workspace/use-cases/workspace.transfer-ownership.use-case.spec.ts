@@ -2,36 +2,26 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/workspace.self-transfer.exception';
 import type { WorkspaceTransferOwnershipRequestDto } from '@modules/workspace/dtos/request/workspace.transfer-ownership.request.dto';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceTransferOwnershipUseCase } from '@modules/workspace/use-cases/workspace.transfer-ownership.use-case';
 import {
-    buildUser,
-    buildWorkspace,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspace,
     buildWorkspaceContext,
+    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceTransferOwnershipUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
-    const member: WorkspaceMember = {
-        id: 'member-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        workspaceId: 'workspace-1',
-        userId: 'user-1',
-        role: EnumWorkspaceMemberRole.owner,
-        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-    };
+    const member: WorkspaceMember = buildWorkspaceMember('user-1');
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(
@@ -43,8 +33,6 @@ describe('WorkspaceTransferOwnershipUseCase', () => {
     let useCase: WorkspaceTransferOwnershipUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceTransferOwnershipUseCase,

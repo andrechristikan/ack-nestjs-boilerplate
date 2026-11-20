@@ -8,22 +8,18 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserQueue } from '@modules/user/queues/user.queue';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('UserQueue', () => {
     const userQueue: MockProxy<Queue> = mock<Queue>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    let configService: MockProxy<ConfigService>;
     let queue: UserQueue;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        vi.mocked(configService.get).mockImplementation((key: string) => {
-            const values: Record<string, unknown> = {
-                'app.timezone': 'UTC',
-                'user.purgeExpiredCron': '0 3 * * *',
-            };
-
-            return values[key];
+        configService = buildConfigService({
+            'app.timezone': 'UTC',
+            'user.purgeExpiredCron': '0 3 * * *',
         });
         const module = await Test.createTestingModule({
             providers: [

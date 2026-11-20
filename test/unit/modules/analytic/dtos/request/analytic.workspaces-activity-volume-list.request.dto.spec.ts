@@ -32,13 +32,16 @@ describe('AnalyticWorkspacesActivityVolumeListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            AnalyticWorkspacesActivityVolumeListRequestSchema.parse({
+        const result =
+            AnalyticWorkspacesActivityVolumeListRequestSchema.safeParse({
                 startDate,
                 endDate,
                 extra: true,
-            })
-        ).toThrow();
+            });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
@@ -46,8 +49,10 @@ describe('AnalyticWorkspacesActivityVolumeListRequestSchema', () => {
             AnalyticWorkspacesActivityVolumeListRequestSchema.safeParse({
                 ...range,
                 search: 'x',
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('parses a sent orderBy', () => {
@@ -99,8 +104,13 @@ describe('AnalyticWorkspacesActivityVolumeListRequestSchema', () => {
             AnalyticWorkspacesActivityVolumeListRequestSchema.safeParse({
                 ...range,
                 orderBy,
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
@@ -108,7 +118,12 @@ describe('AnalyticWorkspacesActivityVolumeListRequestSchema', () => {
             AnalyticWorkspacesActivityVolumeListRequestSchema.safeParse({
                 ...range,
                 orderBy: ['mostCount', 'mostCount'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

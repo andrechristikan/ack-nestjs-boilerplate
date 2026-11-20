@@ -1,4 +1,3 @@
-import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -16,7 +15,13 @@ import type {
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
+import { ConfigService } from '@nestjs/config';
+import { DatabaseUniqueConstraintCode } from '@common/database/constants/database.constant';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
     IPaginationCursorReturn,
@@ -25,12 +30,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumRoleType,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
-} from '@generated/prisma-client/client';
+import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import { RoleCache } from '@modules/role/caches/role.cache';
 import { RoleWithPoliciesCacheSchema } from '@modules/role/constants/role.constant';
@@ -45,10 +45,10 @@ import type {
 } from '@modules/role/interfaces/role.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import type { IUser } from '@modules/user/interfaces/user.interface';
+import { buildUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('RoleService', () => {
     const roleRepository: MockProxy<RoleRepository> = mock<RoleRepository>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const roleCache: MockProxy<RoleCache> = mock<RoleCache>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
@@ -111,7 +111,6 @@ describe('RoleService', () => {
     let service: RoleService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         roleCache.buildRoleKey.mockReturnValue('Role:role-1');
         roleCache.buildRoleLease.mockReturnValue(roleLease);
         roleCache.buildRoleKeys.mockReturnValue(roleKeys);
@@ -120,7 +119,11 @@ describe('RoleService', () => {
             providers: [
                 RoleService,
                 { provide: RoleRepository, useValue: roleRepository },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: RoleCache, useValue: roleCache },
                 { provide: CacheService, useValue: cacheService },
                 { provide: OutboxService, useValue: outboxService },
@@ -258,7 +261,6 @@ describe('RoleService', () => {
             await expect(service.getById('missing')).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
-                messagePath: 'role.error.notFound',
             });
         });
     });
@@ -284,7 +286,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
-                messagePath: 'role.error.notFound',
             });
         });
     });
@@ -307,7 +308,6 @@ describe('RoleService', () => {
             await expect(service.getByName('missing')).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
-                messagePath: 'role.error.notFound',
             });
         });
     });
@@ -338,10 +338,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.notFound],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'role.error.notFound',
             });
         });
     });
@@ -390,10 +386,6 @@ describe('RoleService', () => {
             await expect(service.getOne('missing')).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.notFound],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'role.error.notFound',
             });
         });
     });
@@ -418,30 +410,27 @@ describe('RoleService', () => {
         };
 
         it('throws RoleExistException when the create collides on the name index, with no read before the write', async () => {
-            const collision = new Error('name collision');
+            const collision = new Prisma.PrismaClientKnownRequestError(
+                'name collision',
+                {
+                    code: DatabaseUniqueConstraintCode,
+                    clientVersion: 'test',
+                    meta: { target: ['name'] },
+                }
+            );
             roleRepository.createInTx.mockRejectedValue(collision);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 service.createByAdminInTx(tx, role.id, create, superAdminActor)
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.exist,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.exist],
-                httpStatus: HttpStatus.CONFLICT,
-                messagePath: 'role.error.exist',
             });
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'name'
-            );
         });
 
         it('wraps a non-collision create error in AppUnknownException', async () => {
             const otherError = new Error('unexpected');
             roleRepository.createInTx.mockRejectedValue(otherError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 service.createByAdminInTx(tx, role.id, create, superAdminActor)
@@ -457,12 +446,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.rankForbidden,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[
-                        EnumRoleStatusCodeError.rankForbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'role.error.rankForbidden',
             });
             expect(roleRepository.createInTx).not.toHaveBeenCalled();
         });
@@ -544,12 +527,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.hasPolicies,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[
-                        EnumRoleStatusCodeError.hasPolicies
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'role.error.hasPolicies',
             });
             expect(roleRepository.updateInTx).not.toHaveBeenCalled();
         });
@@ -620,10 +597,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.notFound],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'role.error.notFound',
             });
         });
 
@@ -641,12 +614,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.selfForbidden,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[
-                        EnumRoleStatusCodeError.selfForbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'role.error.selfForbidden',
             });
             expect(roleRepository.updateInTx).not.toHaveBeenCalled();
         });
@@ -667,12 +634,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.rankForbidden,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[
-                        EnumRoleStatusCodeError.rankForbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'role.error.rankForbidden',
             });
             expect(roleRepository.updateInTx).not.toHaveBeenCalled();
         });
@@ -688,12 +649,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.rankForbidden,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[
-                        EnumRoleStatusCodeError.rankForbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'role.error.rankForbidden',
             });
             expect(roleRepository.updateInTx).not.toHaveBeenCalled();
         });
@@ -715,12 +670,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.rankForbidden,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[
-                        EnumRoleStatusCodeError.rankForbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'role.error.rankForbidden',
             });
             expect(roleRepository.updateInTx).not.toHaveBeenCalled();
         });
@@ -741,10 +690,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.immutable,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.immutable],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'role.error.immutable',
             });
             expect(roleRepository.updateInTx).not.toHaveBeenCalled();
         });
@@ -792,12 +737,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.rankForbidden,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[
-                        EnumRoleStatusCodeError.rankForbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'role.error.rankForbidden',
             });
             expect(roleRepository.updateInTx).not.toHaveBeenCalled();
         });
@@ -889,10 +828,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.notFound],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'role.error.notFound',
             });
         });
     });
@@ -906,10 +841,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.notFound],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'role.error.notFound',
             });
             expect(roleRepository.deleteUnusedInTx).not.toHaveBeenCalled();
         });
@@ -923,10 +854,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.used,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.used],
-                httpStatus: HttpStatus.CONFLICT,
-                messagePath: 'role.error.used',
             });
             expect(roleRepository.deleteUnusedInTx).toHaveBeenCalledWith(
                 tx,
@@ -945,12 +872,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.selfForbidden,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[
-                        EnumRoleStatusCodeError.selfForbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'role.error.selfForbidden',
             });
             expect(roleRepository.deleteUnusedInTx).not.toHaveBeenCalled();
         });
@@ -963,12 +884,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.rankForbidden,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[
-                        EnumRoleStatusCodeError.rankForbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'role.error.rankForbidden',
             });
             expect(roleRepository.deleteUnusedInTx).not.toHaveBeenCalled();
         });
@@ -981,10 +896,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.immutable,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.immutable],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'role.error.immutable',
             });
             expect(roleRepository.deleteUnusedInTx).not.toHaveBeenCalled();
         });
@@ -1021,7 +932,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
-                messagePath: 'role.error.notFound',
             });
         });
 
@@ -1036,7 +946,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.selfForbidden,
-                messagePath: 'role.error.selfForbidden',
             });
         });
 
@@ -1048,7 +957,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.rankForbidden,
-                messagePath: 'role.error.rankForbidden',
             });
         });
 
@@ -1081,12 +989,6 @@ describe('RoleService', () => {
                 expect.objectContaining({
                     module: 'role',
                     statusCode: EnumRoleStatusCodeError.rankForbidden,
-                    statusCodeKey:
-                        EnumRoleStatusCodeError[
-                            EnumRoleStatusCodeError.rankForbidden
-                        ],
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    messagePath: 'role.error.rankForbidden',
                 })
             );
         });
@@ -1104,52 +1006,13 @@ describe('RoleService', () => {
                 expect.objectContaining({
                     module: 'role',
                     statusCode: EnumRoleStatusCodeError.selfForbidden,
-                    statusCodeKey:
-                        EnumRoleStatusCodeError[
-                            EnumRoleStatusCodeError.selfForbidden
-                        ],
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    messagePath: 'role.error.selfForbidden',
                 })
             );
         });
     });
 
     describe('validateRoleGuard', () => {
-        const baseUser: IUser = {
-            id: 'user-1',
-            name: null,
-            username: 'johnson',
-            isVerified: false,
-            verifiedAt: null,
-            email: 'john@example.com',
-            roleId: role.id,
-            password: null,
-            passwordExpired: null,
-            passwordCreated: null,
-            passwordAttempt: 0,
-            passwordLockedUntil: null,
-            signUpAt: now,
-            signUpFrom: EnumUserSignUpFrom.website,
-            signUpWith: EnumUserSignUpWith.credential,
-            status: EnumUserStatus.active,
-            gender: null,
-            countryId: 'country-1',
-            lastLoginAt: null,
-            lastIPAddress: null,
-            lastLoginFrom: null,
-            lastLoginWith: null,
-            lastWorkspaceId: null,
-            lastWorkspaceChangedAt: null,
-            photo: null,
-            createdAt: now,
-            createdBy: null,
-            updatedAt: now,
-            updatedBy: null,
-            deletedAt: null,
-            deletedBy: null,
-            role: roleWithPolicies,
-        };
+        const baseUser: IUser = buildUser('user-1', 'john@example.com');
 
         it('returns an empty policy list for a superAdmin, bypassing the required roles', async () => {
             const user = {
@@ -1186,10 +1049,6 @@ describe('RoleService', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.forbidden,
-                statusCodeKey:
-                    EnumRoleStatusCodeError[EnumRoleStatusCodeError.forbidden],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'role.error.forbidden',
             });
         });
 

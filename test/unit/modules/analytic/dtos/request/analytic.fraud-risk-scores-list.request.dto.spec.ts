@@ -33,19 +33,23 @@ describe('AnalyticFraudRiskScoresListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            AnalyticFraudRiskScoresListRequestSchema.parse({
-                page: 1,
-                extra: true,
-            })
-        ).toThrow();
+        const result = AnalyticFraudRiskScoresListRequestSchema.safeParse({
+            page: 1,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
         expect(
             AnalyticFraudRiskScoresListRequestSchema.safeParse({ search: 'x' })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -84,15 +88,25 @@ describe('AnalyticFraudRiskScoresListRequestSchema', () => {
     ])('rejects the orderBy %s', orderBy => {
         expect(
             AnalyticFraudRiskScoresListRequestSchema.safeParse({ orderBy })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             AnalyticFraudRiskScoresListRequestSchema.safeParse({
                 orderBy: ['highestValue', 'highestValue'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

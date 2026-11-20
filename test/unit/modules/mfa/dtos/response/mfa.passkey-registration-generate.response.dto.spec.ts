@@ -56,6 +56,11 @@ describe('MfaPasskeyRegistrationGenerateResponseSchema', () => {
             passkeyOptions: rest,
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeyOptions', 'challenge'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

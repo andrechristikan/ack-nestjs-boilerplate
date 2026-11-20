@@ -20,7 +20,6 @@ describe('NotificationGetListUserSettingUseCase', () => {
     let useCase: NotificationGetListUserSettingUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module = await Test.createTestingModule({
             providers: [
                 NotificationGetListUserSettingUseCase,

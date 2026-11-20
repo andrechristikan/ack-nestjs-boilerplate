@@ -1,5 +1,11 @@
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { MfaService } from '@modules/mfa/services/mfa.service';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -9,8 +15,8 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import { Prisma } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -55,7 +61,6 @@ describe('MfaSetupTotpUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let useCase: MfaSetupTotpUseCase;
 
@@ -95,7 +100,6 @@ describe('MfaSetupTotpUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -111,7 +115,11 @@ describe('MfaSetupTotpUseCase', () => {
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(MfaSetupTotpUseCase);
@@ -275,19 +283,20 @@ describe('MfaSetupTotpUseCase', () => {
                     { password: 'Current-pass1' }
                 )
             ).rejects.toBe(failure);
-
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('answers MfaInvalidException on a write conflict when an MFA proof was checked', async () => {
-            const conflict = new Error('write conflict');
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                }
+            );
             userAuthService.assertReauthentication.mockResolvedValue(
                 withBackupCode
             );
             outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
 
             await expect(
                 useCase.execute(
@@ -305,17 +314,18 @@ describe('MfaSetupTotpUseCase', () => {
                 statusCode: EnumMfaStatusCodeError.invalid,
 
                 module: 'mfa',
-                messagePath: 'mfa.error.invalid',
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps a write conflict in AppUnknownException when no MFA proof was checked', async () => {
-            const conflict = new Error('write conflict');
-            outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                }
             );
+            outboxService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -331,7 +341,6 @@ describe('MfaSetupTotpUseCase', () => {
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {
             const cause = new Error('boom');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

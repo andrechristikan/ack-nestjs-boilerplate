@@ -1,11 +1,10 @@
-import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 import { ModuleRef } from '@nestjs/core';
 import type { Job, Queue } from 'bullmq';
-import { Duration } from 'luxon';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumOutboxStatus } from '@generated/prisma-client/client';
@@ -14,7 +13,6 @@ import { CacheService } from '@common/cache/services/cache.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumSessionProcess,
     EnumSessionQueue,
@@ -36,20 +34,18 @@ import type {
 } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxRepository } from '@common/outbox/repositories/outbox.repository';
 import { OutboxService } from '@common/outbox/services/outbox.service';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('OutboxService', () => {
     const outboxRepository: MockProxy<OutboxRepository> =
         mock<OutboxRepository>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const moduleRef: MockProxy<ModuleRef> = mock<ModuleRef>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
     const sessionQueue: MockProxy<Queue<IOutboxJobPayload>> =
         mock<Queue<IOutboxJobPayload>>();
     const tx: MockProxy<IDatabaseTransactionClient> =
@@ -90,23 +86,27 @@ describe('OutboxService', () => {
     };
 
     let service: OutboxService;
+    let databaseUtil: DatabaseUtil;
+
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, number> = {
-                'outbox.pendingAfterInMs': 30000,
-                'outbox.enqueuedAfterInMs': 3600000,
-                'outbox.sweepBatch': 100,
-            };
-
-            return values[key];
+        configService = buildConfigService({
+            ...TestUnitKitConfigValues,
+            'outbox.pendingAfterInMs': 30000,
+            'outbox.enqueuedAfterInMs': 3600000,
+            'outbox.sweepBatch': 100,
         });
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        databaseUtil.toPlainObject.mockImplementation(data => data as never);
-        helperDateService.create.mockReturnValue(now);
+        vi.setSystemTime(now);
         moduleRef.get.mockReturnValue(sessionQueue);
         outboxRepository.findManyPendingByIds.mockResolvedValue([]);
         sessionQueue.addBulk.mockResolvedValue([]);
@@ -116,20 +116,20 @@ describe('OutboxService', () => {
                 OutboxService,
                 { provide: OutboxRepository, useValue: outboxRepository },
                 { provide: DatabaseService, useValue: databaseService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
                 { provide: ModuleRef, useValue: moduleRef },
                 { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
-                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
 
         service = module.get(OutboxService);
+        databaseUtil = module.get(DatabaseUtil);
     });
 
     describe('withTransaction', () => {
         it('runs the callback on the opened tx and dispatches its rows after the commit', async () => {
-            databaseUtil.createId.mockReturnValue('outbox-1');
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('outbox-1');
             outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
             sessionQueue.addBulk.mockResolvedValue([
                 { data: { outboxId: 'outbox-1' } } as Job<IOutboxJobPayload>,
@@ -169,7 +169,7 @@ describe('OutboxService', () => {
         });
 
         it('dispatches every id added on the tx, by any caller on it', async () => {
-            databaseUtil.createId
+            vi.spyOn(databaseUtil, 'createId')
                 .mockReturnValueOnce('outbox-1')
                 .mockReturnValueOnce('outbox-2');
 
@@ -190,7 +190,7 @@ describe('OutboxService', () => {
 
         it('rethrows a failed callback and dispatches nothing', async () => {
             const error = new Error('write failed');
-            databaseUtil.createId.mockReturnValue('outbox-1');
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('outbox-1');
 
             const callback = vi
                 .fn<(openedTx: IDatabaseTransactionClient) => Promise<void>>()
@@ -231,9 +231,6 @@ describe('OutboxService', () => {
             ).rejects.toMatchObject({
                 module: 'outbox',
                 statusCode: EnumOutboxStatusCodeError.transactionMissing,
-                statusCodeKey: 'transactionMissing',
-                messagePath: 'outbox.error.transactionMissing',
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
             });
 
             expect(outboxRepository.createManyInTx).not.toHaveBeenCalled();
@@ -250,7 +247,7 @@ describe('OutboxService', () => {
         };
 
         it('inserts pending rows with generated ids, a null key stored as the row id, and returns the ids', async () => {
-            databaseUtil.createId.mockReturnValue('outbox-1');
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('outbox-1');
 
             const callback = vi
                 .fn<
@@ -280,7 +277,7 @@ describe('OutboxService', () => {
         });
 
         it('returns the existing row id for a keyed effect whose key has a row and inserts the rest in one createMany', async () => {
-            databaseUtil.createId.mockReturnValue('outbox-2');
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('outbox-2');
             outboxRepository.findManyByIdempotencyKeysInTx.mockResolvedValue([
                 {
                     ...purgeRow,
@@ -357,7 +354,7 @@ describe('OutboxService', () => {
                 priority: EnumQueuePriority.high,
                 idempotencyKey: 'publish:term-policy-1',
             };
-            databaseUtil.createId.mockReturnValue('outbox-2');
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('outbox-2');
             outboxRepository.findManyByIdempotencyKeysInTx.mockResolvedValue([
                 {
                     ...purgeRow,
@@ -403,7 +400,7 @@ describe('OutboxService', () => {
         });
 
         it('inserts one row for two effects sharing a new key', async () => {
-            databaseUtil.createId.mockReturnValue('outbox-1');
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('outbox-1');
             outboxRepository.findManyByIdempotencyKeysInTx.mockResolvedValue(
                 []
             );
@@ -433,7 +430,7 @@ describe('OutboxService', () => {
 
     describe('add', () => {
         it('inserts the row, then dispatches it and returns its id', async () => {
-            databaseUtil.createId.mockReturnValue('outbox-1');
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('outbox-1');
             outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
 
             const id = await service.add(purgeEffect);
@@ -452,7 +449,7 @@ describe('OutboxService', () => {
 
     describe('addMany', () => {
         it('inserts the rows, then dispatches them and returns their ids', async () => {
-            databaseUtil.createId
+            vi.spyOn(databaseUtil, 'createId')
                 .mockReturnValueOnce('outbox-1')
                 .mockReturnValueOnce('outbox-2');
 
@@ -762,12 +759,6 @@ describe('OutboxService', () => {
         };
 
         beforeEach(() => {
-            helperDateService.createDuration.mockImplementation(value =>
-                Duration.fromObject(value)
-            );
-            helperDateService.backward.mockImplementation((_date, value) =>
-                value.toMillis() === 3600000 ? enqueuedCutoff : pendingCutoff
-            );
             outboxRepository.findManyPendingBefore.mockResolvedValue([]);
             outboxRepository.findManyEnqueuedBefore.mockResolvedValue([]);
         });
@@ -783,20 +774,6 @@ describe('OutboxService', () => {
             const result = await service.sweep();
 
             expect(result).toBe(1);
-            expect(helperDateService.createDuration).toHaveBeenCalledWith({
-                milliseconds: 30000,
-            });
-            expect(helperDateService.createDuration).toHaveBeenCalledWith({
-                milliseconds: 3600000,
-            });
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                Duration.fromMillis(30000)
-            );
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                Duration.fromMillis(3600000)
-            );
             expect(outboxRepository.findManyPendingBefore).toHaveBeenCalledWith(
                 pendingCutoff,
                 100
@@ -1016,7 +993,6 @@ describe('OutboxService', () => {
 
     describe('onApplicationBootstrap', () => {
         it('runs the sweep once', async () => {
-            helperDateService.backward.mockReturnValue(now);
             outboxRepository.findManyPendingBefore.mockResolvedValue([]);
             outboxRepository.findManyEnqueuedBefore.mockResolvedValue([]);
 

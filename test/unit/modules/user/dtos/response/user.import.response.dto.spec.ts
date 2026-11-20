@@ -21,6 +21,11 @@ describe('UserImportResponseSchema', () => {
     it('rejects a row without the outbox id', () => {
         const result = UserImportResponseSchema.safeParse({});
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['outboxId'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

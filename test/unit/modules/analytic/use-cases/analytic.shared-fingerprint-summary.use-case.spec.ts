@@ -14,8 +14,6 @@ describe('AnalyticSharedFingerprintSummaryUseCase', () => {
     let useCase: AnalyticSharedFingerprintSummaryUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticSharedFingerprintSummaryUseCase,

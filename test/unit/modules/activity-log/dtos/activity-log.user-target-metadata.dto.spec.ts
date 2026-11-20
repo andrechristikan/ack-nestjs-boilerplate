@@ -11,19 +11,26 @@ describe('ActivityLogUserTargetMetadataSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ActivityLogUserTargetMetadataSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ActivityLogUserTargetMetadataSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a missing timestamp', () => {
-        expect(() =>
-            ActivityLogUserTargetMetadataSchema.parse({
-                actorUserId: 'user-1',
-            })
-        ).toThrow();
+        const result = ActivityLogUserTargetMetadataSchema.safeParse({
+            actorUserId: 'user-1',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['timestamp'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

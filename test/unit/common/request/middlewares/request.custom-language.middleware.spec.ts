@@ -12,14 +12,10 @@ import {
 } from '@common/request/constants/request.constant';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestCustomLanguageMiddleware } from '@common/request/middlewares/request.custom-language.middleware';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('RequestCustomLanguageMiddleware', () => {
-    const configGet = vi.fn<(key: string) => string | string[] | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
-    const helperArrayService: MockProxy<HelperArrayService> =
-        mock<HelperArrayService>();
+    let configService: MockProxy<ConfigService>;
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
@@ -28,21 +24,16 @@ describe('RequestCustomLanguageMiddleware', () => {
     let next: NextFunction;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, string | string[]> = {
-                'message.availableLanguages': ['en', 'id'],
-                'message.defaultLanguage': 'en',
-            };
-            return values[key];
+        configService = buildConfigService({
+            'message.availableLanguages': ['en', 'id'],
+            'message.defaultLanguage': 'en',
         });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RequestCustomLanguageMiddleware,
                 { provide: ConfigService, useValue: configService },
-                { provide: HelperArrayService, useValue: helperArrayService },
+                HelperArrayService,
                 {
                     provide: RequestStoreService,
                     useValue: requestStoreService,
@@ -61,14 +52,8 @@ describe('RequestCustomLanguageMiddleware', () => {
             const req = {
                 headers: { [RequestCustomLangHeaderName]: 'id' },
             } as unknown as IRequestApp;
-            helperArrayService.intersection.mockReturnValue(['id']);
 
             await middleware.use(req, res, next);
-
-            expect(helperArrayService.intersection).toHaveBeenCalledWith(
-                ['id'],
-                ['en', 'id']
-            );
             expect(requestStoreService.set).toHaveBeenCalledWith(
                 RequestLanguageStoreKey,
                 'id'
@@ -88,14 +73,8 @@ describe('RequestCustomLanguageMiddleware', () => {
                 const req = {
                     headers: { [RequestCustomLangHeaderName]: header },
                 } as unknown as IRequestApp;
-                helperArrayService.intersection.mockReturnValue([primary]);
 
                 await middleware.use(req, res, next);
-
-                expect(helperArrayService.intersection).toHaveBeenCalledWith(
-                    [primary],
-                    ['en', 'id']
-                );
                 expect(requestStoreService.set).toHaveBeenCalledWith(
                     RequestLanguageStoreKey,
                     primary
@@ -108,7 +87,6 @@ describe('RequestCustomLanguageMiddleware', () => {
             const req = {
                 headers: { [RequestCustomLangHeaderName]: 'fr' },
             } as unknown as IRequestApp;
-            helperArrayService.intersection.mockReturnValue([]);
 
             await middleware.use(req, res, next);
 
@@ -124,7 +102,6 @@ describe('RequestCustomLanguageMiddleware', () => {
 
             await middleware.use(req, res, next);
 
-            expect(helperArrayService.intersection).not.toHaveBeenCalled();
             expect(requestStoreService.set).toHaveBeenCalledWith(
                 RequestLanguageStoreKey,
                 'en'
@@ -142,14 +119,9 @@ describe('RequestCustomLanguageMiddleware', () => {
     });
 
     describe('filterLanguage', () => {
-        it('intersects the given language with the available languages', () => {
-            helperArrayService.intersection.mockReturnValue(['id']);
-
+        it('returns the given language only when it is available', () => {
             expect(middleware['filterLanguage']('id')).toEqual(['id']);
-            expect(helperArrayService.intersection).toHaveBeenCalledWith(
-                ['id'],
-                ['en', 'id']
-            );
+            expect(middleware['filterLanguage']('fr')).toEqual([]);
         });
     });
 });

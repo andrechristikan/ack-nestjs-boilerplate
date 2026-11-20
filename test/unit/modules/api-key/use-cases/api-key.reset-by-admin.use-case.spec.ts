@@ -4,15 +4,16 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
-    EnumActivityLogAction,
-    EnumApiKeyType,
-} from '@generated/prisma-client/client';
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import {
     EnumActivityLogProcess,
@@ -25,41 +26,30 @@ import { ApiKeyResetByAdminUseCase } from '@modules/api-key/use-cases/api-key.re
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import {
-    buildUser,
-    buildRequestContext,
+    buildApiKey,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyResetByAdminUseCase', () => {
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
-    const apiKeyUtil: MockProxy<ApiKeyUtil> = mock<ApiKeyUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
-    const apiKey: ApiKey = {
-        id: 'api-key-1',
-        name: 'Acme Api Key',
-        type: EnumApiKeyType.default,
-        key: 'local_abc123',
-        hash: 'hashed-secret',
-        isActive: true,
-        startAt: null,
-        endAt: null,
-        createdAt: now,
-        createdBy: 'user-1',
-        updatedAt: now,
-        updatedBy: 'user-1',
+    const apiKey: ApiKey = buildApiKey();
+    const metadata = {
+        apiKeyId: apiKey.id,
+        apiKeyName: apiKey.name,
+        apiKeyType: apiKey.type,
+        timestamp: now,
     };
-    const metadata = { apiKeyId: apiKey.id };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(
@@ -76,10 +66,16 @@ describe('ApiKeyResetByAdminUseCase', () => {
 
     let useCase: ApiKeyResetByAdminUseCase;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
-        helperDateService.create.mockReturnValue(now);
-        apiKeyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
         activityLogService.recordEffect.mockReturnValue(effect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
@@ -89,11 +85,14 @@ describe('ApiKeyResetByAdminUseCase', () => {
             providers: [
                 ApiKeyResetByAdminUseCase,
                 { provide: ApiKeyService, useValue: apiKeyService },
-                { provide: ApiKeyUtil, useValue: apiKeyUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                ApiKeyUtil,
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
@@ -108,7 +107,6 @@ describe('ApiKeyResetByAdminUseCase', () => {
                 apiKey,
                 secret: 'new-secret',
             });
-            apiKeyUtil.mapCreate.mockReturnValue(reset);
 
             const result = await useCase.execute(
                 requestContext,
@@ -122,10 +120,6 @@ describe('ApiKeyResetByAdminUseCase', () => {
                 tx,
                 apiKey.id
             );
-            expect(apiKeyUtil.mapCreate).toHaveBeenCalledWith(
-                apiKey,
-                'new-secret'
-            );
         });
 
         it('adds the reset activity entry from the reset key and the passed context on the same tx', async () => {
@@ -133,7 +127,6 @@ describe('ApiKeyResetByAdminUseCase', () => {
                 apiKey,
                 secret: 'new-secret',
             });
-            apiKeyUtil.mapCreate.mockReturnValue(reset);
 
             await useCase.execute(
                 requestContext,
@@ -142,10 +135,6 @@ describe('ApiKeyResetByAdminUseCase', () => {
                 apiKey.id
             );
 
-            expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                apiKey,
-                now
-            );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
@@ -176,10 +165,10 @@ describe('ApiKeyResetByAdminUseCase', () => {
 
         it('maps a write conflict to ApiKeyInactiveException', async () => {
             apiKeyService.resetByAdminInTx.mockRejectedValue(
-                new Error('conflict')
-            );
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+                new Prisma.PrismaClientKnownRequestError('conflict', {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                })
             );
 
             await expect(
@@ -195,7 +184,6 @@ describe('ApiKeyResetByAdminUseCase', () => {
         it('wraps any other error in AppUnknownException', async () => {
             const cause = new Error('boom');
             apiKeyService.resetByAdminInTx.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

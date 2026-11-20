@@ -15,17 +15,25 @@ describe('TermPolicyContentRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            TermPolicyContentRequestSchema.parse({
-                ...payload,
-                type: 'privacy',
-            })
-        ).toThrow();
+        const result = TermPolicyContentRequestSchema.safeParse({
+            ...payload,
+            type: 'privacy',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a key failing the object-key pattern', () => {
-        expect(() =>
-            TermPolicyContentRequestSchema.parse({ ...payload, key: '' })
-        ).toThrow();
+        const result = TermPolicyContentRequestSchema.safeParse({
+            ...payload,
+            key: '',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['key'], code: 'too_small' }),
+            expect.objectContaining({ path: ['key'], code: 'invalid_format' }),
+        ]);
     });
 });

@@ -11,7 +11,6 @@ import { HealthCheckDatabaseUseCase } from '@modules/health/use-cases/health.che
 
 describe('HealthCheckDatabaseUseCase', () => {
     const healthService: MockProxy<HealthService> = mock<HealthService>();
-    const healthUtil: MockProxy<HealthUtil> = mock<HealthUtil>();
 
     const healthCheckResult: HealthCheckResult = {
         status: 'ok',
@@ -31,15 +30,11 @@ describe('HealthCheckDatabaseUseCase', () => {
     let useCase: HealthCheckDatabaseUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        healthUtil.toResponse.mockReturnValue(envelope.data);
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 HealthCheckDatabaseUseCase,
                 { provide: HealthService, useValue: healthService },
-                { provide: HealthUtil, useValue: healthUtil },
+                HealthUtil,
             ],
         }).compile();
 
@@ -67,20 +62,22 @@ describe('HealthCheckDatabaseUseCase', () => {
             expect(result).not.toHaveProperty('metadata');
         });
 
-        it.each(['error', 'shutting_down'] as const)(
-            'maps the %s result through HealthUtil and answers 503',
-            async status => {
+        it.each([
+            ['error', EnumHealthStatus.error],
+            ['shutting_down', EnumHealthStatus.shuttingDown],
+        ] as const)(
+            'maps the %s result to its status and answers 503',
+            async (status, mappedStatus) => {
                 const result: HealthCheckResult = {
                     ...healthCheckResult,
                     status,
                 };
                 const data = {
                     ...envelope.data,
-                    status: EnumHealthStatus.error,
+                    status: mappedStatus,
                 };
                 healthService.checkDatabase.mockResolvedValue(result);
                 healthService.isUp.mockReturnValue(false);
-                healthUtil.toResponse.mockReturnValue(data);
 
                 await expect(useCase.execute()).resolves.toEqual({
                     data,
@@ -89,7 +86,6 @@ describe('HealthCheckDatabaseUseCase', () => {
                         statusCode: HttpStatus.SERVICE_UNAVAILABLE,
                     },
                 });
-                expect(healthUtil.toResponse).toHaveBeenCalledWith(result);
             }
         );
     });

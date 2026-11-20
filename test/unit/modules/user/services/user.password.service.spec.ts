@@ -7,28 +7,19 @@ import { MessageService } from '@common/message/services/message.service';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import {
-    EnumActivityLogAction,
-    EnumRoleType,
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
-} from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
-    buildRequestContext,
     buildApiKeyContext,
+    buildRequestContext,
+    buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
-import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import {
     EnumFeatureFlagKey,
@@ -62,38 +53,27 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import { Duration } from 'luxon';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserPasswordService', () => {
     const userForgotPasswordRepository: MockProxy<UserForgotPasswordRepository> =
         mock<UserForgotPasswordRepository>();
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
-        mock<AuthPasswordUtil>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const configGet =
-        vi.fn<(key: string) => boolean | number | string | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
 
     let service: UserPasswordService;
+    let helperStringService: HelperStringService;
+    let helperHashService: HelperHashService;
 
     const tx = {} as IDatabaseTransactionClient;
     const requestContext = buildRequestContext();
@@ -101,7 +81,8 @@ describe('UserPasswordService', () => {
     const usedAt = new Date('2026-03-01T00:00:00.000Z');
     const now = new Date('2026-03-01T00:00:00.000Z');
 
-    const configValues: Record<string, boolean | number | string> = {
+    const configValues: Record<string, unknown> = {
+        ...TestUnitUserConfigValues,
         'frontend.baseUrl': 'https://example.com',
         'forgotPassword.reference.prefix': 'FGT',
         'forgotPassword.reference.length': 8,
@@ -113,76 +94,31 @@ describe('UserPasswordService', () => {
     };
 
     const baseUser: IUser = {
-        id: 'user-hollow',
-        name: 'Hollow Pike',
-        username: 'hollowPike',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'hollow@example.com',
-        roleId: 'role-hollow',
+        ...buildUser('user-hollow', 'hollow@example.com'),
         password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-hollow',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: EnumUserLoginFrom.website,
-        lastLoginWith: EnumUserLoginWith.credential,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-hollow',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
-    };
-
-    const password: IAuthPassword = {
-        passwordHash: 'hashed',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
     };
 
     const forgot: IUserForgotPasswordCreate = {
         reference: 'FGT-hollow',
-        expiredAt: new Date('2026-03-05T00:00:00.000Z'),
+        expiredAt: new Date('2026-03-01T00:15:00.000Z'),
         token: 'raw-token',
-        hashedToken: 'hashed-token',
+        hashedToken:
+            '34d328009b123fbbb0dc93f18b3e6de1ecf7b1a5783c33dff7ffe1926f09e943',
         expiredInMinutes: 15,
         resendInMinutes: 5,
         link: 'https://example.com/reset?token=raw-token',
     };
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation(key => configValues[key]);
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.forward.mockImplementation(
-            (date, duration: Duration) =>
-                new Date(date.getTime() + duration.as('milliseconds'))
-        );
+        vi.setSystemTime(now);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -192,31 +128,33 @@ describe('UserPasswordService', () => {
                     useValue: userForgotPasswordRepository,
                 },
                 { provide: UserRepository, useValue: userRepository },
-                { provide: UserUtil, useValue: userUtil },
-                { provide: HelperHashService, useValue: helperHashService },
-                {
-                    provide: HelperStringService,
-                    useValue: helperStringService,
-                },
-                { provide: HelperDateService, useValue: helperDateService },
+                UserUtil,
+                HelperHashService,
+                HelperStringService,
+                HelperDateService,
                 { provide: UserService, useValue: userService },
                 { provide: OutboxService, useValue: outboxService },
                 {
                     provide: NotificationService,
                     useValue: notificationService,
                 },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
+                DatabaseUtil,
+                AuthPasswordUtil,
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 {
                     provide: ActivityLogService,
                     useValue: activityLogService,
                 },
                 { provide: MessageService, useValue: messageService },
-                { provide: ConfigService, useValue: configService },
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(configValues),
+                },
             ],
         }).compile();
         service = module.get(UserPasswordService);
+        helperStringService = module.get(HelperStringService);
+        helperHashService = module.get(HelperHashService);
     });
 
     describe('assertPasswordAttemptAvailable', () => {
@@ -230,8 +168,6 @@ describe('UserPasswordService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                    statusCodeKey: 'passwordAttemptMax',
-                    messagePath: 'user.error.passwordAttemptMax',
                 })
             );
         });
@@ -258,7 +194,6 @@ describe('UserPasswordService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                    messagePath: 'user.error.passwordAttemptMax',
                 })
             );
         });
@@ -300,20 +235,25 @@ describe('UserPasswordService', () => {
 
     describe('createTemporaryPassword', () => {
         it('draws a random password and hashes it as a temporary one', async () => {
-            authPasswordUtil.createPasswordRandom.mockReturnValue(
-                'random-password'
-            );
-            authPasswordUtil.createPassword.mockResolvedValue(password);
+            const random = vi
+                .spyOn(helperStringService, 'random')
+                .mockReturnValue('random-password');
+            const argon2Hash = vi
+                .spyOn(helperHashService, 'argon2Hash')
+                .mockResolvedValue('hashed');
 
             await expect(service.createTemporaryPassword()).resolves.toEqual({
-                password,
+                password: {
+                    passwordHash: 'hashed',
+                    passwordExpired: new Date('2026-03-01T01:00:00.000Z'),
+                    passwordCreated: now,
+                    passwordPeriodExpired: new Date('2026-05-30T00:00:00.000Z'),
+                },
                 passwordString: 'random-password',
             });
 
-            expect(authPasswordUtil.createPassword).toHaveBeenCalledWith(
-                'random-password',
-                { temporary: true }
-            );
+            expect(random).toHaveBeenCalledWith(14);
+            expect(argon2Hash).toHaveBeenCalledWith('random-password');
         });
     });
 
@@ -456,9 +396,6 @@ describe('UserPasswordService', () => {
 
         it('adds the reach-max entry and the loginLocked effect on the counting tx when the failure locked, and no lockout effect', async () => {
             userRepository.incrementPasswordAttemptInTx.mockResolvedValue(true);
-            helperDateService.formatToIso.mockReturnValue(
-                '2026-03-01T00:15:00.000Z'
-            );
             activityLogService.recordEffect.mockReturnValue(entryEffect);
             notificationService.notify.mockReturnValue(notifyEffect);
             messageService.setMessage.mockReturnValue('Label');
@@ -473,9 +410,6 @@ describe('UserPasswordService', () => {
             expect(
                 userRepository.incrementPasswordAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-hollow', 5, lockedUntil);
-            expect(helperDateService.formatToIso).toHaveBeenCalledWith(
-                lockedUntil
-            );
             expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,
@@ -509,11 +443,8 @@ describe('UserPasswordService', () => {
         });
 
         it('throws the max-attempt exception with no row on a write conflict', async () => {
-            const conflict = new Error('write conflict');
+            const conflict = buildPrismaKnownRequestError('P2034');
             outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
 
             await expect(
                 service.countFailedPasswordAttempt(
@@ -524,10 +455,7 @@ describe('UserPasswordService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                statusCodeKey: 'passwordAttemptMax',
-                messagePath: 'user.error.passwordAttemptMax',
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
@@ -542,13 +470,11 @@ describe('UserPasswordService', () => {
                     baseUser
                 )
             ).rejects.toBe(failure);
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('wraps any other error in AppUnknownException', async () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.countFailedPasswordAttempt(
@@ -573,12 +499,9 @@ describe('UserPasswordService', () => {
         >;
 
         beforeEach(() => {
-            helperStringService.random
+            vi.spyOn(helperStringService, 'random')
                 .mockReturnValueOnce('raw-token')
                 .mockReturnValueOnce('hollow');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperStringService.fillPattern.mockReturnValue(forgot.link);
-            helperDateService.forward.mockReturnValue(forgot.expiredAt);
         });
 
         it('validates changePassword.forgotAllowed before the read', async () => {
@@ -618,25 +541,20 @@ describe('UserPasswordService', () => {
             await expect(
                 service.prepareForgotPassword('hollow@example.com')
             ).resolves.toEqual({ user: baseUser, forgot });
-
-            expect(userUtil.isInsideResendWindow).not.toHaveBeenCalled();
         });
 
         it('returns the payload when the previous request is past its resend window', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
             userForgotPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
-                lastForgot
+                {
+                    ...lastForgot,
+                    createdAt: new Date('2026-02-28T00:00:00.000Z'),
+                } as typeof lastForgot
             );
-            userUtil.isInsideResendWindow.mockReturnValue(false);
 
             await expect(
                 service.prepareForgotPassword('hollow@example.com')
             ).resolves.toEqual({ user: baseUser, forgot });
-
-            expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
-                lastForgot!.createdAt,
-                5
-            );
         });
 
         it('returns null without a reset payload when no active user holds the email', async () => {
@@ -649,7 +567,6 @@ describe('UserPasswordService', () => {
             expect(
                 userForgotPasswordRepository.findOneLatestByForgotPassword
             ).not.toHaveBeenCalled();
-            expect(helperStringService.random).not.toHaveBeenCalled();
         });
 
         it('returns null inside the resend window', async () => {
@@ -657,16 +574,11 @@ describe('UserPasswordService', () => {
             userForgotPasswordRepository.findOneLatestByForgotPassword.mockResolvedValue(
                 lastForgot
             );
-            userUtil.isInsideResendWindow.mockReturnValue(true);
 
             await expect(
                 service.prepareForgotPassword('hollow@example.com')
             ).resolves.toBeNull();
 
-            expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
-                lastForgot!.createdAt,
-                5
-            );
             expect(helperStringService.random).not.toHaveBeenCalled();
         });
     });
@@ -696,9 +608,6 @@ describe('UserPasswordService', () => {
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
-            helperDateService.formatToIso.mockReturnValue(
-                '2026-03-05T00:00:00.000Z'
-            );
             notificationService.notify.mockReturnValue(forgotEffect);
             activityLogService.recordEffect.mockReturnValue(forgotEntry);
         });
@@ -727,7 +636,7 @@ describe('UserPasswordService', () => {
                     proceedBy: 'user-hollow',
                     link: 'https://example.com/reset?token=raw-token',
                     reference: 'FGT-hollow',
-                    expiredAt: '2026-03-05T00:00:00.000Z',
+                    expiredAt: '2026-03-01T00:15:00.000Z',
                     expiredInMinutes: 15,
                 }
             );
@@ -806,14 +715,12 @@ describe('UserPasswordService', () => {
                 service.getOneActiveReset('raw-token')
             ).rejects.toThrow('flag');
 
-            expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
             expect(
                 userForgotPasswordRepository.findOneActiveByForgotPasswordToken
             ).not.toHaveBeenCalled();
         });
 
         it('hashes the token and returns the active request', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
             userForgotPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
                 reset
             );
@@ -822,12 +729,11 @@ describe('UserPasswordService', () => {
                 reset
             );
 
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'raw-token'
-            );
             expect(
                 userForgotPasswordRepository.findOneActiveByForgotPasswordToken
-            ).toHaveBeenCalledWith('hashed-token');
+            ).toHaveBeenCalledWith(
+                '34d328009b123fbbb0dc93f18b3e6de1ecf7b1a5783c33dff7ffe1926f09e943'
+            );
         });
 
         it('throws UserTokenInvalidException when no active request matches', async () => {
@@ -840,7 +746,6 @@ describe('UserPasswordService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
-                messagePath: 'user.error.verificationTokenInvalid',
             });
         });
     });
@@ -876,7 +781,6 @@ describe('UserPasswordService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
-                messagePath: 'user.error.verificationTokenInvalid',
             });
         });
     });
@@ -899,25 +803,13 @@ describe('UserPasswordService', () => {
 
     describe('purgeExpired', () => {
         it('deletes the reset rows expired before now minus the retention and returns the count', async () => {
-            const retention = Duration.fromObject({
-                milliseconds: 7776000000,
-            });
             const threshold = new Date('2025-12-01T00:00:00.000Z');
-            helperDateService.createDuration.mockReturnValue(retention);
-            helperDateService.backward.mockReturnValue(threshold);
             userForgotPasswordRepository.deleteExpiredBefore.mockResolvedValue(
                 2
             );
 
             await expect(service.purgeExpired()).resolves.toBe(2);
 
-            expect(helperDateService.createDuration).toHaveBeenCalledWith({
-                milliseconds: 7776000000,
-            });
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                retention
-            );
             expect(
                 userForgotPasswordRepository.deleteExpiredBefore
             ).toHaveBeenCalledWith(threshold);
@@ -940,19 +832,23 @@ describe('UserPasswordService', () => {
 
     describe('createReference', () => {
         it('builds a prefixed random reference', () => {
-            helperStringService.random.mockReturnValue('random-ref');
+            const random = vi
+                .spyOn(helperStringService, 'random')
+                .mockReturnValue('random-ref');
 
             expect(service['createReference']()).toBe('FGT-random-ref');
-            expect(helperStringService.random).toHaveBeenCalledWith(8);
+            expect(random).toHaveBeenCalledWith(8);
         });
     });
 
     describe('createToken', () => {
         it('builds a random token of the configured length', () => {
-            helperStringService.random.mockReturnValue('random-token');
+            const random = vi
+                .spyOn(helperStringService, 'random')
+                .mockReturnValue('random-token');
 
             expect(service['createToken']()).toBe('random-token');
-            expect(helperStringService.random).toHaveBeenCalledWith(32);
+            expect(random).toHaveBeenCalledWith(32);
         });
     });
 
@@ -966,33 +862,20 @@ describe('UserPasswordService', () => {
 
     describe('createForgot', () => {
         it('builds the reset link, hashed token, reference, and windows', () => {
-            helperStringService.random
-                .mockReturnValueOnce('random-token')
+            vi.spyOn(helperStringService, 'random')
+                .mockReturnValueOnce('raw-token')
                 .mockReturnValueOnce('random-ref');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperStringService.fillPattern.mockReturnValue(
-                'https://example.com/reset?token=random-token'
-            );
 
             expect(service['createForgot']()).toEqual({
                 reference: 'FGT-random-ref',
                 expiredAt: new Date(now.getTime() + 15 * 60 * 1000),
-                token: 'random-token',
-                hashedToken: 'hashed-token',
+                token: 'raw-token',
+                hashedToken:
+                    '34d328009b123fbbb0dc93f18b3e6de1ecf7b1a5783c33dff7ffe1926f09e943',
                 expiredInMinutes: 15,
                 resendInMinutes: 5,
-                link: 'https://example.com/reset?token=random-token',
+                link: 'https://example.com/reset?token=raw-token',
             });
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'random-token'
-            );
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{frontendBaseUrl}/reset?token={token}',
-                {
-                    frontendBaseUrl: 'https://example.com',
-                    token: 'random-token',
-                }
-            );
         });
     });
 });

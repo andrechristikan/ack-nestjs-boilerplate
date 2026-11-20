@@ -98,8 +98,6 @@ describe('WorkspaceRevokeInviteUseCase', () => {
     let useCase: WorkspaceRevokeInviteUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceRevokeInviteUseCase,

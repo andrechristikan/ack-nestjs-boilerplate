@@ -3,15 +3,14 @@ import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
-import type { AwsS3Service } from '@common/aws/services/aws.s3.service';
-import type { AwsSESService } from '@common/aws/services/aws.ses.service';
-import type { FileService } from '@common/file/services/file.service';
-import type { HelperStringService } from '@common/helper/services/helper.string.service';
+import { AwsS3Service } from '@common/aws/services/aws.s3.service';
+import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { FileService } from '@common/file/services/file.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 export interface IAwsS3ServiceDoubles {
     fileService: MockProxy<FileService>;
-    helperStringService: MockProxy<HelperStringService>;
 }
 
 export async function createAwsS3Service(
@@ -19,15 +18,6 @@ export async function createAwsS3Service(
     overrides: Record<string, unknown>,
     doubles: IAwsS3ServiceDoubles
 ): Promise<AwsS3Service> {
-    const [
-        { AwsS3Service: AwsS3ServiceClass },
-        { FileService: FileServiceClass },
-        { HelperStringService: HelperStringServiceClass },
-    ] = await Promise.all([
-        import('@common/aws/services/aws.s3.service'),
-        import('@common/file/services/file.service'),
-        import('@common/helper/services/helper.string.service'),
-    ]);
     const configService = buildConfigService({
         ...configValues,
         ...overrides,
@@ -35,17 +25,14 @@ export async function createAwsS3Service(
 
     const module = await Test.createTestingModule({
         providers: [
-            AwsS3ServiceClass,
+            AwsS3Service,
             { provide: ConfigService, useValue: configService },
-            { provide: FileServiceClass, useValue: doubles.fileService },
-            {
-                provide: HelperStringServiceClass,
-                useValue: doubles.helperStringService,
-            },
+            { provide: FileService, useValue: doubles.fileService },
+            HelperStringService,
         ],
     }).compile();
 
-    return module.get(AwsS3ServiceClass);
+    return module.get(AwsS3Service);
 }
 
 export async function createInitializedAwsS3Service(
@@ -63,8 +50,6 @@ export async function createAwsSesService(
     configValues: Record<string, unknown>,
     overrides: Record<string, unknown>
 ): Promise<AwsSESService> {
-    const { AwsSESService: AwsSESServiceClass } =
-        await import('@common/aws/services/aws.ses.service');
     const configService = buildConfigService({
         ...configValues,
         ...overrides,
@@ -72,12 +57,12 @@ export async function createAwsSesService(
 
     const module = await Test.createTestingModule({
         providers: [
-            AwsSESServiceClass,
+            AwsSESService,
             { provide: ConfigService, useValue: configService },
         ],
     }).compile();
 
-    return module.get(AwsSESServiceClass);
+    return module.get(AwsSESService);
 }
 
 export async function createInitializedAwsSesService(
@@ -88,16 +73,6 @@ export async function createInitializedAwsSesService(
     service.onModuleInit();
 
     return service;
-}
-
-export function fillPatternStub(
-    pattern: string,
-    values: Record<string, string>
-): string {
-    return Object.entries(values).reduce(
-        (acc, [token, value]) => acc.replace(`{${token}}`, () => value),
-        pattern
-    );
 }
 
 export async function expectAwsS3KeyInvalid(

@@ -2,29 +2,41 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { ConfigService } from '@nestjs/config';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { HelloService } from '@modules/hello/services/hello.service';
 import { HelloUseCase } from '@modules/hello/use-cases/hello.use-case';
 
 describe('HelloUseCase', () => {
     const helloService: MockProxy<HelloService> = mock<HelloService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-
-    const date = new Date('2026-01-01T00:00:00.000Z');
 
     let useCase: HelloUseCase;
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    });
 
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 HelloUseCase,
                 { provide: HelloService, useValue: helloService },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
@@ -33,11 +45,6 @@ describe('HelloUseCase', () => {
 
     describe('execute', () => {
         it('wraps the current date, app identity, and message language in the response envelope', async () => {
-            helperDateService.create.mockReturnValue(date);
-            helperDateService.formatToIso.mockReturnValue(
-                '2026-01-01T00:00:00.000Z'
-            );
-            helperDateService.getTimestamp.mockReturnValue(date.getTime());
             helloService.getApp.mockReturnValue({
                 name: 'Ack NestJS Boilerplate',
                 env: EnumAppEnvironment.development,
@@ -54,7 +61,7 @@ describe('HelloUseCase', () => {
                 data: {
                     date: {
                         iso: '2026-01-01T00:00:00.000Z',
-                        timestamp: date.getTime(),
+                        timestamp: 1767225600000,
                     },
                     app: {
                         name: 'Ack NestJS Boilerplate',
@@ -67,8 +74,6 @@ describe('HelloUseCase', () => {
                     },
                 },
             });
-            expect(helperDateService.formatToIso).toHaveBeenCalledWith(date);
-            expect(helperDateService.getTimestamp).toHaveBeenCalledWith(date);
         });
     });
 });

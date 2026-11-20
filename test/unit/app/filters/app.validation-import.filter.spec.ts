@@ -58,8 +58,6 @@ describe('AppValidationImportFilter', () => {
     ];
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         argumentsHost.switchToHttp.mockReturnValue(httpArgumentsHost);
         httpArgumentsHost.getResponse.mockReturnValue(response);
         response.status.mockReturnValue(response);

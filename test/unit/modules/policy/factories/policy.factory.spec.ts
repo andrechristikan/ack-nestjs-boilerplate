@@ -23,8 +23,6 @@ describe('PolicyAbilityFactory', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [PolicyAbilityFactory],
         }).compile();

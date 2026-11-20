@@ -58,35 +58,52 @@ describe('ResponsePaginationMetadataSchema', () => {
     it('rejects a missing required field', () => {
         const { perPage: _perPage, ...incomplete } = base;
 
-        expect(() =>
-            ResponsePaginationMetadataSchema.parse(incomplete)
-        ).toThrow();
+        const result = ResponsePaginationMetadataSchema.safeParse(incomplete);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['perPage'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects an orderBy array of term objects', () => {
-        expect(() =>
-            ResponsePaginationMetadataSchema.parse({
-                ...base,
-                orderBy: [{ createdAt: 'desc' }],
-            })
-        ).toThrow();
+        const result = ResponsePaginationMetadataSchema.safeParse({
+            ...base,
+            orderBy: [{ createdAt: 'desc' }],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects an availableOrderBy array of term objects', () => {
-        expect(() =>
-            ResponsePaginationMetadataSchema.parse({
-                ...base,
-                availableOrderBy: [{ createdAt: 'desc' }],
-            })
-        ).toThrow();
+        const result = ResponsePaginationMetadataSchema.safeParse({
+            ...base,
+            availableOrderBy: [{ createdAt: 'desc' }],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['availableOrderBy', 0],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a type outside the pagination enum', () => {
-        expect(() =>
-            ResponsePaginationMetadataSchema.parse({
-                ...base,
-                type: 'bogus',
-            })
-        ).toThrow();
+        const result = ResponsePaginationMetadataSchema.safeParse({
+            ...base,
+            type: 'bogus',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'invalid_value' }),
+        ]);
     });
 });

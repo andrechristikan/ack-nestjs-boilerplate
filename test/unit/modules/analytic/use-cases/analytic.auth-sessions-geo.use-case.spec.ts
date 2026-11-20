@@ -22,8 +22,6 @@ describe('AnalyticAuthSessionsGeoUseCase', () => {
     let useCase: AnalyticAuthSessionsGeoUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticAuthSessionsGeoUseCase,

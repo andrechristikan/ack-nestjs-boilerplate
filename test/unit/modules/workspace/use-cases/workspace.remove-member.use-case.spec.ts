@@ -1,12 +1,18 @@
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     EnumActivityLogAction,
     EnumWorkspaceMemberRole,
@@ -24,13 +30,14 @@ import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/except
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceRemoveMemberUseCase } from '@modules/workspace/use-cases/workspace.remove-member.use-case';
 import {
-    buildUser,
-    buildWorkspace,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspace,
     buildWorkspaceContext,
+    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceRemoveMemberUseCase', () => {
@@ -48,19 +55,8 @@ describe('WorkspaceRemoveMemberUseCase', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const firstEntry = buildActivityLogCreateManyEffect('first-entry');
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
-    const member: WorkspaceMember = {
-        id: 'member-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        workspaceId: 'workspace-1',
-        userId: 'user-1',
-        role: EnumWorkspaceMemberRole.owner,
-        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-    };
+    const member: WorkspaceMember = buildWorkspaceMember('user-1');
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(
@@ -72,7 +68,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
     let useCase: WorkspaceRemoveMemberUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
@@ -100,7 +95,11 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 },
                 { provide: UserService, useValue: userService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
@@ -257,11 +256,10 @@ describe('WorkspaceRemoveMemberUseCase', () => {
         });
 
         it('maps a write conflict to WorkspaceMemberPeerForbiddenException', async () => {
-            const conflict = new Error('conflict');
-            workspaceMemberService.removeMemberInTx.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = buildPrismaKnownRequestError(
+                DatabaseWriteConflictCode
             );
+            workspaceMemberService.removeMemberInTx.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -272,7 +270,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                     'member-2'
                 )
             ).rejects.toBeInstanceOf(WorkspaceMemberPeerForbiddenException);
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
@@ -280,7 +277,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             workspaceMemberService.removeMemberInTx.mockRejectedValue(
                 new Error('boom')
             );
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

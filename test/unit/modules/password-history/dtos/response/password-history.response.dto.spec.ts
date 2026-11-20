@@ -82,9 +82,14 @@ describe('PasswordHistoryResponseSchema', () => {
     });
 
     it('rejects a type outside EnumPasswordHistoryType', () => {
-        expect(() =>
-            PasswordHistoryResponseSchema.parse({ ...row, type: 'bogus' })
-        ).toThrow();
+        const result = PasswordHistoryResponseSchema.safeParse({
+            ...row,
+            type: 'bogus',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'invalid_value' }),
+        ]);
     });
 
     it('strips the stored password hash even when present on the input', () => {

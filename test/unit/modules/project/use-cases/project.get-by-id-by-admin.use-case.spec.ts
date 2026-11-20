@@ -26,8 +26,6 @@ describe('ProjectGetByIdByAdminUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectGetByIdByAdminUseCase,

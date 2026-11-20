@@ -28,7 +28,6 @@ describe('HealthQueueIndicator', () => {
     let errorListener: QueueListener['error'] | null = null;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         queue.on.mockImplementation((_event, listener) => {
             errorListener = listener as QueueListener['error'];
 

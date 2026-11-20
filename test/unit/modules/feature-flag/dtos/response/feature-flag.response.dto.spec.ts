@@ -51,12 +51,17 @@ describe('FeatureFlagResponseSchema', () => {
     });
 
     it('rejects a createdAt that is not a Date', () => {
-        expect(() =>
-            FeatureFlagResponseSchema.parse({
-                ...row,
-                createdAt: createdAt.toISOString(),
-            })
-        ).toThrow();
+        const result = FeatureFlagResponseSchema.safeParse({
+            ...row,
+            createdAt: createdAt.toISOString(),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['createdAt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('keeps rolloutPercent and description', () => {
@@ -67,14 +72,29 @@ describe('FeatureFlagResponseSchema', () => {
     });
 
     it('rejects a rolloutPercent of 101', () => {
-        expect(() =>
-            FeatureFlagResponseSchema.parse({ ...row, rolloutPercent: 101 })
-        ).toThrow();
+        const result = FeatureFlagResponseSchema.safeParse({
+            ...row,
+            rolloutPercent: 101,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['rolloutPercent'],
+                code: 'too_big',
+            }),
+        ]);
     });
 
     it('rejects a missing targetUserIds', () => {
         const { targetUserIds: _targetUserIds, ...rest } = row;
 
-        expect(() => FeatureFlagResponseSchema.parse(rest)).toThrow();
+        const result = FeatureFlagResponseSchema.safeParse(rest);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['targetUserIds'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

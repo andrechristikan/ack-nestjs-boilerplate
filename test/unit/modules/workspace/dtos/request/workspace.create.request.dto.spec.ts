@@ -20,32 +20,46 @@ describe('WorkspaceCreateRequestSchema', () => {
     });
 
     it('rejects an empty name', () => {
-        expect(() =>
-            WorkspaceCreateRequestSchema.parse({ ...payload, name: '' })
-        ).toThrow();
+        const result = WorkspaceCreateRequestSchema.safeParse({
+            ...payload,
+            name: '',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a name over 150 characters', () => {
-        expect(() =>
-            WorkspaceCreateRequestSchema.parse({
-                ...payload,
-                name: 'a'.repeat(151),
-            })
-        ).toThrow();
+        const result = WorkspaceCreateRequestSchema.safeParse({
+            ...payload,
+            name: 'a'.repeat(151),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects a description over 500 characters', () => {
-        expect(() =>
-            WorkspaceCreateRequestSchema.parse({
-                ...payload,
-                description: 'a'.repeat(501),
-            })
-        ).toThrow();
+        const result = WorkspaceCreateRequestSchema.safeParse({
+            ...payload,
+            description: 'a'.repeat(501),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['description'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceCreateRequestSchema.parse({ ...payload, extra: true })
-        ).toThrow();
+        const result = WorkspaceCreateRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

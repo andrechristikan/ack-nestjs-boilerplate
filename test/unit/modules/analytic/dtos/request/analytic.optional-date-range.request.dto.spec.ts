@@ -18,11 +18,13 @@ describe('AnalyticOptionalDateRangeRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            AnalyticOptionalDateRangeRequestSchema.parse({
-                ...payload,
-                windowMs: 3600000,
-            })
-        ).toThrow();
+        const result = AnalyticOptionalDateRangeRequestSchema.safeParse({
+            ...payload,
+            windowMs: 3600000,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

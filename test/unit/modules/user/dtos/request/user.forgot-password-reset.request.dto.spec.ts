@@ -30,9 +30,11 @@ describe('UserForgotPasswordResetRequestSchema', () => {
     it('rejects a payload with no token', () => {
         const { token: _token, ...rest } = payload;
 
-        expect(() =>
-            UserForgotPasswordResetRequestSchema.parse(rest)
-        ).toThrow();
+        const result = UserForgotPasswordResetRequestSchema.safeParse(rest);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['token'], code: 'invalid_type' }),
+        ]);
     });
 
     it('accepts an all-lowercase 8-character newPassword', () => {
@@ -56,30 +58,39 @@ describe('UserForgotPasswordResetRequestSchema', () => {
     });
 
     it('rejects a 7-character newPassword', () => {
-        expect(() =>
-            UserForgotPasswordResetRequestSchema.parse({
-                ...payload,
-                newPassword: 'abcdefg',
-            })
-        ).toThrow();
+        const result = UserForgotPasswordResetRequestSchema.safeParse({
+            ...payload,
+            newPassword: 'abcdefg',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['newPassword'],
+                code: 'too_small',
+            }),
+        ]);
     });
 
     it('rejects a 65-character newPassword', () => {
-        expect(() =>
-            UserForgotPasswordResetRequestSchema.parse({
-                ...payload,
-                newPassword: 'a'.repeat(65),
-            })
-        ).toThrow();
+        const result = UserForgotPasswordResetRequestSchema.safeParse({
+            ...payload,
+            newPassword: 'a'.repeat(65),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['newPassword'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserForgotPasswordResetRequestSchema.parse({
-                ...payload,
-                oldPassword: 'oldPassword1',
-            })
-        ).toThrow();
+        const result = UserForgotPasswordResetRequestSchema.safeParse({
+            ...payload,
+            oldPassword: 'oldPassword1',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a token of 200 characters and rejects one of 201', () => {
@@ -89,12 +100,14 @@ describe('UserForgotPasswordResetRequestSchema', () => {
                 token: 'a'.repeat(200),
             })
         ).not.toThrow();
-        expect(() =>
-            UserForgotPasswordResetRequestSchema.parse({
-                ...payload,
-                token: 'a'.repeat(201),
-            })
-        ).toThrow();
+        const result = UserForgotPasswordResetRequestSchema.safeParse({
+            ...payload,
+            token: 'a'.repeat(201),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['token'], code: 'too_big' }),
+        ]);
     });
 
     it('parses a passkey payload with its challenge token and assertion', () => {
@@ -129,26 +142,54 @@ describe('UserForgotPasswordResetRequestSchema', () => {
                 passkeyChallengeToken: 'a'.repeat(128),
             })
         ).not.toThrow();
-        expect(() =>
-            UserForgotPasswordResetRequestSchema.parse({
-                ...payload,
-                passkeyChallengeToken: '',
-            })
-        ).toThrow();
-        expect(() =>
-            UserForgotPasswordResetRequestSchema.parse({
-                ...payload,
-                passkeyChallengeToken: 'a'.repeat(129),
-            })
-        ).toThrow();
+        const result = UserForgotPasswordResetRequestSchema.safeParse({
+            ...payload,
+            passkeyChallengeToken: '',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeyChallengeToken'],
+                code: 'too_small',
+            }),
+        ]);
+
+        const result2 = UserForgotPasswordResetRequestSchema.safeParse({
+            ...payload,
+            passkeyChallengeToken: 'a'.repeat(129),
+        });
+
+        expect(result2.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeyChallengeToken'],
+                code: 'too_big',
+            }),
+        ]);
     });
 
     it('rejects a passkeyResponse that is not an assertion', () => {
-        expect(() =>
-            UserForgotPasswordResetRequestSchema.parse({
-                ...payload,
-                passkeyResponse: { id: 'credential-one' },
-            })
-        ).toThrow();
+        const result = UserForgotPasswordResetRequestSchema.safeParse({
+            ...payload,
+            passkeyResponse: { id: 'credential-one' },
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeyResponse', 'rawId'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['passkeyResponse', 'response'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['passkeyResponse', 'type'],
+                code: 'invalid_value',
+            }),
+            expect.objectContaining({
+                path: ['passkeyResponse', 'clientExtensionResults'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

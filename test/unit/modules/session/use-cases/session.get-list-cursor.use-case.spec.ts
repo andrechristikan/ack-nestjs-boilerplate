@@ -1,16 +1,17 @@
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    SessionCursorOrderBy,
-    SessionSharedListCursorScope,
-} from '@modules/session/constants/session.list.constant';
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionService } from '@modules/session/services/session.service';
@@ -20,12 +21,9 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { EnumSessionCursorOrderBy } from '@modules/session/enums/session.enum';
 
 describe('SessionGetListCursorUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const userContext = buildUserContext(
@@ -35,14 +33,14 @@ describe('SessionGetListCursorUseCase', () => {
     let useCase: SessionGetListCursorUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 SessionGetListCursorUseCase,
                 { provide: SessionService, useValue: sessionService },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 {
                     provide: RequestStoreService,
@@ -58,11 +56,15 @@ describe('SessionGetListCursorUseCase', () => {
             const query: SessionSharedListRequestDto = {};
             const params = {
                 limit: 20,
-                orderBy: [],
-                fingerprint: 'aaaaaaaaaaaaaaaa',
+                orderBy: [{ createdAt: 'desc' }],
+                fingerprint: '90377cf9751d9bed',
             };
-            const storePatch = { perPage: 20 };
-            paginationQueryUtil.cursor.mockReturnValue({ params, storePatch });
+            const storePatch = {
+                perPage: 20,
+                orderBy: 'latest',
+                availableSearch: [],
+                availableOrderBy: ['latest'],
+            };
             const paginationResult: IResponsePaginationReturn<ISessionList> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -78,11 +80,6 @@ describe('SessionGetListCursorUseCase', () => {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
                 hasNext: false,
-            });
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                scope: SessionSharedListCursorScope,
-                orderBy: SessionCursorOrderBy,
-                defaultOrderBy: EnumSessionCursorOrderBy.latest,
             });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

@@ -10,13 +10,13 @@ A string value equals its key; diverge only when the wire value genuinely differ
 
 ## One file per module
 
-Every enum a module owns sits in that module's `enums/` folder, named as `naming.md`, Files, gives. An enum lives with the module that owns its concept, never in a file that collects other modules' enums.
+One file per module: `naming.md`, Files. An enum lives with the module that owns its concept, never in a file that collects other modules' enums.
 
 ## Where an enum lives
 
 - A value the database stores (a status, a type, a role, a platform, a logged action) is declared in `prisma/schema.prisma` and imported from `@generated/prisma-client/client`. A module-local re-declaration is a second source of truth with a mapper between two identical enums. Adding or renaming a persisted member is a schema change (`repository.md`).
 - A TypeScript enum in `src/` is for what the database never stores: status-code blocks, queue and job names, transport and tooling scales, an option a request carries without being persisted as it stands.
-- The exception to both bullets above: a seeded key the database stores and code names, which no API adds or renames (a feature-flag key, a metadata sub-key), is a TypeScript enum the seed data and every caller use: `EnumFeatureFlagKey` and `EnumFeatureFlagMetadataKey` (`feature-flag.md`, Keys).
+- The exception to both bullets above: a seeded key the database stores and code names, which no API adds or renames (a feature-flag key, a metadata sub-key), is a TypeScript enum (`feature-flag.md`, Keys).
 
 ## Reference by member
 

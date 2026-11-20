@@ -16,31 +16,20 @@ import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspa
 import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
 import { WorkspaceRejectJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.reject-join-request.use-case';
 import {
-    buildUser,
-    buildWorkspaceMember,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspace,
     buildWorkspaceContext,
+    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceRejectJoinRequestUseCase', () => {
     const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
         mock<WorkspaceJoinRequestService>();
-    const workspace: Workspace = {
-        id: 'workspace-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: 'user-1',
-        deletedAt: null,
-        deletedBy: null,
-        name: 'Acme',
-        slug: 'acme-team',
-        description: null,
-        isPublic: true,
-    };
+    const workspace: Workspace = buildWorkspace();
     const joinRequest: WorkspaceJoinRequest = {
         id: 'join-request-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -71,8 +60,6 @@ describe('WorkspaceRejectJoinRequestUseCase', () => {
     let useCase: WorkspaceRejectJoinRequestUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceRejectJoinRequestUseCase,

@@ -34,14 +34,20 @@ describe('ApiKeyCreateRequestSchema', () => {
     });
 
     it('rejects an endAt before startAt', () => {
-        expect(() =>
-            ApiKeyCreateRequestSchema.parse({
-                name: 'Acme Api Key',
-                type: EnumApiKeyType.default,
-                startAt: endAt,
-                endAt: startAt,
-            })
-        ).toThrow();
+        const result = ApiKeyCreateRequestSchema.safeParse({
+            name: 'Acme Api Key',
+            type: EnumApiKeyType.default,
+            startAt: endAt,
+            endAt: startAt,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['endAt'],
+                code: 'custom',
+                message: 'request.error.greaterThanEqualOtherProperty.invalid',
+            }),
+        ]);
     });
 
     it.each([
@@ -54,22 +60,24 @@ describe('ApiKeyCreateRequestSchema', () => {
             ...window,
         });
 
-        expect(result.success).toBe(false);
         expect(result.error?.issues).toEqual([
             expect.objectContaining({
                 path: [missingPath],
+                code: 'custom',
                 message: 'request.error.requiredWithOtherProperty.invalid',
             }),
         ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ApiKeyCreateRequestSchema.parse({
-                name: 'Acme Api Key',
-                type: EnumApiKeyType.default,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ApiKeyCreateRequestSchema.safeParse({
+            name: 'Acme Api Key',
+            type: EnumApiKeyType.default,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

@@ -9,6 +9,10 @@ describe('RequestMessageLanguageSchema', () => {
     });
 
     it('rejects a value outside EnumMessageLanguage', () => {
-        expect(() => RequestMessageLanguageSchema.parse('fr')).toThrow();
+        const result = RequestMessageLanguageSchema.safeParse('fr');
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'invalid_value' }),
+        ]);
     });
 });

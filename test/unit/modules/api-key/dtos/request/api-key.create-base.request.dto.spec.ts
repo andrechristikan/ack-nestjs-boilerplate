@@ -34,39 +34,47 @@ describe('ApiKeyCreateBaseRequestSchema', () => {
     });
 
     it('rejects an empty name', () => {
-        expect(() =>
-            ApiKeyCreateBaseRequestSchema.parse({
-                name: '',
-                type: EnumApiKeyType.default,
-            })
-        ).toThrow();
+        const result = ApiKeyCreateBaseRequestSchema.safeParse({
+            name: '',
+            type: EnumApiKeyType.default,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a name over 100 characters', () => {
-        expect(() =>
-            ApiKeyCreateBaseRequestSchema.parse({
-                name: 'a'.repeat(101),
-                type: EnumApiKeyType.default,
-            })
-        ).toThrow();
+        const result = ApiKeyCreateBaseRequestSchema.safeParse({
+            name: 'a'.repeat(101),
+            type: EnumApiKeyType.default,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects an invalid type', () => {
-        expect(() =>
-            ApiKeyCreateBaseRequestSchema.parse({
-                name: 'Acme Api Key',
-                type: 'invalid',
-            })
-        ).toThrow();
+        const result = ApiKeyCreateBaseRequestSchema.safeParse({
+            name: 'Acme Api Key',
+            type: 'invalid',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ApiKeyCreateBaseRequestSchema.parse({
-                name: 'Acme Api Key',
-                type: EnumApiKeyType.default,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ApiKeyCreateBaseRequestSchema.safeParse({
+            name: 'Acme Api Key',
+            type: EnumApiKeyType.default,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

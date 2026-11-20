@@ -12,8 +12,6 @@ describe('AnalyticDevicesPerUserUseCase', () => {
     let useCase: AnalyticDevicesPerUserUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticDevicesPerUserUseCase,

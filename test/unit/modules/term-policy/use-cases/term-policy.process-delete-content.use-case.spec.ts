@@ -19,8 +19,6 @@ describe('TermPolicyProcessDeleteContentUseCase', () => {
     let useCase: TermPolicyProcessDeleteContentUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         messageService.setMessage.mockImplementation((path: string) => path);
 
         const module: TestingModule = await Test.createTestingModule({

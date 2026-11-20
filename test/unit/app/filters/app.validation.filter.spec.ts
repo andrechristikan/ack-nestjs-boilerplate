@@ -48,8 +48,6 @@ describe('AppValidationFilter', () => {
     ];
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         argumentsHost.switchToHttp.mockReturnValue(httpArgumentsHost);
         httpArgumentsHost.getResponse.mockReturnValue(response);
         response.status.mockReturnValue(response);
@@ -69,10 +67,6 @@ describe('AppValidationFilter', () => {
         }).compile();
 
         filter = module.get(AppValidationFilter);
-    });
-
-    afterEach(() => {
-        vi.restoreAllMocks();
     });
 
     describe('catch', () => {

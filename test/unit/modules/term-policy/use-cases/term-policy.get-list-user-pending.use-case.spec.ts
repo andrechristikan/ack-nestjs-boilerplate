@@ -24,8 +24,6 @@ describe('TermPolicyGetListUserPendingUseCase', () => {
     let useCase: TermPolicyGetListUserPendingUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 TermPolicyGetListUserPendingUseCase,

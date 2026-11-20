@@ -1,38 +1,45 @@
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import {
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
+} from '@common/pagination/enums/pagination.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { TermPolicyGetListUserAcceptedUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-user-accepted.use-case';
 import type { TermPolicyAcceptedListRequestDto } from '@modules/term-policy/dtos/request/term-policy.accepted-list.request.dto';
 import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
 import {
-    TermPolicyAcceptanceOrderBy,
-    TermPolicyAcceptanceSharedListCursorScope,
-} from '@modules/term-policy/constants/term-policy.list.constant';
-import {
     buildUser,
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { EnumTermPolicyAcceptanceOrderBy } from '@modules/term-policy/enums/term-policy.enum';
 
 describe('TermPolicyGetListUserAcceptedUseCase', () => {
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
         mock<TermPolicyAcceptanceService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
     const cursorParams = {
         limit: 20,
-        orderBy: [],
-        fingerprint: 'aaaaaaaaaaaaaaaa',
+        orderBy: [{ createdAt: EnumPaginationOrderDirectionType.desc }],
+        fingerprint: '0f53ffce0681584b',
+    };
+    const storePatch = {
+        perPage: 20,
+        orderBy: 'latest',
+        availableSearch: [],
+        availableOrderBy: ['latest'],
     };
     const cursorPage = {
         type: EnumPaginationType.cursor as const,
@@ -48,13 +55,6 @@ describe('TermPolicyGetListUserAcceptedUseCase', () => {
     let useCase: TermPolicyGetListUserAcceptedUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        paginationQueryUtil.cursor.mockReturnValue({
-            params: cursorParams,
-            storePatch: { filters: {} },
-        });
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 TermPolicyGetListUserAcceptedUseCase,
@@ -62,7 +62,11 @@ describe('TermPolicyGetListUserAcceptedUseCase', () => {
                     provide: TermPolicyAcceptanceService,
                     useValue: termPolicyAcceptanceService,
                 },
-                { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -80,14 +84,9 @@ describe('TermPolicyGetListUserAcceptedUseCase', () => {
             const result = await useCase.execute(authContext, query);
 
             expect(result).toEqual(cursorPage);
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                scope: TermPolicyAcceptanceSharedListCursorScope,
-                orderBy: TermPolicyAcceptanceOrderBy,
-                defaultOrderBy: EnumTermPolicyAcceptanceOrderBy.latest,
-            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                { filters: {} }
+                storePatch
             );
             expect(
                 termPolicyAcceptanceService.getListUserAccepted

@@ -2,10 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import {
-    EnumProjectMemberRole,
-    EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
+import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -17,14 +14,15 @@ import { ProjectUtil } from '@modules/project/utils/project.util';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { ProjectAssignMemberUseCase } from '@modules/project/use-cases/project.assign-member.use-case';
 import {
-    buildUser,
-    buildWorkspace,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
-    buildWorkspaceContext,
     buildProjectContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspace,
+    buildWorkspaceContext,
+    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectAssignMemberUseCase', () => {
@@ -34,21 +32,11 @@ describe('ProjectAssignMemberUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
 
-    const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
-
     let useCase: ProjectAssignMemberUseCase;
 
-    const actorMember: WorkspaceMember = {
-        id: '507f1f77bcf86cd799439034',
-        workspaceId: '507f1f77bcf86cd799439012',
-        userId: '507f1f77bcf86cd799439033',
-        role: EnumWorkspaceMemberRole.admin,
-        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    };
+    const actorMember: WorkspaceMember = buildWorkspaceMember(
+        '507f1f77bcf86cd799439033'
+    );
 
     const actor: IProjectMemberActor = {
         userId: actorMember.userId,
@@ -106,9 +94,6 @@ describe('ProjectAssignMemberUseCase', () => {
     const projectContext = buildProjectContext(project, null);
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        projectUtil.mapMemberActor.mockReturnValue(actor);
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectAssignMemberUseCase,
@@ -120,7 +105,7 @@ describe('ProjectAssignMemberUseCase', () => {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
                 },
-                { provide: ProjectUtil, useValue: projectUtil },
+                ProjectUtil,
             ],
         }).compile();
 
@@ -132,17 +117,7 @@ describe('ProjectAssignMemberUseCase', () => {
             userId: '507f1f77bcf86cd799439022',
             role: EnumProjectMemberRole.member,
         };
-        const targetMember: WorkspaceMember = {
-            id: '507f1f77bcf86cd799439031',
-            workspaceId: project.workspaceId,
-            userId: body.userId,
-            role: EnumWorkspaceMemberRole.member,
-            joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-        };
+        const targetMember: WorkspaceMember = buildWorkspaceMember(body.userId);
 
         it('resolves the target workspace member and assigns them with the context, wrapping the result', async () => {
             workspaceMemberService.getOneByWorkspaceAndUser.mockResolvedValue(
@@ -164,9 +139,6 @@ describe('ProjectAssignMemberUseCase', () => {
             expect(
                 workspaceMemberService.getOneByWorkspaceAndUser
             ).toHaveBeenCalledWith(project.workspaceId, body.userId);
-            expect(projectUtil.mapMemberActor).toHaveBeenCalledWith(
-                actorMember
-            );
             expect(projectMemberService.assignMember).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,

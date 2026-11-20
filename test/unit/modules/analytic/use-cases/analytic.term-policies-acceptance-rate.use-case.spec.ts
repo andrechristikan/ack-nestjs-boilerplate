@@ -20,8 +20,6 @@ describe('AnalyticTermPoliciesAcceptanceRateUseCase', () => {
     let useCase: AnalyticTermPoliciesAcceptanceRateUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticTermPoliciesAcceptanceRateUseCase,

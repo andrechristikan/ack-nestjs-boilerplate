@@ -25,24 +25,35 @@ describe('WorkspaceMemberListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceMemberListRequestSchema.parse({ extra: true })
-        ).toThrow();
+        const result = WorkspaceMemberListRequestSchema.safeParse({
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
         expect(
-            WorkspaceMemberListRequestSchema.safeParse({ search: 'x' }).success
-        ).toBe(false);
+            WorkspaceMemberListRequestSchema.safeParse({ search: 'x' }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a role of 256 characters and rejects one of 257', () => {
         expect(() =>
             WorkspaceMemberListRequestSchema.parse({ role: 'a'.repeat(256) })
         ).not.toThrow();
-        expect(() =>
-            WorkspaceMemberListRequestSchema.parse({ role: 'a'.repeat(257) })
-        ).toThrow();
+        const result = WorkspaceMemberListRequestSchema.safeParse({
+            role: 'a'.repeat(257),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['role'], code: 'too_big' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -75,15 +86,26 @@ describe('WorkspaceMemberListRequestSchema', () => {
         'joinedAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            WorkspaceMemberListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            WorkspaceMemberListRequestSchema.safeParse({ orderBy }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             WorkspaceMemberListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

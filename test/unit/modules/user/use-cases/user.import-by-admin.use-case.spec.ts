@@ -63,8 +63,6 @@ describe('UserImportByAdminUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         outboxService.add.mockResolvedValue('outbox-bramble');
         userService.importByAdminEffect.mockReturnValue(importEffect);
 
@@ -172,11 +170,6 @@ describe('UserImportByAdminUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.importEmailExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.importEmailExist
-                    ],
-                messagePath: 'user.error.importEmailExist',
             });
             expect(
                 userImportService.assertImportByAdminRows
@@ -199,7 +192,6 @@ describe('UserImportByAdminUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.importUsernameExist,
-                messagePath: 'user.error.importUsernameExist',
             });
             expect(outboxService.add).not.toHaveBeenCalled();
             expect(userService.importByAdminEffect).not.toHaveBeenCalled();

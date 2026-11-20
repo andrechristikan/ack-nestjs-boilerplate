@@ -46,9 +46,14 @@ describe('RoleSchema', () => {
     });
 
     it('rejects a description over 500 characters', () => {
-        expect(() =>
-            RoleSchema.parse({ ...row, description: 'a'.repeat(501) })
-        ).toThrow();
+        const result = RoleSchema.safeParse({
+            ...row,
+            description: 'a'.repeat(501),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['description'], code: 'too_big' }),
+        ]);
     });
 
     it('strips deletedAt, deletedBy, and any other undeclared key', () => {

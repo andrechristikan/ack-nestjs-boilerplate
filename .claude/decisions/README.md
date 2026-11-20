@@ -1,6 +1,6 @@
 # Decisions
 
-Each entry names a choice a rule in `.claude/rules/`, or a harness file, carries and gives the reason each plausible alternative was rejected. The rule states what the code does; an entry states only why the alternatives lost.
+Each entry names a choice a rule in `.claude/rules/`, or a harness file, carries and gives the reason each plausible alternative was rejected.
 
 - [Layering][ref-decisions-layering]: layers and modules, naming, lint and tests, the logging line shape
 - [Database and cache][ref-decisions-database-and-cache]: database, cache and Redis, outage logging

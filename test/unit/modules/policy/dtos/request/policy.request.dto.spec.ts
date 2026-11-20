@@ -17,14 +17,24 @@ describe('PolicyRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            PolicyRequestSchema.parse({ ...payload, id: 'policy-1' })
-        ).toThrow();
+        const result = PolicyRequestSchema.safeParse({
+            ...payload,
+            id: 'policy-1',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects an empty action list', () => {
-        expect(() =>
-            PolicyRequestSchema.parse({ ...payload, action: [] })
-        ).toThrow();
+        const result = PolicyRequestSchema.safeParse({
+            ...payload,
+            action: [],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['action'], code: 'too_small' }),
+        ]);
     });
 });

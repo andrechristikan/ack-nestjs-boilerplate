@@ -1,9 +1,17 @@
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import {
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
+} from '@common/pagination/enums/pagination.enum';
 import { MessageService } from '@common/message/services/message.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { Notification } from '@generated/prisma-client/client';
@@ -13,10 +21,6 @@ import {
 } from '@generated/prisma-client/client';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import type { NotificationListRequestDto } from '@modules/notification/dtos/request/notification.list.request.dto';
-import {
-    NotificationOrderBy,
-    NotificationSharedListCursorScope,
-} from '@modules/notification/constants/notification.list.constant';
 import { NotificationGetListCursorUseCase } from '@modules/notification/use-cases/notification.get-list-cursor.use-case';
 import {
     buildUser,
@@ -24,13 +28,10 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { EnumNotificationOrderBy } from '@modules/notification/enums/notification.enum';
 
 describe('NotificationGetListCursorUseCase', () => {
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
@@ -43,8 +44,14 @@ describe('NotificationGetListCursorUseCase', () => {
 
     const cursorParams = {
         limit: 20,
-        orderBy: [],
-        fingerprint: 'aaaaaaaaaaaaaaaa',
+        orderBy: [{ createdAt: EnumPaginationOrderDirectionType.desc }],
+        fingerprint: '109da1a6c02bf8ef',
+    };
+    const storePatch = {
+        perPage: 20,
+        orderBy: 'latest',
+        availableSearch: [],
+        availableOrderBy: ['latest'],
     };
     const cursorPage = {
         type: EnumPaginationType.cursor as const,
@@ -54,14 +61,14 @@ describe('NotificationGetListCursorUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module = await Test.createTestingModule({
             providers: [
                 NotificationGetListCursorUseCase,
                 { provide: NotificationService, useValue: notificationService },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 {
                     provide: RequestStoreService,
@@ -77,10 +84,6 @@ describe('NotificationGetListCursorUseCase', () => {
         const query: NotificationListRequestDto = { perPage: 20 };
 
         it('merges the pagination store patch and returns the domain page', async () => {
-            paginationQueryUtil.cursor.mockReturnValue({
-                params: cursorParams,
-                storePatch: { filters: { existing: true } },
-            });
             notificationService.getListCursor.mockResolvedValue(cursorPage);
 
             const result = await useCase.execute(
@@ -89,14 +92,9 @@ describe('NotificationGetListCursorUseCase', () => {
                 query
             );
 
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                scope: NotificationSharedListCursorScope,
-                orderBy: NotificationOrderBy,
-                defaultOrderBy: EnumNotificationOrderBy.latest,
-            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                { filters: { existing: true } }
+                storePatch
             );
             expect(notificationService.getListCursor).toHaveBeenCalledWith(
                 'user-id',
@@ -129,10 +127,6 @@ describe('NotificationGetListCursorUseCase', () => {
                 ...metadataProperties,
                 rejectReasonLabel: 'Spam',
             };
-            paginationQueryUtil.cursor.mockReturnValue({
-                params: cursorParams,
-                storePatch: {},
-            });
             notificationService.getListCursor.mockResolvedValue({
                 ...cursorPage,
                 data: [stored],
@@ -200,10 +194,6 @@ describe('NotificationGetListCursorUseCase', () => {
                 username: 'ana',
                 loginAt: 'Sun, 01 Mar 2026 00:05:00 +0000',
             };
-            paginationQueryUtil.cursor.mockReturnValue({
-                params: cursorParams,
-                storePatch: {},
-            });
             notificationService.getListCursor.mockResolvedValue({
                 ...cursorPage,
                 data: [stored],

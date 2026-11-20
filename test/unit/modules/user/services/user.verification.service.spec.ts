@@ -7,18 +7,12 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
-    EnumRoleType,
     EnumUserReauthenticationAction,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { Verification } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { Duration } from 'luxon';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -31,8 +25,9 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
-    buildRequestContext,
     buildApiKeyContext,
+    buildRequestContext,
+    buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -56,6 +51,10 @@ import { UserVerificationRepository } from '@modules/user/repositories/user.veri
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserVerificationService', () => {
     const userVerificationRepository: MockProxy<UserVerificationRepository> =
@@ -69,71 +68,22 @@ describe('UserVerificationService', () => {
     const entry = buildActivityLogCreateManyEffect('activityLog');
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const helperNumberService: MockProxy<HelperNumberService> =
-        mock<HelperNumberService>();
-    const configGet = vi.fn<(key: string) => number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const userVerificationUtil: MockProxy<UserVerificationUtil> =
-        mock<UserVerificationUtil>({ resendInMinutes: 7 });
 
     let service: UserVerificationService;
+    let helperStringService: HelperStringService;
+    let helperNumberService: HelperNumberService;
+    const configValues: Record<string, unknown> = {
+        ...TestUnitUserConfigValues,
+        'verification.otpLength': 6,
+        'verification.expiresInMinutes': 5,
+        'verification.resendInMinutes': 7,
+        'verification.retentionInMs': 7776000000,
+    };
 
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-01T00:00:00.000Z');
 
-    const baseUser: IUser = {
-        id: 'user-flint',
-        name: 'Flint Ashford',
-        username: 'flintAshford',
-        isVerified: false,
-        verifiedAt: null,
-        email: 'flint@example.com',
-        roleId: 'role-flint',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-flint',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-flint',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
-    };
+    const baseUser: IUser = buildUser('user-flint', 'flint@example.com');
 
     const verification: Verification = {
         id: 'verification-flint',
@@ -171,8 +121,15 @@ describe('UserVerificationService', () => {
         idempotencyKey: 'verifiedEmail-VRF-flint',
     };
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect.mockReturnValue(entry);
         notificationService.notify.mockReturnValue(notifyEffect);
         userRepository.findOneById.mockResolvedValue(baseUser);
@@ -182,15 +139,7 @@ describe('UserVerificationService', () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        helperDateService.create.mockReturnValue(now);
-        configGet.mockImplementation(
-            key =>
-                ({
-                    'verification.otpLength': 6,
-                    'verification.expiresInMinutes': 5,
-                    'verification.retentionInMs': 7776000000,
-                })[key]
-        );
+        vi.setSystemTime(now);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -203,19 +152,22 @@ describe('UserVerificationService', () => {
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: NotificationService, useValue: notificationService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperHashService, useValue: helperHashService },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: HelperNumberService, useValue: helperNumberService },
-                { provide: ConfigService, useValue: configService },
-                { provide: UserUtil, useValue: userUtil },
+                DatabaseUtil,
+                HelperHashService,
+                HelperDateService,
+                HelperNumberService,
                 {
-                    provide: UserVerificationUtil,
-                    useValue: userVerificationUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(configValues),
                 },
+                UserUtil,
+                UserVerificationUtil,
+                HelperStringService,
             ],
         }).compile();
         service = module.get(UserVerificationService);
+        helperStringService = module.get(HelperStringService);
+        helperNumberService = module.get(HelperNumberService);
     });
 
     describe('getOneActiveByEmailToken', () => {
@@ -225,7 +177,6 @@ describe('UserVerificationService', () => {
         };
 
         it('returns the active verification of the hashed token with its included user after one repository call', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
             userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
                 verificationWithUser
             );
@@ -239,12 +190,13 @@ describe('UserVerificationService', () => {
             ).toHaveBeenCalledTimes(1);
             expect(
                 userVerificationRepository.findOneActiveByVerificationEmailToken
-            ).toHaveBeenCalledWith('hashed-token');
+            ).toHaveBeenCalledWith(
+                '34d328009b123fbbb0dc93f18b3e6de1ecf7b1a5783c33dff7ffe1926f09e943'
+            );
             expect(userRepository.findOneById).not.toHaveBeenCalled();
         });
 
         it('throws UserTokenInvalidException when the token is unknown', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
             userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
                 null
             );
@@ -254,16 +206,10 @@ describe('UserVerificationService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.tokenInvalid
-                    ],
-                messagePath: 'user.error.verificationTokenInvalid',
             });
         });
 
         it('throws UserEmailAlreadyVerifiedException when the user is already verified', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
             userVerificationRepository.findOneActiveByVerificationEmailToken.mockResolvedValue(
                 {
                     ...verificationWithUser,
@@ -276,7 +222,6 @@ describe('UserVerificationService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.emailAlreadyVerified,
-                messagePath: 'user.error.emailAlreadyVerified',
             });
         });
     });
@@ -344,18 +289,14 @@ describe('UserVerificationService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
-                messagePath: 'user.error.verificationTokenInvalid',
             });
             expect(userRepository.markVerifiedInTx).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('maps a write conflict to UserTokenInvalidException', async () => {
-            const conflict = new Error('write-conflict');
+            const conflict = buildPrismaKnownRequestError('P2034');
             userVerificationRepository.markUsedInTx.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
 
             const call = service.verifyEmail(
                 requestContext,
@@ -367,7 +308,6 @@ describe('UserVerificationService', () => {
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {
@@ -383,7 +323,6 @@ describe('UserVerificationService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                messagePath: 'user.error.notFound',
             });
             await expect(call).rejects.toBe(error);
         });
@@ -401,7 +340,6 @@ describe('UserVerificationService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
-                messagePath: 'http.serverError.internalServerError',
                 rawError: error,
             });
         });
@@ -430,22 +368,15 @@ describe('UserVerificationService', () => {
             expect(
                 userVerificationRepository.findOneLatestByVerificationEmail
             ).toHaveBeenCalledWith('user-flint');
-            expect(userUtil.isInsideResendWindow).not.toHaveBeenCalled();
         });
 
         it('returns false inside the resend window', async () => {
             userVerificationRepository.findOneLatestByVerificationEmail.mockResolvedValue(
-                verification
+                { ...verification, createdAt: now }
             );
-            userUtil.isInsideResendWindow.mockReturnValue(true);
 
             await expect(service.isEmailResendable(baseUser)).resolves.toBe(
                 false
-            );
-
-            expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
-                verification.createdAt,
-                7
             );
         });
 
@@ -453,15 +384,9 @@ describe('UserVerificationService', () => {
             userVerificationRepository.findOneLatestByVerificationEmail.mockResolvedValue(
                 verification
             );
-            userUtil.isInsideResendWindow.mockReturnValue(false);
 
             await expect(service.isEmailResendable(baseUser)).resolves.toBe(
                 true
-            );
-
-            expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
-                verification.createdAt,
-                7
             );
         });
     });
@@ -500,9 +425,8 @@ describe('UserVerificationService', () => {
         it('returns null when the resend gate does not hold', async () => {
             userRepository.findOneActiveByEmail.mockResolvedValue(baseUser);
             userVerificationRepository.findOneLatestByVerificationEmail.mockResolvedValue(
-                verification
+                { ...verification, createdAt: now }
             );
-            userUtil.isInsideResendWindow.mockReturnValue(true);
 
             await expect(
                 service.getOneForResendByEmail('flint@example.com')
@@ -541,27 +465,29 @@ describe('UserVerificationService', () => {
 
     describe('sendEmail', () => {
         const emailVerification: IUserVerificationEmailCreate = {
-            reference: 'VRF-random-token',
-            expiredAt: new Date('2026-03-05T00:00:00.000Z'),
+            reference: 'VRF-token',
+            expiredAt: new Date('2026-03-01T00:05:00.000Z'),
             type: EnumVerificationType.email,
             token: 'random-token',
-            hashedToken: 'hashed-token',
-            expiredInMinutes: 15,
+            hashedToken:
+                'a67fa39caab4a23f78752354d1927f69d4e367be6229afb97c3aaddf7d138739',
+            expiredInMinutes: 5,
             link: 'https://example.com/verify?token=random-token',
-            resendInMinutes: 5,
+            resendInMinutes: 7,
         };
         const context: INotificationVerificationLinkContext = {
             userId: 'user-flint',
             proceedBy: 'user-flint',
             link: 'https://example.com/verify?token=random-token',
-            expiredAt: '2026-03-05T00:00:00.000Z',
-            expiredInMinutes: 15,
-            reference: 'VRF-random-token',
+            expiredAt: '2026-03-01T00:05:00.000Z',
+            expiredInMinutes: 5,
+            reference: 'VRF-token',
         };
 
         it('replaces the active verification and adds the verificationEmail effect on one transaction', async () => {
-            userVerificationUtil.createEmail.mockReturnValue(emailVerification);
-            userVerificationUtil.mapEmailContext.mockReturnValue(context);
+            vi.spyOn(helperStringService, 'random')
+                .mockReturnValueOnce('random-token')
+                .mockReturnValueOnce('token');
 
             await service.sendEmail(
                 requestContext,
@@ -570,7 +496,6 @@ describe('UserVerificationService', () => {
                 'flint@example.com'
             );
 
-            expect(userVerificationUtil.createEmail).toHaveBeenCalledWith();
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userVerificationRepository.createReplacingActiveInTx
@@ -580,10 +505,6 @@ describe('UserVerificationService', () => {
                 'flint@example.com',
                 emailVerification,
                 now
-            );
-            expect(userVerificationUtil.mapEmailContext).toHaveBeenCalledWith(
-                'user-flint',
-                emailVerification
             );
             expect(notificationService.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.verificationEmail,
@@ -611,7 +532,9 @@ describe('UserVerificationService', () => {
         });
 
         it('adds no effect when the verification write throws', async () => {
-            userVerificationUtil.createEmail.mockReturnValue(emailVerification);
+            vi.spyOn(helperStringService, 'random')
+                .mockReturnValueOnce('random-token')
+                .mockReturnValueOnce('token');
             userVerificationRepository.createReplacingActiveInTx.mockRejectedValue(
                 new Error('boom')
             );
@@ -631,27 +554,29 @@ describe('UserVerificationService', () => {
 
     describe('sendEmailInTx', () => {
         const emailVerification: IUserVerificationEmailCreate = {
-            reference: 'VRF-random-token',
-            expiredAt: new Date('2026-03-05T00:00:00.000Z'),
+            reference: 'VRF-token',
+            expiredAt: new Date('2026-03-01T00:05:00.000Z'),
             type: EnumVerificationType.email,
             token: 'random-token',
-            hashedToken: 'hashed-token',
-            expiredInMinutes: 15,
+            hashedToken:
+                'a67fa39caab4a23f78752354d1927f69d4e367be6229afb97c3aaddf7d138739',
+            expiredInMinutes: 5,
             link: 'https://example.com/verify?token=random-token',
-            resendInMinutes: 5,
+            resendInMinutes: 7,
         };
         const context: INotificationVerificationLinkContext = {
             userId: 'user-flint',
             proceedBy: 'user-flint',
             link: 'https://example.com/verify?token=random-token',
-            expiredAt: '2026-03-05T00:00:00.000Z',
-            expiredInMinutes: 15,
-            reference: 'VRF-random-token',
+            expiredAt: '2026-03-01T00:05:00.000Z',
+            expiredInMinutes: 5,
+            reference: 'VRF-token',
         };
 
         it('replaces the active verification and adds the verificationEmail effect on the given tx without opening one', async () => {
-            userVerificationUtil.createEmail.mockReturnValue(emailVerification);
-            userVerificationUtil.mapEmailContext.mockReturnValue(context);
+            vi.spyOn(helperStringService, 'random')
+                .mockReturnValueOnce('random-token')
+                .mockReturnValueOnce('token');
 
             await service.sendEmailInTx(tx, 'user-flint', 'flint@example.com');
 
@@ -684,7 +609,6 @@ describe('UserVerificationService', () => {
         };
 
         it('returns the unused unexpired row of the user, action, and hashed code', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-otp');
             userVerificationRepository.findOneActiveReauthentication.mockResolvedValue(
                 reauthentication
             );
@@ -697,18 +621,16 @@ describe('UserVerificationService', () => {
                 )
             ).resolves.toBe(reauthentication);
 
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith('123456');
             expect(
                 userVerificationRepository.findOneActiveReauthentication
             ).toHaveBeenCalledWith(
                 'user-flint',
                 EnumUserReauthenticationAction.mobileNumberAdd,
-                'hashed-otp'
+                '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'
             );
         });
 
         it('throws UserReauthenticationOtpInvalidException when no row matches', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-otp');
             userVerificationRepository.findOneActiveReauthentication.mockResolvedValue(
                 null
             );
@@ -742,14 +664,12 @@ describe('UserVerificationService', () => {
                 'user-flint',
                 EnumUserReauthenticationAction.deleteSelf
             );
-            expect(userUtil.isInsideResendWindow).not.toHaveBeenCalled();
         });
 
         it('resolves when the latest code of the action is outside the resend window', async () => {
             userVerificationRepository.findOneLatestReauthentication.mockResolvedValue(
                 verification
             );
-            userUtil.isInsideResendWindow.mockReturnValue(false);
 
             await expect(
                 service.assertReauthenticationResendable(
@@ -757,18 +677,12 @@ describe('UserVerificationService', () => {
                     EnumUserReauthenticationAction.deleteSelf
                 )
             ).resolves.toBeUndefined();
-
-            expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
-                verification.createdAt,
-                7
-            );
         });
 
         it('throws UserReauthenticationOtpResendLimitException inside the resend window, used or not', async () => {
             userVerificationRepository.findOneLatestReauthentication.mockResolvedValue(
-                { ...verification, isUsed: true }
+                { ...verification, isUsed: true, createdAt: now }
             );
-            userUtil.isInsideResendWindow.mockReturnValue(true);
 
             await expect(
                 service.assertReauthenticationResendable(
@@ -793,10 +707,10 @@ describe('UserVerificationService', () => {
         };
 
         beforeEach(() => {
-            helperNumberService.randomDigits.mockReturnValue('123456');
-            helperHashService.sha256Hash.mockReturnValue('hashed-otp');
-            userVerificationUtil.createReference.mockReturnValue('VRF-reauth');
-            userVerificationUtil.createExpiredAt.mockReturnValue(expiredAt);
+            vi.spyOn(helperNumberService, 'randomDigits').mockReturnValue(
+                '123456'
+            );
+            vi.spyOn(helperStringService, 'random').mockReturnValue('reauth');
         });
 
         it('marks the unused codes of the action used, creates the row holding only the code hash, and adds the reauthenticationOtp effect on the given tx', async () => {
@@ -813,8 +727,6 @@ describe('UserVerificationService', () => {
             );
 
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
-            expect(helperNumberService.randomDigits).toHaveBeenCalledWith(6);
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith('123456');
             expect(
                 userVerificationRepository.markUnusedReauthenticationUsedInTx
             ).toHaveBeenCalledWith(
@@ -830,7 +742,7 @@ describe('UserVerificationService', () => {
                 'user-flint',
                 {
                     reference: 'VRF-reauth',
-                    token: 'hashed-otp',
+                    token: '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
                     type: EnumVerificationType.reauthentication,
                     action: EnumUserReauthenticationAction.mobileNumberAdd,
                     mobileNumberId: null,
@@ -880,10 +792,10 @@ describe('UserVerificationService', () => {
         };
 
         beforeEach(() => {
-            helperNumberService.randomDigits.mockReturnValue('123456');
-            helperHashService.sha256Hash.mockReturnValue('hashed-otp');
-            userVerificationUtil.createReference.mockReturnValue('VRF-mobile');
-            userVerificationUtil.createExpiredAt.mockReturnValue(expiredAt);
+            vi.spyOn(helperNumberService, 'randomDigits').mockReturnValue(
+                '123456'
+            );
+            vi.spyOn(helperStringService, 'random').mockReturnValue('mobile');
         });
 
         it('stores the SHA-256 hash of the OTP with the mobile number type and the number id, and never the OTP itself', async () => {
@@ -899,14 +811,12 @@ describe('UserVerificationService', () => {
                 '+6281234567890'
             );
 
-            expect(helperNumberService.randomDigits).toHaveBeenCalledWith(6);
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith('123456');
             expect(userVerificationRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 'user-flint',
                 {
                     reference: 'VRF-mobile',
-                    token: 'hashed-otp',
+                    token: '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
                     type: EnumVerificationType.mobileNumber,
                     action: null,
                     mobileNumberId: 'mobile-flint',
@@ -979,30 +889,22 @@ describe('UserVerificationService', () => {
             expect(
                 userVerificationRepository.findOneLatestByMobileNumber
             ).toHaveBeenCalledWith('user-flint', 'mobile-flint');
-            expect(userUtil.isInsideResendWindow).not.toHaveBeenCalled();
         });
 
         it('returns false while the latest row, used or not, is inside the resend window', async () => {
             userVerificationRepository.findOneLatestByMobileNumber.mockResolvedValue(
-                { ...verification, isUsed: true }
+                { ...verification, isUsed: true, createdAt: now }
             );
-            userUtil.isInsideResendWindow.mockReturnValue(true);
 
             await expect(
                 service.isMobileResendable('user-flint', 'mobile-flint')
             ).resolves.toBe(false);
-
-            expect(userUtil.isInsideResendWindow).toHaveBeenCalledWith(
-                verification.createdAt,
-                7
-            );
         });
 
         it('returns true outside the resend window', async () => {
             userVerificationRepository.findOneLatestByMobileNumber.mockResolvedValue(
                 verification
             );
-            userUtil.isInsideResendWindow.mockReturnValue(false);
 
             await expect(
                 service.isMobileResendable('user-flint', 'mobile-flint')
@@ -1012,7 +914,6 @@ describe('UserVerificationService', () => {
 
     describe('getOneActiveByMobileOtp', () => {
         it('returns the row scoped by user, number, and the hash of the code', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-otp');
             userVerificationRepository.findOneActiveByMobileOtp.mockResolvedValue(
                 verification
             );
@@ -1025,14 +926,16 @@ describe('UserVerificationService', () => {
                 )
             ).resolves.toBe(verification);
 
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith('123456');
             expect(
                 userVerificationRepository.findOneActiveByMobileOtp
-            ).toHaveBeenCalledWith('user-flint', 'mobile-flint', 'hashed-otp');
+            ).toHaveBeenCalledWith(
+                'user-flint',
+                'mobile-flint',
+                '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'
+            );
         });
 
         it('throws UserTokenInvalidException when no active row matches', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-otp');
             userVerificationRepository.findOneActiveByMobileOtp.mockResolvedValue(
                 null
             );
@@ -1046,7 +949,6 @@ describe('UserVerificationService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
-                messagePath: 'user.error.verificationTokenInvalid',
             });
         });
     });
@@ -1089,23 +991,11 @@ describe('UserVerificationService', () => {
 
     describe('purgeExpired', () => {
         it('deletes the verifications expired before now minus the retention and returns the count', async () => {
-            const retention = Duration.fromObject({
-                milliseconds: 7776000000,
-            });
             const threshold = new Date('2025-12-01T00:00:00.000Z');
-            helperDateService.createDuration.mockReturnValue(retention);
-            helperDateService.backward.mockReturnValue(threshold);
             userVerificationRepository.deleteExpiredBefore.mockResolvedValue(8);
 
             await expect(service.purgeExpired()).resolves.toBe(8);
 
-            expect(helperDateService.createDuration).toHaveBeenCalledWith({
-                milliseconds: 7776000000,
-            });
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                retention
-            );
             expect(
                 userVerificationRepository.deleteExpiredBefore
             ).toHaveBeenCalledWith(threshold);

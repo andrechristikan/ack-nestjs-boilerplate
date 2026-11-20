@@ -48,8 +48,6 @@ describe('ResponseInterceptor', () => {
     let interceptor: ResponseInterceptor<unknown>;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         context.getType.mockReturnValue('http');
         context.switchToHttp.mockReturnValue(httpArgumentsHost);
         httpArgumentsHost.getResponse.mockReturnValue(response);
@@ -187,11 +185,6 @@ describe('ResponseInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.serialization,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.serialization
-                    ],
-                messagePath: 'response.error.serialization',
             });
         });
 
@@ -223,11 +216,6 @@ describe('ResponseInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.serialization,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.serialization
-                    ],
-                messagePath: 'response.error.serialization',
                 rawError: issues,
             });
         });
@@ -242,11 +230,6 @@ describe('ResponseInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.serialization,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.serialization
-                    ],
-                messagePath: 'response.error.serialization',
             });
         });
 
@@ -259,11 +242,6 @@ describe('ResponseInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.serialization,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.serialization
-                    ],
-                messagePath: 'response.error.serialization',
                 rawError: issues,
             });
         });

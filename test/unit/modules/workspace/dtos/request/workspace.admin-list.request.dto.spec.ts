@@ -36,15 +36,26 @@ describe('WorkspaceAdminListRequestSchema', () => {
     });
 
     it('rejects an isPublic value that is not exactly true or false', () => {
-        expect(() =>
-            WorkspaceAdminListRequestSchema.parse({ isPublic: 'yes' })
-        ).toThrow();
+        const result = WorkspaceAdminListRequestSchema.safeParse({
+            isPublic: 'yes',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['isPublic'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceAdminListRequestSchema.parse({ extra: true })
-        ).toThrow();
+        const result = WorkspaceAdminListRequestSchema.safeParse({
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the module search description', () => {
@@ -82,15 +93,25 @@ describe('WorkspaceAdminListRequestSchema', () => {
         'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            WorkspaceAdminListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            WorkspaceAdminListRequestSchema.safeParse({ orderBy }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             WorkspaceAdminListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

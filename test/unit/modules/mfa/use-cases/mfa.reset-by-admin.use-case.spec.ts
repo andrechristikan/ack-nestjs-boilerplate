@@ -1,5 +1,11 @@
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -7,13 +13,9 @@ import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
     EnumRoleType,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -33,21 +35,19 @@ import { MfaNotEnabledException } from '@modules/mfa/exceptions/mfa.not-enabled.
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaResetByAdminUseCase } from '@modules/mfa/use-cases/mfa.reset-by-admin.use-case';
 import {
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('MfaResetByAdminUseCase', () => {
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
@@ -56,49 +56,8 @@ describe('MfaResetByAdminUseCase', () => {
     let useCase: MfaResetByAdminUseCase;
 
     const user: IUser = {
-        id: 'user-marten',
-        name: 'Marten Cole',
+        ...buildUser('user-marten', 'marten@example.com'),
         username: 'martenCole',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'marten@example.com',
-        roleId: 'role-marten',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-marten',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-marten',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
     };
     const adminEntry = buildActivityLogCreateManyEffect('admin-entry');
     const targetEntry = buildActivityLogCreateManyEffect('target-entry');
@@ -128,8 +87,16 @@ describe('MfaResetByAdminUseCase', () => {
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-05T00:00:00.000Z');
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect.mockImplementation(
             (
                 _requestContext,
@@ -142,7 +109,6 @@ describe('MfaResetByAdminUseCase', () => {
                     ? adminEntry
                     : targetEntry
         );
-        helperDateService.create.mockReturnValue(now);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -153,7 +119,7 @@ describe('MfaResetByAdminUseCase', () => {
             providers: [
                 MfaResetByAdminUseCase,
                 { provide: MfaService, useValue: mfaService },
-                { provide: UserUtil, useValue: userUtil },
+                UserUtil,
                 { provide: UserService, useValue: userService },
                 { provide: SessionService, useValue: sessionService },
                 {
@@ -161,7 +127,14 @@ describe('MfaResetByAdminUseCase', () => {
                     useValue: notificationService,
                 },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'message.availableLanguages': ['en'],
+                    }),
+                },
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
             ],
@@ -183,12 +156,6 @@ describe('MfaResetByAdminUseCase', () => {
         beforeEach(() => {
             mfaService.assertHasFactor.mockResolvedValue();
             userService.getOneWithRole.mockResolvedValue(user);
-            userUtil.mapActivityLogActorMetadata.mockReturnValue({
-                targetUserId: 'user-marten',
-            });
-            userUtil.mapActivityLogTargetMetadata.mockReturnValue({
-                actorUserId: 'admin-marten',
-            });
         });
 
         it('gates the rank, resets and revokes on one transaction, and adds both entries and the notification on it', async () => {
@@ -277,7 +244,11 @@ describe('MfaResetByAdminUseCase', () => {
                 null,
                 {
                     action: EnumActivityLogAction.adminUserResetMfa,
-                    metadata: { targetUserId: 'user-marten' },
+                    metadata: {
+                        targetUserId: 'user-marten',
+                        targetUsername: 'martenCole',
+                        timestamp: user.updatedAt,
+                    },
                 }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
@@ -290,7 +261,10 @@ describe('MfaResetByAdminUseCase', () => {
                     action: EnumActivityLogAction.userResetMfaByAdmin,
                     userId: 'user-marten',
                     createdBy: 'admin-marten',
-                    metadata: { actorUserId: 'admin-marten' },
+                    metadata: {
+                        actorUserId: 'admin-marten',
+                        timestamp: user.updatedAt,
+                    },
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [

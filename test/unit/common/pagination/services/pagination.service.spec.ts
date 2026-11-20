@@ -1,62 +1,38 @@
-import { Test } from '@nestjs/testing';
-import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { EnumHelperStatusCodeError } from '@common/helper/enums/helper.status-code.enum';
 import { PaginationCursorUtil } from '@common/pagination/utils/pagination.cursor.util';
-import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import {
     EnumPaginationOrderDirectionType,
     EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
-import { PaginationDefaultCursorField } from '@common/pagination/constants/pagination.constant';
+import { PaginationDefaultOrderBy } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 import type { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
 import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
+import { createPaginationServiceModule } from '@test/unit/helpers/test.unit.pagination.helper';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 
 describe('PaginationService', () => {
-    const paginationCursorUtil: MockProxy<PaginationCursorUtil> =
-        mock<PaginationCursorUtil>();
-    const paginationOffsetUtil: MockProxy<PaginationOffsetUtil> =
-        mock<PaginationOffsetUtil>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
+    const secret = Buffer.alloc(48, 7).toString('base64url');
     const fingerprint = 'aaaaaaaaaaaaaaaa';
     const resolvedOrderBy: IPaginationOrderBy[] = [
-        { name: EnumPaginationOrderDirectionType.asc },
-        { id: EnumPaginationOrderDirectionType.asc },
+        ...PaginationDefaultOrderBy,
+        { id: EnumPaginationOrderDirectionType.desc },
     ];
 
     const roleDelegate: MockProxy<IDatabaseClient['role']> =
         mock<IDatabaseClient['role']>();
 
     let service: PaginationService;
+    let paginationCursorUtil: PaginationCursorUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        paginationQueryUtil.resolveTiebreak.mockReturnValue(resolvedOrderBy);
-
-        const module: TestingModule = await Test.createTestingModule({
-            providers: [
-                PaginationService,
-                {
-                    provide: PaginationCursorUtil,
-                    useValue: paginationCursorUtil,
-                },
-                {
-                    provide: PaginationOffsetUtil,
-                    useValue: paginationOffsetUtil,
-                },
-                {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
-                },
-            ],
-        }).compile();
+        const module = await createPaginationServiceModule(secret);
 
         service = module.get(PaginationService);
+        paginationCursorUtil = module.get(PaginationCursorUtil);
     });
 
     describe('offset', () => {
@@ -75,7 +51,6 @@ describe('PaginationService', () => {
             const deferredCount = buildDeferred<number>();
             roleDelegate.count.mockReturnValue(deferredCount.promise as never);
             roleDelegate.findMany.mockResolvedValue(rows as never);
-            paginationOffsetUtil.page.mockReturnValue(page);
 
             const pending = service.offset(roleDelegate, {
                 orderBy: [],
@@ -101,15 +76,7 @@ describe('PaginationService', () => {
 
             expectTypeOf(result.data[0]!.name).toBeString();
 
-            expect(result).toBe(page);
-            expect(paginationOffsetUtil.page).toHaveBeenCalledWith(rows, 1, {
-                skip: 0,
-                limit: 20,
-            });
-            expect(paginationQueryUtil.resolveTiebreak).toHaveBeenCalledWith(
-                [],
-                PaginationDefaultCursorField
-            );
+            expect(result).toEqual(page);
         });
     });
 
@@ -117,6 +84,15 @@ describe('PaginationService', () => {
         const encodedValues = {
             createdAt: { $date: '2026-01-02T03:04:05.000Z' },
             id: 'a'.repeat(24),
+        };
+        const keyset = {
+            OR: [
+                { createdAt: { lt: new Date('2026-01-02T03:04:05.000Z') } },
+                {
+                    createdAt: new Date('2026-01-02T03:04:05.000Z'),
+                    id: { lt: 'a'.repeat(24) },
+                },
+            ],
         };
 
         it('reads limit plus one with the caller where, order and select on a first page', async () => {
@@ -141,10 +117,6 @@ describe('PaginationService', () => {
                 hasNext: false,
                 data: [{ id: '1', name: 'a' }],
             });
-            expect(paginationQueryUtil.resolveTiebreak).toHaveBeenCalledWith(
-                [],
-                PaginationDefaultCursorField
-            );
             expect(roleDelegate.findMany).toHaveBeenCalledWith({
                 where,
                 take: 21,
@@ -153,7 +125,6 @@ describe('PaginationService', () => {
                 include: undefined,
             });
             expect(roleDelegate.count).not.toHaveBeenCalled();
-            expect(paginationCursorUtil.open).not.toHaveBeenCalled();
         });
 
         it('returns rows unstripped when the select is passed through', async () => {
@@ -176,8 +147,6 @@ describe('PaginationService', () => {
                 { id: '2', createdAt: new Date('2026-01-02T03:04:04.000Z') },
             ];
             roleDelegate.findMany.mockResolvedValue(rows as never);
-            paginationCursorUtil.encodeValues.mockReturnValue(encodedValues);
-            paginationCursorUtil.seal.mockReturnValue('sealed');
 
             const result = await service.cursor(roleDelegate, {
                 fingerprint,
@@ -187,48 +156,35 @@ describe('PaginationService', () => {
 
             expect(result).toEqual({
                 type: 'cursor',
-                cursor: 'sealed',
+                cursor: expect.any(String),
                 perPage: 1,
                 hasNext: true,
                 data: [rows[0]],
             });
-            expect(paginationCursorUtil.encodeValues).toHaveBeenCalledWith(
-                rows[0],
-                resolvedOrderBy
-            );
-            expect(paginationCursorUtil.seal).toHaveBeenCalledWith({
-                values: encodedValues,
+            expect(paginationCursorUtil.open(result.cursor!)).toEqual({
+                values: {
+                    createdAt: { $date: '2026-01-02T03:04:05.000Z' },
+                    id: '1',
+                },
                 fingerprint,
             });
         });
 
         it('joins where and the keyset by AND on a page whose fingerprint matches', async () => {
             const where = { name: 'a' };
-            const keyset = { OR: [{ id: { lt: 'x' } }] };
-            paginationCursorUtil.open.mockReturnValue({
-                values: encodedValues,
-                fingerprint,
-            });
-            paginationCursorUtil.decodeValues.mockReturnValue({
-                createdAt: new Date('2026-01-02T03:04:05.000Z'),
-                id: 'x',
-            });
-            paginationCursorUtil.keyset.mockReturnValue(keyset);
             roleDelegate.findMany.mockResolvedValue([] as never);
 
             await service.cursor(roleDelegate, {
                 fingerprint,
-                cursor: 'token',
+                cursor: paginationCursorUtil.seal({
+                    values: encodedValues,
+                    fingerprint,
+                }),
                 where,
                 orderBy: [],
                 limit: 20,
             });
 
-            expect(paginationCursorUtil.open).toHaveBeenCalledWith('token');
-            expect(paginationCursorUtil.decodeValues).toHaveBeenCalledWith(
-                encodedValues,
-                resolvedOrderBy
-            );
             expect(roleDelegate.findMany).toHaveBeenCalledWith(
                 expect.objectContaining({
                     where: { AND: [where, keyset] },
@@ -237,18 +193,14 @@ describe('PaginationService', () => {
         });
 
         it('keeps the keyset alone in AND when the caller sent no where', async () => {
-            const keyset = { OR: [] };
-            paginationCursorUtil.open.mockReturnValue({
-                values: encodedValues,
-                fingerprint,
-            });
-            paginationCursorUtil.decodeValues.mockReturnValue({ id: 'x' });
-            paginationCursorUtil.keyset.mockReturnValue(keyset);
             roleDelegate.findMany.mockResolvedValue([] as never);
 
             await service.cursor(roleDelegate, {
                 fingerprint,
-                cursor: 'token',
+                cursor: paginationCursorUtil.seal({
+                    values: encodedValues,
+                    fingerprint,
+                }),
                 orderBy: [],
                 limit: 20,
             });
@@ -302,22 +254,15 @@ describe('PaginationService', () => {
 
         it('counts the where without the keyset on a later page', async () => {
             const where = { name: 'a' };
-            const keyset = { OR: [{ id: { lt: 'x' } }] };
-            paginationCursorUtil.open.mockReturnValue({
-                values: encodedValues,
-                fingerprint,
-            });
-            paginationCursorUtil.decodeValues.mockReturnValue({
-                createdAt: new Date('2026-01-02T03:04:05.000Z'),
-                id: 'x',
-            });
-            paginationCursorUtil.keyset.mockReturnValue(keyset);
             roleDelegate.findMany.mockResolvedValue([] as never);
             roleDelegate.count.mockResolvedValue(3);
 
             await service.cursor(roleDelegate, {
                 fingerprint,
-                cursor: 'token',
+                cursor: paginationCursorUtil.seal({
+                    values: encodedValues,
+                    fingerprint,
+                }),
                 where,
                 includeCount: true,
                 orderBy: [],
@@ -347,8 +292,6 @@ describe('PaginationService', () => {
         });
 
         it('throws failedToDecodeCursor when the token does not open', async () => {
-            paginationCursorUtil.open.mockReturnValue(null);
-
             await expect(
                 service.cursor(roleDelegate, {
                     fingerprint,
@@ -364,15 +307,13 @@ describe('PaginationService', () => {
         });
 
         it('throws invalidCursorPaginationParams when the token fingerprint differs from the request', async () => {
-            paginationCursorUtil.open.mockReturnValue({
-                values: encodedValues,
-                fingerprint: 'bbbbbbbbbbbbbbbb',
-            });
-
             await expect(
                 service.cursor(roleDelegate, {
                     fingerprint,
-                    cursor: 'token',
+                    cursor: paginationCursorUtil.seal({
+                        values: encodedValues,
+                        fingerprint: 'bbbbbbbbbbbbbbbb',
+                    }),
                     orderBy: [],
                     limit: 20,
                 })
@@ -381,21 +322,17 @@ describe('PaginationService', () => {
                 statusCode:
                     EnumPaginationStatusCodeError.invalidCursorPaginationParams,
             });
-            expect(paginationCursorUtil.decodeValues).not.toHaveBeenCalled();
             expect(roleDelegate.findMany).not.toHaveBeenCalled();
         });
 
         it('throws invalidCursorData when the token values do not match the order by terms', async () => {
-            paginationCursorUtil.open.mockReturnValue({
-                values: encodedValues,
-                fingerprint,
-            });
-            paginationCursorUtil.decodeValues.mockReturnValue(null);
-
             await expect(
                 service.cursor(roleDelegate, {
                     fingerprint,
-                    cursor: 'token',
+                    cursor: paginationCursorUtil.seal({
+                        values: { id: 'x' },
+                        fingerprint,
+                    }),
                     orderBy: [],
                     limit: 20,
                 })
@@ -411,8 +348,6 @@ describe('PaginationService', () => {
                 { id: '1' },
                 { id: '2' },
             ] as never);
-            paginationCursorUtil.encodeValues.mockReturnValue(null);
-
             await expect(
                 service.cursor(roleDelegate, {
                     fingerprint,
@@ -423,7 +358,6 @@ describe('PaginationService', () => {
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.invalidCursorData,
             });
-            expect(paginationCursorUtil.seal).not.toHaveBeenCalled();
         });
 
         it('lets a findMany rejection propagate unchanged', async () => {
@@ -440,23 +374,24 @@ describe('PaginationService', () => {
         });
 
         it('lets a seal failure propagate unchanged', async () => {
-            const failure = new Error('crypto');
+            const invalidModule =
+                await createPaginationServiceModule('invalid-secret');
+            const invalidService = invalidModule.get(PaginationService);
             roleDelegate.findMany.mockResolvedValue([
-                { id: '1' },
-                { id: '2' },
+                { id: '1', createdAt: new Date('2026-01-02T03:04:05.000Z') },
+                { id: '2', createdAt: new Date('2026-01-02T03:04:04.000Z') },
             ] as never);
-            paginationCursorUtil.encodeValues.mockReturnValue(encodedValues);
-            paginationCursorUtil.seal.mockImplementation(() => {
-                throw failure;
-            });
 
             await expect(
-                service.cursor(roleDelegate, {
+                invalidService.cursor(roleDelegate, {
                     fingerprint,
                     orderBy: [],
                     limit: 1,
                 })
-            ).rejects.toBe(failure);
+            ).rejects.toMatchObject({
+                module: 'helper',
+                statusCode: EnumHelperStatusCodeError.encryptionSecretInvalid,
+            });
         });
     });
 });

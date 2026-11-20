@@ -34,7 +34,6 @@ describe('RequestRequestIdMiddleware', () => {
     let next: NextFunction;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         (uuid as ReturnType<typeof vi.fn>)
             .mockReturnValueOnce('id-1')
             .mockReturnValueOnce('id-2');

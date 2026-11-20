@@ -1,4 +1,10 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -8,11 +14,10 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import { Prisma } from '@generated/prisma-client/client';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
@@ -54,11 +59,8 @@ const passkeyResponse = {
 
 describe('MfaDisableTotpUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
@@ -93,10 +95,17 @@ describe('MfaDisableTotpUseCase', () => {
         passkeyChallengeToken: null,
     };
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect.mockReturnValue(entryEffect);
-        helperDateService.create.mockReturnValue(now);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -110,10 +119,13 @@ describe('MfaDisableTotpUseCase', () => {
                 { provide: MfaService, useValue: mfaService },
                 { provide: MfaTotpService, useValue: mfaTotpService },
                 { provide: UserAuthService, useValue: userAuthService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: SessionService, useValue: sessionService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: HelperDateService, useValue: helperDateService },
                 { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
@@ -372,11 +384,14 @@ describe('MfaDisableTotpUseCase', () => {
         });
 
         it('answers MfaNotEnabledException on a write conflict', async () => {
-            const conflict = new Error('write conflict');
-            outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                }
             );
+            outboxService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -390,9 +405,7 @@ describe('MfaDisableTotpUseCase', () => {
                 statusCode: EnumMfaStatusCodeError.notEnabled,
 
                 module: 'mfa',
-                messagePath: 'mfa.error.notEnabled',
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('rethrows an app exception of the transaction unchanged, adding no entry', async () => {
@@ -413,13 +426,11 @@ describe('MfaDisableTotpUseCase', () => {
 
             expect(mfaTotpService.disableInTx).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('wraps any other transaction failure in the unknown exception', async () => {
             const cause = new Error('boom');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

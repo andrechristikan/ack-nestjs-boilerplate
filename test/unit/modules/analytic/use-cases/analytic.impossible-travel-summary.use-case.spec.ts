@@ -18,8 +18,6 @@ describe('AnalyticImpossibleTravelSummaryUseCase', () => {
     let useCase: AnalyticImpossibleTravelSummaryUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticImpossibleTravelSummaryUseCase,

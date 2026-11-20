@@ -28,6 +28,11 @@ describe('AnalyticSnapshotBucketsResponseSchema', () => {
             buckets,
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['computedAt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

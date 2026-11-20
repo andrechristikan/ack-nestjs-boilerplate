@@ -4,31 +4,30 @@ Invariants: `.claude/rules/seeding.md`. Reference implementation: `src/migration
 
 ## 1. Access path
 
-Inject `DatabaseService` and write every model the seed owns through `this.databaseService.client` or the `tx` of `withTransaction` (`MigrationCountrySeed.seed` and `.remove`, `src/migration/seeds/migration.country.seed.ts`), never through a feature repository or a feature service method that writes. Everything else a seed may inject, and what it may not, is `.claude/rules/seeding.md`, Outside the layering.
+Access path and what a seed may inject: `.claude/rules/seeding.md`, Outside the layering (`MigrationCountrySeed.seed` and `.remove`, `src/migration/seeds/migration.country.seed.ts`).
 
 ## 2. Data file
 
-Static rows live in `src/migration/data/migration.<concern>.data.ts` as a PascalCase const, keyed by `EnumAppEnvironment` when rows differ per environment (`src/migration/data/migration.country.data.ts`). A seed whose rows carry no external key builds them inline and has no data file.
+Data file: `.claude/rules/seeding.md`, Anatomy (`src/migration/data/migration.country.data.ts`).
 
 ## 3. Seed class
 
 `src/migration/seeds/migration.<concern>.seed.ts`, from `MigrationCountrySeed` (`src/migration/seeds/migration.country.seed.ts`):
 
-- `@Command({ name: '<concern>', description, allowUnknownOptions: false })`; `name` is camelCase (`apiKey`, `featureFlag`, `templateEmailNotification`).
-- `class Migration<Concern>Seed extends MigrationSeedBase implements IMigrationSeed` (`src/migration/bases/migration.seed.base.ts`, `src/migration/interfaces/migration.seed.interface.ts`). The base's `run` owns `--type seed|remove`; the class implements both `seed()` and `remove()`.
+- The class shape: `.claude/rules/seeding.md`, Anatomy (`src/migration/bases/migration.seed.base.ts`, `src/migration/interfaces/migration.seed.interface.ts`).
 - Constructor calls `super()`, reads `database.seedTransactionTimeoutInMs` from `ConfigService` (the `MigrationCountrySeed` constructor).
-- `seed()` opens `this.databaseService.withTransaction(async tx => { … }, { timeout })` and holds statements only; hashing, key drawing, and row building happen before the callback (`MigrationCountrySeed.seed`). Every write is idempotent (`.claude/rules/seeding.md`, Idempotency and reset).
-- Every row carries `createdBy`, and `updatedBy` where its model carries it, set to `MigrationUserSuperAdminId` (`src/migration/data/migration.user.data.ts:4`), on the `create` branch, the `update` branch, and every nested row (`MigrationUserSeed.seed`, `src/migration/seeds/migration.user.seed.ts`).
+- `seed()` opens `this.databaseService.withTransaction(async tx => { … }, { timeout })` (`MigrationCountrySeed.seed`). Every write is idempotent (`.claude/rules/seeding.md`, Idempotency and reset).
+- Audit fields: `.claude/rules/seeding.md`, Anatomy (`MigrationUserSeed.seed`, `src/migration/seeds/migration.user.seed.ts`).
 - `remove()` resets the collections `seed()` owns with `deleteMany` (`MigrationCountrySeed.remove`).
-- A failed write is wrapped and thrown with no log before it, `throw new AppUnknownException(error)` (`MigrationCountrySeed.seed`; `.claude/rules/exceptions.md`, `.claude/rules/logging.md`); `throw new Error(...)` and a bare rethrow fail `pnpm lint`.
+- A failed write: `.claude/rules/seeding.md`, Anatomy (`MigrationCountrySeed.seed`); `throw new Error(...)` and a bare rethrow fail `pnpm lint`.
 
 ## 4. Register
 
-Add the class to the `providers` of `src/migration/migration.module.ts`, and a kit module it injects from (`AwsModule`) to its `imports`. A feature `<Module>Module` goes there only for an injection `.claude/rules/seeding.md`, Outside the layering, allows; a use-case module never does. The `providers` order does not decide run order.
+Add the class to the `providers` of `src/migration/migration.module.ts`, and a kit module it injects from (`AwsModule`) to its `imports`. A feature `<Module>Module` goes there only for an injection `.claude/rules/seeding.md`, Outside the layering, allows; a use-case module never does.
 
 ## 5. Place it in the scripts
 
-Run order is the `package.json` scripts. A seed that belongs to the bootstrap set lands in both `migration:seed` (after what it depends on) and `migration:remove` (before what depends on it); quote the live script when editing, the remove order is not a strict reverse. A seed that runs on demand (`templateEmailNotification`, `awsS3Config`) stays out of both and runs as `pnpm migration <name> --type seed`.
+Scripts: `.claude/rules/seeding.md`, Order is in the script. Quote the live `package.json` script when editing.
 
 ## 6. Verify
 
@@ -37,4 +36,4 @@ pnpm typecheck
 pnpm exec nest build migration --config nest-cli.json   # compiles the migration project only; runs nothing
 ```
 
-`src/migration/**` is excluded from coverage and gets no spec. Running any `migration*` command is the owner's; hand back the exact command and the order it belongs in.
+`src/migration/**` gets no spec (`.claude/rules/testing.md`, Layout and runs). Hand back the exact command and its place in the order.

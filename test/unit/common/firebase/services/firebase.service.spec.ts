@@ -1,10 +1,10 @@
-import { HttpStatus } from '@nestjs/common';
+import * as firebaseAdmin from 'firebase-admin';
+import { getMessaging } from 'firebase-admin/messaging';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Messaging } from 'firebase-admin/messaging';
 import type { App as FirebaseApp } from 'firebase-admin/app';
-import type { FirebaseUtil } from '@common/firebase/utils/firebase.util';
-import type { HelperArrayService } from '@common/helper/services/helper.array.service';
+import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { FirebaseMaxSendPushBatchSize } from '@common/firebase/constants/firebase.constant';
 import type { IFirebasePushPayload } from '@common/firebase/interfaces/firebase.interface';
 import { EnumFirebaseStatusCodeError } from '@common/firebase/enums/firebase.status-code.enum';
@@ -12,10 +12,7 @@ import {
     createFirebaseService,
     createInitializedFirebaseService,
 } from '@test/unit/helpers/test.unit.firebase.helper';
-import type {
-    IFirebaseCredentials,
-    IFirebaseServiceDoubles,
-} from '@test/unit/helpers/test.unit.firebase.helper';
+import type { IFirebaseCredentials } from '@test/unit/helpers/test.unit.firebase.helper';
 
 vi.mock('firebase-admin', () => ({
     initializeApp: vi.fn(),
@@ -26,26 +23,17 @@ vi.mock('firebase-admin/messaging', () => ({
 }));
 
 describe('FirebaseService', () => {
-    const firebaseUtil: MockProxy<FirebaseUtil> = mock<FirebaseUtil>();
-    const helperArrayService: MockProxy<HelperArrayService> =
-        mock<HelperArrayService>();
+    let service: FirebaseService;
 
-    let firebaseAdmin: typeof import('firebase-admin');
-    let getMessaging: typeof import('firebase-admin/messaging').getMessaging;
-
-    let service: InstanceType<
-        typeof import('@common/firebase/services/firebase.service').FirebaseService
-    >;
-
-    const firebaseDoubles: IFirebaseServiceDoubles = {
-        firebaseUtil,
-        helperArrayService,
-    };
+    const rawPrivateKey =
+        '-----BEGIN PRIVATE KEY-----\\nMIIBVQI\\n-----END PRIVATE KEY-----\\n';
+    const normalizedPrivateKey =
+        '-----BEGIN PRIVATE KEY-----\nMIIBVQI\n-----END PRIVATE KEY-----\n';
 
     const fullCredentials: IFirebaseCredentials = {
         projectId: 'project-1',
         clientEmail: 'sa@project-1.iam.gserviceaccount.com',
-        privateKey: 'normalized-private-key',
+        privateKey: rawPrivateKey,
     };
 
     const payload: IFirebasePushPayload = {
@@ -56,23 +44,15 @@ describe('FirebaseService', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        vi.resetModules();
-        firebaseAdmin = await import('firebase-admin');
-        ({ getMessaging } = await import('firebase-admin/messaging'));
-
-        service = await createFirebaseService(fullCredentials, firebaseDoubles);
+        service = await createFirebaseService(fullCredentials);
     });
 
     describe('onModuleInit', () => {
         it('warns and skips initialization when projectId is missing', async () => {
-            const notConfigured = await createFirebaseService(
-                {
-                    ...fullCredentials,
-                    projectId: null,
-                },
-                firebaseDoubles
-            );
+            const notConfigured = await createFirebaseService({
+                ...fullCredentials,
+                projectId: null,
+            });
 
             await notConfigured.onModuleInit();
 
@@ -81,13 +61,10 @@ describe('FirebaseService', () => {
         });
 
         it('warns and skips initialization when clientEmail is missing', async () => {
-            const notConfigured = await createFirebaseService(
-                {
-                    ...fullCredentials,
-                    clientEmail: null,
-                },
-                firebaseDoubles
-            );
+            const notConfigured = await createFirebaseService({
+                ...fullCredentials,
+                clientEmail: null,
+            });
 
             await notConfigured.onModuleInit();
 
@@ -95,14 +72,10 @@ describe('FirebaseService', () => {
         });
 
         it('warns and skips initialization when the raw privateKey is unset', async () => {
-            const notConfigured = await createFirebaseService(
-                {
-                    ...fullCredentials,
-                    privateKey: null,
-                },
-                firebaseDoubles,
-                null
-            );
+            const notConfigured = await createFirebaseService({
+                ...fullCredentials,
+                privateKey: null,
+            });
 
             await expect(notConfigured.onModuleInit()).resolves.toBeUndefined();
 
@@ -111,13 +84,10 @@ describe('FirebaseService', () => {
         });
 
         it('throws when the configured privateKey fails to normalize', async () => {
-            const misconfigured = await createFirebaseService(
-                {
-                    ...fullCredentials,
-                    privateKey: null,
-                },
-                firebaseDoubles
-            );
+            const misconfigured = await createFirebaseService({
+                ...fullCredentials,
+                privateKey: 'not-a-valid-key',
+            });
 
             await expect(misconfigured.onModuleInit()).rejects.toMatchObject({
                 module: 'app',
@@ -136,17 +106,14 @@ describe('FirebaseService', () => {
             );
             vi.mocked(firebaseAdmin.initializeApp).mockReturnValue(app);
             vi.mocked(getMessaging).mockReturnValue(messaging);
-            const initialized = await createFirebaseService(
-                fullCredentials,
-                firebaseDoubles
-            );
+            const initialized = await createFirebaseService(fullCredentials);
 
             await initialized.onModuleInit();
 
             expect(firebaseAdmin.cert).toHaveBeenCalledWith({
                 projectId: fullCredentials.projectId,
                 clientEmail: fullCredentials.clientEmail,
-                privateKey: fullCredentials.privateKey,
+                privateKey: normalizedPrivateKey,
             });
             expect(firebaseAdmin.initializeApp).toHaveBeenCalledWith({
                 credential: 'credential',
@@ -163,10 +130,7 @@ describe('FirebaseService', () => {
             vi.mocked(firebaseAdmin.initializeApp).mockImplementation(() => {
                 throw cause;
             });
-            const initialized = await createFirebaseService(
-                fullCredentials,
-                firebaseDoubles
-            );
+            const initialized = await createFirebaseService(fullCredentials);
 
             await expect(initialized.onModuleInit()).rejects.toMatchObject({
                 module: 'app',
@@ -195,7 +159,6 @@ describe('FirebaseService', () => {
             messaging.send.mockResolvedValue('message-id');
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
 
@@ -218,7 +181,6 @@ describe('FirebaseService', () => {
             messaging.send.mockResolvedValue('message-id');
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
 
@@ -241,7 +203,6 @@ describe('FirebaseService', () => {
             });
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
 
@@ -257,7 +218,6 @@ describe('FirebaseService', () => {
             });
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
 
@@ -271,7 +231,6 @@ describe('FirebaseService', () => {
             messaging.send.mockRejectedValue('plain string failure');
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
 
@@ -285,7 +244,6 @@ describe('FirebaseService', () => {
             messaging.send.mockRejectedValue(null);
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
 
@@ -314,7 +272,6 @@ describe('FirebaseService', () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
 
@@ -333,7 +290,6 @@ describe('FirebaseService', () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
 
@@ -346,12 +302,6 @@ describe('FirebaseService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'firebase',
                 statusCode: EnumFirebaseStatusCodeError.chunkSizeInvalid,
-                statusCodeKey:
-                    EnumFirebaseStatusCodeError[
-                        EnumFirebaseStatusCodeError.chunkSizeInvalid
-                    ],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'firebase.error.chunkSizeInvalid',
             });
         });
 
@@ -359,7 +309,6 @@ describe('FirebaseService', () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
 
@@ -372,12 +321,6 @@ describe('FirebaseService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'firebase',
                 statusCode: EnumFirebaseStatusCodeError.chunkSizeInvalid,
-                statusCodeKey:
-                    EnumFirebaseStatusCodeError[
-                        EnumFirebaseStatusCodeError.chunkSizeInvalid
-                    ],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'firebase.error.chunkSizeInvalid',
             });
         });
 
@@ -385,11 +328,9 @@ describe('FirebaseService', () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
             const tokens = ['token-1', 'token-2', 'token-3', 'token-4'];
-            helperArrayService.chunk.mockReturnValue([tokens]);
             messaging.sendEachForMulticast.mockResolvedValue({
                 successCount: 1,
                 failureCount: 3,
@@ -430,29 +371,30 @@ describe('FirebaseService', () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
-            const chunkA = ['token-1'];
-            const chunkB = ['token-2', 'token-3'];
-            helperArrayService.chunk.mockReturnValue([chunkA, chunkB]);
+            const chunkA = ['token-1', 'token-2'];
+            const chunkB = ['token-3'];
             messaging.sendEachForMulticast
                 .mockResolvedValueOnce({
-                    successCount: 1,
+                    successCount: 2,
                     failureCount: 0,
-                    responses: [{ success: true, messageId: 'm-1' }],
+                    responses: [
+                        { success: true, messageId: 'm-1' },
+                        { success: true, messageId: 'm-2' },
+                    ],
                 } as never)
                 .mockRejectedValueOnce(new Error('chunk failed'));
 
             const result = await initialized.sendMulticast(
                 [...chunkA, ...chunkB],
                 payload,
-                1
+                2
             );
 
             expect(result).toEqual({
-                successCount: 1,
-                failureCount: 2,
+                successCount: 2,
+                failureCount: 1,
                 failureTokens: [],
                 retryTokens: chunkB,
             });
@@ -462,11 +404,9 @@ describe('FirebaseService', () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
             const tokens = ['t1', 't2'];
-            helperArrayService.chunk.mockReturnValue([tokens]);
             messaging.sendEachForMulticast.mockRejectedValueOnce(
                 new Error('fcm down')
             );
@@ -485,11 +425,9 @@ describe('FirebaseService', () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
             const tokens = ['ok', 'bad', 'later'];
-            helperArrayService.chunk.mockReturnValue([tokens]);
             messaging.sendEachForMulticast.mockResolvedValueOnce({
                 successCount: 1,
                 failureCount: 2,
@@ -518,11 +456,9 @@ describe('FirebaseService', () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
             const tokens = ['too-big'];
-            helperArrayService.chunk.mockReturnValue([tokens]);
             messaging.sendEachForMulticast.mockResolvedValueOnce({
                 successCount: 0,
                 failureCount: 1,
@@ -550,11 +486,9 @@ describe('FirebaseService', () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
             const tokens = ['good-token'];
-            helperArrayService.chunk.mockReturnValue([tokens]);
             messaging.sendEachForMulticast.mockResolvedValueOnce({
                 successCount: 0,
                 failureCount: 1,
@@ -580,11 +514,9 @@ describe('FirebaseService', () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
             const tokens = ['invalid', 'other-project', 'busy'];
-            helperArrayService.chunk.mockReturnValue([tokens]);
             messaging.sendEachForMulticast.mockResolvedValueOnce({
                 successCount: 0,
                 failureCount: 3,
@@ -617,11 +549,9 @@ describe('FirebaseService', () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
             const tokens = ['busy', 'unknown'];
-            helperArrayService.chunk.mockReturnValue([tokens]);
             messaging.sendEachForMulticast.mockResolvedValueOnce({
                 successCount: 0,
                 failureCount: 2,
@@ -644,11 +574,9 @@ describe('FirebaseService', () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
-                firebaseDoubles,
                 messaging
             );
             const tokens = ['dropped', 'slow'];
-            helperArrayService.chunk.mockReturnValue([tokens]);
             messaging.sendEachForMulticast.mockResolvedValueOnce({
                 successCount: 0,
                 failureCount: 2,

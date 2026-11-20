@@ -41,8 +41,13 @@ describe('AnalyticMfaAdoptionResponseSchema', () => {
     it('rejects an absent computedAt', () => {
         const { computedAt: _computedAt, ...rest } = row;
 
-        expect(AnalyticMfaAdoptionResponseSchema.safeParse(rest).success).toBe(
-            false
-        );
+        expect(
+            AnalyticMfaAdoptionResponseSchema.safeParse(rest).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['computedAt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

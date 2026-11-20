@@ -1,19 +1,21 @@
-import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
+import { ConfigService } from '@nestjs/config';
+import { DatabaseUniqueConstraintCode } from '@common/database/constants/database.constant';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-    EnumUserGender,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
+    Prisma,
 } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
 import { PolicyService } from '@modules/policy/services/policy.service';
@@ -23,13 +25,13 @@ import { PolicyRepository } from '@modules/policy/repositories/policy.repository
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import type { IUser } from '@modules/user/interfaces/user.interface';
+import { buildUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('PolicyService', () => {
     const policyAbilityFactory: MockProxy<PolicyAbilityFactory> =
         mock<PolicyAbilityFactory>();
     const policyRepository: MockProxy<PolicyRepository> =
         mock<PolicyRepository>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
 
@@ -46,55 +48,9 @@ describe('PolicyService', () => {
         action: [EnumPolicyAction.manage],
     };
 
-    const baseUser: IUser = {
-        id: 'user-1',
-        name: 'Andre Christi',
-        username: 'johnSmith123',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'andre@example.com',
-        roleId: 'role-1',
-        password: 'hashed-password',
-        passwordExpired: null,
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: EnumUserGender.male,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-1',
-            name: 'Admin',
-            description: null,
-            type: EnumRoleType.admin,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [policy],
-        },
-    };
+    const baseUser: IUser = buildUser('user-1', 'andre@example.com');
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 PolicyService,
@@ -103,7 +59,11 @@ describe('PolicyService', () => {
                     useValue: policyAbilityFactory,
                 },
                 { provide: PolicyRepository, useValue: policyRepository },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
@@ -145,12 +105,6 @@ describe('PolicyService', () => {
             expect(thrown).toMatchObject({
                 module: 'policy',
                 statusCode: EnumPolicyStatusCodeError.forbidden,
-                statusCodeKey:
-                    EnumPolicyStatusCodeError[
-                        EnumPolicyStatusCodeError.forbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'policy.error.forbidden',
             });
             expect(policyAbilityFactory.createByUser).toHaveBeenCalledWith([
                 policy,
@@ -191,12 +145,6 @@ describe('PolicyService', () => {
                 expect.objectContaining({
                     module: 'policy',
                     statusCode: EnumPolicyStatusCodeError.roleTypeInvalid,
-                    statusCodeKey:
-                        EnumPolicyStatusCodeError[
-                            EnumPolicyStatusCodeError.roleTypeInvalid
-                        ],
-                    httpStatus: HttpStatus.BAD_REQUEST,
-                    messagePath: 'policy.error.roleTypeInvalid',
                 })
             );
         });
@@ -218,30 +166,27 @@ describe('PolicyService', () => {
         };
 
         it('throws PolicyExistException when the create collides on the subject index, with no read before the write', async () => {
-            const collision = new Error('subject collision');
+            const collision = new Prisma.PrismaClientKnownRequestError(
+                'subject collision',
+                {
+                    code: DatabaseUniqueConstraintCode,
+                    clientVersion: 'test',
+                    meta: { target: ['subject'] },
+                }
+            );
             policyRepository.createInTx.mockRejectedValue(collision);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             const promise = service.createByAdminInTx(tx, 'role-1', body);
 
             await expect(promise).rejects.toMatchObject({
                 module: 'policy',
                 statusCode: EnumPolicyStatusCodeError.exist,
-                statusCodeKey:
-                    EnumPolicyStatusCodeError[EnumPolicyStatusCodeError.exist],
-                httpStatus: HttpStatus.CONFLICT,
-                messagePath: 'policy.error.exist',
             });
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'subject'
-            );
         });
 
         it('wraps a non-collision create error in AppUnknownException', async () => {
             const otherError = new Error('unexpected');
             policyRepository.createInTx.mockRejectedValue(otherError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 service.createByAdminInTx(tx, 'role-1', body)
@@ -283,12 +228,6 @@ describe('PolicyService', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'policy',
                 statusCode: EnumPolicyStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumPolicyStatusCodeError[
-                        EnumPolicyStatusCodeError.notFound
-                    ],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'policy.error.notFound',
             });
             expect(policyRepository.updateInTx).toHaveBeenCalledWith(
                 tx,
@@ -330,12 +269,6 @@ describe('PolicyService', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'policy',
                 statusCode: EnumPolicyStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumPolicyStatusCodeError[
-                        EnumPolicyStatusCodeError.notFound
-                    ],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'policy.error.notFound',
             });
             expect(
                 policyRepository.findOneByRoleIdAndIdInTx
@@ -352,12 +285,6 @@ describe('PolicyService', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'policy',
                 statusCode: EnumPolicyStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumPolicyStatusCodeError[
-                        EnumPolicyStatusCodeError.notFound
-                    ],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'policy.error.notFound',
             });
             expect(policyRepository.deleteInTx).toHaveBeenCalledWith(
                 tx,

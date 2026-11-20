@@ -1,10 +1,14 @@
 import { Test } from '@nestjs/testing';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { buildTermPolicyMarker } from '@test/unit/helpers/test.unit.term-policy-recipient.helper';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import {
     EnumNotificationEmailProcess,
@@ -22,15 +26,12 @@ import { TermPolicyRecipientService } from '@modules/term-policy/services/term-p
 describe('TermPolicyRecipientService', () => {
     const termPolicyRecipientRepository: MockProxy<TermPolicyRecipientRepository> =
         mock<TermPolicyRecipientRepository>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
     const tx = {} as IDatabaseTransactionClient;
     let service: TermPolicyRecipientService;
+    let databaseUtil: DatabaseUtil;
 
     const data = {
         termPolicyId: 'term-policy-id',
@@ -51,8 +52,16 @@ describe('TermPolicyRecipientService', () => {
         idempotencyKey: null,
     };
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(sentAt);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         notificationService.emailPublishTermPolicyEffect.mockImplementation(
             (effectData, batchId, proceedBy, recipients) => ({
                 ...batchEffect,
@@ -60,13 +69,6 @@ describe('TermPolicyRecipientService', () => {
                 idempotencyKey: `key-${batchId}-${recipients.length}`,
             })
         );
-        vi.mocked(configService.get).mockImplementation((key: string) => {
-            const values: Record<string, number | string> = {
-                'email.batchSize': 3,
-            };
-
-            return values[key];
-        });
         const module = await Test.createTestingModule({
             providers: [
                 TermPolicyRecipientService,
@@ -75,13 +77,19 @@ describe('TermPolicyRecipientService', () => {
                     provide: TermPolicyRecipientRepository,
                     useValue: termPolicyRecipientRepository,
                 },
-                { provide: ConfigService, useValue: configService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'email.batchSize': 3,
+                    }),
+                },
             ],
         }).compile();
         service = module.get(TermPolicyRecipientService);
+        databaseUtil = module.get(DatabaseUtil);
     });
 
     const sentAt = new Date('2024-01-02T00:00:00.000Z');
@@ -190,7 +198,8 @@ describe('TermPolicyRecipientService', () => {
 
     describe('buildBatch', () => {
         it('returns one batch id and one notification id per user beside the user id, email, and username', () => {
-            databaseUtil.createId
+            const createId = vi
+                .spyOn(databaseUtil, 'createId')
                 .mockReturnValueOnce('batch-1')
                 .mockReturnValueOnce('n-1')
                 .mockReturnValueOnce('n-2');
@@ -214,7 +223,7 @@ describe('TermPolicyRecipientService', () => {
                     },
                 ],
             });
-            expect(databaseUtil.createId).toHaveBeenCalledTimes(3);
+            expect(createId).toHaveBeenCalledTimes(3);
         });
     });
 
@@ -247,8 +256,7 @@ describe('TermPolicyRecipientService', () => {
 
     describe('claim', () => {
         it('claims under a drawn nonce and the current time, returning the nonce and the claimed user ids', async () => {
-            databaseUtil.createId.mockReturnValue('claim-id');
-            helperDateService.create.mockReturnValue(sentAt);
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('claim-id');
             termPolicyRecipientRepository.claim.mockResolvedValue(['u2']);
 
             const claim = await service.claim(

@@ -12,8 +12,6 @@ describe('AnalyticForgotPasswordTokenAbuseSummaryUseCase', () => {
     let useCase: AnalyticForgotPasswordTokenAbuseSummaryUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticForgotPasswordTokenAbuseSummaryUseCase,

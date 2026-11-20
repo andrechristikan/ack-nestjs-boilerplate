@@ -18,8 +18,6 @@ describe('WorkspaceIdMiddleware', () => {
     let next: NextFunction;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceIdMiddleware,

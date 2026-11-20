@@ -4,13 +4,15 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import {
     EnumActivityLogAction,
     EnumRoleType,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
@@ -18,10 +20,11 @@ import { ActivityLogService } from '@modules/activity-log/services/activity-log.
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import {
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
@@ -41,10 +44,6 @@ describe('RoleCreateByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const roleUtil: MockProxy<RoleUtil> = mock<RoleUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
@@ -68,44 +67,20 @@ describe('RoleCreateByAdminUseCase', () => {
         type: EnumRoleType.superAdmin,
     };
     const actorUser: IUser = {
-        id: 'user-actor',
-        name: null,
-        username: 'actor',
-        isVerified: true,
-        verifiedAt: now,
-        email: 'actor@example.com',
+        ...buildUser('user-actor', 'actor@example.com'),
         roleId: actorRole.id,
-        password: null,
-        passwordExpired: null,
-        passwordCreated: null,
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: now,
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: now,
-        createdBy: null,
-        updatedAt: now,
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
         role: actorRole,
     };
     const actor: IRoleActor = {
         roleId: actorRole.id,
         roleType: EnumRoleType.superAdmin,
     };
-    const metadata = { roleId: role.id };
+    const metadata = {
+        roleId: role.id,
+        roleName: role.name,
+        roleType: role.type,
+        timestamp: now,
+    };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(actorUser);
@@ -119,11 +94,18 @@ describe('RoleCreateByAdminUseCase', () => {
     };
 
     let useCase: RoleCreateByAdminUseCase;
+    let databaseUtil: DatabaseUtil;
+
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        helperDateService.create.mockReturnValue(now);
-        roleUtil.mapActivityLogMetadata.mockReturnValue(metadata);
         activityLogService.recordEffect.mockReturnValue(effect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
@@ -135,13 +117,17 @@ describe('RoleCreateByAdminUseCase', () => {
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: RoleUtil, useValue: roleUtil },
+                RoleUtil,
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
         useCase = module.get(RoleCreateByAdminUseCase);
+        databaseUtil = module.get(DatabaseUtil);
     });
 
     describe('execute', () => {
@@ -151,7 +137,7 @@ describe('RoleCreateByAdminUseCase', () => {
         };
 
         it('creates the role on the outbox transaction and wraps the result', async () => {
-            databaseUtil.createId.mockReturnValue(role.id);
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue(role.id);
             roleService.createByAdminInTx.mockResolvedValue(roleWithPolicies);
 
             const result = await useCase.execute(
@@ -176,7 +162,7 @@ describe('RoleCreateByAdminUseCase', () => {
         });
 
         it('adds the create activity entry from the drawn id and the passed context on the same tx', async () => {
-            databaseUtil.createId.mockReturnValue(role.id);
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue(role.id);
             roleService.createByAdminInTx.mockResolvedValue(roleWithPolicies);
 
             await useCase.execute(
@@ -187,15 +173,6 @@ describe('RoleCreateByAdminUseCase', () => {
                 body
             );
 
-            expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                {
-                    id: role.id,
-                    name: 'manager',
-                    type: EnumRoleType.admin,
-                    isImmutable: false,
-                },
-                now
-            );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
@@ -208,7 +185,7 @@ describe('RoleCreateByAdminUseCase', () => {
 
         it('adds no entry when the write throws', async () => {
             const failure = new Error('create failed');
-            databaseUtil.createId.mockReturnValue(role.id);
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue(role.id);
             roleService.createByAdminInTx.mockRejectedValue(failure);
 
             await expect(

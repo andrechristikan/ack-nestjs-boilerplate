@@ -36,7 +36,7 @@ A sentence that seems to belong in two files is two sentences. A rule may carry 
 
 ## Documentation prose
 
-Binds `docs/*.md`, `.claude/decisions/*.md`, the root people files, `.github/` markdown, and PR and version text, all public paste-ready prose. In `.github/` YAML, `writer` repairs stale facts only; a workflow or `dependabot.yml` a change moves is `coder`'s run surface (`rules/layering.md`). A small correction keeps the page's existing section structure.
+Binds `docs/*.md`, `.claude/decisions/*.md`, the root people files, `.github/` markdown, and PR and version text, all public paste-ready prose. A small correction keeps the page's existing section structure.
 
 - A paragraph, a list item, and a table row are each one line with no hard wrap; Prettier (`proseWrap: never`, `.prettierrc`) reflows `.md` on commit through `lint-staged` and on each edit through `.claude/hooks/format.sh`.
 - A fact or an obligation is indicative (`the keys match`, not `keys must match`); a procedure step is imperative.

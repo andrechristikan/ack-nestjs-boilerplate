@@ -30,47 +30,63 @@ describe('UserUpdateMobileNumberRequestSchema', () => {
     });
 
     it('rejects a number shorter than 8 characters', () => {
-        expect(() =>
-            UserUpdateMobileNumberRequestSchema.parse({
-                ...payload,
-                number: '123',
-            })
-        ).toThrow();
+        const result = UserUpdateMobileNumberRequestSchema.safeParse({
+            ...payload,
+            number: '123',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['number'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a number with a non-digit character', () => {
-        expect(() =>
-            UserUpdateMobileNumberRequestSchema.parse({
-                ...payload,
-                number: 'abcdefgh',
-            })
-        ).toThrow();
+        const result = UserUpdateMobileNumberRequestSchema.safeParse({
+            ...payload,
+            number: 'abcdefgh',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['number'],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects a phone code with a non-digit character', () => {
-        expect(() =>
-            UserUpdateMobileNumberRequestSchema.parse({
-                ...payload,
-                phoneCode: '+62',
-            })
-        ).toThrow();
+        const result = UserUpdateMobileNumberRequestSchema.safeParse({
+            ...payload,
+            phoneCode: '+62',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['phoneCode'],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects an empty password', () => {
-        expect(() =>
-            UserUpdateMobileNumberRequestSchema.parse({
-                ...payload,
-                password: '',
-            })
-        ).toThrow();
+        const result = UserUpdateMobileNumberRequestSchema.safeParse({
+            ...payload,
+            password: '',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['password'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserUpdateMobileNumberRequestSchema.parse({
-                ...payload,
-                username: 'johnSmith123',
-            })
-        ).toThrow();
+        const result = UserUpdateMobileNumberRequestSchema.safeParse({
+            ...payload,
+            username: 'johnSmith123',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

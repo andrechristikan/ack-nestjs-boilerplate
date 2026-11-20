@@ -17,8 +17,6 @@ describe('RequestCompressionMiddleware', () => {
     let handler: ReturnType<typeof vi.fn>;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         handler = vi.fn();
         (compression as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
             handler

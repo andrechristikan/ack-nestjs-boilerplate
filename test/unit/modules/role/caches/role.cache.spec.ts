@@ -1,28 +1,21 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { RoleCache } from '@modules/role/caches/role.cache';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('RoleCache', () => {
-    const configGet = vi.fn<(key: string) => string | number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
 
     let cache: RoleCache;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, string | number> = {
-                'role.keyPattern': 'Role:{roleId}',
-                'role.cacheTtlInMs': 3600000,
-                'role.leaseKeyPattern': 'Role:Lease:{roleId}',
-                'role.leaseTtlInMs': 10000,
-            };
-            return values[key];
+        configService = buildConfigService({
+            'role.keyPattern': 'Role:{roleId}',
+            'role.cacheTtlInMs': 3600000,
+            'role.leaseKeyPattern': 'Role:Lease:{roleId}',
+            'role.leaseTtlInMs': 10000,
         });
 
         const module: TestingModule = await Test.createTestingModule({
@@ -38,7 +31,7 @@ describe('RoleCache', () => {
     describe('cacheTtlInMs', () => {
         it('reads the TTL from role.cacheTtlInMs', () => {
             expect(cache.cacheTtlInMs).toBe(3600000);
-            expect(configGet).toHaveBeenCalledWith('role.cacheTtlInMs');
+            expect(configService.get).toHaveBeenCalledWith('role.cacheTtlInMs');
         });
     });
 

@@ -16,8 +16,15 @@ describe('HealthIndicatorResultSchema', () => {
     });
 
     it('rejects an entry whose value is not a record', () => {
-        expect(() =>
-            HealthIndicatorResultSchema.parse({ database: 'up' })
-        ).toThrow();
+        const result = HealthIndicatorResultSchema.safeParse({
+            database: 'up',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['database'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

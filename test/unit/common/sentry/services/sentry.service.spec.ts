@@ -1,5 +1,7 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import * as Sentry from '@sentry/nestjs';
+import { SentryService } from '@common/sentry/services/sentry.service';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 
 vi.mock('@sentry/nestjs', () => ({
@@ -16,18 +18,9 @@ vi.mock('@sentry/nestjs', () => ({
 }));
 
 describe('SentryService', () => {
-    let Sentry: typeof import('@sentry/nestjs');
-    let service: InstanceType<
-        typeof import('@common/sentry/services/sentry.service').SentryService
-    >;
+    let service: SentryService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        vi.resetModules();
-        Sentry = await import('@sentry/nestjs');
-        const { SentryService } =
-            await import('@common/sentry/services/sentry.service');
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [SentryService],
         }).compile();

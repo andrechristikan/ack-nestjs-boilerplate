@@ -2,18 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import {
-    EnumRoleType,
-    EnumTermPolicyType,
-    EnumUserGender,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
-} from '@generated/prisma-client/client';
-import {
-    buildRequestContext,
     buildApiKeyContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { TermPolicyUserAcceptUseCase } from '@modules/term-policy/use-cases/term-policy.user-accept.use-case';
@@ -23,52 +17,7 @@ describe('TermPolicyUserAcceptUseCase', () => {
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
         mock<TermPolicyAcceptanceService>();
 
-    const timestamp = new Date('2026-01-01T00:00:00.000Z');
-    const user: IUser = {
-        id: 'user-1',
-        name: 'Andre Christi',
-        username: 'johnSmith123',
-        isVerified: true,
-        verifiedAt: timestamp,
-        email: 'andre@example.com',
-        roleId: 'role-1',
-        password: 'hashed-password',
-        passwordExpired: null,
-        passwordCreated: timestamp,
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: timestamp,
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: EnumUserGender.male,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: timestamp,
-        createdBy: null,
-        updatedAt: timestamp,
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-1',
-            name: 'User',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: timestamp,
-            createdBy: null,
-            updatedAt: timestamp,
-            updatedBy: null,
-            policies: [],
-        },
-    };
+    const user: IUser = buildUser('user-1', 'andre@example.com');
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext(user.id);
@@ -76,8 +25,6 @@ describe('TermPolicyUserAcceptUseCase', () => {
     let useCase: TermPolicyUserAcceptUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 TermPolicyUserAcceptUseCase,

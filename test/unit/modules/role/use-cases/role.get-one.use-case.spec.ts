@@ -28,8 +28,6 @@ describe('RoleGetOneUseCase', () => {
     let useCase: RoleGetOneUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleGetOneUseCase,

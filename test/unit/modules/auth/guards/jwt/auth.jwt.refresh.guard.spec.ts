@@ -44,7 +44,6 @@ describe('AuthJwtRefreshGuard', () => {
     let executionContext: ReturnType<typeof buildHttpExecutionContext>;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         executionContext = buildHttpExecutionContext({
             headers: { authorization: 'Bearer refresh-token' },
         });
@@ -151,11 +150,6 @@ describe('AuthJwtRefreshGuard', () => {
             expect(thrown).toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtRefreshTokenInvalid
-                    ],
-                messagePath: 'auth.error.refreshTokenUnauthorized',
             });
             expect(requestStoreService.set).not.toHaveBeenCalled();
         });

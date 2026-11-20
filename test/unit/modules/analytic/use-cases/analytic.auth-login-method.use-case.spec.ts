@@ -20,8 +20,6 @@ describe('AnalyticAuthLoginMethodUseCase', () => {
     let useCase: AnalyticAuthLoginMethodUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticAuthLoginMethodUseCase,

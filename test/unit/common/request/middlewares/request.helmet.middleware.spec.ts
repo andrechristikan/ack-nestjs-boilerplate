@@ -1,22 +1,19 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import { RequestHelmetCspDirectives } from '@common/request/constants/request.constant';
 import { RequestHelmetMiddleware } from '@common/request/middlewares/request.helmet.middleware';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 vi.mock('helmet', () => ({
     default: vi.fn(),
 }));
 
 describe('RequestHelmetMiddleware', () => {
-    const configGet = vi.fn<(key: string) => number | boolean | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
 
     let middleware: RequestHelmetMiddleware;
     let req: Request;
@@ -25,15 +22,10 @@ describe('RequestHelmetMiddleware', () => {
     let handler: ReturnType<typeof vi.fn>;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, number | boolean> = {
-                'request.helmet.maxAgeInSeconds': 31536000,
-                'request.helmet.includeSubDomainsEnabled': true,
-                'request.helmet.preloadEnabled': true,
-            };
-            return values[key];
+        configService = buildConfigService({
+            'request.helmet.maxAgeInSeconds': 31536000,
+            'request.helmet.includeSubDomainsEnabled': true,
+            'request.helmet.preloadEnabled': true,
         });
 
         handler = vi.fn();

@@ -12,6 +12,7 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 const { passportJwtSecretMock } = vi.hoisted(() => ({
     passportJwtSecretMock: vi.fn(),
@@ -23,27 +24,20 @@ vi.mock('jwks-rsa', () => ({
 
 describe('AuthJwtRefreshStrategy', () => {
     const authService: MockProxy<AuthService> = mock<AuthService>();
-    const configGet = vi.fn<(key: string) => string | number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
 
     let strategy: AuthJwtRefreshStrategy;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         passportJwtSecretMock.mockReturnValue(vi.fn());
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, string | number> = {
-                'auth.jwks.requestsPerMinute': 60,
-                'auth.jwks.cacheMaxAgeInMs': 600000,
-                'auth.jwt.audience': 'aud',
-                'auth.jwt.issuer': 'iss',
-                'auth.jwt.refreshToken.jwksUri':
-                    'https://example.com/.well-known/jwks.json',
-                'auth.jwt.refreshToken.algorithm': 'ES512',
-            };
-            return values[key];
+        configService = buildConfigService({
+            'auth.jwks.requestsPerMinute': 60,
+            'auth.jwks.cacheMaxAgeInMs': 600000,
+            'auth.jwt.audience': 'aud',
+            'auth.jwt.issuer': 'iss',
+            'auth.jwt.refreshToken.jwksUri':
+                'https://example.com/.well-known/jwks.json',
+            'auth.jwt.refreshToken.algorithm': 'ES512',
         });
 
         const module: TestingModule = await Test.createTestingModule({

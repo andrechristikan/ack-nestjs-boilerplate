@@ -37,12 +37,14 @@ describe('UserExportResponseSchema', () => {
     });
 
     it('rejects a nested role object as a type mismatch', () => {
-        expect(() =>
-            UserExportResponseSchema.parse({
-                ...row,
-                role: { name: 'admin' },
-            })
-        ).toThrow();
+        const result = UserExportResponseSchema.safeParse({
+            ...row,
+            role: { name: 'admin' },
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['role'], code: 'invalid_type' }),
+        ]);
     });
 
     it('strips an undeclared key such as password', () => {

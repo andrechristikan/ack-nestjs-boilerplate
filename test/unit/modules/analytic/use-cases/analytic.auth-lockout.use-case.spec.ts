@@ -20,8 +20,6 @@ describe('AnalyticAuthLockoutUseCase', () => {
     let useCase: AnalyticAuthLockoutUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticAuthLockoutUseCase,

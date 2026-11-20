@@ -1,13 +1,10 @@
 import { CacheService } from '@common/cache/services/cache.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import { Duration } from 'luxon';
 import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
 import {
     AnalyticBucketsResultCacheSchema,
@@ -22,6 +19,10 @@ import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.sna
 import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('AnalyticDeviceService', () => {
     const dashboardTtlInMs = 1800000;
@@ -31,16 +32,8 @@ describe('AnalyticDeviceService', () => {
         dashboardTtlInMs,
     });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const analyticDateUtil: MockProxy<AnalyticDateUtil> =
-        mock<AnalyticDateUtil>();
-    const analyticBucketUtil: MockProxy<AnalyticBucketUtil> =
-        mock<AnalyticBucketUtil>();
     const analyticSnapshotService: MockProxy<AnalyticSnapshotService> =
         mock<AnalyticSnapshotService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const helperNumberService: MockProxy<HelperNumberService> =
-        mock<HelperNumberService>();
     const analyticDeviceRepository: MockProxy<AnalyticDeviceRepository> =
         mock<AnalyticDeviceRepository>();
 
@@ -49,18 +42,25 @@ describe('AnalyticDeviceService', () => {
     const buckets = [{ key: 'a', count: 7 }];
 
     let configService: MockProxy<ConfigService>;
+
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     let service: AnalyticDeviceService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         configService = buildConfigService({
+            ...TestUnitKitConfigValues,
+            'analytic.cache.windowTokenPattern': 'Window:{start}:{end}',
             'analytic.device.inactivityInMs': deviceInactivityInMs,
             'session.idleTimeoutInMs': idleTimeoutInMs,
         });
-        analyticDateUtil.cacheToken.mockImplementation((date: Date | null) =>
-            date ? date.toISOString() : '_'
-        );
         analyticCache.buildDashboardKey.mockImplementation(
             (metric, start, end) => `${metric}:${start}:${end}`
         );
@@ -68,23 +68,19 @@ describe('AnalyticDeviceService', () => {
             async (_key, _schema, _ttlInMs, loader) => loader()
         );
 
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.backward.mockReturnValue(before);
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticDeviceService,
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
-                { provide: AnalyticDateUtil, useValue: analyticDateUtil },
-                { provide: AnalyticBucketUtil, useValue: analyticBucketUtil },
+                ...TestUnitKitProviders,
+                AnalyticDateUtil,
+                AnalyticBucketUtil,
                 {
                     provide: AnalyticSnapshotService,
                     useValue: analyticSnapshotService,
                 },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: HelperNumberService, useValue: helperNumberService },
                 {
                     provide: AnalyticDeviceRepository,
                     useValue: analyticDeviceRepository,
@@ -101,7 +97,6 @@ describe('AnalyticDeviceService', () => {
                 total: 4,
                 withToken: 3,
             });
-            helperNumberService.percent.mockReturnValue(75);
 
             const result = await service.devicesPushToken();
 
@@ -109,7 +104,6 @@ describe('AnalyticDeviceService', () => {
             expect(
                 analyticDeviceRepository.countPushToken
             ).toHaveBeenCalledTimes(1);
-            expect(helperNumberService.percent).toHaveBeenCalledWith(3, 4);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 `${EnumAnalyticDashboardMetric.devicesPushToken}:_:_`,
                 AnalyticMetricRateCacheSchema,
@@ -123,12 +117,10 @@ describe('AnalyticDeviceService', () => {
                 total: 5,
                 withToken: 5,
             });
-            helperNumberService.percent.mockReturnValue(100);
 
             const result = await service.devicesPushToken();
 
             expect(result).toEqual({ count: 5, total: 5, rate: 100 });
-            expect(helperNumberService.percent).toHaveBeenCalledWith(5, 5);
         });
     });
 
@@ -154,22 +146,25 @@ describe('AnalyticDeviceService', () => {
     describe('computeDevicesPerUser', () => {
         it('passes the repository buckets to the snapshot util with no bucketing', async () => {
             const snapshot = {
-                items: [],
+                items: [
+                    {
+                        key: 'a',
+                        value: 0,
+                        occurredAt: null,
+                        data: { key: 'a', count: 7 },
+                    },
+                ],
                 metadata: null,
                 windowStart: null,
                 windowEnd: null,
             };
             analyticDeviceRepository.groupPerUser.mockResolvedValue(buckets);
-            analyticBucketUtil.toBucketSnapshot.mockReturnValue(snapshot);
 
             const result = await service.computeDevicesPerUser();
 
-            expect(result).toBe(snapshot);
+            expect(result).toEqual(snapshot);
             expect(analyticDeviceRepository.groupPerUser).toHaveBeenCalledTimes(
                 1
-            );
-            expect(analyticBucketUtil.toBucketSnapshot).toHaveBeenCalledWith(
-                buckets
             );
         });
     });
@@ -199,10 +194,6 @@ describe('AnalyticDeviceService', () => {
             expect(result).toEqual({ count: 2 });
             expect(analyticDeviceRepository.countInactive).toHaveBeenCalledWith(
                 before
-            );
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                Duration.fromMillis(deviceInactivityInMs)
             );
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 `${EnumAnalyticDashboardMetric.devicesInactivity}:_:_`,

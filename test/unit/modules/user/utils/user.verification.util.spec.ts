@@ -1,75 +1,68 @@
+import type { MockProxy } from 'vitest-mock-extended';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
-import type { MockProxy } from 'vitest-mock-extended';
 import { EnumVerificationType } from '@generated/prisma-client/client';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IUserVerificationEmailCreate } from '@modules/user/interfaces/user.interface';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
-import { Duration } from 'luxon';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('UserVerificationUtil', () => {
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-    const configGet = vi.fn<(key: string) => string | number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
-
+    let helperStringService: HelperStringService;
     let util: UserVerificationUtil;
 
     const now = new Date('2026-03-01T00:00:00.000Z');
     const expiredAt = new Date(now.getTime() + 15 * 60 * 1000);
 
-    const configValues: Record<string, string | number> = {
-        'frontend.baseUrl': 'https://example.com',
-        'verification.reference.prefix': 'VRF',
-        'verification.reference.length': 8,
-        'verification.expiresInMinutes': 15,
-        'verification.otpLength': 6,
-        'verification.tokenLength': 32,
-        'verification.resendInMinutes': 5,
-        'verification.linkPattern': '{frontendBaseUrl}/verify?token={token}',
-    };
+    let configService: MockProxy<ConfigService>;
+    const hashedToken =
+        'a67fa39caab4a23f78752354d1927f69d4e367be6229afb97c3aaddf7d138739';
+
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
 
     beforeEach(async () => {
-        vi.resetAllMocks();
+        configService = buildConfigService({
+            ...TestUnitKitConfigValues,
+            'frontend.baseUrl': 'https://example.com',
+            'verification.reference.prefix': 'VRF',
+            'verification.reference.length': 8,
+            'verification.expiresInMinutes': 15,
+            'verification.otpLength': 6,
+            'verification.tokenLength': 32,
+            'verification.resendInMinutes': 5,
+            'verification.linkPattern':
+                '{frontendBaseUrl}/verify?token={token}',
+        });
 
-        configGet.mockImplementation(key => configValues[key]);
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.forward.mockImplementation(
-            (date, duration: Duration) =>
-                new Date(date.getTime() + duration.as('milliseconds'))
-        );
+        vi.setSystemTime(now);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserVerificationUtil,
                 { provide: ConfigService, useValue: configService },
-                { provide: HelperHashService, useValue: helperHashService },
-                { provide: HelperDateService, useValue: helperDateService },
-                {
-                    provide: HelperStringService,
-                    useValue: helperStringService,
-                },
+                HelperHashService,
+                HelperDateService,
+                HelperStringService,
             ],
         }).compile();
         util = module.get(UserVerificationUtil);
+        helperStringService = module.get(HelperStringService);
     });
 
     describe('createEmail', () => {
         it('builds a tokenized link verification for email', () => {
-            helperStringService.random.mockReturnValue('random-token');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperStringService.fillPattern.mockReturnValue(
-                'https://example.com/verify?token=random-token'
+            vi.spyOn(helperStringService, 'random').mockReturnValue(
+                'random-token'
             );
 
             expect(util.createEmail()).toEqual({
@@ -77,18 +70,11 @@ describe('UserVerificationUtil', () => {
                 expiredAt,
                 type: EnumVerificationType.email,
                 token: 'random-token',
-                hashedToken: 'hashed-token',
+                hashedToken,
                 expiredInMinutes: 15,
                 link: 'https://example.com/verify?token=random-token',
                 resendInMinutes: 5,
             });
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{frontendBaseUrl}/verify?token={token}',
-                {
-                    frontendBaseUrl: 'https://example.com',
-                    token: 'random-token',
-                }
-            );
         });
     });
 
@@ -101,12 +87,9 @@ describe('UserVerificationUtil', () => {
                 expiredInMinutes: 15,
                 resendInMinutes: 5,
                 token: 'random-token',
-                hashedToken: 'hashed-token',
+                hashedToken,
                 link: 'https://example.com/verify?token=random-token',
             };
-            helperDateService.formatToIso.mockReturnValue(
-                '2026-03-01T00:15:00.000Z'
-            );
 
             expect(util.mapEmailContext('user-flint', verification)).toEqual({
                 userId: 'user-flint',
@@ -116,20 +99,18 @@ describe('UserVerificationUtil', () => {
                 expiredInMinutes: 15,
                 reference: 'VRF-random-token',
             });
-            expect(helperDateService.formatToIso).toHaveBeenCalledWith(
-                expiredAt
-            );
         });
     });
 
     describe('createVerified', () => {
         it('builds the used and verified email verification', () => {
-            helperStringService.random.mockReturnValue('random-token');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
+            vi.spyOn(helperStringService, 'random').mockReturnValue(
+                'random-token'
+            );
 
             expect(util.createVerified('cobalt@example.com')).toEqual({
                 reference: 'VRF-random-token',
-                token: 'hashed-token',
+                token: hashedToken,
                 type: EnumVerificationType.email,
                 action: null,
                 mobileNumberId: null,
@@ -138,27 +119,28 @@ describe('UserVerificationUtil', () => {
                 verifiedAt: now,
                 isUsed: true,
             });
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'random-token'
-            );
         });
     });
 
     describe('createReference', () => {
         it('builds a prefixed random reference', () => {
-            helperStringService.random.mockReturnValue('random-ref');
+            const random = vi
+                .spyOn(helperStringService, 'random')
+                .mockReturnValue('random-ref');
 
             expect(util.createReference()).toBe('VRF-random-ref');
-            expect(helperStringService.random).toHaveBeenCalledWith(8);
+            expect(random).toHaveBeenCalledWith(8);
         });
     });
 
     describe('createToken', () => {
         it('builds a random token of the configured length', () => {
-            helperStringService.random.mockReturnValue('random-token');
+            const random = vi
+                .spyOn(helperStringService, 'random')
+                .mockReturnValue('random-token');
 
             expect(util['createToken']()).toBe('random-token');
-            expect(helperStringService.random).toHaveBeenCalledWith(32);
+            expect(random).toHaveBeenCalledWith(32);
         });
     });
 

@@ -39,7 +39,12 @@ describe('UserResetPasswordGenerateMfaResponseSchema', () => {
             methods: ['sms'],
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['methods', 0],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects a row with no challengeToken key', () => {
@@ -48,7 +53,12 @@ describe('UserResetPasswordGenerateMfaResponseSchema', () => {
         const result =
             UserResetPasswordGenerateMfaResponseSchema.safeParse(rest);
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['challengeToken'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('strips an undeclared key', () => {

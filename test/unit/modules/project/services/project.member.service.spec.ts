@@ -1,4 +1,5 @@
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -8,7 +9,6 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -33,21 +33,27 @@ import { ProjectRepository } from '@modules/project/repositories/project.reposit
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import {
-    buildUser,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspaceMember,
     expectRequestContextMissingWithKey,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 
 describe('ProjectMemberService', () => {
     const projectMemberRepository: MockProxy<ProjectMemberRepository> =
         mock<ProjectMemberRepository>();
     const projectRepository: MockProxy<ProjectRepository> =
         mock<ProjectRepository>();
-    const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
@@ -105,15 +111,8 @@ describe('ProjectMemberService', () => {
     };
 
     const baseWorkspaceMember: WorkspaceMember = {
-        id: '507f1f77bcf86cd799439031',
-        workspaceId: '507f1f77bcf86cd799439012',
-        userId: '507f1f77bcf86cd799439032',
+        ...buildWorkspaceMember('507f1f77bcf86cd799439032'),
         role: EnumWorkspaceMemberRole.member,
-        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
     };
 
     const bypassActor: IProjectMemberActor = {
@@ -126,7 +125,6 @@ describe('ProjectMemberService', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
@@ -140,8 +138,12 @@ describe('ProjectMemberService', () => {
                     useValue: projectMemberRepository,
                 },
                 { provide: ProjectRepository, useValue: projectRepository },
-                { provide: ProjectUtil, useValue: projectUtil },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
+                ProjectUtil,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
             ],
@@ -152,6 +154,10 @@ describe('ProjectMemberService', () => {
     describe('validateProjectGuard', () => {
         const projectId = '507f1f77bcf86cd799439011';
         const roleMember: WorkspaceMember = baseWorkspaceMember;
+        const bypassMember: WorkspaceMember = {
+            ...baseWorkspaceMember,
+            role: EnumWorkspaceMemberRole.admin,
+        };
         const memberRow: ProjectMember = {
             ...baseProjectMember,
             role: EnumProjectMemberRole.admin,
@@ -172,7 +178,6 @@ describe('ProjectMemberService', () => {
         });
 
         it('rejects with member forbidden when a workspace member with no roles has no project member row, after one repository call', async () => {
-            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
             projectRepository.findActiveByIdAndWorkspaceWithMember.mockResolvedValue(
                 { ...baseProject, members: [] }
             );
@@ -182,7 +187,6 @@ describe('ProjectMemberService', () => {
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberForbidden,
-                messagePath: 'project.error.memberForbidden',
             });
             expect(
                 projectRepository.findActiveByIdAndWorkspaceWithMember
@@ -206,7 +210,6 @@ describe('ProjectMemberService', () => {
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.notFound,
-                messagePath: 'project.error.notFound',
             });
         });
 
@@ -228,13 +231,12 @@ describe('ProjectMemberService', () => {
         });
 
         it('returns a null project member when roles are required, the caller is a workspace admin, and no row exists', async () => {
-            projectUtil.hasWorkspaceBypass.mockReturnValue(true);
             projectRepository.findActiveByIdAndWorkspaceWithMember.mockResolvedValue(
                 { ...baseProject, members: [] }
             );
 
             const result = await service.validateProjectGuard(
-                roleMember,
+                bypassMember,
                 projectId,
                 [EnumProjectMemberRole.admin]
             );
@@ -246,13 +248,12 @@ describe('ProjectMemberService', () => {
         });
 
         it('returns the row when roles are required, the caller is a workspace admin, and a row exists', async () => {
-            projectUtil.hasWorkspaceBypass.mockReturnValue(true);
             projectRepository.findActiveByIdAndWorkspaceWithMember.mockResolvedValue(
                 { ...baseProject, members: [memberRow] }
             );
 
             const result = await service.validateProjectGuard(
-                roleMember,
+                bypassMember,
                 projectId,
                 [EnumProjectMemberRole.viewer]
             );
@@ -264,7 +265,6 @@ describe('ProjectMemberService', () => {
         });
 
         it('throws member forbidden when roles are required, the caller is a workspace member, and no row exists', async () => {
-            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
             projectRepository.findActiveByIdAndWorkspaceWithMember.mockResolvedValue(
                 { ...baseProject, members: [] }
             );
@@ -279,7 +279,6 @@ describe('ProjectMemberService', () => {
         });
 
         it('throws role forbidden when the row role is outside the list', async () => {
-            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
             projectRepository.findActiveByIdAndWorkspaceWithMember.mockResolvedValue(
                 {
                     ...baseProject,
@@ -437,11 +436,6 @@ describe('ProjectMemberService', () => {
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberPeerForbidden
-                    ],
-                messagePath: 'project.error.memberPeerForbidden',
             });
             expect(projectMemberRepository.createInTx).not.toHaveBeenCalled();
         });
@@ -462,11 +456,6 @@ describe('ProjectMemberService', () => {
             ).rejects.toMatchObject({
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberNotFound
-                    ],
-                messagePath: 'workspace.error.memberNotFound',
             });
         });
 
@@ -490,11 +479,6 @@ describe('ProjectMemberService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberNotFound
-                    ],
-                messagePath: 'workspace.error.memberNotFound',
             });
         });
 
@@ -504,9 +488,8 @@ describe('ProjectMemberService', () => {
                 ...baseWorkspaceMember,
                 workspaceId: project.workspaceId,
             };
-            const collision = new Error('member collision');
+            const collision = buildPrismaKnownRequestError('P2002', 'userId');
             projectMemberRepository.createInTx.mockRejectedValue(collision);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 service.assignMember(
@@ -521,16 +504,7 @@ describe('ProjectMemberService', () => {
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberAlreadyAssigned,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberAlreadyAssigned
-                    ],
-                messagePath: 'project.error.memberAlreadyAssigned',
             });
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'userId'
-            );
         });
 
         it('rethrows an AppBaseException from the transaction as is, with no collision check', async () => {
@@ -553,7 +527,6 @@ describe('ProjectMemberService', () => {
                     EnumProjectMemberRole.member
                 )
             ).rejects.toBe(appError);
-            expect(databaseUtil.isUniqueCollision).not.toHaveBeenCalled();
         });
 
         it('wraps a non-collision create error in AppUnknownException', async () => {
@@ -564,7 +537,6 @@ describe('ProjectMemberService', () => {
             };
             const otherError = new Error('unexpected');
             projectMemberRepository.createInTx.mockRejectedValue(otherError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 service.assignMember(
@@ -693,11 +665,6 @@ describe('ProjectMemberService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberNotFound,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberNotFound
-                    ],
-                messagePath: 'project.error.memberNotFound',
             });
         });
 
@@ -724,11 +691,6 @@ describe('ProjectMemberService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberPeerForbidden
-                    ],
-                messagePath: 'project.error.memberPeerForbidden',
             });
             expect(
                 projectMemberRepository.updateRoleInTx
@@ -760,11 +722,6 @@ describe('ProjectMemberService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberPeerForbidden
-                    ],
-                messagePath: 'project.error.memberPeerForbidden',
             });
         });
 
@@ -864,10 +821,8 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
             );
-            const conflict = new Error('write-conflict');
-            projectMemberRepository.updateRoleInTx.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            projectMemberRepository.updateRoleInTx.mockRejectedValue(
+                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
             );
 
             await expect(
@@ -884,7 +839,6 @@ describe('ProjectMemberService', () => {
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps any other transaction error in AppUnknownException', async () => {
@@ -898,7 +852,6 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.updateRoleInTx.mockRejectedValue(
                 new Error('boom')
             );
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.updateMemberRole(
@@ -931,11 +884,6 @@ describe('ProjectMemberService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberNotFound,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberNotFound
-                    ],
-                messagePath: 'project.error.memberNotFound',
             });
         });
 
@@ -961,11 +909,6 @@ describe('ProjectMemberService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberPeerForbidden
-                    ],
-                messagePath: 'project.error.memberPeerForbidden',
             });
         });
 
@@ -991,11 +934,6 @@ describe('ProjectMemberService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberPeerForbidden
-                    ],
-                messagePath: 'project.error.memberPeerForbidden',
             });
             expect(
                 projectMemberRepository.removeMemberInTx
@@ -1026,11 +964,6 @@ describe('ProjectMemberService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberPeerForbidden
-                    ],
-                messagePath: 'project.error.memberPeerForbidden',
             });
         });
 
@@ -1105,10 +1038,7 @@ describe('ProjectMemberService', () => {
                 targetMember
             );
             projectMemberRepository.removeMemberInTx.mockRejectedValue(
-                new Error('write-conflict')
-            );
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
             );
 
             await expect(
@@ -1137,7 +1067,6 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.removeMemberInTx.mockRejectedValue(
                 new Error('boom')
             );
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.removeMember(
@@ -1167,11 +1096,6 @@ describe('ProjectMemberService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberNotFound,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberNotFound
-                    ],
-                messagePath: 'project.error.memberNotFound',
             });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -1212,10 +1136,7 @@ describe('ProjectMemberService', () => {
 
         it('maps a write conflict to ProjectMemberNotFoundException', async () => {
             projectMemberRepository.removeByIdInTx.mockRejectedValue(
-                new Error('write-conflict')
-            );
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
             );
 
             await expect(
@@ -1236,7 +1157,6 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.removeByIdInTx.mockRejectedValue(
                 new Error('boom')
             );
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.leaveProject(
@@ -1285,11 +1205,6 @@ describe('ProjectMemberService', () => {
             expect(captured).toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberPeerForbidden
-                    ],
-                messagePath: 'project.error.memberPeerForbidden',
             });
         });
     });

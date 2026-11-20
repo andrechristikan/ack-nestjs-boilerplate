@@ -10,17 +10,26 @@ describe('WorkspaceUpdateIsPublicRequestSchema', () => {
     });
 
     it('rejects a non-boolean isPublic', () => {
-        expect(() =>
-            WorkspaceUpdateIsPublicRequestSchema.parse({ isPublic: 'true' })
-        ).toThrow();
+        const result = WorkspaceUpdateIsPublicRequestSchema.safeParse({
+            isPublic: 'true',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['isPublic'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceUpdateIsPublicRequestSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = WorkspaceUpdateIsPublicRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

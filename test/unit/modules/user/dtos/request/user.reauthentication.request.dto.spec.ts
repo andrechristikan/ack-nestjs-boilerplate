@@ -35,18 +35,24 @@ describe('UserReauthenticationRequestSchema', () => {
     });
 
     it('rejects an empty password', () => {
-        expect(() =>
-            UserReauthenticationRequestSchema.parse({ password: '' })
-        ).toThrow();
+        const result = UserReauthenticationRequestSchema.safeParse({
+            password: '',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['password'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserReauthenticationRequestSchema.parse({
-                ...payload,
-                challengeToken: 'c07c5f0d6d0c4c6db1f6a6d38f5ce8fa',
-            })
-        ).toThrow();
+        const result = UserReauthenticationRequestSchema.safeParse({
+            ...payload,
+            challengeToken: 'c07c5f0d6d0c4c6db1f6a6d38f5ce8fa',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a password of 64 characters and rejects one of 65', () => {
@@ -56,12 +62,14 @@ describe('UserReauthenticationRequestSchema', () => {
                 password: 'a'.repeat(64),
             })
         ).not.toThrow();
-        expect(() =>
-            UserReauthenticationRequestSchema.parse({
-                ...payload,
-                password: 'a'.repeat(65),
-            })
-        ).toThrow();
+        const result = UserReauthenticationRequestSchema.safeParse({
+            ...payload,
+            password: 'a'.repeat(65),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['password'], code: 'too_big' }),
+        ]);
     });
 
     it('accepts a otp of 32 characters and rejects one of 33', () => {
@@ -71,12 +79,14 @@ describe('UserReauthenticationRequestSchema', () => {
                 otp: '1'.repeat(32),
             })
         ).not.toThrow();
-        expect(() =>
-            UserReauthenticationRequestSchema.parse({
-                ...payload,
-                otp: '1'.repeat(33),
-            })
-        ).toThrow();
+        const result = UserReauthenticationRequestSchema.safeParse({
+            ...payload,
+            otp: '1'.repeat(33),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['otp'], code: 'too_big' }),
+        ]);
     });
 
     it('accepts a passkeyChallengeToken of 128 characters and rejects an empty one and one of 129', () => {
@@ -90,14 +100,24 @@ describe('UserReauthenticationRequestSchema', () => {
             UserReauthenticationRequestSchema.safeParse({
                 ...payload,
                 passkeyChallengeToken: '',
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['passkeyChallengeToken'],
+                code: 'too_small',
+            }),
+        ]);
         expect(
             UserReauthenticationRequestSchema.safeParse({
                 ...payload,
                 passkeyChallengeToken: 'a'.repeat(129),
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['passkeyChallengeToken'],
+                code: 'too_big',
+            }),
+        ]);
     });
 
     it('rejects a passkeyResponse that is not an assertion', () => {
@@ -109,7 +129,20 @@ describe('UserReauthenticationRequestSchema', () => {
             },
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeyResponse', 'response', 'authenticatorData'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['passkeyResponse', 'response', 'signature'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['passkeyResponse', 'response'],
+                code: 'unrecognized_keys',
+            }),
+        ]);
     });
 
     it('accepts the totp and backupCode methods and rejects the passkey method', () => {
@@ -126,7 +159,12 @@ describe('UserReauthenticationRequestSchema', () => {
         expect(
             UserReauthenticationRequestSchema.safeParse({
                 method: EnumMfaMethod.passkey,
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['method'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 });

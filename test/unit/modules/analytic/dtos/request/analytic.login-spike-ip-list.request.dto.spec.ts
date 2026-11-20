@@ -25,29 +25,37 @@ describe('AnalyticLoginSpikeIpListRequestSchema', () => {
     it('rejects windowMs and the date range', () => {
         expect(
             AnalyticLoginSpikeIpListRequestSchema.safeParse({ windowMs: 1000 })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
         expect(
             AnalyticLoginSpikeIpListRequestSchema.safeParse({
                 startDate: '2026-01-01T00:00:00.000Z',
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            AnalyticLoginSpikeIpListRequestSchema.parse({
-                page: 1,
-                extra: true,
-            })
-        ).toThrow();
+        const result = AnalyticLoginSpikeIpListRequestSchema.safeParse({
+            page: 1,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
         expect(
             AnalyticLoginSpikeIpListRequestSchema.safeParse({ search: 'x' })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -84,15 +92,26 @@ describe('AnalyticLoginSpikeIpListRequestSchema', () => {
         'attempts',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            AnalyticLoginSpikeIpListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            AnalyticLoginSpikeIpListRequestSchema.safeParse({ orderBy }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             AnalyticLoginSpikeIpListRequestSchema.safeParse({
                 orderBy: ['mostUsers', 'mostUsers'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

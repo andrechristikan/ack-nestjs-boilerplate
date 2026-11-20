@@ -11,19 +11,23 @@ describe('WorkspaceMemberUpdateRoleRequestSchema', () => {
     });
 
     it('rejects a role of owner', () => {
-        expect(() =>
-            WorkspaceMemberUpdateRoleRequestSchema.parse({
-                role: EnumWorkspaceMemberRole.owner,
-            })
-        ).toThrow();
+        const result = WorkspaceMemberUpdateRoleRequestSchema.safeParse({
+            role: EnumWorkspaceMemberRole.owner,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['role'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceMemberUpdateRoleRequestSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = WorkspaceMemberUpdateRoleRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

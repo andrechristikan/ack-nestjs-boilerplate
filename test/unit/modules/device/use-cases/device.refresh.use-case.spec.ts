@@ -31,8 +31,6 @@ describe('DeviceRefreshUseCase', () => {
     let useCase: DeviceRefreshUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 DeviceRefreshUseCase,

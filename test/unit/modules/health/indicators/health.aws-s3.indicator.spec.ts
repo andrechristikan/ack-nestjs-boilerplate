@@ -17,8 +17,6 @@ describe('HealthAwsS3BucketIndicator', () => {
     let indicator: HealthAwsS3BucketIndicator;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         healthIndicatorService.check.mockReturnValue(session as never);
 
         const module: TestingModule = await Test.createTestingModule({

@@ -37,21 +37,25 @@ describe('UserChangePasswordRequestSchema', () => {
     });
 
     it('rejects an empty password', () => {
-        expect(() =>
-            UserChangePasswordRequestSchema.parse({
-                ...payload,
-                password: '',
-            })
-        ).toThrow();
+        const result = UserChangePasswordRequestSchema.safeParse({
+            ...payload,
+            password: '',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['password'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects oldPassword as an undeclared key', () => {
-        expect(() =>
-            UserChangePasswordRequestSchema.parse({
-                newPassword: payload.newPassword,
-                oldPassword: 'oldPassword1',
-            })
-        ).toThrow();
+        const result = UserChangePasswordRequestSchema.safeParse({
+            newPassword: payload.newPassword,
+            oldPassword: 'oldPassword1',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts an all-lowercase 8-character newPassword', () => {
@@ -75,29 +79,38 @@ describe('UserChangePasswordRequestSchema', () => {
     });
 
     it('rejects a 7-character newPassword', () => {
-        expect(() =>
-            UserChangePasswordRequestSchema.parse({
-                ...payload,
-                newPassword: 'abcdefg',
-            })
-        ).toThrow();
+        const result = UserChangePasswordRequestSchema.safeParse({
+            ...payload,
+            newPassword: 'abcdefg',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['newPassword'],
+                code: 'too_small',
+            }),
+        ]);
     });
 
     it('rejects a 65-character newPassword', () => {
-        expect(() =>
-            UserChangePasswordRequestSchema.parse({
-                ...payload,
-                newPassword: 'a'.repeat(65),
-            })
-        ).toThrow();
+        const result = UserChangePasswordRequestSchema.safeParse({
+            ...payload,
+            newPassword: 'a'.repeat(65),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['newPassword'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserChangePasswordRequestSchema.parse({
-                ...payload,
-                challengeToken: 'c07c5f0d6d0c4c6db1f6a6d38f5ce8fa',
-            })
-        ).toThrow();
+        const result = UserChangePasswordRequestSchema.safeParse({
+            ...payload,
+            challengeToken: 'c07c5f0d6d0c4c6db1f6a6d38f5ce8fa',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

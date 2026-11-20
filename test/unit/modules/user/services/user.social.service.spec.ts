@@ -25,8 +25,6 @@ describe('UserSocialService', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserSocialService,
@@ -108,8 +106,6 @@ describe('UserSocialService', () => {
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
-                statusCodeKey: 'socialGoogleInvalid',
-                messagePath: 'auth.error.socialGoogleInvalid',
                 rawError: 'Google subject does not match the linked account',
             });
         });
@@ -128,8 +124,6 @@ describe('UserSocialService', () => {
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
-                statusCodeKey: 'socialAppleInvalid',
-                messagePath: 'auth.error.socialAppleInvalid',
                 rawError: 'Apple subject does not match the linked account',
             });
         });

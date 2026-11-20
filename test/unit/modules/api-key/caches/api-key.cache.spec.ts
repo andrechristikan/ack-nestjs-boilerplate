@@ -1,31 +1,24 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import { ApiKeyCacheSchema } from '@modules/api-key/constants/api-key.constant';
+import { buildApiKey } from '@test/unit/helpers/test.unit.request.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('ApiKeyCache', () => {
-    const configGet = vi.fn<(key: string) => string | number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
 
     let cache: ApiKeyCache;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, string | number> = {
-                'auth.xApiKey.keyPattern': 'ApiKey:{key}',
-                'auth.xApiKey.cacheTtlInMs': 4000,
-                'auth.xApiKey.leaseKeyPattern': 'ApiKey:Lease:{key}',
-                'auth.xApiKey.leaseTtlInMs': 10000,
-            };
-            return values[key];
+        configService = buildConfigService({
+            'auth.xApiKey.keyPattern': 'ApiKey:{key}',
+            'auth.xApiKey.cacheTtlInMs': 4000,
+            'auth.xApiKey.leaseKeyPattern': 'ApiKey:Lease:{key}',
+            'auth.xApiKey.leaseTtlInMs': 10000,
         });
 
         const module: TestingModule = await Test.createTestingModule({
@@ -41,7 +34,9 @@ describe('ApiKeyCache', () => {
     describe('cacheTtlInMs', () => {
         it('reads the TTL from auth.xApiKey.cacheTtlInMs', () => {
             expect(cache.cacheTtlInMs).toBe(4000);
-            expect(configGet).toHaveBeenCalledWith('auth.xApiKey.cacheTtlInMs');
+            expect(configService.get).toHaveBeenCalledWith(
+                'auth.xApiKey.cacheTtlInMs'
+            );
         });
     });
 
@@ -74,18 +69,9 @@ describe('ApiKeyCache', () => {
     describe('ApiKeyCacheSchema', () => {
         it('parses a cached entry with ISO dates into an ApiKey', () => {
             const apiKey: ApiKey = {
-                id: 'api-key-1',
-                name: 'Acme Api Key',
-                type: EnumApiKeyType.default,
-                key: 'local_abc123',
-                hash: 'hashed-secret',
-                isActive: true,
-                startAt: null,
+                ...buildApiKey(),
                 endAt: new Date('2026-02-01T00:00:00.000Z'),
-                createdAt: new Date('2026-01-01T00:00:00.000Z'),
-                createdBy: 'user-1',
                 updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-                updatedBy: 'user-1',
             };
             const cached: unknown = {
                 ...apiKey,

@@ -20,16 +20,33 @@ describe('ApiKeyDateRequestSchema', () => {
     });
 
     it('rejects a missing startAt', () => {
-        expect(() => ApiKeyDateRequestSchema.parse({ endAt })).toThrow();
+        const result = ApiKeyDateRequestSchema.safeParse({ endAt });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['startAt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a missing endAt', () => {
-        expect(() => ApiKeyDateRequestSchema.parse({ startAt })).toThrow();
+        const result = ApiKeyDateRequestSchema.safeParse({ startAt });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['endAt'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ApiKeyDateRequestSchema.parse({ startAt, endAt, extra: true })
-        ).toThrow();
+        const result = ApiKeyDateRequestSchema.safeParse({
+            startAt,
+            endAt,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

@@ -11,19 +11,26 @@ describe('TermPolicyRemoveContentRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            TermPolicyRemoveContentRequestSchema.parse({
-                ...payload,
-                size: 1024,
-            })
-        ).toThrow();
+        const result = TermPolicyRemoveContentRequestSchema.safeParse({
+            ...payload,
+            size: 1024,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a language outside EnumMessageLanguage', () => {
-        expect(() =>
-            TermPolicyRemoveContentRequestSchema.parse({
-                language: 'unknownLanguage',
-            })
-        ).toThrow();
+        const result = TermPolicyRemoveContentRequestSchema.safeParse({
+            language: 'unknownLanguage',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['language'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 });

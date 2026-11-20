@@ -18,20 +18,24 @@ describe('MfaTotpEnableRequestSchema', () => {
     });
 
     it('rejects a payload without the code of the new authenticator', () => {
-        expect(() =>
-            MfaTotpEnableRequestSchema.parse({
-                password: 'Current-pass1',
-            })
-        ).toThrow();
+        const result = MfaTotpEnableRequestSchema.safeParse({
+            password: 'Current-pass1',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['code'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects a code with a non-digit character', () => {
-        expect(() =>
-            MfaTotpEnableRequestSchema.parse({
-                ...payload,
-                code: 'abc123',
-            })
-        ).toThrow();
+        const result = MfaTotpEnableRequestSchema.safeParse({
+            ...payload,
+            code: 'abc123',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['code'], code: 'invalid_format' }),
+        ]);
     });
 
     it('accepts a payload without password', () => {
@@ -43,12 +47,14 @@ describe('MfaTotpEnableRequestSchema', () => {
     });
 
     it('rejects an empty current password', () => {
-        expect(() =>
-            MfaTotpEnableRequestSchema.parse({
-                ...payload,
-                password: '',
-            })
-        ).toThrow();
+        const result = MfaTotpEnableRequestSchema.safeParse({
+            ...payload,
+            password: '',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['password'], code: 'too_small' }),
+        ]);
     });
 
     it('keeps an optional backup code', () => {
@@ -61,21 +67,25 @@ describe('MfaTotpEnableRequestSchema', () => {
     });
 
     it('rejects the discarded method field', () => {
-        expect(() =>
-            MfaTotpEnableRequestSchema.parse({
-                ...payload,
-                method: 'code',
-            })
-        ).toThrow();
+        const result = MfaTotpEnableRequestSchema.safeParse({
+            ...payload,
+            method: 'code',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            MfaTotpEnableRequestSchema.parse({
-                ...payload,
-                username: 'johnSmith123',
-            })
-        ).toThrow();
+        const result = MfaTotpEnableRequestSchema.safeParse({
+            ...payload,
+            username: 'johnSmith123',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a code of 32 characters and rejects one of 33', () => {
@@ -85,11 +95,13 @@ describe('MfaTotpEnableRequestSchema', () => {
                 code: '1'.repeat(32),
             })
         ).not.toThrow();
-        expect(() =>
-            MfaTotpEnableRequestSchema.parse({
-                ...payload,
-                code: '1'.repeat(33),
-            })
-        ).toThrow();
+        const result = MfaTotpEnableRequestSchema.safeParse({
+            ...payload,
+            code: '1'.repeat(33),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['code'], code: 'too_big' }),
+        ]);
     });
 });

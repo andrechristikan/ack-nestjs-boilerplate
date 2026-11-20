@@ -43,17 +43,29 @@ describe('ProjectResponseSchema', () => {
     });
 
     it('rejects a createdAt that is not a Date', () => {
-        expect(() =>
-            ProjectResponseSchema.parse({
-                ...row,
-                createdAt: createdAt.toISOString(),
-            })
-        ).toThrow();
+        const result = ProjectResponseSchema.safeParse({
+            ...row,
+            createdAt: createdAt.toISOString(),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['createdAt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a missing description', () => {
         const { description: _description, ...rest } = row;
 
-        expect(() => ProjectResponseSchema.parse(rest)).toThrow();
+        const result = ProjectResponseSchema.safeParse(rest);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['description'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

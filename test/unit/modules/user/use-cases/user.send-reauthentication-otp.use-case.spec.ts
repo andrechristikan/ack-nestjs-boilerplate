@@ -43,7 +43,6 @@ describe('UserSendReauthenticationOtpUseCase', () => {
     const dto = { action: EnumUserReauthenticationAction.mobileNumberDelete };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );

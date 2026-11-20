@@ -22,8 +22,13 @@ describe('ActivityLogRoleMetadataSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ActivityLogRoleMetadataSchema.parse({ ...payload, extra: true })
-        ).toThrow();
+        const result = ActivityLogRoleMetadataSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

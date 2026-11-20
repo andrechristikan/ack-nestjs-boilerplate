@@ -21,29 +21,37 @@ describe('AnalyticImpossibleTravelListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            AnalyticImpossibleTravelListRequestSchema.parse({
-                page: 1,
-                extra: true,
-            })
-        ).toThrow();
+        const result = AnalyticImpossibleTravelListRequestSchema.safeParse({
+            page: 1,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search, windowMs, and the date range', () => {
         expect(
             AnalyticImpossibleTravelListRequestSchema.safeParse({ search: 'x' })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
         expect(
             AnalyticImpossibleTravelListRequestSchema.safeParse({
                 windowMs: 1000,
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
         expect(
             AnalyticImpossibleTravelListRequestSchema.safeParse({
                 startDate: '2026-01-01T00:00:00.000Z',
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it.each([
@@ -56,8 +64,13 @@ describe('AnalyticImpossibleTravelListRequestSchema', () => {
     ])('rejects the orderBy %s', orderBy => {
         expect(
             AnalyticImpossibleTravelListRequestSchema.safeParse({ orderBy })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -104,15 +117,25 @@ describe('AnalyticImpossibleTravelListRequestSchema', () => {
     ])('rejects the orderBy %s', orderBy => {
         expect(
             AnalyticImpossibleTravelListRequestSchema.safeParse({ orderBy })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             AnalyticImpossibleTravelListRequestSchema.safeParse({
                 orderBy: ['highestValue', 'highestValue'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

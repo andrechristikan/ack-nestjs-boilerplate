@@ -43,6 +43,10 @@ describe('DatabaseResponseSchema', () => {
     it('rejects a missing required field', () => {
         const { id: _id, ...withoutId } = row;
 
-        expect(() => DatabaseResponseSchema.parse(withoutId)).toThrow();
+        const result = DatabaseResponseSchema.safeParse(withoutId);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['id'], code: 'invalid_type' }),
+        ]);
     });
 });

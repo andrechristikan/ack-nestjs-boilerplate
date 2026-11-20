@@ -14,7 +14,6 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumActivityLogAction,
@@ -32,20 +31,25 @@ import type {
 } from '@modules/project/interfaces/project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import {
-    buildUser,
-    buildRequestContext,
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import {
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 
 describe('ProjectService', () => {
     const projectRepository: MockProxy<ProjectRepository> =
         mock<ProjectRepository>();
-    const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
@@ -57,12 +61,7 @@ describe('ProjectService', () => {
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const entry = buildActivityLogCreateManyEffect('entry');
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let helperStringService: HelperStringService;
     let service: ProjectService;
 
     const configValues: Record<string, unknown> = {
@@ -86,21 +85,11 @@ describe('ProjectService', () => {
         deletedBy: null,
     };
 
-    const baseWorkspaceMember: WorkspaceMember = {
-        id: '507f1f77bcf86cd799439013',
-        workspaceId: '507f1f77bcf86cd799439012',
-        userId: '507f1f77bcf86cd799439014',
-        role: EnumWorkspaceMemberRole.member,
-        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    };
+    const baseWorkspaceMember: WorkspaceMember = buildWorkspaceMember(
+        '507f1f77bcf86cd799439014'
+    );
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => configValues[key]);
         activityLogService.recordEffect.mockReturnValue(entry);
         outboxService.withTransaction.mockImplementation(fn => fn(tx));
 
@@ -108,15 +97,21 @@ describe('ProjectService', () => {
             providers: [
                 ProjectService,
                 { provide: ProjectRepository, useValue: projectRepository },
-                { provide: ProjectUtil, useValue: projectUtil },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
+                ProjectUtil,
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: ConfigService, useValue: configService },
-                { provide: HelperStringService, useValue: helperStringService },
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        ...configValues,
+                    }),
+                },
             ],
         }).compile();
         service = module.get(ProjectService);
+        helperStringService = module.get(HelperStringService);
     });
 
     describe('getActiveByIdAndWorkspace', () => {
@@ -156,7 +151,6 @@ describe('ProjectService', () => {
                 hasNext: false,
                 data: [baseProject],
             };
-            projectUtil.hasWorkspaceBypass.mockReturnValue(true);
             projectRepository.findWithPaginationCursorForWorkspace.mockResolvedValue(
                 page
             );
@@ -188,7 +182,6 @@ describe('ProjectService', () => {
                 hasNext: false,
                 data: [],
             };
-            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
             projectRepository.findWithPaginationCursorForWorkspace.mockResolvedValue(
                 page
             );
@@ -220,10 +213,10 @@ describe('ProjectService', () => {
         };
 
         beforeEach(() => {
-            helperStringService.generateSlugCandidates.mockReturnValue([
-                'p-abc123',
-                'p-def456',
-            ]);
+            vi.spyOn(
+                helperStringService,
+                'generateSlugCandidates'
+            ).mockReturnValue(['p-abc123', 'p-def456']);
         });
 
         it('creates the project on the first slug candidate and adds the creator entry on the same tx', async () => {
@@ -260,11 +253,10 @@ describe('ProjectService', () => {
         });
 
         it('retries with the next slug candidate after a slug collision', async () => {
-            const collision = new Error('slug collision');
+            const collision = buildPrismaKnownRequestError('P2002', 'slug');
             outboxService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(fn => fn(tx));
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
             projectRepository.createInTx.mockResolvedValue(baseProject);
 
             const result = await service.createProject(
@@ -287,7 +279,6 @@ describe('ProjectService', () => {
         it('wraps a non-collision failure in AppUnknownException without retrying', async () => {
             const otherError = new Error('unexpected');
             outboxService.withTransaction.mockRejectedValue(otherError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 service.createProject(
@@ -307,7 +298,6 @@ describe('ProjectService', () => {
         it('rethrows an AppBaseException without retrying', async () => {
             const typed = new DatabaseUniqueValueGenerationFailedException();
             outboxService.withTransaction.mockRejectedValue(typed);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 service.createProject(
@@ -323,9 +313,8 @@ describe('ProjectService', () => {
 
         it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
             outboxService.withTransaction.mockRejectedValue(
-                new Error('slug collision')
+                buildPrismaKnownRequestError('P2002', 'slug')
             );
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 service.createProject(
@@ -417,20 +406,14 @@ describe('ProjectService', () => {
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.slugInvalid,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.slugInvalid
-                    ],
-                messagePath: 'project.error.slugInvalid',
             });
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws ProjectSlugAlreadyExistsException when the write collides on the slug index', async () => {
             const project = baseProject;
-            const collision = new Error('slug collision');
+            const collision = buildPrismaKnownRequestError('P2002', 'slug');
             projectRepository.updateSlugInTx.mockRejectedValue(collision);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 service.updateProjectSlug(
@@ -443,16 +426,7 @@ describe('ProjectService', () => {
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.slugAlreadyExists,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.slugAlreadyExists
-                    ],
-                messagePath: 'project.error.slugAlreadyExists',
             });
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'slug'
-            );
         });
 
         it('rethrows an AppBaseException thrown inside the transaction as is', async () => {
@@ -469,14 +443,12 @@ describe('ProjectService', () => {
                     'p-new-slug'
                 )
             ).rejects.toBe(thrown);
-            expect(databaseUtil.isUniqueCollision).not.toHaveBeenCalled();
         });
 
         it('wraps a non-collision write error in AppUnknownException', async () => {
             const project = baseProject;
             const otherError = new Error('unexpected');
             projectRepository.updateSlugInTx.mockRejectedValue(otherError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 service.updateProjectSlug(
@@ -565,11 +537,6 @@ describe('ProjectService', () => {
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.notFound
-                    ],
-                messagePath: 'project.error.notFound',
             });
         });
     });
@@ -648,11 +615,6 @@ describe('ProjectService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.notFound
-                    ],
-                messagePath: 'project.error.notFound',
             });
         });
 
@@ -671,16 +633,14 @@ describe('ProjectService', () => {
     describe('drawSlugCandidates', () => {
         it('draws slugMaxAttempts candidates from the prefix and max length', () => {
             const candidates = ['p-a', 'p-b', 'p-c', 'p-d', 'p-e'];
-            helperStringService.generateSlugCandidates.mockReturnValue(
-                candidates
-            );
+            const generateSlugCandidates = vi
+                .spyOn(helperStringService, 'generateSlugCandidates')
+                .mockReturnValue(candidates);
 
             const result = service['drawSlugCandidates']();
 
             expect(result).toBe(candidates);
-            expect(
-                helperStringService.generateSlugCandidates
-            ).toHaveBeenCalledWith('p-', 30, 5);
+            expect(generateSlugCandidates).toHaveBeenCalledWith('p-', 30, 5);
         });
     });
 

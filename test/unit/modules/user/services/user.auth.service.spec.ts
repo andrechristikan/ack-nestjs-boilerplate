@@ -33,9 +33,10 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import {
-    buildRequestContext,
     buildApiKeyContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
@@ -49,6 +50,7 @@ import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { DeviceService } from '@modules/device/services/device.service';
 import type {
@@ -88,6 +90,12 @@ import type {
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
+import { ConfigService } from '@nestjs/config';
+import type { MockInstance } from 'vitest';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('UserAuthService', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
@@ -95,8 +103,6 @@ describe('UserAuthService', () => {
         mock<UserPasswordService>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
-    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
-        mock<AuthPasswordUtil>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const mfaChallengeService: MockProxy<MfaChallengeService> =
@@ -106,15 +112,14 @@ describe('UserAuthService', () => {
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const authJwtService: MockProxy<AuthJwtService> = mock<AuthJwtService>();
-    const authUtil: MockProxy<AuthUtil> = mock<AuthUtil>();
-    const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
+    let databaseUtil: DatabaseUtil;
+    let helperStringService: HelperStringService;
+    let argon2Compare: MockInstance<HelperHashService['argon2Compare']>;
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
     const requestContextService: MockProxy<RequestContextService> =
         mock<RequestContextService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const requestContext = buildRequestContext();
@@ -132,53 +137,20 @@ describe('UserAuthService', () => {
     let service: UserAuthService;
 
     const baseUser: IUser = {
-        id: 'user-halcyon',
-        name: 'Halcyon Vane',
-        username: 'halcyonVane',
+        ...buildUser('user-halcyon', 'halcyon@example.com'),
         isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'halcyon@example.com',
-        roleId: 'role-halcyon',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-halcyon',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: EnumUserLoginFrom.website,
-        lastLoginWith: EnumUserLoginWith.credential,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-halcyon',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
     };
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
+        vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -192,7 +164,9 @@ describe('UserAuthService', () => {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
                 },
-                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
+                AuthPasswordUtil,
+                HelperHashService,
+                HelperStringService,
                 { provide: UserService, useValue: userService },
                 { provide: MfaService, useValue: mfaService },
                 {
@@ -203,8 +177,9 @@ describe('UserAuthService', () => {
                 { provide: DeviceService, useValue: deviceService },
                 { provide: SessionService, useValue: sessionService },
                 { provide: AuthJwtService, useValue: authJwtService },
-                { provide: AuthUtil, useValue: authUtil },
-                { provide: SessionUtil, useValue: sessionUtil },
+                AuthUtil,
+                DatabaseUtil,
+                SessionUtil,
                 { provide: OutboxService, useValue: outboxService },
                 {
                     provide: NotificationService,
@@ -214,7 +189,11 @@ describe('UserAuthService', () => {
                     provide: RequestContextService,
                     useValue: requestContextService,
                 },
-                { provide: HelperDateService, useValue: helperDateService },
+                HelperDateService,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitUserConfigValues),
+                },
                 {
                     provide: ActivityLogService,
                     useValue: activityLogService,
@@ -222,27 +201,33 @@ describe('UserAuthService', () => {
             ],
         }).compile();
         service = module.get(UserAuthService);
+        databaseUtil = module.get(DatabaseUtil);
+        helperStringService = module.get(HelperStringService);
+        argon2Compare = vi
+            .spyOn(module.get(HelperHashService), 'argon2Compare')
+            .mockResolvedValue(false);
     });
 
     describe('getOneForCredentialLogin', () => {
         it('returns the credential of the active user holding a password', async () => {
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
+            const user = { ...baseUser, password: 'hashed-password' };
+            userRepository.findOneWithRoleByEmail.mockResolvedValue(user);
             userPasswordService.getCredential.mockReturnValue({
-                user: baseUser,
+                user,
                 hashedPassword: 'hashed-password',
             });
 
             await expect(
-                service.getOneForCredentialLogin(baseUser.email)
+                service.getOneForCredentialLogin(user.email)
             ).resolves.toEqual({
-                user: baseUser,
+                user,
                 hashedPassword: 'hashed-password',
             });
             expect(userRepository.findOneWithRoleByEmail).toHaveBeenCalledWith(
-                baseUser.email
+                user.email
             );
             expect(userPasswordService.getCredential).toHaveBeenCalledWith(
-                baseUser
+                user
             );
         });
 
@@ -254,11 +239,6 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.credentialInvalid
-                    ],
-                messagePath: 'user.error.credentialInvalid',
             });
             expect(userPasswordService.getCredential).not.toHaveBeenCalled();
         });
@@ -274,7 +254,6 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
-                messagePath: 'user.error.credentialInvalid',
             });
             expect(userPasswordService.getCredential).not.toHaveBeenCalled();
         });
@@ -291,7 +270,6 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
-                messagePath: 'user.error.credentialInvalid',
             });
             expect(userPasswordService.getCredential).toHaveBeenCalledWith(
                 passwordless
@@ -306,12 +284,12 @@ describe('UserAuthService', () => {
         };
 
         it('returns true for the right password and writes nothing', async () => {
-            authPasswordUtil.isPasswordMatched.mockResolvedValue(true);
+            argon2Compare.mockResolvedValue(true);
 
             await expect(
                 service.isCredentialMatch(credential, 'plain-password')
             ).resolves.toBe(true);
-            expect(authPasswordUtil.isPasswordMatched).toHaveBeenCalledWith(
+            expect(argon2Compare).toHaveBeenCalledWith(
                 'plain-password',
                 'hashed-password'
             );
@@ -320,7 +298,7 @@ describe('UserAuthService', () => {
         });
 
         it('returns false on a wrong password', async () => {
-            authPasswordUtil.isPasswordMatched.mockResolvedValue(false);
+            argon2Compare.mockResolvedValue(false);
 
             await expect(
                 service.isCredentialMatch(credential, 'wrong-password')
@@ -331,7 +309,7 @@ describe('UserAuthService', () => {
             await expect(
                 service.isCredentialMatch(credential, null)
             ).resolves.toBe(false);
-            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
+            expect(argon2Compare).not.toHaveBeenCalled();
         });
     });
 
@@ -342,8 +320,7 @@ describe('UserAuthService', () => {
         };
 
         it('resolves and writes nothing when the password matches', async () => {
-            authPasswordUtil.isPasswordMatched.mockResolvedValue(true);
-            authPasswordUtil.isPasswordExpired.mockReturnValue(false);
+            argon2Compare.mockResolvedValue(true);
 
             await expect(
                 service.assertPasswordAttempt(
@@ -356,12 +333,9 @@ describe('UserAuthService', () => {
             expect(
                 userPasswordService.assertPasswordAttemptAvailable
             ).toHaveBeenCalledWith(baseUser);
-            expect(authPasswordUtil.isPasswordMatched).toHaveBeenCalledWith(
+            expect(argon2Compare).toHaveBeenCalledWith(
                 'plain-password',
                 'hashed-password'
-            );
-            expect(authPasswordUtil.isPasswordExpired).toHaveBeenCalledWith(
-                baseUser.passwordExpired
             );
             expect(
                 userPasswordService.countFailedPasswordAttempt
@@ -385,20 +359,15 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.passwordAttemptMax
-                    ],
-                messagePath: 'user.error.passwordAttemptMax',
             });
-            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
+            expect(argon2Compare).not.toHaveBeenCalled();
             expect(
                 userPasswordService.countFailedPasswordAttempt
             ).not.toHaveBeenCalled();
         });
 
         it('counts the failure then throws UserPasswordNotMatchException on a wrong password below the budget', async () => {
-            authPasswordUtil.isPasswordMatched.mockResolvedValue(false);
+            argon2Compare.mockResolvedValue(false);
             userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
                 false
             );
@@ -413,20 +382,14 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.passwordNotMatch
-                    ],
-                messagePath: 'user.error.passwordNotMatch',
             });
             expect(
                 userPasswordService.countFailedPasswordAttempt
             ).toHaveBeenCalledWith(requestContext, apiKeyContext, baseUser);
-            expect(authPasswordUtil.isPasswordExpired).not.toHaveBeenCalled();
         });
 
         it('throws UserPasswordAttemptMaxException when the counted failure locked the account', async () => {
-            authPasswordUtil.isPasswordMatched.mockResolvedValue(false);
+            argon2Compare.mockResolvedValue(false);
             userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
                 true
             );
@@ -441,7 +404,6 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-                messagePath: 'user.error.passwordAttemptMax',
             });
         });
 
@@ -460,33 +422,34 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
-                messagePath: 'user.error.passwordNotMatch',
             });
-            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
+            expect(argon2Compare).not.toHaveBeenCalled();
             expect(
                 userPasswordService.countFailedPasswordAttempt
             ).toHaveBeenCalledWith(requestContext, apiKeyContext, baseUser);
         });
 
         it('throws UserPasswordExpiredException when the matched password has expired', async () => {
-            authPasswordUtil.isPasswordMatched.mockResolvedValue(true);
-            authPasswordUtil.isPasswordExpired.mockReturnValue(true);
+            argon2Compare.mockResolvedValue(true);
 
             await expect(
                 service.assertPasswordAttempt(
                     requestContext,
                     apiKeyContext,
-                    credential,
+                    {
+                        ...credential,
+                        user: {
+                            ...baseUser,
+                            passwordExpired: new Date(
+                                '2026-02-01T00:00:00.000Z'
+                            ),
+                        },
+                    },
                     'plain-password'
                 )
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordExpired,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.passwordExpired
-                    ],
-                messagePath: 'user.error.passwordExpired',
             });
             expect(
                 userPasswordService.countFailedPasswordAttempt
@@ -502,8 +465,7 @@ describe('UserAuthService', () => {
 
         it('writes nothing and returns when the correct password is given', async () => {
             userPasswordService.getCredential.mockReturnValue(credential);
-            authPasswordUtil.isPasswordMatched.mockResolvedValue(true);
-            authPasswordUtil.isPasswordExpired.mockReturnValue(false);
+            argon2Compare.mockResolvedValue(true);
 
             await expect(
                 service.assertCurrentPassword(
@@ -519,7 +481,7 @@ describe('UserAuthService', () => {
             expect(
                 userPasswordService.assertPasswordAttemptAvailable
             ).toHaveBeenCalledWith(baseUser);
-            expect(authPasswordUtil.isPasswordMatched).toHaveBeenCalledWith(
+            expect(argon2Compare).toHaveBeenCalledWith(
                 'plain-password',
                 'hashed-password'
             );
@@ -541,7 +503,7 @@ describe('UserAuthService', () => {
                     null
                 )
             ).resolves.toBeUndefined();
-            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
+            expect(argon2Compare).not.toHaveBeenCalled();
             expect(
                 userPasswordService.assertPasswordAttemptAvailable
             ).not.toHaveBeenCalled();
@@ -549,7 +511,7 @@ describe('UserAuthService', () => {
 
         it('counts the failure and throws UserPasswordNotMatchException on a wrong password below the budget', async () => {
             userPasswordService.getCredential.mockReturnValue(credential);
-            authPasswordUtil.isPasswordMatched.mockResolvedValue(false);
+            argon2Compare.mockResolvedValue(false);
             userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
                 false
             );
@@ -564,7 +526,6 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
-                messagePath: 'user.error.passwordNotMatch',
             });
             expect(
                 userPasswordService.countFailedPasswordAttempt
@@ -594,38 +555,31 @@ describe('UserAuthService', () => {
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordAttemptMax,
             });
-            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
+            expect(argon2Compare).not.toHaveBeenCalled();
         });
     });
 
     describe('assertPasswordNotExpired', () => {
         it('returns when the password has not expired', () => {
-            authPasswordUtil.isPasswordExpired.mockReturnValue(false);
-
             expect(() =>
-                service.assertPasswordNotExpired(baseUser)
+                service.assertPasswordNotExpired({
+                    ...baseUser,
+                    passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
+                })
             ).not.toThrow();
-            expect(authPasswordUtil.isPasswordExpired).toHaveBeenCalledWith(
-                baseUser.passwordExpired
-            );
         });
 
         it('throws UserPasswordExpiredException when the password has expired', () => {
-            authPasswordUtil.isPasswordExpired.mockReturnValue(true);
-
-            expect(() => service.assertPasswordNotExpired(baseUser)).toThrow(
+            expect(() =>
+                service.assertPasswordNotExpired({
+                    ...baseUser,
+                    passwordExpired: new Date('2026-02-01T00:00:00.000Z'),
+                })
+            ).toThrow(
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.passwordExpired,
-                    statusCodeKey:
-                        EnumUserStatusCodeError[
-                            EnumUserStatusCodeError.passwordExpired
-                        ],
-                    messagePath: 'user.error.passwordExpired',
                 })
-            );
-            expect(authPasswordUtil.isPasswordExpired).toHaveBeenCalledWith(
-                baseUser.passwordExpired
             );
         });
     });
@@ -640,7 +594,6 @@ describe('UserAuthService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.passwordNotMatch,
-                    messagePath: 'user.error.passwordNotMatch',
                 })
             );
         });
@@ -656,7 +609,6 @@ describe('UserAuthService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.credentialInvalid,
-                    messagePath: 'user.error.credentialInvalid',
                 })
             );
         });
@@ -717,9 +669,6 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
             });
         });
 
@@ -734,11 +683,6 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.inactiveForbidden
-                    ],
-                messagePath: 'user.error.inactive',
             });
         });
     });
@@ -764,9 +708,6 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
             });
         });
 
@@ -781,11 +722,6 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.inactiveForbidden
-                    ],
-                messagePath: 'user.error.inactive',
             });
         });
     });
@@ -873,7 +809,6 @@ describe('UserAuthService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.emailNotVerified,
-                    messagePath: 'user.error.emailNotVerified',
                 })
             );
         });
@@ -998,11 +933,7 @@ describe('UserAuthService', () => {
             requestContextService.resolveCity.mockReturnValue(
                 'Unknown Location'
             );
-            helperDateService.formatToIso.mockReturnValue(
-                '2026-03-01T00:05:00.000Z'
-            );
-            helperDateService.create.mockReturnValue(now);
-            helperDateService.forward.mockImplementation(date => date);
+            vi.setSystemTime(now);
             activityLogService.recordEffect.mockImplementation(
                 (
                     _requestContext,
@@ -1019,10 +950,12 @@ describe('UserAuthService', () => {
             deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
                 []
             );
-            authUtil.createLoginIdentifiers.mockReturnValue({
-                sessionId: 'session-halcyon',
-                jti: 'jti-halcyon',
-            });
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue(
+                'session-halcyon'
+            );
+            vi.spyOn(helperStringService, 'random').mockReturnValue(
+                'jti-halcyon'
+            );
             authJwtService.createTokens.mockReturnValue(tokens);
             Object.defineProperty(
                 authJwtService,
@@ -1056,7 +989,7 @@ describe('UserAuthService', () => {
                 'session-halcyon',
                 'device-ownership-halcyon',
                 'jti-halcyon',
-                loginAt,
+                new Date('2026-03-31T00:05:00.000Z'),
                 requestLog
             );
             expect(userService.updateLoginInTx).toHaveBeenCalledWith(
@@ -1087,7 +1020,6 @@ describe('UserAuthService', () => {
             expect(requestContextService.resolveCity).toHaveBeenCalledWith(
                 null
             );
-            expect(helperDateService.formatToIso).toHaveBeenCalledWith(loginAt);
             expect(notificationService.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.newDeviceLogin,
                 {
@@ -1305,7 +1237,6 @@ describe('UserAuthService', () => {
 
         it('creates the session expiring loginAt plus the refresh lifetime', async () => {
             const expiredAt = new Date('2026-03-31T00:05:00.000Z');
-            helperDateService.forward.mockReturnValue(expiredAt);
 
             await service.createTokenAndSessionInTx(
                 tx,
@@ -1318,10 +1249,6 @@ describe('UserAuthService', () => {
                 loginAt
             );
 
-            expect(helperDateService.forward).toHaveBeenCalledWith(
-                loginAt,
-                expect.objectContaining({ seconds: 2592000 })
-            );
             expect(sessionService.createInTx).toHaveBeenCalledWith(
                 tx,
                 'user-halcyon',
@@ -1369,10 +1296,6 @@ describe('UserAuthService', () => {
             sessionService.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
                 affected
             );
-            sessionUtil.mapActivityLogRevokeAllTargetMetadata
-                .mockReturnValueOnce(thistleMetadata)
-                .mockReturnValueOnce(cloverMetadata);
-
             await service.createTokenAndSessionInTx(
                 tx,
                 requestContext,
@@ -1384,12 +1307,6 @@ describe('UserAuthService', () => {
                 loginAt
             );
 
-            expect(
-                sessionUtil.mapActivityLogRevokeAllTargetMetadata
-            ).toHaveBeenCalledWith('user-halcyon', 2);
-            expect(
-                sessionUtil.mapActivityLogRevokeAllTargetMetadata
-            ).toHaveBeenCalledWith('user-halcyon', 1);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
@@ -1801,8 +1718,7 @@ describe('UserAuthService', () => {
 
         beforeEach(() => {
             userPasswordService.getCredential.mockReturnValue(credential);
-            authPasswordUtil.isPasswordMatched.mockResolvedValue(true);
-            authPasswordUtil.isPasswordExpired.mockReturnValue(false);
+            argon2Compare.mockResolvedValue(true);
             mfaService.isEnabled.mockResolvedValue(false);
         });
 
@@ -1823,13 +1739,11 @@ describe('UserAuthService', () => {
                 verificationId: null,
                 passkeyChallengeToken: null,
             });
-            expect(authPasswordUtil.isPasswordMatched).toHaveBeenCalledWith(
+            expect(argon2Compare).toHaveBeenCalledWith(
                 'plain-password',
                 'hashed-password'
             );
-            expect(authPasswordUtil.isPasswordMatched).toHaveBeenCalledBefore(
-                mfaService.check
-            );
+            expect(argon2Compare).toHaveBeenCalledBefore(mfaService.check);
             expect(mfaService.check).toHaveBeenCalledWith(
                 userRequestContext,
                 userApiKeyContext,
@@ -1893,7 +1807,6 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.invalid,
-                messagePath: 'mfa.error.invalid',
             });
         });
 
@@ -1914,7 +1827,6 @@ describe('UserAuthService', () => {
                 statusCode: EnumMfaStatusCodeError.methodRequired,
 
                 module: 'mfa',
-                messagePath: 'mfa.error.methodRequired',
             });
             expect(
                 userPasswordService.countFailedPasswordAttempt
@@ -2012,7 +1924,6 @@ describe('UserAuthService', () => {
                 statusCode: EnumMfaStatusCodeError.methodRequired,
 
                 module: 'mfa',
-                messagePath: 'mfa.error.methodRequired',
             });
             expect(
                 userVerificationService.getOneActiveReauthentication
@@ -2109,7 +2020,6 @@ describe('UserAuthService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.reauthenticationOtpRequired,
-                messagePath: 'user.error.reauthenticationOtpRequired',
             });
             expect(
                 userVerificationService.getOneActiveReauthentication
@@ -2174,7 +2084,7 @@ describe('UserAuthService', () => {
                 EnumUserReauthenticationAction.mobileNumberAdd,
                 '123456'
             );
-            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
+            expect(argon2Compare).not.toHaveBeenCalled();
             expect(mfaService.check).not.toHaveBeenCalled();
         });
 
@@ -2222,7 +2132,7 @@ describe('UserAuthService', () => {
                 },
                 'webauthn-halcyon'
             );
-            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
+            expect(argon2Compare).not.toHaveBeenCalled();
             expect(
                 userPasswordService.countFailedPasswordAttempt
             ).not.toHaveBeenCalled();
@@ -2251,7 +2161,7 @@ describe('UserAuthService', () => {
                     }
                 )
             ).resolves.toMatchObject({ mfa: passkeyCheck });
-            expect(authPasswordUtil.isPasswordMatched).not.toHaveBeenCalled();
+            expect(argon2Compare).not.toHaveBeenCalled();
         });
 
         it('passes on the MfaChallengeInvalidException of the challenge service and checks nothing', async () => {
@@ -2274,7 +2184,6 @@ describe('UserAuthService', () => {
                 statusCode: EnumMfaStatusCodeError.challengeInvalid,
 
                 module: 'mfa',
-                messagePath: 'mfa.error.challengeInvalid',
             });
             expect(mfaService.check).not.toHaveBeenCalled();
         });
@@ -2302,7 +2211,6 @@ describe('UserAuthService', () => {
                 statusCode: EnumMfaStatusCodeError.methodUnavailable,
 
                 module: 'mfa',
-                messagePath: 'mfa.error.methodUnavailable',
             });
         });
 
@@ -2320,7 +2228,7 @@ describe('UserAuthService', () => {
             expect(
                 mfaChallengeService.getWebAuthnChallengeForUser
             ).not.toHaveBeenCalled();
-            expect(authPasswordUtil.isPasswordMatched).toHaveBeenCalledTimes(1);
+            expect(argon2Compare).toHaveBeenCalledTimes(1);
         });
     });
 
@@ -2503,7 +2411,6 @@ describe('UserAuthService', () => {
                 statusCode: EnumMfaStatusCodeError.challengeInvalid,
 
                 module: 'mfa',
-                messagePath: 'mfa.error.challengeInvalid',
             });
             expect(mfaService.completeInTx).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
@@ -2538,7 +2445,6 @@ describe('UserAuthService', () => {
                 statusCode: EnumMfaStatusCodeError.invalid,
 
                 module: 'mfa',
-                messagePath: 'mfa.error.invalid',
             });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });

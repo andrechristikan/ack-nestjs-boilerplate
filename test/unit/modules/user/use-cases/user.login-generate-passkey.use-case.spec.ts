@@ -26,7 +26,6 @@ describe('UserLoginGeneratePasskeyUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         mfaPasskeyService.getAssertionOptions.mockResolvedValue(passkeyOptions);
         mfaChallengeService.create.mockResolvedValue({
             challengeToken: 'token-bramble',

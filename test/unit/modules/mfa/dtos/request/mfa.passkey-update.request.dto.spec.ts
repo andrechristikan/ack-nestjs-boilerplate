@@ -16,14 +16,23 @@ describe('MfaPasskeyUpdateRequestSchema', () => {
     });
 
     it('rejects a missing, blank, and 51-character name', () => {
-        expect(MfaPasskeyUpdateRequestSchema.safeParse({}).success).toBe(false);
         expect(
-            MfaPasskeyUpdateRequestSchema.safeParse({ name: '   ' }).success
-        ).toBe(false);
+            MfaPasskeyUpdateRequestSchema.safeParse({}).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'invalid_type' }),
+        ]);
+        expect(
+            MfaPasskeyUpdateRequestSchema.safeParse({ name: '   ' }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_small' }),
+        ]);
         expect(
             MfaPasskeyUpdateRequestSchema.safeParse({ name: 'a'.repeat(51) })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
@@ -32,6 +41,8 @@ describe('MfaPasskeyUpdateRequestSchema', () => {
             id: 'x',
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

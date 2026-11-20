@@ -26,22 +26,42 @@ describe('AnalyticAnomalyLoginSpikeIpSummaryResponseSchema', () => {
     });
 
     it('rejects a row without metadata', () => {
-        expect(() =>
-            AnalyticAnomalyLoginSpikeIpSummaryResponseSchema.parse({
+        const result =
+            AnalyticAnomalyLoginSpikeIpSummaryResponseSchema.safeParse({
                 count: row.count,
                 windowStart: row.windowStart,
                 windowEnd: row.windowEnd,
                 computedAt: row.computedAt,
-            })
-        ).toThrow();
+            });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['metadata'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a summary without the window and computedAt keys', () => {
-        expect(() =>
-            AnalyticAnomalyLoginSpikeIpSummaryResponseSchema.parse({
+        const result =
+            AnalyticAnomalyLoginSpikeIpSummaryResponseSchema.safeParse({
                 count: row.count,
                 metadata: row.metadata,
-            })
-        ).toThrow();
+            });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['windowStart'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['windowEnd'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['computedAt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

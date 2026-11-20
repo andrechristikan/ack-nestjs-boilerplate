@@ -1,4 +1,10 @@
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -10,9 +16,9 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -67,7 +73,6 @@ describe('MfaRegisterPasskeyUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let useCase: MfaRegisterPasskeyUseCase;
 
@@ -115,7 +120,6 @@ describe('MfaRegisterPasskeyUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -137,7 +141,11 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(MfaRegisterPasskeyUseCase);
@@ -433,7 +441,6 @@ describe('MfaRegisterPasskeyUseCase', () => {
             ).rejects.toBe(failure);
 
             expect(outboxService.addInTx).not.toHaveBeenCalled();
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('answers MfaInvalidException on a write conflict after an MFA proof', async () => {
@@ -446,9 +453,11 @@ describe('MfaRegisterPasskeyUseCase', () => {
                     passkey: null,
                 },
             });
-            outboxService.withTransaction.mockRejectedValue(new Error('wc'));
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            outboxService.withTransaction.mockRejectedValue(
+                new Prisma.PrismaClientKnownRequestError('conflict', {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                })
             );
 
             await expect(
@@ -463,9 +472,11 @@ describe('MfaRegisterPasskeyUseCase', () => {
         });
 
         it('answers MfaChallengeInvalidException on a write conflict with no MFA proof', async () => {
-            outboxService.withTransaction.mockRejectedValue(new Error('wc'));
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            outboxService.withTransaction.mockRejectedValue(
+                new Prisma.PrismaClientKnownRequestError('conflict', {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                })
             );
 
             await expect(
@@ -482,7 +493,6 @@ describe('MfaRegisterPasskeyUseCase', () => {
         it('wraps any other transaction failure in the unknown exception', async () => {
             const cause = new Error('boom');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

@@ -2,14 +2,6 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import {
-    EnumRoleType,
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
-} from '@generated/prisma-client/client';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
 import type {
@@ -18,8 +10,9 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import { UserForgotPasswordUseCase } from '@modules/user/use-cases/user.forgot-password.use-case';
 import {
-    buildRequestContext,
     buildApiKeyContext,
+    buildRequestContext,
+    buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserForgotPasswordUseCase', () => {
@@ -30,51 +23,7 @@ describe('UserForgotPasswordUseCase', () => {
 
     let useCase: UserForgotPasswordUseCase;
 
-    const user: IUser = {
-        id: 'user-linden',
-        name: 'Linden Frost',
-        username: 'lindenFrost',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'linden@example.com',
-        roleId: 'role-linden',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-linden',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: EnumUserLoginFrom.website,
-        lastLoginWith: EnumUserLoginWith.credential,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-linden',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
-    };
+    const user: IUser = buildUser('user-linden', 'linden@example.com');
     const forgot: IUserForgotPasswordCreate = {
         reference: 'FGT-linden',
         expiredAt: new Date('2026-03-05T00:00:00.000Z'),
@@ -86,8 +35,6 @@ describe('UserForgotPasswordUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserForgotPasswordUseCase,

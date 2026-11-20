@@ -1,14 +1,18 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { MockProxy } from 'vitest-mock-extended';
+import { Prisma } from '@generated/prisma-client/client';
 import { DatabaseClient } from '@common/database/constants/database.constant';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
 import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IDatabaseData } from '@common/database/interfaces/database.extension.interface';
 import type { DatabaseExtensionFactory } from '@common/database/factories/database.extension.factory';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 
 export interface IExtensionQueryArgs {
     model: string;
@@ -58,13 +62,16 @@ export function extractDatabaseExtension(
 export async function createDatabaseService(
     configValues: Record<string, boolean | number>,
     databaseClientFactory: MockProxy<DatabaseClientFactory>,
-    client: MockProxy<IDatabaseClient>,
-    helperDateService: MockProxy<HelperDateService>
+    client: MockProxy<IDatabaseClient>
 ): Promise<DatabaseService> {
-    const configService = buildConfigService(configValues);
+    const configService = buildConfigService({
+        ...TestUnitKitConfigValues,
+        ...configValues,
+    });
 
     const module = await Test.createTestingModule({
         providers: [
+            ...TestUnitKitProviders,
             DatabaseService,
             { provide: ConfigService, useValue: configService },
             {
@@ -72,9 +79,19 @@ export async function createDatabaseService(
                 useValue: databaseClientFactory,
             },
             { provide: DatabaseClient, useValue: client },
-            { provide: HelperDateService, useValue: helperDateService },
         ],
     }).compile();
 
     return module.get(DatabaseService);
+}
+
+export function buildPrismaKnownRequestError(
+    code: string,
+    target: string | null = null
+): Prisma.PrismaClientKnownRequestError {
+    return new Prisma.PrismaClientKnownRequestError('prisma failure', {
+        code,
+        clientVersion: '6.19.0',
+        meta: target === null ? {} : { target: [target] },
+    });
 }

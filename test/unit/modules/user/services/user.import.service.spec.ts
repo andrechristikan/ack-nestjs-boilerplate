@@ -8,14 +8,11 @@ import {
     EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
-    EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { UserImportService } from '@modules/user/services/user.import.service';
@@ -27,29 +24,35 @@ import type {
     IUserCreateWithWorkspaceInput,
     IUserImportUsernameChecks,
 } from '@modules/user/interfaces/user.interface';
+import type { MockInstance } from 'vitest';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
-import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
+import { buildUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserImportService', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
-    const userVerificationUtil: MockProxy<UserVerificationUtil> =
-        mock<UserVerificationUtil>();
-    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
-        mock<AuthPasswordUtil>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const configGet = vi.fn<(key: string) => string | number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
 
+    const now = new Date('2026-03-01T00:00:00.000Z');
+    const password = {
+        passwordHash: 'hashed',
+        passwordExpired: new Date('2026-03-01T01:00:00.000Z'),
+        passwordCreated: now,
+        passwordPeriodExpired: new Date('2026-05-30T00:00:00.000Z'),
+    };
     let service: UserImportService;
+    let databaseUtil: DatabaseUtil;
+    let helperStringService: HelperStringService;
+    let helperHashService: HelperHashService;
 
-    const configValues: Record<string, string | number> = {
+    const configValues: Record<string, unknown> = {
+        ...TestUnitUserConfigValues,
         'user.default.role': 'user',
         'user.default.country': 'US',
         'user.maxDataExport': 2,
@@ -61,82 +64,42 @@ describe('UserImportService', () => {
         isImmutable: false,
         name: 'user',
     };
-    const roleWithPolicies: IRoleWithPolicies = {
-        id: role.id,
-        name: role.name,
-        description: null,
-        type: role.type,
-        isImmutable: false,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        policies: [],
-    };
 
-    const baseUser: IUser = {
-        id: 'user-thistle',
-        name: 'Thistle Rowe',
-        username: 'thistleRowe',
-        isVerified: false,
-        verifiedAt: null,
-        email: 'thistle@example.com',
-        roleId: role.id,
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.admin,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-thistle',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: roleWithPolicies,
-    };
+    const baseUser: IUser = buildUser('user-thistle', 'thistle@example.com');
 
-    const password: IAuthPassword = {
-        passwordHash: 'hashed',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
-    };
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        configGet.mockImplementation(key => configValues[key]);
+        vi.setSystemTime(now);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserImportService,
                 { provide: UserRepository, useValue: userRepository },
-                { provide: UserUtil, useValue: userUtil },
-                { provide: UserCreateUtil, useValue: userCreateUtil },
+                UserUtil,
+                UserCreateUtil,
+                UserVerificationUtil,
+                AuthPasswordUtil,
+                DatabaseUtil,
+                HelperDateService,
+                HelperStringService,
+                HelperHashService,
                 {
-                    provide: UserVerificationUtil,
-                    useValue: userVerificationUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(configValues),
                 },
-                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         service = module.get(UserImportService);
+        databaseUtil = module.get(DatabaseUtil);
+        helperStringService = module.get(HelperStringService);
+        helperHashService = module.get(HelperHashService);
     });
 
     describe('prepareImportByAdmin', () => {
@@ -154,48 +117,46 @@ describe('UserImportService', () => {
         ];
 
         const verifiedOne: IUserCreateVerification = {
-            reference: 'ref-one',
-            token: 'hashed-token-one',
+            reference: 'VRF-ref-one',
+            token: '75c5c10f256c75b650c6ffc2e83c6588af02766efd2de28f4de34547006e8d1a',
             type: EnumVerificationType.email,
             action: null,
             mobileNumberId: null,
             to: 'thistle@example.com',
-            expiredAt: new Date('2026-02-01T00:00:00.000Z'),
-            verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
+            expiredAt: new Date('2026-03-01T00:15:00.000Z'),
+            verifiedAt: now,
             isUsed: true,
         };
         const verifiedTwo: IUserCreateVerification = {
             ...verifiedOne,
-            reference: 'ref-two',
-            token: 'hashed-token-two',
+            reference: 'VRF-ref-two',
+            token: 'adb97ffd599d30b788077856502e55d9ef5543386cd60a5106e034ebbc3acb0c',
             to: 'marigold@example.com',
         };
+        let argon2Hash: MockInstance<HelperHashService['argon2Hash']>;
 
         beforeEach(() => {
-            databaseUtil.createId
+            vi.spyOn(databaseUtil, 'createId')
                 .mockReturnValueOnce('user-id-one')
-                .mockReturnValueOnce('user-id-two');
-            authPasswordUtil.createPasswordRandom
+                .mockReturnValueOnce('user-id-two')
+                .mockReturnValueOnce('workspace-one')
+                .mockReturnValueOnce('workspace-two');
+            vi.spyOn(helperStringService, 'random')
                 .mockReturnValueOnce('password-one')
-                .mockReturnValueOnce('password-two');
-            authPasswordUtil.createPassword.mockResolvedValue(password);
-            userCreateUtil.buildPersonalWorkspaceContexts.mockReturnValue([
-                {
-                    type: EnumUserSignUpWorkspaceContextType.personal,
-                    workspaceId: 'workspace-one',
-                    slugCandidates: ['w-one'],
-                    name: "thistleRowe's Workspace",
-                },
-                {
-                    type: EnumUserSignUpWorkspaceContextType.personal,
-                    workspaceId: 'workspace-two',
-                    slugCandidates: ['w-two'],
-                    name: "marigoldFinch's Workspace",
-                },
-            ]);
-            userVerificationUtil.createVerified
-                .mockReturnValueOnce(verifiedOne)
-                .mockReturnValueOnce(verifiedTwo);
+                .mockReturnValueOnce('password-two')
+                .mockReturnValueOnce('one-a')
+                .mockReturnValueOnce('one-b')
+                .mockReturnValueOnce('one-c')
+                .mockReturnValueOnce('two-a')
+                .mockReturnValueOnce('two-b')
+                .mockReturnValueOnce('two-c')
+                .mockReturnValueOnce('token-one')
+                .mockReturnValueOnce('ref-one')
+                .mockReturnValueOnce('token-two')
+                .mockReturnValueOnce('ref-two');
+            argon2Hash = vi
+                .spyOn(helperHashService, 'argon2Hash')
+                .mockResolvedValue('hashed');
         });
 
         it('builds the import inputs for every row', async () => {
@@ -233,17 +194,6 @@ describe('UserImportService', () => {
                 'country-thistle'
             );
 
-            expect(userVerificationUtil.createVerified).toHaveBeenCalledTimes(
-                2
-            );
-            expect(userVerificationUtil.createVerified).toHaveBeenNthCalledWith(
-                1,
-                'thistle@example.com'
-            );
-            expect(userVerificationUtil.createVerified).toHaveBeenNthCalledWith(
-                2,
-                'marigold@example.com'
-            );
             expect(result.inputs[0]).toMatchObject({
                 isVerified: true,
                 verifiedAt: verifiedOne.verifiedAt,
@@ -264,25 +214,16 @@ describe('UserImportService', () => {
                 'country-thistle'
             );
 
-            expect(authPasswordUtil.createPassword).toHaveBeenCalledTimes(2);
-            expect(authPasswordUtil.createPassword).toHaveBeenNthCalledWith(
-                1,
-                'password-one',
-                { temporary: true }
-            );
-            expect(authPasswordUtil.createPassword).toHaveBeenNthCalledWith(
-                2,
-                'password-two',
-                { temporary: true }
-            );
+            expect(argon2Hash).toHaveBeenCalledTimes(2);
+            expect(argon2Hash).toHaveBeenNthCalledWith(1, 'password-one');
+            expect(argon2Hash).toHaveBeenNthCalledWith(2, 'password-two');
         });
 
         it('starts every hash before the first resolves and keeps row order', async () => {
-            const first = Promise.withResolvers<typeof password>();
-            const second = { ...password, passwordHash: 'hash-second' };
-            authPasswordUtil.createPassword
+            const first = Promise.withResolvers<string>();
+            argon2Hash
                 .mockReturnValueOnce(first.promise)
-                .mockResolvedValueOnce(second);
+                .mockResolvedValueOnce('hash-second');
 
             const pending = service.prepareImportByAdmin(
                 rows,
@@ -292,18 +233,14 @@ describe('UserImportService', () => {
             );
             await Promise.resolve();
 
-            expect(authPasswordUtil.createPassword).toHaveBeenCalledTimes(2);
-            expect(authPasswordUtil.createPassword).toHaveBeenNthCalledWith(
-                2,
-                'password-two',
-                { temporary: true }
-            );
+            expect(argon2Hash).toHaveBeenCalledTimes(2);
+            expect(argon2Hash).toHaveBeenNthCalledWith(2, 'password-two');
 
-            first.resolve(password);
+            first.resolve('hash-first');
             const result = await pending;
 
-            expect(result.passwordHasheds[0]).toBe(password);
-            expect(result.passwordHasheds[1]).toBe(second);
+            expect(result.passwordHasheds[0]?.passwordHash).toBe('hash-first');
+            expect(result.passwordHasheds[1]?.passwordHash).toBe('hash-second');
         });
     });
 
@@ -343,11 +280,6 @@ describe('UserImportService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.importEmailExist,
-                    statusCodeKey:
-                        EnumUserStatusCodeError[
-                            EnumUserStatusCodeError.importEmailExist
-                        ],
-                    messagePath: 'user.error.importEmailExist',
                     messageProperties: { emails: 'thistle@example.com' },
                 })
             );
@@ -363,11 +295,6 @@ describe('UserImportService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.importUsernameExist,
-                    statusCodeKey:
-                        EnumUserStatusCodeError[
-                            EnumUserStatusCodeError.importUsernameExist
-                        ],
-                    messagePath: 'user.error.importUsernameExist',
                     messageProperties: { usernames: 'thistleRowe' },
                 })
             );
@@ -385,7 +312,6 @@ describe('UserImportService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.importUsernameExist,
-                    messagePath: 'user.error.importUsernameExist',
                     messageProperties: { usernames: 'thistleRowe' },
                 })
             );
@@ -401,11 +327,6 @@ describe('UserImportService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.usernameContainBadWord,
-                    statusCodeKey:
-                        EnumUserStatusCodeError[
-                            EnumUserStatusCodeError.usernameContainBadWord
-                        ],
-                    messagePath: 'user.error.usernameContainBadWord',
                 })
             );
         });
@@ -482,11 +403,6 @@ describe('UserImportService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.importEmailExist,
-                    statusCodeKey:
-                        EnumUserStatusCodeError[
-                            EnumUserStatusCodeError.importEmailExist
-                        ],
-                    messagePath: 'user.error.importEmailExist',
                     messageProperties: {
                         emails: 'thistle@example.com, marigold@example.com',
                     },
@@ -500,19 +416,15 @@ describe('UserImportService', () => {
             userRepository.findByUsernames.mockResolvedValue([
                 { ...baseUser, username: 'thistleRowe' },
             ]);
-            userUtil.hasBadWord
-                .mockReturnValueOnce(false)
-                .mockReturnValueOnce(true);
-
             await expect(
-                service.getUsernameChecks(['thistleRowe', 'marigoldFinch'])
+                service.getUsernameChecks(['thistleRowe', 'damn'])
             ).resolves.toEqual({
                 existing: ['thistleRowe'],
                 badWords: [false, true],
             });
             expect(userRepository.findByUsernames).toHaveBeenCalledWith([
                 'thistleRowe',
-                'marigoldFinch',
+                'damn',
             ]);
         });
     });
@@ -562,11 +474,6 @@ describe('UserImportService', () => {
             ).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.exceedMaxDataExport,
-                statusCodeKey:
-                    EnumFileStatusCodeError[
-                        EnumFileStatusCodeError.exceedMaxDataExport
-                    ],
-                messagePath: 'file.error.exceedMaxDataExport',
             });
         });
     });
@@ -601,38 +508,48 @@ describe('UserImportService', () => {
                 ...input,
                 userId: second.id,
             };
-            const contractStages: IActivityLogInput<EnumActivityLogAction>[] = [
-                {
-                    action: UserCreateContract.admin.createdAction,
-                    userId: baseUser.id,
-                    createdBy: 'admin-thistle',
-                    metadata: {},
-                },
-                {
-                    action: UserCreateContract.admin.createdAction,
-                    userId: second.id,
-                    createdBy: 'admin-thistle',
-                    metadata: {},
-                },
-            ];
-            userCreateUtil.buildStages.mockReturnValue(contractStages);
-
             const result = service.buildImportByAdminStages(
                 [input, secondInput],
                 [baseUser, second]
             );
 
-            expect(userCreateUtil.buildStages).toHaveBeenCalledWith(
-                UserCreateContract.admin,
-                [input, secondInput],
-                [baseUser, second]
-            );
             expect(result).toEqual([
                 {
                     action: EnumActivityLogAction.adminUserImport,
                     metadata: { userCount: 2 },
                 },
-                ...contractStages,
+                {
+                    action: UserCreateContract.admin.createdAction,
+                    userId: baseUser.id,
+                    createdBy: 'admin-thistle',
+                    metadata: {
+                        actorUserId: 'admin-thistle',
+                        timestamp: baseUser.createdAt,
+                    },
+                },
+                {
+                    action: EnumActivityLogAction.workspaceCreatedByAdmin,
+                    userId: baseUser.id,
+                    createdBy: 'admin-thistle',
+                    workspaceId: 'workspace-thistle',
+                    metadata: { actorUserId: 'admin-thistle' },
+                },
+                {
+                    action: UserCreateContract.admin.createdAction,
+                    userId: second.id,
+                    createdBy: 'admin-thistle',
+                    metadata: {
+                        actorUserId: 'admin-thistle',
+                        timestamp: baseUser.createdAt,
+                    },
+                },
+                {
+                    action: EnumActivityLogAction.workspaceCreatedByAdmin,
+                    userId: second.id,
+                    createdBy: 'admin-thistle',
+                    workspaceId: 'workspace-thistle',
+                    metadata: { actorUserId: 'admin-thistle' },
+                },
             ]);
         });
     });

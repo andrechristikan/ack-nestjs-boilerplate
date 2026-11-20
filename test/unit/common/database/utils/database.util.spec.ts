@@ -14,8 +14,6 @@ describe('DatabaseUtil', () => {
     let util: DatabaseUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 DatabaseUtil,

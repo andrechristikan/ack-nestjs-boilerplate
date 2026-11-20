@@ -23,17 +23,23 @@ describe('MfaPasskeyDeleteRequestSchema', () => {
     });
 
     it('rejects an empty password', () => {
-        expect(() =>
-            MfaPasskeyDeleteRequestSchema.parse({ password: '' })
-        ).toThrow();
+        const result = MfaPasskeyDeleteRequestSchema.safeParse({
+            password: '',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['password'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            MfaPasskeyDeleteRequestSchema.parse({
-                ...payload,
-                challengeToken: 'c07c5f0d6d0c4c6db1f6a6d38f5ce8fa',
-            })
-        ).toThrow();
+        const result = MfaPasskeyDeleteRequestSchema.safeParse({
+            ...payload,
+            challengeToken: 'c07c5f0d6d0c4c6db1f6a6d38f5ce8fa',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

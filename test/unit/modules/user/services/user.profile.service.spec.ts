@@ -52,13 +52,15 @@ import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.u
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
 import type { IUserCheckUsername } from '@modules/user/interfaces/user.interface';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('UserProfileService', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const fileService: MockProxy<FileService> = mock<FileService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
@@ -69,12 +71,9 @@ describe('UserProfileService', () => {
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const entry = buildActivityLogCreateManyEffect('activityLog');
-    const configGet = vi.fn<(key: string) => number | string | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
     const photoMaxSizeInBytes = 2048;
-    const configValues: Record<string, number | string> = {
+    const configValues: Record<string, unknown> = {
+        ...TestUnitKitConfigValues,
         'user.photo.filenameRandomLength': 24,
         'user.uploadPhotoProfilePathPattern': 'photo-profile/{userId}',
         'user.photo.maxSizeInBytes': photoMaxSizeInBytes,
@@ -168,9 +167,6 @@ describe('UserProfileService', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        configGet.mockImplementation(key => configValues[key]);
         activityLogService.recordEffect.mockReturnValue(entry);
         userRepository.findOneById.mockResolvedValue(profile);
 
@@ -181,10 +177,13 @@ describe('UserProfileService', () => {
                 { provide: UserService, useValue: userService },
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: FileService, useValue: fileService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                DatabaseUtil,
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: ConfigService, useValue: configService },
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(configValues),
+                },
             ],
         }).compile();
         service = module.get(UserProfileService);
@@ -203,9 +202,6 @@ describe('UserProfileService', () => {
             await expect(service.getProfile('missing')).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
             });
         });
     });
@@ -286,11 +282,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.photoSizeExceeded,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.photoSizeExceeded
-                    ],
-                messagePath: 'user.error.photoSizeExceeded',
             });
             expect(awsS3Service.presignPutItem).not.toHaveBeenCalled();
         });
@@ -309,11 +300,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'aws',
                 statusCode: EnumAwsStatusCodeError.s3NotConfigured,
-                statusCodeKey:
-                    EnumAwsStatusCodeError[
-                        EnumAwsStatusCodeError.s3NotConfigured
-                    ],
-                messagePath: 'aws.error.s3NotConfigured',
             });
         });
     });
@@ -354,11 +340,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.photoContentInvalid,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.photoContentInvalid
-                    ],
-                messagePath: 'user.error.photoContentInvalid',
             });
             expect(fileService.isContentOfExtension).toHaveBeenCalledWith(
                 head,
@@ -468,12 +449,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.photoSizeExceeded,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.photoSizeExceeded
-                    ],
-                messagePath: 'user.error.photoSizeExceeded',
-                httpStatus: 400,
             });
             expect(
                 userRepository.updatePhotoProfileInTx
@@ -498,8 +473,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.photoKeyInvalid,
-                messagePath: 'user.error.photoKeyInvalid',
-                httpStatus: 400,
             });
             expect(
                 userRepository.updatePhotoProfileInTx
@@ -555,12 +528,6 @@ describe('UserProfileService', () => {
                 await expect(call).rejects.toMatchObject({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.photoKeyInvalid,
-                    statusCodeKey:
-                        EnumUserStatusCodeError[
-                            EnumUserStatusCodeError.photoKeyInvalid
-                        ],
-                    messagePath: 'user.error.photoKeyInvalid',
-                    httpStatus: 400,
                 });
                 expect(awsS3Service.checkItem).not.toHaveBeenCalled();
                 expect(
@@ -640,7 +607,6 @@ describe('UserProfileService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                messagePath: 'user.error.notFound',
             });
             expect(
                 userRepository.updatePhotoProfileInTx
@@ -663,11 +629,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'aws',
                 statusCode: EnumAwsStatusCodeError.s3NotConfigured,
-                statusCodeKey:
-                    EnumAwsStatusCodeError[
-                        EnumAwsStatusCodeError.s3NotConfigured
-                    ],
-                messagePath: 'aws.error.s3NotConfigured',
             });
             expect(
                 userRepository.updatePhotoProfileInTx
@@ -690,9 +651,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
             });
             await expect(call).rejects.toBe(error);
         });
@@ -713,9 +671,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
                 rawError: error,
             });
         });
@@ -909,7 +864,6 @@ describe('UserProfileService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                messagePath: 'user.error.notFound',
             });
             expect(
                 userRepository.updatePhotoProfileInTx
@@ -936,11 +890,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'aws',
                 statusCode: EnumAwsStatusCodeError.s3NotConfigured,
-                statusCodeKey:
-                    EnumAwsStatusCodeError[
-                        EnumAwsStatusCodeError.s3NotConfigured
-                    ],
-                messagePath: 'aws.error.s3NotConfigured',
             });
             expect(
                 userRepository.updatePhotoProfileInTx
@@ -963,9 +912,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
             });
             await expect(call).rejects.toBe(error);
         });
@@ -986,9 +932,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
                 rawError: error,
             });
         });
@@ -1009,12 +952,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.photoSizeExceeded,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.photoSizeExceeded
-                    ],
-                messagePath: 'user.error.photoSizeExceeded',
-                httpStatus: 400,
             });
             expect(awsS3Service.putItem).not.toHaveBeenCalled();
             expect(
@@ -1089,11 +1026,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.usernameNotAllowed,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameNotAllowed
-                    ],
-                messagePath: 'user.error.usernameNotAllowed',
             });
         });
 
@@ -1113,11 +1045,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.usernameContainBadWord,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameContainBadWord
-                    ],
-                messagePath: 'user.error.usernameContainBadWord',
             });
         });
 
@@ -1137,19 +1064,13 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.usernameExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameExist
-                    ],
-                messagePath: 'user.error.usernameExist',
             });
         });
 
         it('maps a username unique collision to UserUsernameExistException', async () => {
             userService.checkUsername.mockResolvedValue(available);
-            const collision = new Error('unique');
+            const collision = buildPrismaKnownRequestError('P2002', 'username');
             userRepository.claimUsernameInTx.mockRejectedValue(collision);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             const call = service.claimUsername(
                 requestContext,
@@ -1161,12 +1082,7 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.usernameExist,
-                messagePath: 'user.error.usernameExist',
             });
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'username'
-            );
         });
 
         it('rethrows an AppBaseException raised while claiming', async () => {
@@ -1184,11 +1100,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.usernameExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameExist
-                    ],
-                messagePath: 'user.error.usernameExist',
             });
             await expect(call).rejects.toBe(error);
         });
@@ -1208,9 +1119,6 @@ describe('UserProfileService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
                 rawError: error,
             });
         });

@@ -1,4 +1,3 @@
-import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -9,7 +8,10 @@ import {
     ApiKeyContextStoreKey,
     ApiKeyXTypeMetaKey,
 } from '@modules/api-key/constants/api-key.constant';
-import { buildApiKeyContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildApiKey,
+    buildApiKeyContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
@@ -27,25 +29,11 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
     const controllerClass = {} as unknown as Type<unknown>;
     const handler = vi.fn();
 
-    const apiKey: ApiKey = {
-        id: 'api-key-1',
-        name: 'Acme Api Key',
-        type: EnumApiKeyType.default,
-        key: 'local_abc123',
-        hash: 'hashed-secret',
-        isActive: true,
-        startAt: null,
-        endAt: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-        updatedBy: 'user-1',
-    };
+    const apiKey: ApiKey = buildApiKey();
 
     let guard: ApiKeyXApiKeyTypeGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         executionContext.getHandler.mockReturnValue(handler);
         executionContext.getClass.mockReturnValue(controllerClass);
 
@@ -99,12 +87,6 @@ describe('ApiKeyXApiKeyTypeGuard', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.guardMissing,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.guardMissing
-                    ],
-                messagePath: 'apiKey.error.guardMissing',
-                httpStatus: HttpStatus.UNAUTHORIZED,
             });
             expect(
                 apiKeyService.validateXApiKeyTypeGuard

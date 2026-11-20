@@ -21,23 +21,35 @@ describe('AnalyticDateRangeRequestSchema', () => {
     });
 
     it('rejects a payload missing startDate', () => {
-        expect(() =>
-            AnalyticDateRangeRequestSchema.parse({ endDate })
-        ).toThrow();
+        const result = AnalyticDateRangeRequestSchema.safeParse({ endDate });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['startDate'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a payload missing endDate', () => {
-        expect(() =>
-            AnalyticDateRangeRequestSchema.parse({ startDate })
-        ).toThrow();
+        const result = AnalyticDateRangeRequestSchema.safeParse({ startDate });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['endDate'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            AnalyticDateRangeRequestSchema.parse({
-                ...payload,
-                windowMs: 3600000,
-            })
-        ).toThrow();
+        const result = AnalyticDateRangeRequestSchema.safeParse({
+            ...payload,
+            windowMs: 3600000,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

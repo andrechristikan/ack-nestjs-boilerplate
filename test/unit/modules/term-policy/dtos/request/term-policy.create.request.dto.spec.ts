@@ -22,17 +22,24 @@ describe('TermPolicyCreateRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            TermPolicyCreateRequestSchema.parse({
-                ...payload,
-                status: 'draft',
-            })
-        ).toThrow();
+        const result = TermPolicyCreateRequestSchema.safeParse({
+            ...payload,
+            status: 'draft',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects an empty contents list', () => {
-        expect(() =>
-            TermPolicyCreateRequestSchema.parse({ ...payload, contents: [] })
-        ).toThrow();
+        const result = TermPolicyCreateRequestSchema.safeParse({
+            ...payload,
+            contents: [],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['contents'], code: 'too_small' }),
+        ]);
     });
 });

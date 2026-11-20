@@ -1,13 +1,12 @@
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -27,6 +26,12 @@ import {
     buildWorkspaceContext,
     buildProjectContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('ProjectSoftDeleteUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
@@ -40,11 +45,6 @@ describe('ProjectSoftDeleteUseCase', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const firstEntry = buildActivityLogCreateManyEffect('first-entry');
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
-
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
 
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
 
@@ -78,12 +78,15 @@ describe('ProjectSoftDeleteUseCase', () => {
     );
     const projectContext = buildProjectContext(project, null);
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
-        helperDateService.create.mockReturnValue(deletedAt);
+        vi.setSystemTime(deletedAt);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
@@ -96,12 +99,19 @@ describe('ProjectSoftDeleteUseCase', () => {
                 },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
         useCase = module.get(ProjectSoftDeleteUseCase);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
     });
 
     describe('execute', () => {
@@ -187,10 +197,8 @@ describe('ProjectSoftDeleteUseCase', () => {
         });
 
         it('answers ProjectNotFoundException on a write conflict', async () => {
-            const conflict = new Error('conflict');
-            projectService.softDeleteProjectInTx.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            projectService.softDeleteProjectInTx.mockRejectedValue(
+                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
             );
 
             await expect(
@@ -202,7 +210,6 @@ describe('ProjectSoftDeleteUseCase', () => {
                     projectContext
                 )
             ).rejects.toBeInstanceOf(ProjectNotFoundException);
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
@@ -210,7 +217,6 @@ describe('ProjectSoftDeleteUseCase', () => {
             projectService.softDeleteProjectInTx.mockRejectedValue(
                 new Error('boom')
             );
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

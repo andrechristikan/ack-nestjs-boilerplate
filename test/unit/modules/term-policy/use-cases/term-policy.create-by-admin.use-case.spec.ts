@@ -1,3 +1,9 @@
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -22,7 +28,6 @@ import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/reque
 describe('TermPolicyCreateByAdminUseCase', () => {
     const termPolicyService: MockProxy<TermPolicyService> =
         mock<TermPolicyService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
     const termPolicy: TermPolicy = {
         id: 'term-policy-1',
@@ -49,24 +54,28 @@ describe('TermPolicyCreateByAdminUseCase', () => {
     };
 
     let useCase: TermPolicyCreateByAdminUseCase;
+    let databaseUtil: DatabaseUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 TermPolicyCreateByAdminUseCase,
                 { provide: TermPolicyService, useValue: termPolicyService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
         useCase = module.get(TermPolicyCreateByAdminUseCase);
+        databaseUtil = module.get(DatabaseUtil);
     });
 
     describe('execute', () => {
         it('draws the id and creates the term policy passing the request context', async () => {
-            databaseUtil.createId.mockReturnValue('term-policy-1');
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('term-policy-1');
             termPolicyService.createByAdmin.mockResolvedValue(termPolicy);
 
             const result = await useCase.execute(
@@ -88,7 +97,7 @@ describe('TermPolicyCreateByAdminUseCase', () => {
 
         it('rethrows the domain exception', async () => {
             const error = new Error('exists');
-            databaseUtil.createId.mockReturnValue('term-policy-1');
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('term-policy-1');
             termPolicyService.createByAdmin.mockRejectedValue(error);
 
             await expect(

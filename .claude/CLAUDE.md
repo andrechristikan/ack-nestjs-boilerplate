@@ -12,21 +12,21 @@ The owner types every `/ack-*` skill: each carries `disable-model-invocation: tr
 
 - A request for a feature or a cross-module change that arrives without a skill: name `/ack-design` and wait. A question, a lookup, or an edit inside one file needs none.
 - A fork runs in a subagent: it sees no conversation and cannot call `AskUserQuestion`; every question is a hand-back, and the owner re-runs it with the answer in the argument.
-- `coder` reads the `.claude/skills/ack-build/references/add-<topic>.md` a ticket names: module, status code, queue, seed, notification, upload.
 
 ### Copied skills
 
 The other folders under `.claude/skills/` are third-party skills copied by the `skills` CLI and pinned in `skills-lock.json`. Their licence texts are in `.claude/skills/licenses/`. Editing and updating them: `.claude/rules/harness.md`.
 
-- `ponytail` runs at `full` wherever code is written, `ultra` in `/ack-design` and `/ack-harness`. `caveman` shapes agent hand-backs only: the session and every file stay in full sentences.
+- Where a copied skill and a rule, an `ack-*` skill, or an agent file differ, the copied skill loses.
+- `caveman` shapes agent hand-backs only: the session and every file stay in full sentences.
 
 ### Work artifacts
 
-`.scratch/` is the local tracker, gitignored. One folder per feature, kebab-case, `pr` and `requirements` reserved:
+`.scratch/` is the local tracker, gitignored. One folder per feature, kebab-case, `pr`, `requirements`, and `plans` reserved:
 
 - `.scratch/<feature>/spec.md`: the spec, from `/ack-design`.
 - `.scratch/<feature>/issues/<NN>-<slug>.md`: one ticket per file, from `/ack-plan`. `**Status:**` is `ready-for-agent`, then `done`.
-- `.scratch/<feature>/plan.md`: the index a person reads: approval, ticket order, the effort each ticket runs at, harness changes, status, evidence.
+- `.scratch/<feature>/plan.md`: the plan index, from `/ack-plan`.
 - `.scratch/<feature>/review.md`: from `/ack-review`.
 - `.scratch/requirements/`: a requirement settled for a later `/ack-harness` or `/ack-doc`. `.scratch/pr/`: PR, comment, and version text.
 
@@ -56,11 +56,11 @@ Skills dispatch the agents in `.claude/agents/`; each agent's `description` stat
 - Commits and staging go through `ask`. Propose a subject only when the owner asks for a commit or the running skill's Hand back lists one. A finished task, ticket, or build is not a commit request. Stage only what the owner names. Branch before committing on `main`.
 - The working tree on disk is the source, unstaged and untracked files included; list changes with `git status --short`, `git diff HEAD --name-only`, `git ls-files --others --exclude-standard`.
 - Diff with no second ref: `git diff <base>` includes uncommitted and staged work; `<base>..HEAD` omits it. Reviews and diffs keep git read-only (no fetch, no pull); only `/ack-pr` fetches and moves refs.
-- Every commit in a series leaves `pre-commit` (lint-staged with the related specs, then typecheck) and `commit-msg` (commitlint) green (`AGENTS.md`, Commit gates); a red hook is fixed, not skipped. `ci.yml` runs the full gate on the pull request.
-- Run every command in the foreground, bounded (GNU `timeout` on the boot's log wait, which never ends on its own: `.claude/skills/ack-build/references/boot.md`, step 4; `brew install coreutils` on stock macOS). Start no process the call leaves behind (`&`, `nohup`). Two exceptions: a call Claude Code moves to the background at its timeout, which is waited for, and the compose containers a boot starts (`.claude/skills/ack-build/references/boot.md`), which stay up for the next boot. Wait for each Agent hand-back, never poll.
+- Every commit in a series leaves `pre-commit` and `commit-msg` green (`AGENTS.md`, Commit gates); a red hook is fixed, not skipped. `ci.yml` runs the full gate on the pull request.
+- Run every command and every Agent call in the foreground, bounded (GNU `timeout` on the boot's log wait, which never ends on its own: `.claude/skills/ack-build/references/boot.md`, step 4; `brew install coreutils` on stock macOS). Start no process the call leaves behind (`&`, `nohup`). Two exceptions: a call Claude Code moves to the background at its timeout, which is waited for, and the compose containers a boot starts (`.claude/skills/ack-build/references/boot.md`). Wait for each Agent hand-back, never poll.
 - Reply in English by default; match the language of the owner's turn. Artifacts stay English.
-- When something is wrong, say so with a recommendation. State the assumption you act on; ask when two readings would produce different work.
+- When something is wrong, say so with a recommendation.
 
 ### Rules
 
-Rules load by path from `.claude/rules/`; the five unscoped ones bind every file: `layering.md`, `cross-module.md`, `null-safety.md`, `naming.md`, `discipline.md`. `authoring.md` binds every prose tree.
+Rules load by path from `.claude/rules/`; the five unscoped ones load for every file: `layering.md`, `cross-module.md`, `null-safety.md`, `naming.md`, `discipline.md`. `authoring.md` binds every prose tree.

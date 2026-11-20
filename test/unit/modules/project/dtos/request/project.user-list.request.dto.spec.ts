@@ -26,9 +26,11 @@ describe('ProjectUserListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ProjectUserListRequestSchema.parse({ extra: true })
-        ).toThrow();
+        const result = ProjectUserListRequestSchema.safeParse({ extra: true });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the module search description', () => {
@@ -66,15 +68,25 @@ describe('ProjectUserListRequestSchema', () => {
         'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            ProjectUserListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            ProjectUserListRequestSchema.safeParse({ orderBy }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             ProjectUserListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

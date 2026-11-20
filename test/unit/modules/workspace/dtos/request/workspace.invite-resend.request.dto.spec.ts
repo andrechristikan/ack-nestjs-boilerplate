@@ -19,10 +19,12 @@ describe('WorkspaceInviteResendRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceInviteResendRequestSchema.parse({
-                email: 'someone@example.com',
-            })
-        ).toThrow();
+        const result = WorkspaceInviteResendRequestSchema.safeParse({
+            email: 'someone@example.com',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

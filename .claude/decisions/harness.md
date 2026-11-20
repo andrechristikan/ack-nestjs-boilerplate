@@ -26,11 +26,12 @@ Rule: `AGENTS.md`, Prisma schema; `.claude/agents/reviewer.md` and `.claude/agen
 
 ## Hooks and checks
 
-### The reader runs `rules.sh`; no hook loads the rules
+### A hook gates every write on the rules read whole
 
-Rule: `AGENTS.md`, Discipline.
+Rule: `.claude/hooks/rules-gate.sh`, registered in `.claude/settings.json`.
 
-- `rules.sh` as a `PreToolUse` hook: Claude Code already loads a path-scoped rule when a matching file is touched.
+- The reader runs `rules.sh` on its own word: an agent told to read each rule it prints searched the rule files for keywords and read few of them whole.
+- Claude Code's path-scoped loading alone: a file read through Bash loads no rule, and a new file's rules arrive after it is written.
 - A `SubagentStop` hook running the gates: `coder` runs its gates and `/ack-review` runs them again.
 
 ### A generated file is no check

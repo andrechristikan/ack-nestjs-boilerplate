@@ -30,11 +30,13 @@ describe('ActivityLogApiKeyMetadataSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ActivityLogApiKeyMetadataSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ActivityLogApiKeyMetadataSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

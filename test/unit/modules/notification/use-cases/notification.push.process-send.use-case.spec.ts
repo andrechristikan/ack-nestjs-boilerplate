@@ -1,12 +1,15 @@
 import type { INotificationPushCleanupTokensEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -31,11 +34,6 @@ describe('NotificationPushProcessSendUseCase', () => {
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const helperEncryptionService: MockProxy<HelperEncryptionService> =
-        mock<HelperEncryptionService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     let useCase: NotificationPushProcessSendUseCase;
@@ -76,9 +74,7 @@ describe('NotificationPushProcessSendUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
-        vi.mocked(configService.get).mockReturnValue('secret-key');
         firebaseService.isInitialized.mockReturnValue(true);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
         const module = await Test.createTestingModule({
@@ -92,12 +88,11 @@ describe('NotificationPushProcessSendUseCase', () => {
                 },
                 { provide: NotificationService, useValue: notificationService },
                 { provide: OutboxService, useValue: outboxService },
+                ...TestUnitKitProviders,
                 {
-                    provide: HelperEncryptionService,
-                    useValue: helperEncryptionService,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: ConfigService, useValue: configService },
                 { provide: MessageService, useValue: messageService },
             ],
         }).compile();
@@ -106,11 +101,6 @@ describe('NotificationPushProcessSendUseCase', () => {
 
     describe('execute', () => {
         it('sends the body with each date field formatted to RFC 2822', async () => {
-            const expiredAt = new Date('2026-06-01T00:00:00.000Z');
-            helperDateService.createFromIso.mockReturnValue(expiredAt);
-            helperDateService.formatToRFC2822.mockReturnValue(
-                'Mon, 01 Jun 2026 00:00:00 +0000'
-            );
             notificationPushDeliveryService.sendMulticast.mockResolvedValue({
                 encryptedFailureTokens: [],
                 encryptedPendingTokens: [],
@@ -130,9 +120,6 @@ describe('NotificationPushProcessSendUseCase', () => {
                 },
             });
 
-            expect(helperDateService.createFromIso).toHaveBeenCalledWith(
-                '2026-06-01T00:00:00.000Z'
-            );
             expect(messageService.setMessage).toHaveBeenCalledWith(
                 'notification.notify.temporaryPasswordByAdmin.body',
                 {

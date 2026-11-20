@@ -29,9 +29,13 @@ describe('TermPolicyAcceptedListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            TermPolicyAcceptedListRequestSchema.parse({ search: 'x' })
-        ).toThrow();
+        const result = TermPolicyAcceptedListRequestSchema.safeParse({
+            search: 'x',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -66,15 +70,26 @@ describe('TermPolicyAcceptedListRequestSchema', () => {
         'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            TermPolicyAcceptedListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            TermPolicyAcceptedListRequestSchema.safeParse({ orderBy }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             TermPolicyAcceptedListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

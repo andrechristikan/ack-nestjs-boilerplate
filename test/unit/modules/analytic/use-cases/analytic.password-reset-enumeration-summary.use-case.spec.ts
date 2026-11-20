@@ -12,8 +12,6 @@ describe('AnalyticPasswordResetEnumerationSummaryUseCase', () => {
     let useCase: AnalyticPasswordResetEnumerationSummaryUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticPasswordResetEnumerationSummaryUseCase,

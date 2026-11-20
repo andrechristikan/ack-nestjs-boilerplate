@@ -301,6 +301,13 @@ Rule: `session.md`, Session invalidation.
 - A grace window in which the old token still answers: it adds rotation state for a rare lost response, and the refresh stays simple at the cost of one more sign-in.
 - An idempotent refresh that returns the same new pair: the same added state for the same rare case.
 
+### A refresh token without `exp` is invalid, like one without `jti`
+
+Rule: `session.md`, Session invalidation.
+
+- A missing `exp` read as the epoch: it gives a case no signed token reaches a meaning, and the refresh still succeeds with a dead refresh token.
+- The configured refresh lifetime for a missing `exp`: a token with no expiry would earn a fresh `auth.jwt.refreshToken.expiresInSeconds`.
+
 ## Retention
 
 ### Expired identity rows are purged by one daily job

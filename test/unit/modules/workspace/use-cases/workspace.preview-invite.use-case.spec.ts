@@ -14,23 +14,12 @@ import type { IWorkspaceInvitePreview } from '@modules/workspace/interfaces/work
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspacePreviewInviteUseCase } from '@modules/workspace/use-cases/workspace.preview-invite.use-case';
+import { buildWorkspace } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspacePreviewInviteUseCase', () => {
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
-    const workspace: Workspace = {
-        id: 'workspace-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: 'user-1',
-        deletedAt: null,
-        deletedBy: null,
-        name: 'Acme',
-        slug: 'acme-team',
-        description: null,
-        isPublic: false,
-    };
+    const workspace: Workspace = buildWorkspace();
     const invite: WorkspaceInvite = {
         id: 'invite-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -59,8 +48,6 @@ describe('WorkspacePreviewInviteUseCase', () => {
     let useCase: WorkspacePreviewInviteUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspacePreviewInviteUseCase,

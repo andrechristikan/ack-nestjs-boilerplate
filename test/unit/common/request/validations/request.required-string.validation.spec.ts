@@ -6,6 +6,10 @@ describe('RequestRequiredStringSchema', () => {
     });
 
     it('rejects an empty string', () => {
-        expect(() => RequestRequiredStringSchema.parse('')).toThrow();
+        const result = RequestRequiredStringSchema.safeParse('');
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'too_small' }),
+        ]);
     });
 });

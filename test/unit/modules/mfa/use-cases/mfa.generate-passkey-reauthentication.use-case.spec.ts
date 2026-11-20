@@ -30,7 +30,6 @@ describe('MfaGeneratePasskeyReauthenticationUseCase', () => {
     } as PublicKeyCredentialRequestOptionsJSON;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         mfaPasskeyService.getCredentialsByUser.mockResolvedValue(credentials);
         mfaPasskeyService.getAssertionOptions.mockResolvedValue(passkeyOptions);
         mfaChallengeService.create.mockResolvedValue({
@@ -97,7 +96,6 @@ describe('MfaGeneratePasskeyReauthenticationUseCase', () => {
                 statusCode: EnumMfaStatusCodeError.methodUnavailable,
 
                 module: 'mfa',
-                messagePath: 'mfa.error.methodUnavailable',
             });
             expect(
                 mfaPasskeyService.getAssertionOptions

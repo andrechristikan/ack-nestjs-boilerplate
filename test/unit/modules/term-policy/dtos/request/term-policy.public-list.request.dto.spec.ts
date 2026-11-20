@@ -22,24 +22,35 @@ describe('TermPolicyPublicListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            TermPolicyPublicListRequestSchema.parse({ status: 'draft' })
-        ).toThrow();
+        const result = TermPolicyPublicListRequestSchema.safeParse({
+            status: 'draft',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
         expect(
-            TermPolicyPublicListRequestSchema.safeParse({ search: 'x' }).success
-        ).toBe(false);
+            TermPolicyPublicListRequestSchema.safeParse({ search: 'x' }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a type of 256 characters and rejects one of 257', () => {
         expect(() =>
             TermPolicyPublicListRequestSchema.parse({ type: 'a'.repeat(256) })
         ).not.toThrow();
-        expect(() =>
-            TermPolicyPublicListRequestSchema.parse({ type: 'a'.repeat(257) })
-        ).toThrow();
+        const result = TermPolicyPublicListRequestSchema.safeParse({
+            type: 'a'.repeat(257),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'too_big' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -73,15 +84,26 @@ describe('TermPolicyPublicListRequestSchema', () => {
         'version',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            TermPolicyPublicListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            TermPolicyPublicListRequestSchema.safeParse({ orderBy }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             TermPolicyPublicListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

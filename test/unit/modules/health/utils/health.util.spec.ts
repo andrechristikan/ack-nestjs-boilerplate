@@ -8,8 +8,6 @@ describe('HealthUtil', () => {
     let util: HealthUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [HealthUtil],
         }).compile();

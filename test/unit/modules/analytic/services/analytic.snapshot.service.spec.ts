@@ -1,5 +1,4 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumPaginationOrderDirectionType,
     EnumPaginationType,
@@ -8,7 +7,6 @@ import type {
     IPaginationOffsetReturn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
 import type {
@@ -29,6 +27,11 @@ import {
     buildSnapshotItem,
 } from '@test/unit/helpers/test.unit.analytic-snapshot.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('AnalyticSnapshotService', () => {
     const signal = EnumAnalyticSnapshotSignal.impossibleTravel;
@@ -65,25 +68,26 @@ describe('AnalyticSnapshotService', () => {
 
     const analyticSnapshotRepository: MockProxy<AnalyticSnapshotRepository> =
         mock<AnalyticSnapshotRepository>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const paginationOffsetUtil: MockProxy<PaginationOffsetUtil> =
-        mock<PaginationOffsetUtil>();
 
     let service: AnalyticSnapshotService;
+    let databaseUtil: DatabaseUtil;
     let calls: string[];
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
+        vi.setSystemTime(startedAt);
         calls = [];
 
-        databaseUtil.createId.mockReturnValue(runId);
-        helperDateService.create
-            .mockReturnValueOnce(startedAt)
-            .mockReturnValueOnce(computedAt);
         analyticSnapshotRepository.createItems.mockImplementation(async () => {
             calls.push('createItems');
+            vi.setSystemTime(computedAt);
         });
         analyticSnapshotRepository.updateHeaderIfOlder.mockImplementation(
             async () => {
@@ -113,15 +117,11 @@ describe('AnalyticSnapshotService', () => {
                     provide: AnalyticSnapshotRepository,
                     useValue: analyticSnapshotRepository,
                 },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
-                {
-                    provide: PaginationOffsetUtil,
-                    useValue: paginationOffsetUtil,
-                },
+                ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
                         'analytic.snapshot.writeBatchSize': 1000,
                     }),
                 },
@@ -129,6 +129,8 @@ describe('AnalyticSnapshotService', () => {
         }).compile();
 
         service = module.get(AnalyticSnapshotService);
+        databaseUtil = module.get(DatabaseUtil);
+        vi.spyOn(databaseUtil, 'createId').mockReturnValue(runId);
     });
 
     describe('replace', () => {
@@ -252,16 +254,11 @@ describe('AnalyticSnapshotService', () => {
             );
             analyticSnapshotRepository.findHeader.mockResolvedValue(null);
             analyticSnapshotRepository.createHeader.mockRejectedValue(
-                new Error('duplicate')
+                buildPrismaKnownRequestError('P2002', 'signal')
             );
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await service.replace(signal, buildSnapshotResult(1));
 
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                expect.any(Error),
-                'signal'
-            );
             expect(
                 analyticSnapshotRepository.deleteItemsOfRun
             ).toHaveBeenCalledWith(signal, runId);
@@ -278,7 +275,6 @@ describe('AnalyticSnapshotService', () => {
             analyticSnapshotRepository.createHeader.mockRejectedValue(
                 new Error('down')
             );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 service.replace(signal, buildSnapshotResult(1))
@@ -340,10 +336,10 @@ describe('AnalyticSnapshotService', () => {
                 totalPage: 0,
                 hasNext: false,
                 hasPrevious: true,
+                previousPage: 2,
                 data: [],
             };
             analyticSnapshotRepository.findHeader.mockResolvedValue(null);
-            paginationOffsetUtil.page.mockReturnValue(emptyPage);
 
             const result = await service.getListOffset(
                 signal,
@@ -352,11 +348,7 @@ describe('AnalyticSnapshotService', () => {
                 itemSchema
             );
 
-            expect(paginationOffsetUtil.page).toHaveBeenCalledWith([], 0, {
-                skip: 40,
-                limit: 20,
-            });
-            expect(result).toBe(emptyPage);
+            expect(result).toEqual(emptyPage);
             expect(result).not.toHaveProperty('metadata');
             expect(
                 analyticSnapshotRepository.findWithPaginationOffset
@@ -468,16 +460,6 @@ describe('AnalyticSnapshotService', () => {
 
         it('answers no buckets and a null computedAt when no header exists', async () => {
             analyticSnapshotRepository.findHeader.mockResolvedValue(null);
-            paginationOffsetUtil.page.mockReturnValue({
-                type: EnumPaginationType.offset,
-                count: 0,
-                perPage: AnalyticCountRanges.length,
-                page: 1,
-                totalPage: 0,
-                hasNext: false,
-                hasPrevious: false,
-                data: [],
-            });
 
             const result = await service.getBuckets(signal, bucketSchema);
 

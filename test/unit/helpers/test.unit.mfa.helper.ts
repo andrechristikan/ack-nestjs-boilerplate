@@ -1,18 +1,31 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { SentryService } from '@common/sentry/services/sentry.service';
+import {
+    MfaChallengeEncryptionPurpose,
+    MfaTotpSecretEncryptionPurpose,
+} from '@modules/mfa/constants/mfa.constant';
+import { MfaTotpRepository } from '@modules/mfa/repositories/mfa.totp.repository';
+import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitEncryptionSecret,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { generateSync } from 'otplib';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type { HelperStringService } from '@common/helper/services/helper.string.service';
-import type { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { EnumFeatureFlagMetadataKey } from '@modules/feature-flag/enums/feature-flag.enum';
-import type { MfaPasskeyRepository } from '@modules/mfa/repositories/mfa.passkey.repository';
-import type { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
+import { MfaPasskeyRepository } from '@modules/mfa/repositories/mfa.passkey.repository';
+import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 
 export interface IMfaPasskeyServiceDoubles {
     mfaPasskeyRepository: MockProxy<MfaPasskeyRepository>;
-    helperDateService: MockProxy<HelperDateService>;
     configService: MockProxy<ConfigService>;
     featureFlagService: MockProxy<FeatureFlagService>;
 }
@@ -43,14 +56,15 @@ export function buildClientDataJson(origin: string): string {
 }
 
 export function stubBackupCodes(
-    helperStringService: MockProxy<HelperStringService>,
-    helperHashService: MockProxy<HelperHashService>,
+    helperStringService: HelperStringService,
+    helperHashService: HelperHashService,
     codes: string[]
 ): void {
+    const randomUppercase = vi.spyOn(helperStringService, 'randomUppercase');
     for (const code of codes) {
-        helperStringService.randomUppercase.mockReturnValueOnce(code);
+        randomUppercase.mockReturnValueOnce(code);
     }
-    helperHashService.argon2Hash.mockImplementation(
+    vi.spyOn(helperHashService, 'argon2Hash').mockImplementation(
         async code => `$argon2id$hash-${code}`
     );
 }
@@ -58,39 +72,23 @@ export function stubBackupCodes(
 export async function createMfaPasskeyService(
     doubles: IMfaPasskeyServiceDoubles
 ): Promise<MfaPasskeyService> {
-    vi.resetModules();
-    const [
-        { MfaPasskeyService: MfaPasskeyServiceClass },
-        { MfaPasskeyRepository: MfaPasskeyRepositoryClass },
-        { HelperDateService: HelperDateServiceClass },
-        { FeatureFlagService: FeatureFlagServiceClass },
-    ] = await Promise.all([
-        import('@modules/mfa/services/mfa.passkey.service'),
-        import('@modules/mfa/repositories/mfa.passkey.repository'),
-        import('@common/helper/services/helper.date.service'),
-        import('@modules/feature-flag/services/feature-flag.service'),
-    ]);
-
     const module = await Test.createTestingModule({
         providers: [
-            MfaPasskeyServiceClass,
+            MfaPasskeyService,
             {
-                provide: MfaPasskeyRepositoryClass,
+                provide: MfaPasskeyRepository,
                 useValue: doubles.mfaPasskeyRepository,
             },
-            {
-                provide: HelperDateServiceClass,
-                useValue: doubles.helperDateService,
-            },
+            HelperDateService,
             { provide: ConfigService, useValue: doubles.configService },
             {
-                provide: FeatureFlagServiceClass,
+                provide: FeatureFlagService,
                 useValue: doubles.featureFlagService,
             },
         ],
     }).compile();
 
-    return module.get(MfaPasskeyServiceClass);
+    return module.get(MfaPasskeyService);
 }
 
 export function stubMfaMetadataNumbers(
@@ -104,4 +102,71 @@ export function stubMfaMetadataNumbers(
                 ? maxAttempts
                 : lockDurationInMinutes
     );
+}
+
+export function buildSealedMfaTotpSecret(
+    plaintext: string,
+    userId: string
+): string {
+    return new HelperEncryptionService().aes256Encrypt(
+        plaintext,
+        TestUnitKitEncryptionSecret,
+        MfaTotpSecretEncryptionPurpose,
+        userId
+    );
+}
+
+export function buildSealedMfaChallengePushToken(
+    plaintext: string,
+    userId: string
+): string {
+    return new HelperEncryptionService().aes256Encrypt(
+        plaintext,
+        TestUnitKitEncryptionSecret,
+        MfaChallengeEncryptionPurpose,
+        userId
+    );
+}
+
+export function buildOpenedMfaChallengePushToken(
+    sealed: string,
+    userId: string
+): string {
+    return new HelperEncryptionService().aes256Decrypt(
+        sealed,
+        TestUnitKitEncryptionSecret,
+        MfaChallengeEncryptionPurpose,
+        userId
+    );
+}
+
+export async function createMfaTotpService(
+    mfaTotpRepository: MockProxy<MfaTotpRepository>,
+    sentryService: MockProxy<SentryService>,
+    totpEncryptionSecret: string
+): Promise<MfaTotpService> {
+    const module = await Test.createTestingModule({
+        providers: [
+            MfaTotpService,
+            { provide: MfaTotpRepository, useValue: mfaTotpRepository },
+            { provide: SentryService, useValue: sentryService },
+            ...TestUnitKitProviders,
+            {
+                provide: ConfigService,
+                useValue: buildConfigService({
+                    ...TestUnitKitConfigValues,
+                    'mfa.totp.strategy': 'totp',
+                    'mfa.totp.algorithm': 'sha1',
+                    'mfa.totp.issuer': 'AckBoilerplate',
+                    'mfa.totp.digits': 6,
+                    'mfa.totp.periodInSeconds': 30,
+                    'mfa.totp.window': 1,
+                    'mfa.totp.secretLength': 20,
+                    'mfa.totp.encryptionSecret': totpEncryptionSecret,
+                }),
+            },
+        ],
+    }).compile();
+
+    return module.get(MfaTotpService);
 }

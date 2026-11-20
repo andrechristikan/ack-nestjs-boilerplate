@@ -1,31 +1,31 @@
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
-import { RequestStoreService } from '@common/request/services/request.store.service';
-import { Prisma } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
 import {
-    TermPolicyOrderBy,
-    TermPolicyDefaultStatus,
-    TermPolicyDefaultType,
-} from '@modules/term-policy/constants/term-policy.list.constant';
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
+} from '@common/pagination/enums/pagination.enum';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import {
+    EnumTermPolicyStatus,
+    EnumTermPolicyType,
+} from '@generated/prisma-client/client';
+import type { TermPolicy } from '@generated/prisma-client/client';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { TermPolicyGetListByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-by-admin.use-case';
 import type { TermPolicyAdminListRequestDto } from '@modules/term-policy/dtos/request/term-policy.admin-list.request.dto';
-import { EnumTermPolicyOrderBy } from '@modules/term-policy/enums/term-policy.enum';
 
 describe('TermPolicyGetListByAdminUseCase', () => {
     const termPolicyService: MockProxy<TermPolicyService> =
         mock<TermPolicyService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
-    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
-        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
@@ -39,21 +39,30 @@ describe('TermPolicyGetListByAdminUseCase', () => {
         hasPrevious: false,
         data: [] as TermPolicy[],
     };
-    const offsetParams = { skip: 0, limit: 20, orderBy: [] };
+    const offsetParams = {
+        skip: 0,
+        limit: 20,
+        orderBy: [{ createdAt: EnumPaginationOrderDirectionType.desc }],
+    };
+    const storePatch = {
+        page: 1,
+        perPage: 20,
+        orderBy: 'latest',
+        availableSearch: [],
+        availableOrderBy: ['latest', 'recentlyPublished', 'latestVersion'],
+    };
 
     let useCase: TermPolicyGetListByAdminUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 TermPolicyGetListByAdminUseCase,
                 { provide: TermPolicyService, useValue: termPolicyService },
-                { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationFilterUtil,
-                    useValue: paginationFilterUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
@@ -66,70 +75,40 @@ describe('TermPolicyGetListByAdminUseCase', () => {
         const query: TermPolicyAdminListRequestDto = { page: 1, perPage: 20 };
 
         it('merges type and status filters into the pagination store and returns the domain page', async () => {
-            paginationQueryUtil.offset.mockReturnValue({
-                params: offsetParams,
-                storePatch: { filters: { existing: true } },
-            });
-            paginationFilterUtil.inEnum
-                .mockReturnValueOnce({
-                    where: { type: { in: TermPolicyDefaultType } },
-                    storeFilter: { type: 'privacy' },
-                })
-                .mockReturnValueOnce({
-                    where: { status: { in: TermPolicyDefaultStatus } },
-                    storeFilter: { status: 'draft' },
-                });
             termPolicyService.getListByAdmin.mockResolvedValue(offsetPage);
 
-            const result = await useCase.execute(query);
+            const result = await useCase.execute({
+                ...query,
+                type: EnumTermPolicyType.privacy,
+                status: EnumTermPolicyStatus.draft,
+            });
 
             expect(result).toEqual(offsetPage);
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                orderBy: TermPolicyOrderBy,
-                defaultOrderBy: EnumTermPolicyOrderBy.latest,
-            });
-            expect(paginationFilterUtil.inEnum).toHaveBeenNthCalledWith(
-                1,
-                Prisma.TermPolicyScalarFieldEnum.type,
-                query.type,
-                TermPolicyDefaultType
-            );
-            expect(paginationFilterUtil.inEnum).toHaveBeenNthCalledWith(
-                2,
-                Prisma.TermPolicyScalarFieldEnum.status,
-                query.status,
-                TermPolicyDefaultStatus
-            );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 {
+                    ...storePatch,
                     filters: {
-                        existing: true,
-                        type: 'privacy',
-                        status: 'draft',
+                        type: [EnumTermPolicyType.privacy],
+                        status: [EnumTermPolicyStatus.draft],
                     },
                 }
             );
             expect(termPolicyService.getListByAdmin).toHaveBeenCalledWith(
                 offsetParams,
-                { type: { in: TermPolicyDefaultType } },
-                { status: { in: TermPolicyDefaultStatus } }
+                { type: { in: [EnumTermPolicyType.privacy] } },
+                { status: { in: [EnumTermPolicyStatus.draft] } }
             );
         });
 
         it('merges no extra filter when type and status resolve to undefined', async () => {
-            paginationQueryUtil.offset.mockReturnValue({
-                params: offsetParams,
-                storePatch: {},
-            });
-            paginationFilterUtil.inEnum.mockReturnValue(null);
             termPolicyService.getListByAdmin.mockResolvedValue(offsetPage);
 
             await useCase.execute(query);
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                { filters: {} }
+                { ...storePatch, filters: {} }
             );
             expect(termPolicyService.getListByAdmin).toHaveBeenCalledWith(
                 offsetParams,

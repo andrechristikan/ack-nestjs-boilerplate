@@ -31,7 +31,12 @@ describe('AnalyticNotificationDeliveryResponseSchema', () => {
             channels: [{ ...row, channel: 'fax' }],
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['channels', 0, 'channel'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects a row with a missing count', () => {
@@ -40,6 +45,11 @@ describe('AnalyticNotificationDeliveryResponseSchema', () => {
             channels: [incomplete],
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['channels', 0, 'pending'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

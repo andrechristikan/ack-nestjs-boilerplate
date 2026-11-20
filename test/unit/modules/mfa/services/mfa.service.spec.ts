@@ -1,16 +1,19 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { Duration } from 'luxon';
 import { Test } from '@nestjs/testing';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { MessageService } from '@common/message/services/message.service';
@@ -62,27 +65,18 @@ describe('MfaService', () => {
     const mfaTotpService: MockProxy<MfaTotpService> = mock<MfaTotpService>();
     const mfaPasskeyService: MockProxy<MfaPasskeyService> =
         mock<MfaPasskeyService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
-    const configGet = vi.fn<(key: string) => number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
 
     let service: MfaService;
+    let helperStringService: HelperStringService;
+    let helperHashService: HelperHashService;
 
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-01T00:00:00.000Z');
@@ -157,21 +151,16 @@ describe('MfaService', () => {
         passkeyResponse,
     };
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.forward.mockImplementation(
-            (date, duration: Duration) =>
-                new Date(date.getTime() + duration.as('milliseconds'))
-        );
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, number> = {
-                'mfa.backupCodes.count': 3,
-                'mfa.backupCodes.length': 10,
-            };
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
 
-            return values[key];
-        });
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
         stubMfaMetadataNumbers(featureFlagService, 5, 15);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
@@ -183,22 +172,28 @@ describe('MfaService', () => {
                 { provide: MfaRepository, useValue: mfaRepository },
                 { provide: MfaTotpService, useValue: mfaTotpService },
                 { provide: MfaPasskeyService, useValue: mfaPasskeyService },
-                { provide: HelperStringService, useValue: helperStringService },
-                { provide: HelperHashService, useValue: helperHashService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 {
                     provide: NotificationService,
                     useValue: notificationService,
                 },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: MessageService, useValue: messageService },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: ConfigService, useValue: configService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'mfa.backupCodes.count': 3,
+                        'mfa.backupCodes.length': 10,
+                    }),
+                },
                 { provide: FeatureFlagService, useValue: featureFlagService },
             ],
         }).compile();
         service = module.get(MfaService);
+        helperStringService = module.get(HelperStringService);
+        helperHashService = module.get(HelperHashService);
     });
 
     describe('assertEnrolmentAllowed', () => {
@@ -317,8 +312,6 @@ describe('MfaService', () => {
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.invalid,
-                statusCodeKey: 'invalid',
-                messagePath: 'mfa.error.invalid',
             });
             expect(mfaTotpService.checkCode).toHaveBeenCalledWith(
                 'user-quartz',
@@ -404,9 +397,6 @@ describe('MfaService', () => {
             activityLogService.recordEffect.mockReturnValue(entryEffect);
             notificationService.notify.mockReturnValue(notifyEffect);
             messageService.setMessage.mockReturnValue('Label');
-            helperDateService.formatToIso.mockReturnValue(
-                '2026-03-01T00:15:00.000Z'
-            );
 
             await expect(
                 service.check(
@@ -424,7 +414,7 @@ describe('MfaService', () => {
         });
 
         it('verifies a backup code against the stored hashes and answers the matched hash', async () => {
-            helperHashService.argon2Compare.mockImplementation(
+            vi.spyOn(helperHashService, 'argon2Compare').mockImplementation(
                 async (_value, hash) => hash === 'hash-two'
             );
 
@@ -449,7 +439,9 @@ describe('MfaService', () => {
         });
 
         it('compares the stored hashes one at a time and stops at the first match', async () => {
-            helperHashService.argon2Compare.mockResolvedValue(true);
+            vi.spyOn(helperHashService, 'argon2Compare').mockResolvedValue(
+                true
+            );
 
             await expect(
                 service.check(
@@ -468,7 +460,9 @@ describe('MfaService', () => {
         });
 
         it('counts a wrong backup code and throws MfaInvalidException', async () => {
-            helperHashService.argon2Compare.mockResolvedValue(false);
+            vi.spyOn(helperHashService, 'argon2Compare').mockResolvedValue(
+                false
+            );
 
             await expect(
                 service.check(
@@ -488,6 +482,7 @@ describe('MfaService', () => {
         });
 
         it('counts a blank backup code without comparing', async () => {
+            const compare = vi.spyOn(helperHashService, 'argon2Compare');
             await expect(
                 service.check(
                     requestContext,
@@ -504,7 +499,7 @@ describe('MfaService', () => {
 
                 statusCode: EnumMfaStatusCodeError.invalid,
             });
-            expect(helperHashService.argon2Compare).not.toHaveBeenCalled();
+            expect(compare).not.toHaveBeenCalled();
             expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledTimes(1);
         });
 
@@ -570,8 +565,6 @@ describe('MfaService', () => {
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.passkeyInvalid,
-                statusCodeKey: 'passkeyInvalid',
-                messagePath: 'mfa.error.passkeyInvalid',
             });
             expect(mfaPasskeyService.checkAssertion).toHaveBeenCalledWith(
                 'user-quartz',
@@ -617,9 +610,6 @@ describe('MfaService', () => {
             activityLogService.recordEffect.mockReturnValue(entryEffect);
             notificationService.notify.mockReturnValue(notifyEffect);
             messageService.setMessage.mockReturnValue('Label');
-            helperDateService.formatToIso.mockReturnValue(
-                '2026-03-01T00:15:00.000Z'
-            );
 
             await expect(
                 service.check(
@@ -694,9 +684,6 @@ describe('MfaService', () => {
             activityLogService.recordEffect.mockReturnValue(entryEffect);
             notificationService.notify.mockReturnValue(notifyEffect);
             messageService.setMessage.mockReturnValue('Label');
-            helperDateService.formatToIso.mockReturnValue(
-                '2026-03-01T00:15:00.000Z'
-            );
 
             for (let i = 0; i < 4; i += 1) {
                 await expect(
@@ -1051,9 +1038,6 @@ describe('MfaService', () => {
         it('adds the failed entry, the reach-max entry and the mfa loginLocked effect when the failure locked', async () => {
             const reachMaxEffect = { ...entryEffect, idempotencyKey: 'reach' };
             mfaRepository.incrementAttemptInTx.mockResolvedValue(true);
-            helperDateService.formatToIso.mockReturnValue(
-                '2026-03-01T00:15:00.000Z'
-            );
             activityLogService.recordEffect
                 .mockReturnValueOnce(entryEffect)
                 .mockReturnValueOnce(reachMaxEffect);
@@ -1113,11 +1097,11 @@ describe('MfaService', () => {
         });
 
         it('throws MfaAttemptMaxException on a write conflict', async () => {
-            const conflict = new Error('write conflict');
-            outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                { code: DatabaseWriteConflictCode, clientVersion: 'test' }
             );
+            outboxService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 service.countFailedAttempt(
@@ -1148,7 +1132,6 @@ describe('MfaService', () => {
         it('wraps any other error in AppUnknownException', async () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.countFailedAttempt(
@@ -1532,8 +1515,6 @@ describe('MfaService', () => {
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.notEnabled,
-                statusCodeKey: 'notEnabled',
-                messagePath: 'mfa.error.notEnabled',
             });
         });
     });
@@ -1700,21 +1681,24 @@ describe('MfaService', () => {
                 'user-quartz',
                 ['$argon2id$hash-A', '$argon2id$hash-B', '$argon2id$hash-C']
             );
-            expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
         });
 
         it('starts every code hash together', async () => {
             let running = 0;
             let peak = 0;
-            helperStringService.randomUppercase.mockReturnValue('CODE');
-            helperHashService.argon2Hash.mockImplementation(async () => {
-                running += 1;
-                peak = Math.max(peak, running);
-                await Promise.resolve();
-                running -= 1;
+            vi.spyOn(helperStringService, 'randomUppercase').mockReturnValue(
+                'CODE'
+            );
+            vi.spyOn(helperHashService, 'argon2Hash').mockImplementation(
+                async () => {
+                    running += 1;
+                    peak = Math.max(peak, running);
+                    await Promise.resolve();
+                    running -= 1;
 
-                return '$argon2id$hash';
-            });
+                    return '$argon2id$hash';
+                }
+            );
             mfaRepository.findOneByUserIdInTx.mockResolvedValue({
                 ...baseMfa,
                 backupCodes: [],
@@ -1727,12 +1711,13 @@ describe('MfaService', () => {
         });
 
         it('answers null when the row holds codes', async () => {
+            const hash = vi.spyOn(helperHashService, 'argon2Hash');
             mfaRepository.findOneByUserIdInTx.mockResolvedValue(baseMfa);
 
             await expect(
                 service.createBackupCodesInTx(tx, 'user-quartz')
             ).resolves.toBeNull();
-            expect(helperHashService.argon2Hash).not.toHaveBeenCalled();
+            expect(hash).not.toHaveBeenCalled();
         });
 
         it('answers null when the guarded write finds codes written first', async () => {

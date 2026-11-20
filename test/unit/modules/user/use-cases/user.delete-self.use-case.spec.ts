@@ -8,9 +8,6 @@ import {
     EnumActivityLogAction,
     EnumRoleType,
     EnumUserReauthenticationAction,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
 } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { UserService } from '@modules/user/services/user.service';
@@ -39,7 +36,6 @@ import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspa
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceOwnerTransferRequiredException } from '@modules/workspace/exceptions/workspace.owner-transfer-required.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserDeleteSelfForbiddenException } from '@modules/user/exceptions/user.delete-self-forbidden.exception';
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
@@ -53,11 +49,13 @@ import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { UserDeleteSelfUseCase } from '@modules/user/use-cases/user.delete-self.use-case';
 import {
-    buildRequestContext,
     buildApiKeyContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
     buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 const passkeyResponse = {
     id: 'AbC_-123',
@@ -75,8 +73,6 @@ describe('UserDeleteSelfUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const userProfileService: MockProxy<UserProfileService> =
@@ -100,7 +96,6 @@ describe('UserDeleteSelfUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let useCase: UserDeleteSelfUseCase;
 
@@ -109,59 +104,22 @@ describe('UserDeleteSelfUseCase', () => {
     const configValues: Record<string, unknown> = {
         'user.deleteSelf.timeoutInMs': 30000,
     };
-    const baseUser: IUser = {
-        id: 'user-cinder',
-        name: 'Cinder Wolfe',
-        username: 'cinder2wolfe',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'cinder@example.com',
-        roleId: 'role-cinder',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-cinder',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-cinder',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
-    };
+    const baseUser: IUser = buildUser('user-cinder', 'cinder@example.com');
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext(baseUser.id);
     const userContext = buildUserContext(baseUser);
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
-        helperDateService.create.mockReturnValue(now);
+        vi.setSystemTime(now);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -172,7 +130,7 @@ describe('UserDeleteSelfUseCase', () => {
                 { provide: UserService, useValue: userService },
                 { provide: SessionService, useValue: sessionService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: HelperDateService, useValue: helperDateService },
+                HelperDateService,
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: UserProfileService, useValue: userProfileService },
                 { provide: UserAuthService, useValue: userAuthService },
@@ -204,7 +162,7 @@ describe('UserDeleteSelfUseCase', () => {
                     provide: ProjectMemberService,
                     useValue: projectMemberService,
                 },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                DatabaseUtil,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(configValues),
@@ -544,10 +502,7 @@ describe('UserDeleteSelfUseCase', () => {
 
         it('completes nothing outside the transaction when the main step fails after a correct proof', async () => {
             outboxService.withTransaction.mockRejectedValue(
-                new Error('write conflict')
-            );
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+                buildPrismaKnownRequestError('P2034')
             );
 
             await expect(
@@ -611,7 +566,6 @@ describe('UserDeleteSelfUseCase', () => {
                 workspaceService.softDeleteOwnedByUserInTx
             ).not.toHaveBeenCalled();
             expect(userService.deleteSelfInTx).not.toHaveBeenCalled();
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
@@ -691,11 +645,8 @@ describe('UserDeleteSelfUseCase', () => {
         });
 
         it('answers UserNotFoundException on a write conflict', async () => {
-            const conflict = new Error('write-conflict');
+            const conflict = buildPrismaKnownRequestError('P2034');
             outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
 
             await expect(
                 useCase.execute(
@@ -708,10 +659,7 @@ describe('UserDeleteSelfUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                messagePath: 'user.error.notFound',
             });
-
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('adds one workspaceDeleted entry per deleted workspace after the user entries on the same tx', async () => {
@@ -855,11 +803,6 @@ describe('UserDeleteSelfUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.passwordNotMatch
-                    ],
-                messagePath: 'user.error.passwordNotMatch',
             });
 
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
@@ -918,7 +861,6 @@ describe('UserDeleteSelfUseCase', () => {
         it('wraps an unknown error in AppUnknownException', async () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

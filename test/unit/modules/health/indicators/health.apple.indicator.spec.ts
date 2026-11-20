@@ -11,8 +11,6 @@ describe('HealthAppleIndicator', () => {
     const session = { up: vi.fn(), down: vi.fn() };
 
     beforeEach(() => {
-        vi.resetAllMocks();
-
         healthIndicatorService.check.mockReturnValue(session as never);
     });
 

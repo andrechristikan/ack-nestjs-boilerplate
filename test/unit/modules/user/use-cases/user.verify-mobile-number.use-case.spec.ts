@@ -8,7 +8,6 @@ import {
 } from '@generated/prisma-client/client';
 import type { Verification } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -34,6 +33,10 @@ import {
     buildAuthJwtAccessContext,
     buildRequestContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserVerifyMobileNumberUseCase', () => {
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
@@ -45,7 +48,6 @@ describe('UserVerifyMobileNumberUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let useCase: UserVerifyMobileNumberUseCase;
 
@@ -97,7 +99,6 @@ describe('UserVerifyMobileNumberUseCase', () => {
     const dto = { otp: '482913' };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -125,7 +126,11 @@ describe('UserVerifyMobileNumberUseCase', () => {
                 { provide: NotificationService, useValue: notificationService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                DatabaseUtil,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(UserVerifyMobileNumberUseCase);
@@ -250,12 +255,9 @@ describe('UserVerifyMobileNumberUseCase', () => {
         });
 
         it('maps a write conflict to UserTokenInvalidException', async () => {
-            const conflict = new Error('write-conflict');
+            const conflict = buildPrismaKnownRequestError('P2034');
             userVerificationService.markMobileUsedInTx.mockRejectedValue(
                 conflict
-            );
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
             );
 
             await expect(
@@ -274,7 +276,6 @@ describe('UserVerifyMobileNumberUseCase', () => {
             userVerificationService.markMobileUsedInTx.mockRejectedValue(
                 failure
             );
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

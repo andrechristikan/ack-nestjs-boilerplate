@@ -5,22 +5,18 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { DeviceService } from '@modules/device/services/device.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { NotificationPushProcessCleanupStaleTokensUseCase } from '@modules/notification/use-cases/notification.push.process-cleanup-stale-tokens.use-case';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('NotificationPushProcessCleanupStaleTokensUseCase', () => {
-    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    let configService: MockProxy<ConfigService>;
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     let useCase: NotificationPushProcessCleanupStaleTokensUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        vi.mocked(configService.get).mockImplementation((key: string) => {
-            const values: Record<string, number> = {
-                'notification.push.staleTokenThresholdInMs': 86_400_000,
-            };
-
-            return values[key];
+        configService = buildConfigService({
+            'notification.push.staleTokenThresholdInMs': 86_400_000,
         });
         const module = await Test.createTestingModule({
             providers: [

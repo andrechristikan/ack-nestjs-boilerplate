@@ -17,12 +17,17 @@ describe('AnalyticSessionAfterAdminResponseSchema', () => {
     });
 
     it('rejects a loginAt that is not a Date', () => {
-        expect(() =>
-            AnalyticSessionAfterAdminResponseSchema.parse({
-                ...row,
-                loginAt: loginAt.toISOString(),
-            })
-        ).toThrow();
+        const result = AnalyticSessionAfterAdminResponseSchema.safeParse({
+            ...row,
+            loginAt: loginAt.toISOString(),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['loginAt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('strips an undeclared key', () => {

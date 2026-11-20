@@ -87,8 +87,16 @@ describe('ResponseErrorSchema', () => {
     });
 
     it('rejects an errors value matching neither union member', () => {
-        expect(() =>
-            ResponseErrorSchema.parse({ ...base, errors: ['not-an-object'] })
-        ).toThrow();
+        const result = ResponseErrorSchema.safeParse({
+            ...base,
+            errors: ['not-an-object'],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['errors'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

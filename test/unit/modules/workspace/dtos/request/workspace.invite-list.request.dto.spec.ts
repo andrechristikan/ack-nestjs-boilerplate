@@ -28,18 +28,26 @@ describe('WorkspaceInviteListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceInviteListRequestSchema.parse({ extra: true })
-        ).toThrow();
+        const result = WorkspaceInviteListRequestSchema.safeParse({
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a status of 256 characters and rejects one of 257', () => {
         expect(() =>
             WorkspaceInviteListRequestSchema.parse({ status: 'a'.repeat(256) })
         ).not.toThrow();
-        expect(() =>
-            WorkspaceInviteListRequestSchema.parse({ status: 'a'.repeat(257) })
-        ).toThrow();
+        const result = WorkspaceInviteListRequestSchema.safeParse({
+            status: 'a'.repeat(257),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['status'], code: 'too_big' }),
+        ]);
     });
 
     it('keeps the module search description', () => {
@@ -77,15 +85,26 @@ describe('WorkspaceInviteListRequestSchema', () => {
         'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            WorkspaceInviteListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            WorkspaceInviteListRequestSchema.safeParse({ orderBy }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             WorkspaceInviteListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

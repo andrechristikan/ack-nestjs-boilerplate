@@ -13,36 +13,59 @@ describe('AwsS3PresignRequestSchema', () => {
     });
 
     it('rejects a key starting with a forbidden character', () => {
-        expect(() =>
-            AwsS3PresignRequestSchema.parse({ ...payload, key: '' })
-        ).toThrow();
+        const result = AwsS3PresignRequestSchema.safeParse({
+            ...payload,
+            key: '',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['key'], code: 'too_small' }),
+            expect.objectContaining({ path: ['key'], code: 'invalid_format' }),
+        ]);
     });
 
     it('rejects a key carrying a character outside the object-key pattern', () => {
-        expect(() =>
-            AwsS3PresignRequestSchema.parse({
-                ...payload,
-                key: 'users/$/avatar.jpg',
-            })
-        ).toThrow();
+        const result = AwsS3PresignRequestSchema.safeParse({
+            ...payload,
+            key: 'users/$/avatar.jpg',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['key'], code: 'invalid_format' }),
+        ]);
     });
 
     it('rejects a size below 1', () => {
-        expect(() =>
-            AwsS3PresignRequestSchema.parse({ ...payload, size: 0 })
-        ).toThrow();
+        const result = AwsS3PresignRequestSchema.safeParse({
+            ...payload,
+            size: 0,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['size'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a non-integer size', () => {
-        expect(() =>
-            AwsS3PresignRequestSchema.parse({ ...payload, size: 1.5 })
-        ).toThrow();
+        const result = AwsS3PresignRequestSchema.safeParse({
+            ...payload,
+            size: 1.5,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['size'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            AwsS3PresignRequestSchema.parse({ ...payload, extra: true })
-        ).toThrow();
+        const result = AwsS3PresignRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a key of 1024 characters and rejects one of 1025', () => {
@@ -52,11 +75,13 @@ describe('AwsS3PresignRequestSchema', () => {
                 key: 'a'.repeat(1024),
             })
         ).not.toThrow();
-        expect(() =>
-            AwsS3PresignRequestSchema.parse({
-                ...payload,
-                key: 'a'.repeat(1025),
-            })
-        ).toThrow();
+        const result = AwsS3PresignRequestSchema.safeParse({
+            ...payload,
+            key: 'a'.repeat(1025),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['key'], code: 'too_big' }),
+        ]);
     });
 });

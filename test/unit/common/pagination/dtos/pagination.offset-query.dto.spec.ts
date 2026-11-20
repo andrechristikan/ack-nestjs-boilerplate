@@ -26,21 +26,33 @@ describe('PaginationOffsetQuerySchema', () => {
     });
 
     it('rejects a non-integer page', () => {
-        expect(() =>
-            PaginationOffsetQuerySchema.parse({ page: 1.5 })
-        ).toThrow();
+        const result = PaginationOffsetQuerySchema.safeParse({ page: 1.5 });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['page'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects a non-integer perPage', () => {
-        expect(() =>
-            PaginationOffsetQuerySchema.parse({ perPage: 1.5 })
-        ).toThrow();
+        const result = PaginationOffsetQuerySchema.safeParse({ perPage: 1.5 });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['perPage'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            PaginationOffsetQuerySchema.parse({ ...payload, cursor: 'x' })
-        ).toThrow();
+        const result = PaginationOffsetQuerySchema.safeParse({
+            ...payload,
+            cursor: 'x',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts search', () => {
@@ -56,7 +68,12 @@ describe('PaginationOffsetQuerySchema', () => {
         orderBy => {
             const result = PaginationOffsetQuerySchema.safeParse({ orderBy });
 
-            expect(result.success).toBe(false);
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: [],
+                    code: 'unrecognized_keys',
+                }),
+            ]);
         }
     );
 
@@ -81,6 +98,8 @@ describe('PaginationOffsetQuerySchema', () => {
 
         const result = PaginationOffsetQuerySchema.safeParse({ search });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['search'], code: 'too_big' }),
+        ]);
     });
 });

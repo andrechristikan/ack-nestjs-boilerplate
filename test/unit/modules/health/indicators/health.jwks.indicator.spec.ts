@@ -20,8 +20,6 @@ describe('HealthJwksIndicator', () => {
     const jwksResponse = { data: { keys: [{ kid: 'key-1' }] } };
 
     beforeEach(() => {
-        vi.resetAllMocks();
-
         healthIndicatorService.check.mockReturnValue(session as never);
         httpClient.get.mockResolvedValue(jwksResponse as never);
     });

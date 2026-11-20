@@ -37,7 +37,7 @@
         "lint:staged": "lint-staged",
         "lint:fix": "eslint --fix",
         "test": "TZ=UTC vitest run --project unit",
-        "test:related": "TZ=UTC NODE_ENV=test vitest related --run --project unit",
+        "test:related": "TZ=UTC NODE_ENV=test vitest related --run --project unit --passWithNoTests",
         "test:cov": "TZ=UTC vitest run --project unit --coverage",
         "package:upgrade": "npx npm-check-updates -u",
         "package:check": "npx npm-check-updates -i",

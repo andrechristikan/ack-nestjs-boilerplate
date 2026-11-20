@@ -24,39 +24,53 @@ describe('UserLoginVerifyMfaRequestSchema', () => {
     });
 
     it('rejects a code with a non-digit character', () => {
-        expect(() =>
-            UserLoginVerifyMfaRequestSchema.parse({
-                ...payload,
-                code: 'abc123',
-            })
-        ).toThrow();
+        const result = UserLoginVerifyMfaRequestSchema.safeParse({
+            ...payload,
+            code: 'abc123',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['code'], code: 'invalid_format' }),
+        ]);
     });
 
     it('rejects a backupCode with a lowercase character', () => {
-        expect(() =>
-            UserLoginVerifyMfaRequestSchema.parse({
-                ...payload,
-                backupCode: 'abcd1234ef',
-            })
-        ).toThrow();
+        const result = UserLoginVerifyMfaRequestSchema.safeParse({
+            ...payload,
+            backupCode: 'abcd1234ef',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['backupCode'],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects a method outside EnumMfaMethod', () => {
-        expect(() =>
-            UserLoginVerifyMfaRequestSchema.parse({
-                ...payload,
-                method: 'unknownMethod',
-            })
-        ).toThrow();
+        const result = UserLoginVerifyMfaRequestSchema.safeParse({
+            ...payload,
+            method: 'unknownMethod',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['method'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserLoginVerifyMfaRequestSchema.parse({
-                ...payload,
-                rememberMe: true,
-            })
-        ).toThrow();
+        const result = UserLoginVerifyMfaRequestSchema.safeParse({
+            ...payload,
+            rememberMe: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a challengeToken of 128 characters and rejects one of 129', () => {
@@ -66,12 +80,17 @@ describe('UserLoginVerifyMfaRequestSchema', () => {
                 challengeToken: 'a'.repeat(128),
             })
         ).not.toThrow();
-        expect(() =>
-            UserLoginVerifyMfaRequestSchema.parse({
-                ...payload,
-                challengeToken: 'a'.repeat(129),
-            })
-        ).toThrow();
+        const result = UserLoginVerifyMfaRequestSchema.safeParse({
+            ...payload,
+            challengeToken: 'a'.repeat(129),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['challengeToken'],
+                code: 'too_big',
+            }),
+        ]);
     });
 
     it('accepts a code of 32 characters and rejects one of 33', () => {
@@ -81,12 +100,14 @@ describe('UserLoginVerifyMfaRequestSchema', () => {
                 code: '1'.repeat(32),
             })
         ).not.toThrow();
-        expect(() =>
-            UserLoginVerifyMfaRequestSchema.parse({
-                ...payload,
-                code: '1'.repeat(33),
-            })
-        ).toThrow();
+        const result = UserLoginVerifyMfaRequestSchema.safeParse({
+            ...payload,
+            code: '1'.repeat(33),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['code'], code: 'too_big' }),
+        ]);
     });
 
     it('accepts a backupCode of 32 characters and rejects one of 33', () => {
@@ -96,12 +117,14 @@ describe('UserLoginVerifyMfaRequestSchema', () => {
                 backupCode: 'A'.repeat(32),
             })
         ).not.toThrow();
-        expect(() =>
-            UserLoginVerifyMfaRequestSchema.parse({
-                ...payload,
-                backupCode: 'A'.repeat(33),
-            })
-        ).toThrow();
+        const result = UserLoginVerifyMfaRequestSchema.safeParse({
+            ...payload,
+            backupCode: 'A'.repeat(33),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['backupCode'], code: 'too_big' }),
+        ]);
     });
 
     it('parses a passkey payload and strips every key of clientExtensionResults', () => {
@@ -133,23 +156,28 @@ describe('UserLoginVerifyMfaRequestSchema', () => {
     });
 
     it('rejects a passkeyResponse with an undeclared key', () => {
-        expect(() =>
-            UserLoginVerifyMfaRequestSchema.parse({
-                challengeToken: payload.challengeToken,
-                method: EnumMfaMethod.passkey,
-                passkeyResponse: {
-                    id: 'AbC_-123',
-                    rawId: 'AbC_-123',
-                    response: {
-                        clientDataJSON: 'clientDataQuartz',
-                        authenticatorData: 'authenticatorDataQuartz',
-                        signature: 'signatureQuartz',
-                    },
-                    clientExtensionResults: {},
-                    type: 'public-key',
-                    extra: 'value',
+        const result = UserLoginVerifyMfaRequestSchema.safeParse({
+            challengeToken: payload.challengeToken,
+            method: EnumMfaMethod.passkey,
+            passkeyResponse: {
+                id: 'AbC_-123',
+                rawId: 'AbC_-123',
+                response: {
+                    clientDataJSON: 'clientDataQuartz',
+                    authenticatorData: 'authenticatorDataQuartz',
+                    signature: 'signatureQuartz',
                 },
-            })
-        ).toThrow();
+                clientExtensionResults: {},
+                type: 'public-key',
+                extra: 'value',
+            },
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeyResponse'],
+                code: 'unrecognized_keys',
+            }),
+        ]);
     });
 });

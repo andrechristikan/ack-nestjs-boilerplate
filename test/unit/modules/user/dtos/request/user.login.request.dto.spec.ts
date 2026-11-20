@@ -68,6 +68,7 @@ describe('UserLoginRequestSchema', () => {
         });
 
         expect(email).toHaveLength(101);
+
         expect(result.error?.issues).toEqual([
             expect.objectContaining({ code: 'too_big', path: ['email'] }),
         ]);
@@ -77,18 +78,28 @@ describe('UserLoginRequestSchema', () => {
         const { fingerprint: _fingerprint, ...deviceWithoutFingerprint } =
             payload.device;
 
-        expect(() =>
-            UserLoginRequestSchema.parse({
-                ...payload,
-                device: deviceWithoutFingerprint,
-            })
-        ).toThrow();
+        const result = UserLoginRequestSchema.safeParse({
+            ...payload,
+            device: deviceWithoutFingerprint,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['device', 'fingerprint'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserLoginRequestSchema.parse({ ...payload, rememberMe: true })
-        ).toThrow();
+        const result = UserLoginRequestSchema.safeParse({
+            ...payload,
+            rememberMe: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a password of 64 characters and rejects one of 65', () => {
@@ -98,11 +109,13 @@ describe('UserLoginRequestSchema', () => {
                 password: 'a'.repeat(64),
             })
         ).not.toThrow();
-        expect(() =>
-            UserLoginRequestSchema.parse({
-                ...payload,
-                password: 'a'.repeat(65),
-            })
-        ).toThrow();
+        const result = UserLoginRequestSchema.safeParse({
+            ...payload,
+            password: 'a'.repeat(65),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['password'], code: 'too_big' }),
+        ]);
     });
 });

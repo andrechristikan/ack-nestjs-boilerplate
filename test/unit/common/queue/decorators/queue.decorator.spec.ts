@@ -1,3 +1,5 @@
+import { Processor } from '@nestjs/bullmq';
+import { QueueProcessor } from '@common/queue/decorators/queue.decorator';
 import type { IQueueProcessorOptions } from '@common/queue/interfaces/queue.interface';
 
 vi.mock('@nestjs/bullmq', async importOriginal => {
@@ -8,16 +10,7 @@ vi.mock('@nestjs/bullmq', async importOriginal => {
 
 describe('queue.decorator', () => {
     describe('QueueProcessor', () => {
-        beforeEach(() => {
-            vi.resetAllMocks();
-            vi.resetModules();
-        });
-
-        it('registers the processor under the queue name with empty worker options when none are given', async () => {
-            const { Processor } = await import('@nestjs/bullmq');
-            const { QueueProcessor } =
-                await import('@common/queue/decorators/queue.decorator');
-
+        it('registers the processor under the queue name with empty worker options when none are given', () => {
             QueueProcessor('notification');
 
             expect(Processor).toHaveBeenCalledWith(
@@ -26,10 +19,7 @@ describe('queue.decorator', () => {
             );
         });
 
-        it('passes the given worker options through with no connection', async () => {
-            const { Processor } = await import('@nestjs/bullmq');
-            const { QueueProcessor } =
-                await import('@common/queue/decorators/queue.decorator');
+        it('passes the given worker options through with no connection', () => {
             const options: IQueueProcessorOptions = { concurrency: 5 };
 
             QueueProcessor('workspace', options);

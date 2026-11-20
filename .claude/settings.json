@@ -214,11 +214,24 @@
                     {
                         "type": "command",
                         "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-write.sh"
+                    },
+                    {
+                        "type": "command",
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/rules-gate.sh"
                     }
                 ]
             }
         ],
         "PostToolUse": [
+            {
+                "matcher": "Read",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/rules-gate.sh"
+                    }
+                ]
+            },
             {
                 "matcher": "Write|Edit|MultiEdit|NotebookEdit",
                 "hooks": [

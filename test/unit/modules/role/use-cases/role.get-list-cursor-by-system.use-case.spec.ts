@@ -4,33 +4,23 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumRoleType } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
-import {
-    RoleOrderBy,
-    RoleDefaultAvailableSearch,
-    RoleSystemListCursorScope,
-} from '@modules/role/constants/role.list.constant';
 import type { RoleSystemListRequestDto } from '@modules/role/dtos/request/role.system-list.request.dto';
 import { RoleService } from '@modules/role/services/role.service';
 import type { IRoleWithPolicyCount } from '@modules/role/interfaces/role.interface';
-import type {
-    IPaginationCursorReturn,
-    IPaginationQueryCursorParams,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationCursorReturn } from '@common/pagination/interfaces/pagination.interface';
 import { RoleGetListCursorBySystemUseCase } from '@modules/role/use-cases/role.get-list-cursor-by-system.use-case';
-import { EnumRoleOrderBy } from '@modules/role/enums/role.enum';
 
 describe('RoleGetListCursorBySystemUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
-    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
-        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
@@ -46,41 +36,22 @@ describe('RoleGetListCursorBySystemUseCase', () => {
         updatedAt: now,
         updatedBy: 'user-1',
     };
-    const offsetPagination: IPaginationQueryOffsetParams = {
-        skip: 0,
+    const cursorPagination = {
         limit: 20,
-        orderBy: [],
-    };
-    const cursorPagination: IPaginationQueryCursorParams = {
-        fingerprint: 'aaaaaaaaaaaaaaaa',
-        limit: 20,
-        orderBy: [],
+        orderBy: [{ createdAt: 'desc' }],
     };
 
     let useCase: RoleGetListCursorBySystemUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        paginationQueryUtil.offset.mockReturnValue({
-            params: offsetPagination,
-            storePatch: {},
-        });
-        paginationQueryUtil.cursor.mockReturnValue({
-            params: cursorPagination,
-            storePatch: {},
-        });
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleGetListCursorBySystemUseCase,
                 { provide: RoleService, useValue: roleService },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
-                },
-                {
-                    provide: PaginationFilterUtil,
-                    useValue: paginationFilterUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 {
                     provide: RequestStoreService,
@@ -95,11 +66,6 @@ describe('RoleGetListCursorBySystemUseCase', () => {
     describe('execute', () => {
         it('parses the cursor query, merges the type filter, and maps policy count rows', async () => {
             const query: RoleSystemListRequestDto = { type: 'admin' };
-            const typeFilter = {
-                where: { type: { in: [EnumRoleType.admin] } },
-                storeFilter: { type: [EnumRoleType.admin] },
-            };
-            paginationFilterUtil.inEnum.mockReturnValue(typeFilter);
             const cursorPage: IPaginationCursorReturn<IRoleWithPolicyCount> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -116,21 +82,14 @@ describe('RoleGetListCursorBySystemUseCase', () => {
                 hasNext: false,
                 data: [{ ...role, policies: 2 }],
             });
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                scope: RoleSystemListCursorScope,
-                availableSearch: RoleDefaultAvailableSearch,
-                orderBy: RoleOrderBy,
-                defaultOrderBy: EnumRoleOrderBy.latest,
-            });
             expect(roleService.getListCursorBySystem).toHaveBeenCalledWith(
-                cursorPagination,
-                typeFilter.where
+                { ...cursorPagination, fingerprint: 'd90e1829ed81c98e' },
+                { type: { in: [EnumRoleType.admin] } }
             );
         });
 
         it('merges an empty filter set when type is absent', async () => {
             const query: RoleSystemListRequestDto = {};
-            paginationFilterUtil.inEnum.mockReturnValue(null);
             const emptyCursorPage: IPaginationCursorReturn<IRoleWithPolicyCount> =
                 {
                     type: EnumPaginationType.cursor,
@@ -146,10 +105,16 @@ describe('RoleGetListCursorBySystemUseCase', () => {
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                { filters: {} }
+                {
+                    availableSearch: ['name'],
+                    availableOrderBy: ['latest', 'name'],
+                    orderBy: 'latest',
+                    perPage: 20,
+                    filters: {},
+                }
             );
             expect(roleService.getListCursorBySystem).toHaveBeenCalledWith(
-                cursorPagination,
+                { ...cursorPagination, fingerprint: 'db6f76f6d1a4dedf' },
                 undefined
             );
         });

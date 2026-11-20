@@ -19,21 +19,11 @@ import type {
 } from '@common/request/interfaces/request.interface';
 import { RequestThrottleService } from '@common/request/services/request.throttle.service';
 import { RequestUtil } from '@common/request/utils/request.util';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('RequestThrottleRouteGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
-    const configGet =
-        vi.fn<
-            (
-                key: string
-            ) =>
-                | Record<EnumRequestThrottleRoute, IRequestThrottlePolicy>
-                | undefined
-        >();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
-    const requestUtil: MockProxy<RequestUtil> = mock<RequestUtil>();
+    let configService: MockProxy<ConfigService>;
     const requestThrottleService: MockProxy<RequestThrottleService> =
         mock<RequestThrottleService>();
     const policies: Record<EnumRequestThrottleRoute, IRequestThrottlePolicy> = {
@@ -56,14 +46,15 @@ describe('RequestThrottleRouteGuard', () => {
     let guard: RequestThrottleRouteGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockReturnValue(policies);
+        configService = buildConfigService({
+            'request.throttle.route': policies,
+        });
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RequestThrottleRouteGuard,
                 { provide: Reflector, useValue: reflector },
                 { provide: ConfigService, useValue: configService },
-                { provide: RequestUtil, useValue: requestUtil },
+                RequestUtil,
                 {
                     provide: RequestThrottleService,
                     useValue: requestThrottleService,
@@ -75,7 +66,9 @@ describe('RequestThrottleRouteGuard', () => {
 
     describe('canActivate', () => {
         it('reads the route throttle policies from the config service once, in the constructor', () => {
-            expect(configGet).toHaveBeenCalledWith('request.throttle.route');
+            expect(configService.get).toHaveBeenCalledWith(
+                'request.throttle.route'
+            );
         });
 
         it('activates with no evaluation when the handler carries no throttle options', async () => {
@@ -105,7 +98,7 @@ describe('RequestThrottleRouteGuard', () => {
                 mock<ExecutionContext>();
             const httpArgumentsHost: MockProxy<HttpArgumentsHost> =
                 mock<HttpArgumentsHost>();
-            const request: MockProxy<IRequestApp> = mock<IRequestApp>();
+            const request = { ip: '127.0.0.1' } as unknown as IRequestApp;
             const response: MockProxy<Response> = mock<Response>();
             const controllerClass = {
                 name: 'TestController',
@@ -122,7 +115,6 @@ describe('RequestThrottleRouteGuard', () => {
             executionContext.switchToHttp.mockReturnValue(httpArgumentsHost);
             httpArgumentsHost.getRequest.mockReturnValue(request);
             httpArgumentsHost.getResponse.mockReturnValue(response);
-            requestUtil.getClientIp.mockReturnValue('127.0.0.1');
 
             await expect(guard.canActivate(executionContext)).resolves.toBe(
                 true

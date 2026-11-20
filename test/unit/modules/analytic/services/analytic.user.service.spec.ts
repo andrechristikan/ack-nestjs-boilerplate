@@ -1,6 +1,8 @@
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { CacheService } from '@common/cache/services/cache.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -26,12 +28,6 @@ describe('AnalyticUserService', () => {
         dashboardTtlInMs,
     });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const analyticDateUtil: MockProxy<AnalyticDateUtil> =
-        mock<AnalyticDateUtil>();
-    const helperNumberService: MockProxy<HelperNumberService> =
-        mock<HelperNumberService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const analyticUserRepository: MockProxy<AnalyticUserRepository> =
         mock<AnalyticUserRepository>();
 
@@ -47,23 +43,25 @@ describe('AnalyticUserService', () => {
     const now: Date = new Date('2026-11-19T10:00:00.000Z');
 
     let configService: MockProxy<ConfigService>;
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-11-19T10:00:00.000Z'));
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     let service: AnalyticUserService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         configService = buildConfigService({
+            ...TestUnitKitConfigValues,
+            'analytic.cache.windowTokenPattern': 'Window:{start}:{end}',
             'analytic.user.active.dailyInMs': dailyInMs,
             'analytic.user.active.weeklyInMs': weeklyInMs,
             'analytic.user.active.monthlyInMs': monthlyInMs,
         });
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.backward.mockImplementation(
-            (date, duration) => new Date(date.getTime() - duration.toMillis())
-        );
-        analyticDateUtil.cacheToken.mockImplementation((date: Date | null) =>
-            date ? date.toISOString() : '_'
-        );
         analyticCache.buildDashboardKey.mockImplementation(
             (metric, start, end) => `${metric}:${start}:${end}`
         );
@@ -74,12 +72,11 @@ describe('AnalyticUserService', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticUserService,
+                ...TestUnitKitProviders,
                 { provide: ConfigService, useValue: configService },
-                { provide: HelperDateService, useValue: helperDateService },
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: CacheService, useValue: cacheService },
-                { provide: AnalyticDateUtil, useValue: analyticDateUtil },
-                { provide: HelperNumberService, useValue: helperNumberService },
+                AnalyticDateUtil,
                 {
                     provide: AnalyticUserRepository,
                     useValue: analyticUserRepository,
@@ -148,7 +145,6 @@ describe('AnalyticUserService', () => {
                 deleted: 4,
                 total: 10,
             });
-            helperNumberService.percent.mockReturnValue(40);
 
             const result = await service.usersChurn(startDate, endDate);
 
@@ -156,7 +152,6 @@ describe('AnalyticUserService', () => {
             expect(
                 analyticUserRepository.findChurnCounts
             ).toHaveBeenCalledTimes(1);
-            expect(helperNumberService.percent).toHaveBeenCalledWith(4, 10);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 `${EnumAnalyticDashboardMetric.usersChurn}:${startToken}:${endToken}`,
                 AnalyticMetricRateCacheSchema,
@@ -214,7 +209,6 @@ describe('AnalyticUserService', () => {
                 { isVerified: true, count: 3 },
                 { isVerified: false, count: 1 },
             ]);
-            helperNumberService.percent.mockReturnValue(75);
 
             const result = await service.usersEmailVerification(
                 startDate,
@@ -225,7 +219,6 @@ describe('AnalyticUserService', () => {
             expect(
                 analyticUserRepository.groupEmailVerification
             ).toHaveBeenCalledTimes(1);
-            expect(helperNumberService.percent).toHaveBeenCalledWith(3, 4);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 `${EnumAnalyticDashboardMetric.usersEmailVerification}:${startToken}:${endToken}`,
                 AnalyticMetricRateCacheSchema,
@@ -238,7 +231,6 @@ describe('AnalyticUserService', () => {
             analyticUserRepository.groupEmailVerification.mockResolvedValue([
                 { isVerified: false, count: 2 },
             ]);
-            helperNumberService.percent.mockReturnValue(0);
 
             const result = await service.usersEmailVerification(null, null);
 

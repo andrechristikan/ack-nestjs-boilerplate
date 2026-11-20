@@ -18,39 +18,53 @@ describe('ApiKeyCreateRawRequestSchema', () => {
     it('rejects a missing key', () => {
         const { key: _key, ...rest } = payload;
 
-        expect(() => ApiKeyCreateRawRequestSchema.parse(rest)).toThrow();
+        const result = ApiKeyCreateRawRequestSchema.safeParse(rest);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['key'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects a missing secret', () => {
         const { secret: _secret, ...rest } = payload;
 
-        expect(() => ApiKeyCreateRawRequestSchema.parse(rest)).toThrow();
+        const result = ApiKeyCreateRawRequestSchema.safeParse(rest);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['secret'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects a key over 50 characters', () => {
-        expect(() =>
-            ApiKeyCreateRawRequestSchema.parse({
-                ...payload,
-                key: 'a'.repeat(51),
-            })
-        ).toThrow();
+        const result = ApiKeyCreateRawRequestSchema.safeParse({
+            ...payload,
+            key: 'a'.repeat(51),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['key'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects a secret over 100 characters', () => {
-        expect(() =>
-            ApiKeyCreateRawRequestSchema.parse({
-                ...payload,
-                secret: 'a'.repeat(101),
-            })
-        ).toThrow();
+        const result = ApiKeyCreateRawRequestSchema.safeParse({
+            ...payload,
+            secret: 'a'.repeat(101),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['secret'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects a startAt key inherited from the base date schema', () => {
-        expect(() =>
-            ApiKeyCreateRawRequestSchema.parse({
-                ...payload,
-                startAt: new Date('2026-01-01T00:00:00.000Z'),
-            })
-        ).toThrow();
+        const result = ApiKeyCreateRawRequestSchema.safeParse({
+            ...payload,
+            startAt: new Date('2026-01-01T00:00:00.000Z'),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

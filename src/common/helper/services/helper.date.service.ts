@@ -121,12 +121,10 @@ export class HelperDateService {
     }
 
     createFromTimestamp(
-        timestamp?: number,
+        timestamp: number,
         options?: IHelperDateCreateOptions
     ): Date {
-        let date = timestamp
-            ? DateTime.fromMillis(timestamp).setZone(this.timezone)
-            : DateTime.now().setZone(this.timezone);
+        let date = DateTime.fromMillis(timestamp).setZone(this.timezone);
 
         if (options?.dayOf && options?.dayOf === EnumHelperDateDayOf.start) {
             date = date.startOf('day');

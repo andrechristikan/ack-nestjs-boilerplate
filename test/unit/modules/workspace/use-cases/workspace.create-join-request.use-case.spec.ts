@@ -1,4 +1,10 @@
 import { UserUtil } from '@modules/user/utils/user.util';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -14,29 +20,18 @@ import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspa
 import { WorkspaceNotPublicException } from '@modules/workspace/exceptions/workspace.not-public.exception';
 import { WorkspaceCreateJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.create-join-request.use-case';
 import {
-    buildUser,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspace,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceCreateJoinRequestUseCase', () => {
     const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
         mock<WorkspaceJoinRequestService>();
-    const workspace: Workspace = {
-        id: 'workspace-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: 'user-1',
-        deletedAt: null,
-        deletedBy: null,
-        name: 'Acme',
-        slug: 'acme-team',
-        description: null,
-        isPublic: true,
-    };
+    const workspace: Workspace = buildWorkspace();
     const joinable = { workspace, reviewerIds: ['reviewer-1'] };
     const joinRequest: WorkspaceJoinRequest = {
         id: 'join-request-1',
@@ -61,12 +56,9 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
 
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     let useCase: WorkspaceCreateJoinRequestUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceCreateJoinRequestUseCase,
@@ -74,7 +66,15 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                     provide: WorkspaceJoinRequestService,
                     useValue: workspaceJoinRequestService,
                 },
-                { provide: UserUtil, useValue: userUtil },
+                UserUtil,
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'message.availableLanguages': ['en'],
+                    }),
+                },
             ],
         }).compile();
 
@@ -94,7 +94,6 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
             workspaceJoinRequestService.createJoinRequest.mockResolvedValue(
                 joinRequest
             );
-            userUtil.getDisplayName.mockReturnValue('Jane Doe');
         });
 
         it('gates on the flag, reads the joinable workspace, creates the request with the notice and the context', async () => {
@@ -135,9 +134,6 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
             expect(
                 workspaceJoinRequestService.getJoinableWorkspace
             ).toHaveBeenCalledWith('user-2', 'workspace-1');
-            expect(userUtil.getDisplayName).toHaveBeenCalledWith(
-                userContext.user
-            );
             expect(
                 workspaceJoinRequestService.createJoinRequest
             ).toHaveBeenCalledWith(

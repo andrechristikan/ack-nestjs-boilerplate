@@ -1,25 +1,18 @@
 import { Test } from '@nestjs/testing';
-import { mock } from 'vitest-mock-extended';
-import type { MockProxy } from 'vitest-mock-extended';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { FileService } from '@common/file/services/file.service';
 import { EnumFileExtension } from '@common/file/enums/file.enum';
 
 describe('FileService', () => {
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
     let service: FileService;
+    let helperStringService: HelperStringService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module = await Test.createTestingModule({
-            providers: [
-                FileService,
-                { provide: HelperStringService, useValue: helperStringService },
-            ],
+            providers: [FileService, HelperStringService],
         }).compile();
         service = module.get(FileService);
+        helperStringService = module.get(HelperStringService);
     });
 
     describe('writeCsv', () => {
@@ -80,7 +73,7 @@ describe('FileService', () => {
 
     describe('createRandomFilename', () => {
         it('joins path, prefix and the random segment with the lowercased extension', () => {
-            helperStringService.random.mockReturnValue('abcdef');
+            vi.spyOn(helperStringService, 'random').mockReturnValue('abcdef');
 
             const result = service.createRandomFilename({
                 path: 'uploads',
@@ -94,7 +87,9 @@ describe('FileService', () => {
         });
 
         it('defaults the random length to 10 and omits path and prefix when absent', () => {
-            helperStringService.random.mockReturnValue('0123456789');
+            vi.spyOn(helperStringService, 'random').mockReturnValue(
+                '0123456789'
+            );
 
             const result = service.createRandomFilename({
                 extension: EnumFileExtension.csv,
@@ -105,7 +100,7 @@ describe('FileService', () => {
         });
 
         it('strips the leading slash produced by a path that starts with one', () => {
-            helperStringService.random.mockReturnValue('xyz');
+            vi.spyOn(helperStringService, 'random').mockReturnValue('xyz');
 
             const result = service.createRandomFilename({
                 path: '/uploads',

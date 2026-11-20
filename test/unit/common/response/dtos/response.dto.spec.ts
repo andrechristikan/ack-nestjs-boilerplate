@@ -32,6 +32,13 @@ describe('ResponseSchema', () => {
     it('rejects a missing required field', () => {
         const { message: _message, ...incomplete } = payload;
 
-        expect(() => ResponseSchema.parse(incomplete)).toThrow();
+        const result = ResponseSchema.safeParse(incomplete);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['message'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

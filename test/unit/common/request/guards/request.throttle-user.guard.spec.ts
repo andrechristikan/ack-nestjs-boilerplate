@@ -14,17 +14,13 @@ import {
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumRequestThrottleName } from '@common/request/enums/request.enum';
 import { RequestThrottleUserGuard } from '@common/request/guards/request.throttle-user.guard';
-import type { IRequestThrottlePolicy } from '@common/request/interfaces/request.interface';
 import { RequestThrottleService } from '@common/request/services/request.throttle.service';
 import { expectRequestContextMissingWithKey } from '@test/unit/helpers/test.unit.request.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('RequestThrottleUserGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
-    const configGet =
-        vi.fn<(key: string) => IRequestThrottlePolicy | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
     const requestThrottleService: MockProxy<RequestThrottleService> =
         mock<RequestThrottleService>();
     const policy = { ttlInMs: 1000, limit: 5, blockDurationInMs: 5000 };
@@ -33,8 +29,9 @@ describe('RequestThrottleUserGuard', () => {
     let guard: RequestThrottleUserGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockReturnValue(policy);
+        configService = buildConfigService({
+            'request.throttle.user': policy,
+        });
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RequestThrottleUserGuard,
@@ -52,7 +49,9 @@ describe('RequestThrottleUserGuard', () => {
 
     describe('canActivate', () => {
         it('reads the user throttle policy from the config service once, in the constructor', () => {
-            expect(configGet).toHaveBeenCalledWith('request.throttle.user');
+            expect(configService.get).toHaveBeenCalledWith(
+                'request.throttle.user'
+            );
         });
 
         it('activates with no evaluation when the handler carries no throttle options', async () => {

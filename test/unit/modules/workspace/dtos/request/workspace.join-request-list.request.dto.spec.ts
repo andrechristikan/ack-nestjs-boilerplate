@@ -25,16 +25,22 @@ describe('WorkspaceJoinRequestListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceJoinRequestListRequestSchema.parse({ extra: true })
-        ).toThrow();
+        const result = WorkspaceJoinRequestListRequestSchema.safeParse({
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
         expect(
             WorkspaceJoinRequestListRequestSchema.safeParse({ search: 'x' })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a status of 256 characters and rejects one of 257', () => {
@@ -43,11 +49,13 @@ describe('WorkspaceJoinRequestListRequestSchema', () => {
                 status: 'a'.repeat(256),
             })
         ).not.toThrow();
-        expect(() =>
-            WorkspaceJoinRequestListRequestSchema.parse({
-                status: 'a'.repeat(257),
-            })
-        ).toThrow();
+        const result = WorkspaceJoinRequestListRequestSchema.safeParse({
+            status: 'a'.repeat(257),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['status'], code: 'too_big' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -82,15 +90,26 @@ describe('WorkspaceJoinRequestListRequestSchema', () => {
         'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            WorkspaceJoinRequestListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            WorkspaceJoinRequestListRequestSchema.safeParse({ orderBy }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             WorkspaceJoinRequestListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

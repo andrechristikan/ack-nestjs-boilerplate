@@ -13,7 +13,7 @@ argument-hint: '<the symptom: input, observed result, expected result, where it 
 
 Symptom: $ARGUMENTS
 
-The session settles the symptom with the owner and assigns. `debugger` finds the cause and fixes nothing; `coder` fixes test-first; `reviewer` judges the fix. No fix before the root cause is stated with its evidence. Every Agent call runs in the foreground.
+The session settles the symptom with the owner and assigns. `debugger` finds the cause and fixes nothing; `coder` fixes test-first; `reviewer` judges the fix. No fix before the root cause is stated with its evidence.
 
 ## 1. Pin the symptom
 
@@ -46,14 +46,13 @@ Rules to read: <the output of bash .claude/hooks/rules.sh over the scope, pasted
 ## 4. Fix
 
 1. Show the owner the pin with `AskUserQuestion` and wait for the yes.
-2. Dispatch `coder` on sonnet, at the effort `bash .claude/hooks/jev.sh level` gives the pin (`.claude/skills/ack-plan/SKILL.md`, Level per ticket) and at medium when its block names no agent:
+2. Dispatch `coder` on sonnet, at the effort `bash .claude/hooks/jev.sh level` gives the pin (`.claude/skills/ack-plan/SKILL.md`, Level per ticket) and as that section's table gives when its block gives nothing:
 
 ```
 Agent: coder
 Pin: <files; cause at file:line; the change in one sentence>
 First failing spec: <the behaviour the root cause breaks>
 Decisions to honour: <as in step 2>
-Rules to read: <the output of bash .claude/hooks/rules.sh over the pin's files, pasted>
 ```
 
 3. A `DONE` hand-back quotes the spec failing because of the root cause, then passing.
@@ -70,7 +69,7 @@ Dispatch `reviewer` with `Depth: task`, the pin as the requirement, the changed 
 - The fix and the spec that guards it.
 - Each other place with the same defect, unfixed.
 - Each owner answer that rejected a named alternative, as a decision candidate (the choice, the rejected option, the owner's reason): name `/ack-harness`.
-- The proposed commit subject, `<type>(<scope>): <description>` per `.commitlintrc`. Wait for the owner.
+- The proposed commit subject (`.claude/CLAUDE.md`, Etiquette). Wait for the owner.
 
 ## Next
 

@@ -11,15 +11,21 @@ describe('PolicyUpdateRequestSchema', () => {
     });
 
     it('rejects subject as an undeclared key', () => {
-        expect(() =>
-            PolicyUpdateRequestSchema.parse({
-                ...payload,
-                subject: 'user',
-            })
-        ).toThrow();
+        const result = PolicyUpdateRequestSchema.safeParse({
+            ...payload,
+            subject: 'user',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects an empty action list', () => {
-        expect(() => PolicyUpdateRequestSchema.parse({ action: [] })).toThrow();
+        const result = PolicyUpdateRequestSchema.safeParse({ action: [] });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['action'], code: 'too_small' }),
+        ]);
     });
 });

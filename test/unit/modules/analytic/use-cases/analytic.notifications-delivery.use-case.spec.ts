@@ -23,8 +23,6 @@ describe('AnalyticNotificationsDeliveryUseCase', () => {
     let useCase: AnalyticNotificationsDeliveryUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticNotificationsDeliveryUseCase,

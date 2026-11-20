@@ -43,7 +43,9 @@ describe('AnalyticActiveUsersResponseSchema', () => {
         ['computedAt', withoutComputedAt],
     ])('rejects an absent %s', (_field, payload) => {
         expect(
-            AnalyticActiveUsersResponseSchema.safeParse(payload).success
-        ).toBe(false);
+            AnalyticActiveUsersResponseSchema.safeParse(payload).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [_field], code: 'invalid_type' }),
+        ]);
     });
 });

@@ -42,7 +42,6 @@ describe('UserUpdateProfileUseCase', () => {
     let useCase: UserUpdateProfileUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect.mockReturnValue(entry);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never

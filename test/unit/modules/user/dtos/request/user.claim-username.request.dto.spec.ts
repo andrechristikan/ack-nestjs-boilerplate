@@ -18,9 +18,13 @@ describe('UserClaimUsernameRequestSchema', () => {
     });
 
     it('rejects a username shorter than 3 characters', () => {
-        expect(() =>
-            UserClaimUsernameRequestSchema.parse({ username: 'ab' })
-        ).toThrow();
+        const result = UserClaimUsernameRequestSchema.safeParse({
+            username: 'ab',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['username'], code: 'too_small' }),
+        ]);
     });
 
     it('accepts the dash and underscore the username pattern allows', () => {
@@ -32,17 +36,26 @@ describe('UserClaimUsernameRequestSchema', () => {
     });
 
     it('rejects a username with a character outside the allowed pattern', () => {
-        expect(() =>
-            UserClaimUsernameRequestSchema.parse({ username: 'john doe' })
-        ).toThrow();
+        const result = UserClaimUsernameRequestSchema.safeParse({
+            username: 'john doe',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['username'],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserClaimUsernameRequestSchema.parse({
-                ...payload,
-                role: 'admin',
-            })
-        ).toThrow();
+        const result = UserClaimUsernameRequestSchema.safeParse({
+            ...payload,
+            role: 'admin',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

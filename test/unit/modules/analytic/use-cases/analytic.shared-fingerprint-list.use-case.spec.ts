@@ -1,22 +1,25 @@
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import {
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
+} from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticFraudService } from '@modules/analytic/services/analytic.fraud.service';
-import { AnalyticSnapshotOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticSharedFingerprintListUseCase } from '@modules/analytic/use-cases/analytic.shared-fingerprint-list.use-case';
-import { EnumAnalyticSnapshotOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticSharedFingerprintListUseCase', () => {
     const analyticFraudService: MockProxy<AnalyticFraudService> =
         mock<AnalyticFraudService>();
-
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
 
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
@@ -24,7 +27,7 @@ describe('AnalyticSharedFingerprintListUseCase', () => {
     const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
         limit: 20,
-        orderBy: [],
+        orderBy: [{ value: EnumPaginationOrderDirectionType.desc }],
     };
 
     const offsetPage = {
@@ -40,12 +43,6 @@ describe('AnalyticSharedFingerprintListUseCase', () => {
     let useCase: AnalyticSharedFingerprintListUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        paginationQueryUtil.offset.mockReturnValue({
-            params: pagination,
-            storePatch: {},
-        });
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticSharedFingerprintListUseCase,
@@ -53,7 +50,11 @@ describe('AnalyticSharedFingerprintListUseCase', () => {
                     provide: AnalyticFraudService,
                     useValue: analyticFraudService,
                 },
-                { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -84,13 +85,6 @@ describe('AnalyticSharedFingerprintListUseCase', () => {
             expect(
                 analyticFraudService.sharedFingerprintList
             ).toHaveBeenCalledWith(pagination);
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
-                expect.anything(),
-                {
-                    orderBy: AnalyticSnapshotOrderBy,
-                    defaultOrderBy: EnumAnalyticSnapshotOrderBy.highestValue,
-                }
-            );
         });
     });
 });

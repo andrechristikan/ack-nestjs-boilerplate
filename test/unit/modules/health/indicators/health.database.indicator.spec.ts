@@ -17,8 +17,6 @@ describe('HealthDatabaseIndicator', () => {
     let indicator: HealthDatabaseIndicator;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         healthIndicatorService.check.mockReturnValue(session as never);
 
         const module: TestingModule = await Test.createTestingModule({

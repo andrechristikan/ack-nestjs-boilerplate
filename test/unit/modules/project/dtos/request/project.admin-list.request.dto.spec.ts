@@ -28,15 +28,28 @@ describe('ProjectAdminListRequestSchema', () => {
     });
 
     it('rejects a workspaceId that is not a MongoDB ObjectId', () => {
-        expect(() =>
-            ProjectAdminListRequestSchema.parse({ workspaceId: 'not-an-id' })
-        ).toThrow();
+        const result = ProjectAdminListRequestSchema.safeParse({
+            workspaceId: 'not-an-id',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['workspaceId'],
+                code: 'too_small',
+            }),
+            expect.objectContaining({
+                path: ['workspaceId'],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ProjectAdminListRequestSchema.parse({ extra: true })
-        ).toThrow();
+        const result = ProjectAdminListRequestSchema.safeParse({ extra: true });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the module search description', () => {
@@ -74,15 +87,25 @@ describe('ProjectAdminListRequestSchema', () => {
         'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            ProjectAdminListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            ProjectAdminListRequestSchema.safeParse({ orderBy }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             ProjectAdminListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

@@ -4,7 +4,6 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumUserReauthenticationAction } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -26,6 +25,10 @@ import {
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { UserDeleteMobileNumberUseCase } from '@modules/user/use-cases/user.delete-mobile-number.use-case';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 const passkeyResponse = {
     id: 'AbC_-123',
@@ -44,7 +47,6 @@ describe('UserDeleteMobileNumberUseCase', () => {
         mock<UserMobileNumberService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let useCase: UserDeleteMobileNumberUseCase;
 
@@ -89,7 +91,6 @@ describe('UserDeleteMobileNumberUseCase', () => {
     const dto = { password: 'Current-pass1' };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -110,7 +111,11 @@ describe('UserDeleteMobileNumberUseCase', () => {
                 },
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                DatabaseUtil,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(UserDeleteMobileNumberUseCase);
@@ -279,11 +284,8 @@ describe('UserDeleteMobileNumberUseCase', () => {
         });
 
         it('answers UserMobileNumberNotFoundException on a write conflict', async () => {
-            const conflict = new Error('write conflict');
+            const conflict = buildPrismaKnownRequestError('P2034');
             outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
 
             await expect(
                 useCase.execute(
@@ -295,7 +297,6 @@ describe('UserDeleteMobileNumberUseCase', () => {
                     dto
                 )
             ).rejects.toBeInstanceOf(UserMobileNumberNotFoundException);
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('rethrows an AppBaseException of the transaction as it is', async () => {
@@ -314,14 +315,11 @@ describe('UserDeleteMobileNumberUseCase', () => {
                     dto
                 )
             ).rejects.toBe(failure);
-
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {
             const cause = new Error('boom');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

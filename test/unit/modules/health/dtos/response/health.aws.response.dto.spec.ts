@@ -41,14 +41,29 @@ describe('HealthAwsResponseSchema', () => {
     });
 
     it('rejects an invalid status value', () => {
-        expect(() =>
-            HealthAwsResponseSchema.parse({ ...payload, status: 'invalid' })
-        ).toThrow();
+        const result = HealthAwsResponseSchema.safeParse({
+            ...payload,
+            status: 'invalid',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['status'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects a missing details field', () => {
         const { details: _details, ...withoutDetails } = payload;
 
-        expect(() => HealthAwsResponseSchema.parse(withoutDetails)).toThrow();
+        const result = HealthAwsResponseSchema.safeParse(withoutDetails);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['details'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

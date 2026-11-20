@@ -28,8 +28,6 @@ describe('FeatureFlagUpdateMetadataByAdminUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 FeatureFlagUpdateMetadataByAdminUseCase,

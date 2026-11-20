@@ -5,28 +5,15 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { Workspace } from '@generated/prisma-client/client';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceGetByIdByAdminUseCase } from '@modules/workspace/use-cases/workspace.get-by-id-by-admin.use-case';
+import { buildWorkspace } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceGetByIdByAdminUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
-    const workspace: Workspace = {
-        id: 'workspace-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: 'user-1',
-        deletedAt: null,
-        deletedBy: null,
-        name: 'Acme',
-        slug: 'acme-team',
-        description: null,
-        isPublic: false,
-    };
+    const workspace: Workspace = buildWorkspace();
     let useCase: WorkspaceGetByIdByAdminUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceGetByIdByAdminUseCase,

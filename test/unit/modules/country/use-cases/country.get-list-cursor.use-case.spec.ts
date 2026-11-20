@@ -4,23 +4,19 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Country } from '@generated/prisma-client/client';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import {
-    CountryOrderBy,
-    CountryDefaultAvailableSearch,
-    CountryPublicListCursorScope,
-} from '@modules/country/constants/country.list.constant';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryGetListCursorUseCase } from '@modules/country/use-cases/country.get-list-cursor.use-case';
-import { EnumCountryOrderBy } from '@modules/country/enums/country.enum';
 
 describe('CountryGetListCursorUseCase', () => {
     const countryService: MockProxy<CountryService> = mock<CountryService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
@@ -38,29 +34,23 @@ describe('CountryGetListCursorUseCase', () => {
         updatedBy: null,
     };
 
-    const pagination: IPaginationQueryCursorParams = {
-        fingerprint: 'aaaaaaaaaaaaaaaa',
+    const pagination = {
+        fingerprint: 'c213a30277545cd6',
         limit: 20,
-        orderBy: [],
+        orderBy: [{ createdAt: 'desc' }],
     };
 
     let useCase: CountryGetListCursorUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        paginationQueryUtil.cursor.mockReturnValue({
-            params: pagination,
-            storePatch: {},
-        });
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 CountryGetListCursorUseCase,
                 { provide: CountryService, useValue: countryService },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 {
                     provide: RequestStoreService,
@@ -73,7 +63,7 @@ describe('CountryGetListCursorUseCase', () => {
     });
 
     describe('execute', () => {
-        it('parses the cursor query and hands the pagination params to the domain', async () => {
+        it('parses the cursor query and hands the pagination params it produces to the domain', async () => {
             const query = { perPage: 20 };
             const page = {
                 type: EnumPaginationType.cursor as const,
@@ -86,23 +76,12 @@ describe('CountryGetListCursorUseCase', () => {
             const result = await useCase.execute(query);
 
             expect(result).toBe(page);
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                scope: CountryPublicListCursorScope,
-                availableSearch: CountryDefaultAvailableSearch,
-                orderBy: CountryOrderBy,
-                defaultOrderBy: EnumCountryOrderBy.latest,
-            });
             expect(countryService.getListCursor).toHaveBeenCalledWith(
                 pagination
             );
         });
 
         it('merges the parsed store patch into the pagination store', async () => {
-            const storePatch = { perPage: 20 };
-            paginationQueryUtil.cursor.mockReturnValue({
-                params: pagination,
-                storePatch,
-            });
             countryService.getListCursor.mockResolvedValue({
                 type: EnumPaginationType.cursor as const,
                 perPage: 20,
@@ -114,7 +93,17 @@ describe('CountryGetListCursorUseCase', () => {
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                storePatch
+                {
+                    perPage: 20,
+                    orderBy: 'latest',
+                    availableSearch: [
+                        'name',
+                        'alpha2Code',
+                        'alpha3Code',
+                        'continent',
+                    ],
+                    availableOrderBy: ['latest', 'name', 'alpha2Code'],
+                }
             );
         });
     });

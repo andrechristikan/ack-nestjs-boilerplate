@@ -14,8 +14,13 @@ describe('UserImportRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserImportRequestSchema.parse({ ...payload, roleId: 'role-1' })
-        ).toThrow();
+        const result = UserImportRequestSchema.safeParse({
+            ...payload,
+            roleId: 'role-1',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

@@ -10,30 +10,42 @@ describe('ProjectUpdateSlugRequestSchema', () => {
     });
 
     it('rejects an empty slug', () => {
-        expect(() =>
-            ProjectUpdateSlugRequestSchema.parse({ slug: '' })
-        ).toThrow();
+        const result = ProjectUpdateSlugRequestSchema.safeParse({ slug: '' });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['slug'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a missing slug', () => {
-        expect(() => ProjectUpdateSlugRequestSchema.parse({})).toThrow();
+        const result = ProjectUpdateSlugRequestSchema.safeParse({});
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['slug'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ProjectUpdateSlugRequestSchema.parse({
-                slug: 'website-revamp',
-                extra: true,
-            })
-        ).toThrow();
+        const result = ProjectUpdateSlugRequestSchema.safeParse({
+            slug: 'website-revamp',
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a slug of 100 characters and rejects one of 101', () => {
         expect(() =>
             ProjectUpdateSlugRequestSchema.parse({ slug: 'a'.repeat(100) })
         ).not.toThrow();
-        expect(() =>
-            ProjectUpdateSlugRequestSchema.parse({ slug: 'a'.repeat(101) })
-        ).toThrow();
+        const result = ProjectUpdateSlugRequestSchema.safeParse({
+            slug: 'a'.repeat(101),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['slug'], code: 'too_big' }),
+        ]);
     });
 });

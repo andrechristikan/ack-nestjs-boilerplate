@@ -1,4 +1,5 @@
 import { HealthIndicatorService } from '@nestjs/terminus';
+import * as Sentry from '@sentry/nestjs';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
@@ -15,14 +16,9 @@ describe('HealthSentryIndicator', () => {
         mock<HealthIndicatorService>();
     const session = { up: vi.fn(), down: vi.fn() };
 
-    let Sentry: typeof import('@sentry/nestjs');
     let indicator: HealthSentryIndicator;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        vi.resetModules();
-        Sentry = await import('@sentry/nestjs');
-
         healthIndicatorService.check.mockReturnValue(session as never);
 
         indicator = await createHealthSentryIndicator(

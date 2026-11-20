@@ -22,34 +22,50 @@ describe('ProjectCreateRequestSchema', () => {
     });
 
     it('rejects an empty name', () => {
-        expect(() => ProjectCreateRequestSchema.parse({ name: '' })).toThrow();
+        const result = ProjectCreateRequestSchema.safeParse({ name: '' });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a name over 150 characters', () => {
-        expect(() =>
-            ProjectCreateRequestSchema.parse({ name: 'a'.repeat(151) })
-        ).toThrow();
+        const result = ProjectCreateRequestSchema.safeParse({
+            name: 'a'.repeat(151),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects a description over 500 characters', () => {
-        expect(() =>
-            ProjectCreateRequestSchema.parse({
-                name: 'Website Revamp',
-                description: 'a'.repeat(501),
-            })
-        ).toThrow();
+        const result = ProjectCreateRequestSchema.safeParse({
+            name: 'Website Revamp',
+            description: 'a'.repeat(501),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['description'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects a missing name', () => {
-        expect(() => ProjectCreateRequestSchema.parse({})).toThrow();
+        const result = ProjectCreateRequestSchema.safeParse({});
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ProjectCreateRequestSchema.parse({
-                name: 'Website Revamp',
-                extra: true,
-            })
-        ).toThrow();
+        const result = ProjectCreateRequestSchema.safeParse({
+            name: 'Website Revamp',
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

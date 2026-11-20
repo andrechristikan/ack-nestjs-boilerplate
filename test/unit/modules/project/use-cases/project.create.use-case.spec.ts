@@ -48,8 +48,6 @@ describe('ProjectCreateUseCase', () => {
     );
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectCreateUseCase,

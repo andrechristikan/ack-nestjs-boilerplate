@@ -1,14 +1,18 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
+    Prisma,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -53,9 +57,6 @@ describe('SessionRevokeUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const user = buildUser('user-1', 'actor@example.com');
@@ -80,13 +81,20 @@ describe('SessionRevokeUseCase', () => {
 
     let useCase: SessionRevokeUseCase;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(revokedAt);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         userAuthService.assertReauthentication.mockResolvedValue(check);
-        helperDateService.create.mockReturnValue(revokedAt);
         activityLogService.recordEffect.mockReturnValue(entryEffect);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -96,8 +104,12 @@ describe('SessionRevokeUseCase', () => {
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                DatabaseUtil,
+                HelperDateService,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(SessionRevokeUseCase);
@@ -263,7 +275,6 @@ describe('SessionRevokeUseCase', () => {
             ).rejects.toBe(failure);
 
             expect(outboxService.addInTx).not.toHaveBeenCalled();
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('rethrows a completion refusal as it is', async () => {
@@ -287,11 +298,14 @@ describe('SessionRevokeUseCase', () => {
         });
 
         it('answers SessionNotFoundException on a write conflict', async () => {
-            const conflict = new Error('write conflict');
-            outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                }
             );
+            outboxService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -303,13 +317,11 @@ describe('SessionRevokeUseCase', () => {
                     dto
                 )
             ).rejects.toBeInstanceOf(SessionNotFoundException);
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {
             const cause = new Error('boom');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

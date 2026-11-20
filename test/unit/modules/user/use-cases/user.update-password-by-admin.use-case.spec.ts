@@ -8,11 +8,6 @@ import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
     EnumRoleType,
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { PasswordHistory, User } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
@@ -38,11 +33,15 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserUpdatePasswordByAdminUseCase } from '@modules/user/use-cases/user.update-password-by-admin.use-case';
 import {
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 
 describe('UserUpdatePasswordByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -56,58 +55,11 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
 
     let useCase: UserUpdatePasswordByAdminUseCase;
 
-    const user: IUser = {
-        id: 'user-linden',
-        name: 'Linden Frost',
-        username: 'lindenFrost',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'linden@example.com',
-        roleId: 'role-linden',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-linden',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: EnumUserLoginFrom.website,
-        lastLoginWith: EnumUserLoginWith.credential,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-linden',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
-    };
+    const user: IUser = buildUser('user-linden', 'linden@example.com');
     const admin: IUser = {
         ...user,
         id: 'admin-linden',
@@ -153,11 +105,19 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
     const passwordHistory = { id: 'history-linden' } as PasswordHistory;
     const updatedRow = {
         id: 'user-linden',
+        username: 'lindenFrost',
         updatedAt: new Date('2026-03-01T00:00:00.000Z'),
     } as User;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect.mockImplementation(
             (
                 _requestContext,
@@ -170,10 +130,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     ? adminEntry
                     : targetEntry
         );
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.formatToIso
-            .mockReturnValueOnce('2026-01-01T00:00:00.000Z')
-            .mockReturnValueOnce('2026-06-01T00:00:00.000Z');
+        vi.setSystemTime(now);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -196,9 +153,13 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 },
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: UserUtil, useValue: userUtil },
+                UserUtil,
                 { provide: OutboxService, useValue: outboxService },
-                { provide: HelperDateService, useValue: helperDateService },
+                HelperDateService,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitUserConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(UserUpdatePasswordByAdminUseCase);
@@ -210,12 +171,6 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             userPasswordService.createTemporaryPassword.mockResolvedValue({
                 password,
                 passwordString: 'temp-password',
-            });
-            userUtil.mapActivityLogActorMetadata.mockReturnValue({
-                targetUserId: 'user-linden',
-            });
-            userUtil.mapActivityLogTargetMetadata.mockReturnValue({
-                actorUserId: 'admin-linden',
             });
         });
 
@@ -336,7 +291,11 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 null,
                 {
                     action: EnumActivityLogAction.adminUserUpdatePassword,
-                    metadata: { targetUserId: 'user-linden' },
+                    metadata: {
+                        targetUserId: 'user-linden',
+                        targetUsername: 'lindenFrost',
+                        timestamp: updatedRow.updatedAt,
+                    },
                 }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
@@ -349,7 +308,10 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     action: EnumActivityLogAction.userUpdatePasswordByAdmin,
                     userId: 'user-linden',
                     createdBy: 'admin-linden',
-                    metadata: { actorUserId: 'admin-linden' },
+                    metadata: {
+                        actorUserId: 'admin-linden',
+                        timestamp: updatedRow.updatedAt,
+                    },
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [

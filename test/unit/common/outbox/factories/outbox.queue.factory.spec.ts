@@ -1,20 +1,19 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { OutboxQueueFactory } from '@common/outbox/factories/outbox.queue.factory';
+import {
+    buildConfigService,
+    stubConfigValues,
+} from '@test/unit/helpers/test.unit.config.helper';
 
 describe('OutboxQueueFactory', () => {
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
     let factory: OutboxQueueFactory;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
+        configService = buildConfigService({});
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 OutboxQueueFactory,
@@ -27,16 +26,12 @@ describe('OutboxQueueFactory', () => {
 
     describe('createRegisterQueueOptions', () => {
         it('builds the default job options with the outbox backoff delay', () => {
-            configGet.mockImplementation((key: string) => {
-                const values: Record<string, unknown> = {
-                    'queue.job.attempts': 5,
-                    'queue.job.keepLogs': 100,
-                    'queue.job.outboxBackoffDelayInMs': 10000,
-                    'queue.job.removeOnCompleteAgeInSeconds': 3600,
-                    'queue.job.removeOnFailAgeInSeconds': 86400,
-                };
-
-                return values[key];
+            stubConfigValues(configService, {
+                'queue.job.attempts': 5,
+                'queue.job.keepLogs': 100,
+                'queue.job.outboxBackoffDelayInMs': 10000,
+                'queue.job.removeOnCompleteAgeInSeconds': 3600,
+                'queue.job.removeOnFailAgeInSeconds': 86400,
             });
 
             const options = factory.createRegisterQueueOptions();

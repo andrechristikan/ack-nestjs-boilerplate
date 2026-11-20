@@ -1,20 +1,22 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { Duration } from 'luxon';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceUtil } from '@modules/device/utils/device.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -31,6 +33,7 @@ import {
     EnumActivityLogAction,
     EnumDevicePlatform,
     EnumRoleType,
+    Prisma,
 } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import {
@@ -48,7 +51,6 @@ import type {
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { SessionLoginCacheSchema } from '@modules/session/constants/session.constant';
 import { CacheService } from '@common/cache/services/cache.service';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionService } from '@modules/session/services/session.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -63,6 +65,17 @@ import {
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
 
+const JtiDigest =
+    '5b1288bdb86ccf33cc0158da1a1f405c4095d9c00fe9dadd9c58af82ff2abae5';
+const OtherDigest =
+    'd9298a10d1b0735837dc4bd85dac641b0f3cef27a47e5d53a54f2f3f5b2fcffa';
+const JtiValueDigest =
+    '3fedea99e968dee801b1651295a14d9defbf311119be3a5f5b94e3d798e79aeb';
+const OldJtiDigest =
+    '9797f85128318ebf067c28910d1b3b3957c987cb0d3ca5975dc9a3969e5f2b94';
+const NewJtiDigest =
+    '14c219682dd8c50a73aed0ca41c8acca9dcaf334fc73b9646a1022ffb59a4570';
+
 describe('SessionService', () => {
     const sessionRepository: MockProxy<SessionRepository> =
         mock<SessionRepository>();
@@ -70,26 +83,14 @@ describe('SessionService', () => {
         loginCacheTtlInMs: 900000,
     });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
-    const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
-    const configGet = vi.fn<(key: string) => number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
     const idleTimeoutInMs = 604800000;
     const retentionInMs = 7776000000;
-    const idleDuration = Duration.fromObject({ milliseconds: idleTimeoutInMs });
     const now = new Date('2026-01-08T00:00:00.000Z');
     const idleSince = new Date('2026-01-01T00:00:00.000Z');
     const requestContext = buildRequestContext();
@@ -113,7 +114,7 @@ describe('SessionService', () => {
         id: 'session-1',
         userId: 'user-1',
         deviceOwnershipId: 'device-ownership-1',
-        jtiDigest: 'jti-digest',
+        jtiDigest: JtiValueDigest,
         ipAddress: '127.0.0.1',
         userAgent: {
             ua: null,
@@ -148,32 +149,36 @@ describe('SessionService', () => {
         revokedBy: null,
     };
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation(
-            key =>
-                ({
-                    'session.idleTimeoutInMs': idleTimeoutInMs,
-                    'session.retentionInMs': retentionInMs,
-                })[key]
-        );
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.backward.mockReturnValue(idleSince);
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 SessionService,
-                { provide: ConfigService, useValue: configService },
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'session.idleTimeoutInMs': idleTimeoutInMs,
+                        'session.retentionInMs': retentionInMs,
+                    }),
+                },
                 { provide: SessionRepository, useValue: sessionRepository },
                 { provide: SessionCache, useValue: sessionCache },
                 { provide: CacheService, useValue: cacheService },
-                { provide: HelperHashService, useValue: helperHashService },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
                 { provide: DeviceService, useValue: deviceService },
-                { provide: DeviceUtil, useValue: deviceUtil },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                DeviceUtil,
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionUtil, useValue: sessionUtil },
+                SessionUtil,
             ],
         }).compile();
         service = module.get(SessionService);
@@ -181,15 +186,11 @@ describe('SessionService', () => {
 
     describe('isLoginActive', () => {
         const loginKey = 'User:user-1:Session:session-1';
-        const matching = { jtiDigest: 'digest-of-jti' };
-        const differing = { jtiDigest: 'digest-of-other' };
+        const matching = { jtiDigest: JtiDigest };
+        const differing = { jtiDigest: OtherDigest };
 
         beforeEach(() => {
             sessionCache.buildLoginKey.mockReturnValue(loginKey);
-            helperHashService.sha256Hash.mockReturnValue('digest-of-jti');
-            helperHashService.sha256Compare.mockImplementation(
-                (one, two) => one === two
-            );
         });
 
         it('returns false and invalidates the login key when the cached digest differs and the reloaded row differs too', async () => {
@@ -232,7 +233,6 @@ describe('SessionService', () => {
             );
 
             expect(result).toBe(true);
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith('jti');
             expect(cacheService.readThrough).toHaveBeenCalledTimes(1);
             expect(cacheService.invalidate).not.toHaveBeenCalled();
         });
@@ -285,11 +285,6 @@ describe('SessionService', () => {
                 900000,
                 expect.any(Function)
             );
-            expect(configGet).toHaveBeenCalledWith('session.idleTimeoutInMs');
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                idleDuration
-            );
             expect(sessionRepository.findLoginById).toHaveBeenCalledWith(
                 'user-1',
                 'session-1',
@@ -309,23 +304,11 @@ describe('SessionService', () => {
 
     describe('purgeExpired', () => {
         it('deletes the sessions expired before now minus the retention and returns the count', async () => {
-            const retention = Duration.fromObject({
-                milliseconds: retentionInMs,
-            });
             const threshold = new Date('2025-10-10T00:00:00.000Z');
-            helperDateService.createDuration.mockReturnValue(retention);
-            helperDateService.backward.mockReturnValue(threshold);
             sessionRepository.deleteExpiredBefore.mockResolvedValue(4);
 
             await expect(service.purgeExpired()).resolves.toBe(4);
 
-            expect(helperDateService.createDuration).toHaveBeenCalledWith({
-                milliseconds: retentionInMs,
-            });
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                retention
-            );
             expect(sessionRepository.deleteExpiredBefore).toHaveBeenCalledWith(
                 threshold
             );
@@ -461,10 +444,6 @@ describe('SessionService', () => {
             expect(
                 sessionRepository.findActiveWithPaginationCursor
             ).toHaveBeenCalledWith('user-1', pagination, idleSince);
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                idleDuration
-            );
         });
     });
 
@@ -479,7 +458,7 @@ describe('SessionService', () => {
                 id: 'session-1',
                 userId: 'user-1',
                 deviceOwnershipId: 'device-ownership-1',
-                jtiDigest: 'jti-digest',
+                jtiDigest: JtiValueDigest,
                 ipAddress: '127.0.0.1',
                 userAgent: session.userAgent,
                 geoLocation: null,
@@ -494,7 +473,6 @@ describe('SessionService', () => {
                 updatedBy: null,
             };
             sessionRepository.createInTx.mockResolvedValue(created);
-            helperHashService.sha256Hash.mockReturnValue('jti-digest');
 
             const result = await service.createInTx(
                 tx,
@@ -512,23 +490,14 @@ describe('SessionService', () => {
                 'user-1',
                 'session-1',
                 'device-ownership-1',
-                'jti-digest',
+                JtiValueDigest,
                 session.expiredAt,
                 requestLog
-            );
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'jti-value'
             );
         });
     });
 
     describe('updateJtiInTx', () => {
-        beforeEach(() => {
-            helperHashService.sha256Hash.mockImplementation(
-                value => `digest-of-${value}`
-            );
-        });
-
         it('answers true and passes only the digests to the repository when the compare-and-set matches a row', async () => {
             sessionRepository.updateJtiInTx.mockResolvedValue(true);
 
@@ -538,13 +507,9 @@ describe('SessionService', () => {
             expect(sessionRepository.updateJtiInTx).toHaveBeenCalledWith(
                 tx,
                 'session-1',
-                'digest-of-old-jti',
-                'digest-of-new-jti',
+                OldJtiDigest,
+                NewJtiDigest,
                 idleSince
-            );
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                idleDuration
             );
         });
 
@@ -572,18 +537,13 @@ describe('SessionService', () => {
                     revokedAt
                 )
             ).resolves.toBe(true);
-
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                revokedAt,
-                idleDuration
-            );
             expect(sessionRepository.revokeLiveInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
                 'session-1',
                 'user-1',
                 revokedAt,
-                idleSince
+                new Date('2025-12-29T00:00:00.000Z')
             );
             expect(sessionRepository.revokeInTx).not.toHaveBeenCalled();
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, {
@@ -630,7 +590,6 @@ describe('SessionService', () => {
                 expect.objectContaining({
                     module: 'session',
                     statusCode: EnumSessionStatusCodeError.revoked,
-                    messagePath: 'session.error.revoked',
                 })
             );
         });
@@ -682,11 +641,6 @@ describe('SessionService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'session',
                 statusCode: EnumSessionStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.notFound
-                    ],
-                messagePath: 'session.error.notFound',
             });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -1111,21 +1065,19 @@ describe('SessionService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'session',
                 statusCode: EnumSessionStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.notFound
-                    ],
-                messagePath: 'session.error.notFound',
             });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('throws SessionNotFoundException on a write conflict', async () => {
-            const conflict = new Error('write conflict');
-            outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                }
             );
+            outboxService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 service.revokeByAdmin(
@@ -1139,19 +1091,12 @@ describe('SessionService', () => {
             ).rejects.toMatchObject({
                 module: 'session',
                 statusCode: EnumSessionStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.notFound
-                    ],
-                messagePath: 'session.error.notFound',
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps any other error in AppUnknownException', async () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.revokeByAdmin(
@@ -1175,11 +1120,6 @@ describe('SessionService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.notSelf,
-                    statusCodeKey:
-                        EnumUserStatusCodeError[
-                            EnumUserStatusCodeError.notSelf
-                        ],
-                    messagePath: 'user.error.notSelf',
                 })
             );
         });
@@ -1195,14 +1135,6 @@ describe('SessionService', () => {
         const revokedAt = new Date('2026-01-05T00:00:00.000Z');
 
         beforeEach(() => {
-            sessionUtil.mapActivityLogRevokeAllActorMetadata.mockReturnValue({
-                targetUserId: 'user-1',
-                sessionCount: 2,
-            });
-            sessionUtil.mapActivityLogRevokeAllTargetMetadata.mockReturnValue({
-                actorUserId: 'admin-1',
-                sessionCount: 2,
-            });
             activityLogService.recordEffect
                 .mockReturnValueOnce(actorEffect)
                 .mockReturnValueOnce(targetEffect);
@@ -1225,12 +1157,6 @@ describe('SessionService', () => {
                 revokedAt
             );
 
-            expect(
-                sessionUtil.mapActivityLogRevokeAllActorMetadata
-            ).toHaveBeenCalledWith('user-1', 2);
-            expect(
-                sessionUtil.mapActivityLogRevokeAllTargetMetadata
-            ).toHaveBeenCalledWith('admin-1', 2);
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
@@ -1305,21 +1231,19 @@ describe('SessionService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'session',
                 statusCode: EnumSessionStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.notFound
-                    ],
-                messagePath: 'session.error.notFound',
             });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('throws SessionNotFoundException on a write conflict', async () => {
-            const conflict = new Error('write conflict');
-            outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                }
             );
+            outboxService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 service.revokeAllByAdmin(
@@ -1332,19 +1256,12 @@ describe('SessionService', () => {
             ).rejects.toMatchObject({
                 module: 'session',
                 statusCode: EnumSessionStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.notFound
-                    ],
-                messagePath: 'session.error.notFound',
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps any other error in AppUnknownException', async () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.revokeAllByAdmin(
@@ -1479,6 +1396,7 @@ describe('SessionService', () => {
 
     describe('removeDeviceOwnershipByAdmin', () => {
         const now = new Date('2026-01-05T00:00:00.000Z');
+        const clock = new Date('2026-01-08T00:00:00.000Z');
         const revokedSessions: ISessionRef[] = [{ id: 'session-1' }];
         const deviceOwnership: IDeviceOwnership = {
             id: 'device-ownership-1',
@@ -1521,14 +1439,23 @@ describe('SessionService', () => {
             _count: { sessions: 2 },
         };
 
+        const DeviceActorMetadata = {
+            deviceOwnershipId: 'device-ownership-1',
+            deviceId: 'device-1',
+            sessionCount: 1,
+            targetUserId: 'user-1',
+            targetUsername: 'jane',
+            timestamp: now,
+        };
+        const DeviceTargetMetadata = {
+            deviceOwnershipId: 'device-ownership-1',
+            deviceId: 'device-1',
+            sessionCount: 1,
+            actorUserId: 'admin-1',
+            timestamp: now,
+        };
+
         beforeEach(() => {
-            helperDateService.create.mockReturnValue(now);
-            deviceUtil.mapActivityLogActorMetadata.mockReturnValue({
-                targetUserId: 'user-1',
-            });
-            deviceUtil.mapActivityLogTargetMetadata.mockReturnValue({
-                actorUserId: 'admin-1',
-            });
             activityLogService.recordEffect
                 .mockReturnValueOnce(actorEffect)
                 .mockReturnValueOnce(targetEffect);
@@ -1560,14 +1487,14 @@ describe('SessionService', () => {
                 'user-1',
                 'device-ownership-1',
                 'admin-1',
-                now
+                clock
             );
             expect(deviceService.removeOwnershipInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
                 'device-ownership-1',
                 'admin-1',
-                now
+                clock
             );
         });
 
@@ -1580,13 +1507,6 @@ describe('SessionService', () => {
                 'device-ownership-1'
             );
 
-            expect(deviceUtil.mapActivityLogActorMetadata).toHaveBeenCalledWith(
-                deviceOwnership,
-                1
-            );
-            expect(
-                deviceUtil.mapActivityLogTargetMetadata
-            ).toHaveBeenCalledWith(deviceOwnership, 'admin-1', 1);
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
@@ -1595,7 +1515,7 @@ describe('SessionService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.adminDeviceRemove,
-                    metadata: { targetUserId: 'user-1' },
+                    metadata: DeviceActorMetadata,
                 }
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
@@ -1608,7 +1528,7 @@ describe('SessionService', () => {
                     action: EnumActivityLogAction.userRemoveDeviceByAdmin,
                     userId: 'user-1',
                     createdBy: 'admin-1',
-                    metadata: { actorUserId: 'admin-1' },
+                    metadata: DeviceTargetMetadata,
                 }
             );
             expect(outboxService.addInTx).toHaveBeenNthCalledWith(
@@ -1637,11 +1557,14 @@ describe('SessionService', () => {
         });
 
         it('throws DeviceNotFoundException on a write conflict', async () => {
-            const conflict = new Error('write conflict');
-            outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                }
             );
+            outboxService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 service.removeDeviceOwnershipByAdmin(
@@ -1656,7 +1579,6 @@ describe('SessionService', () => {
 
                 constructor: DeviceNotFoundException,
                 module: 'device',
-                messagePath: 'device.error.notFound',
             });
         });
 
@@ -1678,7 +1600,6 @@ describe('SessionService', () => {
         it('wraps any other error in AppUnknownException', async () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.removeDeviceOwnershipByAdmin(

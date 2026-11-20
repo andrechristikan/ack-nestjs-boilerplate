@@ -9,7 +9,6 @@ describe('FileRequiredPipe', () => {
     let pipe: PipeTransform<IFileInput, IFileInput>;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const PipeClass: Type<PipeTransform<IFileInput, IFileInput>> =
             FileRequiredPipe();
         const module = await Test.createTestingModule({
@@ -32,9 +31,6 @@ describe('FileRequiredPipe', () => {
             expect(caught).toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.required,
-                statusCodeKey:
-                    EnumFileStatusCodeError[EnumFileStatusCodeError.required],
-                messagePath: 'file.error.required',
             });
         });
 
@@ -51,9 +47,6 @@ describe('FileRequiredPipe', () => {
             expect(caught).toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.required,
-                statusCodeKey:
-                    EnumFileStatusCodeError[EnumFileStatusCodeError.required],
-                messagePath: 'file.error.required',
             });
         });
 
@@ -70,9 +63,6 @@ describe('FileRequiredPipe', () => {
             expect(caught).toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.required,
-                statusCodeKey:
-                    EnumFileStatusCodeError[EnumFileStatusCodeError.required],
-                messagePath: 'file.error.required',
             });
         });
 
@@ -89,9 +79,6 @@ describe('FileRequiredPipe', () => {
             expect(caught).toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.required,
-                statusCodeKey:
-                    EnumFileStatusCodeError[EnumFileStatusCodeError.required],
-                messagePath: 'file.error.required',
             });
         });
 

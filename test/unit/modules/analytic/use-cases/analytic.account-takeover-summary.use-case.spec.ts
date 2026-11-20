@@ -14,8 +14,6 @@ describe('AnalyticAccountTakeoverSummaryUseCase', () => {
     let useCase: AnalyticAccountTakeoverSummaryUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticAccountTakeoverSummaryUseCase,

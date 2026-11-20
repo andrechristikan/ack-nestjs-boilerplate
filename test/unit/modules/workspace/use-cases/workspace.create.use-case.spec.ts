@@ -8,29 +8,18 @@ import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceCreateUseCase } from '@modules/workspace/use-cases/workspace.create.use-case';
 import {
-    buildUser,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspace,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceCreateUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
-    const workspace: Workspace = {
-        id: 'workspace-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: 'user-1',
-        deletedAt: null,
-        deletedBy: null,
-        name: 'Acme',
-        slug: 'acme-team',
-        description: null,
-        isPublic: false,
-    };
+    const workspace: Workspace = buildWorkspace();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(
@@ -41,8 +30,6 @@ describe('WorkspaceCreateUseCase', () => {
     let useCase: WorkspaceCreateUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceCreateUseCase,

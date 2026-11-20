@@ -14,21 +14,37 @@ describe('UserReauthenticationSendRequestSchema', () => {
     );
 
     it('rejects a missing action', () => {
-        expect(() => UserReauthenticationSendRequestSchema.parse({})).toThrow();
+        const result = UserReauthenticationSendRequestSchema.safeParse({});
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['action'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects an unknown action', () => {
-        expect(() =>
-            UserReauthenticationSendRequestSchema.parse({ action: 'logout' })
-        ).toThrow();
+        const result = UserReauthenticationSendRequestSchema.safeParse({
+            action: 'logout',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['action'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserReauthenticationSendRequestSchema.parse({
-                action: EnumUserReauthenticationAction.deleteSelf,
-                otp: '123456',
-            })
-        ).toThrow();
+        const result = UserReauthenticationSendRequestSchema.safeParse({
+            action: EnumUserReauthenticationAction.deleteSelf,
+            otp: '123456',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

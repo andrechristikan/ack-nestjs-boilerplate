@@ -1,9 +1,12 @@
 import { Test } from '@nestjs/testing';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { MessageService } from '@common/message/services/message.service';
 import {
     EnumNotificationKind,
@@ -14,17 +17,12 @@ import { NotificationSmsDeliveryService } from '@modules/notification/services/n
 import { NotificationSmsProcessSendUseCase } from '@modules/notification/use-cases/notification.sms.process-send.use-case';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
+import { buildSealedNotificationPayload } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('NotificationSmsProcessSendUseCase', () => {
     const notificationSmsDeliveryService: MockProxy<NotificationSmsDeliveryService> =
         mock<NotificationSmsDeliveryService>();
-    const helperEncryptionService: MockProxy<HelperEncryptionService> =
-        mock<HelperEncryptionService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     let useCase: NotificationSmsProcessSendUseCase;
 
@@ -33,7 +31,10 @@ describe('NotificationSmsProcessSendUseCase', () => {
         notificationId: 'notification-id',
         userId: 'user-id',
         username: 'invitee',
-        encryptedMobileNumber: 'cipher(+6281234567890)',
+        encryptedMobileNumber: buildSealedNotificationPayload(
+            '+6281234567890',
+            'user-id'
+        ),
         completedSteps: [],
         context: {
             userId: 'user-id',
@@ -41,16 +42,13 @@ describe('NotificationSmsProcessSendUseCase', () => {
             verificationId: 'verification-id',
             reference: 'VRF-abc',
             expiredInMinutes: 5,
-            encryptedOtp: 'cipher(482913)',
+            encryptedOtp: buildSealedNotificationPayload('482913', 'user-id'),
             snapshot: null,
         },
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
-        vi.mocked(configService.get).mockReturnValue('secret-key');
-        stubCipherDecryption(helperEncryptionService);
         const module = await Test.createTestingModule({
             providers: [
                 NotificationSmsProcessSendUseCase,
@@ -59,13 +57,12 @@ describe('NotificationSmsProcessSendUseCase', () => {
                     provide: NotificationSmsDeliveryService,
                     useValue: notificationSmsDeliveryService,
                 },
-                {
-                    provide: HelperEncryptionService,
-                    useValue: helperEncryptionService,
-                },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: ConfigService, useValue: configService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: MessageService, useValue: messageService },
             ],
         }).compile();
@@ -133,12 +130,6 @@ describe('NotificationSmsProcessSendUseCase', () => {
             expect(
                 notificationSmsDeliveryService.stampSent
             ).toHaveBeenCalledWith('notification-id', 'user-id');
-            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
-                'cipher(482913)',
-                'secret-key',
-                'notification.payload',
-                'user-id'
-            );
             expect(result).toEqual({
                 message: 'notification.queue.sms.send',
             });

@@ -68,11 +68,16 @@ describe('ActivityLogResponseSchema', () => {
     });
 
     it('rejects an action outside the enum', () => {
-        expect(() =>
-            ActivityLogResponseSchema.parse({
-                ...row,
-                action: 'notAnAction',
-            })
-        ).toThrow();
+        const result = ActivityLogResponseSchema.safeParse({
+            ...row,
+            action: 'notAnAction',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['action'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 });

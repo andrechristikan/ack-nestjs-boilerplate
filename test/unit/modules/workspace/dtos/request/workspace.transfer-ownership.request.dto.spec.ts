@@ -10,19 +10,30 @@ describe('WorkspaceTransferOwnershipRequestSchema', () => {
     });
 
     it('rejects a targetUserId that is not a MongoID', () => {
-        expect(() =>
-            WorkspaceTransferOwnershipRequestSchema.parse({
-                targetUserId: 'not-an-id',
-            })
-        ).toThrow();
+        const result = WorkspaceTransferOwnershipRequestSchema.safeParse({
+            targetUserId: 'not-an-id',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['targetUserId'],
+                code: 'too_small',
+            }),
+            expect.objectContaining({
+                path: ['targetUserId'],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceTransferOwnershipRequestSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = WorkspaceTransferOwnershipRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

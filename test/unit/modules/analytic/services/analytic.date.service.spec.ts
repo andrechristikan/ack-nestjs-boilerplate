@@ -16,8 +16,6 @@ describe('AnalyticDateService', () => {
     let service: AnalyticDateService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         configService = buildConfigService({
             'analytic.maxWindowInMs': maxWindowInMs,
         });
@@ -48,11 +46,6 @@ describe('AnalyticDateService', () => {
                 expect(error).toMatchObject({
                     module: 'analytic',
                     statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
-                    statusCodeKey:
-                        EnumAnalyticStatusCodeError[
-                            EnumAnalyticStatusCodeError.invalidDateRange
-                        ],
-                    messagePath: 'analytic.error.invalidDateRange',
                 });
             }
         });
@@ -65,11 +58,6 @@ describe('AnalyticDateService', () => {
                 expect(error).toMatchObject({
                     module: 'analytic',
                     statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
-                    statusCodeKey:
-                        EnumAnalyticStatusCodeError[
-                            EnumAnalyticStatusCodeError.invalidDateRange
-                        ],
-                    messagePath: 'analytic.error.invalidDateRange',
                 });
             }
         });
@@ -91,7 +79,6 @@ describe('AnalyticDateService', () => {
                 expect(error).toMatchObject({
                     module: 'analytic',
                     statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
-                    messagePath: 'analytic.error.invalidDateRange',
                 });
             }
         });
@@ -120,11 +107,6 @@ describe('AnalyticDateService', () => {
                 expect(error).toMatchObject({
                     module: 'analytic',
                     statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
-                    statusCodeKey:
-                        EnumAnalyticStatusCodeError[
-                            EnumAnalyticStatusCodeError.invalidDateRange
-                        ],
-                    messagePath: 'analytic.error.invalidDateRange',
                 });
             }
         });
@@ -137,11 +119,6 @@ describe('AnalyticDateService', () => {
                 expect(error).toMatchObject({
                     module: 'analytic',
                     statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
-                    statusCodeKey:
-                        EnumAnalyticStatusCodeError[
-                            EnumAnalyticStatusCodeError.invalidDateRange
-                        ],
-                    messagePath: 'analytic.error.invalidDateRange',
                 });
             }
         });

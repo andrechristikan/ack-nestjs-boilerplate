@@ -27,8 +27,14 @@ describe('RequestGeoLocationResponseSchema', () => {
     it('rejects a missing required field', () => {
         const { latitude: _latitude, ...withoutLatitude } = payload;
 
-        expect(() =>
-            RequestGeoLocationResponseSchema.parse(withoutLatitude)
-        ).toThrow();
+        const result =
+            RequestGeoLocationResponseSchema.safeParse(withoutLatitude);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['latitude'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

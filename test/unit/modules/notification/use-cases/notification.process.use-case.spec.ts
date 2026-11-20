@@ -1,6 +1,12 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MessageService } from '@common/message/services/message.service';
@@ -37,13 +43,11 @@ describe('NotificationProcessUseCase', () => {
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     let useCase: NotificationProcessUseCase;
+    let databaseUtil: DatabaseUtil;
 
     const data: INotificationNotifyPayload = {
         kind: EnumNotificationKind.workspaceInvite,
@@ -125,7 +129,6 @@ describe('NotificationProcessUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
         const module = await Test.createTestingModule({
@@ -138,13 +141,18 @@ describe('NotificationProcessUseCase', () => {
                 },
                 { provide: DeviceService, useValue: deviceService },
                 { provide: NotificationService, useValue: notificationService },
-                { provide: NotificationUtil, useValue: notificationUtil },
+                NotificationUtil,
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: MessageService, useValue: messageService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(NotificationProcessUseCase);
+        databaseUtil = module.get(DatabaseUtil);
     });
 
     describe('execute', () => {
@@ -152,11 +160,10 @@ describe('NotificationProcessUseCase', () => {
             userService.getOneActive.mockResolvedValue(user);
             notificationService.getListUserSetting.mockResolvedValue([setting]);
             deviceService.getNotificationTokens.mockResolvedValue(['token']);
-            notificationUtil.resolveChannels.mockReturnValue(
-                recipient.channels
-            );
             notificationService.toRecipientRecord.mockReturnValue(recipient);
-            databaseUtil.createId.mockReturnValue('notification-id');
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue(
+                'notification-id'
+            );
 
             const result = await useCase.execute('outbox-id', data);
 
@@ -166,10 +173,6 @@ describe('NotificationProcessUseCase', () => {
             );
             expect(deviceService.getNotificationTokens).toHaveBeenCalledWith(
                 'user-id'
-            );
-            expect(notificationUtil.resolveChannels).toHaveBeenCalledWith(
-                EnumNotificationKind.workspaceInvite,
-                [setting]
             );
             expect(notificationService.toRecipientRecord).toHaveBeenCalledWith(
                 user,
@@ -220,8 +223,9 @@ describe('NotificationProcessUseCase', () => {
                 userService.getOneActive.mockResolvedValue(user);
                 notificationService.getListUserSetting.mockResolvedValue([]);
                 deviceService.getNotificationTokens.mockResolvedValue([]);
-                notificationUtil.resolveChannels.mockReturnValue(smsChannels);
-                databaseUtil.createId.mockReturnValue('notification-id');
+                vi.spyOn(databaseUtil, 'createId').mockReturnValue(
+                    'notification-id'
+                );
             });
 
             it('reads the number from the verification row and passes it into the recipient', async () => {
@@ -320,7 +324,9 @@ describe('NotificationProcessUseCase', () => {
             notificationService.toSnapshotRecipientRecord.mockReturnValue(
                 recipient
             );
-            databaseUtil.createId.mockReturnValue('notification-id');
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue(
+                'notification-id'
+            );
 
             const result = await useCase.execute('outbox-id', snapshotData);
 
@@ -353,6 +359,7 @@ describe('NotificationProcessUseCase', () => {
         });
 
         it('reuses the recorded recipient and notification id on a later attempt', async () => {
+            const createId = vi.spyOn(databaseUtil, 'createId');
             await useCase.execute('outbox-id', {
                 ...data,
                 recipient,
@@ -361,7 +368,7 @@ describe('NotificationProcessUseCase', () => {
 
             expect(userService.getOneActive).not.toHaveBeenCalled();
             expect(deviceService.getNotificationTokens).not.toHaveBeenCalled();
-            expect(databaseUtil.createId).not.toHaveBeenCalled();
+            expect(createId).not.toHaveBeenCalled();
             expect(outboxService.updateData).not.toHaveBeenCalled();
             expect(notificationService.createInTx).toHaveBeenCalledWith(
                 tx,
@@ -420,9 +427,24 @@ describe('NotificationProcessUseCase', () => {
 
         it('completes with no row when only the silent channel is left', async () => {
             userService.getOneActive.mockResolvedValue(user);
-            notificationService.getListUserSetting.mockResolvedValue([setting]);
+            notificationService.getListUserSetting.mockResolvedValue([
+                {
+                    ...setting,
+                    channel: EnumNotificationChannel.email,
+                    isActive: false,
+                },
+                {
+                    ...setting,
+                    channel: EnumNotificationChannel.push,
+                    isActive: false,
+                },
+                {
+                    ...setting,
+                    channel: EnumNotificationChannel.inApp,
+                    isActive: false,
+                },
+            ]);
             deviceService.getNotificationTokens.mockResolvedValue([]);
-            notificationUtil.resolveChannels.mockReturnValue([]);
 
             const result = await useCase.execute('outbox-id', data);
 

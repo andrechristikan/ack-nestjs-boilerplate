@@ -11,17 +11,26 @@ describe('UserUpdateStatusRequestSchema', () => {
     });
 
     it('rejects a status outside EnumUserStatus', () => {
-        expect(() =>
-            UserUpdateStatusRequestSchema.parse({ status: 'unknownStatus' })
-        ).toThrow();
+        const result = UserUpdateStatusRequestSchema.safeParse({
+            status: 'unknownStatus',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['status'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserUpdateStatusRequestSchema.parse({
-                ...payload,
-                reason: 'policy violation',
-            })
-        ).toThrow();
+        const result = UserUpdateStatusRequestSchema.safeParse({
+            ...payload,
+            reason: 'policy violation',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

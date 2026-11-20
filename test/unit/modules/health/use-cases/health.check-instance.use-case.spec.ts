@@ -10,7 +10,6 @@ import { HealthCheckInstanceUseCase } from '@modules/health/use-cases/health.che
 
 describe('HealthCheckInstanceUseCase', () => {
     const healthService: MockProxy<HealthService> = mock<HealthService>();
-    const healthUtil: MockProxy<HealthUtil> = mock<HealthUtil>();
 
     const healthCheckResult: HealthCheckResult = {
         status: 'ok',
@@ -30,15 +29,11 @@ describe('HealthCheckInstanceUseCase', () => {
     let useCase: HealthCheckInstanceUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        healthUtil.toResponse.mockReturnValue(envelope.data);
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 HealthCheckInstanceUseCase,
                 { provide: HealthService, useValue: healthService },
-                { provide: HealthUtil, useValue: healthUtil },
+                HealthUtil,
             ],
         }).compile();
 

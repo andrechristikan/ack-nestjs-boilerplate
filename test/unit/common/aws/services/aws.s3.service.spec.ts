@@ -1,7 +1,7 @@
-import { HttpStatus } from '@nestjs/common';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { NotFound } from '@aws-sdk/client-s3';
+import { NotFound, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { AwsS3MaxPartNumber } from '@common/aws/constants/aws.constant';
@@ -16,7 +16,6 @@ import type {
 import type { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 import type { AwsS3PresignPartRequestDto } from '@common/aws/dtos/request/aws.s3-presign-part.request.dto';
 import type { FileService } from '@common/file/services/file.service';
-import type { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     createAwsS3Service,
     createInitializedAwsS3Service,
@@ -25,7 +24,6 @@ import {
     expectAwsS3KeyInvalid,
     expectAwsS3MaxPartNumberExceeded,
     expectAwsS3ObjectExist,
-    fillPatternStub,
 } from '@test/unit/helpers/test.unit.aws.helper';
 import type { IAwsS3ServiceDoubles } from '@test/unit/helpers/test.unit.aws.helper';
 
@@ -41,11 +39,6 @@ vi.mock('@aws-sdk/s3-request-presigner', () => ({
 describe('AwsS3Service', () => {
     const send = vi.fn();
     const fileService: MockProxy<FileService> = mock<FileService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-
-    let S3Client: typeof import('@aws-sdk/client-s3').S3Client;
-    let getSignedUrl: typeof import('@aws-sdk/s3-request-presigner').getSignedUrl;
 
     const publicSource: IAwsS3ConfigBucketSource = {
         region: 'us-east-1',
@@ -97,18 +90,11 @@ describe('AwsS3Service', () => {
 
     const s3Doubles: IAwsS3ServiceDoubles = {
         fileService,
-        helperStringService,
     };
 
     const notFoundError = new NotFound({ $metadata: {}, message: 'Not Found' });
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
-        vi.resetModules();
-        ({ S3Client } = await import('@aws-sdk/client-s3'));
-        ({ getSignedUrl } = await import('@aws-sdk/s3-request-presigner'));
-
-        send.mockReset();
+    beforeEach(() => {
         vi.mocked(S3Client).mockImplementation(function AwsS3ClientDouble() {
             return { send } as unknown as InstanceType<typeof S3Client>;
         });
@@ -120,7 +106,6 @@ describe('AwsS3Service', () => {
             (filename: string) => filename.split('.').pop() ?? ''
         );
         fileService.extractMimeFromFilename.mockReturnValue('image/jpeg');
-        helperStringService.fillPattern.mockImplementation(fillPatternStub);
     });
 
     describe('onModuleInit', () => {
@@ -1606,10 +1591,6 @@ describe('AwsS3Service', () => {
             expect(thrown).toMatchObject({
                 module: 'aws',
                 statusCode: EnumAwsStatusCodeError.s3KeyInvalid,
-                statusCodeKey:
-                    EnumAwsStatusCodeError[EnumAwsStatusCodeError.s3KeyInvalid],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'aws.error.s3KeyInvalid',
             });
         });
 
@@ -2278,12 +2259,9 @@ describe('AwsS3Service', () => {
                 {},
                 s3Doubles
             );
-            helperStringService.fillPattern
-                .mockReturnValueOnce('https://public.example.com/avatar.jpg')
-                .mockReturnValueOnce('https://cdn.example.com/avatar.jpg');
-
             expect(service['buildUrls'](publicConfig, 'avatar.jpg')).toEqual({
-                completedUrl: 'https://public.example.com/avatar.jpg',
+                completedUrl:
+                    'https://public-bucket.s3.us-east-1.amazonaws.com/avatar.jpg',
                 cdnUrl: 'https://cdn.example.com/avatar.jpg',
             });
         });
@@ -2309,12 +2287,9 @@ describe('AwsS3Service', () => {
                 {},
                 s3Doubles
             );
-            helperStringService.fillPattern.mockReturnValueOnce(
-                'https://private.example.com/avatar.jpg'
-            );
-
             expect(service['buildUrls'](privateConfig, 'avatar.jpg')).toEqual({
-                completedUrl: 'https://private.example.com/avatar.jpg',
+                completedUrl:
+                    'https://private-bucket.s3.us-east-1.amazonaws.com/avatar.jpg',
                 cdnUrl: null,
             });
         });

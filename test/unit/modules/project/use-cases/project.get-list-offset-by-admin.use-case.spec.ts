@@ -1,14 +1,15 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import {
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
+} from '@common/pagination/enums/pagination.enum';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import {
@@ -19,22 +20,20 @@ import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/p
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectGetListOffsetByAdminUseCase } from '@modules/project/use-cases/project.get-list-offset-by-admin.use-case';
 import { EnumProjectOrderBy } from '@modules/project/enums/project.enum';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('ProjectGetListOffsetByAdminUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
-
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
-
-    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
-        mock<PaginationFilterUtil>();
 
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
     const paginationOffset: IPaginationQueryOffsetParams = {
-        where: { OR: [] },
-        orderBy: [],
+        orderBy: [{ createdAt: EnumPaginationOrderDirectionType.desc }],
         limit: 20,
         skip: 0,
     };
@@ -61,16 +60,14 @@ describe('ProjectGetListOffsetByAdminUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectGetListOffsetByAdminUseCase,
                 { provide: ProjectService, useValue: projectService },
-                { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationFilterUtil,
-                    useValue: paginationFilterUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
@@ -86,11 +83,6 @@ describe('ProjectGetListOffsetByAdminUseCase', () => {
                 perPage: 20,
                 workspaceId: '507f1f77bcf86cd799439012',
             };
-            paginationQueryUtil.offset.mockReturnValue({
-                params: paginationOffset,
-                storePatch: { page: 1, filters: { existing: true } },
-            });
-            paginationFilterUtil.equalString.mockReturnValue(workspaceFilter);
             const page: IResponsePaginationReturn<Project> = {
                 type: EnumPaginationType.offset,
                 count: 1,
@@ -106,23 +98,15 @@ describe('ProjectGetListOffsetByAdminUseCase', () => {
             const result = await useCase.execute(query);
 
             expect(result).toEqual(page);
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                availableSearch: ProjectDefaultAvailableSearch,
-                orderBy: ProjectOrderBy,
-                defaultOrderBy: EnumProjectOrderBy.latest,
-            });
-            expect(paginationFilterUtil.equalString).toHaveBeenCalledWith(
-                Prisma.ProjectScalarFieldEnum.workspaceId,
-                '507f1f77bcf86cd799439012'
-            );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 {
                     page: 1,
-                    filters: {
-                        existing: true,
-                        workspaceId: '507f1f77bcf86cd799439012',
-                    },
+                    perPage: 20,
+                    orderBy: EnumProjectOrderBy.latest,
+                    availableSearch: ProjectDefaultAvailableSearch,
+                    availableOrderBy: Object.keys(ProjectOrderBy),
+                    filters: workspaceFilter.storeFilter,
                 }
             );
             expect(projectService.getListOffsetByAdmin).toHaveBeenCalledWith(
@@ -136,11 +120,6 @@ describe('ProjectGetListOffsetByAdminUseCase', () => {
                 page: 1,
                 perPage: 20,
             };
-            paginationQueryUtil.offset.mockReturnValue({
-                params: paginationOffset,
-                storePatch: { page: 1 },
-            });
-            paginationFilterUtil.equalString.mockReturnValue(null);
             const page: IResponsePaginationReturn<Project> = {
                 type: EnumPaginationType.offset,
                 count: 0,
@@ -157,7 +136,14 @@ describe('ProjectGetListOffsetByAdminUseCase', () => {
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                { page: 1, filters: {} }
+                {
+                    page: 1,
+                    perPage: 20,
+                    orderBy: EnumProjectOrderBy.latest,
+                    availableSearch: ProjectDefaultAvailableSearch,
+                    availableOrderBy: Object.keys(ProjectOrderBy),
+                    filters: {},
+                }
             );
             expect(projectService.getListOffsetByAdmin).toHaveBeenCalledWith(
                 paginationOffset,

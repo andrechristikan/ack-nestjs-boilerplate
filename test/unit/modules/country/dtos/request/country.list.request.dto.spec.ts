@@ -32,9 +32,14 @@ describe('CountryListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            CountryListRequestSchema.parse({ ...payload, page: 1 })
-        ).toThrow();
+        const result = CountryListRequestSchema.safeParse({
+            ...payload,
+            page: 1,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the module search description', () => {
@@ -71,16 +76,26 @@ describe('CountryListRequestSchema', () => {
         'default',
         'createdAt',
     ])('rejects the orderBy %s', orderBy => {
-        expect(CountryListRequestSchema.safeParse({ orderBy }).success).toBe(
-            false
-        );
+        expect(
+            CountryListRequestSchema.safeParse({ orderBy }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             CountryListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

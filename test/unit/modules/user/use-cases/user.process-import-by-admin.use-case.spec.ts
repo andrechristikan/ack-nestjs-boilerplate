@@ -23,7 +23,6 @@ import {
     EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
-    EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -44,8 +43,6 @@ import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.en
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
-import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
-import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
@@ -60,14 +57,19 @@ import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.pr
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
+import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildRequestLog } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildRequestLog,
+    buildUser,
+} from '@test/unit/helpers/test.unit.request.helper';
 import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserProcessImportByAdminUseCase', () => {
     const userImportService: MockProxy<UserImportService> =
         mock<UserImportService>();
-    const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
     const workspaceService: MockProxy<WorkspaceService> =
@@ -76,12 +78,8 @@ describe('UserProcessImportByAdminUseCase', () => {
     const countryService: MockProxy<CountryService> = mock<CountryService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const userRegistrationService: MockProxy<UserRegistrationService> =
         mock<UserRegistrationService>();
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
@@ -90,6 +88,7 @@ describe('UserProcessImportByAdminUseCase', () => {
     let useCase: UserProcessImportByAdminUseCase;
 
     const configValues: Record<string, unknown> = {
+        ...TestUnitUserConfigValues,
         'user.default.role': 'user',
         'user.default.country': 'ID',
         'user.create.bulkTimeoutInMs': 30000,
@@ -192,51 +191,10 @@ describe('UserProcessImportByAdminUseCase', () => {
         workspaceContext: personalContext,
         createdBy: 'admin-bramble',
     };
-    const committedUser: IUser = {
-        id: 'user-bramble',
-        name: 'Bramble Fox',
-        username: 'bramble2fox',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'bramble@example.com',
-        roleId: 'role-bramble',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.admin,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-bramble',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'admin-bramble',
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-bramble',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
-    };
+    const committedUser: IUser = buildUser(
+        'user-bramble',
+        'bramble@example.com'
+    );
     const stageInput = {
         action: EnumActivityLogAction.userSignedUp,
         userId: 'user-bramble',
@@ -245,22 +203,17 @@ describe('UserProcessImportByAdminUseCase', () => {
     };
     const acceptanceEntry = {
         userId: 'user-bramble',
-        types: [],
+        types: [EnumTermPolicyType.termsOfService],
         createdBy: 'admin-bramble',
     };
     const owned = {
         userId: 'user-bramble',
         workspaceId: 'workspace-bramble',
-        name: 'Bramble',
+        name: "bramble2fox's Workspace",
         slug: 'w-bramble',
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        helperDateService.formatToIso.mockReturnValue(
-            '2026-03-05T07:00:00.000+07:00'
-        );
         messageService.setMessage.mockImplementation((path: string) => path);
         activityLogService.recordEffectFromPayload.mockReturnValue(
             activityEffect
@@ -282,11 +235,6 @@ describe('UserProcessImportByAdminUseCase', () => {
             stageInput,
         ]);
         userRegistrationService.createInTx.mockResolvedValue([committedUser]);
-        userCreateUtil.buildTermPolicyAcceptanceEntries.mockReturnValue([
-            acceptanceEntry,
-        ]);
-        workspaceUtil.countSlugAttempts.mockReturnValue(2);
-        workspaceUtil.buildOwnedUsers.mockReturnValue([owned]);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -294,8 +242,8 @@ describe('UserProcessImportByAdminUseCase', () => {
                 { provide: UserImportService, useValue: userImportService },
                 { provide: WorkspaceService, useValue: workspaceService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: WorkspaceUtil, useValue: workspaceUtil },
+                DatabaseUtil,
+                WorkspaceUtil,
                 {
                     provide: UserRegistrationService,
                     useValue: userRegistrationService,
@@ -308,8 +256,9 @@ describe('UserProcessImportByAdminUseCase', () => {
                 { provide: CountryService, useValue: countryService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: NotificationService, useValue: notificationService },
-                { provide: UserCreateUtil, useValue: userCreateUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                UserCreateUtil,
+                HelperStringService,
+                HelperDateService,
                 { provide: MessageService, useValue: messageService },
                 {
                     provide: ConfigService,
@@ -416,8 +365,8 @@ describe('UserProcessImportByAdminUseCase', () => {
                     userId: 'user-bramble',
                     proceedBy: 'admin-bramble',
                     password: 'random-password',
-                    passwordCreatedAt: '2026-03-05T07:00:00.000+07:00',
-                    passwordExpiredAt: '2026-03-05T07:00:00.000+07:00',
+                    passwordCreatedAt: '2026-01-01T00:00:00.000Z',
+                    passwordExpiredAt: '2026-06-01T00:00:00.000Z',
                 }
             );
         });
@@ -486,11 +435,8 @@ describe('UserProcessImportByAdminUseCase', () => {
         });
 
         it('adds the result effect alone with one username reason and resolves when a username collides', async () => {
-            const collision = new Error('duplicate username');
-            outboxService.withTransaction.mockRejectedValue(collision);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            userCreateUtil.mapCreateCollision.mockReturnValue(
-                new UserUsernameExistException()
+            outboxService.withTransaction.mockRejectedValue(
+                buildPrismaKnownRequestError('P2002', 'username')
             );
 
             await expect(
@@ -501,9 +447,6 @@ describe('UserProcessImportByAdminUseCase', () => {
                 failed: 1,
             });
 
-            expect(userCreateUtil.mapCreateCollision).toHaveBeenCalledWith(
-                collision
-            );
             expect(messageService.setMessage).toHaveBeenCalledWith(
                 'user.error.usernameExist'
             );
@@ -525,11 +468,7 @@ describe('UserProcessImportByAdminUseCase', () => {
 
         it('adds the result effect alone with one email reason and resolves when an email collides', async () => {
             outboxService.withTransaction.mockRejectedValue(
-                new Error('duplicate email')
-            );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            userCreateUtil.mapCreateCollision.mockReturnValue(
-                new UserEmailExistException()
+                buildPrismaKnownRequestError('P2002', 'email')
             );
 
             await expect(
@@ -552,33 +491,26 @@ describe('UserProcessImportByAdminUseCase', () => {
         });
 
         it('retries with the next slug attempt after a slug collision', async () => {
-            const collision = new Error('slug collision');
+            const collision = buildPrismaKnownRequestError('P2002', 'slug');
             outboxService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(async fn => fn(tx));
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 useCase.execute('outbox-bramble', payload)
             ).resolves.toMatchObject({ created: 1, failed: 0 });
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
-            expect(workspaceUtil.buildOwnedUsers).toHaveBeenCalledWith(
-                [input],
-                1
-            );
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'slug'
-            );
+            expect(
+                workspaceService.createOwnedForUsersInTx
+            ).toHaveBeenLastCalledWith(tx, [{ ...owned, slug: 'w-bramble-b' }]);
             expect(outboxService.add).not.toHaveBeenCalled();
         });
 
         it('throws DatabaseUniqueValueGenerationFailedException after the last slug attempt and adds no result', async () => {
             outboxService.withTransaction.mockRejectedValue(
-                new Error('slug collision')
+                buildPrismaKnownRequestError('P2002', 'slug')
             );
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 useCase.execute('outbox-bramble', payload)
@@ -592,8 +524,6 @@ describe('UserProcessImportByAdminUseCase', () => {
         it('throws a QueueException wrapping an unmapped error and adds no result', async () => {
             const unexpected = new Error('unexpected');
             outboxService.withTransaction.mockRejectedValue(unexpected);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            userCreateUtil.mapCreateCollision.mockReturnValue(unexpected);
 
             await expect(
                 useCase.execute('outbox-bramble', payload)
@@ -608,11 +538,7 @@ describe('UserProcessImportByAdminUseCase', () => {
 
         it('rethrows a mapped exception that is not a collision and adds no result', async () => {
             const notCollision = new WorkspaceNotFoundException();
-            outboxService.withTransaction.mockRejectedValue(
-                new Error('failed inside')
-            );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            userCreateUtil.mapCreateCollision.mockReturnValue(notCollision);
+            outboxService.withTransaction.mockRejectedValue(notCollision);
 
             await expect(
                 useCase.execute('outbox-bramble', payload)

@@ -16,22 +16,32 @@ describe('FeatureFlagUpdateStatusRequestSchema', () => {
     });
 
     it('rejects a body missing targetUserIds', () => {
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: false,
-                rolloutPercent: 0,
-            })
-        ).toThrow();
+        const result = FeatureFlagUpdateStatusRequestSchema.safeParse({
+            isEnable: false,
+            rolloutPercent: 0,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['targetUserIds'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a null targetUserIds', () => {
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: false,
-                rolloutPercent: 0,
-                targetUserIds: null,
-            })
-        ).toThrow();
+        const result = FeatureFlagUpdateStatusRequestSchema.safeParse({
+            isEnable: false,
+            rolloutPercent: 0,
+            targetUserIds: null,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['targetUserIds'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('parses an empty targetUserIds array', () => {
@@ -49,63 +59,94 @@ describe('FeatureFlagUpdateStatusRequestSchema', () => {
     });
 
     it('rejects a rolloutPercent below 0', () => {
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: true,
-                rolloutPercent: -1,
-                targetUserIds: [],
-            })
-        ).toThrow();
+        const result = FeatureFlagUpdateStatusRequestSchema.safeParse({
+            isEnable: true,
+            rolloutPercent: -1,
+            targetUserIds: [],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['rolloutPercent'],
+                code: 'too_small',
+            }),
+        ]);
     });
 
     it('rejects a rolloutPercent above 100', () => {
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: true,
-                rolloutPercent: 101,
-                targetUserIds: [],
-            })
-        ).toThrow();
+        const result = FeatureFlagUpdateStatusRequestSchema.safeParse({
+            isEnable: true,
+            rolloutPercent: 101,
+            targetUserIds: [],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['rolloutPercent'],
+                code: 'too_big',
+            }),
+        ]);
     });
 
     it('rejects a non-integer rolloutPercent', () => {
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: true,
-                rolloutPercent: 50.5,
-                targetUserIds: [],
-            })
-        ).toThrow();
+        const result = FeatureFlagUpdateStatusRequestSchema.safeParse({
+            isEnable: true,
+            rolloutPercent: 50.5,
+            targetUserIds: [],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['rolloutPercent'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a targetUserIds entry that is not a 24-character hex string', () => {
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: true,
-                rolloutPercent: 50,
-                targetUserIds: ['not-a-mongo-id'],
-            })
-        ).toThrow();
+        const result = FeatureFlagUpdateStatusRequestSchema.safeParse({
+            isEnable: true,
+            rolloutPercent: 50,
+            targetUserIds: ['not-a-mongo-id'],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['targetUserIds', 0],
+                code: 'too_small',
+            }),
+            expect.objectContaining({
+                path: ['targetUserIds', 0],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects a missing isEnable', () => {
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                rolloutPercent: 50,
-                targetUserIds: [],
-            })
-        ).toThrow();
+        const result = FeatureFlagUpdateStatusRequestSchema.safeParse({
+            rolloutPercent: 50,
+            targetUserIds: [],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['isEnable'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: true,
-                rolloutPercent: 50,
-                targetUserIds: [],
-                extra: true,
-            })
-        ).toThrow();
+        const result = FeatureFlagUpdateStatusRequestSchema.safeParse({
+            isEnable: true,
+            rolloutPercent: 50,
+            targetUserIds: [],
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts 1000 targetUserIds and rejects 1001', () => {
@@ -118,12 +159,17 @@ describe('FeatureFlagUpdateStatusRequestSchema', () => {
                 targetUserIds: new Array(1000).fill(id),
             })
         ).not.toThrow();
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: true,
-                rolloutPercent: 50,
-                targetUserIds: new Array(1001).fill(id),
-            })
-        ).toThrow();
+        const result = FeatureFlagUpdateStatusRequestSchema.safeParse({
+            isEnable: true,
+            rolloutPercent: 50,
+            targetUserIds: new Array(1001).fill(id),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['targetUserIds'],
+                code: 'too_big',
+            }),
+        ]);
     });
 });

@@ -179,12 +179,12 @@ describe('AppEnvSchema', () => {
                     APP_HTTP_TRUSTED_PROXIES: value,
                 });
 
-                expect(result.success).toBe(false);
-                expect(result.error?.issues).toContainEqual(
+                expect(result.error?.issues).toEqual([
                     expect.objectContaining({
                         path: ['APP_HTTP_TRUSTED_PROXIES'],
-                    })
-                );
+                        code: 'custom',
+                    }),
+                ]);
             }
         );
 
@@ -197,20 +197,22 @@ describe('AppEnvSchema', () => {
             expect(result.APP_HTTP_TRUSTED_PROXIES).toBe('loopback,10.0.0.0/8');
         });
 
-        it.each([['not a url'], ['http://localhost:3000/']])(
-            'rejects FRONTEND_BASE_URL %s',
-            value => {
-                const result = AppEnvSchema.safeParse({
-                    ...validEnv,
-                    FRONTEND_BASE_URL: value,
-                });
+        it.each([
+            ['not a url', 'invalid_format'],
+            ['http://localhost:3000/', 'custom'],
+        ])('rejects FRONTEND_BASE_URL %s', (value, code) => {
+            const result = AppEnvSchema.safeParse({
+                ...validEnv,
+                FRONTEND_BASE_URL: value,
+            });
 
-                expect(result.success).toBe(false);
-                expect(result.error?.issues).toContainEqual(
-                    expect.objectContaining({ path: ['FRONTEND_BASE_URL'] })
-                );
-            }
-        );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['FRONTEND_BASE_URL'],
+                    code,
+                }),
+            ]);
+        });
 
         it.each([
             ['AUTH_JWT_ACCESS_TOKEN_JWKS_URI'],
@@ -221,10 +223,12 @@ describe('AppEnvSchema', () => {
                 [key]: 'not a url',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: [key] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: [key],
+                    code: 'invalid_format',
+                }),
+            ]);
         });
 
         it('rejects a missing required variable', () => {
@@ -232,10 +236,12 @@ describe('AppEnvSchema', () => {
             delete withoutDatabaseUrl.DATABASE_URL;
             const result = AppEnvSchema.safeParse(withoutDatabaseUrl);
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['DATABASE_URL'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['DATABASE_URL'],
+                    code: 'invalid_type',
+                }),
+            ]);
         });
 
         it.each([
@@ -248,10 +254,9 @@ describe('AppEnvSchema', () => {
             delete withoutKey[key];
             const result = AppEnvSchema.safeParse(withoutKey);
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: [key] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({ path: [key], code: 'invalid_type' }),
+            ]);
         });
 
         it('rejects an empty APP_NAME', () => {
@@ -260,10 +265,12 @@ describe('AppEnvSchema', () => {
                 APP_NAME: '',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['APP_NAME'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['APP_NAME'],
+                    code: 'too_small',
+                }),
+            ]);
         });
 
         it('rejects an APP_ENV outside EnumAppEnvironment', () => {
@@ -272,10 +279,12 @@ describe('AppEnvSchema', () => {
                 APP_ENV: 'sandbox',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['APP_ENV'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['APP_ENV'],
+                    code: 'invalid_value',
+                }),
+            ]);
         });
 
         it('rejects an encryption secret that is not 64 base64url characters', () => {
@@ -284,10 +293,12 @@ describe('AppEnvSchema', () => {
                 APP_ENCRYPTION_SECRET: 'a'.repeat(63),
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['APP_ENCRYPTION_SECRET'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['APP_ENCRYPTION_SECRET'],
+                    code: 'too_small',
+                }),
+            ]);
         });
 
         it('rejects an MFA encryption key with a character outside base64url', () => {
@@ -296,12 +307,12 @@ describe('AppEnvSchema', () => {
                 MFA_TOTP_ENCRYPTION_SECRET: `${'a'.repeat(63)}+`,
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
+            expect(result.error?.issues).toEqual([
                 expect.objectContaining({
                     path: ['MFA_TOTP_ENCRYPTION_SECRET'],
-                })
-            );
+                    code: 'invalid_format',
+                }),
+            ]);
         });
 
         it('rejects a boolean string that is not exactly true or false', () => {
@@ -310,10 +321,12 @@ describe('AppEnvSchema', () => {
                 LOGGER_ENABLED: 'TRUE',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['LOGGER_ENABLED'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['LOGGER_ENABLED'],
+                    code: 'invalid_value',
+                }),
+            ]);
         });
 
         it('rejects a LOGGER_LEVEL outside EnumLoggerLevel', () => {
@@ -322,10 +335,12 @@ describe('AppEnvSchema', () => {
                 LOGGER_LEVEL: 'verbose',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['LOGGER_LEVEL'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['LOGGER_LEVEL'],
+                    code: 'invalid_value',
+                }),
+            ]);
         });
 
         it('rejects an APP_HTTP_PORT that is not an integer', () => {
@@ -334,10 +349,12 @@ describe('AppEnvSchema', () => {
                 APP_HTTP_PORT: '3000.5',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['APP_HTTP_PORT'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['APP_HTTP_PORT'],
+                    code: 'invalid_type',
+                }),
+            ]);
         });
 
         it('rejects EMAIL_NO_REPLY_ADDRESS that is not an email address', () => {
@@ -346,10 +363,12 @@ describe('AppEnvSchema', () => {
                 EMAIL_NO_REPLY_ADDRESS: 'not-an-email',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['EMAIL_NO_REPLY_ADDRESS'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['EMAIL_NO_REPLY_ADDRESS'],
+                    code: 'custom',
+                }),
+            ]);
         });
 
         it('rejects EMAIL_SUPPORT_ADDRESS that is not an email address', () => {
@@ -358,10 +377,12 @@ describe('AppEnvSchema', () => {
                 EMAIL_SUPPORT_ADDRESS: 'not-an-email',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['EMAIL_SUPPORT_ADDRESS'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['EMAIL_SUPPORT_ADDRESS'],
+                    code: 'custom',
+                }),
+            ]);
         });
 
         it('rejects a SENTRY_DSN that is not a URL', () => {
@@ -370,26 +391,30 @@ describe('AppEnvSchema', () => {
                 SENTRY_DSN: 'not a url',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['SENTRY_DSN'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['SENTRY_DSN'],
+                    code: 'invalid_format',
+                }),
+            ]);
         });
 
         it.each([
             ['SENTRY_TRACES_SAMPLE_RATE'],
             ['SENTRY_PROFILES_SAMPLE_RATE'],
         ])('rejects a %s above 1 or below 0', key => {
-            for (const value of ['1.5', '-0.1']) {
+            for (const [value, code] of [
+                ['1.5', 'too_big'],
+                ['-0.1', 'too_small'],
+            ] as const) {
                 const result = AppEnvSchema.safeParse({
                     ...validEnv,
                     [key]: value,
                 });
 
-                expect(result.success).toBe(false);
-                expect(result.error?.issues).toContainEqual(
-                    expect.objectContaining({ path: [key] })
-                );
+                expect(result.error?.issues).toEqual([
+                    expect.objectContaining({ path: [key], code }),
+                ]);
             }
         });
 
@@ -420,10 +445,9 @@ describe('AppEnvSchema', () => {
             delete withoutKey[key];
             const result = AppEnvSchema.safeParse(withoutKey);
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: [key] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({ path: [key], code: 'invalid_type' }),
+            ]);
         });
 
         it('accepts a SENTRY_DSN that is a URL', () => {
@@ -508,8 +532,17 @@ describe('AppEnvSchema', () => {
                 AppEnvSchema.safeParse({
                     ...validEnv,
                     APP_ENCRYPTION_SECRET: example,
-                }).success
-            ).toBe(false);
+                }).error?.issues
+            ).toEqual([
+                expect.objectContaining({
+                    path: ['APP_ENCRYPTION_SECRET'],
+                    code: 'too_small',
+                }),
+                expect.objectContaining({
+                    path: ['APP_ENCRYPTION_SECRET'],
+                    code: 'invalid_format',
+                }),
+            ]);
         });
 
         it('refuses the MFA_TOTP_ENCRYPTION_SECRET placeholder of .env.example', () => {
@@ -522,8 +555,17 @@ describe('AppEnvSchema', () => {
                 AppEnvSchema.safeParse({
                     ...validEnv,
                     MFA_TOTP_ENCRYPTION_SECRET: example,
-                }).success
-            ).toBe(false);
+                }).error?.issues
+            ).toEqual([
+                expect.objectContaining({
+                    path: ['MFA_TOTP_ENCRYPTION_SECRET'],
+                    code: 'too_small',
+                }),
+                expect.objectContaining({
+                    path: ['MFA_TOTP_ENCRYPTION_SECRET'],
+                    code: 'invalid_format',
+                }),
+            ]);
         });
 
         it('strips the removed EMAIL_ADMIN and Google client secret', () => {
@@ -582,15 +624,14 @@ describe('AppEnvSchema', () => {
                     [trigger]: 'value',
                 });
 
-                expect(result.success).toBe(false);
+                const expected = [];
                 for (const key of omitKey(s3Required, trigger)) {
-                    expect(result.error?.issues).toContainEqual(
-                        expect.objectContaining({
-                            code: 'custom',
-                            path: [key],
-                        })
+                    expected.push(
+                        expect.objectContaining({ code: 'custom', path: [key] })
                     );
                 }
+
+                expect(result.error?.issues).toEqual(expected);
             });
         }
 
@@ -602,10 +643,9 @@ describe('AppEnvSchema', () => {
                     [field]: '',
                 });
 
-                expect(result.success).toBe(false);
-                expect(result.error?.issues).toContainEqual(
-                    expect.objectContaining({ code: 'custom', path: [field] })
-                );
+                expect(result.error?.issues).toEqual([
+                    expect.objectContaining({ code: 'custom', path: [field] }),
+                ]);
             });
         }
 
@@ -671,15 +711,14 @@ describe('AppEnvSchema', () => {
                     [trigger]: 'value',
                 });
 
-                expect(result.success).toBe(false);
+                const expected = [];
                 for (const key of omitKey(sesRequired, trigger)) {
-                    expect(result.error?.issues).toContainEqual(
-                        expect.objectContaining({
-                            code: 'custom',
-                            path: [key],
-                        })
+                    expected.push(
+                        expect.objectContaining({ code: 'custom', path: [key] })
                     );
                 }
+
+                expect(result.error?.issues).toEqual(expected);
             });
         }
 
@@ -691,10 +730,9 @@ describe('AppEnvSchema', () => {
                     [field]: '',
                 });
 
-                expect(result.success).toBe(false);
-                expect(result.error?.issues).toContainEqual(
-                    expect.objectContaining({ code: 'custom', path: [field] })
-                );
+                expect(result.error?.issues).toEqual([
+                    expect.objectContaining({ code: 'custom', path: [field] }),
+                ]);
             });
         }
 
@@ -721,12 +759,12 @@ describe('AppEnvSchema', () => {
                     AWS_SES_IDENTITY_ARN: arn,
                 });
 
-                expect(result.success).toBe(false);
-                expect(result.error?.issues).toContainEqual(
+                expect(result.error?.issues).toEqual([
                     expect.objectContaining({
                         path: ['AWS_SES_IDENTITY_ARN'],
-                    })
-                );
+                        code: 'invalid_format',
+                    }),
+                ]);
             });
         }
 
@@ -778,15 +816,14 @@ describe('AppEnvSchema', () => {
                         ],
                 });
 
-                expect(result.success).toBe(false);
+                const expected = [];
                 for (const key of omitKey(firebaseKeys, trigger)) {
-                    expect(result.error?.issues).toContainEqual(
-                        expect.objectContaining({
-                            code: 'custom',
-                            path: [key],
-                        })
+                    expected.push(
+                        expect.objectContaining({ code: 'custom', path: [key] })
                     );
                 }
+
+                expect(result.error?.issues).toEqual(expected);
             });
         }
 
@@ -797,10 +834,12 @@ describe('AppEnvSchema', () => {
                 FIREBASE_CLIENT_EMAIL: 'not-an-email',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['FIREBASE_CLIENT_EMAIL'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['FIREBASE_CLIENT_EMAIL'],
+                    code: 'custom',
+                }),
+            ]);
         });
 
         it('does not trigger on empty keys', () => {
@@ -862,10 +901,12 @@ describe('AppEnvSchema', () => {
                 AWS_S3_ENDPOINT: 'not a url',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['AWS_S3_ENDPOINT'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['AWS_S3_ENDPOINT'],
+                    code: 'invalid_format',
+                }),
+            ]);
         });
 
         it('rejects a URL with a trailing slash', () => {
@@ -874,10 +915,12 @@ describe('AppEnvSchema', () => {
                 AWS_S3_ENDPOINT: 'http://localhost:4566/',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['AWS_S3_ENDPOINT'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['AWS_S3_ENDPOINT'],
+                    code: 'custom',
+                }),
+            ]);
         });
 
         it('parses when absent', () => {
@@ -914,10 +957,12 @@ describe('AppEnvSchema', () => {
                     [key]: 'cdn.example.com',
                 });
 
-                expect(result.success).toBe(false);
-                expect(result.error?.issues).toContainEqual(
-                    expect.objectContaining({ path: [key] })
-                );
+                expect(result.error?.issues).toEqual([
+                    expect.objectContaining({
+                        path: [key],
+                        code: 'invalid_format',
+                    }),
+                ]);
             });
 
             it('rejects a URL with a trailing slash', () => {
@@ -926,10 +971,9 @@ describe('AppEnvSchema', () => {
                     [key]: 'https://cdn.example.com/',
                 });
 
-                expect(result.success).toBe(false);
-                expect(result.error?.issues).toContainEqual(
-                    expect.objectContaining({ path: [key] })
-                );
+                expect(result.error?.issues).toEqual([
+                    expect.objectContaining({ path: [key], code: 'custom' }),
+                ]);
             });
         }
     );
@@ -950,10 +994,12 @@ describe('AppEnvSchema', () => {
                 AWS_SES_ENDPOINT: 'not a url',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['AWS_SES_ENDPOINT'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['AWS_SES_ENDPOINT'],
+                    code: 'invalid_format',
+                }),
+            ]);
         });
 
         it('rejects a URL with a trailing slash', () => {
@@ -962,10 +1008,12 @@ describe('AppEnvSchema', () => {
                 AWS_SES_ENDPOINT: 'http://localhost:4566/',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['AWS_SES_ENDPOINT'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['AWS_SES_ENDPOINT'],
+                    code: 'custom',
+                }),
+            ]);
         });
 
         it('parses when absent', () => {
@@ -994,12 +1042,12 @@ describe('AppEnvSchema', () => {
                 DATABASE_DEBUG_ENABLED: 'true',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toHaveLength(1);
-            expect(result.error?.issues[0]).toMatchObject({
-                path: ['DATABASE_DEBUG_ENABLED'],
-                message: 'Must be false in production',
-            });
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['DATABASE_DEBUG_ENABLED'],
+                    code: 'custom',
+                }),
+            ]);
         });
 
         it('parses DATABASE_DEBUG_ENABLED false in production', () => {
@@ -1034,12 +1082,12 @@ describe('AppEnvSchema', () => {
                 REQUEST_CORS_ALLOWED_ORIGINS: '*',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toHaveLength(1);
-            expect(result.error?.issues[0]).toMatchObject({
-                path: ['REQUEST_CORS_ALLOWED_ORIGINS'],
-                message: 'Must list origins in production',
-            });
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['REQUEST_CORS_ALLOWED_ORIGINS'],
+                    code: 'custom',
+                }),
+            ]);
         });
 
         it('rejects a wildcard among listed origins in production', () => {
@@ -1050,12 +1098,12 @@ describe('AppEnvSchema', () => {
                 REQUEST_CORS_ALLOWED_ORIGINS: 'https://a.example.com, *',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
+            expect(result.error?.issues).toEqual([
                 expect.objectContaining({
                     path: ['REQUEST_CORS_ALLOWED_ORIGINS'],
-                })
-            );
+                    code: 'custom',
+                }),
+            ]);
         });
 
         it.each(['*.example.com', 'https://a.example.com'])(
@@ -1092,12 +1140,12 @@ describe('AppEnvSchema', () => {
                 APP_HTTP_TRUSTED_PROXIES: '',
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toHaveLength(1);
-            expect(result.error?.issues[0]).toMatchObject({
-                path: ['APP_HTTP_TRUSTED_PROXIES'],
-                message: 'Must be set in production',
-            });
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['APP_HTTP_TRUSTED_PROXIES'],
+                    code: 'custom',
+                }),
+            ]);
         });
 
         it('parses APP_HTTP_TRUSTED_PROXIES loopback in production', () => {
@@ -1135,12 +1183,12 @@ describe('AppEnvSchema', () => {
                 MFA_ENCRYPTION_KEY: encryptionSecret,
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
+            expect(result.error?.issues).toEqual([
                 expect.objectContaining({
                     path: ['MFA_TOTP_ENCRYPTION_SECRET'],
-                })
-            );
+                    code: 'invalid_type',
+                }),
+            ]);
         });
 
         it('keeps no MFA_ENCRYPTION_KEY in the parsed env', () => {
@@ -1198,10 +1246,12 @@ describe('AppEnvSchema', () => {
                 MFA_PASSKEY_ORIGINS: origins,
             });
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues).toContainEqual(
-                expect.objectContaining({ path: ['MFA_PASSKEY_ORIGINS'] })
-            );
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['MFA_PASSKEY_ORIGINS'],
+                    code: 'custom',
+                }),
+            ]);
         });
 
         it.each([
@@ -1242,12 +1292,12 @@ describe('AppEnvSchema', () => {
                     MFA_PASSKEY_ORIGINS: origins,
                 });
 
-                expect(result.success).toBe(false);
-                expect(result.error?.issues).toHaveLength(1);
-                expect(result.error?.issues[0]).toMatchObject({
-                    path: ['MFA_PASSKEY_ORIGINS'],
-                    message: expect.stringContaining('*'),
-                });
+                expect(result.error?.issues).toEqual([
+                    expect.objectContaining({
+                        path: ['MFA_PASSKEY_ORIGINS'],
+                        code: 'custom',
+                    }),
+                ]);
             }
         );
 
@@ -1258,12 +1308,13 @@ describe('AppEnvSchema', () => {
                 MFA_PASSKEY_ORIGINS: 'https://example.test,https://*',
             });
 
-            expect(result.error?.issues).toContainEqual(
+            expect(result.error?.issues).toEqual([
                 expect.objectContaining({
                     path: ['MFA_PASSKEY_ORIGINS'],
+                    code: 'custom',
                     message: expect.stringContaining('https://*'),
-                })
-            );
+                }),
+            ]);
         });
     });
 });

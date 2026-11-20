@@ -46,10 +46,6 @@ vi.mock('@nestjs/platform-express', async importOriginal => {
 });
 
 describe('file.decorator', () => {
-    beforeEach(() => {
-        vi.resetAllMocks();
-    });
-
     describe('FileUploadSingle', () => {
         it('defaults the field and file size when no options are given', () => {
             FileUploadSingle();

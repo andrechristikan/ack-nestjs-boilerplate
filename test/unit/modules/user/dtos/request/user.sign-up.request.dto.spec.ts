@@ -46,36 +46,47 @@ describe('UserSignUpRequestSchema', () => {
     });
 
     it('rejects a 7-character password', () => {
-        expect(() =>
-            UserSignUpRequestSchema.parse({ ...payload, password: 'abcdefg' })
-        ).toThrow();
+        const result = UserSignUpRequestSchema.safeParse({
+            ...payload,
+            password: 'abcdefg',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['password'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a 65-character password', () => {
-        expect(() =>
-            UserSignUpRequestSchema.parse({
-                ...payload,
-                password: 'a'.repeat(65),
-            })
-        ).toThrow();
+        const result = UserSignUpRequestSchema.safeParse({
+            ...payload,
+            password: 'a'.repeat(65),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['password'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects a sign-up origin outside mobile and website', () => {
-        expect(() =>
-            UserSignUpRequestSchema.parse({
-                ...payload,
-                from: EnumUserSignUpFrom.admin,
-            })
-        ).toThrow();
+        const result = UserSignUpRequestSchema.safeParse({
+            ...payload,
+            from: EnumUserSignUpFrom.admin,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['from'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects an undeclared roleId key', () => {
-        expect(() =>
-            UserSignUpRequestSchema.parse({
-                ...payload,
-                roleId: '507f1f77bcf86cd799439011',
-            })
-        ).toThrow();
+        const result = UserSignUpRequestSchema.safeParse({
+            ...payload,
+            roleId: '507f1f77bcf86cd799439011',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a inviteToken of 200 characters and rejects one of 201', () => {
@@ -85,11 +96,13 @@ describe('UserSignUpRequestSchema', () => {
                 inviteToken: 'a'.repeat(200),
             })
         ).not.toThrow();
-        expect(() =>
-            UserSignUpRequestSchema.parse({
-                ...payload,
-                inviteToken: 'a'.repeat(201),
-            })
-        ).toThrow();
+        const result = UserSignUpRequestSchema.safeParse({
+            ...payload,
+            inviteToken: 'a'.repeat(201),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['inviteToken'], code: 'too_big' }),
+        ]);
     });
 });

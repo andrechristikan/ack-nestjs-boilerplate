@@ -1,49 +1,39 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumUserStatus } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { UserService } from '@modules/user/services/user.service';
 import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.request.dto';
 import type { IUserList } from '@modules/user/interfaces/user.interface';
-import {
-    UserOrderBy,
-    UserDefaultAvailableSearch,
-} from '@modules/user/constants/user.list.constant';
 import { UserGetListOffsetByAdminUseCase } from '@modules/user/use-cases/user.get-list-offset-by-admin.use-case';
-import { EnumUserOrderBy } from '@modules/user/enums/user.enum';
 
 describe('UserGetListOffsetByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
-    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
-        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
     let useCase: UserGetListOffsetByAdminUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserGetListOffsetByAdminUseCase,
                 { provide: UserService, useValue: userService },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
-                },
-                {
-                    provide: PaginationFilterUtil,
-                    useValue: paginationFilterUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 {
                     provide: RequestStoreService,
@@ -56,6 +46,11 @@ describe('UserGetListOffsetByAdminUseCase', () => {
 
     describe('execute', () => {
         const query: UserListRequestDto = { page: 1, perPage: 20 };
+        const params = {
+            skip: 0,
+            limit: 20,
+            orderBy: [{ createdAt: 'desc' }],
+        };
 
         const response: IResponsePaginationReturn<IUserList> = {
             type: EnumPaginationType.offset,
@@ -69,27 +64,16 @@ describe('UserGetListOffsetByAdminUseCase', () => {
         };
 
         it('merges every filter into the pagination store and calls the domain with each where', async () => {
-            const params = { skip: 0, limit: 20, orderBy: [] };
-            paginationQueryUtil.offset.mockReturnValue({
-                params,
-                storePatch: { filters: {} },
-            });
-            paginationFilterUtil.inEnum.mockReturnValue({
-                where: { status: { in: [EnumUserStatus.active] } },
-                storeFilter: { status: [EnumUserStatus.active] },
-            });
-            paginationFilterUtil.equalString
-                .mockReturnValueOnce({
-                    where: { roleId: { equals: 'role-cinder' } },
-                    storeFilter: { roleId: 'role-cinder' },
-                })
-                .mockReturnValueOnce({
-                    where: { countryId: { equals: 'country-cinder' } },
-                    storeFilter: { countryId: 'country-cinder' },
-                });
             userService.getListOffsetByAdmin.mockResolvedValue(response);
 
-            await expect(useCase.execute(query)).resolves.toBe(response);
+            await expect(
+                useCase.execute({
+                    ...query,
+                    status: EnumUserStatus.active,
+                    roleId: 'role-cinder',
+                    countryId: 'country-cinder',
+                })
+            ).resolves.toBe(response);
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 expect.objectContaining({
@@ -100,11 +84,6 @@ describe('UserGetListOffsetByAdminUseCase', () => {
                     }),
                 })
             );
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                availableSearch: UserDefaultAvailableSearch,
-                orderBy: UserOrderBy,
-                defaultOrderBy: EnumUserOrderBy.latest,
-            });
             expect(userService.getListOffsetByAdmin).toHaveBeenCalledWith(
                 params,
                 { status: { in: [EnumUserStatus.active] } },
@@ -114,13 +93,6 @@ describe('UserGetListOffsetByAdminUseCase', () => {
         });
 
         it('calls the domain with undefined wheres when no filter applies', async () => {
-            const params = { skip: 0, limit: 20, orderBy: [] };
-            paginationQueryUtil.offset.mockReturnValue({
-                params,
-                storePatch: { filters: {} },
-            });
-            paginationFilterUtil.inEnum.mockReturnValue(null);
-            paginationFilterUtil.equalString.mockReturnValue(null);
             userService.getListOffsetByAdmin.mockResolvedValue(response);
 
             await useCase.execute(query);

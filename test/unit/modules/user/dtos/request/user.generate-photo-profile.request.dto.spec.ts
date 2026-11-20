@@ -14,26 +14,38 @@ describe('UserGeneratePhotoProfileRequestSchema', () => {
     });
 
     it('rejects a size of 0', () => {
-        expect(() =>
-            UserGeneratePhotoProfileRequestSchema.parse({ ...payload, size: 0 })
-        ).toThrow();
+        const result = UserGeneratePhotoProfileRequestSchema.safeParse({
+            ...payload,
+            size: 0,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['size'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects an extension outside EnumFileExtensionImage', () => {
-        expect(() =>
-            UserGeneratePhotoProfileRequestSchema.parse({
-                ...payload,
-                extension: 'pdf',
-            })
-        ).toThrow();
+        const result = UserGeneratePhotoProfileRequestSchema.safeParse({
+            ...payload,
+            extension: 'pdf',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['extension'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key key', () => {
-        expect(() =>
-            UserGeneratePhotoProfileRequestSchema.parse({
-                ...payload,
-                key: 'users/user-1/profile/photo.jpg',
-            })
-        ).toThrow();
+        const result = UserGeneratePhotoProfileRequestSchema.safeParse({
+            ...payload,
+            key: 'users/user-1/profile/photo.jpg',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

@@ -20,8 +20,6 @@ describe('AnalyticWorkspacesCreationUseCase', () => {
     let useCase: AnalyticWorkspacesCreationUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticWorkspacesCreationUseCase,

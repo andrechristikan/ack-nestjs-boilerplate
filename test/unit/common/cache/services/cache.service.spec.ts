@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { z } from 'zod';
@@ -11,21 +12,17 @@ import {
     EnumCacheQueue,
 } from '@common/cache/enums/cache.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { RedisCacheClient } from '@common/redis/constants/redis.constant';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import type { IStubCacheClient } from '@test/unit/helpers/test.unit.cache.helper';
 
 describe('CacheService', () => {
-    const configGet = vi.fn<(key: string) => number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
+    let configService: MockProxy<ConfigService>;
     const redis: MockProxy<IStubCacheClient> = mock<IStubCacheClient>();
 
     const key = 'Entry:entry-1';
@@ -38,38 +35,38 @@ describe('CacheService', () => {
     const redisUnavailable = {
         module: 'redis',
         statusCode: EnumRedisStatusCodeError.unavailable,
-        statusCodeKey:
-            EnumRedisStatusCodeError[EnumRedisStatusCodeError.unavailable],
-        messagePath: 'redis.error.unavailable',
     };
 
     let service: CacheService;
+    let helperStringService: HelperStringService;
+
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation((configKey: string) => {
-            const values: Record<string, number> = {
-                'redis.warnWindowInMs': 60000,
-            };
-            return values[configKey];
+        configService = buildConfigService({
+            ...TestUnitKitConfigValues,
+            'redis.warnWindowInMs': 60000,
         });
-        helperDateService.create.mockReturnValue(now);
-        helperStringService.random.mockReturnValue('lease-token');
+        vi.setSystemTime(now);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 CacheService,
                 { provide: RedisCacheClient, useValue: redis },
                 { provide: ConfigService, useValue: configService },
-                { provide: HelperDateService, useValue: helperDateService },
-                {
-                    provide: HelperStringService,
-                    useValue: helperStringService,
-                },
+                ...TestUnitKitProviders,
             ],
         }).compile();
 
         service = module.get(CacheService);
+        helperStringService = module.get(HelperStringService);
+        vi.spyOn(helperStringService, 'random').mockReturnValue('lease-token');
     });
 
     describe('readThrough', () => {
@@ -554,22 +551,16 @@ describe('CacheService', () => {
         });
 
         it('returns false for a repeat inside the window', () => {
-            helperDateService.create
-                .mockReturnValueOnce(now)
-                .mockReturnValueOnce(new Date('2026-01-03T00:00:59.999Z'));
-
             service.isFirstInWindow(key);
+            vi.setSystemTime(new Date('2026-01-03T00:00:59.999Z'));
             const result = service.isFirstInWindow(key);
 
             expect(result).toBe(false);
         });
 
         it('returns true once the window has passed', () => {
-            helperDateService.create
-                .mockReturnValueOnce(now)
-                .mockReturnValueOnce(new Date('2026-01-03T00:01:00.000Z'));
-
             service.isFirstInWindow(key);
+            vi.setSystemTime(new Date('2026-01-03T00:01:00.000Z'));
             const result = service.isFirstInWindow(key);
 
             expect(result).toBe(true);
@@ -586,11 +577,8 @@ describe('CacheService', () => {
         });
 
         it('keeps the first time for a repeat inside the window', () => {
-            helperDateService.create
-                .mockReturnValueOnce(now)
-                .mockReturnValueOnce(new Date('2026-01-03T00:00:30.000Z'));
-
             service.warnOnce(key, failure, 'Cache read failed');
+            vi.setSystemTime(new Date('2026-01-03T00:00:30.000Z'));
             service.warnOnce(key, failure, 'Cache read failed');
 
             expect(service['warnedAtByKey'].get(key)).toBe(now.getTime());
@@ -598,22 +586,16 @@ describe('CacheService', () => {
 
         it('re-records the key once the window has passed', () => {
             const later = new Date('2026-01-03T00:01:00.000Z');
-            helperDateService.create
-                .mockReturnValueOnce(now)
-                .mockReturnValueOnce(later);
-
             service.warnOnce(key, failure, 'Cache read failed');
+            vi.setSystemTime(later);
             service.warnOnce(key, failure, 'Cache read failed');
 
             expect(service['warnedAtByKey'].get(key)).toBe(later.getTime());
         });
 
         it('drops entries older than the window', () => {
-            helperDateService.create
-                .mockReturnValueOnce(now)
-                .mockReturnValueOnce(new Date('2026-01-03T00:01:00.000Z'));
-
             service.warnOnce('Entry:old', failure, 'Cache read failed');
+            vi.setSystemTime(new Date('2026-01-03T00:01:00.000Z'));
             service.warnOnce(key, failure, 'Cache read failed');
 
             expect([...service['warnedAtByKey'].keys()]).toEqual([key]);

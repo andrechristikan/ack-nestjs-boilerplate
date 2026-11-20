@@ -24,47 +24,66 @@ describe('UserUpdateProfileRequestSchema', () => {
     });
 
     it('rejects a body missing the name', () => {
-        expect(() =>
-            UserUpdateProfileRequestSchema.parse({
-                countryId: payload.countryId,
-                gender: payload.gender,
-            })
-        ).toThrow();
+        const result = UserUpdateProfileRequestSchema.safeParse({
+            countryId: payload.countryId,
+            gender: payload.gender,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects a body missing the country', () => {
-        expect(() =>
-            UserUpdateProfileRequestSchema.parse({
-                name: payload.name,
-                gender: payload.gender,
-            })
-        ).toThrow();
+        const result = UserUpdateProfileRequestSchema.safeParse({
+            name: payload.name,
+            gender: payload.gender,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['countryId'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a body missing the gender', () => {
-        expect(() =>
-            UserUpdateProfileRequestSchema.parse({
-                name: payload.name,
-                countryId: payload.countryId,
-            })
-        ).toThrow();
+        const result = UserUpdateProfileRequestSchema.safeParse({
+            name: payload.name,
+            countryId: payload.countryId,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['gender'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects a gender outside EnumUserGender', () => {
-        expect(() =>
-            UserUpdateProfileRequestSchema.parse({
-                ...payload,
-                gender: 'unknownGender',
-            })
-        ).toThrow();
+        const result = UserUpdateProfileRequestSchema.safeParse({
+            ...payload,
+            gender: 'unknownGender',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['gender'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserUpdateProfileRequestSchema.parse({
-                ...payload,
-                email: 'john.doe@example.com',
-            })
-        ).toThrow();
+        const result = UserUpdateProfileRequestSchema.safeParse({
+            ...payload,
+            email: 'john.doe@example.com',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

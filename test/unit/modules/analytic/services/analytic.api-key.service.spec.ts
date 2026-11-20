@@ -1,5 +1,10 @@
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { CacheService } from '@common/cache/services/cache.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -17,38 +22,45 @@ describe('AnalyticApiKeyService', () => {
         dashboardTtlInMs,
     });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const analyticDateUtil: MockProxy<AnalyticDateUtil> =
-        mock<AnalyticDateUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const analyticApiKeyRepository: MockProxy<AnalyticApiKeyRepository> =
         mock<AnalyticApiKeyRepository>();
 
     const now: Date = new Date('2026-03-01T00:00:00.000Z');
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     let service: AnalyticApiKeyService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        analyticDateUtil.cacheToken.mockImplementation((date: Date | null) =>
-            date ? date.toISOString() : '_'
-        );
         analyticCache.buildDashboardKey.mockImplementation(
             (metric, start, end) => `${metric}:${start}:${end}`
         );
         cacheService.readThrough.mockImplementation(
             async (_key, _schema, _ttlInMs, loader) => loader()
         );
-        helperDateService.create.mockReturnValue(now);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticApiKeyService,
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: CacheService, useValue: cacheService },
-                { provide: AnalyticDateUtil, useValue: analyticDateUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                AnalyticDateUtil,
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'analytic.cache.windowTokenPattern':
+                            'Window:{start}:{end}',
+                    }),
+                },
                 {
                     provide: AnalyticApiKeyRepository,
                     useValue: analyticApiKeyRepository,

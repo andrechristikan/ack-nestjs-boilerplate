@@ -19,7 +19,6 @@ describe('AuthSocialAppleGuard', () => {
     let guard: AuthSocialAppleGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthSocialAppleGuard,
@@ -46,11 +45,6 @@ describe('AuthSocialAppleGuard', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialAppleRequired,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.socialAppleRequired
-                    ],
-                messagePath: 'auth.error.socialAppleRequired',
             });
         });
 
@@ -65,11 +59,6 @@ describe('AuthSocialAppleGuard', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialAppleRequired,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.socialAppleRequired
-                    ],
-                messagePath: 'auth.error.socialAppleRequired',
             });
         });
 

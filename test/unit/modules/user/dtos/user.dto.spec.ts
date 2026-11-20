@@ -103,15 +103,28 @@ describe('UserSchema', () => {
     });
 
     it('rejects a null passwordAttempt', () => {
-        expect(() =>
-            UserSchema.parse({ ...row, passwordAttempt: null })
-        ).toThrow();
+        const result = UserSchema.safeParse({ ...row, passwordAttempt: null });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passwordAttempt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a status outside EnumUserStatus', () => {
-        expect(() =>
-            UserSchema.parse({ ...row, status: 'unknownStatus' })
-        ).toThrow();
+        const result = UserSchema.safeParse({
+            ...row,
+            status: 'unknownStatus',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['status'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('strips the mfa key', () => {

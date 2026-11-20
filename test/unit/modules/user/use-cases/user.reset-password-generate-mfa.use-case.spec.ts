@@ -41,7 +41,6 @@ describe('UserResetPasswordGenerateMfaUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         userPasswordService.getOneActiveReset.mockResolvedValue(resetRow);
         mfaPasskeyService.getCredentialsByUser.mockResolvedValue(credentials);
         mfaPasskeyService.getAssertionOptions.mockResolvedValue(passkeyOptions);

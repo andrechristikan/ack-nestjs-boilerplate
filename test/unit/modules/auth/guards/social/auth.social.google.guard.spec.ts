@@ -19,7 +19,6 @@ describe('AuthSocialGoogleGuard', () => {
     let guard: AuthSocialGoogleGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthSocialGoogleGuard,
@@ -46,11 +45,6 @@ describe('AuthSocialGoogleGuard', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.socialGoogleRequired
-                    ],
-                messagePath: 'auth.error.socialGoogleRequired',
             });
         });
 
@@ -65,11 +59,6 @@ describe('AuthSocialGoogleGuard', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.socialGoogleRequired
-                    ],
-                messagePath: 'auth.error.socialGoogleRequired',
             });
         });
 

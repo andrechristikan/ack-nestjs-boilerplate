@@ -13,14 +13,14 @@ Producing a notification, its key, and the `snapshot`: `notify.md`.
 
 ## Recipient
 
-- The processor passes the row id on: `execute(outboxId, data)`, `outboxId: string`, for every use case that records step state. A `null` id, a job with no row, is an `UnrecoverableError` in the processor.
+- A `null` id, a job with no row, is an `UnrecoverableError` in the processor.
 - `NotificationProcessUseCase` resolves the recipient on the first attempt: user, address, settings, and live-session tokens through `UserService`, `NotificationService`, and `DeviceService`; a missing or inactive user writes no row and sends nothing. A kind whose channels hold `sms` takes the number from its verification row (`UserVerificationService.getOneActiveMobileRecipient`); a used or expired row gives none. It encrypts them and records them through `OutboxService.updateData`; a later attempt reuses the recorded recipient.
 - A user's notification settings are one stored row per channel and type, created at registration (`UserRegistrationService`); an update changes that row, never stores an override of a default.
 - Channels are `NotificationUtil.resolveChannels`: the contract's channels minus those the user disabled for a toggleable, non-mandatory type. Only `silent` left writes no row and sends nothing.
 
 ## Fan-out and send
 
-- After the recipient, `NotificationProcessUseCase` opens one `OutboxService.withTransaction`: it creates the `Notification` row, its id generated and recorded beforehand, and adds one row per channel with `addManyInTx`, keyed by `notification.idempotencyKey.stepPattern`. Email goes when the channels hold `email` and the recipient has an address, push when the channels hold `push` and the recipient has tokens, sms when the channels hold `sms` and the recipient has a number; a recipient with none gets no channel row.
+- After the recipient, `NotificationProcessUseCase` opens one `OutboxService.withTransaction`: it creates the `Notification` row, its id generated and recorded beforehand, and adds one row per channel with `addManyInTx`, keyed by `notification.idempotencyKey.stepPattern`. Email goes when the channels hold `email` (every recipient has an address), push when the channels hold `push` and the recipient has tokens, sms when the channels hold `sms` and the recipient has a number; a recipient with none gets no channel row.
 - One use case per channel step: `NotificationEmailProcessSendUseCase`, `NotificationEmailProcessSendUnregisteredUseCase`, `NotificationPushProcessSendUseCase`, `NotificationSmsProcessSendUseCase`. Each picks its values from the context by the kind's `NotificationKindContract` row: `templateFields` for the SES template data, `metadataFields` for the push title and body properties, `username` added to both; the SES template name is the kind. A contract row holds data only, no function.
 - `NotificationEmailProcessSendUseCase` and `NotificationEmailProcessSendUnregisteredUseCase` check `AwsSESService.isInitialized()` first; unset, they return `{ message, result: null }`, the message from `notification.queue.email.error.sesNotInitialized`, and call no delivery stamp, no `OutboxService.updateData`, and no send.
 - `dateFields` on the contract row names the context fields holding a date. `Notification.metadata` keeps them ISO; `NotificationUtil` formats them to RFC 2822 when it builds the SES template data, the push properties, and the message properties of the notification list's title and body.
@@ -39,7 +39,7 @@ Producing a notification, its key, and the `snapshot`: `notify.md`.
 - `TermPolicyProcessPublishUseCase` opens one transaction per fresh batch: `NotificationService.createManyInTx`, `TermPolicyRecipientService.createManyInTx` under a batch id, and the batch row.
 - `NotificationEmailProcessPublishTermPolicyUseCase` sequences the send: `TermPolicyRecipientService.claim` (`claimedAt`, `claimNonce`), which keeps delivery at most once per recipient; `NotificationEmailDeliveryService.sendPublishTermPolicy`; one transaction over `TermPolicyRecipientService.markSentInTx` and `NotificationService.markEmailSentInTx`; `TermPolicyRecipientService.release` for a definite SES failure.
 - `NotificationEmailDeliveryService.assertSettled` throws a retrying `QueueException` for a definite failure and `NotificationEmailDeliveryUnknownException`, the claim kept, for an unknown outcome.
-- When both happen, the `QueueException` wins.
+- When a failed recipient and an unknown status both happen, the `QueueException` wins; a rejected mark or release is an unknown outcome and wins over both.
 
 ## Live by design
 

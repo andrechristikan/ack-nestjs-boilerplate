@@ -4,76 +4,45 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
-import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumApiKeyType, Prisma } from '@generated/prisma-client/client';
-import type { ApiKey } from '@generated/prisma-client/client';
-import type {
-    IPaginationOffsetReturn,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
-    ApiKeyOrderBy,
-    ApiKeyDefaultAvailableSearch,
-    ApiKeyDefaultType,
-} from '@modules/api-key/constants/api-key.list.constant';
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { EnumApiKeyType } from '@generated/prisma-client/client';
+import type { ApiKey } from '@generated/prisma-client/client';
+import type { IPaginationOffsetReturn } from '@common/pagination/interfaces/pagination.interface';
 import type { ApiKeyListRequestDto } from '@modules/api-key/dtos/request/api-key.list.request.dto';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import type { IApiKey } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyGetListByAdminUseCase } from '@modules/api-key/use-cases/api-key.get-list-by-admin.use-case';
-import { EnumApiKeyOrderBy } from '@modules/api-key/enums/api-key.enum';
+import { buildApiKey } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyGetListByAdminUseCase', () => {
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
-    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
-        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
-    const now = new Date('2026-01-01T00:00:00.000Z');
-    const apiKey: ApiKey = {
-        id: 'api-key-1',
-        name: 'Acme Api Key',
-        type: EnumApiKeyType.default,
-        key: 'local_abc123',
-        hash: 'hashed-secret',
-        isActive: true,
-        startAt: null,
-        endAt: null,
-        createdAt: now,
-        createdBy: 'user-1',
-        updatedAt: now,
-        updatedBy: 'user-1',
-    };
-    const pagination: IPaginationQueryOffsetParams = {
+    const apiKey: ApiKey = buildApiKey();
+    const pagination = {
         skip: 0,
         limit: 20,
-        orderBy: [],
+        orderBy: [{ createdAt: 'desc' }],
     };
 
     let useCase: ApiKeyGetListByAdminUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        paginationQueryUtil.offset.mockReturnValue({
-            params: pagination,
-            storePatch: {},
-        });
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ApiKeyGetListByAdminUseCase,
                 { provide: ApiKeyService, useValue: apiKeyService },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
-                },
-                {
-                    provide: PaginationFilterUtil,
-                    useValue: paginationFilterUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 {
                     provide: RequestStoreService,
@@ -91,16 +60,6 @@ describe('ApiKeyGetListByAdminUseCase', () => {
                 isActive: true,
                 type: 'default',
             };
-            const isActiveFilter = {
-                where: { isActive: { equals: true } },
-                storeFilter: { isActive: true },
-            };
-            const typeFilter = {
-                where: { type: { in: [EnumApiKeyType.default] } },
-                storeFilter: { type: [EnumApiKeyType.default] },
-            };
-            paginationFilterUtil.equalBoolean.mockReturnValue(isActiveFilter);
-            paginationFilterUtil.inEnum.mockReturnValue(typeFilter);
             const page: IPaginationOffsetReturn<IApiKey> = {
                 type: EnumPaginationType.offset,
                 count: 1,
@@ -130,23 +89,14 @@ describe('ApiKeyGetListByAdminUseCase', () => {
             const result = await useCase.execute(query);
 
             expect(result).toEqual(page);
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                availableSearch: ApiKeyDefaultAvailableSearch,
-                orderBy: ApiKeyOrderBy,
-                defaultOrderBy: EnumApiKeyOrderBy.latest,
-            });
-            expect(paginationFilterUtil.equalBoolean).toHaveBeenCalledWith(
-                Prisma.ApiKeyScalarFieldEnum.isActive,
-                query.isActive
-            );
-            expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
-                Prisma.ApiKeyScalarFieldEnum.type,
-                query.type,
-                ApiKeyDefaultType
-            );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 {
+                    page: 1,
+                    perPage: 20,
+                    orderBy: 'latest',
+                    availableSearch: ['name'],
+                    availableOrderBy: ['latest', 'name'],
                     filters: {
                         isActive: true,
                         type: [EnumApiKeyType.default],
@@ -155,15 +105,13 @@ describe('ApiKeyGetListByAdminUseCase', () => {
             );
             expect(apiKeyService.getListByAdmin).toHaveBeenCalledWith(
                 pagination,
-                isActiveFilter.where,
-                typeFilter.where
+                { isActive: { equals: true } },
+                { type: { in: [EnumApiKeyType.default] } }
             );
         });
 
         it('merges an empty filter set when isActive and type are both absent', async () => {
             const query: ApiKeyListRequestDto = {};
-            paginationFilterUtil.equalBoolean.mockReturnValue(null);
-            paginationFilterUtil.inEnum.mockReturnValue(null);
             const emptyPage: IPaginationOffsetReturn<IApiKey> = {
                 type: EnumPaginationType.offset,
                 count: 0,
@@ -180,7 +128,14 @@ describe('ApiKeyGetListByAdminUseCase', () => {
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                { filters: {} }
+                {
+                    page: 1,
+                    perPage: 20,
+                    orderBy: 'latest',
+                    availableSearch: ['name'],
+                    availableOrderBy: ['latest', 'name'],
+                    filters: {},
+                }
             );
             expect(apiKeyService.getListByAdmin).toHaveBeenCalledWith(
                 pagination,

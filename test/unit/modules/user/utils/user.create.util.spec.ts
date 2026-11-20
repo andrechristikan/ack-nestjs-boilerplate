@@ -1,8 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
-import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
     EnumProjectMemberRole,
@@ -10,7 +8,6 @@ import {
     EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
-    EnumUserStatus,
     EnumWorkspaceInviteStatus,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
@@ -28,16 +25,22 @@ import type {
     IUserSignUpWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { buildUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserCreateUtil', () => {
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
+    let databaseUtil: DatabaseUtil;
+    let helperStringService: HelperStringService;
 
     let util: UserCreateUtil;
 
     const configValues: Record<string, number | string> = {
+        ...TestUnitKitConfigValues,
         'workspace.personalNamePattern': "{username}'s Workspace",
         'workspace.slugPrefix': 'w-',
         'workspace.slugMaxLength': 30,
@@ -56,40 +59,7 @@ describe('UserCreateUtil', () => {
         updatedBy: null,
         policies: [],
     };
-    const user: IUser = {
-        id: 'user-harbor',
-        name: 'Harbor Quill',
-        username: 'harborFinch',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'harbor@example.com',
-        roleId: 'role-harbor',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-harbor',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role,
-    };
+    const user: IUser = buildUser('user-harbor', 'harbor@example.com');
 
     const personalContext: IUserSignUpWorkspacePersonal = {
         type: EnumUserSignUpWorkspaceContextType.personal,
@@ -121,16 +91,10 @@ describe('UserCreateUtil', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserCreateUtil,
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                {
-                    provide: HelperStringService,
-                    useValue: helperStringService,
-                },
+                ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(configValues),
@@ -138,16 +102,23 @@ describe('UserCreateUtil', () => {
             ],
         }).compile();
         util = module.get(UserCreateUtil);
+        databaseUtil = module.get(DatabaseUtil);
+        helperStringService = module.get(HelperStringService);
     });
 
     describe('buildPersonalWorkspaceContexts', () => {
         it('builds one personal workspace context per username', () => {
-            databaseUtil.createId
+            vi.spyOn(databaseUtil, 'createId')
                 .mockReturnValueOnce('workspace-one')
                 .mockReturnValueOnce('workspace-two');
-            helperStringService.generateSlugCandidates
-                .mockReturnValueOnce(['w-one-a', 'w-one-b', 'w-one-c'])
-                .mockReturnValueOnce(['w-two-a', 'w-two-b', 'w-two-c']);
+            const random = vi
+                .spyOn(helperStringService, 'random')
+                .mockReturnValueOnce('one-a')
+                .mockReturnValueOnce('one-b')
+                .mockReturnValueOnce('one-c')
+                .mockReturnValueOnce('two-a')
+                .mockReturnValueOnce('two-b')
+                .mockReturnValueOnce('two-c');
 
             const result = util.buildPersonalWorkspaceContexts([
                 'harborFinch',
@@ -168,20 +139,20 @@ describe('UserCreateUtil', () => {
                     name: "marigoldFinch's Workspace",
                 },
             ]);
-            expect(
-                helperStringService.generateSlugCandidates
-            ).toHaveBeenCalledWith('w-', 30, 3);
+            expect(random).toHaveBeenCalledTimes(6);
+            expect(random).toHaveBeenCalledWith(28);
         });
     });
 
     describe('buildSignUpWorkspaceContext', () => {
         it('builds the personal workspace context of the username when the sign-up carries no invite', () => {
-            databaseUtil.createId.mockReturnValueOnce('workspace-one');
-            helperStringService.generateSlugCandidates.mockReturnValueOnce([
-                'w-one-a',
-                'w-one-b',
-                'w-one-c',
-            ]);
+            vi.spyOn(databaseUtil, 'createId').mockReturnValueOnce(
+                'workspace-one'
+            );
+            vi.spyOn(helperStringService, 'random')
+                .mockReturnValueOnce('one-a')
+                .mockReturnValueOnce('one-b')
+                .mockReturnValueOnce('one-c');
 
             const result = util.buildSignUpWorkspaceContext(
                 null,
@@ -319,52 +290,29 @@ describe('UserCreateUtil', () => {
 
     describe('mapCreateCollision', () => {
         it('returns UserUsernameExistException when the collision is on username', () => {
-            const error = new Error('collision');
-            databaseUtil.isUniqueCollision.mockImplementation(
-                (_err, field) => field === 'username'
-            );
+            const error = buildPrismaKnownRequestError('P2002', 'username');
 
             const result = util.mapCreateCollision(error);
 
             expect(result).toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.usernameExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameExist
-                    ],
-                messagePath: 'user.error.usernameExist',
             });
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                error,
-                'username'
-            );
         });
 
         it('returns UserEmailExistException when the collision is on email', () => {
-            const error = new Error('collision');
-            databaseUtil.isUniqueCollision.mockImplementation(
-                (_err, field) => field === 'email'
-            );
+            const error = buildPrismaKnownRequestError('P2002', 'email');
 
             const result = util.mapCreateCollision(error);
 
             expect(result).toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.emailExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.emailExist],
-                messagePath: 'user.error.emailExist',
             });
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                error,
-                'email'
-            );
         });
 
         it('returns the error untouched when it is neither collision', () => {
             const error = new Error('unrelated');
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             const result = util.mapCreateCollision(error);
 

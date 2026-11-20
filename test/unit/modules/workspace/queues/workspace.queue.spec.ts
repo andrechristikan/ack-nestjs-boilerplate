@@ -11,27 +11,20 @@ import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceQueue } from '@modules/workspace/queues/workspace.queue';
 import { MessageService } from '@common/message/services/message.service';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('WorkspaceQueue', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
     const workspaceQueue: MockProxy<Queue> = mock<Queue>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let queue: WorkspaceQueue;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, string> = {
-                'app.timezone': 'UTC',
-                'workspace.invite.expirySweepCron': '0 * * * *',
-            };
-
-            return values[key];
+        configService = buildConfigService({
+            'app.timezone': 'UTC',
+            'workspace.invite.expirySweepCron': '0 * * * *',
         });
 
         const module: TestingModule = await Test.createTestingModule({

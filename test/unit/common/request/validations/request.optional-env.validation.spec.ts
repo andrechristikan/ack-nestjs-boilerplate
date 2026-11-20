@@ -35,7 +35,9 @@ describe('request.optional-env.validation', () => {
         });
 
         it('rejects a value that is not a string', () => {
-            expect(RequestOptionalEnvSchema.safeParse(1).success).toBe(false);
+            expect(RequestOptionalEnvSchema.safeParse(1).error?.issues).toEqual(
+                [expect.objectContaining({ path: [], code: 'invalid_type' })]
+            );
         });
     });
 
@@ -98,8 +100,10 @@ describe('request.optional-env.validation', () => {
         it('rejects a value that is not an SES identity ARN', () => {
             expect(
                 RequestOptionalEnvSesIdentityArnSchema.safeParse('example.com')
-                    .success
-            ).toBe(false);
+                    .error?.issues
+            ).toEqual([
+                expect.objectContaining({ path: [], code: 'invalid_format' }),
+            ]);
         });
     });
 
@@ -122,8 +126,8 @@ describe('request.optional-env.validation', () => {
             expect(
                 RequestOptionalEnvUrlNoTrailingSlashSchema.safeParse(
                     'http://localhost:4566/'
-                ).success
-            ).toBe(false);
+                ).error?.issues
+            ).toEqual([expect.objectContaining({ path: [], code: 'custom' })]);
         });
     });
 
@@ -144,8 +148,10 @@ describe('request.optional-env.validation', () => {
 
         it('rejects a value that is not a URL', () => {
             expect(
-                RequestOptionalEnvUrlSchema.safeParse('not-a-url').success
-            ).toBe(false);
+                RequestOptionalEnvUrlSchema.safeParse('not-a-url').error?.issues
+            ).toEqual([
+                expect.objectContaining({ path: [], code: 'invalid_format' }),
+            ]);
         });
     });
 });

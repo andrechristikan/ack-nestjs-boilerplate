@@ -1,15 +1,18 @@
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { NotificationPushQueueFactory } from '@modules/notification/factories/notification.push.queue.factory';
+import {
+    buildConfigService,
+    stubConfigValues,
+} from '@test/unit/helpers/test.unit.config.helper';
 
 describe('NotificationPushQueueFactory', () => {
-    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    let configService: MockProxy<ConfigService>;
     let factory: NotificationPushQueueFactory;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
+        configService = buildConfigService({});
         const module = await Test.createTestingModule({
             providers: [
                 NotificationPushQueueFactory,
@@ -21,16 +24,12 @@ describe('NotificationPushQueueFactory', () => {
 
     describe('createRegisterQueueOptions', () => {
         it('builds the default job options and no connection from queue config', () => {
-            vi.mocked(configService.get).mockImplementation((key: string) => {
-                const values: Record<string, unknown> = {
-                    'queue.job.attempts': 5,
-                    'queue.job.keepLogs': 100,
-                    'queue.job.pushBackoffDelayInMs': 1500,
-                    'queue.job.removeOnCompleteAgeInSeconds': 3600,
-                    'queue.job.removeOnFailAgeInSeconds': 86400,
-                };
-
-                return values[key];
+            stubConfigValues(configService, {
+                'queue.job.attempts': 5,
+                'queue.job.keepLogs': 100,
+                'queue.job.pushBackoffDelayInMs': 1500,
+                'queue.job.removeOnCompleteAgeInSeconds': 3600,
+                'queue.job.removeOnFailAgeInSeconds': 86400,
             });
 
             const options = factory.createRegisterQueueOptions();

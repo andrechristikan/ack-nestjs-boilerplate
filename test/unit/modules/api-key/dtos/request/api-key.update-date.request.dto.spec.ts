@@ -20,12 +20,18 @@ describe('ApiKeyUpdateDateRequestSchema', () => {
     });
 
     it('rejects an endAt before startAt', () => {
-        expect(() =>
-            ApiKeyUpdateDateRequestSchema.parse({
-                startAt: endAt,
-                endAt: startAt,
-            })
-        ).toThrow();
+        const result = ApiKeyUpdateDateRequestSchema.safeParse({
+            startAt: endAt,
+            endAt: startAt,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['endAt'],
+                code: 'custom',
+                message: 'request.error.greaterThanEqualOtherProperty.invalid',
+            }),
+        ]);
     });
 
     it('parses both dates null', () => {
@@ -43,8 +49,13 @@ describe('ApiKeyUpdateDateRequestSchema', () => {
             endAt,
         });
 
-        expect(result.success).toBe(false);
-        expect(result.error?.issues[0]?.path).toEqual(['endAt']);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['endAt'],
+                code: 'custom',
+                message: 'request.error.requiredWithOtherProperty.invalid',
+            }),
+        ]);
     });
 
     it('reports an issue at endAt when only endAt is null', () => {
@@ -53,8 +64,13 @@ describe('ApiKeyUpdateDateRequestSchema', () => {
             endAt: null,
         });
 
-        expect(result.success).toBe(false);
-        expect(result.error?.issues[0]?.path).toEqual(['endAt']);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['endAt'],
+                code: 'custom',
+                message: 'request.error.requiredWithOtherProperty.invalid',
+            }),
+        ]);
     });
 
     it('reports an issue at endAt when endAt is before startAt', () => {
@@ -63,21 +79,35 @@ describe('ApiKeyUpdateDateRequestSchema', () => {
             endAt: startAt,
         });
 
-        expect(result.success).toBe(false);
-        expect(result.error?.issues[0]?.path).toEqual(['endAt']);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['endAt'],
+                code: 'custom',
+                message: 'request.error.greaterThanEqualOtherProperty.invalid',
+            }),
+        ]);
     });
 
     it('rejects a missing startAt', () => {
-        expect(() => ApiKeyUpdateDateRequestSchema.parse({ endAt })).toThrow();
+        const result = ApiKeyUpdateDateRequestSchema.safeParse({ endAt });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['startAt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ApiKeyUpdateDateRequestSchema.parse({
-                startAt,
-                endAt,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ApiKeyUpdateDateRequestSchema.safeParse({
+            startAt,
+            endAt,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

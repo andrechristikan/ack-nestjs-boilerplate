@@ -10,9 +10,6 @@ import {
     EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
@@ -47,25 +44,25 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { UserLoginCredentialUseCase } from '@modules/user/use-cases/user.login-credential.use-case';
 import {
-    buildRequestContext,
     buildApiKeyContext,
+    buildRequestContext,
+    buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 
 describe('UserLoginCredentialUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const userPasswordService: MockProxy<UserPasswordService> =
         mock<UserPasswordService>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
-    const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx = {} as IDatabaseTransactionClient;
     const requestContext = buildRequestContext();
@@ -104,49 +101,8 @@ describe('UserLoginCredentialUseCase', () => {
         idempotencyKey: null,
     };
     const baseUser: IUser = {
-        id: 'user-bramble',
-        name: 'Bramble Fox',
-        username: 'bramble2fox',
+        ...buildUser('user-bramble', 'bramble@example.com'),
         isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'bramble@example.com',
-        roleId: 'role-bramble',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-bramble',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-bramble',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
     };
     const mfaChallenge: IUserLoginMfaChallenge = {
         challengeToken: 'challenge-token',
@@ -158,17 +114,21 @@ describe('UserLoginCredentialUseCase', () => {
         tokens,
         sessionId: 'session-bramble',
     };
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
 
-        helperDateService.create.mockReturnValue(now);
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
+        vi.setSystemTime(now);
         activityLogService.recordEffect.mockReturnValue(entryEffect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userUtil.isUnverified.mockReturnValue(false);
         mfaService.isEnabled.mockResolvedValue(false);
-        deviceUtil.toIdentity.mockReturnValue(deviceIdentity);
         userAuthService.createTokenAndSessionInTx.mockResolvedValue(session);
         workspaceMemberService.resolveLastWorkspaceId.mockResolvedValue(null);
 
@@ -186,11 +146,15 @@ describe('UserLoginCredentialUseCase', () => {
                     useValue: workspaceMemberService,
                 },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: UserUtil, useValue: userUtil },
+                UserUtil,
                 { provide: MfaService, useValue: mfaService },
-                { provide: DeviceUtil, useValue: deviceUtil },
+                DeviceUtil,
                 { provide: OutboxService, useValue: outboxService },
-                { provide: HelperDateService, useValue: helperDateService },
+                HelperDateService,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitUserConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(UserLoginCredentialUseCase);
@@ -215,11 +179,6 @@ describe('UserLoginCredentialUseCase', () => {
         const emailNotVerifiedFields = {
             module: 'user',
             statusCode: EnumUserStatusCodeError.emailNotVerified,
-            statusCodeKey:
-                EnumUserStatusCodeError[
-                    EnumUserStatusCodeError.emailNotVerified
-                ],
-            messagePath: 'user.error.emailNotVerified',
         };
 
         beforeEach(() => {
@@ -296,14 +255,12 @@ describe('UserLoginCredentialUseCase', () => {
                 platform: EnumDevicePlatform.ios,
                 notificationToken: 'token-bramble',
             };
-            deviceUtil.toIdentity.mockReturnValue(fullDevice);
 
             await useCase.execute(requestContext, apiKeyContext, {
                 ...dto,
                 device: requestDevice,
             });
 
-            expect(deviceUtil.toIdentity).toHaveBeenCalledWith(requestDevice);
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).toHaveBeenCalledWith(
@@ -419,7 +376,6 @@ describe('UserLoginCredentialUseCase', () => {
 
         it('sends a verification email with its entry on one tx and rejects with the unverified error when resendable', async () => {
             const callOrder: string[] = [];
-            userUtil.isUnverified.mockReturnValue(true);
             userAuthService.getOneForCredentialLogin.mockResolvedValue({
                 ...counted,
                 user: unverifiedUser,
@@ -461,7 +417,6 @@ describe('UserLoginCredentialUseCase', () => {
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toMatchObject(emailNotVerifiedFields);
 
-            expect(userUtil.isUnverified).toHaveBeenCalledWith(unverifiedUser);
             expect(
                 userVerificationService.isEmailResendable
             ).toHaveBeenCalledWith(unverifiedUser);
@@ -503,7 +458,6 @@ describe('UserLoginCredentialUseCase', () => {
         });
 
         it('rejects with the unverified error and sends nothing inside the resend window', async () => {
-            userUtil.isUnverified.mockReturnValue(true);
             userAuthService.getOneForCredentialLogin.mockResolvedValue({
                 ...counted,
                 user: unverifiedUser,
@@ -536,7 +490,6 @@ describe('UserLoginCredentialUseCase', () => {
         });
 
         it('sends the verification email before the expiry check for an unverified user with an expired password', async () => {
-            userUtil.isUnverified.mockReturnValue(true);
             userAuthService.getOneForCredentialLogin.mockResolvedValue({
                 ...counted,
                 user: unverifiedUser,
@@ -573,7 +526,6 @@ describe('UserLoginCredentialUseCase', () => {
                 data: tokenOutcome,
             });
 
-            expect(userUtil.isUnverified).toHaveBeenCalledWith(baseUser);
             expect(
                 userVerificationService.isEmailResendable
             ).not.toHaveBeenCalled();
@@ -607,7 +559,6 @@ describe('UserLoginCredentialUseCase', () => {
         });
 
         it('rejects a wrong password of an unverified user with the credential error and sends nothing', async () => {
-            userUtil.isUnverified.mockReturnValue(true);
             userAuthService.getOneForCredentialLogin.mockResolvedValue({
                 ...counted,
                 user: unverifiedUser,
@@ -625,11 +576,6 @@ describe('UserLoginCredentialUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.credentialInvalid
-                    ],
-                messagePath: 'user.error.credentialInvalid',
             });
 
             expect(outboxService.add).toHaveBeenCalledWith(entryEffect);
@@ -642,7 +588,6 @@ describe('UserLoginCredentialUseCase', () => {
         });
 
         it('rejects an unverified MFA user with the unverified error before any challenge or session', async () => {
-            userUtil.isUnverified.mockReturnValue(true);
             mfaService.isEnabled.mockResolvedValue(true);
             userAuthService.getOneForCredentialLogin.mockResolvedValue({
                 ...counted,

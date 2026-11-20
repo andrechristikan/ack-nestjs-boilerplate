@@ -5,7 +5,7 @@ paths:
 
 # Seeding
 
-`src/migration/` holds seeds, not schema migrations: the reference and bootstrap rows an empty database needs (roles, countries, the seed API key, feature flags, term policies, templates, the S3 config, the seed user). A one-off production write, a column re-compute, or a historical import does not belong here, and a seed holds no business logic. Procedure for a new seed: `.claude/skills/ack-build/references/add-seed.md`.
+`src/migration/` holds seeds, not schema migrations: the reference and bootstrap rows an empty database needs (roles and their policies, countries, the seed API key, feature flags, term policies, the seed users and their workspaces, common passwords, the SES templates, the S3 config). A one-off production write, a column re-compute, or a historical import does not belong here, and a seed holds no business logic. Procedure for a new seed: `.claude/skills/ack-build/references/add-seed.md`.
 
 ## Anatomy
 
@@ -21,7 +21,7 @@ src/migration/
 - A seed is `Migration<Concern>Seed`, decorated `@Command({ name, description, allowUnknownOptions: false })`, extending `MigrationSeedBase` (`src/migration/bases/migration.seed.base.ts`), whose `run` owns the `--type seed|remove` dispatch, and implementing `IMigrationSeed` (`src/migration/interfaces/migration.seed.interface.ts`): `seed()` and `remove()`, both.
 - `@Command` `name` is camelCase for the concern: `apiKey`, `featureFlag`, `termPolicy`, `templateEmailNotification`, `awsS3Config`.
 - A seed whose data has no external key needs no data file.
-- A bulk list shared by every environment exports one PascalCase `string[]` const, its file listed in `cspell.json` `ignorePaths` (`MigrationCommonPasswordData`, the `commonPassword` seed: the first 3000 entries of its source that the password policy admits (8 to 64 characters, `credential-policy.md`), lowercased and de-duplicated, in source order (OWASP ASVS 6.2.4's minimum), named in its JSDoc, `code-style.md`). Any other data file exports a `Record<EnumAppEnvironment, ...>` const; a seed reads its rows, the seeded passwords and API key credentials included, as `Migration<Concern>Data[app.env]` (the `MigrationUserSeed` constructor, `src/migration/seeds/migration.user.seed.ts`).
+- A bulk list shared by every environment exports one PascalCase `string[]` const, its file listed in `cspell.json` `ignorePaths` (`MigrationCommonPasswordData`, the `commonPassword` seed: the first 3000 entries of its source that the password policy admits (8 to 64 characters, `credential-policy.md`), lowercased and de-duplicated, in source order (OWASP ASVS 6.2.4's minimum), named in its JSDoc, `code-style.md`). Any other data file exports a const typed by an `I*` map of `EnumAppEnvironment` declared in `src/migration/interfaces/` (`code-style.md`); a seed reads its rows, the seeded passwords and API key credentials included, as `Migration<Concern>Data[app.env]` (the `MigrationUserSeed` constructor, `src/migration/seeds/migration.user.seed.ts`).
 - Every environment seeds the super admin, the admin, and the user. A literal credential (a user password, an API key) sits under `local` only, and no environment key carries a seed password. A deployed environment's user carries `password: null`: `MigrationUserSeed` draws it with `AuthPasswordUtil.createPasswordRandom()` and, after the commit, prints each new user's password once on `process.stdout`, never through the logger.
 - A seed writes its audit fields explicitly: `createdBy` on every seeded row, and `updatedBy` on every row whose model carries it, including the update branch of an upsert and every nested row, carry `MigrationUserSuperAdminId` from `src/migration/data/migration.user.data.ts`.
 - A seed's create writes `null` into each nullable column a read filters by `null` (`repository.md`).
@@ -35,11 +35,11 @@ src/migration/
 
 - A seed writes every model it seeds, `ActivityLog` included, through `this.databaseService.client` or the `tx` of `withTransaction`; never through a feature repository or a feature service method that writes the database.
 - A seed injects `DatabaseService`, `ConfigService`, and `src/common/` kit services (`DatabaseUtil`, `HelperHashService`, `AwsS3Service`, `AwsSESService`).
-- A seed injects a feature service for one use only: a non-database integration, the SES templates (`NotificationTemplateService`). A seed injects no feature repository.
+- A seed injects a feature service for one use only: a non-database integration, the SES templates (`NotificationTemplateService`).
 - A seed may inject any module's util and read any contract (`ApiKeyCredentialUtil`, `AuthPasswordUtil`, `ActivityLogUtil`, `UserTermPolicyContract`). The seeded user's email verification comes from `UserVerificationUtil.createVerified(email)`.
 - A seed injects no queue class and adds no request side effect.
 - `MigrationModule` imports `CommonModule` and the kit modules its seeds use (`AwsModule`), and a feature `<Module>Module` only for an injection allowed above (`NotificationModule` for the SES templates); it imports no use-case module.
-- What binds a seed: `naming.md`, `code-style.md`, `injectable.md`, `null-safety.md`, `concurrency.md`, and this file.
+- What binds a seed: `naming.md`, `code-style.md`, `injectable.md`, `null-safety.md`, `concurrency.md`, `discipline.md`, and this file.
 
 ## Term policies
 
@@ -59,4 +59,4 @@ The `termPolicy` seed publishes version 1 of every `EnumTermPolicyType`, `publis
 
 ## Off-limits
 
-`migration:fresh` resets the database before it seeds. `migration:build` compiles `dist/migration.js` and the other scripts build nothing: a host run builds first, and the `apis` container runs them on the `dist/` its watcher compiled. Write the seed; hand back the command.
+`migration:fresh` resets the database before it seeds. `migration:build` compiles `dist/migration.js` and the other scripts build nothing: a host run builds first, and the `apis` container runs them on the `dist/` its watcher compiled.

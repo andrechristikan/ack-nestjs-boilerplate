@@ -53,13 +53,7 @@ describe('AppGeneralFilter', () => {
         correlationId: '01966c9a-2b8d-7000-a957-4e1c1de0c8f8',
     };
 
-    afterEach(() => {
-        vi.restoreAllMocks();
-    });
-
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         argumentsHost.switchToHttp.mockReturnValue(httpArgumentsHost);
         httpArgumentsHost.getResponse.mockReturnValue(response);
         response.status.mockReturnValue(response);

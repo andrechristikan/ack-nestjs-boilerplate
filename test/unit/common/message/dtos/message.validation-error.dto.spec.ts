@@ -23,11 +23,16 @@ describe('MessageValidationErrorSchema', () => {
     });
 
     it('rejects a payload missing a required field', () => {
-        expect(() =>
-            MessageValidationErrorSchema.parse({
-                key: 'tooSmall',
-                property: 'email',
-            })
-        ).toThrow();
+        const result = MessageValidationErrorSchema.safeParse({
+            key: 'tooSmall',
+            property: 'email',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['message'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

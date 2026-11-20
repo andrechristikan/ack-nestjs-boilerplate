@@ -15,38 +15,50 @@ describe('ProjectMemberAssignRequestSchema', () => {
     });
 
     it('rejects a userId that is not a MongoDB ObjectId', () => {
-        expect(() =>
-            ProjectMemberAssignRequestSchema.parse({
-                userId: 'not-an-id',
-                role: EnumProjectMemberRole.member,
-            })
-        ).toThrow();
+        const result = ProjectMemberAssignRequestSchema.safeParse({
+            userId: 'not-an-id',
+            role: EnumProjectMemberRole.member,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['userId'], code: 'too_small' }),
+            expect.objectContaining({
+                path: ['userId'],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects a role outside EnumProjectMemberRole', () => {
-        expect(() =>
-            ProjectMemberAssignRequestSchema.parse({
-                userId: '507f1f77bcf86cd799439011',
-                role: 'owner',
-            })
-        ).toThrow();
+        const result = ProjectMemberAssignRequestSchema.safeParse({
+            userId: '507f1f77bcf86cd799439011',
+            role: 'owner',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['role'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects a missing role', () => {
-        expect(() =>
-            ProjectMemberAssignRequestSchema.parse({
-                userId: '507f1f77bcf86cd799439011',
-            })
-        ).toThrow();
+        const result = ProjectMemberAssignRequestSchema.safeParse({
+            userId: '507f1f77bcf86cd799439011',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['role'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ProjectMemberAssignRequestSchema.parse({
-                userId: '507f1f77bcf86cd799439011',
-                role: EnumProjectMemberRole.member,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ProjectMemberAssignRequestSchema.safeParse({
+            userId: '507f1f77bcf86cd799439011',
+            role: EnumProjectMemberRole.member,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

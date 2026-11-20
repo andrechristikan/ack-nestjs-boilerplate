@@ -11,17 +11,23 @@ describe('TermPolicyAcceptRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            TermPolicyAcceptRequestSchema.parse({
-                ...payload,
-                version: 1,
-            })
-        ).toThrow();
+        const result = TermPolicyAcceptRequestSchema.safeParse({
+            ...payload,
+            version: 1,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a type outside EnumTermPolicyType', () => {
-        expect(() =>
-            TermPolicyAcceptRequestSchema.parse({ type: 'unknownType' })
-        ).toThrow();
+        const result = TermPolicyAcceptRequestSchema.safeParse({
+            type: 'unknownType',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'invalid_value' }),
+        ]);
     });
 });

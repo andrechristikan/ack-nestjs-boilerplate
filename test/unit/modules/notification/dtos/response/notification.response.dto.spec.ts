@@ -59,14 +59,27 @@ describe('NotificationResponseSchema', () => {
     });
 
     it('rejects a type outside EnumNotificationType', () => {
-        expect(() =>
-            NotificationResponseSchema.parse({ ...row, type: 'bogus' })
-        ).toThrow();
+        const result = NotificationResponseSchema.safeParse({
+            ...row,
+            type: 'bogus',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects a priority outside EnumNotificationPriority', () => {
-        expect(() =>
-            NotificationResponseSchema.parse({ ...row, priority: 'bogus' })
-        ).toThrow();
+        const result = NotificationResponseSchema.safeParse({
+            ...row,
+            priority: 'bogus',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['priority'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 });

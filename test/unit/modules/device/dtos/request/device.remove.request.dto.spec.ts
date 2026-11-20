@@ -23,17 +23,21 @@ describe('DeviceRemoveRequestSchema', () => {
     });
 
     it('rejects an empty password', () => {
-        expect(() =>
-            DeviceRemoveRequestSchema.parse({ password: '' })
-        ).toThrow();
+        const result = DeviceRemoveRequestSchema.safeParse({ password: '' });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['password'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            DeviceRemoveRequestSchema.parse({
-                ...payload,
-                challengeToken: 'c07c5f0d6d0c4c6db1f6a6d38f5ce8fa',
-            })
-        ).toThrow();
+        const result = DeviceRemoveRequestSchema.safeParse({
+            ...payload,
+            challengeToken: 'c07c5f0d6d0c4c6db1f6a6d38f5ce8fa',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

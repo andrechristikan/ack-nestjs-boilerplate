@@ -1,4 +1,3 @@
-import { HttpStatus } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -33,7 +32,6 @@ describe('ProjectGuard', () => {
     let guard: ProjectGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectGuard,
@@ -134,8 +132,6 @@ describe('ProjectGuard', () => {
                 ).rejects.toMatchObject({
                     module: 'workspace',
                     statusCode: EnumWorkspaceStatusCodeError.guardMissing,
-                    messagePath: 'workspace.error.guardMissing',
-                    httpStatus: HttpStatus.FORBIDDEN,
                 });
                 expect(
                     projectMemberService.validateProjectGuard

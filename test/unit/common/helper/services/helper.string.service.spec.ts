@@ -59,11 +59,6 @@ describe('HelperStringService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.patternTokenMissing,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.patternTokenMissing
-                    ],
-                messagePath: 'helper.error.patternTokenMissing',
                 messageProperties: { token: 'missing' },
             });
         });

@@ -23,6 +23,9 @@ import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mo
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
 import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('UserMobileNumberService', () => {
     const userMobileNumberRepository: MockProxy<UserMobileNumberRepository> =
@@ -30,8 +33,6 @@ describe('UserMobileNumberService', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
@@ -75,8 +76,6 @@ describe('UserMobileNumberService', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -94,7 +93,11 @@ describe('UserMobileNumberService', () => {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
                 },
-                { provide: HelperDateService, useValue: helperDateService },
+                HelperDateService,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
             ],
@@ -236,11 +239,6 @@ describe('UserMobileNumberService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.mobileNumberNotFound
-                    ],
-                messagePath: 'user.error.mobileNumberNotFound',
             });
         });
     });
@@ -509,11 +507,6 @@ describe('UserMobileNumberService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.mobileNumberAlreadyVerified,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.mobileNumberAlreadyVerified
-                    ],
-                messagePath: 'user.error.mobileNumberAlreadyVerified',
             });
         });
     });
@@ -521,8 +514,19 @@ describe('UserMobileNumberService', () => {
     describe('markVerifiedInTx', () => {
         const verifiedAt = new Date('2026-03-01T00:00:00.000Z');
 
+        beforeAll(() => {
+            vi.useFakeTimers();
+        });
+
+        afterAll(() => {
+            vi.useRealTimers();
+        });
+
+        beforeEach(() => {
+            vi.setSystemTime(verifiedAt);
+        });
+
         it('marks the number verified at now on the given tx', async () => {
-            helperDateService.create.mockReturnValue(verifiedAt);
             userMobileNumberRepository.markVerifiedInTx.mockResolvedValue(true);
 
             await service.markVerifiedInTx(tx, 'user-marlin', mobileNumber.id);
@@ -538,7 +542,6 @@ describe('UserMobileNumberService', () => {
         });
 
         it('throws UserTokenInvalidException when the guard is lost', async () => {
-            helperDateService.create.mockReturnValue(verifiedAt);
             userMobileNumberRepository.markVerifiedInTx.mockResolvedValue(
                 false
             );

@@ -39,14 +39,28 @@ describe('UserCreateRequestSchema', () => {
     });
 
     it('rejects a roleId that is not a Mongo id', () => {
-        expect(() =>
-            UserCreateRequestSchema.parse({ ...payload, roleId: 'not-an-id' })
-        ).toThrow();
+        const result = UserCreateRequestSchema.safeParse({
+            ...payload,
+            roleId: 'not-an-id',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['roleId'], code: 'too_small' }),
+            expect.objectContaining({
+                path: ['roleId'],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserCreateRequestSchema.parse({ ...payload, isAdmin: true })
-        ).toThrow();
+        const result = UserCreateRequestSchema.safeParse({
+            ...payload,
+            isAdmin: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

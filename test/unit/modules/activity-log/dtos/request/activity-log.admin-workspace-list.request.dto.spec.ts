@@ -27,25 +27,37 @@ describe('ActivityLogAdminWorkspaceListRequestSchema', () => {
     });
 
     it('rejects a userId that is not a mongo id', () => {
-        expect(() =>
-            ActivityLogAdminWorkspaceListRequestSchema.parse({
-                userId: 'not-an-id',
-            })
-        ).toThrow();
+        const result = ActivityLogAdminWorkspaceListRequestSchema.safeParse({
+            userId: 'not-an-id',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['userId'], code: 'too_small' }),
+            expect.objectContaining({
+                path: ['userId'],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ActivityLogAdminWorkspaceListRequestSchema.parse({ extra: true })
-        ).toThrow();
+        const result = ActivityLogAdminWorkspaceListRequestSchema.safeParse({
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
         expect(
             ActivityLogAdminWorkspaceListRequestSchema.safeParse({
                 search: 'x',
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -83,15 +95,25 @@ describe('ActivityLogAdminWorkspaceListRequestSchema', () => {
     ])('rejects the orderBy %s', orderBy => {
         expect(
             ActivityLogAdminWorkspaceListRequestSchema.safeParse({ orderBy })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             ActivityLogAdminWorkspaceListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

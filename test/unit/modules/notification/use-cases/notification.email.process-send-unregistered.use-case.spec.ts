@@ -1,9 +1,12 @@
 import { Test } from '@nestjs/testing';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
@@ -12,22 +15,20 @@ import type { INotificationEmailSendUnregisteredPayload } from '@modules/notific
 import { NotificationEmailDeliveryService } from '@modules/notification/services/notification.email.delivery.service';
 import { NotificationEmailProcessSendUnregisteredUseCase } from '@modules/notification/use-cases/notification.email.process-send-unregistered.use-case';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
-import { stubCipherDecryption } from '@test/unit/helpers/test.unit.notification-push.helper';
+import { buildSealedNotificationPayload } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('NotificationEmailProcessSendUnregisteredUseCase', () => {
     const notificationEmailDeliveryService: MockProxy<NotificationEmailDeliveryService> =
         mock<NotificationEmailDeliveryService>();
     const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
-    const helperEncryptionService: MockProxy<HelperEncryptionService> =
-        mock<HelperEncryptionService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     let useCase: NotificationEmailProcessSendUnregisteredUseCase;
 
     const data: INotificationEmailSendUnregisteredPayload = {
-        encryptedEmail: 'cipher(invitee@example.com)',
+        encryptedEmail: buildSealedNotificationPayload(
+            'invitee@example.com',
+            'WI-ref'
+        ),
         context: {
             workspaceId: 'workspace-id',
             workspaceName: 'Acme',
@@ -35,23 +36,16 @@ describe('NotificationEmailProcessSendUnregisteredUseCase', () => {
             reference: 'WI-ref',
             workspaceMemberRole: EnumWorkspaceMemberRole.member,
             expiredAt: '2024-01-08T00:00:00.000Z',
-            encryptedInviteAcceptLink:
-                'cipher(https://app.test/sign-up?invite=token)',
+            encryptedInviteAcceptLink: buildSealedNotificationPayload(
+                'https://app.test/sign-up?invite=token',
+                'WI-ref'
+            ),
         },
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
         awsSESService.isInitialized.mockReturnValue(true);
-        vi.mocked(configService.get).mockReturnValue('secret-key');
-        stubCipherDecryption(helperEncryptionService);
-        helperDateService.createFromIso.mockReturnValue(
-            new Date('2024-01-08T00:00:00.000Z')
-        );
-        helperDateService.formatToRFC2822.mockReturnValue(
-            'Mon, 08 Jan 2024 00:00:00 +0000'
-        );
         const module = await Test.createTestingModule({
             providers: [
                 NotificationEmailProcessSendUnregisteredUseCase,
@@ -60,13 +54,12 @@ describe('NotificationEmailProcessSendUnregisteredUseCase', () => {
                     provide: NotificationEmailDeliveryService,
                     useValue: notificationEmailDeliveryService,
                 },
-                {
-                    provide: HelperEncryptionService,
-                    useValue: helperEncryptionService,
-                },
                 { provide: AwsSESService, useValue: awsSESService },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: ConfigService, useValue: configService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: MessageService, useValue: messageService },
             ],
         }).compile();
@@ -108,18 +101,6 @@ describe('NotificationEmailProcessSendUnregisteredUseCase', () => {
                     reference: 'WI-ref',
                     expiredAt: 'Mon, 08 Jan 2024 00:00:00 +0000',
                 }
-            );
-            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
-                'cipher(invitee@example.com)',
-                'secret-key',
-                'notification.payload',
-                'WI-ref'
-            );
-            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
-                'cipher(https://app.test/sign-up?invite=token)',
-                'secret-key',
-                'notification.payload',
-                'WI-ref'
             );
             expect(
                 notificationEmailDeliveryService.stampProcessed

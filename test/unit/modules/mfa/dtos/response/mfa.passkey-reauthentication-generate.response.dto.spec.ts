@@ -46,7 +46,12 @@ describe('MfaPasskeyReauthenticationGenerateResponseSchema', () => {
                 passkeyOptions: rest,
             });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeyOptions', 'challenge'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects null options', () => {
@@ -56,6 +61,11 @@ describe('MfaPasskeyReauthenticationGenerateResponseSchema', () => {
                 passkeyOptions: null,
             });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeyOptions'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

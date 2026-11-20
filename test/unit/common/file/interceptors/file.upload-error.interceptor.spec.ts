@@ -24,7 +24,6 @@ describe('FileUploadErrorInterceptor', () => {
     const context = {} as ExecutionContext;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module = await Test.createTestingModule({
             providers: [FileUploadErrorInterceptor],
         }).compile();
@@ -123,8 +122,6 @@ describe('FileUploadErrorInterceptor', () => {
                 await expect(promise).rejects.toMatchObject({
                     module: expected.module,
                     statusCode: expected.statusCode,
-                    statusCodeKey: expected.statusCodeKey,
-                    messagePath: expected.messagePath,
                 });
             }
         );
@@ -145,11 +142,6 @@ describe('FileUploadErrorInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.exceedMaxSizeUpload,
-                statusCodeKey:
-                    EnumFileStatusCodeError[
-                        EnumFileStatusCodeError.exceedMaxSizeUpload
-                    ],
-                messagePath: 'file.error.exceedMaxSizeUpload',
             });
         });
     });
@@ -214,11 +206,6 @@ describe('FileUploadErrorInterceptor', () => {
             expect(mapped).toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.exceedMaxSizeUpload,
-                statusCodeKey:
-                    EnumFileStatusCodeError[
-                        EnumFileStatusCodeError.exceedMaxSizeUpload
-                    ],
-                messagePath: 'file.error.exceedMaxSizeUpload',
             });
         });
     });

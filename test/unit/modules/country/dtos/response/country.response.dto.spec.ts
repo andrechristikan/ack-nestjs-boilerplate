@@ -33,13 +33,22 @@ describe('CountryResponseSchema', () => {
     it('rejects a missing required field', () => {
         const { name: _name, ...withoutName } = row;
 
-        expect(() => CountryResponseSchema.parse(withoutName)).toThrow();
+        const result = CountryResponseSchema.safeParse(withoutName);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects an alpha2Code that is not exactly two characters', () => {
-        expect(() =>
-            CountryResponseSchema.parse({ ...row, alpha2Code: 'IDN' })
-        ).toThrow();
+        const result = CountryResponseSchema.safeParse({
+            ...row,
+            alpha2Code: 'IDN',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['alpha2Code'], code: 'too_big' }),
+        ]);
     });
 
     it('declares a continent name as the continent example', () => {

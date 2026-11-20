@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { UnrecoverableError } from 'bullmq';
 import { EnumOutboxStatus } from '@generated/prisma-client/client';
 import type { Outbox } from '@generated/prisma-client/client';
@@ -26,7 +27,6 @@ describe('QueueProcessorBase', () => {
     let processor: QueueProcessorBase;
 
     beforeEach(() => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
 
         ({ processor, handle } = buildQueueProcessor(
@@ -390,20 +390,24 @@ describe('QueueProcessorBase', () => {
     });
 
     describe('onError', () => {
-        it('classifies a connection error and returns without throwing', () => {
+        it('classifies a connection error and does not log it', () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
             const error = new Error('connect ECONNREFUSED 127.0.0.1:6379');
             cacheService.isConnectionError.mockReturnValue(true);
 
             expect(() => processor.onError(error)).not.toThrow();
             expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+            expect(warn).not.toHaveBeenCalled();
         });
 
-        it('classifies any other error and handles it without throwing', () => {
+        it('classifies any other error and logs a warning', () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
             const error = new Error('worker failure');
             cacheService.isConnectionError.mockReturnValue(false);
 
             expect(() => processor.onError(error)).not.toThrow();
             expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+            expect(warn).toHaveBeenCalledWith(error, 'Queue worker error');
         });
     });
 

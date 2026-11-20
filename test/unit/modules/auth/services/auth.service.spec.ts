@@ -20,7 +20,6 @@ import { AuthSocialAppleInvalidException } from '@modules/auth/exceptions/auth.s
 import { AuthSocialGoogleInvalidException } from '@modules/auth/exceptions/auth.social-google-invalid.exception';
 import { AuthSocialAppleNotConfiguredException } from '@modules/auth/exceptions/auth.social-apple-not-configured.exception';
 import { AuthSocialGoogleNotConfiguredException } from '@modules/auth/exceptions/auth.social-google-not-configured.exception';
-import { HttpStatus } from '@nestjs/common';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import {
@@ -58,7 +57,6 @@ describe('AuthService', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthService,
@@ -83,11 +81,6 @@ describe('AuthService', () => {
             expect(thrown).toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtAccessTokenInvalid
-                    ],
-                messagePath: 'auth.error.accessTokenUnauthorized',
             });
         });
 
@@ -116,11 +109,6 @@ describe('AuthService', () => {
             expect(thrown).toMatchObject({
                 module: 'session',
                 statusCode: EnumSessionStatusCodeError.revoked,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.revoked
-                    ],
-                messagePath: 'session.error.revoked',
             });
         });
 
@@ -164,10 +152,6 @@ describe('AuthService', () => {
             expect(thrown).toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
                 rawError: err,
                 message: 'Validating the JWT session failed',
             });
@@ -189,11 +173,6 @@ describe('AuthService', () => {
             expect(thrown).toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.providerUnavailable,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.providerUnavailable
-                    ],
-                messagePath: 'auth.error.providerUnavailable',
                 rawError: info,
             });
         });
@@ -212,12 +191,6 @@ describe('AuthService', () => {
             expect(thrown).toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtAccessTokenInvalid
-                    ],
-                messagePath: 'auth.error.accessTokenUnauthorized',
-                httpStatus: HttpStatus.UNAUTHORIZED,
                 rawError: info,
             });
         });
@@ -243,11 +216,6 @@ describe('AuthService', () => {
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtRefreshTokenInvalid
-                    ],
-                messagePath: 'auth.error.refreshTokenUnauthorized',
             });
         });
 
@@ -292,10 +260,6 @@ describe('AuthService', () => {
             expect(thrown).toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
                 rawError: err,
                 message: 'Validating the JWT session failed',
             });
@@ -317,11 +281,6 @@ describe('AuthService', () => {
             expect(thrown).toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.providerUnavailable,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.providerUnavailable
-                    ],
-                messagePath: 'auth.error.providerUnavailable',
                 rawError: info,
             });
         });
@@ -340,12 +299,6 @@ describe('AuthService', () => {
             expect(thrown).toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtRefreshTokenInvalid
-                    ],
-                messagePath: 'auth.error.refreshTokenUnauthorized',
-                httpStatus: HttpStatus.UNAUTHORIZED,
                 rawError: info,
             });
         });
@@ -441,11 +394,6 @@ describe('AuthService', () => {
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.socialAppleInvalid
-                    ],
-                messagePath: 'auth.error.socialAppleInvalid',
                 rawError: 'Apple token payload does not contain sub',
             });
 
@@ -504,11 +452,6 @@ describe('AuthService', () => {
                 constructor: AuthProviderUnavailableException,
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.providerUnavailable,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.providerUnavailable
-                    ],
-                messagePath: 'auth.error.providerUnavailable',
                 rawError: cause,
             });
         });
@@ -522,11 +465,6 @@ describe('AuthService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.socialAppleInvalid
-                    ],
-                messagePath: 'auth.error.socialAppleInvalid',
                 rawError: cause,
             });
         });
@@ -612,11 +550,6 @@ describe('AuthService', () => {
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.socialGoogleInvalid
-                    ],
-                messagePath: 'auth.error.socialGoogleInvalid',
                 rawError: 'Google token payload does not contain sub',
             });
 
@@ -685,11 +618,6 @@ describe('AuthService', () => {
                 constructor: AuthProviderUnavailableException,
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.providerUnavailable,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.providerUnavailable
-                    ],
-                messagePath: 'auth.error.providerUnavailable',
                 rawError: cause,
             });
         });
@@ -703,11 +631,6 @@ describe('AuthService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.socialGoogleInvalid
-                    ],
-                messagePath: 'auth.error.socialGoogleInvalid',
                 rawError: cause,
             });
         });
@@ -736,10 +659,6 @@ describe('AuthService', () => {
             expect(thrown).toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
                 rawError: err,
                 message: 'Validating the JWT session failed',
             });

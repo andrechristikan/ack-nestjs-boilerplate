@@ -10,11 +10,13 @@ describe('UserSendEmailVerificationRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserSendEmailVerificationRequestSchema.parse({
-                ...payload,
-                username: 'john',
-            })
-        ).toThrow();
+        const result = UserSendEmailVerificationRequestSchema.safeParse({
+            ...payload,
+            username: 'john',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

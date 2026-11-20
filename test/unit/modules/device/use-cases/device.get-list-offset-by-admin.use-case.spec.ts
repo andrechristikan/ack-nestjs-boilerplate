@@ -1,36 +1,35 @@
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumDevicePlatform, Prisma } from '@generated/prisma-client/client';
+import { EnumDevicePlatform } from '@generated/prisma-client/client';
 import { DeviceService } from '@modules/device/services/device.service';
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
-import { DeviceOrderBy } from '@modules/device/constants/device.list.constant';
 import { DeviceGetListOffsetByAdminUseCase } from '@modules/device/use-cases/device.get-list-offset-by-admin.use-case';
-import { EnumDeviceOrderBy } from '@modules/device/enums/device.enum';
 
 describe('DeviceGetListOffsetByAdminUseCase', () => {
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
-    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
-        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const updatedAt: Date = new Date('2026-01-01T00:00:00.000Z');
-    const params = {
-        skip: 0,
-        limit: 20,
-        orderBy: [],
-        fingerprint: 'aaaaaaaaaaaaaaaa',
+    const params = { skip: 0, limit: 20, orderBy: [{ createdAt: 'desc' }] };
+    const storePatch = {
+        page: 1,
+        perPage: 20,
+        orderBy: 'latest',
+        availableSearch: [],
+        availableOrderBy: ['latest', 'recentlyActive'],
     };
-    const storePatch = { perPage: 20 };
     const deviceOwnership: IDeviceOwnership = {
         id: 'device-ownership-1',
         createdAt: updatedAt,
@@ -74,19 +73,14 @@ describe('DeviceGetListOffsetByAdminUseCase', () => {
     let useCase: DeviceGetListOffsetByAdminUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 DeviceGetListOffsetByAdminUseCase,
                 { provide: DeviceService, useValue: deviceService },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
-                },
-                {
-                    provide: PaginationFilterUtil,
-                    useValue: paginationFilterUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 {
                     provide: RequestStoreService,
@@ -101,11 +95,6 @@ describe('DeviceGetListOffsetByAdminUseCase', () => {
     describe('execute', () => {
         it('enriches each row with a resting isCurrentDevice and merges the isRevoked filter', async () => {
             const query: DeviceAdminListRequestDto = { isRevoked: true };
-            paginationQueryUtil.offset.mockReturnValue({ params, storePatch });
-            paginationFilterUtil.equalBoolean.mockReturnValue({
-                where: { isRevoked: { equals: true } },
-                storeFilter: { isRevoked: true },
-            });
             deviceService.getListOffsetByAdmin.mockResolvedValue({
                 type: EnumPaginationType.offset,
                 count: 1,
@@ -126,14 +115,6 @@ describe('DeviceGetListOffsetByAdminUseCase', () => {
                     isCurrentDevice: false,
                 },
             ]);
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                orderBy: DeviceOrderBy,
-                defaultOrderBy: EnumDeviceOrderBy.latest,
-            });
-            expect(paginationFilterUtil.equalBoolean).toHaveBeenCalledWith(
-                Prisma.DeviceOwnershipScalarFieldEnum.isRevoked,
-                true
-            );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 { ...storePatch, filters: { isRevoked: true } }
@@ -147,8 +128,6 @@ describe('DeviceGetListOffsetByAdminUseCase', () => {
 
         it('merges an empty filter object when isRevoked is not given', async () => {
             const query: DeviceAdminListRequestDto = {};
-            paginationQueryUtil.offset.mockReturnValue({ params, storePatch });
-            paginationFilterUtil.equalBoolean.mockReturnValue(null);
             deviceService.getListOffsetByAdmin.mockResolvedValue({
                 type: EnumPaginationType.offset,
                 count: 0,

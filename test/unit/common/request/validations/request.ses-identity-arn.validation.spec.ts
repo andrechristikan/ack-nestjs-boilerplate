@@ -21,6 +21,10 @@ describe('RequestSesIdentityArnSchema', () => {
         'arn:aws:ses:us-east-1:123456789012:identity/',
         'example.com',
     ])('rejects %s', arn => {
-        expect(RequestSesIdentityArnSchema.safeParse(arn).success).toBe(false);
+        expect(
+            RequestSesIdentityArnSchema.safeParse(arn).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'invalid_format' }),
+        ]);
     });
 });

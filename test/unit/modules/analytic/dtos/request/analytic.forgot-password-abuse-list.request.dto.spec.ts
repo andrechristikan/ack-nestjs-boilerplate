@@ -26,25 +26,31 @@ describe('AnalyticForgotPasswordAbuseListRequestSchema', () => {
         expect(
             AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
                 windowMs: '600000',
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            AnalyticForgotPasswordAbuseListRequestSchema.parse({
-                page: 1,
-                extra: true,
-            })
-        ).toThrow();
+        const result = AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
+            page: 1,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
         expect(
             AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
                 search: 'x',
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -85,15 +91,25 @@ describe('AnalyticForgotPasswordAbuseListRequestSchema', () => {
     ])('rejects the orderBy %s', orderBy => {
         expect(
             AnalyticForgotPasswordAbuseListRequestSchema.safeParse({ orderBy })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             AnalyticForgotPasswordAbuseListRequestSchema.safeParse({
                 orderBy: ['mostTokens', 'mostTokens'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

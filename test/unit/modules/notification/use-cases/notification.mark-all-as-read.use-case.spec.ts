@@ -19,7 +19,6 @@ describe('NotificationMarkAllAsReadUseCase', () => {
     let useCase: NotificationMarkAllAsReadUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module = await Test.createTestingModule({
             providers: [
                 NotificationMarkAllAsReadUseCase,

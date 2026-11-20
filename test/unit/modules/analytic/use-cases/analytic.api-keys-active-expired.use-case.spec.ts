@@ -12,8 +12,6 @@ describe('AnalyticApiKeysActiveExpiredUseCase', () => {
     let useCase: AnalyticApiKeysActiveExpiredUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticApiKeysActiveExpiredUseCase,

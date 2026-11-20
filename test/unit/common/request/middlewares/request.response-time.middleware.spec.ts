@@ -16,8 +16,6 @@ describe('RequestResponseTimeMiddleware', () => {
     let handler: ReturnType<typeof vi.fn>;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         handler = vi.fn();
         (responseTime as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
             handler

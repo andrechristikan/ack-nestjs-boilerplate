@@ -21,24 +21,36 @@ describe('AnalyticSnapshotListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            AnalyticSnapshotListRequestSchema.parse({ page: 1, extra: true })
-        ).toThrow();
+        const result = AnalyticSnapshotListRequestSchema.safeParse({
+            page: 1,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search, windowMs, and the date range', () => {
         expect(
-            AnalyticSnapshotListRequestSchema.safeParse({ search: 'x' }).success
-        ).toBe(false);
+            AnalyticSnapshotListRequestSchema.safeParse({ search: 'x' }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
         expect(
             AnalyticSnapshotListRequestSchema.safeParse({ windowMs: 1000 })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
         expect(
             AnalyticSnapshotListRequestSchema.safeParse({
                 startDate: '2026-01-01T00:00:00.000Z',
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it.each([
@@ -50,8 +62,14 @@ describe('AnalyticSnapshotListRequestSchema', () => {
         'value:up',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            AnalyticSnapshotListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            AnalyticSnapshotListRequestSchema.safeParse({ orderBy }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -86,15 +104,26 @@ describe('AnalyticSnapshotListRequestSchema', () => {
         'recent',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            AnalyticSnapshotListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            AnalyticSnapshotListRequestSchema.safeParse({ orderBy }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             AnalyticSnapshotListRequestSchema.safeParse({
                 orderBy: ['highestValue', 'highestValue'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

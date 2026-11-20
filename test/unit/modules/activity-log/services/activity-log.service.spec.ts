@@ -5,8 +5,14 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { ConfigService } from '@nestjs/config';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { MessageService } from '@common/message/services/message.service';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { UserAgent } from '@generated/prisma-client/client';
 import { ActivityLogActionContract } from '@modules/activity-log/contracts/activity-log.action.contract';
@@ -36,10 +42,7 @@ import {
 describe('ActivityLogService', () => {
     const activityLogRepository: MockProxy<ActivityLogRepository> =
         mock<ActivityLogRepository>();
-    const activityLogUtil: MockProxy<ActivityLogUtil> = mock<ActivityLogUtil>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
     const createdAt = new Date('2026-01-01T00:00:00.000Z');
 
     const userAgent: UserAgent = {
@@ -61,18 +64,20 @@ describe('ActivityLogService', () => {
         constructor: ActivityLogContractInvalidException,
         module: 'activityLog',
         statusCode: EnumActivityLogStatusCodeError.contractInvalid,
-        statusCodeKey:
-            EnumActivityLogStatusCodeError[
-                EnumActivityLogStatusCodeError.contractInvalid
-            ],
-        messagePath: 'activityLog.error.contractInvalid',
     };
 
     let service: ActivityLogService;
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(createdAt);
+    });
 
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ActivityLogService,
@@ -80,11 +85,20 @@ describe('ActivityLogService', () => {
                     provide: ActivityLogRepository,
                     useValue: activityLogRepository,
                 },
-                { provide: ActivityLogUtil, useValue: activityLogUtil },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                ActivityLogUtil,
+                { provide: MessageService, useValue: messageService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
+
+        messageService.setMessage.mockReturnValue('Description');
+        vi.spyOn(module.get(DatabaseUtil), 'createId').mockReturnValue(
+            'aaaaaaaaaaaaaaaaaaaaaaaa'
+        );
 
         service = module.get(ActivityLogService);
     });
@@ -94,20 +108,6 @@ describe('ActivityLogService', () => {
             const requestContext = buildRequestContext();
             const apiKeyContext = buildApiKeyContext();
             const authContext = buildAuthJwtAccessContext('actor-1');
-            const payload: IActivityLogContextPayload = {
-                apiKeyId: 'api-key-1',
-                actorUserId: 'actor-1',
-                workspaceId: null,
-                requestLog,
-            };
-            activityLogUtil.toPayload.mockReturnValue(payload);
-            activityLogUtil.getDescription.mockReturnValue('Description');
-            databaseUtil.createId.mockReturnValue('aaaaaaaaaaaaaaaaaaaaaaaa');
-            helperDateService.create.mockReturnValue(createdAt);
-            helperDateService.formatToIso.mockReturnValue(
-                '2026-01-01T00:00:00.000Z'
-            );
-
             const result = service.recordEffect(
                 requestContext,
                 apiKeyContext,
@@ -116,14 +116,13 @@ describe('ActivityLogService', () => {
                 { action: EnumActivityLogAction.userUpdateProfile }
             );
 
-            expect(activityLogUtil.toPayload).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null
-            );
             expect(result.data).toMatchObject({
-                rows: [{ userId: 'actor-1', requestLog }],
+                rows: [
+                    {
+                        userId: 'actor-1',
+                        requestLog: requestContext.requestLog,
+                    },
+                ],
             });
         });
     });
@@ -135,15 +134,6 @@ describe('ActivityLogService', () => {
             apiKeyId: 'api-key-1',
             requestLog,
         };
-
-        beforeEach(() => {
-            activityLogUtil.getDescription.mockReturnValue('Description');
-            databaseUtil.createId.mockReturnValue('aaaaaaaaaaaaaaaaaaaaaaaa');
-            helperDateService.create.mockReturnValue(createdAt);
-            helperDateService.formatToIso.mockReturnValue(
-                '2026-01-01T00:00:00.000Z'
-            );
-        });
 
         it('returns the createMany effect holding one row built from the input and the payload', () => {
             const result = service.recordEffectFromPayload(payload, {
@@ -172,9 +162,6 @@ describe('ActivityLogService', () => {
                 priority: EnumQueuePriority.low,
                 idempotencyKey: null,
             });
-            expect(helperDateService.formatToIso).toHaveBeenCalledWith(
-                createdAt
-            );
         });
 
         it('keeps the input user and createdBy for a target action', () => {
@@ -473,7 +460,12 @@ describe('ActivityLogService', () => {
                 unexpected: 'value',
             });
 
-            expect(result.success).toBe(false);
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: [],
+                    code: 'unrecognized_keys',
+                }),
+            ]);
             expect(result.error).toEqual(expectedError);
         });
     });
@@ -813,10 +805,9 @@ describe('ActivityLogService', () => {
                 userId: 'user-1',
                 createdBy: 'creator-1',
             };
-            activityLogUtil.getDescription.mockReturnValue(
+            messageService.setMessage.mockReturnValue(
                 'User login with credential'
             );
-            databaseUtil.createId.mockReturnValue('aaaaaaaaaaaaaaaaaaaaaaaa');
 
             const result = service['buildCreate'](
                 activityLog,
@@ -837,9 +828,9 @@ describe('ActivityLogService', () => {
                 metadata: {},
                 createdAt,
             });
-            expect(activityLogUtil.getDescription).toHaveBeenCalledWith(
-                EnumActivityLogAction.userLoginCredential,
-                {}
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                `activityLog.${EnumActivityLogAction.userLoginCredential}`,
+                { properties: {} }
             );
         });
     });

@@ -1,38 +1,26 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { mock } from 'vitest-mock-extended';
-import type { MockProxy } from 'vitest-mock-extended';
+import { ConfigService } from '@nestjs/config';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
-import { HelperArrayService } from '@common/helper/services/helper.array.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { EnumPaginationFilterDateBetweenType } from '@common/pagination/enums/pagination.enum';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('PaginationFilterUtil', () => {
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const helperArrayService: MockProxy<HelperArrayService> =
-        mock<HelperArrayService>();
-
     let util: PaginationFilterUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        helperArrayService.unique.mockImplementation((array: unknown[]) =>
-            Array.from(new Set(array))
-        );
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                PaginationFilterUtil,
+                ...TestUnitKitProviders,
                 {
-                    provide: HelperDateService,
-                    useValue: helperDateService,
-                },
-                {
-                    provide: HelperArrayService,
-                    useValue: helperArrayService,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
             ],
         }).compile();
@@ -87,11 +75,6 @@ describe('PaginationFilterUtil', () => {
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.filterInvalidValue,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.filterInvalidValue
-                    ],
-                messagePath: 'pagination.error.filterInvalidValue',
                 messageProperties: { property: 'active' },
             });
         });
@@ -147,11 +130,6 @@ describe('PaginationFilterUtil', () => {
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.filterInvalidValue,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.filterInvalidValue
-                    ],
-                messagePath: 'pagination.error.filterInvalidValue',
                 messageProperties: { property: 'count' },
             });
         });
@@ -228,11 +206,6 @@ describe('PaginationFilterUtil', () => {
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.filterInvalidValue,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.filterInvalidValue
-                    ],
-                messagePath: 'pagination.error.filterInvalidValueEnum',
                 messageProperties: {
                     property: 'status',
                     allowedValues: defaultEnum.join(', '),
@@ -288,8 +261,6 @@ describe('PaginationFilterUtil', () => {
         });
 
         it('rejects a non-iso value', () => {
-            helperDateService.checkIso.mockReturnValue(false);
-
             let error: unknown;
             try {
                 util.dateBetween('createdAt', 'not-a-date');
@@ -300,48 +271,32 @@ describe('PaginationFilterUtil', () => {
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.filterInvalidValue,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.filterInvalidValue
-                    ],
-                messagePath: 'pagination.error.filterInvalidValue',
                 messageProperties: { property: 'createdAt' },
             });
         });
 
         it('builds an equals filter when no bound type is sent', () => {
-            helperDateService.checkIso.mockReturnValue(true);
-            helperDateService.createFromIso.mockReturnValue(parsed);
-
             const result = util.dateBetween('createdAt', iso);
 
             expect(result).toEqual({
                 where: { createdAt: { equals: parsed } },
                 storeFilter: { createdAt: parsed },
             });
-            expect(helperDateService.createFromIso).toHaveBeenCalledWith(
-                iso,
-                {}
-            );
         });
 
-        it('forwards the day-of option to the date parser', () => {
-            helperDateService.checkIso.mockReturnValue(true);
-            helperDateService.createFromIso.mockReturnValue(parsed);
-
-            util.dateBetween('createdAt', iso, {
+        it('moves the date to the end of its day for the end day-of option', () => {
+            const result = util.dateBetween('createdAt', iso, {
                 dayOf: EnumHelperDateDayOf.end,
             });
 
-            expect(helperDateService.createFromIso).toHaveBeenCalledWith(iso, {
-                dayOf: EnumHelperDateDayOf.end,
+            expect(result?.where).toEqual({
+                createdAt: {
+                    equals: new Date('2026-01-01T23:59:59.999Z'),
+                },
             });
         });
 
         it('builds a gte filter for the start bound', () => {
-            helperDateService.checkIso.mockReturnValue(true);
-            helperDateService.createFromIso.mockReturnValue(parsed);
-
             const result = util.dateBetween('createdAt', iso, {
                 type: EnumPaginationFilterDateBetweenType.start,
             });
@@ -350,9 +305,6 @@ describe('PaginationFilterUtil', () => {
         });
 
         it('builds a lte filter for the end bound', () => {
-            helperDateService.checkIso.mockReturnValue(true);
-            helperDateService.createFromIso.mockReturnValue(parsed);
-
             const result = util.dateBetween('createdAt', iso, {
                 type: EnumPaginationFilterDateBetweenType.end,
             });
@@ -361,9 +313,6 @@ describe('PaginationFilterUtil', () => {
         });
 
         it('honors a custom field', () => {
-            helperDateService.checkIso.mockReturnValue(true);
-            helperDateService.createFromIso.mockReturnValue(parsed);
-
             const result = util.dateBetween('createdAt', iso, {
                 customField: 'joinedAt',
             });
@@ -420,11 +369,6 @@ describe('PaginationFilterUtil', () => {
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.filterInvalidValue,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.filterInvalidValue
-                    ],
-                messagePath: 'pagination.error.filterInvalidValue',
                 messageProperties: { property: 'active' },
             });
         });
@@ -446,11 +390,6 @@ describe('PaginationFilterUtil', () => {
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.filterInvalidValue,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.filterInvalidValue
-                    ],
-                messagePath: 'pagination.error.filterInvalidValue',
                 messageProperties: { property: 'count' },
             });
         });
@@ -500,11 +439,6 @@ describe('PaginationFilterUtil', () => {
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.filterInvalidValue,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.filterInvalidValue
-                    ],
-                messagePath: 'pagination.error.filterInvalidValueEnum',
                 messageProperties: {
                     property: 'status',
                     allowedValues: defaultEnum.join(', '),

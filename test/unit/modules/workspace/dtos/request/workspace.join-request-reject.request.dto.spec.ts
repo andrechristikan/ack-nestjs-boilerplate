@@ -13,19 +13,26 @@ describe('WorkspaceJoinRequestRejectRequestSchema', () => {
     });
 
     it('rejects an unknown reject reason', () => {
-        expect(() =>
-            WorkspaceJoinRequestRejectRequestSchema.parse({
-                rejectReasonCode: 'unknownReason',
-            })
-        ).toThrow();
+        const result = WorkspaceJoinRequestRejectRequestSchema.safeParse({
+            rejectReasonCode: 'unknownReason',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['rejectReasonCode'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceJoinRequestRejectRequestSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = WorkspaceJoinRequestRejectRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

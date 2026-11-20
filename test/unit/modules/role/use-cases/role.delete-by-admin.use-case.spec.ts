@@ -3,32 +3,35 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import {
     EnumActivityLogAction,
     EnumRoleType,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
+    Prisma,
 } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import {
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
@@ -43,13 +46,9 @@ describe('RoleDeleteByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const roleUtil: MockProxy<RoleUtil> = mock<RoleUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const role: Role = {
@@ -70,44 +69,20 @@ describe('RoleDeleteByAdminUseCase', () => {
         type: EnumRoleType.superAdmin,
     };
     const actorUser: IUser = {
-        id: 'user-actor',
-        name: null,
-        username: 'actor',
-        isVerified: true,
-        verifiedAt: now,
-        email: 'actor@example.com',
+        ...buildUser('user-actor', 'actor@example.com'),
         roleId: actorRole.id,
-        password: null,
-        passwordExpired: null,
-        passwordCreated: null,
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: now,
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: now,
-        createdBy: null,
-        updatedAt: now,
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
         role: actorRole,
     };
     const actor: IRoleActor = {
         roleId: actorRole.id,
         roleType: EnumRoleType.superAdmin,
     };
-    const metadata = { roleId: role.id };
+    const metadata = {
+        roleId: role.id,
+        roleName: role.name,
+        roleType: role.type,
+        timestamp: now,
+    };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(actorUser);
@@ -122,10 +97,16 @@ describe('RoleDeleteByAdminUseCase', () => {
 
     let useCase: RoleDeleteByAdminUseCase;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
-        helperDateService.create.mockReturnValue(now);
-        roleUtil.mapActivityLogMetadata.mockReturnValue(metadata);
         activityLogService.recordEffect.mockReturnValue(effect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
@@ -137,9 +118,12 @@ describe('RoleDeleteByAdminUseCase', () => {
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: RoleUtil, useValue: roleUtil },
+                RoleUtil,
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
@@ -177,10 +161,6 @@ describe('RoleDeleteByAdminUseCase', () => {
                 role.id
             );
 
-            expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                role,
-                now
-            );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
@@ -208,11 +188,14 @@ describe('RoleDeleteByAdminUseCase', () => {
         });
 
         it('maps a write conflict to RoleUsedException', async () => {
-            const conflict = new Error('conflict');
-            roleService.deleteByAdminInTx.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                }
             );
+            roleService.deleteByAdminInTx.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -228,7 +211,6 @@ describe('RoleDeleteByAdminUseCase', () => {
         it('wraps any other error in AppUnknownException', async () => {
             const cause = new Error('boom');
             roleService.deleteByAdminInTx.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

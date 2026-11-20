@@ -10,10 +10,18 @@ describe('RequestBooleanStringSchema', () => {
     });
 
     it('rejects a differently-cased value', () => {
-        expect(() => RequestBooleanStringSchema.parse('True')).toThrow();
+        const result = RequestBooleanStringSchema.safeParse('True');
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects a non-boolean string', () => {
-        expect(() => RequestBooleanStringSchema.parse('yes')).toThrow();
+        const result = RequestBooleanStringSchema.safeParse('yes');
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'invalid_value' }),
+        ]);
     });
 });

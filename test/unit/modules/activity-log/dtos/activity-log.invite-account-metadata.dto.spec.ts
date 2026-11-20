@@ -10,19 +10,26 @@ describe('ActivityLogInviteAccountMetadataSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ActivityLogInviteAccountMetadataSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ActivityLogInviteAccountMetadataSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a missing targetUserId', () => {
-        expect(() =>
-            ActivityLogInviteAccountMetadataSchema.parse({
-                workspaceInviteId: 'invite-1',
-            })
-        ).toThrow();
+        const result = ActivityLogInviteAccountMetadataSchema.safeParse({
+            workspaceInviteId: 'invite-1',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['targetUserId'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

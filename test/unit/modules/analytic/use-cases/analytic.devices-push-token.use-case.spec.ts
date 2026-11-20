@@ -12,8 +12,6 @@ describe('AnalyticDevicesPushTokenUseCase', () => {
     let useCase: AnalyticDevicesPushTokenUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticDevicesPushTokenUseCase,

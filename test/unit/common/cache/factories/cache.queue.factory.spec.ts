@@ -1,20 +1,19 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { CacheQueueFactory } from '@common/cache/factories/cache.queue.factory';
+import {
+    buildConfigService,
+    stubConfigValues,
+} from '@test/unit/helpers/test.unit.config.helper';
 
 describe('CacheQueueFactory', () => {
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
     let factory: CacheQueueFactory;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
+        configService = buildConfigService({});
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 CacheQueueFactory,
@@ -27,16 +26,12 @@ describe('CacheQueueFactory', () => {
 
     describe('createRegisterQueueOptions', () => {
         it('builds the default job options and no connection from queue config', () => {
-            configGet.mockImplementation((key: string) => {
-                const values: Record<string, unknown> = {
-                    'queue.job.attempts': 5,
-                    'queue.job.keepLogs': 100,
-                    'queue.job.cacheBackoffDelayInMs': 2500,
-                    'queue.job.removeOnCompleteAgeInSeconds': 3600,
-                    'queue.job.removeOnFailAgeInSeconds': 86400,
-                };
-
-                return values[key];
+            stubConfigValues(configService, {
+                'queue.job.attempts': 5,
+                'queue.job.keepLogs': 100,
+                'queue.job.cacheBackoffDelayInMs': 2500,
+                'queue.job.removeOnCompleteAgeInSeconds': 3600,
+                'queue.job.removeOnFailAgeInSeconds': 86400,
             });
 
             const options = factory.createRegisterQueueOptions();

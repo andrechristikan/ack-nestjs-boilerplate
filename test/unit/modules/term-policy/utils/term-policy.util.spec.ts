@@ -1,8 +1,5 @@
-import { Test } from '@nestjs/testing';
-import type { TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
-import type { MockProxy } from 'vitest-mock-extended';
+import type { MockInstance } from 'vitest';
+import { createTermPolicyUtilModule } from '@test/unit/helpers/test.unit.term-policy.helper';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -12,46 +9,16 @@ import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptio
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 
 describe('TermPolicyUtil', () => {
-    const configGet = vi.fn<(key: string) => string | number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-
     let util: TermPolicyUtil;
+    let helperStringService: HelperStringService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        configGet.mockImplementation((key: string) => {
-            if (key === 'termPolicy.uploadContentPathPattern') {
-                return 'term-policies/{type}/{version}';
-            }
-            if (key === 'termPolicy.contentPublicPathPattern') {
-                return 'public/term-policies/{type}/{version}';
-            }
-            if (key === 'termPolicy.content.maxSizeInBytes') {
-                return 4096;
-            }
-            if (key === 'termPolicy.contentKeyRandomLength') {
-                return 20;
-            }
-            return undefined;
-        });
-
-        const module: TestingModule = await Test.createTestingModule({
-            providers: [
-                TermPolicyUtil,
-                { provide: ConfigService, useValue: configService },
-                {
-                    provide: HelperStringService,
-                    useValue: helperStringService,
-                },
-            ],
-        }).compile();
+        const module = await createTermPolicyUtilModule(
+            'term-policies/{type}/{version}'
+        );
 
         util = module.get(TermPolicyUtil);
+        helperStringService = module.get(HelperStringService);
     });
 
     describe('isContentSizeAllowed', () => {
@@ -65,12 +32,6 @@ describe('TermPolicyUtil', () => {
     });
 
     describe('isContentKeyInPath', () => {
-        beforeEach(() => {
-            helperStringService.fillPattern.mockReturnValue(
-                'term-policies/privacy/1'
-            );
-        });
-
         it('returns true when the key sits under the path of the type and version', () => {
             const result = util.isContentKeyInPath(
                 EnumTermPolicyType.privacy,
@@ -123,11 +84,12 @@ describe('TermPolicyUtil', () => {
     });
 
     describe('getContentKey', () => {
+        let random: MockInstance<HelperStringService['random']>;
+
         beforeEach(() => {
-            helperStringService.fillPattern.mockReturnValue(
-                'term-policies/privacy/1'
-            );
-            helperStringService.random.mockReturnValue('abc123');
+            random = vi
+                .spyOn(helperStringService, 'random')
+                .mockReturnValue('abc123');
         });
 
         it('builds the key under the version path as language, random part, and extension', () => {
@@ -139,11 +101,12 @@ describe('TermPolicyUtil', () => {
             );
 
             expect(result).toBe('term-policies/privacy/1/en-abc123.hbs');
-            expect(helperStringService.random).toHaveBeenCalledWith(20);
+            expect(random).toHaveBeenCalledWith(20);
         });
 
         it('returns a different key on each call', () => {
-            helperStringService.random
+            random
+                .mockReset()
                 .mockReturnValueOnce('first111')
                 .mockReturnValueOnce('second22');
 
@@ -165,17 +128,22 @@ describe('TermPolicyUtil', () => {
             expect(first).not.toBe(second);
         });
 
-        it('strips a single leading slash from the filled path', () => {
-            helperStringService.fillPattern.mockReturnValue(
-                '/term-policies/privacy/1'
+        it('strips a single leading slash from the filled path', async () => {
+            const module = await createTermPolicyUtilModule(
+                '/term-policies/{type}/{version}'
+            );
+            vi.spyOn(module.get(HelperStringService), 'random').mockReturnValue(
+                'abc123'
             );
 
-            const result = util.getContentKey(
-                EnumTermPolicyType.privacy,
-                1,
-                EnumMessageLanguage.en,
-                { extension: EnumFileExtensionTemplate.hbs }
-            );
+            const result = module
+                .get(TermPolicyUtil)
+                .getContentKey(
+                    EnumTermPolicyType.privacy,
+                    1,
+                    EnumMessageLanguage.en,
+                    { extension: EnumFileExtensionTemplate.hbs }
+                );
 
             expect(result).toBe('term-policies/privacy/1/en-abc123.hbs');
         });
@@ -220,20 +188,12 @@ describe('TermPolicyUtil', () => {
 
     describe('getContentPublicPath', () => {
         it('fills the content public path with type and version', () => {
-            helperStringService.fillPattern.mockReturnValue(
-                'public/term-policies/privacy/1'
-            );
-
             const result = util.getContentPublicPath(
                 EnumTermPolicyType.privacy,
                 1
             );
 
             expect(result).toBe('public/term-policies/privacy/1');
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'public/term-policies/{type}/{version}',
-                { type: EnumTermPolicyType.privacy, version: '1' }
-            );
         });
     });
 
@@ -259,17 +219,9 @@ describe('TermPolicyUtil', () => {
 
     describe('getPath', () => {
         it('fills the upload content path with type and version', () => {
-            helperStringService.fillPattern.mockReturnValue(
-                'term-policies/privacy/1'
-            );
-
             const result = util['getPath'](EnumTermPolicyType.privacy, 1);
 
             expect(result).toBe('term-policies/privacy/1');
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'term-policies/{type}/{version}',
-                { type: EnumTermPolicyType.privacy, version: '1' }
-            );
         });
     });
 });

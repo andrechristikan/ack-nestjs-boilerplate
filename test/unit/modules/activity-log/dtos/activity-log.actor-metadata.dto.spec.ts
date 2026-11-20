@@ -10,15 +10,24 @@ describe('ActivityLogActorMetadataSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ActivityLogActorMetadataSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ActivityLogActorMetadataSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a missing targetUserId', () => {
-        expect(() => ActivityLogActorMetadataSchema.parse({})).toThrow();
+        const result = ActivityLogActorMetadataSchema.safeParse({});
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['targetUserId'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

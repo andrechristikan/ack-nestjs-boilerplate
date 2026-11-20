@@ -6,8 +6,6 @@ describe('AnalyticBucketUtil', () => {
     let util: AnalyticBucketUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [AnalyticBucketUtil],
         }).compile();

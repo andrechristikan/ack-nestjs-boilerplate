@@ -13,25 +13,18 @@ import type { TestingModule } from '@nestjs/testing';
 import type { Queue } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('AnalyticQueue', () => {
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
     const analyticQueue: MockProxy<Queue> = mock<Queue>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const refreshIntervalInMs = 900000;
     let queue: AnalyticQueue;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, number> = {
-                'analytic.snapshot.refreshIntervalInMs': refreshIntervalInMs,
-            };
-
-            return values[key];
+        configService = buildConfigService({
+            'analytic.snapshot.refreshIntervalInMs': refreshIntervalInMs,
         });
 
         const module: TestingModule = await Test.createTestingModule({

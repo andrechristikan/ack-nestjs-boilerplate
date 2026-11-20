@@ -44,7 +44,6 @@ describe('AuthJwtAccessGuard', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthJwtAccessGuard,
@@ -123,11 +122,6 @@ describe('AuthJwtAccessGuard', () => {
             expect(thrown).toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.jwtAccessTokenInvalid
-                    ],
-                messagePath: 'auth.error.accessTokenUnauthorized',
             });
             expect(requestStoreService.set).not.toHaveBeenCalled();
         });

@@ -13,7 +13,7 @@ argument-hint: '<a .scratch/ plan path>'
 
 Input: $ARGUMENTS
 
-The session assigns and checks; it writes no file under `src/` or `test/`. `coder` builds one ticket per dispatch, `debugger` is called only when a check will not pass. Commands, gates, and owner-only commands are in `AGENTS.md`. Every Agent call runs in the foreground; wait for each hand-back and read it before the next step.
+The session assigns and checks; it writes no file under `src/` or `test/`. `coder` builds one ticket per dispatch, `debugger` is called only when a check will not pass. Commands, gates, and owner-only commands are in `AGENTS.md`. Read each hand-back before the next step.
 
 ## Start
 
@@ -38,7 +38,6 @@ Seam: <the ticket's Seam line>
 First failing spec: <the ticket's line>
 Procedure: <the ticket's add-<topic>.md, or none>
 Decisions to honour: <the plan's line>
-Rules to read: <the output of bash .claude/hooks/rules.sh over the modules the ticket touches, pasted>
 ```
 
 `Position` counts the tickets `done` plus this one, over every ticket of the plan; a second dispatch on a ticket repeats its `Position`. Each time a ticket becomes `done`, tell the owner `<n>/<total>`.

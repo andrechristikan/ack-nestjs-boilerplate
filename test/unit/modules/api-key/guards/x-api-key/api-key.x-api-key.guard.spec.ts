@@ -12,34 +12,19 @@ import {
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyXApiKeyGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
-import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
+import { buildApiKey } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyXApiKeyGuard', () => {
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
-    const apiKey: ApiKey = {
-        id: 'api-key-1',
-        name: 'Acme Api Key',
-        type: EnumApiKeyType.default,
-        key: 'local_abc123',
-        hash: 'hashed-secret',
-        isActive: true,
-        startAt: null,
-        endAt: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-        updatedBy: 'user-1',
-    };
+    const apiKey: ApiKey = buildApiKey();
 
     let guard: ApiKeyXApiKeyGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ApiKeyXApiKeyGuard,

@@ -18,37 +18,52 @@ describe('NotificationUserSettingRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            NotificationUserSettingRequestSchema.parse({
-                ...payload,
-                extra: 'unexpected',
-            })
-        ).toThrow();
+        const result = NotificationUserSettingRequestSchema.safeParse({
+            ...payload,
+            extra: 'unexpected',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a channel outside the allowed subset', () => {
-        expect(() =>
-            NotificationUserSettingRequestSchema.parse({
-                ...payload,
-                channel: EnumNotificationChannel.silent,
-            })
-        ).toThrow();
+        const result = NotificationUserSettingRequestSchema.safeParse({
+            ...payload,
+            channel: EnumNotificationChannel.silent,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['channel'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects a type outside the allowed subset', () => {
-        expect(() =>
-            NotificationUserSettingRequestSchema.parse({
-                ...payload,
-                type: EnumNotificationType.securityAlert,
-            })
-        ).toThrow();
+        const result = NotificationUserSettingRequestSchema.safeParse({
+            ...payload,
+            type: EnumNotificationType.securityAlert,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects a missing required field', () => {
         const { isActive: _isActive, ...withoutIsActive } = payload;
 
-        expect(() =>
-            NotificationUserSettingRequestSchema.parse(withoutIsActive)
-        ).toThrow();
+        const result =
+            NotificationUserSettingRequestSchema.safeParse(withoutIsActive);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['isActive'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

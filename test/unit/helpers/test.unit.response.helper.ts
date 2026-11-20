@@ -12,8 +12,6 @@ import { of } from 'rxjs';
 import type { Observable } from 'rxjs';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { FileService } from '@common/file/services/file.service';
 import type { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { ResponseFileInterceptor } from '@common/response/interceptors/response.file.interceptor';
@@ -23,11 +21,14 @@ import type {
     IResponsePaginationReturn,
 } from '@common/response/interfaces/response.interface';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 
 export interface IResponseFileInterceptorDoubles {
     fileService: MockProxy<FileService>;
-    helperDateService: MockProxy<HelperDateService>;
-    helperStringService: MockProxy<HelperStringService>;
     responseMetadataService: MockProxy<ResponseMetadataService>;
     configService: MockProxy<ConfigService>;
 }
@@ -50,10 +51,8 @@ export interface IResponseFileInterceptorUnderTest {
 export function buildResponseFileInterceptorDoubles(): IResponseFileInterceptorDoubles {
     return {
         fileService: mock<FileService>(),
-        helperDateService: mock<HelperDateService>(),
-        helperStringService: mock<HelperStringService>(),
         responseMetadataService: mock<ResponseMetadataService>(),
-        configService: mock<ConfigService>(),
+        configService: buildConfigService(TestUnitKitConfigValues),
     };
 }
 
@@ -63,16 +62,9 @@ export async function createResponseFileInterceptorFromClass(
 ): Promise<IResponseFileInterceptorUnderTest> {
     const module = await Test.createTestingModule({
         providers: [
+            ...TestUnitKitProviders,
             interceptorClass,
             { provide: FileService, useValue: doubles.fileService },
-            {
-                provide: HelperDateService,
-                useValue: doubles.helperDateService,
-            },
-            {
-                provide: HelperStringService,
-                useValue: doubles.helperStringService,
-            },
             {
                 provide: ResponseMetadataService,
                 useValue: doubles.responseMetadataService,
@@ -87,11 +79,13 @@ export async function createResponseFileInterceptorFromClass(
 }
 
 export async function createResponseFileInterceptor(
-    options: IResponseFileInterceptorOptions | undefined,
+    options: IResponseFileInterceptorOptions | null,
     doubles: IResponseFileInterceptorDoubles
 ): Promise<IResponseFileInterceptorUnderTest> {
     return createResponseFileInterceptorFromClass(
-        ResponseFileInterceptor(options),
+        options === null
+            ? ResponseFileInterceptor()
+            : ResponseFileInterceptor(options),
         doubles
     );
 }

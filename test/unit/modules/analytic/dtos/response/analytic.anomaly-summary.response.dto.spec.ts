@@ -30,9 +30,11 @@ describe('AnalyticAnomalySummaryResponseSchema', () => {
                 unknown
             >;
 
-            expect(() =>
-                AnalyticAnomalySummaryResponseSchema.parse(rest)
-            ).toThrow();
+            const result = AnalyticAnomalySummaryResponseSchema.safeParse(rest);
+
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({ path: [key], code: 'invalid_type' }),
+            ]);
         }
     );
 
@@ -53,11 +55,16 @@ describe('AnalyticAnomalySummaryResponseSchema', () => {
     });
 
     it('rejects the former window string', () => {
-        expect(() =>
-            AnalyticAnomalySummaryResponseSchema.parse({
-                ...summary,
-                windowStart: '3600000',
-            })
-        ).toThrow();
+        const result = AnalyticAnomalySummaryResponseSchema.safeParse({
+            ...summary,
+            windowStart: '3600000',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['windowStart'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

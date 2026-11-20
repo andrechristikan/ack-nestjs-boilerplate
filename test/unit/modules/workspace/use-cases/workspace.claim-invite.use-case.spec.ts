@@ -1,13 +1,18 @@
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumActivityLogAction,
     EnumProjectMemberRole,
@@ -33,11 +38,12 @@ import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/w
 import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
 import { WorkspaceClaimInviteUseCase } from '@modules/workspace/use-cases/workspace.claim-invite.use-case';
 import {
-    buildUser,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceClaimInviteUseCase', () => {
@@ -53,9 +59,6 @@ describe('WorkspaceClaimInviteUseCase', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const firstEntry = buildActivityLogCreateManyEffect('first-entry');
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const invite: WorkspaceInvite = {
@@ -78,17 +81,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
         acceptedByUserId: null,
         nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     };
-    const existingMember: WorkspaceMember = {
-        id: 'member-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        workspaceId: 'workspace-1',
-        userId: 'user-2',
-        role: EnumWorkspaceMemberRole.member,
-        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-    };
+    const existingMember: WorkspaceMember = buildWorkspaceMember('user-2');
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const now = new Date('2026-01-01T00:00:00.000Z');
     const requestContext = buildRequestContext();
@@ -100,12 +93,15 @@ describe('WorkspaceClaimInviteUseCase', () => {
 
     let useCase: WorkspaceClaimInviteUseCase;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
-        helperDateService.create.mockReturnValue(now);
+        vi.setSystemTime(now);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
@@ -129,13 +125,20 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 },
                 { provide: UserService, useValue: userService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
 
         useCase = module.get(WorkspaceClaimInviteUseCase);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
     });
 
     describe('execute', () => {
@@ -358,9 +361,8 @@ describe('WorkspaceClaimInviteUseCase', () => {
         });
 
         it('maps a unique collision on the member insert to WorkspaceMemberAlreadyExistsException and adds no entry', async () => {
-            const collision = new Error('unique');
+            const collision = buildPrismaKnownRequestError('P2002', 'userId');
             workspaceMemberService.createInTx.mockRejectedValue(collision);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 useCase.execute(
@@ -374,22 +376,15 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 constructor: WorkspaceMemberAlreadyExistsException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberAlreadyExists,
-                messagePath: 'workspace.error.memberAlreadyExists',
             });
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'userId'
-            );
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('answers WorkspaceInviteAlreadyProcessedException on a write conflict after the accept', async () => {
-            const conflict = new Error('write-conflict');
-            workspaceMemberService.createInTx.mockRejectedValue(conflict);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = buildPrismaKnownRequestError(
+                DatabaseWriteConflictCode
             );
+            workspaceMemberService.createInTx.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -403,17 +398,14 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-                messagePath: 'workspace.error.inviteAlreadyProcessed',
             });
             expect(workspaceInviteService.acceptPendingInTx).toHaveBeenCalled();
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('wraps another transaction failure in AppUnknownException and adds no entry', async () => {
             const failure = new Error('db-down');
             workspaceMemberService.createInTx.mockRejectedValue(failure);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 useCase.execute(

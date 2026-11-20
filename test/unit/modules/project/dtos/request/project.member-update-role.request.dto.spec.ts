@@ -11,21 +11,31 @@ describe('ProjectMemberUpdateRoleRequestSchema', () => {
     });
 
     it('rejects a role outside EnumProjectMemberRole', () => {
-        expect(() =>
-            ProjectMemberUpdateRoleRequestSchema.parse({ role: 'owner' })
-        ).toThrow();
+        const result = ProjectMemberUpdateRoleRequestSchema.safeParse({
+            role: 'owner',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['role'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects a missing role', () => {
-        expect(() => ProjectMemberUpdateRoleRequestSchema.parse({})).toThrow();
+        const result = ProjectMemberUpdateRoleRequestSchema.safeParse({});
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['role'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ProjectMemberUpdateRoleRequestSchema.parse({
-                role: EnumProjectMemberRole.admin,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ProjectMemberUpdateRoleRequestSchema.safeParse({
+            role: EnumProjectMemberRole.admin,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

@@ -5,10 +5,8 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -19,6 +17,11 @@ import { WorkspaceService } from '@modules/workspace/services/workspace.service'
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { WorkspaceSoftDeleteUseCase } from '@modules/workspace/use-cases/workspace.soft-delete.use-case';
 import {
     buildUser,
@@ -44,9 +47,6 @@ describe('WorkspaceSoftDeleteUseCase', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const firstEntry = buildActivityLogCreateManyEffect('first-entry');
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const configValues: Record<string, unknown> = {
         'workspace.delete.timeoutInMs': 10000,
     };
@@ -65,12 +65,15 @@ describe('WorkspaceSoftDeleteUseCase', () => {
 
     let useCase: WorkspaceSoftDeleteUseCase;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
-        helperDateService.create.mockReturnValue(deletedAt);
+        vi.setSystemTime(deletedAt);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
@@ -87,17 +90,23 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                 },
                 { provide: ProjectService, useValue: projectService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
                 {
                     provide: ConfigService,
-                    useValue: buildConfigService(configValues),
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        ...configValues,
+                    }),
                 },
             ],
         }).compile();
 
         useCase = module.get(WorkspaceSoftDeleteUseCase);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
     });
 
     describe('execute', () => {
@@ -214,11 +223,10 @@ describe('WorkspaceSoftDeleteUseCase', () => {
         });
 
         it('answers WorkspaceNotFoundException on a write conflict and stages no row', async () => {
-            const conflict = new Error('conflict');
-            workspaceService.softDeleteInTx.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = buildPrismaKnownRequestError(
+                DatabaseWriteConflictCode
             );
+            workspaceService.softDeleteInTx.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -228,7 +236,6 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                     workspaceContext
                 )
             ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
@@ -236,7 +243,6 @@ describe('WorkspaceSoftDeleteUseCase', () => {
             workspaceService.softDeleteInTx.mockRejectedValue(
                 new Error('boom')
             );
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

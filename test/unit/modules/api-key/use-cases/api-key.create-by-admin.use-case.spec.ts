@@ -5,7 +5,12 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumActivityLogAction,
@@ -23,41 +28,33 @@ import { ApiKeyCreateByAdminUseCase } from '@modules/api-key/use-cases/api-key.c
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import {
-    buildUser,
-    buildRequestContext,
+    buildApiKey,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyCreateByAdminUseCase', () => {
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
-    const apiKeyUtil: MockProxy<ApiKeyUtil> = mock<ApiKeyUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
 
     const now = new Date('2026-01-01T00:00:00.000Z');
     const apiKey: ApiKey = {
-        id: 'api-key-1',
+        ...buildApiKey(),
         name: 'Acme Api Key',
-        type: EnumApiKeyType.default,
-        key: 'local_abc123',
-        hash: 'hashed-secret',
-        isActive: true,
-        startAt: null,
-        endAt: null,
-        createdAt: now,
-        createdBy: 'user-1',
-        updatedAt: now,
-        updatedBy: 'user-1',
     };
-    const metadata = { apiKeyId: apiKey.id };
+    const metadata = {
+        apiKeyId: apiKey.id,
+        apiKeyName: apiKey.name,
+        apiKeyType: apiKey.type,
+        timestamp: now,
+    };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(
@@ -73,11 +70,18 @@ describe('ApiKeyCreateByAdminUseCase', () => {
     };
 
     let useCase: ApiKeyCreateByAdminUseCase;
+    let databaseUtil: DatabaseUtil;
+
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        helperDateService.create.mockReturnValue(now);
-        apiKeyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
         activityLogService.recordEffect.mockReturnValue(effect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
@@ -87,15 +91,19 @@ describe('ApiKeyCreateByAdminUseCase', () => {
             providers: [
                 ApiKeyCreateByAdminUseCase,
                 { provide: ApiKeyService, useValue: apiKeyService },
-                { provide: ApiKeyUtil, useValue: apiKeyUtil },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                ApiKeyUtil,
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
         useCase = module.get(ApiKeyCreateByAdminUseCase);
+        databaseUtil = module.get(DatabaseUtil);
     });
 
     describe('execute', () => {
@@ -106,12 +114,11 @@ describe('ApiKeyCreateByAdminUseCase', () => {
         const created = { ...apiKey, secret: 'plain-secret' };
 
         beforeEach(() => {
-            databaseUtil.createId.mockReturnValue(apiKey.id);
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue(apiKey.id);
             apiKeyService.createByAdminInTx.mockResolvedValue({
                 apiKey,
                 secret: 'plain-secret',
             });
-            apiKeyUtil.mapCreate.mockReturnValue(created);
         });
 
         it('creates the api key on the outbox transaction and shapes the secret-bearing response', async () => {
@@ -133,10 +140,6 @@ describe('ApiKeyCreateByAdminUseCase', () => {
                     endAt: null,
                 }
             );
-            expect(apiKeyUtil.mapCreate).toHaveBeenCalledWith(
-                apiKey,
-                'plain-secret'
-            );
         });
 
         it('adds only the create activity entry with the drawn id and the passed context on the same tx', async () => {
@@ -147,14 +150,6 @@ describe('ApiKeyCreateByAdminUseCase', () => {
                 body
             );
 
-            expect(apiKeyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                {
-                    id: apiKey.id,
-                    name: 'Acme Api Key',
-                    type: EnumApiKeyType.default,
-                },
-                now
-            );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,

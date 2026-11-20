@@ -2,7 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { DatabaseUtil } from '@common/database/utils/database.util';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { MessageService } from '@common/message/services/message.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -20,18 +25,19 @@ import {
 
 describe('ActivityLogUtil', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let util: ActivityLogUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ActivityLogUtil,
                 { provide: MessageService, useValue: messageService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
@@ -138,11 +144,7 @@ describe('ActivityLogUtil', () => {
                 geoLocation,
             };
             const metadata = { targetUserId: 'user-1' };
-            const plainUserAgent = { ua: 'test-agent' };
-            const plainGeoLocation = { country: 'US' };
             messageService.setMessage.mockReturnValue('User logged in');
-            databaseUtil.toPlainObject.mockReturnValueOnce(plainUserAgent);
-            databaseUtil.toPlainObject.mockReturnValueOnce(plainGeoLocation);
 
             const result = util.buildCreateManyUserData(
                 'user-1',
@@ -157,36 +159,28 @@ describe('ActivityLogUtil', () => {
                 action: EnumActivityLogAction.userLoginCredential,
                 description: 'User logged in',
                 ipAddress: '127.0.0.1',
-                userAgent: plainUserAgent,
-                geoLocation: plainGeoLocation,
+                userAgent,
+                geoLocation,
                 metadata,
                 createdBy: 'user-1',
             });
-            expect(databaseUtil.toPlainObject).toHaveBeenNthCalledWith(
-                1,
-                userAgent
-            );
-            expect(databaseUtil.toPlainObject).toHaveBeenNthCalledWith(
-                2,
-                geoLocation
-            );
         });
 
         it('builds a row for a null workspace with no metadata', () => {
+            const userAgent: UserAgent = {
+                ua: null,
+                browser: null,
+                cpu: { architecture: null },
+                device: { type: null, vendor: null, model: null },
+                engine: { name: null, version: null },
+                os: { name: null, version: null },
+            };
             const requestLog: IRequestLog = {
-                userAgent: {
-                    ua: null,
-                    browser: null,
-                    cpu: { architecture: null },
-                    device: { type: null, vendor: null, model: null },
-                    engine: { name: null, version: null },
-                    os: { name: null, version: null },
-                },
+                userAgent,
                 ipAddress: null,
                 geoLocation: null,
             };
             messageService.setMessage.mockReturnValue('User logged out');
-            databaseUtil.toPlainObject.mockReturnValue(null);
 
             const result = util.buildCreateManyUserData(
                 'user-1',
@@ -201,7 +195,7 @@ describe('ActivityLogUtil', () => {
                 action: EnumActivityLogAction.userLogout,
                 description: 'User logged out',
                 ipAddress: null,
-                userAgent: null,
+                userAgent,
                 geoLocation: null,
                 createdBy: 'user-1',
             });

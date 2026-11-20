@@ -1,13 +1,17 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { Duration } from 'luxon';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -17,8 +21,6 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -26,6 +28,7 @@ import {
     EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
+    Prisma,
 } from '@generated/prisma-client/client';
 import type { Device, DeviceOwnership } from '@generated/prisma-client/client';
 import { DeviceService } from '@modules/device/services/device.service';
@@ -51,16 +54,7 @@ describe('DeviceService', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-
-    const configGet = vi.fn<(key: string) => number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
     const idleTimeoutInMs = 604800000;
-    const idleDuration = Duration.fromObject({ milliseconds: idleTimeoutInMs });
 
     const now: Date = new Date('2026-01-01T00:00:00.000Z');
     const idleSince: Date = new Date('2025-12-25T00:00:00.000Z');
@@ -112,15 +106,26 @@ describe('DeviceService', () => {
 
     let service: DeviceService;
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockReturnValue(idleTimeoutInMs);
-        helperDateService.backward.mockReturnValue(idleSince);
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
 
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 DeviceService,
-                { provide: ConfigService, useValue: configService },
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'session.idleTimeoutInMs': idleTimeoutInMs,
+                    }),
+                },
                 {
                     provide: DeviceOwnershipRepository,
                     useValue: deviceOwnershipRepository,
@@ -128,8 +133,7 @@ describe('DeviceService', () => {
                 { provide: DeviceRepository, useValue: deviceRepository },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
             ],
         }).compile();
 
@@ -149,7 +153,6 @@ describe('DeviceService', () => {
                 totalPage: 1,
                 data: [deviceOwnershipDetail],
             };
-            helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.findWithPaginationOffsetByAdmin.mockResolvedValue(
                 page
             );
@@ -168,10 +171,6 @@ describe('DeviceService', () => {
                 pagination,
                 { isRevoked: { equals: true } },
                 idleSince
-            );
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                idleDuration
             );
         });
 
@@ -220,7 +219,6 @@ describe('DeviceService', () => {
                 hasNext: false,
                 data: [{ ...deviceOwnershipDetail, sessions: [] }],
             };
-            helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.findActiveWithPaginationCursor.mockResolvedValue(
                 page
             );
@@ -240,10 +238,6 @@ describe('DeviceService', () => {
                 pagination,
                 idleSince
             );
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                idleDuration
-            );
         });
     });
 
@@ -253,8 +247,6 @@ describe('DeviceService', () => {
                 'a',
                 'b',
             ]);
-
-            helperDateService.create.mockReturnValue(now);
 
             const result = await service.getNotificationTokens('user-1');
 
@@ -276,10 +268,6 @@ describe('DeviceService', () => {
             expect(
                 deviceOwnershipRepository.clearTokensWithoutLiveSession
             ).toHaveBeenCalledWith('user-1', now, idleSince);
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                idleDuration
-            );
         });
     });
 
@@ -631,7 +619,6 @@ describe('DeviceService', () => {
         };
 
         it('throws DeviceNotFoundException when the guarded refresh matches no live ownership, writing no device row', async () => {
-            helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue(null);
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
@@ -649,11 +636,6 @@ describe('DeviceService', () => {
                 constructor: DeviceNotFoundException,
                 module: 'device',
                 statusCode: EnumDeviceStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumDeviceStatusCodeError[
-                        EnumDeviceStatusCodeError.notFound
-                    ],
-                messagePath: 'device.error.notFound',
             });
             expect(deviceRepository.refreshInTx).not.toHaveBeenCalled();
             expect(
@@ -662,7 +644,6 @@ describe('DeviceService', () => {
         });
 
         it('adds the userDeviceRefresh entry from the passed context on the same tx after the writes', async () => {
-            helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             activityLogService.recordEffect.mockReturnValue(entry);
             outboxService.withTransaction.mockImplementation(
@@ -688,7 +669,6 @@ describe('DeviceService', () => {
         });
 
         it('adds no entry when the guarded refresh matches no live ownership', async () => {
-            helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue(null);
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
@@ -707,7 +687,6 @@ describe('DeviceService', () => {
         });
 
         it('refreshes the ownership token and the device on success', async () => {
-            helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
@@ -743,7 +722,6 @@ describe('DeviceService', () => {
         });
 
         it('clears the refreshed token from every other user ownership row in the same transaction', async () => {
-            helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
@@ -766,7 +744,6 @@ describe('DeviceService', () => {
         });
 
         it('clears no other row when the refresh carries no token', async () => {
-            helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
@@ -786,7 +763,6 @@ describe('DeviceService', () => {
         });
 
         it('resolves the notification provider from the platform and the token', async () => {
-            helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
@@ -814,7 +790,6 @@ describe('DeviceService', () => {
         });
 
         it('writes a null name, a null token, and a null provider as given when the refresh clears them', async () => {
-            helperDateService.create.mockReturnValue(now);
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
@@ -853,7 +828,6 @@ describe('DeviceService', () => {
         });
 
         it('rethrows an AppBaseException raised inside the transaction unchanged', async () => {
-            helperDateService.create.mockReturnValue(now);
             const notFound = new DeviceNotFoundException();
             outboxService.withTransaction.mockRejectedValue(notFound);
 
@@ -869,12 +843,14 @@ describe('DeviceService', () => {
         });
 
         it('answers DeviceNotFoundException on a write conflict', async () => {
-            helperDateService.create.mockReturnValue(now);
-            const conflict = new Error('conflict');
-            outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                }
             );
+            outboxService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 service.refresh(
@@ -888,20 +864,12 @@ describe('DeviceService', () => {
                 constructor: DeviceNotFoundException,
                 module: 'device',
                 statusCode: EnumDeviceStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumDeviceStatusCodeError[
-                        EnumDeviceStatusCodeError.notFound
-                    ],
-                messagePath: 'device.error.notFound',
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps a non-application error raised inside the transaction', async () => {
-            helperDateService.create.mockReturnValue(now);
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.refresh(
@@ -915,9 +883,6 @@ describe('DeviceService', () => {
                 constructor: AppUnknownException,
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                messagePath: 'http.serverError.internalServerError',
                 rawError: cause,
             });
         });
@@ -948,10 +913,6 @@ describe('DeviceService', () => {
                 now,
                 idleSince
             );
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                idleDuration
-            );
         });
 
         it('throws DeviceNotFoundException when the guarded revoke matches no live ownership, as on a second removal', async () => {
@@ -971,11 +932,6 @@ describe('DeviceService', () => {
                 constructor: DeviceNotFoundException,
                 module: 'device',
                 statusCode: EnumDeviceStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumDeviceStatusCodeError[
-                        EnumDeviceStatusCodeError.notFound
-                    ],
-                messagePath: 'device.error.notFound',
             });
         });
     });

@@ -15,19 +15,30 @@ describe('ActivityLogUserActorMetadataSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ActivityLogUserActorMetadataSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ActivityLogUserActorMetadataSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a missing field', () => {
-        expect(() =>
-            ActivityLogUserActorMetadataSchema.parse({
-                targetUserId: 'user-1',
-            })
-        ).toThrow();
+        const result = ActivityLogUserActorMetadataSchema.safeParse({
+            targetUserId: 'user-1',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['targetUsername'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['timestamp'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

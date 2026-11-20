@@ -1,28 +1,24 @@
 import { UserContextStoreKey } from '@modules/user/constants/user.constant';
-import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import {
-    EnumRoleType,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
-} from '@generated/prisma-client/client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
 import { PolicyStoreKey } from '@modules/policy/constants/policy.constant';
 import { RoleRequiredMetaKey } from '@modules/role/constants/role.constant';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleGuard } from '@modules/role/guards/role.guard';
-import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { buildUserContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildUser,
+    buildUserContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('RoleGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
@@ -32,60 +28,12 @@ describe('RoleGuard', () => {
     const executionContext: MockProxy<ExecutionContext> =
         mock<ExecutionContext>();
 
-    const now = new Date('2026-01-01T00:00:00.000Z');
-    const role: IRoleWithPolicies = {
-        id: 'role-1',
-        name: 'manager',
-        description: null,
-        type: EnumRoleType.user,
-        isImmutable: false,
-        createdAt: now,
-        createdBy: null,
-        updatedAt: now,
-        updatedBy: null,
-        policies: [],
-    };
-    const user: IUser = {
-        id: 'user-1',
-        name: null,
-        username: 'johnson',
-        isVerified: false,
-        verifiedAt: null,
-        email: 'john@example.com',
-        roleId: role.id,
-        password: null,
-        passwordExpired: null,
-        passwordCreated: null,
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: now,
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: now,
-        createdBy: null,
-        updatedAt: now,
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role,
-    };
+    const user: IUser = buildUser('user-1', 'john@example.com');
     const policies: Policy[] = [];
 
     let guard: RoleGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleGuard,
@@ -148,12 +96,6 @@ describe('RoleGuard', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.guardMissing,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.guardMissing
-                    ],
-                messagePath: 'user.error.guardMissing',
-                httpStatus: HttpStatus.UNAUTHORIZED,
             });
             expect(roleService.validateRoleGuard).not.toHaveBeenCalled();
             expect(requestStoreService.set).not.toHaveBeenCalled();

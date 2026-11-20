@@ -2,7 +2,12 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { UserAgent } from '@generated/prisma-client/client';
@@ -15,8 +20,6 @@ describe('ActivityLogProcessCreateManyUseCase', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
 
     const userAgent: UserAgent = {
         ua: null,
@@ -50,7 +53,6 @@ describe('ActivityLogProcessCreateManyUseCase', () => {
     let useCase: ActivityLogProcessCreateManyUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -58,7 +60,11 @@ describe('ActivityLogProcessCreateManyUseCase', () => {
                 { provide: MessageService, useValue: messageService },
                 ActivityLogProcessCreateManyUseCase,
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
@@ -67,13 +73,8 @@ describe('ActivityLogProcessCreateManyUseCase', () => {
 
     describe('execute', () => {
         it('passes the rows with a date createdAt to the domain and reports the count', async () => {
-            helperDateService.createFromIso.mockReturnValue(createdAt);
-
             const result = await useCase.execute(payload);
 
-            expect(helperDateService.createFromIso).toHaveBeenCalledWith(
-                '2026-01-01T00:00:00.000Z'
-            );
             expect(activityLogService.createMany).toHaveBeenCalledWith([
                 { ...payload.rows[0], createdAt },
             ]);
@@ -85,7 +86,6 @@ describe('ActivityLogProcessCreateManyUseCase', () => {
 
         it('rethrows the domain failure so BullMQ retries the job', async () => {
             const failure = new Error('database down');
-            helperDateService.createFromIso.mockReturnValue(createdAt);
             activityLogService.createMany.mockRejectedValue(failure);
 
             const rejection = useCase.execute(payload);

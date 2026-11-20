@@ -1,8 +1,13 @@
 import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
@@ -11,15 +16,20 @@ import { NotificationSmsDeliveryService } from '@modules/notification/services/n
 describe('NotificationSmsDeliveryService', () => {
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     let service: NotificationSmsDeliveryService;
 
     const stampedAt = new Date('2026-03-01T00:00:00.000Z');
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(stampedAt);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
-        helperDateService.create.mockReturnValue(stampedAt);
         const module = await Test.createTestingModule({
             providers: [
                 NotificationSmsDeliveryService,
@@ -27,14 +37,14 @@ describe('NotificationSmsDeliveryService', () => {
                     provide: NotificationRepository,
                     useValue: notificationRepository,
                 },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         service = module.get(NotificationSmsDeliveryService);
-    });
-
-    afterEach(() => {
-        vi.restoreAllMocks();
     });
 
     describe('send', () => {

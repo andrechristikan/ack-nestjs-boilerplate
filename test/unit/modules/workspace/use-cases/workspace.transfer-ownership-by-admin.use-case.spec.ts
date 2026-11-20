@@ -23,8 +23,6 @@ describe('WorkspaceTransferOwnershipByAdminUseCase', () => {
     let useCase: WorkspaceTransferOwnershipByAdminUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceTransferOwnershipByAdminUseCase,

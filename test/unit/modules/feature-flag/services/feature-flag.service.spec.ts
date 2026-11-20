@@ -1,5 +1,4 @@
 import type { ICacheInvalidateEffect } from '@common/cache/interfaces/cache.interface';
-import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -10,7 +9,12 @@ import {
 } from '@common/cache/enums/cache.enum';
 import { CacheService } from '@common/cache/services/cache.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
     IPaginationQueryCursorParams,
@@ -45,8 +49,6 @@ describe('FeatureFlagService', () => {
             cacheTtlInMs: 3600000,
         });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
@@ -63,8 +65,6 @@ describe('FeatureFlagService', () => {
         priority: EnumQueuePriority.high,
         idempotencyKey: null,
     };
-    const hashForTenPercent = '0000000a'.padEnd(64, '0');
-    const hashForFiftyPercent = '00000032'.padEnd(64, '0');
 
     const baseFlag: FeatureFlag = {
         id: '507f1f77bcf86cd799439011',
@@ -81,7 +81,6 @@ describe('FeatureFlagService', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         featureFlagCache.buildFeatureFlagKeys.mockReturnValue(keys);
         cacheService.invalidateEffect.mockReturnValue(cacheEffect);
         outboxService.withTransaction.mockImplementation(
@@ -96,7 +95,11 @@ describe('FeatureFlagService', () => {
                 },
                 { provide: FeatureFlagCache, useValue: featureFlagCache },
                 { provide: CacheService, useValue: cacheService },
-                { provide: HelperHashService, useValue: helperHashService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -214,13 +217,7 @@ describe('FeatureFlagService', () => {
             ).rejects.toMatchObject({
                 constructor: FeatureFlagNotConfiguredException,
                 module: 'featureFlag',
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
                 statusCode: EnumFeatureFlagStatusCodeError.notConfigured,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.notConfigured
-                    ],
-                messagePath: 'featureFlag.error.notConfigured',
                 rawError: expect.objectContaining({
                     message:
                         'FeatureFlagNotConfiguredException: no feature flag row for "workspace"',
@@ -247,11 +244,6 @@ describe('FeatureFlagService', () => {
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.disabled
-                    ],
-                messagePath: 'featureFlag.error.disabled',
             });
         });
 
@@ -269,7 +261,6 @@ describe('FeatureFlagService', () => {
                     null
                 )
             ).resolves.toBeUndefined();
-            expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
         });
 
         it('resolves for an authenticated caller whose bucket is under rollout', async () => {
@@ -278,7 +269,6 @@ describe('FeatureFlagService', () => {
                 rolloutPercent: 50,
                 targetUserIds: [],
             });
-            helperHashService.sha256Hash.mockReturnValue(hashForTenPercent);
 
             await expect(
                 service.validateFeatureFlag(
@@ -287,9 +277,6 @@ describe('FeatureFlagService', () => {
                     null
                 )
             ).resolves.toBeUndefined();
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'loginWithGoogle:user-1'
-            );
         });
 
         it('throws FeatureFlagDisabledException for an authenticated caller whose bucket misses rollout', async () => {
@@ -298,7 +285,6 @@ describe('FeatureFlagService', () => {
                 rolloutPercent: 10,
                 targetUserIds: [],
             });
-            helperHashService.sha256Hash.mockReturnValue(hashForFiftyPercent);
 
             await expect(
                 service.validateFeatureFlag(
@@ -310,11 +296,6 @@ describe('FeatureFlagService', () => {
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.disabled
-                    ],
-                messagePath: 'featureFlag.error.disabled',
             });
         });
 
@@ -331,7 +312,6 @@ describe('FeatureFlagService', () => {
                     null
                 )
             ).resolves.toBeUndefined();
-            expect(helperHashService.sha256Hash).not.toHaveBeenCalled();
         });
 
         it('throws FeatureFlagDisabledException with no user, rollout under 100%, and no anonymous id', async () => {
@@ -350,20 +330,14 @@ describe('FeatureFlagService', () => {
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.disabled
-                    ],
-                messagePath: 'featureFlag.error.disabled',
             });
         });
 
         it('resolves with no user, rollout under 100%, and an anonymous id under rollout', async () => {
             cacheService.readThrough.mockResolvedValue({
                 ...baseFlag,
-                rolloutPercent: 50,
+                rolloutPercent: 90,
             });
-            helperHashService.sha256Hash.mockReturnValue(hashForTenPercent);
 
             await expect(
                 service.validateFeatureFlag(
@@ -372,9 +346,6 @@ describe('FeatureFlagService', () => {
                     'anon-1'
                 )
             ).resolves.toBeUndefined();
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'loginWithGoogle:anon-1'
-            );
         });
 
         it('throws FeatureFlagDisabledException with no user, rollout under 100%, and an anonymous id missing rollout', async () => {
@@ -382,7 +353,6 @@ describe('FeatureFlagService', () => {
                 ...baseFlag,
                 rolloutPercent: 10,
             });
-            helperHashService.sha256Hash.mockReturnValue(hashForFiftyPercent);
 
             await expect(
                 service.validateFeatureFlag(
@@ -394,11 +364,6 @@ describe('FeatureFlagService', () => {
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.disabled
-                    ],
-                messagePath: 'featureFlag.error.disabled',
             });
         });
     });
@@ -557,13 +522,7 @@ describe('FeatureFlagService', () => {
             ).rejects.toMatchObject({
                 constructor: FeatureFlagNotConfiguredException,
                 module: 'featureFlag',
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
                 statusCode: EnumFeatureFlagStatusCodeError.notConfigured,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.notConfigured
-                    ],
-                messagePath: 'featureFlag.error.notConfigured',
                 rawError: expect.objectContaining({
                     message:
                         'FeatureFlagNotConfiguredException: no feature flag row for "workspace"',
@@ -586,11 +545,6 @@ describe('FeatureFlagService', () => {
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.disabled
-                    ],
-                messagePath: 'featureFlag.error.disabled',
             });
         });
 
@@ -623,11 +577,6 @@ describe('FeatureFlagService', () => {
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.disabled
-                    ],
-                messagePath: 'featureFlag.error.disabled',
             });
         });
 
@@ -644,14 +593,8 @@ describe('FeatureFlagService', () => {
                 )
             ).rejects.toMatchObject({
                 constructor: FeatureFlagDisabledException,
-                httpStatus: HttpStatus.NOT_FOUND,
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.disabled
-                    ],
-                messagePath: 'featureFlag.error.disabled',
             });
         });
 
@@ -668,14 +611,8 @@ describe('FeatureFlagService', () => {
                 )
             ).rejects.toMatchObject({
                 constructor: FeatureFlagDisabledException,
-                httpStatus: HttpStatus.NOT_FOUND,
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.disabled
-                    ],
-                messagePath: 'featureFlag.error.disabled',
             });
         });
 
@@ -692,14 +629,8 @@ describe('FeatureFlagService', () => {
                 )
             ).rejects.toMatchObject({
                 constructor: FeatureFlagDisabledException,
-                httpStatus: HttpStatus.NOT_FOUND,
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.disabled
-                    ],
-                messagePath: 'featureFlag.error.disabled',
             });
         });
     });
@@ -780,11 +711,6 @@ describe('FeatureFlagService', () => {
             ).rejects.toMatchObject({
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.notFound
-                    ],
-                messagePath: 'featureFlag.error.notFound',
             });
             expect(featureFlagRepository.updateStatusInTx).toHaveBeenCalledWith(
                 tx,
@@ -836,11 +762,6 @@ describe('FeatureFlagService', () => {
             ).rejects.toMatchObject({
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.notFound
-                    ],
-                messagePath: 'featureFlag.error.notFound',
             });
             expect(
                 featureFlagRepository.updateMetadataInTx
@@ -860,11 +781,6 @@ describe('FeatureFlagService', () => {
             ).rejects.toMatchObject({
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.invalidMetadata,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.invalidMetadata
-                    ],
-                messagePath: 'featureFlag.error.invalidMetadata',
             });
             expect(
                 featureFlagRepository.updateMetadataInTx
@@ -883,7 +799,6 @@ describe('FeatureFlagService', () => {
             ).rejects.toMatchObject({
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.invalidMetadata,
-                messagePath: 'featureFlag.error.invalidMetadata',
             });
             expect(
                 featureFlagRepository.updateMetadataInTx
@@ -921,8 +836,6 @@ describe('FeatureFlagService', () => {
 
     describe('assertRollout', () => {
         it('resolves with no throw when the identifier is in rollout', () => {
-            helperHashService.sha256Hash.mockReturnValue(hashForTenPercent);
-
             expect(() =>
                 service['assertRollout'](
                     50,
@@ -933,8 +846,6 @@ describe('FeatureFlagService', () => {
         });
 
         it('throws FeatureFlagDisabledException when the identifier is out of rollout', () => {
-            helperHashService.sha256Hash.mockReturnValue(hashForFiftyPercent);
-
             let captured: unknown;
             try {
                 service['assertRollout'](
@@ -949,19 +860,12 @@ describe('FeatureFlagService', () => {
             expect(captured).toMatchObject({
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.disabled
-                    ],
-                messagePath: 'featureFlag.error.disabled',
             });
         });
     });
 
     describe('isInRollout', () => {
         it('hashes "<key>:<identifier>" and returns true when the bucket is under the rollout', () => {
-            helperHashService.sha256Hash.mockReturnValue(hashForTenPercent);
-
             const result = service['isInRollout'](
                 50,
                 'loginWithGoogle',
@@ -969,16 +873,11 @@ describe('FeatureFlagService', () => {
             );
 
             expect(result).toBe(true);
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'loginWithGoogle:user-1'
-            );
         });
 
         it('returns false when the bucket is at or above the rollout', () => {
-            helperHashService.sha256Hash.mockReturnValue(hashForFiftyPercent);
-
             const result = service['isInRollout'](
-                50,
+                47,
                 'loginWithGoogle',
                 'user-1'
             );

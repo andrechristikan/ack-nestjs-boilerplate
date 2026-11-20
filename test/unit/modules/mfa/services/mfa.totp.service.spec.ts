@@ -1,41 +1,39 @@
-import { Test } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
+import { TestUnitKitEncryptionSecret } from '@test/unit/helpers/test.unit.kit.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
-import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
+import { EnumHelperStatusCodeError } from '@common/helper/enums/helper.status-code.enum';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import type { MfaTotp } from '@generated/prisma-client/client';
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 import { MfaTotpSecretEncryptionPurpose } from '@modules/mfa/constants/mfa.constant';
 import { MfaTotpRepository } from '@modules/mfa/repositories/mfa.totp.repository';
-import { createTotpCode } from '@test/unit/helpers/test.unit.mfa.helper';
+import {
+    createMfaTotpService,
+    createTotpCode,
+    buildSealedMfaTotpSecret,
+} from '@test/unit/helpers/test.unit.mfa.helper';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
 
 describe('MfaTotpService', () => {
     const mfaTotpRepository: MockProxy<MfaTotpRepository> =
         mock<MfaTotpRepository>();
-    const helperEncryptionService: MockProxy<HelperEncryptionService> =
-        mock<HelperEncryptionService>();
-    const configGet = vi.fn<(key: string) => string | number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    const helperEncryptionService = new HelperEncryptionService();
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
 
     let service: MfaTotpService;
 
     const tx = {} as IDatabaseTransactionClient;
+    // cspell:disable-next-line
+    const base32Secret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+    const stepInSeconds = 30;
     const now = new Date('2026-03-01T00:00:00.000Z');
     const confirmedTotp: MfaTotp = {
         id: 'totp-quartz',
         userId: 'user-quartz',
-        secret: 'encrypted-secret',
+        secret: buildSealedMfaTotpSecret(base32Secret, 'user-quartz'),
         pendingSecret: null,
         confirmedAt: new Date('2026-01-05T00:00:00.000Z'),
         lastUsedAt: new Date('2026-02-01T00:00:00.000Z'),
@@ -48,15 +46,12 @@ describe('MfaTotpService', () => {
     const pendingTotp: MfaTotp = {
         ...confirmedTotp,
         secret: null,
-        pendingSecret: 'encrypted-pending',
+        pendingSecret: buildSealedMfaTotpSecret(base32Secret, 'user-quartz'),
         confirmedAt: null,
         lastUsedAt: null,
         lastUsedStep: null,
     };
 
-    // cspell:disable-next-line
-    const base32Secret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
-    const stepInSeconds = 30;
     const nowInSeconds = now.getTime() / 1000;
     const nowStep = nowInSeconds / stepInSeconds;
 
@@ -70,37 +65,11 @@ describe('MfaTotpService', () => {
     });
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        helperDateService.create.mockReturnValue(now);
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, string | number> = {
-                'mfa.totp.strategy': 'totp',
-                'mfa.totp.algorithm': 'sha1',
-                'mfa.totp.issuer': 'AckBoilerplate',
-                'mfa.totp.digits': 6,
-                'mfa.totp.periodInSeconds': stepInSeconds,
-                'mfa.totp.window': 1,
-                'mfa.totp.secretLength': 20,
-                'mfa.totp.encryptionSecret': 'encryption-key',
-            };
-
-            return values[key];
-        });
-
-        const module = await Test.createTestingModule({
-            providers: [
-                MfaTotpService,
-                { provide: MfaTotpRepository, useValue: mfaTotpRepository },
-                {
-                    provide: HelperEncryptionService,
-                    useValue: helperEncryptionService,
-                },
-                { provide: ConfigService, useValue: configService },
-                { provide: SentryService, useValue: sentryService },
-                { provide: HelperDateService, useValue: helperDateService },
-            ],
-        }).compile();
-        service = module.get(MfaTotpService);
+        service = await createMfaTotpService(
+            mfaTotpRepository,
+            sentryService,
+            TestUnitKitEncryptionSecret
+        );
     });
 
     describe('getStatus', () => {
@@ -171,8 +140,6 @@ describe('MfaTotpService', () => {
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.totpNotEnabled,
-                statusCodeKey: 'totpNotEnabled',
-                messagePath: 'mfa.error.totpNotEnabled',
             });
         });
     });
@@ -205,8 +172,11 @@ describe('MfaTotpService', () => {
     describe('setupInTx', () => {
         it('stores the encrypted pending secret under the configured key and the user id, and answers the secret and the URL', async () => {
             mfaTotpRepository.findOneByUserIdInTx.mockResolvedValue(null);
-            helperEncryptionService.aes256Encrypt.mockReturnValue(
-                'encrypted-secret'
+            let stored = '';
+            mfaTotpRepository.setupInTx.mockImplementation(
+                async (_tx, _userId, encryptedSecret) => {
+                    stored = encryptedSecret;
+                }
             );
 
             const result = await service.setupInTx(
@@ -216,24 +186,23 @@ describe('MfaTotpService', () => {
             );
 
             expect(result.secret).toMatch(/^[A-Z2-7]{32}$/);
-            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
-                result.secret,
-                'encryption-key',
-                MfaTotpSecretEncryptionPurpose,
-                'user-quartz'
-            );
             expect(mfaTotpRepository.setupInTx).toHaveBeenCalledWith(
                 tx,
                 'user-quartz',
-                'encrypted-secret'
+                stored
             );
+            expect(
+                helperEncryptionService.aes256Decrypt(
+                    stored,
+                    TestUnitKitEncryptionSecret,
+                    MfaTotpSecretEncryptionPurpose,
+                    'user-quartz'
+                )
+            ).toBe(result.secret);
         });
 
         it('carries the issuer once, the email, and the secret in the otpauth URL', async () => {
             mfaTotpRepository.findOneByUserIdInTx.mockResolvedValue(null);
-            helperEncryptionService.aes256Encrypt.mockReturnValue(
-                'encrypted-secret'
-            );
 
             const { secret, otpauthUrl } = await service.setupInTx(
                 tx,
@@ -251,9 +220,6 @@ describe('MfaTotpService', () => {
         it('replaces an unconfirmed pending secret', async () => {
             mfaTotpRepository.findOneByUserIdInTx.mockResolvedValue(
                 pendingTotp
-            );
-            helperEncryptionService.aes256Encrypt.mockReturnValue(
-                'encrypted-secret'
             );
 
             await service.setupInTx(tx, 'user-quartz', 'quartz@example.com');
@@ -280,7 +246,6 @@ describe('MfaTotpService', () => {
     describe('checkCode', () => {
         beforeEach(() => {
             mfaTotpRepository.findOneByUserId.mockResolvedValue(confirmedTotp);
-            helperEncryptionService.aes256Decrypt.mockReturnValue(base32Secret);
         });
 
         it('answers the step of a code generated for the current step, decrypting the stored secret for the user', async () => {
@@ -293,12 +258,6 @@ describe('MfaTotpService', () => {
             await expect(
                 service.checkCode('user-quartz', ` ${code} `)
             ).resolves.toBe(nowStep);
-            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
-                'encrypted-secret',
-                'encryption-key',
-                MfaTotpSecretEncryptionPurpose,
-                'user-quartz'
-            );
         });
 
         it('answers the previous step for a code inside the configured window', async () => {
@@ -338,9 +297,6 @@ describe('MfaTotpService', () => {
             await expect(
                 service.checkCode('user-quartz', null)
             ).resolves.toBeNull();
-            expect(
-                helperEncryptionService.aes256Decrypt
-            ).not.toHaveBeenCalled();
         });
 
         it('throws MfaMethodUnavailableException without a row or a confirmed secret', async () => {
@@ -366,9 +322,9 @@ describe('MfaTotpService', () => {
         });
 
         it('captures a secret that fails decryption to Sentry and throws MfaTotpSecretUnavailableException', async () => {
-            const cause = new HelperDecryptFailedException();
-            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
-                throw cause;
+            mfaTotpRepository.findOneByUserId.mockResolvedValue({
+                ...confirmedTotp,
+                secret: 'not-a-cipher',
             });
 
             await expect(
@@ -378,20 +334,30 @@ describe('MfaTotpService', () => {
 
                 statusCode: EnumMfaStatusCodeError.totpSecretUnavailable,
             });
-            expect(sentryService.captureException).toHaveBeenCalledWith(cause);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    module: 'helper',
+                    statusCode: EnumHelperStatusCodeError.decryptFailed,
+                })
+            );
         });
 
         it('wraps any other decrypt error in AppUnknownException', async () => {
-            const cause = new Error('boom');
-            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
-                throw cause;
-            });
+            const invalidSecretService = await createMfaTotpService(
+                mfaTotpRepository,
+                sentryService,
+                'short'
+            );
 
             await expect(
-                service.checkCode('user-quartz', '123456')
+                invalidSecretService.checkCode('user-quartz', '123456')
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
-                rawError: cause,
+                rawError: expect.objectContaining({
+                    module: 'helper',
+                    statusCode:
+                        EnumHelperStatusCodeError.encryptionSecretInvalid,
+                }),
             });
             expect(sentryService.captureException).not.toHaveBeenCalled();
         });
@@ -400,7 +366,6 @@ describe('MfaTotpService', () => {
     describe('checkSetupCode', () => {
         it('answers the step of a correct code against the pending secret', async () => {
             mfaTotpRepository.findOneByUserId.mockResolvedValue(pendingTotp);
-            helperEncryptionService.aes256Decrypt.mockReturnValue(base32Secret);
             const code = createTotpCode(
                 base32Secret,
                 nowInSeconds,
@@ -410,17 +375,10 @@ describe('MfaTotpService', () => {
             await expect(
                 service.checkSetupCode('user-quartz', ` ${code} `)
             ).resolves.toBe(nowStep);
-            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
-                'encrypted-pending',
-                'encryption-key',
-                MfaTotpSecretEncryptionPurpose,
-                'user-quartz'
-            );
         });
 
         it('answers null for a wrong code', async () => {
             mfaTotpRepository.findOneByUserId.mockResolvedValue(pendingTotp);
-            helperEncryptionService.aes256Decrypt.mockReturnValue(base32Secret);
 
             await expect(
                 service.checkSetupCode('user-quartz', '000000')
@@ -492,7 +450,7 @@ describe('MfaTotpService', () => {
             expect(mfaTotpRepository.enableInTx).toHaveBeenCalledWith(
                 tx,
                 'user-quartz',
-                'encrypted-pending',
+                pendingTotp.pendingSecret,
                 7,
                 now
             );

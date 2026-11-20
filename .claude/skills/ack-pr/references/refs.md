@@ -15,7 +15,7 @@ git diff --stat ack-pr/base-<base>
 
 Zero commits ahead and an empty `git diff ack-pr/base-<base>` mean the branch has nothing to describe: say so and stop. Uncommitted and staged work counts, so zero commits ahead with a non-empty diff continues.
 
-The dispatch names `ack-pr/base-<base>`. `writer` diffs with no second ref and no `..`: `git diff ack-pr/base-<base>` includes uncommitted and staged work, which `ack-pr/base-<base>..HEAD` omits.
+The dispatch names `ack-pr/base-<base>`. `writer` diffs with no second ref and no `..`.
 
 Slug: the branch name with a leading `feat/`, `fix/`, `chore/`, or similar prefix removed, filesystem-safe. Output `.scratch/pr/pr-<slug>.md`.
 
@@ -46,4 +46,4 @@ Slug: the tag without its `v`, filesystem-safe (`1.2.0`). Output `.scratch/pr/ve
 
 ## What stays out of the document
 
-The local refs, the base branch, `origin/*`, "against base", any working-artifact path, and any `.claude/` mention. A version identity the release is about may appear (`.claude/rules/authoring.md`).
+`.claude/rules/authoring.md`, Documentation prose, and any `.claude/` mention.

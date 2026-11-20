@@ -1,7 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { NextFunction, Request, Response } from 'express';
 import bodyParser from 'body-parser';
@@ -9,6 +8,7 @@ import { RequestPayloadTooLargeException } from '@common/request/exceptions/requ
 import { RequestUnsupportedMediaTypeException } from '@common/request/exceptions/request.unsupported-media-type.exception';
 import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
 import { RequestBodyParserMiddleware } from '@common/request/middlewares/request.body-parser.middleware';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 vi.mock('body-parser', () => ({
     default: {
@@ -20,10 +20,7 @@ vi.mock('body-parser', () => ({
 }));
 
 describe('RequestBodyParserMiddleware', () => {
-    const configGet = vi.fn<(key: string) => number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
 
     let middleware: RequestBodyParserMiddleware;
     let req: Request;
@@ -35,16 +32,11 @@ describe('RequestBodyParserMiddleware', () => {
     let rawHandler: ReturnType<typeof vi.fn>;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, number> = {
-                'request.body.json.limitInBytes': 1000,
-                'request.body.text.limitInBytes': 2000,
-                'request.body.urlencoded.limitInBytes': 3000,
-                'request.body.applicationOctetStream.limitInBytes': 4000,
-            };
-            return values[key];
+        configService = buildConfigService({
+            'request.body.json.limitInBytes': 1000,
+            'request.body.text.limitInBytes': 2000,
+            'request.body.urlencoded.limitInBytes': 3000,
+            'request.body.applicationOctetStream.limitInBytes': 4000,
         });
 
         jsonHandler = vi.fn();

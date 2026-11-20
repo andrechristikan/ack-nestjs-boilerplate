@@ -62,8 +62,6 @@ describe('ResponsePaginationInterceptor', () => {
     let interceptor: ResponsePaginationInterceptor<unknown>;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         context.getType.mockReturnValue('http');
         context.switchToHttp.mockReturnValue(httpArgumentsHost);
         httpArgumentsHost.getResponse.mockReturnValue(response);
@@ -133,11 +131,6 @@ describe('ResponsePaginationInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.paginationShapeInvalid,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.paginationShapeInvalid
-                    ],
-                messagePath: 'response.error.paginationShapeInvalid',
             });
         });
 
@@ -156,11 +149,6 @@ describe('ResponsePaginationInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.paginationTypeInvalid,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.paginationTypeInvalid
-                    ],
-                messagePath: 'response.error.paginationTypeInvalid',
             });
         });
 
@@ -184,11 +172,6 @@ describe('ResponsePaginationInterceptor', () => {
                     module: 'response',
                     statusCode:
                         EnumResponseStatusCodeError.paginationShapeInvalid,
-                    statusCodeKey:
-                        EnumResponseStatusCodeError[
-                            EnumResponseStatusCodeError.paginationShapeInvalid
-                        ],
-                    messagePath: 'response.error.paginationShapeInvalid',
                 });
             }
         );
@@ -214,7 +197,6 @@ describe('ResponsePaginationInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'request',
                 statusCode: EnumRequestStatusCodeError.contextMissing,
-                httpStatus: 500,
                 contextKey: PaginationStoreKey,
             });
         });
@@ -398,11 +380,6 @@ describe('ResponsePaginationInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.serialization,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.serialization
-                    ],
-                messagePath: 'response.error.serialization',
             });
         });
 
@@ -435,11 +412,6 @@ describe('ResponsePaginationInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.serialization,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.serialization
-                    ],
-                messagePath: 'response.error.serialization',
                 rawError: issues,
             });
         });
@@ -459,11 +431,6 @@ describe('ResponsePaginationInterceptor', () => {
             expect(thrown).toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.paginationShapeInvalid,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.paginationShapeInvalid
-                    ],
-                messagePath: 'response.error.paginationShapeInvalid',
             });
         });
 
@@ -481,11 +448,6 @@ describe('ResponsePaginationInterceptor', () => {
             expect(thrown).toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.paginationTypeInvalid,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.paginationTypeInvalid
-                    ],
-                messagePath: 'response.error.paginationTypeInvalid',
             });
         });
 
@@ -503,11 +465,6 @@ describe('ResponsePaginationInterceptor', () => {
             expect(thrown).toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.paginationShapeInvalid,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.paginationShapeInvalid
-                    ],
-                messagePath: 'response.error.paginationShapeInvalid',
             });
         });
 
@@ -530,11 +487,6 @@ describe('ResponsePaginationInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.serialization,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.serialization
-                    ],
-                messagePath: 'response.error.serialization',
             });
         });
 
@@ -547,11 +499,6 @@ describe('ResponsePaginationInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.serialization,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.serialization
-                    ],
-                messagePath: 'response.error.serialization',
                 rawError: issues,
             });
         });

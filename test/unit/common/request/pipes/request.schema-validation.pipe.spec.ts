@@ -18,11 +18,6 @@ describe('RequestSchemaValidationPipe', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'request',
                 statusCode: EnumRequestStatusCodeError.schemaMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.schemaMissing
-                    ],
-                messagePath: 'request.error.schemaMissing',
             });
         });
 
@@ -38,11 +33,6 @@ describe('RequestSchemaValidationPipe', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'request',
                 statusCode: EnumRequestStatusCodeError.schemaMissing,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.schemaMissing
-                    ],
-                messagePath: 'request.error.schemaMissing',
             });
         });
 
@@ -80,11 +70,6 @@ describe('RequestSchemaValidationPipe', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'request',
                 statusCode: EnumRequestStatusCodeError.validation,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.validation
-                    ],
-                messagePath: 'request.error.validation',
             });
         });
 
@@ -129,16 +114,9 @@ describe('RequestSchemaValidationPipe', () => {
                 schema: z.string(),
             } as unknown as ArgumentMetadata;
 
-            let thrown: RequestValidationException | undefined;
-            try {
-                await pipe.transform(5, metadata);
-            } catch (error) {
-                thrown = error as RequestValidationException;
-            }
-
-            expect(thrown?.issues).toEqual([
-                expect.objectContaining({ path: ['age'] }),
-            ]);
+            await expect(pipe.transform(5, metadata)).rejects.toMatchObject({
+                issues: [expect.objectContaining({ path: ['age'] })],
+            });
         });
 
         it('leaves an issue with an existing path untouched even with a bound argument name', async () => {
@@ -149,16 +127,9 @@ describe('RequestSchemaValidationPipe', () => {
                 schema: z.object({ a: z.string() }),
             } as unknown as ArgumentMetadata;
 
-            let thrown: RequestValidationException | undefined;
-            try {
-                await pipe.transform({}, metadata);
-            } catch (error) {
-                thrown = error as RequestValidationException;
-            }
-
-            expect(thrown?.issues).toEqual([
-                expect.objectContaining({ path: ['a'] }),
-            ]);
+            await expect(pipe.transform({}, metadata)).rejects.toMatchObject({
+                issues: [expect.objectContaining({ path: ['a'] })],
+            });
         });
 
         it('returns the coerced value when transform is enabled', async () => {

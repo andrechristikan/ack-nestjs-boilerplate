@@ -10,11 +10,13 @@ describe('UserForgotPasswordRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserForgotPasswordRequestSchema.parse({
-                ...payload,
-                password: 'secret',
-            })
-        ).toThrow();
+        const result = UserForgotPasswordRequestSchema.safeParse({
+            ...payload,
+            password: 'secret',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

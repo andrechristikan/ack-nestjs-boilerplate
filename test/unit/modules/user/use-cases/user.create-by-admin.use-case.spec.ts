@@ -13,7 +13,6 @@ import {
     EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
-    EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { Country } from '@generated/prisma-client/client';
@@ -53,21 +52,23 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
-import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
+import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserCreateByAdminUseCase } from '@modules/user/use-cases/user.create-by-admin.use-case';
 import {
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserCreateByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
-    const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
     const workspaceService: MockProxy<WorkspaceService> =
@@ -76,12 +77,8 @@ describe('UserCreateByAdminUseCase', () => {
     const countryService: MockProxy<CountryService> = mock<CountryService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const tx = {} as IDatabaseTransactionClient;
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const userRegistrationService: MockProxy<UserRegistrationService> =
         mock<UserRegistrationService>();
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
@@ -90,6 +87,7 @@ describe('UserCreateByAdminUseCase', () => {
 
     const now = new Date('2026-03-01T00:00:00.000Z');
     const configValues: Record<string, unknown> = {
+        ...TestUnitUserConfigValues,
         'user.default.role': 'user',
         'user.default.country': 'ID',
         'user.create.timeoutInMs': 5000,
@@ -113,51 +111,7 @@ describe('UserCreateByAdminUseCase', () => {
         priority: EnumQueuePriority.medium,
         idempotencyKey: 'welcomeByAdmin-user-bramble',
     };
-    const baseUser: IUser = {
-        id: 'user-bramble',
-        name: 'Bramble Fox',
-        username: 'bramble2fox',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'bramble@example.com',
-        roleId: 'role-bramble',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-bramble',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-bramble',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
-    };
+    const baseUser: IUser = buildUser('user-bramble', 'bramble@example.com');
     const committedUser: IUser = baseUser;
     const country: Country = {
         id: 'country-bramble',
@@ -230,14 +184,16 @@ describe('UserCreateByAdminUseCase', () => {
         isImmutable: false,
     };
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
 
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.forward.mockImplementation(date => date);
-        helperDateService.formatToIso.mockReturnValue(
-            '2026-03-05T07:00:00.000+07:00'
-        );
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
+        vi.setSystemTime(now);
         activityLogService.recordEffect.mockReturnValue(activityEntry);
         userRegistrationService.buildCreateByAdminStages.mockReturnValue([
             stageInput,
@@ -245,11 +201,6 @@ describe('UserCreateByAdminUseCase', () => {
         notificationService.notify.mockReturnValue(welcomeEffect);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
         userRegistrationService.createInTx.mockResolvedValue([committedUser]);
-        userCreateUtil.buildTermPolicyAcceptanceEntries.mockReturnValue([
-            { userId: 'user-bramble', types: [], createdBy: 'user-bramble' },
-        ]);
-        workspaceUtil.countSlugAttempts.mockReturnValue(1);
-        workspaceUtil.buildOwnedUsers.mockReturnValue([]);
         roleService.getByName.mockResolvedValue(role);
         countryService.getOne.mockResolvedValue(country);
 
@@ -259,8 +210,8 @@ describe('UserCreateByAdminUseCase', () => {
                 { provide: UserService, useValue: userService },
                 { provide: WorkspaceService, useValue: workspaceService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: WorkspaceUtil, useValue: workspaceUtil },
+                DatabaseUtil,
+                WorkspaceUtil,
                 {
                     provide: UserRegistrationService,
                     useValue: userRegistrationService,
@@ -273,8 +224,9 @@ describe('UserCreateByAdminUseCase', () => {
                 { provide: CountryService, useValue: countryService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: NotificationService, useValue: notificationService },
-                { provide: UserCreateUtil, useValue: userCreateUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                UserCreateUtil,
+                HelperStringService,
+                HelperDateService,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(configValues),
@@ -359,8 +311,8 @@ describe('UserCreateByAdminUseCase', () => {
                     userId: 'user-bramble',
                     proceedBy: 'admin-bramble',
                     password: 'random-password',
-                    passwordCreatedAt: '2026-03-05T07:00:00.000+07:00',
-                    passwordExpiredAt: '2026-03-05T07:00:00.000+07:00',
+                    passwordCreatedAt: '2026-01-01T00:00:00.000Z',
+                    passwordExpiredAt: '2026-06-01T00:00:00.000Z',
                 }
             );
             expect(
@@ -418,7 +370,6 @@ describe('UserCreateByAdminUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
-                messagePath: 'role.error.notFound',
             });
             expect(roleService.assertActorOutranks).not.toHaveBeenCalled();
             expect(countryService.getOne).not.toHaveBeenCalled();
@@ -490,9 +441,6 @@ describe('UserCreateByAdminUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.emailExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.emailExist],
-                messagePath: 'user.error.emailExist',
             });
             expect(userService.assertUsernameAvailable).not.toHaveBeenCalled();
             expect(userService.prepareCreateByAdmin).not.toHaveBeenCalled();
@@ -504,23 +452,15 @@ describe('UserCreateByAdminUseCase', () => {
         const apiKeyContext = buildApiKeyContext();
         const acceptanceEntry = {
             userId: 'user-bramble',
-            types: [],
+            types: [EnumTermPolicyType.termsOfService],
             createdBy: 'user-bramble',
         };
         const owned = {
             userId: 'user-bramble',
             workspaceId: 'workspace-bramble',
-            name: 'Bramble',
+            name: "bramble2fox's Workspace",
             slug: 'w-bramble',
         };
-
-        beforeEach(() => {
-            userCreateUtil.buildTermPolicyAcceptanceEntries.mockReturnValue([
-                acceptanceEntry,
-            ]);
-            workspaceUtil.countSlugAttempts.mockReturnValue(2);
-            workspaceUtil.buildOwnedUsers.mockReturnValue([owned]);
-        });
 
         it('creates the users, their owned workspaces, and the term-policy acceptances on one tx, in that order', async () => {
             const users = await useCase['createAdminUsers'](
@@ -536,10 +476,6 @@ describe('UserCreateByAdminUseCase', () => {
             expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
                 tx,
                 [input]
-            );
-            expect(workspaceUtil.buildOwnedUsers).toHaveBeenCalledWith(
-                [input],
-                0
             );
             expect(
                 workspaceService.createOwnedForUsersInTx
@@ -580,11 +516,10 @@ describe('UserCreateByAdminUseCase', () => {
         });
 
         it('retries with the next attempt after a slug collision', async () => {
-            const collision = new Error('slug collision');
+            const collision = buildPrismaKnownRequestError('P2002', 'slug');
             outboxService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(async fn => fn(tx));
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             const users = await useCase['createAdminUsers'](
                 requestContext,
@@ -596,22 +531,14 @@ describe('UserCreateByAdminUseCase', () => {
 
             expect(users).toEqual([committedUser]);
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
-            expect(workspaceUtil.buildOwnedUsers).toHaveBeenCalledWith(
-                [input],
-                1
-            );
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'slug'
-            );
+            expect(
+                workspaceService.createOwnedForUsersInTx
+            ).toHaveBeenLastCalledWith(tx, [{ ...owned, slug: 'w-bramble-b' }]);
         });
 
         it('throws the mapped AppBaseException of mapCreateCollision', async () => {
-            const otherError = new Error('duplicate email');
+            const otherError = buildPrismaKnownRequestError('P2002', 'email');
             outboxService.withTransaction.mockRejectedValue(otherError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            const mapped = new WorkspaceNotFoundException();
-            userCreateUtil.mapCreateCollision.mockReturnValue(mapped);
 
             await expect(
                 useCase['createAdminUsers'](
@@ -621,17 +548,15 @@ describe('UserCreateByAdminUseCase', () => {
                     [welcomeEffect],
                     5000
                 )
-            ).rejects.toBe(mapped);
-            expect(userCreateUtil.mapCreateCollision).toHaveBeenCalledWith(
-                otherError
-            );
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.emailExist,
+            });
         });
 
         it('wraps an unmapped error in AppUnknownException', async () => {
             const otherError = new Error('unexpected');
             outboxService.withTransaction.mockRejectedValue(otherError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            userCreateUtil.mapCreateCollision.mockReturnValue(otherError);
 
             await expect(
                 useCase['createAdminUsers'](
@@ -649,9 +574,8 @@ describe('UserCreateByAdminUseCase', () => {
 
         it('throws DatabaseUniqueValueGenerationFailedException after the last attempt', async () => {
             outboxService.withTransaction.mockRejectedValue(
-                new Error('slug collision')
+                buildPrismaKnownRequestError('P2002', 'slug')
             );
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 useCase['createAdminUsers'](

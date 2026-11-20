@@ -18,32 +18,28 @@ describe('RequestThrottleDefaultGuard', () => {
     const storageService: MockProxy<ThrottlerStorage> =
         mock<ThrottlerStorage>();
     const reflector: MockProxy<Reflector> = mock<Reflector>();
-    const requestUtil: MockProxy<RequestUtil> = mock<RequestUtil>();
     let guard: RequestThrottleDefaultGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RequestThrottleDefaultGuard,
                 { provide: getOptionsToken(), useValue: options },
                 { provide: getStorageToken(), useValue: storageService },
                 { provide: Reflector, useValue: reflector },
-                { provide: RequestUtil, useValue: requestUtil },
+                RequestUtil,
             ],
         }).compile();
         guard = module.get(RequestThrottleDefaultGuard);
     });
 
     describe('getTracker', () => {
-        it('resolves the tracker through RequestUtil.getClientIp', async () => {
-            const req: MockProxy<IRequestApp> = mock<IRequestApp>();
-            requestUtil.getClientIp.mockReturnValue('127.0.0.1');
+        it('resolves the tracker to the client ip', async () => {
+            const req = { ip: '127.0.0.1' } as unknown as IRequestApp;
 
             const result = await guard['getTracker'](req);
 
             expect(result).toBe('127.0.0.1');
-            expect(requestUtil.getClientIp).toHaveBeenCalledWith(req);
         });
     });
 

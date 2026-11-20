@@ -1,44 +1,42 @@
+import type { MockProxy } from 'vitest-mock-extended';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
-import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { Duration } from 'luxon';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('AnalyticDateUtil', () => {
-    const configGet = vi.fn<(key: string) => string | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
+    let configService: MockProxy<ConfigService>;
 
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
 
     let util: AnalyticDateUtil;
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
+    });
 
-        configGet.mockImplementation((key: string) => {
-            if (key === 'analytic.cache.windowTokenPattern') {
-                return 'Window:{start}:{end}';
-            }
-            return undefined;
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
+        configService = buildConfigService({
+            ...TestUnitKitConfigValues,
+            'analytic.cache.windowTokenPattern': 'Window:{start}:{end}',
         });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticDateUtil,
+                HelperStringService,
+                HelperDateService,
                 { provide: ConfigService, useValue: configService },
-                { provide: HelperStringService, useValue: helperStringService },
-                { provide: HelperDateService, useValue: helperDateService },
             ],
         }).compile();
 
@@ -57,47 +55,22 @@ describe('AnalyticDateUtil', () => {
 
     describe('windowToken', () => {
         it('fills the window pattern with start and end cache tokens', () => {
-            helperStringService.fillPattern.mockReturnValue('filled-window');
-
-            const result = util.windowToken(startDate, endDate);
-
-            expect(result).toBe('filled-window');
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'Window:{start}:{end}',
-                {
-                    start: startDate.toISOString(),
-                    end: endDate.toISOString(),
-                }
+            expect(util.windowToken(startDate, endDate)).toBe(
+                'Window:2026-01-01T00:00:00.000Z:2026-02-01T00:00:00.000Z'
             );
         });
 
         it('fills the window pattern with underscores when dates are omitted', () => {
-            helperStringService.fillPattern.mockReturnValue('open-window');
-
-            const result = util.windowToken(null, null);
-
-            expect(result).toBe('open-window');
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'Window:{start}:{end}',
-                { start: '_', end: '_' }
-            );
+            expect(util.windowToken(null, null)).toBe('Window:_:_');
         });
     });
 
     describe('windowRange', () => {
         it('returns the window ending now and starting windowMs earlier', () => {
-            const now = new Date('2026-03-01T00:00:00.000Z');
-            const earlier = new Date('2026-02-28T23:59:00.000Z');
-            helperDateService.create.mockReturnValue(now);
-            helperDateService.backward.mockReturnValue(earlier);
-
-            const result = util.windowRange(60000);
-
-            expect(result).toEqual({ startDate: earlier, endDate: now });
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                Duration.fromMillis(60000)
-            );
+            expect(util.windowRange(60000)).toEqual({
+                startDate: new Date('2026-02-28T23:59:00.000Z'),
+                endDate: new Date('2026-03-01T00:00:00.000Z'),
+            });
         });
     });
 });

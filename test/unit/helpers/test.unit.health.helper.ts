@@ -3,21 +3,18 @@ import { HttpClient } from '@nestjs/http-client';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import { Test } from '@nestjs/testing';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { HealthAppleIndicator } from '@modules/health/indicators/health.apple.indicator';
-import type { HealthGoogleIndicator } from '@modules/health/indicators/health.google.indicator';
-import type { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
-import type { HealthJwksIndicator } from '@modules/health/indicators/health.jwks.indicator';
+import { HealthAppleIndicator } from '@modules/health/indicators/health.apple.indicator';
+import { HealthGoogleIndicator } from '@modules/health/indicators/health.google.indicator';
+import { HealthSentryIndicator } from '@modules/health/indicators/health.sentry.indicator';
+import { HealthJwksIndicator } from '@modules/health/indicators/health.jwks.indicator';
 
 export async function createHealthGoogleIndicator(
     configService: MockProxy<ConfigService>,
     healthIndicatorService: MockProxy<HealthIndicatorService>
 ): Promise<HealthGoogleIndicator> {
-    const { HealthGoogleIndicator: HealthGoogleIndicatorClass } =
-        await import('@modules/health/indicators/health.google.indicator');
-
     const module = await Test.createTestingModule({
         providers: [
-            HealthGoogleIndicatorClass,
+            HealthGoogleIndicator,
             { provide: ConfigService, useValue: configService },
             {
                 provide: HealthIndicatorService,
@@ -26,19 +23,16 @@ export async function createHealthGoogleIndicator(
         ],
     }).compile();
 
-    return module.get(HealthGoogleIndicatorClass);
+    return module.get(HealthGoogleIndicator);
 }
 
 export async function createHealthAppleIndicator(
     configService: MockProxy<ConfigService>,
     healthIndicatorService: MockProxy<HealthIndicatorService>
 ): Promise<HealthAppleIndicator> {
-    const { HealthAppleIndicator: HealthAppleIndicatorClass } =
-        await import('@modules/health/indicators/health.apple.indicator');
-
     const module = await Test.createTestingModule({
         providers: [
-            HealthAppleIndicatorClass,
+            HealthAppleIndicator,
             { provide: ConfigService, useValue: configService },
             {
                 provide: HealthIndicatorService,
@@ -47,7 +41,7 @@ export async function createHealthAppleIndicator(
         ],
     }).compile();
 
-    return module.get(HealthAppleIndicatorClass);
+    return module.get(HealthAppleIndicator);
 }
 
 export async function createHealthJwksIndicator(
@@ -55,12 +49,9 @@ export async function createHealthJwksIndicator(
     healthIndicatorService: MockProxy<HealthIndicatorService>,
     httpClient: MockProxy<HttpClient>
 ): Promise<HealthJwksIndicator> {
-    const { HealthJwksIndicator: HealthJwksIndicatorClass } =
-        await import('@modules/health/indicators/health.jwks.indicator');
-
     const module = await Test.createTestingModule({
         providers: [
-            HealthJwksIndicatorClass,
+            HealthJwksIndicator,
             { provide: ConfigService, useValue: configService },
             {
                 provide: HealthIndicatorService,
@@ -70,19 +61,16 @@ export async function createHealthJwksIndicator(
         ],
     }).compile();
 
-    return module.get(HealthJwksIndicatorClass);
+    return module.get(HealthJwksIndicator);
 }
 
 export async function createHealthSentryIndicator(
     configService: MockProxy<ConfigService>,
     healthIndicatorService: MockProxy<HealthIndicatorService>
 ): Promise<HealthSentryIndicator> {
-    const { HealthSentryIndicator: HealthSentryIndicatorClass } =
-        await import('@modules/health/indicators/health.sentry.indicator');
-
     const module = await Test.createTestingModule({
         providers: [
-            HealthSentryIndicatorClass,
+            HealthSentryIndicator,
             { provide: ConfigService, useValue: configService },
             {
                 provide: HealthIndicatorService,
@@ -91,5 +79,5 @@ export async function createHealthSentryIndicator(
         ],
     }).compile();
 
-    return module.get(HealthSentryIndicatorClass);
+    return module.get(HealthSentryIndicator);
 }

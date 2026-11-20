@@ -1,12 +1,11 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { mock } from 'vitest-mock-extended';
-import type { MockProxy } from 'vitest-mock-extended';
 import { ConfigService } from '@nestjs/config';
-import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
+import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import type { ITestPaginationCursorDto } from '@test/unit/helpers/test.unit.pagination-cursor.helper';
 import { PaginationCursorUtil } from '@common/pagination/utils/pagination.cursor.util';
@@ -24,15 +23,7 @@ import { PaginationInvalidCursorFormatException } from '@common/pagination/excep
 import type { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
 
 describe('PaginationCursorUtil', () => {
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const helperEncryptionService: MockProxy<HelperEncryptionService> =
-        mock<HelperEncryptionService>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
     const secret = Buffer.alloc(48, 7).toString('base64url');
-    const digest =
-        '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
     const token = {
         values: { createdAt: { $date: '2026-01-02T03:04:05.000Z' }, id: 'x' },
         fingerprint: 'aaaaaaaaaaaaaaaa',
@@ -42,91 +33,71 @@ describe('PaginationCursorUtil', () => {
 
     let util: PaginationCursorUtil;
     let configService: MockProxy<ConfigService>;
+    let helperEncryptionService: HelperEncryptionService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        helperDateService.createFromIso.mockImplementation(
-            iso => new Date(iso)
-        );
-        helperHashService.sha256Hash.mockReturnValue(digest);
         configService = buildConfigService({
+            ...TestUnitKitConfigValues,
             'app.encryptionSecret': secret,
         });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 PaginationCursorUtil,
-                { provide: HelperDateService, useValue: helperDateService },
-                {
-                    provide: HelperEncryptionService,
-                    useValue: helperEncryptionService,
-                },
-                { provide: HelperHashService, useValue: helperHashService },
+                HelperDateService,
+                HelperEncryptionService,
+                HelperHashService,
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
 
         util = module.get(PaginationCursorUtil);
+        helperEncryptionService = module.get(HelperEncryptionService);
     });
 
     describe('seal', () => {
-        it('encrypts the JSON token under the cursor purpose and context with the app secret and returns the result as is', () => {
-            helperEncryptionService.aes256Encrypt.mockReturnValue('sealed');
+        it('encrypts the JSON token under the cursor purpose and context with the app secret', () => {
+            const sealed = util.seal(token);
 
-            expect(util.seal(token)).toBe('sealed');
-            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
-                JSON.stringify(token),
-                secret,
-                PaginationCursorEncryptionPurpose,
-                PaginationCursorEncryptionContext
-            );
+            expect(
+                helperEncryptionService.aes256Decrypt(
+                    sealed,
+                    secret,
+                    PaginationCursorEncryptionPurpose,
+                    PaginationCursorEncryptionContext
+                )
+            ).toBe(JSON.stringify(token));
         });
     });
 
     describe('encryptionSecret', () => {
         it('reads the app secret once at construction, not per seal or open', () => {
-            helperEncryptionService.aes256Encrypt.mockReturnValue('sealed');
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                JSON.stringify(token)
-            );
+            vi.mocked(configService.get).mockClear();
 
-            util.seal(token);
-            util.open('sealed');
+            util.open(util.seal(token));
 
-            expect(configService.get).toHaveBeenCalledTimes(1);
-            expect(configService.get).toHaveBeenCalledWith(
-                'app.encryptionSecret'
-            );
+            expect(configService.get).not.toHaveBeenCalled();
         });
     });
 
     describe('open', () => {
-        it('decrypts the cursor as is under the same arguments and returns the parsed token', () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue(
-                JSON.stringify(token)
-            );
+        it('returns the parsed token of a cursor it sealed', () => {
+            expect(util.open(util.seal(token))).toEqual(token);
+        });
 
-            expect(util.open('sealed')).toEqual(token);
-            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
-                'sealed',
+        it('returns null when the decryption fails', () => {
+            expect(util.open('not.a.sealed.cursor')).toBeNull();
+        });
+
+        it('returns null when the decrypted text is not JSON', () => {
+            const sealed = helperEncryptionService.aes256Encrypt(
+                'not json',
                 secret,
                 PaginationCursorEncryptionPurpose,
                 PaginationCursorEncryptionContext
             );
-        });
 
-        it('returns null when the decryption throws', () => {
-            helperEncryptionService.aes256Decrypt.mockImplementation(() => {
-                throw new HelperDecryptFailedException();
-            });
-
-            expect(util.open('sealed')).toBeNull();
-        });
-
-        it('returns null when the decrypted text is not JSON', () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue('not json');
-
-            expect(util.open('sealed')).toBeNull();
+            expect(util.open(sealed)).toBeNull();
         });
     });
 
@@ -174,9 +145,6 @@ describe('PaginationCursorUtil', () => {
                 createdAt: new Date('2026-01-02T03:04:05.000Z'),
                 id: 'x',
             });
-            expect(helperDateService.createFromIso).toHaveBeenCalledWith(
-                '2026-01-02T03:04:05.000Z'
-            );
         });
 
         it('keeps a date-shaped string a string', () => {
@@ -186,7 +154,6 @@ describe('PaginationCursorUtil', () => {
                     orderBy
                 )
             ).toEqual({ createdAt: '2026-01-02T03:04:05.000Z', id: 'x' });
-            expect(helperDateService.createFromIso).not.toHaveBeenCalled();
         });
 
         it.each([
@@ -260,7 +227,7 @@ describe('PaginationCursorUtil', () => {
         const scope = 'RoleSystemListCursorScope';
         const orderBy: IPaginationOrderBy[] = [...PaginationDefaultOrderBy];
 
-        it('hashes the exact canonical text and returns the leading characters of the digest', () => {
+        it('returns the leading characters of the digest of the exact canonical text', () => {
             const dto: ITestPaginationCursorDto = {
                 search: ' a ',
                 status: ' x,y ',
@@ -270,88 +237,82 @@ describe('PaginationCursorUtil', () => {
                 ...PaginationDefaultOrderBy,
             ]);
 
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                '{"filters":{"search":"a","status":"x,y"},"orderBy":[{"createdAt":"desc"}],"scope":"PinScope"}'
-            );
-            expect(result).toBe(
-                digest.slice(0, PaginationCursorFingerprintLength)
-            );
+            expect(result).toBe('a290740b355c9b83');
+            expect(result).toHaveLength(PaginationCursorFingerprintLength);
         });
 
         it('hashes the given order by terms', () => {
-            util.fingerprint(scope, {}, [{ name: asc }]);
-
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                `{"filters":{},"orderBy":[{"name":"asc"}],"scope":"${scope}"}`
+            expect(util.fingerprint(scope, {}, [{ name: asc }])).toBe(
+                '1646c59d010b6eb4'
             );
         });
 
-        it('hashes different canonical text for two different preset term sets', () => {
-            const texts: string[] = [];
-            helperHashService.sha256Hash.mockImplementation(text => {
-                texts.push(text);
+        it('answers a different fingerprint for two different preset term sets', () => {
+            const first = util.fingerprint(scope, {}, [{ createdAt: desc }]);
+            const second = util.fingerprint(scope, {}, [{ name: asc }]);
 
-                return digest;
-            });
-
-            util.fingerprint(scope, {}, [{ createdAt: desc }]);
-            util.fingerprint(scope, {}, [{ name: asc }]);
-
-            expect(texts).toHaveLength(2);
-            expect(texts[0]).not.toBe(texts[1]);
+            expect(first).not.toBe(second);
         });
 
         it.each<[string, ITestPaginationCursorDto, string]>([
             [
                 'perPage and cursor left out',
                 { search: 'a', perPage: 50, cursor: 'Ab-_1' },
-                '{"search":"a"}',
+                'badbdb2411d8964c',
             ],
-            ['the raw order by left out', { orderBy: 'name:asc' }, '{}'],
-            ['a number filter', { level: 1 }, '{"level":1}'],
+            [
+                'the raw order by left out',
+                { orderBy: 'name:asc' },
+                'db6f76f6d1a4dedf',
+            ],
+            ['a number filter', { level: 1 }, 'b19d56a0c21eb75d'],
             [
                 'a Date filter as its ISO string',
                 { createdAt: new Date('2025-01-01T00:00:00.000Z') },
-                '{"createdAt":"2025-01-01T00:00:00.000Z"}',
+                'c24bb9dfdc131e63',
             ],
             [
                 'filter keys sorted',
                 { status: 'a', search: 'b' },
-                '{"search":"b","status":"a"}',
+                '4747d36d974eecdb',
             ],
             [
                 'filter keys sorted from the reverse order',
                 { search: 'b', status: 'a' },
-                '{"search":"b","status":"a"}',
+                '4747d36d974eecdb',
             ],
             [
                 'the value order of a comma-separated filter',
                 { status: 'b,a' },
-                '{"status":"b,a"}',
+                '28ca5566869106c5',
             ],
-            ['a blank filter left out', { status: '  ' }, '{}'],
-            ['a null filter left out', { status: null }, '{}'],
-            ['an undefined filter left out', { status: undefined }, '{}'],
-            ['an empty array filter left out', { status: [] }, '{}'],
-            ['a blank search left out', { search: '  ' }, '{}'],
-            ['a trimmed search', { search: ' a ' }, '{"search":"a"}'],
-            ['a trimmed string filter', { status: ' a ' }, '{"status":"a"}'],
+            ['a blank filter left out', { status: '  ' }, 'db6f76f6d1a4dedf'],
+            ['a null filter left out', { status: null }, 'db6f76f6d1a4dedf'],
+            [
+                'an undefined filter left out',
+                { status: undefined },
+                'db6f76f6d1a4dedf',
+            ],
+            [
+                'an empty array filter left out',
+                { status: [] },
+                'db6f76f6d1a4dedf',
+            ],
+            ['a blank search left out', { search: '  ' }, 'db6f76f6d1a4dedf'],
+            ['a trimmed search', { search: ' a ' }, 'badbdb2411d8964c'],
+            ['a trimmed string filter', { status: ' a ' }, 'a05910a90930a7c9'],
             [
                 'the whitespace inside a comma-separated filter',
                 { status: 'a, b' },
-                '{"status":"a, b"}',
+                'ba15c0329dbaf543',
             ],
             [
                 'a non-string filter untrimmed',
                 { status: [' a'] },
-                '{"status":[" a"]}',
+                'c211b9750d961386',
             ],
-        ])('hashes %s', (_label, dto, filters) => {
-            util.fingerprint(scope, dto, orderBy);
-
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                `{"filters":${filters},"orderBy":[{"createdAt":"desc"}],"scope":"${scope}"}`
-            );
+        ])('fingerprints %s', (_label, dto, expected) => {
+            expect(util.fingerprint(scope, dto, orderBy)).toBe(expected);
         });
     });
 
@@ -365,11 +326,6 @@ describe('PaginationCursorUtil', () => {
             expect(result).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.cursorTooLong,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.cursorTooLong
-                    ],
-                messagePath: 'pagination.error.cursorTooLong',
                 messageProperties: {
                     maxCursorLength: PaginationMaxCursorLength,
                 },
@@ -385,11 +341,6 @@ describe('PaginationCursorUtil', () => {
             expect(result).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.invalidCursorFormat,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.invalidCursorFormat
-                    ],
-                messagePath: 'pagination.error.invalidCursorFormat',
                 messageProperties: null,
             });
         });

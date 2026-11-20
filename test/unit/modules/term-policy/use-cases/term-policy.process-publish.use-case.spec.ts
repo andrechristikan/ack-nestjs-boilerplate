@@ -1,3 +1,9 @@
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import {
     buildTermPolicyCursorPage as cursorPage,
@@ -6,7 +12,6 @@ import {
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -32,13 +37,10 @@ describe('TermPolicyProcessPublishUseCase', () => {
         mock<NotificationService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const tx = {} as IDatabaseTransactionClient;
     let useCase: TermPolicyProcessPublishUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
         const module = await Test.createTestingModule({
@@ -52,7 +54,11 @@ describe('TermPolicyProcessPublishUseCase', () => {
                 { provide: NotificationService, useValue: notificationService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: UserService, useValue: userService },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(TermPolicyProcessPublishUseCase);
@@ -84,7 +90,6 @@ describe('TermPolicyProcessPublishUseCase', () => {
         };
 
         beforeEach(() => {
-            helperDateService.createFromIso.mockReturnValue(cutoff);
             Object.defineProperty(
                 termPolicyRecipientService,
                 'emailBatchSize',
@@ -129,9 +134,6 @@ describe('TermPolicyProcessPublishUseCase', () => {
 
             const result = await useCase.execute(payload);
 
-            expect(helperDateService.createFromIso).toHaveBeenCalledWith(
-                data.recipientCutoffAt
-            );
             expect(
                 userService.getListActiveRecipientCursor
             ).toHaveBeenNthCalledWith(1, null, 3, cutoff);

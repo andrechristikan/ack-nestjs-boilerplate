@@ -1,27 +1,15 @@
-import { EnumHelperPemLabel } from '@common/helper/enums/helper.enum';
-import { mock } from 'vitest-mock-extended';
-import type { MockProxy } from 'vitest-mock-extended';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { generateKeyPairSync } from 'node:crypto';
 import { FirebaseUtil } from '@common/firebase/utils/firebase.util';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 
 describe('FirebaseUtil', () => {
-    const helperEncryptionService: MockProxy<HelperEncryptionService> =
-        mock<HelperEncryptionService>();
     let util: FirebaseUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
-            providers: [
-                FirebaseUtil,
-                {
-                    provide: HelperEncryptionService,
-                    useValue: helperEncryptionService,
-                },
-            ],
+            providers: [FirebaseUtil, HelperEncryptionService],
         }).compile();
 
         util = module.get(FirebaseUtil);
@@ -43,28 +31,22 @@ describe('FirebaseUtil', () => {
             const result = util.normalizePrivateKey(pem);
 
             expect(result).toBe(pem.replace(/\\n/g, '\n'));
-            expect(
-                helperEncryptionService.derBase64ToPem
-            ).not.toHaveBeenCalled();
         });
 
-        it('frames a base64-encoded DER key as PEM through the kit helper', () => {
-            helperEncryptionService.derBase64ToPem.mockReturnValue('pem-key');
+        it('frames a base64-encoded DER key as PEM', () => {
+            const { privateKey } = generateKeyPairSync('ed25519');
+            const der = privateKey
+                .export({ format: 'der', type: 'pkcs8' })
+                .toString('base64');
 
-            const result = util.normalizePrivateKey('base64-der');
+            const result = util.normalizePrivateKey(der);
 
-            expect(result).toBe('pem-key');
-            expect(helperEncryptionService.derBase64ToPem).toHaveBeenCalledWith(
-                'base64-der',
-                EnumHelperPemLabel.privateKey
+            expect(result).toBe(
+                `-----BEGIN PRIVATE KEY-----\n${der}\n-----END PRIVATE KEY-----\n`
             );
         });
 
-        it('returns null when the kit helper rejects the bytes', () => {
-            helperEncryptionService.derBase64ToPem.mockImplementation(() => {
-                throw new Error('not a key');
-            });
-
+        it('returns null when the bytes are not a private key', () => {
             const result = util.normalizePrivateKey('not-a-valid-key');
 
             expect(result).toBeNull();

@@ -8,6 +8,7 @@ import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { MessageValidationIssueFallbackKey } from '@common/message/constants/message.constant';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 type TestIssue = StandardSchemaV1.Issue & { code?: unknown };
 
@@ -22,24 +23,14 @@ describe('MessageService', () => {
     const i18n: MockProxy<I18nService> = mock<I18nService>({
         translate: translate as I18nService['translate'],
     });
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
 
     let service: MessageService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        configGet.mockImplementation((key: string) => {
-            if (key === 'message.defaultLanguage') {
-                return EnumMessageLanguage.en;
-            }
-            if (key === 'message.availableLanguages') {
-                return [EnumMessageLanguage.en];
-            }
-            return undefined;
+        configService = buildConfigService({
+            'message.defaultLanguage': EnumMessageLanguage.en,
+            'message.availableLanguages': [EnumMessageLanguage.en],
         });
 
         const module: TestingModule = await Test.createTestingModule({

@@ -12,8 +12,6 @@ describe('AnalyticDevicesInactivityUseCase', () => {
     let useCase: AnalyticDevicesInactivityUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticDevicesInactivityUseCase,

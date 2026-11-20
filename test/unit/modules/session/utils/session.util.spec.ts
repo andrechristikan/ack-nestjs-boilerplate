@@ -6,7 +6,6 @@ describe('SessionUtil', () => {
     let util: SessionUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module: TestingModule = await Test.createTestingModule({
             providers: [SessionUtil],
         }).compile();

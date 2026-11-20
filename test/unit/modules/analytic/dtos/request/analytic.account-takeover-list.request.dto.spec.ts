@@ -26,29 +26,37 @@ describe('AnalyticAccountTakeoverListRequestSchema', () => {
         expect(
             AnalyticAccountTakeoverListRequestSchema.safeParse({
                 windowMs: 1000,
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
         expect(
             AnalyticAccountTakeoverListRequestSchema.safeParse({
                 startDate: '2026-01-01T00:00:00.000Z',
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            AnalyticAccountTakeoverListRequestSchema.parse({
-                page: 1,
-                extra: true,
-            })
-        ).toThrow();
+        const result = AnalyticAccountTakeoverListRequestSchema.safeParse({
+            page: 1,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
         expect(
             AnalyticAccountTakeoverListRequestSchema.safeParse({ search: 'x' })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -87,15 +95,25 @@ describe('AnalyticAccountTakeoverListRequestSchema', () => {
     ])('rejects the orderBy %s', orderBy => {
         expect(
             AnalyticAccountTakeoverListRequestSchema.safeParse({ orderBy })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             AnalyticAccountTakeoverListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

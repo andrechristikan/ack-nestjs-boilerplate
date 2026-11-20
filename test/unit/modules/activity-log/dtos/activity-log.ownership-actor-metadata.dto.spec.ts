@@ -14,19 +14,30 @@ describe('ActivityLogOwnershipActorMetadataSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ActivityLogOwnershipActorMetadataSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ActivityLogOwnershipActorMetadataSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a missing field', () => {
-        expect(() =>
-            ActivityLogOwnershipActorMetadataSchema.parse({
-                targetUserId: 'user-2',
-            })
-        ).toThrow();
+        const result = ActivityLogOwnershipActorMetadataSchema.safeParse({
+            targetUserId: 'user-2',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['workspaceId'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['previousOwnerUserId'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

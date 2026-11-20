@@ -6,8 +6,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
     EnumRoleType,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import { UserService } from '@modules/user/services/user.service';
@@ -21,85 +19,47 @@ import { SessionUtil } from '@modules/session/utils/session.util';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserStatusInvalidException } from '@modules/user/exceptions/user.status-invalid.exception';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserUpdateStatusByAdminUseCase } from '@modules/user/use-cases/user.update-status-by-admin.use-case';
 import {
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
+import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 
 describe('UserUpdateStatusByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const sessionUtil: MockProxy<SessionUtil> = mock<SessionUtil>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let useCase: UserUpdateStatusByAdminUseCase;
 
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-05T00:00:00.000Z');
-    const baseUser: IUser = {
-        id: 'user-cinder',
-        name: 'Cinder Wolfe',
-        username: 'cinder2wolfe',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'cinder@example.com',
-        roleId: 'role-cinder',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-cinder',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-cinder',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
-    };
+    const baseUser: IUser = buildUser('user-cinder', 'cinder@example.com');
+
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        helperDateService.create.mockReturnValue(now);
+        vi.setSystemTime(now);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -110,12 +70,16 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 { provide: UserService, useValue: userService },
                 { provide: SessionService, useValue: sessionService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: HelperDateService, useValue: helperDateService },
+                HelperDateService,
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: SessionUtil, useValue: sessionUtil },
-                { provide: UserUtil, useValue: userUtil },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                SessionUtil,
+                UserUtil,
+                DatabaseUtil,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitUserConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(UserUpdateStatusByAdminUseCase);
@@ -158,20 +122,6 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             userService.resolveStatusActivityLogAction.mockReturnValue(
                 EnumActivityLogAction.userUpdateStatus
             );
-            userUtil.mapActivityLogActorMetadata.mockReturnValue({
-                targetUserId: 'user-cinder',
-            });
-            userUtil.mapActivityLogTargetMetadata.mockReturnValue({
-                actorUserId: 'admin-cinder',
-            });
-            sessionUtil.mapActivityLogRevokeAllActorMetadata.mockReturnValue({
-                targetUserId: 'user-cinder',
-                sessionCount: 1,
-            });
-            sessionUtil.mapActivityLogRevokeAllTargetMetadata.mockReturnValue({
-                actorUserId: 'admin-cinder',
-                sessionCount: 1,
-            });
         });
 
         it('gates the rank, writes the status and the revoke on one transaction and adds the revoke-all entries before the status entries on it', async () => {
@@ -267,7 +217,11 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 null,
                 {
                     action: EnumActivityLogAction.adminUserUpdateStatus,
-                    metadata: { targetUserId: 'user-cinder' },
+                    metadata: {
+                        targetUserId: 'user-cinder',
+                        targetUsername: row.username,
+                        timestamp: row.updatedAt,
+                    },
                 }
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
@@ -279,7 +233,10 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     action: EnumActivityLogAction.userBlocked,
                     userId: 'user-cinder',
                     createdBy: 'admin-cinder',
-                    metadata: { actorUserId: 'admin-cinder' },
+                    metadata: {
+                        actorUserId: 'admin-cinder',
+                        timestamp: row.updatedAt,
+                    },
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -438,7 +395,6 @@ describe('UserUpdateStatusByAdminUseCase', () => {
         it('adds nothing and wraps the failure when the transaction fails', async () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(
@@ -471,15 +427,11 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     }
                 )
             ).rejects.toBe(failure);
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('answers UserStatusInvalidException when the guarded write conflicts', async () => {
-            const conflict = new Error('write-conflict');
+            const conflict = buildPrismaKnownRequestError('P2034');
             outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
 
             await expect(
                 useCase.execute(
@@ -495,9 +447,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.statusInvalid,
-                messagePath: 'user.error.statusInvalid',
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 

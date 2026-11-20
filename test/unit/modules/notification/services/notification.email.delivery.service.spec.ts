@@ -2,11 +2,16 @@ import { Test } from '@nestjs/testing';
 import { BulkEmailStatus } from '@aws-sdk/client-ses';
 import type { SendBulkTemplatedEmailCommandOutput } from '@aws-sdk/client-ses';
 import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { buildSealedNotificationPayload } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
-import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { EnumHelperStatusCodeError } from '@common/helper/enums/helper.status-code.enum';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import {
@@ -22,43 +27,41 @@ import { NotificationEmailDeliveryService } from '@modules/notification/services
 
 describe('NotificationEmailDeliveryService', () => {
     const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     let service: NotificationEmailDeliveryService;
 
     const stampedAt = new Date('2024-03-01T00:00:00.000Z');
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
-        vi.mocked(configService.get).mockImplementation((key: string) => {
-            const values: Record<string, string> = {
-                'email.noReplyAddress': 'noreply@example.com',
-                'email.supportAddress': 'support@example.com',
-                'frontend.name': 'Home',
-                'frontend.baseUrl': 'https://home.example.com',
-            };
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(stampedAt);
+    });
 
-            return values[key];
-        });
-        helperDateService.create.mockReturnValue(stampedAt);
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
         messageService.setMessage.mockImplementation((path: string) => path);
-        notificationUtil.decryptPayload.mockImplementation((value: string) =>
-            value.replace(/^cipher\((.*)\)$/, '$1')
-        );
         const module = await Test.createTestingModule({
             providers: [
                 NotificationEmailDeliveryService,
-                { provide: NotificationUtil, useValue: notificationUtil },
+                NotificationUtil,
                 { provide: MessageService, useValue: messageService },
                 { provide: AwsSESService, useValue: awsSESService },
-                { provide: ConfigService, useValue: configService },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'email.noReplyAddress': 'noreply@example.com',
+                        'email.supportAddress': 'support@example.com',
+                        'frontend.name': 'Home',
+                        'frontend.baseUrl': 'https://home.example.com',
+                    }),
+                },
                 {
                     provide: NotificationRepository,
                     useValue: notificationRepository,
@@ -139,13 +142,19 @@ describe('NotificationEmailDeliveryService', () => {
                 {
                     userId: 'user-1',
                     notificationId: 'notification-1',
-                    encryptedEmail: 'cipher(nadia@example.com)',
+                    encryptedEmail: buildSealedNotificationPayload(
+                        'nadia@example.com',
+                        'user-1'
+                    ),
                     username: 'nadia',
                 },
                 {
                     userId: 'user-2',
                     notificationId: 'notification-2',
-                    encryptedEmail: 'cipher(omar@example.com)',
+                    encryptedEmail: buildSealedNotificationPayload(
+                        'omar@example.com',
+                        'user-2'
+                    ),
                     username: 'omar',
                 },
             ];
@@ -165,14 +174,6 @@ describe('NotificationEmailDeliveryService', () => {
                 recipients
             );
 
-            expect(notificationUtil.decryptPayload).toHaveBeenCalledWith(
-                'cipher(nadia@example.com)',
-                'user-1'
-            );
-            expect(notificationUtil.decryptPayload).toHaveBeenCalledWith(
-                'cipher(omar@example.com)',
-                'user-2'
-            );
             expect(awsSESService.sendBulk).toHaveBeenCalledTimes(1);
             expect(awsSESService.sendBulk).toHaveBeenCalledWith({
                 templateName: EnumNotificationKind.publishTermPolicy,
@@ -217,7 +218,10 @@ describe('NotificationEmailDeliveryService', () => {
                 {
                     userId: 'user-3',
                     notificationId: 'notification-3',
-                    encryptedEmail: 'cipher(sara@example.com)',
+                    encryptedEmail: buildSealedNotificationPayload(
+                        'sara@example.com',
+                        'user-3'
+                    ),
                     username: 'sara',
                 },
             ]);
@@ -230,14 +234,22 @@ describe('NotificationEmailDeliveryService', () => {
         });
 
         it('rethrows a decryption failure without sending', async () => {
-            const error = new HelperDecryptFailedException();
-            notificationUtil.decryptPayload.mockImplementation(() => {
-                throw error;
-            });
+            const sealedForAnother = [
+                {
+                    ...recipients[0]!,
+                    encryptedEmail: buildSealedNotificationPayload(
+                        'nadia@example.com',
+                        'user-9'
+                    ),
+                },
+            ];
 
             await expect(
-                service.sendPublishTermPolicy(data, batchId, recipients)
-            ).rejects.toBe(error);
+                service.sendPublishTermPolicy(data, batchId, sealedForAnother)
+            ).rejects.toMatchObject({
+                module: 'helper',
+                statusCode: EnumHelperStatusCodeError.decryptFailed,
+            });
             expect(awsSESService.sendBulk).not.toHaveBeenCalled();
         });
 

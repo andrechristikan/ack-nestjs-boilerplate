@@ -31,8 +31,16 @@ describe('RoleListResponseSchema', () => {
     });
 
     it('rejects a non-number policies count', () => {
-        expect(() =>
-            RoleListResponseSchema.parse({ ...row, policies: [] })
-        ).toThrow();
+        const result = RoleListResponseSchema.safeParse({
+            ...row,
+            policies: [],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['policies'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

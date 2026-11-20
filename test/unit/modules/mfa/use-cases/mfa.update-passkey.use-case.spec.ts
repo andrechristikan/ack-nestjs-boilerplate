@@ -43,7 +43,6 @@ describe('MfaUpdatePasskeyUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );

@@ -20,8 +20,6 @@ describe('AnalyticAuthPasswordChangeUseCase', () => {
     let useCase: AnalyticAuthPasswordChangeUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticAuthPasswordChangeUseCase,

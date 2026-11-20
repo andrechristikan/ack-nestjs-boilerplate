@@ -1,22 +1,25 @@
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import {
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
+} from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
-import { AnalyticLoginSpikeIpOrderBy } from '@modules/analytic/constants/analytic.list.constant';
 import { AnalyticLoginSpikeIpListUseCase } from '@modules/analytic/use-cases/analytic.login-spike-ip-list.use-case';
-import { EnumAnalyticLoginSpikeIpOrderBy } from '@modules/analytic/enums/analytic.enum';
 
 describe('AnalyticLoginSpikeIpListUseCase', () => {
     const analyticAnomalyService: MockProxy<AnalyticAnomalyService> =
         mock<AnalyticAnomalyService>();
-
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
 
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
@@ -24,7 +27,7 @@ describe('AnalyticLoginSpikeIpListUseCase', () => {
     const pagination: IPaginationQueryOffsetParams = {
         skip: 0,
         limit: 20,
-        orderBy: [],
+        orderBy: [{ uniqueUsers: EnumPaginationOrderDirectionType.desc }],
     };
 
     const offsetPage = {
@@ -40,12 +43,6 @@ describe('AnalyticLoginSpikeIpListUseCase', () => {
     let useCase: AnalyticLoginSpikeIpListUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        paginationQueryUtil.offset.mockReturnValue({
-            params: pagination,
-            storePatch: {},
-        });
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticLoginSpikeIpListUseCase,
@@ -53,7 +50,11 @@ describe('AnalyticLoginSpikeIpListUseCase', () => {
                     provide: AnalyticAnomalyService,
                     useValue: analyticAnomalyService,
                 },
-                { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -84,13 +85,6 @@ describe('AnalyticLoginSpikeIpListUseCase', () => {
             expect(
                 analyticAnomalyService.loginSpikeIpList
             ).toHaveBeenCalledWith(pagination);
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
-                expect.anything(),
-                {
-                    orderBy: AnalyticLoginSpikeIpOrderBy,
-                    defaultOrderBy: EnumAnalyticLoginSpikeIpOrderBy.mostUsers,
-                }
-            );
             expect(requestStoreService.merge).toHaveBeenCalledTimes(1);
         });
     });

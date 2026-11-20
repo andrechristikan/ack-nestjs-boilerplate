@@ -18,8 +18,6 @@ describe('AnalyticLoginSpikeIpSummaryUseCase', () => {
     let useCase: AnalyticLoginSpikeIpSummaryUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticLoginSpikeIpSummaryUseCase,

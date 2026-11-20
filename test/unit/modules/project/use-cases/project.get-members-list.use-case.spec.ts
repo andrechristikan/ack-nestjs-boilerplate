@@ -1,10 +1,13 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import {
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
+} from '@common/pagination/enums/pagination.enum';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
@@ -13,28 +16,26 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
-import {
-    ProjectMemberOrderBy,
-    ProjectMemberUserListCursorScope,
-} from '@modules/project/constants/project.list.constant';
+import { ProjectMemberOrderBy } from '@modules/project/constants/project.list.constant';
 import { ProjectGetMembersListUseCase } from '@modules/project/use-cases/project.get-members-list.use-case';
 import { buildProjectContext } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumProjectMemberOrderBy } from '@modules/project/enums/project.enum';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('ProjectGetMembersListUseCase', () => {
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
 
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
-
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
     const pagination: IPaginationQueryCursorParams = {
-        fingerprint: 'aaaaaaaaaaaaaaaa',
-        where: { OR: [] },
-        orderBy: [],
+        fingerprint: '511e62f8636f8271',
+        orderBy: [{ createdAt: EnumPaginationOrderDirectionType.desc }],
         limit: 20,
     };
 
@@ -81,8 +82,6 @@ describe('ProjectGetMembersListUseCase', () => {
     const projectContext = buildProjectContext(project, null);
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectGetMembersListUseCase,
@@ -90,7 +89,11 @@ describe('ProjectGetMembersListUseCase', () => {
                     provide: ProjectMemberService,
                     useValue: projectMemberService,
                 },
-                { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
         }).compile();
@@ -101,10 +104,6 @@ describe('ProjectGetMembersListUseCase', () => {
     describe('execute', () => {
         it('parses the cursor query, merges the store patch, and returns the domain page', async () => {
             const query: ProjectMemberListRequestDto = { perPage: 20 };
-            paginationQueryUtil.cursor.mockReturnValue({
-                params: pagination,
-                storePatch: { cursor: 'next' },
-            });
             const page: IResponsePaginationReturn<IProjectMember> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -116,14 +115,14 @@ describe('ProjectGetMembersListUseCase', () => {
             const result = await useCase.execute(projectContext, query);
 
             expect(result).toEqual(page);
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                scope: ProjectMemberUserListCursorScope,
-                orderBy: ProjectMemberOrderBy,
-                defaultOrderBy: EnumProjectMemberOrderBy.latest,
-            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                { cursor: 'next' }
+                {
+                    perPage: 20,
+                    orderBy: EnumProjectMemberOrderBy.latest,
+                    availableSearch: [],
+                    availableOrderBy: Object.keys(ProjectMemberOrderBy),
+                }
             );
             expect(projectMemberService.getMembersList).toHaveBeenCalledWith(
                 project,

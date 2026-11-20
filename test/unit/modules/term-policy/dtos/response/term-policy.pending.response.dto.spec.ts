@@ -29,6 +29,11 @@ describe('TermPolicyPendingResponseSchema', () => {
             termPolicies: [{ ...ref, type: 'unknown' }],
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['termPolicies', 0, 'type'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 });

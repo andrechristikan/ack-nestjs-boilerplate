@@ -14,8 +14,6 @@ describe('AnalyticSessionAfterAdminSummaryUseCase', () => {
     let useCase: AnalyticSessionAfterAdminSummaryUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticSessionAfterAdminSummaryUseCase,

@@ -1,6 +1,6 @@
 # Add a status code
 
-Invariants: `.claude/rules/exception-class.md`, `.claude/rules/exceptions.md` (5-digit integer, one contiguous hundred per owner, sequential members, enum files are the registry). Reference: `src/modules/device/enums/device.status-code.enum.ts` and `src/modules/device/exceptions/device.not-found.exception.ts`.
+Invariants: `.claude/rules/exception-class.md`, `.claude/rules/exceptions.md` (5-digit integer, one contiguous hundred per owner, sequential members). Reference: `src/modules/device/enums/device.status-code.enum.ts` and `src/modules/device/exceptions/device.not-found.exception.ts`.
 
 ## 1. Scan first
 
@@ -23,8 +23,8 @@ Open the owner's enum and find a member that already means the thing. Add a memb
 
 1. Check headroom: the next sequential number stays inside the owner's hundred. When it does not, stop and report.
 2. Append the member at the next number, no gap, camelCase descriptor (`src/modules/user/enums/user.status-code.enum.ts`).
-3. Create `exceptions/<module>.<descriptor>.exception.ts` from `DeviceNotFoundException` (`src/modules/device/exceptions/device.not-found.exception.ts`): `module`, `statusCode` by member name, `statusCodeKey` as the reverse lookup on the same member, `httpStatus`, and `super('<module>.error.<descriptor>')`. Named constructor params go into `messageProperties`.
-4. Choose `httpStatus` deliberately: it is the wire status and the Sentry switch (500 and above is reported). 500 is only for an unknown error or a bug we detect ourselves; a failure outside an HTTP request gets no member and extends `AppUnknownException` (`.claude/rules/exceptions.md`, The hierarchy).
+3. Create `exceptions/<module>.<descriptor>.exception.ts` from `DeviceNotFoundException` (`src/modules/device/exceptions/device.not-found.exception.ts`).
+4. Choose `httpStatus` as `.claude/rules/exceptions.md`, The hierarchy, gives.
 5. Add `error.<descriptor>` to `src/languages/<lang>/<module>.json` in every language directory (`.claude/rules/i18n.md`).
 6. Throw it from the service, or return it from a util for the caller to throw.
 

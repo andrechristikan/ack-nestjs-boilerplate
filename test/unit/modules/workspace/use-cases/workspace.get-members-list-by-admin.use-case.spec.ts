@@ -1,14 +1,14 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import type {
-    IPaginationQueryCursorParams,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import {
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
+} from '@common/pagination/enums/pagination.enum';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { WorkspaceMemberOrderBy } from '@modules/workspace/constants/workspace.list.constant';
@@ -17,37 +17,25 @@ import { WorkspaceMemberService } from '@modules/workspace/services/workspace.me
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceGetMembersListByAdminUseCase } from '@modules/workspace/use-cases/workspace.get-members-list-by-admin.use-case';
 import { EnumWorkspaceMemberOrderBy } from '@modules/workspace/enums/workspace.enum';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('WorkspaceGetMembersListByAdminUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const cursorPagination: IPaginationQueryCursorParams = {
-        fingerprint: 'aaaaaaaaaaaaaaaa',
-        limit: 20,
-        orderBy: [],
-    };
     const offsetPagination: IPaginationQueryOffsetParams = {
         skip: 0,
         limit: 20,
-        orderBy: [],
+        orderBy: [{ createdAt: EnumPaginationOrderDirectionType.desc }],
     };
     let useCase: WorkspaceGetMembersListByAdminUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        paginationQueryUtil.cursor.mockReturnValue({
-            params: cursorPagination,
-            storePatch: {},
-        });
-        paginationQueryUtil.offset.mockReturnValue({
-            params: offsetPagination,
-            storePatch: {},
-        });
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceGetMembersListByAdminUseCase,
@@ -55,9 +43,10 @@ describe('WorkspaceGetMembersListByAdminUseCase', () => {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
                 },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
@@ -85,13 +74,15 @@ describe('WorkspaceGetMembersListByAdminUseCase', () => {
 
             await useCase.execute('workspace-1', query);
 
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                orderBy: WorkspaceMemberOrderBy,
-                defaultOrderBy: EnumWorkspaceMemberOrderBy.latest,
-            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                {}
+                {
+                    page: 1,
+                    perPage: 20,
+                    orderBy: EnumWorkspaceMemberOrderBy.latest,
+                    availableSearch: [],
+                    availableOrderBy: Object.keys(WorkspaceMemberOrderBy),
+                }
             );
             expect(
                 workspaceMemberService.getMembersListByAdmin

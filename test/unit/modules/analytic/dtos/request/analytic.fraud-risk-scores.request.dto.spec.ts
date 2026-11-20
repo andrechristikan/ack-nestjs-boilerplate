@@ -24,17 +24,23 @@ describe('AnalyticFraudRiskScoresRequestSchema', () => {
     });
 
     it('rejects a negative minScore', () => {
-        expect(() =>
-            AnalyticFraudRiskScoresRequestSchema.parse({ minScore: -1 })
-        ).toThrow();
+        const result = AnalyticFraudRiskScoresRequestSchema.safeParse({
+            minScore: -1,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['minScore'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            AnalyticFraudRiskScoresRequestSchema.parse({
-                ...payload,
-                userId: 'user-1',
-            })
-        ).toThrow();
+        const result = AnalyticFraudRiskScoresRequestSchema.safeParse({
+            ...payload,
+            userId: 'user-1',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

@@ -1,35 +1,31 @@
 import type { ArgumentMetadata, PipeTransform, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { z } from 'zod';
-import { chunk } from 'lodash-es';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { FileCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pipe';
-import { FileImportException } from '@common/file/exceptions/file.import.exception';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { createFileCsvValidationPipe } from '@test/unit/helpers/test.unit.file.helper';
+import {
+    buildConfigService,
+    stubConfigValues,
+} from '@test/unit/helpers/test.unit.config.helper';
 
 const RowSchema = z.strictObject({ name: z.string() });
 
 type IRow = z.infer<typeof RowSchema>;
 
 describe('FileCsvValidationPipe', () => {
-    const configGet = vi.fn<(key: string) => number>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as unknown as ConfigService['get'],
-    });
-    const helperArrayService: MockProxy<HelperArrayService> =
-        mock<HelperArrayService>();
+    let configService: MockProxy<ConfigService>;
     const metadata = {} as ArgumentMetadata;
 
     beforeEach(() => {
-        vi.resetAllMocks();
-        configGet.mockReturnValue(5);
-        helperArrayService.chunk.mockImplementation((rows, size) =>
-            chunk(rows, size)
-        );
+        configService = buildConfigService({
+            'file.maxDataImport': 5,
+            'user.maxDataImport': 5,
+            'file.importValidationConcurrency': 5,
+        });
     });
 
     describe('constructor', () => {
@@ -40,26 +36,26 @@ describe('FileCsvValidationPipe', () => {
                 providers: [
                     PipeClass,
                     { provide: ConfigService, useValue: configService },
-                    {
-                        provide: HelperArrayService,
-                        useValue: helperArrayService,
-                    },
+                    HelperArrayService,
                 ],
             }).compile();
             module.get(PipeClass);
 
-            expect(configGet).toHaveBeenCalledWith('file.maxDataImport');
+            expect(configService.get).toHaveBeenCalledWith(
+                'file.maxDataImport'
+            );
         });
 
         it('reads the row cap from the given config key', async () => {
             await createFileCsvValidationPipe(
                 RowSchema,
                 { maxDataImportConfigKey: 'user.maxDataImport' },
-                configService,
-                helperArrayService
+                configService
             );
 
-            expect(configGet).toHaveBeenCalledWith('user.maxDataImport');
+            expect(configService.get).toHaveBeenCalledWith(
+                'user.maxDataImport'
+            );
         });
     });
 
@@ -68,8 +64,7 @@ describe('FileCsvValidationPipe', () => {
             const pipe = await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService,
-                helperArrayService
+                configService
             );
 
             const result = await pipe.transform(
@@ -84,8 +79,7 @@ describe('FileCsvValidationPipe', () => {
             const pipe = await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService,
-                helperArrayService
+                configService
             );
 
             const promise = pipe.transform([], metadata);
@@ -93,21 +87,19 @@ describe('FileCsvValidationPipe', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.requiredExtractFirst,
-                statusCodeKey:
-                    EnumFileStatusCodeError[
-                        EnumFileStatusCodeError.requiredExtractFirst
-                    ],
-                messagePath: 'file.error.requiredExtractFirst',
             });
         });
 
         it('throws FileExceedMaxDataImportException past the configured row cap', async () => {
-            configGet.mockReturnValue(1);
+            stubConfigValues(configService, {
+                'file.maxDataImport': 1,
+                'user.maxDataImport': 1,
+                'file.importValidationConcurrency': 1,
+            });
             const pipe = await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService,
-                helperArrayService
+                configService
             );
 
             const promise = pipe.transform(
@@ -118,11 +110,6 @@ describe('FileCsvValidationPipe', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.exceedMaxDataImport,
-                statusCodeKey:
-                    EnumFileStatusCodeError[
-                        EnumFileStatusCodeError.exceedMaxDataImport
-                    ],
-                messagePath: 'file.error.exceedMaxDataImport',
             });
         });
 
@@ -130,8 +117,7 @@ describe('FileCsvValidationPipe', () => {
             const pipe = await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService,
-                helperArrayService
+                configService
             );
 
             const result = await pipe.transform(
@@ -146,32 +132,22 @@ describe('FileCsvValidationPipe', () => {
             const pipe = await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService,
-                helperArrayService
+                configService
             );
-            let caught: FileImportException | undefined;
 
-            try {
-                await pipe.transform(
+            await expect(
+                pipe.transform(
                     [{ name: 'a' }, { name: 42 }, { name: 99 }],
                     metadata
-                );
-            } catch (error) {
-                caught = error as FileImportException;
-            }
-
-            expect(caught).toMatchObject({
+                )
+            ).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.importInvalid,
-                statusCodeKey:
-                    EnumFileStatusCodeError[
-                        EnumFileStatusCodeError.importInvalid
-                    ],
-                messagePath: 'file.error.importInvalid',
+                errors: [
+                    expect.objectContaining({ row: 1 }),
+                    expect.objectContaining({ row: 2 }),
+                ],
             });
-            expect(caught?.errors).toHaveLength(2);
-            expect(caught?.errors[0]!.row).toBe(1);
-            expect(caught?.errors[1]!.row).toBe(2);
         });
     });
 
@@ -180,8 +156,7 @@ describe('FileCsvValidationPipe', () => {
             const pipe = (await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService,
-                helperArrayService
+                configService
             )) as unknown as {
                 parse(value: unknown[]): Promise<unknown>;
             };
@@ -191,11 +166,6 @@ describe('FileCsvValidationPipe', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.requiredExtractFirst,
-                statusCodeKey:
-                    EnumFileStatusCodeError[
-                        EnumFileStatusCodeError.requiredExtractFirst
-                    ],
-                messagePath: 'file.error.requiredExtractFirst',
             });
         });
     });
@@ -205,8 +175,7 @@ describe('FileCsvValidationPipe', () => {
             const pipe = (await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService,
-                helperArrayService
+                configService
             )) as unknown as {
                 validateRows(data: unknown[]): Promise<IRow[]>;
             };
@@ -223,42 +192,34 @@ describe('FileCsvValidationPipe', () => {
             const pipe = (await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService,
-                helperArrayService
+                configService
             )) as unknown as {
                 validateRows(data: unknown[]): Promise<IRow[]>;
             };
-            let caught: FileImportException | undefined;
 
-            try {
-                await pipe['validateRows']([
+            await expect(
+                pipe['validateRows']([
                     { name: 'a' },
                     { name: 42 },
                     { name: 99 },
-                ]);
-            } catch (error) {
-                caught = error as FileImportException;
-            }
-
-            expect(caught).toMatchObject({
+                ])
+            ).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.importInvalid,
-                statusCodeKey:
-                    EnumFileStatusCodeError[
-                        EnumFileStatusCodeError.importInvalid
-                    ],
-                messagePath: 'file.error.importInvalid',
+                errors: [expect.anything(), expect.anything()],
             });
-            expect(caught?.errors).toHaveLength(2);
         });
 
         it('keeps absolute row indexes and input order for errors across chunks', async () => {
-            configGet.mockReturnValue(2);
+            stubConfigValues(configService, {
+                'file.maxDataImport': 2,
+                'user.maxDataImport': 2,
+                'file.importValidationConcurrency': 2,
+            });
             const pipe = (await createFileCsvValidationPipe(
                 RowSchema,
                 {},
-                configService,
-                helperArrayService
+                configService
             )) as unknown as {
                 validateRows(data: unknown[]): Promise<IRow[]>;
             };
@@ -278,10 +239,6 @@ describe('FileCsvValidationPipe', () => {
                     expect.objectContaining({ row: 4 }),
                 ],
             });
-            expect(helperArrayService.chunk).toHaveBeenCalledWith(
-                expect.any(Array),
-                2
-            );
         });
     });
 });

@@ -13,7 +13,7 @@ argument-hint: '<a .scratch/ spec path>'
 
 Input: $ARGUMENTS
 
-The session writes the tickets and the plan index. One agent reads: `reviewer`, cold. One agent may edit them: `advisor`, as the last cold-read attempt. Write nothing under `src/`, `test/`, or `prisma/`. Where a copied skill and a rule or this file differ, the rule and this file win.
+The session writes the tickets and the plan index. One agent reads: `reviewer`, cold. One agent may edit them: `advisor`, as the last cold-read attempt. Write nothing under `src/`, `test/`, or `prisma/`.
 
 ## Start
 
@@ -25,7 +25,7 @@ The session writes the tickets and the plan index. One agent reads: `reviewer`, 
 Follow `.claude/skills/to-tickets/SKILL.md`, with these departures:
 
 - The tracker is local markdown (`.claude/CLAUDE.md`, Work artifacts): one file per ticket at `.scratch/<feature>/issues/<NN>-<slug>.md`.
-- A platform issue is created only when the owner asks for one in this run. `gh issue create` runs on the owner's word.
+-
 - Its step 4 quiz uses `AskUserQuestion`.
 - A wide refactor is one ticket that changes every call site. This repository takes no expand-contract sequence (`AGENTS.md`).
 - Each ticket also carries `**Seam:**`, from the spec's Testing Decisions, and `**First failing spec:**`, the behaviour its first unit spec asserts.
@@ -52,8 +52,6 @@ JSON
 | ----------------------------------------------------------- | -------------- |
 | touches the schema, a transaction, concurrency, or security | sonnet, high   |
 | any other                                                   | sonnet, medium |
-
-No ticket runs below the `effort` in `coder`'s frontmatter.
 
 ## 3. Plan index
 

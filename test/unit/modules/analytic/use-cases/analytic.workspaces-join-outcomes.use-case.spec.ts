@@ -20,8 +20,6 @@ describe('AnalyticWorkspacesJoinOutcomesUseCase', () => {
     let useCase: AnalyticWorkspacesJoinOutcomesUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticWorkspacesJoinOutcomesUseCase,

@@ -24,6 +24,10 @@ describe('DatabaseIdResponseSchema', () => {
     });
 
     it('rejects a missing id', () => {
-        expect(() => DatabaseIdResponseSchema.parse({})).toThrow();
+        const result = DatabaseIdResponseSchema.safeParse({});
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['id'], code: 'invalid_type' }),
+        ]);
     });
 });

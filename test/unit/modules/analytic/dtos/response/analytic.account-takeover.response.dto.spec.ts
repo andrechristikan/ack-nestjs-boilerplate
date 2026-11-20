@@ -20,21 +20,31 @@ describe('AnalyticAccountTakeoverResponseSchema', () => {
     });
 
     it('rejects an indicator code that is no contributing signal', () => {
-        expect(() =>
-            AnalyticAccountTakeoverResponseSchema.parse({
-                ...row,
-                indicatorCodes: ['newDevice'],
-            })
-        ).toThrow();
+        const result = AnalyticAccountTakeoverResponseSchema.safeParse({
+            ...row,
+            indicatorCodes: ['newDevice'],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['indicatorCodes', 0],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects a passwordChangedAt that is not a Date', () => {
-        expect(() =>
-            AnalyticAccountTakeoverResponseSchema.parse({
-                ...row,
-                passwordChangedAt: passwordChangedAt.toISOString(),
-            })
-        ).toThrow();
+        const result = AnalyticAccountTakeoverResponseSchema.safeParse({
+            ...row,
+            passwordChangedAt: passwordChangedAt.toISOString(),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passwordChangedAt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('strips an undeclared key', () => {

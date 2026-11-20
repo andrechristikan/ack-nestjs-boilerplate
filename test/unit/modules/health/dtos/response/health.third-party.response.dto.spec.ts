@@ -47,19 +47,29 @@ describe('HealthThirdPartyResponseSchema', () => {
     });
 
     it('rejects an invalid status value', () => {
-        expect(() =>
-            HealthThirdPartyResponseSchema.parse({
-                ...payload,
-                status: 'invalid',
-            })
-        ).toThrow();
+        const result = HealthThirdPartyResponseSchema.safeParse({
+            ...payload,
+            status: 'invalid',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['status'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects a missing details field', () => {
         const { details: _details, ...withoutDetails } = payload;
 
-        expect(() =>
-            HealthThirdPartyResponseSchema.parse(withoutDetails)
-        ).toThrow();
+        const result = HealthThirdPartyResponseSchema.safeParse(withoutDetails);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['details'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

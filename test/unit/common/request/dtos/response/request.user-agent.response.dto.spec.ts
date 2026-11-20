@@ -77,8 +77,13 @@ describe('RequestUserAgentResponseSchema', () => {
     it('rejects a missing required group', () => {
         const { browser: _browser, ...withoutBrowser } = payload;
 
-        expect(() =>
-            RequestUserAgentResponseSchema.parse(withoutBrowser)
-        ).toThrow();
+        const result = RequestUserAgentResponseSchema.safeParse(withoutBrowser);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['browser'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

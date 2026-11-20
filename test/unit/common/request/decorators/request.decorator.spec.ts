@@ -140,14 +140,9 @@ describe('request.decorator', () => {
         const requestLog = buildRequestLog();
 
         beforeEach(() => {
-            vi.resetAllMocks();
             vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue(
                 clsService
             );
-        });
-
-        afterEach(() => {
-            vi.restoreAllMocks();
         });
 
         it('throws RequestContextMissingException when the store holds no request log', () => {

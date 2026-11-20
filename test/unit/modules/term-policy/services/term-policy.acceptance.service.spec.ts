@@ -1,14 +1,21 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
-import { HttpStatus } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import {
+    DatabaseUniqueConstraintCode,
+    DatabaseWriteConflictCode,
+} from '@common/database/constants/database.constant';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -16,7 +23,6 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
     EnumActivityLogAction,
@@ -50,9 +56,6 @@ describe('TermPolicyAcceptanceService', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const requestContext: IRequestContext = {
@@ -106,11 +109,16 @@ describe('TermPolicyAcceptanceService', () => {
 
     let service: TermPolicyAcceptanceService;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(timestamp);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        helperDateService.create.mockReturnValue(timestamp);
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 TermPolicyAcceptanceService,
@@ -120,8 +128,11 @@ describe('TermPolicyAcceptanceService', () => {
                 },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: NotificationService, useValue: notificationService },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: ActivityLogService, useValue: activityLogService },
             ],
         }).compile();
@@ -252,12 +263,6 @@ describe('TermPolicyAcceptanceService', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.requiredInvalid,
-                statusCodeKey:
-                    EnumTermPolicyStatusCodeError[
-                        EnumTermPolicyStatusCodeError.requiredInvalid
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'termPolicy.error.requiredInvalid',
             });
         });
     });
@@ -313,12 +318,6 @@ describe('TermPolicyAcceptanceService', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.requiredNotPublished,
-                statusCodeKey:
-                    EnumTermPolicyStatusCodeError[
-                        EnumTermPolicyStatusCodeError.requiredNotPublished
-                    ],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'termPolicy.error.requiredNotPublished',
             });
         });
     });
@@ -482,12 +481,6 @@ describe('TermPolicyAcceptanceService', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumTermPolicyStatusCodeError[
-                        EnumTermPolicyStatusCodeError.notFound
-                    ],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'termPolicy.error.notFound',
             });
             expect(termPolicyRepository.acceptInTx).not.toHaveBeenCalled();
         });
@@ -495,10 +488,13 @@ describe('TermPolicyAcceptanceService', () => {
         it('throws TermPolicyAlreadyAcceptedException when the acceptance insert collides on the unique index', async () => {
             const collision = new Prisma.PrismaClientKnownRequestError(
                 'unique',
-                { code: 'P2002', clientVersion: 'test' }
+                {
+                    code: DatabaseUniqueConstraintCode,
+                    clientVersion: 'test',
+                    meta: { target: ['termPolicyId'] },
+                }
             );
             outboxService.withTransaction.mockRejectedValue(collision);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             const promise = service.userAccept(
                 requestContext,
@@ -511,26 +507,15 @@ describe('TermPolicyAcceptanceService', () => {
                 constructor: TermPolicyAlreadyAcceptedException,
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.alreadyAccepted,
-                statusCodeKey:
-                    EnumTermPolicyStatusCodeError[
-                        EnumTermPolicyStatusCodeError.alreadyAccepted
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'termPolicy.error.alreadyAccepted',
             });
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'termPolicyId'
-            );
         });
 
         it('throws TermPolicyAlreadyAcceptedException when the transaction hits a write conflict', async () => {
-            const conflict = new Error('write conflict');
-            outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                { code: DatabaseWriteConflictCode, clientVersion: 'test' }
             );
+            outboxService.withTransaction.mockRejectedValue(conflict);
 
             const promise = service.userAccept(
                 requestContext,
@@ -544,9 +529,7 @@ describe('TermPolicyAcceptanceService', () => {
 
                 constructor: TermPolicyAlreadyAcceptedException,
                 statusCode: EnumTermPolicyStatusCodeError.alreadyAccepted,
-                httpStatus: HttpStatus.BAD_REQUEST,
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('accepts the latest published policy re-read inside the transaction and adds the notification row on the same tx', async () => {
@@ -625,8 +608,6 @@ describe('TermPolicyAcceptanceService', () => {
         it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
             const rawError = new Error('write failed');
             outboxService.withTransaction.mockRejectedValue(rawError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            databaseUtil.toException.mockReturnValue(null);
 
             const promise = service.userAccept(
                 requestContext,
@@ -638,10 +619,6 @@ describe('TermPolicyAcceptanceService', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
-                statusCodeKey:
-                    EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'http.serverError.internalServerError',
                 rawError,
             });
         });

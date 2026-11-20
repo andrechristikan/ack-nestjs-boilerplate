@@ -167,16 +167,22 @@ export class AuthJwtService {
         };
     }
 
-    private remainingSeconds(exp: number | null): number {
+    private remainingSeconds(exp: number): number {
         const today = this.helperDateService.create();
         const expiredAt = this.helperDateService.createFromTimestamp(
-            (exp ?? 0) * 1000
+            exp * 1000
         );
         const remaining = this.helperDateService.diff(expiredAt, today);
 
-        return remaining.seconds
-            ? remaining.seconds
-            : Math.floor(remaining.milliseconds / 1000);
+        return Math.floor(remaining.milliseconds / 1000);
+    }
+
+    private getRefreshExp({ exp }: IAuthJwtRefreshTokenPayload): number {
+        if (exp === undefined) {
+            throw new AuthJwtRefreshTokenInvalidException();
+        }
+
+        return exp;
     }
 
     createAccessToken(
@@ -299,21 +305,17 @@ export class AuthJwtService {
         );
     }
 
-    /** Decodes the given refresh token without verifying it, then signs another pair under a fresh jti in the same session; the issued refresh token expires when the old one would. */
+    /** Decodes the given refresh token without verifying it, then signs another pair under a fresh jti in the same session; the issued refresh token expires when the old one would, and a token carrying no `exp` throws `AuthJwtRefreshTokenInvalidException` before anything is signed. */
     refreshToken(
         user: IUser,
         refreshTokenFromRequest: string
     ): IAuthAccessTokenGenerate {
-        const {
-            deviceOwnershipId,
-            sessionId,
-            loginAt,
-            loginFrom,
-            loginWith,
-            exp: oldExp,
-        } = this.payloadToken<IAuthJwtRefreshTokenPayload>(
+        const payload = this.payloadToken<IAuthJwtRefreshTokenPayload>(
             refreshTokenFromRequest
         );
+        const oldExp = this.getRefreshExp(payload);
+        const { deviceOwnershipId, sessionId, loginAt, loginFrom, loginWith } =
+            payload;
 
         const jti = this.authUtil.generateJti();
         const payloadAccessToken: IAuthJwtAccessTokenPayload =
@@ -334,9 +336,7 @@ export class AuthJwtService {
         const newPayloadRefreshToken: IAuthJwtRefreshTokenPayload =
             this.createPayloadRefreshToken(payloadAccessToken);
 
-        const newRefreshTokenExpireInSeconds = this.remainingSeconds(
-            oldExp ?? null
-        );
+        const newRefreshTokenExpireInSeconds = this.remainingSeconds(oldExp);
 
         const newRefreshToken: string = this.createRefreshToken(
             user.id,

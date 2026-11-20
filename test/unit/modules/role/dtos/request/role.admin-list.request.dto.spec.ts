@@ -29,18 +29,24 @@ describe('RoleAdminListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            RoleAdminListRequestSchema.parse({ extra: true })
-        ).toThrow();
+        const result = RoleAdminListRequestSchema.safeParse({ extra: true });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a type of 256 characters and rejects one of 257', () => {
         expect(() =>
             RoleAdminListRequestSchema.parse({ type: 'a'.repeat(256) })
         ).not.toThrow();
-        expect(() =>
-            RoleAdminListRequestSchema.parse({ type: 'a'.repeat(257) })
-        ).toThrow();
+        const result = RoleAdminListRequestSchema.safeParse({
+            type: 'a'.repeat(257),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'too_big' }),
+        ]);
     });
 
     it('keeps the module search description', () => {
@@ -77,16 +83,26 @@ describe('RoleAdminListRequestSchema', () => {
         'default',
         'createdAt',
     ])('rejects the orderBy %s', orderBy => {
-        expect(RoleAdminListRequestSchema.safeParse({ orderBy }).success).toBe(
-            false
-        );
+        expect(
+            RoleAdminListRequestSchema.safeParse({ orderBy }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             RoleAdminListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

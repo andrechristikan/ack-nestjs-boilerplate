@@ -4,40 +4,42 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { MessageService } from '@common/message/services/message.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { ActivityLogSharedListRequestDto } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import { buildActivityLog } from '@test/unit/helpers/test.unit.activity-log.helper';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import {
-    ActivityLogOrderBy,
-    ActivityLogSharedUserListCursorScope,
-} from '@modules/activity-log/constants/activity-log.list.constant';
 import { ActivityLogGetListCursorByUserUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-cursor-by-user.use-case';
 import {
     buildUser,
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { EnumActivityLogOrderBy } from '@modules/activity-log/enums/activity-log.enum';
 
 describe('ActivityLogGetListCursorByUserUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const activityLogUtil: MockProxy<ActivityLogUtil> = mock<ActivityLogUtil>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
     const params = {
-        skip: 0,
         limit: 20,
-        orderBy: [],
-        fingerprint: 'aaaaaaaaaaaaaaaa',
+        orderBy: [{ createdAt: 'desc' }],
+        fingerprint: '723a24ea34e8e3fb',
     };
-    const storePatch = { perPage: 20 };
+    const storePatch = {
+        perPage: 20,
+        orderBy: 'latest',
+        availableSearch: [],
+        availableOrderBy: ['latest'],
+    };
     const cursorQuery: ActivityLogSharedListRequestDto = {};
     const cursorPage = {
         type: EnumPaginationType.cursor as const,
@@ -53,16 +55,16 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
     let useCase: ActivityLogGetListCursorByUserUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ActivityLogGetListCursorByUserUseCase,
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: ActivityLogUtil, useValue: activityLogUtil },
+                ActivityLogUtil,
+                { provide: MessageService, useValue: mock<MessageService>() },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 {
                     provide: RequestStoreService,
@@ -76,23 +78,13 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
 
     describe('execute', () => {
         it('resolves cursor pagination and returns the domain page', async () => {
-            paginationQueryUtil.cursor.mockReturnValue({ params, storePatch });
             activityLogService.getListCursorByUser.mockResolvedValue(
                 cursorPage
             );
-            activityLogUtil.toMaskedList.mockReturnValue(cursorPage.data);
 
             const result = await useCase.execute(authContext, cursorQuery);
 
             expect(result).toEqual(cursorPage);
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(
-                cursorQuery,
-                {
-                    scope: ActivityLogSharedUserListCursorScope,
-                    orderBy: ActivityLogOrderBy,
-                    defaultOrderBy: EnumActivityLogOrderBy.latest,
-                }
-            );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 storePatch
@@ -103,7 +95,7 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
             );
         });
 
-        it('maps every row of the page through toMaskedList with the reader id', async () => {
+        it('masks every row the reader did not create', async () => {
             const own = buildActivityLog('log-1', 'user-1');
             const other = buildActivityLog('log-2', 'admin-1');
             const hidden = {
@@ -113,13 +105,11 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
                 geoLocation: null,
                 createdBy: null,
             };
-            paginationQueryUtil.cursor.mockReturnValue({ params, storePatch });
             activityLogService.getListCursorByUser.mockResolvedValue({
                 ...cursorPage,
                 hasNext: true,
                 data: [own, other],
             });
-            activityLogUtil.toMaskedList.mockReturnValue([own, hidden]);
 
             const result = await useCase.execute(authContext, cursorQuery);
 
@@ -128,10 +118,6 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
                 hasNext: true,
                 data: [own, hidden],
             });
-            expect(activityLogUtil.toMaskedList).toHaveBeenCalledWith(
-                [own, other],
-                'user-1'
-            );
         });
     });
 });

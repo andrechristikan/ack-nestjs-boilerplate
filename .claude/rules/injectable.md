@@ -7,7 +7,7 @@ paths:
 
 ## NestJS idiomatic
 
-Hand-rolling what Nest provides is a defect: no service locator, no manual `new` of an injectable, no bare `@UseGuards` where a `@<Feature>Protected()` exists. Exceptions: `ClsServiceManager.getClsService()` in a `createParamDecorator` factory, and the per-class `new Logger(ClassName.name)` (Logger).
+Hand-rolling what Nest provides is a defect: no service locator, no manual `new` of an injectable, no bare `@UseGuards` where a `@<Feature>Protected()` exists. Exceptions: `ClsServiceManager.getClsService()` in a `createParamDecorator` factory, the per-class `new Logger(ClassName.name)` (Logger), and `ModuleRef.get(getQueueToken(...))` in `OutboxService` (`outbox.md`).
 
 An outbound HTTP call goes through `HttpClient` from `@nestjs/http-client`, never global `fetch`, `axios`, or `@nestjs/axios`; every client sets `redirect: 'error'` and a `timeout`.
 
@@ -22,13 +22,13 @@ An outbound HTTP call goes through `HttpClient` from `@nestjs/http-client`, neve
 
 ## Logger
 
-- One `private readonly logger = new Logger(ClassName.name)` per class, never module-level; `error`, a `warn` that carries a caught error, and a line that carries fields are object-first (`this.logger.error(error, 'context')`, `this.logger.warn({ key, err: error }, 'context')`, `this.logger.warn({ statusCode }, 'context')`), the rest message-first.
+- One `private readonly logger = new Logger(ClassName.name)` per class, never module-level (`MigrationSeedBase` names its own `baseLogger`, beside a subclass's `logger`); `error`, a `warn` that carries a caught error, and a line that carries fields are object-first (`this.logger.error(error, 'context')`, `this.logger.warn({ key, err: error }, 'context')`, `this.logger.warn({ statusCode }, 'context')`), the rest message-first.
 
 ## Config
 
-- Outside `src/configs/` and `src/instrument.ts`, code reads `ConfigService.get<T>('namespace.key')`, `T` named, once into a `private readonly` constructor field. A module `useFactory`, a queue options factory, `bootstrap.ts`, `configure.ts`, and `swagger.ts` read where they build.
+- Outside `src/configs/` and `src/instrument.ts`, code reads `ConfigService.get<T>('namespace.key')`, `T` named, once into a `private readonly` constructor field. A module `useFactory`, a queue options factory, a `super(...)` argument, `bootstrap.ts`, `configure.ts`, and `swagger.ts` read where they build.
 - A field or a local holding a config value takes its name from the path, and no other word:
     - the last segment, whole (`cacheTtlInMs` for `auth.xApiKey.cacheTtlInMs`);
-    - an earlier segment only where two fields of the class would share a name, or the bare name is a reserved word or reads as another thing (`s3Public` for `aws.s3.public`, `throttleUser` for `request.throttle.user`);
+    - an earlier segment only where two fields of the class would share a name, or the bare name is a reserved word, reads as another thing, or does not say which subject it measures (`massRegistrationMinAccountsPerIp`; `s3Public` for `aws.s3.public`, `throttleUser` for `request.throttle.user`);
     - a leading word of the last segment drops only when it repeats the class name (`backoffDelayInMs` for `queue.job.emailBackoffDelayInMs` in `NotificationEmailQueueFactory`).
-- A TTL, an outbound HTTP timeout, a retry or backoff count, size threshold, chunk size, rollout percent, sample rate, cron pattern, rate limit, unique-value retry budget (`*MaxAttempts`), or idempotency key pattern (`<namespace>.idempotencyKey.<name>Pattern`, `effects.md`) is a camelCase config key, never a literal or bare `const` outside `src/configs/`; a value a library fixes, or one read at decoration time, at schema-definition time, or before Nest exists, is a constant (`config.md`, Layers). A password or MFA attempt budget and its lock duration are flag metadata (`feature-flag.md`, Metadata).
+- A TTL, an outbound HTTP timeout, a retry or backoff count, size threshold, chunk size, cron pattern, rate limit, unique-value retry budget (`*MaxAttempts`), or idempotency key pattern (`<namespace>.idempotencyKey.<name>Pattern`, `effects.md`) is a camelCase config key, never a literal or bare `const` outside `src/configs/`; constants and flag metadata: `config.md`, Layers.

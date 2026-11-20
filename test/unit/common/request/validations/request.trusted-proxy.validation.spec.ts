@@ -20,30 +20,31 @@ describe('RequestTrustedProxySchema', () => {
     it.each(['true', 'false', '1', '2', 'localhost', 'loopbak'])(
         'rejects the hop count, boolean, or unknown name %s',
         value => {
-            expect(RequestTrustedProxySchema.safeParse(value).success).toBe(
-                false
-            );
+            expect(
+                RequestTrustedProxySchema.safeParse(value).error?.issues
+            ).toEqual([expect.objectContaining({ path: [], code: 'custom' })]);
         }
     );
 
     it.each(['10.0.0.0/33', '10.0.0.0/255.0.0.0', '10.0.0.999', ','])(
         'rejects the malformed address or CIDR %s',
         value => {
-            expect(RequestTrustedProxySchema.safeParse(value).success).toBe(
-                false
-            );
+            expect(
+                RequestTrustedProxySchema.safeParse(value).error?.issues
+            ).toEqual([expect.objectContaining({ path: [], code: 'custom' })]);
         }
     );
 
     it('rejects a list holding an empty entry', () => {
         expect(
-            RequestTrustedProxySchema.safeParse('loopback,,uniquelocal').success
-        ).toBe(false);
+            RequestTrustedProxySchema.safeParse('loopback,,uniquelocal').error
+                ?.issues
+        ).toEqual([expect.objectContaining({ path: [], code: 'custom' })]);
     });
 
     it('rejects a list holding one valid and one invalid entry', () => {
         expect(
-            RequestTrustedProxySchema.safeParse('loopback,true').success
-        ).toBe(false);
+            RequestTrustedProxySchema.safeParse('loopback,true').error?.issues
+        ).toEqual([expect.objectContaining({ path: [], code: 'custom' })]);
     });
 });

@@ -2,7 +2,7 @@
 
 `tsconfig.json` runs `strict`, `exactOptionalPropertyTypes`, and `noUncheckedIndexedAccess`. Two rules carry the weight:
 
-1. `undefined` is legal only at the input boundary: request DTO body and query DTO. Every layer deeper speaks `null`.
+1. `undefined` is legal only at the input boundary, request DTO body and query DTO, and in the rows of the table below that write `?`. Every other layer speaks `null`.
 2. Never write `field?: Type | null`: a caller cannot tell whether omitting the field and passing `null` mean the same thing. Pick one.
 
 ## Where each convention applies

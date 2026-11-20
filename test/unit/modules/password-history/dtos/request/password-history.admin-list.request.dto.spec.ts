@@ -21,19 +21,23 @@ describe('PasswordHistoryAdminListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            PasswordHistoryAdminListRequestSchema.parse({
-                ...payload,
-                cursor: 'x',
-            })
-        ).toThrow();
+        const result = PasswordHistoryAdminListRequestSchema.safeParse({
+            ...payload,
+            cursor: 'x',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
         expect(
             PasswordHistoryAdminListRequestSchema.safeParse({ search: 'x' })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -69,15 +73,26 @@ describe('PasswordHistoryAdminListRequestSchema', () => {
         'expiredAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            PasswordHistoryAdminListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            PasswordHistoryAdminListRequestSchema.safeParse({ orderBy }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             PasswordHistoryAdminListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

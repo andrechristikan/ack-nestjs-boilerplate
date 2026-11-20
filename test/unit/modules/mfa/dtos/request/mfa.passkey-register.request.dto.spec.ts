@@ -42,7 +42,20 @@ describe('MfaPasskeyRegisterRequestSchema', () => {
             passkeyResponse: registrationResponse,
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeyResponse', 'response', 'authenticatorData'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['passkeyResponse', 'response', 'signature'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['passkeyResponse', 'response'],
+                code: 'unrecognized_keys',
+            }),
+        ]);
     });
 
     it.each([['challengeToken'], ['name'], ['registrationResponse']])(
@@ -55,7 +68,9 @@ describe('MfaPasskeyRegisterRequestSchema', () => {
 
             const result = MfaPasskeyRegisterRequestSchema.safeParse(rest);
 
-            expect(result.success).toBe(false);
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({ path: [key], code: 'invalid_type' }),
+            ]);
         }
     );
 
@@ -72,7 +87,16 @@ describe('MfaPasskeyRegisterRequestSchema', () => {
             },
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['registrationResponse', 'response', 'attestationObject'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['registrationResponse', 'response'],
+                code: 'unrecognized_keys',
+            }),
+        ]);
     });
 
     it('accepts a name of 50 characters and rejects an empty one and one of 51', () => {
@@ -84,14 +108,18 @@ describe('MfaPasskeyRegisterRequestSchema', () => {
         ).toBe(true);
         expect(
             MfaPasskeyRegisterRequestSchema.safeParse({ ...payload, name: '' })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_small' }),
+        ]);
         expect(
             MfaPasskeyRegisterRequestSchema.safeParse({
                 ...payload,
                 name: 'a'.repeat(51),
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects a challengeToken of 129 characters', () => {
@@ -100,7 +128,12 @@ describe('MfaPasskeyRegisterRequestSchema', () => {
             challengeToken: 'a'.repeat(129),
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['challengeToken'],
+                code: 'too_big',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
@@ -109,6 +142,8 @@ describe('MfaPasskeyRegisterRequestSchema', () => {
             username: 'johnSmith123',
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

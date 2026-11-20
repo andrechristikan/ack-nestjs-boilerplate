@@ -21,7 +21,7 @@ A lint rule that cannot hold everywhere is the owner's to remove, for every file
 
 ## Composed strings
 
-A string with placeholders is a `{token}` pattern (`naming.md`): one token is `String.prototype.replace` with a function replacement whenever the value is not a literal in the same file (the string form expands `$&` and `$1`); two or more tokens go through one pass of `HelperStringService.fillPattern` (`helper.string.service.ts`).
+A config string with placeholders is a `{token}` pattern (`naming.md`), and a value composed inside one method is a template literal: one token is `String.prototype.replace` with a function replacement whenever the value is not a literal in the same file (the string form expands `$&` and `$1`); two or more tokens go through one pass of `HelperStringService.fillPattern` (`helper.string.service.ts`).
 
 ## Functions and parameters
 
@@ -35,19 +35,19 @@ Contexts run in the `http.md` order.
 
 ## Literal strings
 
-- A string naming something this project declares is an enum member (`enum.md`, Literal unions).
+- Project-declared strings: `enum.md`, Literal unions.
 - A literal a third-party contract defines keeps that contract's type: BullMQ `backoff.type: 'exponential'` and the `'failed'` worker event, redis `'PX'`, `'XX'`, `'OK'`, Prisma log levels, `PromiseSettledResult.status`. So does the key list of a utility type under `interfaces/` (`Pick<ApiKey, 'id' | 'name'>`).
 - A log context line is a literal English sentence (`this.logger.error(error, 'Queue job failed')`, `injectable.md`, Logger). Queue text that leaves through `IQueueResponse`, `QueueException`, or a side-effect description is i18n (`queue.md`, Messages).
 - A regex holds the allowed characters and format, never the length of the whole value: that length is `.min()`, `.max()`, or `.length()` on the schema, or a `length` comparison against a constant where no schema reads the value (`RequestIdMaxLength`). A quantifier on part of a value (an email TLD, an ARN account id) is format.
 
 ## Dates
 
-- A date stored or passed inside the system (a Prisma column, a Redis value, a job or outbox payload, `Notification.metadata`, a response body) is a `Date` or an ISO 8601 string (`HelperDateService.formatToIso`).
+- A date stored or passed inside the system (a Prisma column, a Redis value, a job or outbox payload, `Notification.metadata`, a response body) is a `Date` or an ISO 8601 string (`HelperDateService.formatToIso`; a pipeline `$date`, a cursor token, and a cache key token use `toISOString`, UTC); the response metadata `timestamp` and the hello probe's `date.timestamp` are epoch milliseconds.
 - RFC 2822 (`HelperDateService.formatToRFC2822`) appears only in text rendered for a person: an email template's data, a push or in-app notification title or body, a generated document. Clock and persistence: `transaction.md`, Dates.
 
 ## Types and comments
 
-Import a shape that already has a name; a hand-written copy or structural subset is a mirror that drifts. Zero copy-paste logic (the `config.md` optional-env ternary excepted), one source per config value, connection, and constant; repeated declarative data (a doc error entry list, a decorator stack on a route) and a call repeated at two sites are not copy-paste logic; a body repeated is, and logic stays single-source (two subjects whose rule can change apart keep their own copy, `service.md`, Methods); duplication still beats the wrong abstraction. No helper taking a function parameter to share a loop: share the predicate, repeat the loop. No helper taking a function or a promise as a parameter to wrap its execution (try/catch, retry, cache-or-compute, a logging wrapper): the wrapping lives in the class that owns the call (`OutboxService.dispatch`). Three exceptions: `DatabaseService.withTransaction`; `OutboxService.withTransaction`, which wraps it (`effects.md`); and `CacheService.readThrough` (`cache.md`). Sentry scope data rides in `SentryService.captureException(exception, captureContext)`.
+Import a shape that already has a name; a hand-written copy or structural subset is a mirror that drifts. Zero copy-paste logic (the `config.md` optional-env ternary and a queue factory's option block (`queue.md`) excepted), one source per config value, connection, and constant; repeated declarative data (a doc error entry list, a decorator stack on a route) and a call repeated at two sites are not copy-paste logic; a body repeated is, and logic stays single-source (two subjects whose rule can change apart keep their own copy, `service.md`, Methods); duplication still beats the wrong abstraction. No helper taking a function parameter to share a loop: share the predicate, repeat the loop. No helper taking a function or a promise as a parameter to wrap its execution (try/catch, retry, cache-or-compute, a logging wrapper): the wrapping lives in the class that owns the call (`OutboxService.dispatch`). Three exceptions: `DatabaseService.withTransaction`; `OutboxService.withTransaction`, which wraps it (`effects.md`); and `CacheService.readThrough` (`cache.md`). Sentry scope data rides in `SentryService.captureException(exception, captureContext)`.
 
 No signature declares `asserts x is T` or `asserts x`. An assert that narrows a nullable input returns the narrowed value, `(value: T | null): T`, and the caller uses the return; a plain assert returns `void`.
 

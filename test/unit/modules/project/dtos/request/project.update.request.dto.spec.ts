@@ -22,56 +22,92 @@ describe('ProjectUpdateRequestSchema', () => {
     });
 
     it('rejects an empty body', () => {
-        expect(() => ProjectUpdateRequestSchema.parse({})).toThrow();
+        const result = ProjectUpdateRequestSchema.safeParse({});
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'invalid_type' }),
+            expect.objectContaining({
+                path: ['description'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a body missing the name', () => {
-        expect(() =>
-            ProjectUpdateRequestSchema.parse({
-                description: payload.description,
-            })
-        ).toThrow();
+        const result = ProjectUpdateRequestSchema.safeParse({
+            description: payload.description,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects a body missing the description', () => {
-        expect(() =>
-            ProjectUpdateRequestSchema.parse({ name: payload.name })
-        ).toThrow();
+        const result = ProjectUpdateRequestSchema.safeParse({
+            name: payload.name,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['description'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a null name', () => {
-        expect(() =>
-            ProjectUpdateRequestSchema.parse({ ...payload, name: null })
-        ).toThrow();
+        const result = ProjectUpdateRequestSchema.safeParse({
+            ...payload,
+            name: null,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects an empty name', () => {
-        expect(() =>
-            ProjectUpdateRequestSchema.parse({ ...payload, name: '' })
-        ).toThrow();
+        const result = ProjectUpdateRequestSchema.safeParse({
+            ...payload,
+            name: '',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a name over 150 characters', () => {
-        expect(() =>
-            ProjectUpdateRequestSchema.parse({
-                ...payload,
-                name: 'a'.repeat(151),
-            })
-        ).toThrow();
+        const result = ProjectUpdateRequestSchema.safeParse({
+            ...payload,
+            name: 'a'.repeat(151),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects a description over 500 characters', () => {
-        expect(() =>
-            ProjectUpdateRequestSchema.parse({
-                ...payload,
-                description: 'a'.repeat(501),
-            })
-        ).toThrow();
+        const result = ProjectUpdateRequestSchema.safeParse({
+            ...payload,
+            description: 'a'.repeat(501),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['description'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ProjectUpdateRequestSchema.parse({ ...payload, extra: true })
-        ).toThrow();
+        const result = ProjectUpdateRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

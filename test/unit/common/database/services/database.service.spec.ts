@@ -3,7 +3,6 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { MockProxy } from 'vitest-mock-extended';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
 import { DatabaseService } from '@common/database/services/database.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
 import type { Prisma } from '@generated/prisma-client/client';
 import { createDatabaseService } from '@test/unit/helpers/test.unit.database.helper';
@@ -12,13 +11,17 @@ describe('DatabaseService', () => {
     const client: MockProxy<IDatabaseClient> = mock<IDatabaseClient>();
     const databaseClientFactory: MockProxy<DatabaseClientFactory> =
         mock<DatabaseClientFactory>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     let service: DatabaseService;
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
 
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
         service = await createDatabaseService(
             {
                 'database.debugEnabled': true,
@@ -26,8 +29,7 @@ describe('DatabaseService', () => {
                 'database.warnWindowInMs': 60000,
             },
             databaseClientFactory,
-            client,
-            helperDateService
+            client
         );
     });
 
@@ -63,8 +65,7 @@ describe('DatabaseService', () => {
                     'database.slowQueryThresholdInMs': 500,
                 },
                 databaseClientFactory,
-                client,
-                helperDateService
+                client
             );
             client.$connect.mockResolvedValue(undefined);
 
@@ -187,7 +188,7 @@ describe('DatabaseService', () => {
         const now = new Date('2026-01-01T00:00:00.000Z');
 
         it('returns true on its first call and false on a second call at the same time', () => {
-            helperDateService.create.mockReturnValue(now);
+            vi.setSystemTime(now);
 
             const first = service.isFirstUnavailableInWindow();
             const second = service.isFirstUnavailableInWindow();
@@ -197,11 +198,9 @@ describe('DatabaseService', () => {
         });
 
         it('returns false 59999 ms after the first call', () => {
-            helperDateService.create
-                .mockReturnValueOnce(now)
-                .mockReturnValueOnce(new Date('2026-01-01T00:00:59.999Z'));
-
+            vi.setSystemTime(now);
             service.isFirstUnavailableInWindow();
+            vi.setSystemTime(new Date('2026-01-01T00:00:59.999Z'));
             const result = service.isFirstUnavailableInWindow();
 
             expect(result).toBe(false);
@@ -209,12 +208,9 @@ describe('DatabaseService', () => {
 
         it('returns true 60000 ms after the first call and false on the call after that', () => {
             const later = new Date('2026-01-01T00:01:00.000Z');
-            helperDateService.create
-                .mockReturnValueOnce(now)
-                .mockReturnValueOnce(later)
-                .mockReturnValueOnce(later);
-
+            vi.setSystemTime(now);
             service.isFirstUnavailableInWindow();
+            vi.setSystemTime(later);
             const second = service.isFirstUnavailableInWindow();
             const third = service.isFirstUnavailableInWindow();
 
@@ -289,8 +285,7 @@ describe('DatabaseService', () => {
                     'database.slowQueryThresholdInMs': 500,
                 },
                 databaseClientFactory,
-                client,
-                helperDateService
+                client
             );
 
             await offService['setupLogging']();
@@ -329,8 +324,7 @@ describe('DatabaseService', () => {
                     'database.slowQueryThresholdInMs': 500,
                 },
                 databaseClientFactory,
-                client,
-                helperDateService
+                client
             );
 
             expect(() =>

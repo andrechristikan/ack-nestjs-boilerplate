@@ -1,8 +1,7 @@
+import type { MockProxy } from 'vitest-mock-extended';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
-import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumRoleType,
     EnumUserSignUpFrom,
@@ -13,22 +12,13 @@ import type { User } from '@generated/prisma-client/client';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { Duration } from 'luxon';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('UserUtil', () => {
-    const configGet = vi.fn<(key: string) => string[] | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
-
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
+    let configService: MockProxy<ConfigService>;
 
     let util: UserUtil;
-
-    const configValues: Record<string, string[]> = {
-        'message.availableLanguages': ['en'],
-    };
 
     const user: User = {
         id: 'user-marigold',
@@ -81,47 +71,46 @@ describe('UserUtil', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        configGet.mockImplementation(key => configValues[key]);
-        helperDateService.forward.mockImplementation(
-            (date, duration: Duration) =>
-                new Date(date.getTime() + duration.as('milliseconds'))
-        );
+        configService = buildConfigService({
+            ...TestUnitKitConfigValues,
+            'message.availableLanguages': ['en'],
+        });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserUtil,
                 { provide: ConfigService, useValue: configService },
-                { provide: HelperDateService, useValue: helperDateService },
+                HelperDateService,
             ],
         }).compile();
         util = module.get(UserUtil);
     });
 
     describe('isInsideResendWindow', () => {
+        beforeAll(() => {
+            vi.useFakeTimers();
+        });
+
+        afterAll(() => {
+            vi.useRealTimers();
+        });
+
         const lastCreatedAt = new Date('2026-03-01T00:00:00.000Z');
 
         it('returns true one minute after the last request with a five-minute window', () => {
-            helperDateService.create.mockReturnValue(
-                new Date('2026-03-01T00:01:00.000Z')
-            );
+            vi.setSystemTime(new Date('2026-03-01T00:01:00.000Z'));
 
             expect(util.isInsideResendWindow(lastCreatedAt, 5)).toBe(true);
         });
 
         it('returns false at the exact end of the window', () => {
-            helperDateService.create.mockReturnValue(
-                new Date('2026-03-01T00:05:00.000Z')
-            );
+            vi.setSystemTime(new Date('2026-03-01T00:05:00.000Z'));
 
             expect(util.isInsideResendWindow(lastCreatedAt, 5)).toBe(false);
         });
 
         it('returns false once the window has passed', () => {
-            helperDateService.create.mockReturnValue(
-                new Date('2026-03-01T00:06:00.000Z')
-            );
+            vi.setSystemTime(new Date('2026-03-01T00:06:00.000Z'));
 
             expect(util.isInsideResendWindow(lastCreatedAt, 5)).toBe(false);
         });

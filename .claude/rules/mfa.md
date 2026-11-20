@@ -1,7 +1,8 @@
 ---
 paths:
     - 'src/modules/mfa/**'
-    - 'src/modules/user/**'
+    - 'src/modules/user/services/**'
+    - 'src/modules/user/use-cases/**'
     - 'src/configs/mfa.config.ts'
     - 'src/app/dtos/app.env.dto.ts'
     - '.env.example'
@@ -17,7 +18,7 @@ paths:
 
 Sessions: `session.md`. Credentials, cryptography, and the request store: `security.md`. Sign-in and accounts: `login.md`.
 
-`MfaTotp.secret` holds only a confirmed authenticator, encrypted with the TOTP root (`mfa.totp.encryptionSecret`) and the user id. Setup writes `pendingSecret` and is refused while a confirmed secret exists; confirming moves it into `secret`; disable deletes the row. A missing or undecryptable secret raises `MfaTotpSecretUnavailableException` (409).
+`MfaTotp.secret` holds only a confirmed authenticator, encrypted with the TOTP root (`mfa.totp.encryptionSecret`) and the user id. Setup writes `pendingSecret` and is refused while a confirmed secret exists; confirming moves it into `secret`; disable deletes the row. An undecryptable secret raises `MfaTotpSecretUnavailableException` (409); a user with no confirmed secret is a method not enrolled (below).
 
 - The factors are TOTP, one per user, and passkey: WebAuthn through `@simplewebauthn/server`, user verification required, up to the `mfa` flag's `passkeyMaxPerUser` per user. MFA is on with a confirmed TOTP or any passkey the `mfa` flag allows (`feature-flag.md`, Gating); a user enrols several factors and picks one per challenge. A biometric (Face ID, a fingerprint) is the passkey: no device key pair of our own, no WebAuthn on `node:crypto`. SMS is no factor. `MFA_PASSKEY_RP_ID` and `MFA_PASSKEY_ORIGINS` are required environment keys.
 - Each `MFA_PASSKEY_ORIGINS` entry is an exact origin (`https://host`, `http://host[:port]`, no path, no trailing slash), `https://*.<domain>` with `<domain>` the RP ID or under it, or `android:apk-key-hash:<hash>`; `AppEnvSchema` refuses any other shape at boot, and a `*` entry in production; elsewhere `*` admits any origin. `MfaPasskeyService` reads the origin from the response's `clientDataJSON`, matches it against the entries, and passes that response origin to the library as `expectedOrigin`.

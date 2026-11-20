@@ -1,4 +1,10 @@
 import { UserUtil } from '@modules/user/utils/user.util';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -33,13 +39,14 @@ import type {
 } from '@modules/workspace/interfaces/workspace.interface';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import {
-    buildUser,
-    buildWorkspaceMember,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspace,
     buildWorkspaceContext,
+    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { WorkspaceCreateInviteUseCase } from '@modules/workspace/use-cases/workspace.create-invite.use-case';
 
@@ -48,20 +55,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
         mock<WorkspaceInviteService>();
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const workspace: Workspace = {
-        id: 'workspace-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: 'user-1',
-        deletedAt: null,
-        deletedBy: null,
-        name: 'Acme',
-        slug: 'acme-team',
-        description: null,
-        isPublic: false,
-    };
+    const workspace: Workspace = buildWorkspace();
     const invite: WorkspaceInvite = {
         id: 'invite-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -156,8 +150,6 @@ describe('WorkspaceCreateInviteUseCase', () => {
     let useCase: WorkspaceCreateInviteUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceCreateInviteUseCase,
@@ -167,7 +159,15 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 },
                 { provide: ProjectService, useValue: projectService },
                 { provide: UserService, useValue: userService },
-                { provide: UserUtil, useValue: userUtil },
+                UserUtil,
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'message.availableLanguages': ['en'],
+                    }),
+                },
             ],
         }).compile();
 
@@ -181,14 +181,13 @@ describe('WorkspaceCreateInviteUseCase', () => {
         };
         beforeEach(() => {
             userService.getOneActiveByEmail.mockResolvedValue(null);
-            userUtil.getDisplayName.mockReturnValue('Jane Doe');
             workspaceInviteService.createInvite.mockResolvedValue({
                 invite,
                 tokenData,
             });
         });
 
-        it('checks, reads the inviter, then writes with the notice and the context for an invitee with no account', async () => {
+        it('checks, then writes with the notice and the context for an invitee with no account', async () => {
             const callOrder: string[] = [];
             userService.getOneActiveByEmail.mockImplementation(async () => {
                 callOrder.push('lookup');
@@ -202,11 +201,6 @@ describe('WorkspaceCreateInviteUseCase', () => {
             );
             workspaceInviteService.assertCreatable.mockImplementation(() => {
                 callOrder.push('assertCreatable');
-            });
-            userUtil.getDisplayName.mockImplementation(() => {
-                callOrder.push('inviterName');
-
-                return 'Jane Doe';
             });
             workspaceInviteService.createInvite.mockImplementation(async () => {
                 callOrder.push('create');
@@ -227,9 +221,6 @@ describe('WorkspaceCreateInviteUseCase', () => {
             expect(callOrder[0]).toBe('paired');
             expect(callOrder.indexOf('assertCreatable')).toBeGreaterThan(
                 callOrder.indexOf('lookup')
-            );
-            expect(callOrder.indexOf('inviterName')).toBeGreaterThan(
-                callOrder.indexOf('assertCreatable')
             );
             expect(callOrder.at(-1)).toBe('create');
             expect(
@@ -277,9 +268,6 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 body
             );
 
-            expect(userUtil.getDisplayName).toHaveBeenCalledWith(
-                userContext.user
-            );
             expect(workspaceInviteService.createInvite).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,

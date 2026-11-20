@@ -11,25 +11,18 @@ import {
     EnumOutboxQueue,
 } from '@common/outbox/enums/outbox.enum';
 import { OutboxQueue } from '@common/outbox/queues/outbox.queue';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('OutboxQueue', () => {
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
     const outboxQueue: MockProxy<Queue> = mock<Queue>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let queue: OutboxQueue;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, number> = {
-                'outbox.sweepIntervalInMs': 60000,
-                'outbox.sweepKeepCompleted': 20,
-            };
-
-            return values[key];
+        configService = buildConfigService({
+            'outbox.sweepIntervalInMs': 60000,
+            'outbox.sweepKeepCompleted': 20,
         });
 
         const module: TestingModule = await Test.createTestingModule({

@@ -53,8 +53,6 @@ describe('WorkspaceUtil', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [WorkspaceUtil],
         }).compile();

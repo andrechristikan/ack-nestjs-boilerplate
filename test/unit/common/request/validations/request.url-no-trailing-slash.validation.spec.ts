@@ -10,13 +10,15 @@ describe('RequestUrlNoTrailingSlashSchema', () => {
     it('rejects a URL with a trailing slash', () => {
         expect(
             RequestUrlNoTrailingSlashSchema.safeParse('http://localhost:4566/')
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([expect.objectContaining({ path: [], code: 'custom' })]);
     });
 
     it('rejects a value that is not a URL', () => {
         expect(
-            RequestUrlNoTrailingSlashSchema.safeParse('not a url').success
-        ).toBe(false);
+            RequestUrlNoTrailingSlashSchema.safeParse('not a url').error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'invalid_format' }),
+        ]);
     });
 });

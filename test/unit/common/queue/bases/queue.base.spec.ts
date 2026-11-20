@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import type { Queue, QueueListener } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -10,7 +11,7 @@ describe('QueueBase', () => {
     let errorListener: QueueListener['error'] | null = null;
 
     beforeEach(() => {
-        vi.resetAllMocks();
+        errorListener = null;
         queue.on.mockImplementation((_event, listener) => {
             errorListener = listener as QueueListener['error'];
 
@@ -28,20 +29,26 @@ describe('QueueBase', () => {
             );
         });
 
-        it('classifies a connection error raised on the queue and returns without throwing', () => {
+        it('classifies a connection error raised on the queue and does not log it', () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
             const error = new Error('connect ECONNREFUSED 127.0.0.1:6379');
             cacheService.isConnectionError.mockReturnValue(true);
 
+            expect(errorListener).not.toBeNull();
             expect(() => errorListener?.(error)).not.toThrow();
             expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+            expect(warn).not.toHaveBeenCalled();
         });
 
-        it('classifies any other error raised on the queue and handles it without throwing', () => {
+        it('classifies any other error raised on the queue and logs a warning', () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
             const error = new Error('queue failure');
             cacheService.isConnectionError.mockReturnValue(false);
 
+            expect(errorListener).not.toBeNull();
             expect(() => errorListener?.(error)).not.toThrow();
             expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+            expect(warn).toHaveBeenCalledWith(error, 'Queue error');
         });
     });
 });

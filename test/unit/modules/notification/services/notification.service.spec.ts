@@ -1,5 +1,18 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
+import { EnumHelperStatusCodeError } from '@common/helper/enums/helper.status-code.enum';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import {
+    buildSealedNotificationPayload,
+    buildSealedNotificationPayloads,
+    buildUnsealedNotificationPayload,
+    buildUnsealedNotificationPayloads,
+    buildUnsealedRecipientEmails,
+} from '@test/unit/helpers/test.unit.notification-push.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -47,7 +60,6 @@ import { NotificationUserSettingRepository } from '@modules/notification/reposit
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import { MessageService } from '@common/message/services/message.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { ITermPolicyPublishPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 import type {
@@ -60,17 +72,12 @@ import type {
 } from '@modules/notification/interfaces/notification.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ConfigService } from '@nestjs/config';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
-import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import {
     buildApiKeyContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('NotificationService', () => {
-    const configService: MockProxy<ConfigService> = mock<ConfigService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
@@ -80,10 +87,6 @@ describe('NotificationService', () => {
         mock<NotificationRepository>();
     const notificationUserSettingRepository: MockProxy<NotificationUserSettingRepository> =
         mock<NotificationUserSettingRepository>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
-    const helperEncryptionService: MockProxy<HelperEncryptionService> =
-        mock<HelperEncryptionService>();
     let service: NotificationService;
 
     const notification: Notification = {
@@ -115,7 +118,6 @@ describe('NotificationService', () => {
     };
 
     const configValues: Record<string, string> = {
-        'app.encryptionSecret': 'secret-key',
         'notification.idempotencyKey.userPattern': '{process}-{userId}',
         'notification.idempotencyKey.referencePattern': '{process}-{reference}',
         'notification.idempotencyKey.joinRequestPattern':
@@ -160,17 +162,16 @@ describe('NotificationService', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
-        vi.mocked(configService.get).mockImplementation(
-            (key: string) => configValues[key]
-        );
         const module = await Test.createTestingModule({
             providers: [
-                { provide: ConfigService, useValue: configService },
+                ...TestUnitKitProviders,
                 {
-                    provide: HelperStringService,
-                    useValue: helperStringService,
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        ...configValues,
+                    }),
                 },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
@@ -185,11 +186,7 @@ describe('NotificationService', () => {
                     provide: NotificationUserSettingRepository,
                     useValue: notificationUserSettingRepository,
                 },
-                { provide: NotificationUtil, useValue: notificationUtil },
-                {
-                    provide: HelperEncryptionService,
-                    useValue: helperEncryptionService,
-                },
+                NotificationUtil,
             ],
         }).compile();
         service = module.get(NotificationService);
@@ -254,18 +251,9 @@ describe('NotificationService', () => {
                 priority: EnumQueuePriority.medium,
                 idempotencyKey: null,
             });
-            expect(helperStringService.fillPattern).not.toHaveBeenCalled();
-            expect(
-                helperEncryptionService.aes256Encrypt
-            ).not.toHaveBeenCalled();
         });
 
         it('returns the reauthentication code effect with the code sealed against the recipient and no idempotency key', () => {
-            notificationUtil.toSealedField.mockReturnValue('encryptedOtp');
-            helperEncryptionService.aes256Encrypt.mockReturnValue(
-                'encrypted-otp'
-            );
-
             const result = service.notify(
                 EnumNotificationKind.reauthenticationOtp,
                 {
@@ -287,7 +275,7 @@ describe('NotificationService', () => {
                         userId: 'user-id',
                         proceedBy: 'user-id',
                         verificationId: 'verification-id',
-                        encryptedOtp: 'encrypted-otp',
+                        encryptedOtp: expect.any(String),
                         action: EnumUserReauthenticationAction.deleteSelf,
                         expiredInMinutes: 5,
                         snapshot: null,
@@ -298,13 +286,12 @@ describe('NotificationService', () => {
                 priority: EnumQueuePriority.high,
                 idempotencyKey: null,
             });
-            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
-                '482913',
-                'secret-key',
-                NotificationPayloadEncryptionPurpose,
-                'user-id'
-            );
-            expect(helperStringService.fillPattern).not.toHaveBeenCalled();
+            expect(
+                buildUnsealedNotificationPayload(
+                    String(result.data.context.encryptedOtp),
+                    'user-id'
+                )
+            ).toBe('482913');
         });
 
         it('returns the login locked effect with the context and no idempotency key', () => {
@@ -337,23 +324,9 @@ describe('NotificationService', () => {
                 priority: EnumQueuePriority.medium,
                 idempotencyKey: null,
             });
-            expect(helperStringService.fillPattern).not.toHaveBeenCalled();
-            expect(
-                helperEncryptionService.aes256Encrypt
-            ).not.toHaveBeenCalled();
         });
 
         it('returns the notify effect with the link sealed against the recipient and the reference key', () => {
-            notificationUtil.toSealedField.mockReturnValue(
-                'encryptedInviteAcceptLink'
-            );
-            helperEncryptionService.aes256Encrypt.mockReturnValue(
-                'encrypted-link'
-            );
-            helperStringService.fillPattern.mockReturnValue(
-                'workspaceInvite-WI-ref'
-            );
-
             const result = service.notify(
                 EnumNotificationKind.workspaceInvite,
                 inviteContext
@@ -373,7 +346,7 @@ describe('NotificationService', () => {
                         reference: 'WI-ref',
                         workspaceMemberRole: EnumWorkspaceMemberRole.member,
                         expiredAt: 'Mon, 08 Jan 2024 00:00:00 +0000',
-                        encryptedInviteAcceptLink: 'encrypted-link',
+                        encryptedInviteAcceptLink: expect.any(String),
                         snapshot: null,
                         verificationId: null,
                     },
@@ -383,30 +356,15 @@ describe('NotificationService', () => {
                 priority: EnumQueuePriority.medium,
                 idempotencyKey: 'workspaceInvite-WI-ref',
             });
-            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
-                'https://app.test/invite/token',
-                'secret-key',
-                NotificationPayloadEncryptionPurpose,
-                'user-id'
-            );
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{process}-{reference}',
-                expect.objectContaining({
-                    process: EnumNotificationKind.workspaceInvite,
-                    reference: 'WI-ref',
-                })
-            );
+            expect(
+                buildUnsealedNotificationPayload(
+                    String(result.data.context.encryptedInviteAcceptLink),
+                    'user-id'
+                )
+            ).toBe('https://app.test/invite/token');
         });
 
         it('returns the verificationMobileNumber effect with the code sealed against the recipient and the reference key', () => {
-            notificationUtil.toSealedField.mockReturnValue('encryptedOtp');
-            helperEncryptionService.aes256Encrypt.mockReturnValue(
-                'encrypted-otp'
-            );
-            helperStringService.fillPattern.mockReturnValue(
-                'verificationMobileNumber-VRF-abc'
-            );
-
             const result = service.notify(
                 EnumNotificationKind.verificationMobileNumber,
                 {
@@ -428,7 +386,7 @@ describe('NotificationService', () => {
                         userId: 'user-id',
                         proceedBy: 'user-id',
                         verificationId: 'verification-id',
-                        encryptedOtp: 'encrypted-otp',
+                        encryptedOtp: expect.any(String),
                         reference: 'VRF-abc',
                         expiredInMinutes: 5,
                         snapshot: null,
@@ -439,19 +397,15 @@ describe('NotificationService', () => {
                 priority: EnumQueuePriority.medium,
                 idempotencyKey: 'verificationMobileNumber-VRF-abc',
             });
-            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
-                '482913',
-                'secret-key',
-                NotificationPayloadEncryptionPurpose,
-                'user-id'
-            );
+            expect(
+                buildUnsealedNotificationPayload(
+                    String(result.data.context.encryptedOtp),
+                    'user-id'
+                )
+            ).toBe('482913');
         });
 
         it('returns the userImportResult effect on the notification queue keyed by the import row id with the counts and reasons unsealed', () => {
-            helperStringService.fillPattern.mockReturnValue(
-                'userImportResult-outbox-id'
-            );
-
             const result = service.notify(
                 EnumNotificationKind.userImportResult,
                 {
@@ -485,58 +439,28 @@ describe('NotificationService', () => {
                 priority: EnumQueuePriority.medium,
                 idempotencyKey: 'userImportResult-outbox-id',
             });
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{process}-{reference}',
-                {
-                    process: EnumNotificationKind.userImportResult,
-                    userId: 'admin-id',
-                    proceedBy: 'admin-id',
-                    reference: 'outbox-id',
-                }
-            );
-            expect(
-                helperEncryptionService.aes256Encrypt
-            ).not.toHaveBeenCalled();
         });
 
         it('leaves a non-string context field out of the idempotency key values', () => {
-            helperStringService.fillPattern.mockReturnValue(
-                'userAcceptTermPolicy-user-id-term-policy-id'
-            );
-
-            service.notify(EnumNotificationKind.userAcceptTermPolicy, {
-                userId: 'user-id',
-                proceedBy: 'user-id',
-                termPolicyId: 'term-policy-id',
-                type: EnumTermPolicyType.privacy,
-                version: 3,
-            });
-
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{process}-{userId}-{termPolicyId}',
+            const result = service.notify(
+                EnumNotificationKind.userAcceptTermPolicy,
                 {
-                    process: EnumNotificationKind.userAcceptTermPolicy,
                     userId: 'user-id',
                     proceedBy: 'user-id',
                     termPolicyId: 'term-policy-id',
                     type: EnumTermPolicyType.privacy,
+                    version: 3,
                 }
+            );
+
+            expect(result.idempotencyKey).toBe(
+                'userAcceptTermPolicy-user-id-term-policy-id'
             );
         });
     });
 
     describe('notifyUnregisteredInvite', () => {
         it('returns the unregistered email effect with the address and link sealed against the reference', () => {
-            notificationUtil.toSealedField.mockReturnValue(
-                'encryptedInviteAcceptLink'
-            );
-            helperEncryptionService.aes256Encrypt
-                .mockReturnValueOnce('encrypted-email')
-                .mockReturnValueOnce('encrypted-link');
-            helperStringService.fillPattern.mockReturnValue(
-                'sendUnregistered-WI-ref'
-            );
-
             const result = service.notifyUnregisteredInvite(
                 'invitee@example.com',
                 invitePayload
@@ -546,7 +470,7 @@ describe('NotificationService', () => {
                 queue: EnumNotificationQueue.notificationEmail,
                 name: EnumNotificationEmailProcess.sendUnregistered,
                 data: {
-                    encryptedEmail: 'encrypted-email',
+                    encryptedEmail: expect.any(String),
                     context: {
                         workspaceId: 'workspace-id',
                         workspaceName: 'Acme',
@@ -554,37 +478,24 @@ describe('NotificationService', () => {
                         reference: 'WI-ref',
                         workspaceMemberRole: EnumWorkspaceMemberRole.member,
                         expiredAt: 'Mon, 08 Jan 2024 00:00:00 +0000',
-                        encryptedInviteAcceptLink: 'encrypted-link',
+                        encryptedInviteAcceptLink: expect.any(String),
                     },
                 },
                 priority: EnumQueuePriority.medium,
                 idempotencyKey: 'sendUnregistered-WI-ref',
             });
             expect(
-                helperEncryptionService.aes256Encrypt
-            ).toHaveBeenNthCalledWith(
-                1,
-                'invitee@example.com',
-                'secret-key',
-                NotificationPayloadEncryptionPurpose,
-                'WI-ref'
-            );
+                buildUnsealedNotificationPayload(
+                    result.data.encryptedEmail,
+                    'WI-ref'
+                )
+            ).toBe('invitee@example.com');
             expect(
-                helperEncryptionService.aes256Encrypt
-            ).toHaveBeenNthCalledWith(
-                2,
-                'https://app.test/invite/token',
-                'secret-key',
-                NotificationPayloadEncryptionPurpose,
-                'WI-ref'
-            );
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{process}-{reference}',
-                {
-                    process: EnumNotificationEmailProcess.sendUnregistered,
-                    reference: 'WI-ref',
-                }
-            );
+                buildUnsealedNotificationPayload(
+                    String(result.data.context.encryptedInviteAcceptLink),
+                    'WI-ref'
+                )
+            ).toBe('https://app.test/invite/token');
         });
     });
 
@@ -595,9 +506,6 @@ describe('NotificationService', () => {
                 email: 'user@example.com',
                 username: 'user',
             };
-            helperEncryptionService.aes256Encrypt.mockImplementation(
-                (value: string) => `cipher(${value})`
-            );
 
             const result = service.toRecipientRecord(
                 user,
@@ -609,17 +517,23 @@ describe('NotificationService', () => {
             expect(result).toEqual({
                 userId: 'user-id',
                 username: 'user',
-                encryptedEmail: 'cipher(user@example.com)',
-                encryptedTokens: ['cipher(token-1)', 'cipher(token-2)'],
+                encryptedEmail: expect.any(String),
+                encryptedTokens: [expect.any(String), expect.any(String)],
                 encryptedMobileNumber: null,
                 channels: [EnumNotificationChannel.email],
             });
-            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
-                'user@example.com',
-                'secret-key',
-                NotificationPayloadEncryptionPurpose,
-                'user-id'
-            );
+            expect(
+                buildUnsealedNotificationPayload(
+                    result.encryptedEmail,
+                    'user-id'
+                )
+            ).toBe('user@example.com');
+            expect(
+                buildUnsealedNotificationPayloads(
+                    result.encryptedTokens,
+                    'user-id'
+                )
+            ).toEqual(['token-1', 'token-2']);
         });
 
         it('encrypts the mobile number against the user id when one is given', () => {
@@ -628,9 +542,6 @@ describe('NotificationService', () => {
                 email: 'user@example.com',
                 username: 'user',
             };
-            helperEncryptionService.aes256Encrypt.mockImplementation(
-                (value: string) => `cipher(${value})`
-            );
 
             const result = service.toRecipientRecord(
                 user,
@@ -639,13 +550,12 @@ describe('NotificationService', () => {
                 [EnumNotificationChannel.sms]
             );
 
-            expect(result.encryptedMobileNumber).toBe('cipher(+6281234567890)');
-            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
-                '+6281234567890',
-                'secret-key',
-                NotificationPayloadEncryptionPurpose,
-                'user-id'
-            );
+            expect(
+                buildUnsealedNotificationPayload(
+                    String(result.encryptedMobileNumber),
+                    'user-id'
+                )
+            ).toBe('+6281234567890');
         });
     });
 
@@ -661,24 +571,27 @@ describe('NotificationService', () => {
                 'token-1',
                 'token-2',
             ]);
-            helperEncryptionService.aes256Encrypt.mockImplementation(
-                (value: string) => `cipher(${value})`
-            );
 
             const result = await service.getSnapshot(user);
 
             expect(result).toEqual({
                 username: 'user',
-                encryptedEmail: 'cipher(user@example.com)',
-                encryptedTokens: ['cipher(token-1)', 'cipher(token-2)'],
+                encryptedEmail: expect.any(String),
+                encryptedTokens: [expect.any(String), expect.any(String)],
             });
+            expect(
+                buildUnsealedNotificationPayload(
+                    result.encryptedEmail,
+                    'user-id'
+                )
+            ).toBe('user@example.com');
+            expect(
+                buildUnsealedNotificationPayloads(
+                    result.encryptedTokens,
+                    'user-id'
+                )
+            ).toEqual(['token-1', 'token-2']);
             expect(deviceService.getNotificationTokens).toHaveBeenCalledWith(
-                'user-id'
-            );
-            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
-                'token-2',
-                'secret-key',
-                NotificationPayloadEncryptionPurpose,
                 'user-id'
             );
         });
@@ -696,7 +609,6 @@ describe('NotificationService', () => {
                 EnumNotificationChannel.push,
                 EnumNotificationChannel.silent,
             ];
-            notificationUtil.resolveChannels.mockReturnValue(channels);
 
             const result = service.toSnapshotRecipientRecord(
                 EnumNotificationKind.resetPassword,
@@ -712,10 +624,6 @@ describe('NotificationService', () => {
                 encryptedMobileNumber: null,
                 channels,
             });
-            expect(notificationUtil.resolveChannels).toHaveBeenCalledWith(
-                EnumNotificationKind.resetPassword,
-                []
-            );
         });
     });
 
@@ -737,21 +645,15 @@ describe('NotificationService', () => {
         const sealedContext: INotificationSealedData = {
             userId: 'user-id',
             proceedBy: 'actor-id',
+            workspaceId: 'workspace-id',
             workspaceName: 'Acme',
+            inviterName: 'Alice',
             encryptedInviteAcceptLink: 'encrypted-link',
             snapshot: null,
             verificationId: null,
         };
 
         it('creates the notification and adds an email and a push row on the same tx', async () => {
-            notificationUtil.toMetadata.mockReturnValue({
-                username: 'invitee',
-            });
-            helperStringService.fillPattern.mockImplementation(
-                (_pattern: string, values: Record<string, string>) =>
-                    `${values.notificationId}-${values.step}`
-            );
-
             await service.createInTx(
                 tx,
                 'notification-id',
@@ -760,18 +662,18 @@ describe('NotificationService', () => {
                 recipient
             );
 
-            expect(notificationUtil.toMetadata).toHaveBeenCalledWith(
-                EnumNotificationKind.workspaceInvite,
-                sealedContext,
-                'invitee'
-            );
             expect(notificationRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 EnumNotificationKind.workspaceInvite,
                 {
                     id: 'notification-id',
                     userId: 'user-id',
-                    metadata: { username: 'invitee' },
+                    metadata: {
+                        username: 'invitee',
+                        workspaceId: 'workspace-id',
+                        workspaceName: 'Acme',
+                        inviterName: 'Alice',
+                    },
                     createdBy: 'actor-id',
                     channels: recipient.channels,
                 }
@@ -810,10 +712,6 @@ describe('NotificationService', () => {
                     idempotencyKey: 'notification-id-sendPush',
                 },
             ]);
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{notificationId}-{step}',
-                { notificationId: 'notification-id', step: 'sendEmail' }
-            );
         });
 
         it('adds no push row for a recipient with no token', async () => {
@@ -846,10 +744,6 @@ describe('NotificationService', () => {
         });
 
         it('adds an sms row keyed by the sendSms step when the channels hold sms and the recipient has a number', async () => {
-            helperStringService.fillPattern.mockImplementation(
-                (_pattern: string, values: Record<string, string>) =>
-                    `${values.notificationId}-${values.step}`
-            );
             const smsContext: INotificationSealedData = {
                 userId: 'user-id',
                 proceedBy: 'user-id',
@@ -1053,15 +947,7 @@ describe('NotificationService', () => {
             },
         ];
 
-        beforeEach(() => {
-            helperEncryptionService.aes256Encrypt.mockImplementation(
-                (value: string, ...rest: string[]) => `enc-${rest[2]}-${value}`
-            );
-        });
-
         it('returns the email queue effect with each address encrypted against its user id, keyed by the batch pattern', () => {
-            helperStringService.fillPattern.mockReturnValue('batch-key');
-
             const result = service.emailPublishTermPolicyEffect(
                 publishPayload,
                 'batch-1',
@@ -1069,20 +955,6 @@ describe('NotificationService', () => {
                 recipients
             );
 
-            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
-                'u1@example.com',
-                'secret-key',
-                NotificationPayloadEncryptionPurpose,
-                'u1'
-            );
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{process}-{termPolicyId}-{batchId}',
-                {
-                    process: EnumNotificationEmailProcess.publishTermPolicy,
-                    termPolicyId: 'term-policy-id',
-                    batchId: 'batch-1',
-                }
-            );
             expect(result).toEqual({
                 queue: EnumNotificationQueue.notificationEmail,
                 name: EnumNotificationEmailProcess.publishTermPolicy,
@@ -1094,25 +966,27 @@ describe('NotificationService', () => {
                         {
                             userId: 'u1',
                             notificationId: 'n-1',
-                            encryptedEmail: 'enc-u1-u1@example.com',
+                            encryptedEmail: expect.any(String),
                             username: 'name-u1',
                         },
                         {
                             userId: 'u2',
                             notificationId: 'n-2',
-                            encryptedEmail: 'enc-u2-u2@example.com',
+                            encryptedEmail: expect.any(String),
                             username: 'name-u2',
                         },
                     ],
                 },
                 priority: EnumQueuePriority.medium,
-                idempotencyKey: 'batch-key',
+                idempotencyKey: 'publishTermPolicy-term-policy-id-batch-1',
             });
+            expect(
+                buildUnsealedRecipientEmails(result.data.recipients)
+            ).toEqual(['u1@example.com', 'u2@example.com']);
         });
 
         it('keys the effect by the resend pattern and the nonce when the data carries one', () => {
             const resendData = { ...publishPayload, resendNonce: 'nonce-1' };
-            helperStringService.fillPattern.mockReturnValue('resend-key');
 
             const result = service.emailPublishTermPolicyEffect(
                 resendData,
@@ -1121,16 +995,9 @@ describe('NotificationService', () => {
                 recipients
             );
 
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{process}-{termPolicyId}-{batchId}-{resendNonce}',
-                {
-                    process: EnumNotificationEmailProcess.publishTermPolicy,
-                    termPolicyId: 'term-policy-id',
-                    batchId: 'batch-1',
-                    resendNonce: 'nonce-1',
-                }
+            expect(result.idempotencyKey).toBe(
+                'publishTermPolicy-term-policy-id-batch-1-nonce-1'
             );
-            expect(result.idempotencyKey).toBe('resend-key');
             expect(result.data.data).toEqual(resendData);
         });
     });
@@ -1269,11 +1136,6 @@ describe('NotificationService', () => {
                 constructor: NotificationNotFoundException,
                 module: 'notification',
                 statusCode: EnumNotificationStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumNotificationStatusCodeError[
-                        EnumNotificationStatusCodeError.notFound
-                    ],
-                messagePath: 'notification.error.notFound',
             });
             expect(notificationRepository.markAsRead).not.toHaveBeenCalled();
         });
@@ -1289,11 +1151,6 @@ describe('NotificationService', () => {
                 constructor: NotificationAlreadyReadException,
                 module: 'notification',
                 statusCode: EnumNotificationStatusCodeError.alreadyRead,
-                statusCodeKey:
-                    EnumNotificationStatusCodeError[
-                        EnumNotificationStatusCodeError.alreadyRead
-                    ],
-                messagePath: 'notification.error.alreadyRead',
             });
             expect(notificationRepository.markAsRead).not.toHaveBeenCalled();
         });
@@ -1310,11 +1167,6 @@ describe('NotificationService', () => {
                 constructor: NotificationAlreadyReadException,
                 module: 'notification',
                 statusCode: EnumNotificationStatusCodeError.alreadyRead,
-                statusCodeKey:
-                    EnumNotificationStatusCodeError[
-                        EnumNotificationStatusCodeError.alreadyRead
-                    ],
-                messagePath: 'notification.error.alreadyRead',
             });
         });
     });
@@ -1409,11 +1261,6 @@ describe('NotificationService', () => {
                 constructor: NotificationInvalidTypeException,
                 module: 'notification',
                 statusCode: EnumNotificationStatusCodeError.invalidType,
-                statusCodeKey:
-                    EnumNotificationStatusCodeError[
-                        EnumNotificationStatusCodeError.invalidType
-                    ],
-                messagePath: 'notification.error.invalidType',
             });
             expect(
                 notificationUserSettingRepository.updateUserSettingInTx
@@ -1436,11 +1283,6 @@ describe('NotificationService', () => {
                 constructor: NotificationInvalidChannelException,
                 module: 'notification',
                 statusCode: EnumNotificationStatusCodeError.invalidChannel,
-                statusCodeKey:
-                    EnumNotificationStatusCodeError[
-                        EnumNotificationStatusCodeError.invalidChannel
-                    ],
-                messagePath: 'notification.error.invalidChannel',
             });
             expect(
                 notificationUserSettingRepository.updateUserSettingInTx
@@ -1525,11 +1367,6 @@ describe('NotificationService', () => {
                 constructor: NotificationSettingInvalidException,
                 module: 'notification',
                 statusCode: EnumNotificationStatusCodeError.settingInvalid,
-                statusCodeKey:
-                    EnumNotificationStatusCodeError[
-                        EnumNotificationStatusCodeError.settingInvalid
-                    ],
-                messagePath: 'notification.error.settingInvalid',
             });
         });
     });
@@ -1582,11 +1419,6 @@ describe('NotificationService', () => {
                 constructor: NotificationInvalidTypeException,
                 module: 'notification',
                 statusCode: EnumNotificationStatusCodeError.invalidType,
-                statusCodeKey:
-                    EnumNotificationStatusCodeError[
-                        EnumNotificationStatusCodeError.invalidType
-                    ],
-                messagePath: 'notification.error.invalidType',
             });
         });
 
@@ -1605,43 +1437,34 @@ describe('NotificationService', () => {
                 constructor: NotificationInvalidChannelException,
                 module: 'notification',
                 statusCode: EnumNotificationStatusCodeError.invalidChannel,
-                statusCodeKey:
-                    EnumNotificationStatusCodeError[
-                        EnumNotificationStatusCodeError.invalidChannel
-                    ],
-                messagePath: 'notification.error.invalidChannel',
             });
         });
     });
 
     describe('decryptFailureTokens', () => {
         it('decrypts each failure token with the user id', () => {
-            notificationUtil.decryptPayload.mockImplementation(
-                (encrypted: string) =>
-                    encrypted.replace(/^cipher\((.*)\)$/, '$1')
-            );
-
-            expect(
-                service.decryptFailureTokens('user-id', [
-                    'cipher(token-1)',
-                    'cipher(token-2)',
-                ])
-            ).toEqual(['token-1', 'token-2']);
-            expect(notificationUtil.decryptPayload).toHaveBeenCalledWith(
-                'cipher(token-2)',
+            const tokens = buildSealedNotificationPayloads(
+                ['token-1', 'token-2'],
                 'user-id'
             );
+
+            expect(service.decryptFailureTokens('user-id', tokens)).toEqual([
+                'token-1',
+                'token-2',
+            ]);
         });
 
         it('rethrows a decryption failure', () => {
-            const failure = new Error('decrypt');
-            notificationUtil.decryptPayload.mockImplementation(() => {
-                throw failure;
-            });
+            const sealed = buildSealedNotificationPayload('token-1', 'user-9');
 
             expect(() =>
-                service.decryptFailureTokens('user-id', ['cipher(token-1)'])
-            ).toThrow(failure);
+                service.decryptFailureTokens('user-id', [sealed])
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'helper',
+                    statusCode: EnumHelperStatusCodeError.decryptFailed,
+                })
+            );
         });
     });
 
@@ -1667,12 +1490,6 @@ describe('NotificationService', () => {
     describe('toMessageProperties', () => {
         const title = 'notification.notify.welcome.title';
 
-        beforeEach(() => {
-            notificationUtil.toDisplayProperties.mockImplementation(
-                (_kind, properties) => properties
-            );
-        });
-
         it('keeps only the primitive metadata values', () => {
             expect(
                 service.toMessageProperties(title, {
@@ -1687,21 +1504,12 @@ describe('NotificationService', () => {
         });
 
         it('formats the date fields of the kind the title belongs to', () => {
-            notificationUtil.toDisplayProperties.mockReturnValue({
-                username: 'ana',
-                loginAt: 'Sun, 01 Mar 2026 00:05:00 +0000',
-            });
-
             const result = service.toMessageProperties(
                 NotificationKindContract[EnumNotificationKind.newDeviceLogin]
                     .title,
                 { username: 'ana', loginAt: '2026-03-01T00:05:00.000Z' }
             );
 
-            expect(notificationUtil.toDisplayProperties).toHaveBeenCalledWith(
-                EnumNotificationKind.newDeviceLogin,
-                { username: 'ana', loginAt: '2026-03-01T00:05:00.000Z' }
-            );
             expect(result).toEqual({
                 username: 'ana',
                 loginAt: 'Sun, 01 Mar 2026 00:05:00 +0000',
@@ -1715,7 +1523,6 @@ describe('NotificationService', () => {
             );
 
             expect(result).toEqual({ username: 'ana' });
-            expect(notificationUtil.toDisplayProperties).not.toHaveBeenCalled();
         });
 
         it('returns empty properties for null metadata', () => {

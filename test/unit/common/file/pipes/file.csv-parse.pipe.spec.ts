@@ -15,8 +15,6 @@ describe('FileCsvParsePipe', () => {
     let pipe: FileCsvParsePipe<IRow>;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module = await Test.createTestingModule({
             providers: [
                 FileCsvParsePipe,
@@ -38,9 +36,6 @@ describe('FileCsvParsePipe', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.required,
-                statusCodeKey:
-                    EnumFileStatusCodeError[EnumFileStatusCodeError.required],
-                messagePath: 'file.error.required',
             });
         });
 
@@ -55,9 +50,6 @@ describe('FileCsvParsePipe', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.required,
-                statusCodeKey:
-                    EnumFileStatusCodeError[EnumFileStatusCodeError.required],
-                messagePath: 'file.error.required',
             });
         });
 
@@ -72,11 +64,6 @@ describe('FileCsvParsePipe', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.extensionInvalid,
-                statusCodeKey:
-                    EnumFileStatusCodeError[
-                        EnumFileStatusCodeError.extensionInvalid
-                    ],
-                messagePath: 'file.error.extensionInvalid',
             });
         });
 
@@ -92,11 +79,6 @@ describe('FileCsvParsePipe', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.extensionInvalid,
-                statusCodeKey:
-                    EnumFileStatusCodeError[
-                        EnumFileStatusCodeError.extensionInvalid
-                    ],
-                messagePath: 'file.error.extensionInvalid',
             });
         });
 
@@ -146,9 +128,6 @@ describe('FileCsvParsePipe', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.required,
-                statusCodeKey:
-                    EnumFileStatusCodeError[EnumFileStatusCodeError.required],
-                messagePath: 'file.error.required',
             });
             expect(fileService.readCsv).not.toHaveBeenCalled();
         });

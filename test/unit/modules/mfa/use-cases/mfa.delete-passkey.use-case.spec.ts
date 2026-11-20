@@ -1,3 +1,9 @@
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -7,10 +13,9 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -57,9 +62,6 @@ describe('MfaDeletePasskeyUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
 
     let useCase: MfaDeletePasskeyUseCase;
 
@@ -84,9 +86,16 @@ describe('MfaDeletePasskeyUseCase', () => {
         idempotencyKey: null,
     };
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
-        helperDateService.create.mockReturnValue(now);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -103,8 +112,11 @@ describe('MfaDeletePasskeyUseCase', () => {
                 { provide: SessionService, useValue: sessionService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(MfaDeletePasskeyUseCase);
@@ -298,9 +310,11 @@ describe('MfaDeletePasskeyUseCase', () => {
                     passkey: null,
                 },
             });
-            outboxService.withTransaction.mockRejectedValue(new Error('wc'));
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            outboxService.withTransaction.mockRejectedValue(
+                new Prisma.PrismaClientKnownRequestError('conflict', {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                })
             );
 
             await expect(
@@ -316,9 +330,11 @@ describe('MfaDeletePasskeyUseCase', () => {
         });
 
         it('answers MfaPasskeyNotFoundException on a write conflict with no MFA proof', async () => {
-            outboxService.withTransaction.mockRejectedValue(new Error('wc'));
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            outboxService.withTransaction.mockRejectedValue(
+                new Prisma.PrismaClientKnownRequestError('conflict', {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                })
             );
 
             await expect(
@@ -336,7 +352,6 @@ describe('MfaDeletePasskeyUseCase', () => {
         it('wraps any other transaction failure in the unknown exception', async () => {
             const cause = new Error('boom');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

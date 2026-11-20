@@ -48,8 +48,6 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
     let useCase: TermPolicyRemoveContentByAdminUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 TermPolicyRemoveContentByAdminUseCase,

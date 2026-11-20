@@ -24,10 +24,6 @@ describe('FileExtensionPipe', () => {
         buffer: Buffer.from('a'),
     } as IFile;
 
-    beforeEach(() => {
-        vi.resetAllMocks();
-    });
-
     describe('transform', () => {
         it('returns the value unchanged when it is falsy', async () => {
             const pipe = await createFileExtensionPipe(

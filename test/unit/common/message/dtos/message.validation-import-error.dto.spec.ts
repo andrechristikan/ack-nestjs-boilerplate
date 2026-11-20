@@ -28,8 +28,10 @@ describe('MessageValidationImportErrorSchema', () => {
     });
 
     it('rejects a payload missing a required field', () => {
-        expect(() =>
-            MessageValidationImportErrorSchema.parse({ row: 3 })
-        ).toThrow();
+        const result = MessageValidationImportErrorSchema.safeParse({ row: 3 });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['errors'], code: 'invalid_type' }),
+        ]);
     });
 });

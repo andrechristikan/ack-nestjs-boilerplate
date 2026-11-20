@@ -31,22 +31,35 @@ describe('ApiKeyListRequestSchema', () => {
     });
 
     it('rejects an isActive value other than true or false', () => {
-        expect(() =>
-            ApiKeyListRequestSchema.parse({ isActive: 'yes' })
-        ).toThrow();
+        const result = ApiKeyListRequestSchema.safeParse({ isActive: 'yes' });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['isActive'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() => ApiKeyListRequestSchema.parse({ extra: true })).toThrow();
+        const result = ApiKeyListRequestSchema.safeParse({ extra: true });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a type of 256 characters and rejects one of 257', () => {
         expect(() =>
             ApiKeyListRequestSchema.parse({ type: 'a'.repeat(256) })
         ).not.toThrow();
-        expect(() =>
-            ApiKeyListRequestSchema.parse({ type: 'a'.repeat(257) })
-        ).toThrow();
+        const result = ApiKeyListRequestSchema.safeParse({
+            type: 'a'.repeat(257),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'too_big' }),
+        ]);
     });
 
     it('keeps the module search description', () => {
@@ -83,16 +96,26 @@ describe('ApiKeyListRequestSchema', () => {
         'default',
         'createdAt',
     ])('rejects the orderBy %s', orderBy => {
-        expect(ApiKeyListRequestSchema.safeParse({ orderBy }).success).toBe(
-            false
-        );
+        expect(
+            ApiKeyListRequestSchema.safeParse({ orderBy }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             ApiKeyListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

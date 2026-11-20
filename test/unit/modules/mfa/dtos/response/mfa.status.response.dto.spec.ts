@@ -64,7 +64,12 @@ describe('MfaStatusResponseSchema', () => {
 
         const result = MfaStatusResponseSchema.safeParse(rest);
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeys'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('strips an undeclared key', () => {
@@ -82,6 +87,8 @@ describe('MfaStatusResponseSchema', () => {
 
         const result = MfaStatusResponseSchema.safeParse(rest);
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['totp'], code: 'invalid_type' }),
+        ]);
     });
 });

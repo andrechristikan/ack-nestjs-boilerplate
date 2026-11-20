@@ -1,30 +1,15 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import { buildApiKey } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyUtil', () => {
     let util: ApiKeyUtil;
 
-    const apiKey: ApiKey = {
-        id: 'api-key-1',
-        name: 'Acme Api Key',
-        type: EnumApiKeyType.default,
-        key: 'local_abc123',
-        hash: 'hashed-secret',
-        isActive: true,
-        startAt: null,
-        endAt: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-        updatedBy: 'user-1',
-    };
+    const apiKey: ApiKey = buildApiKey();
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [ApiKeyUtil],
         }).compile();

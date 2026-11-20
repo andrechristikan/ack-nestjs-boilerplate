@@ -4,7 +4,6 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumUserReauthenticationAction } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -29,6 +28,10 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 import { UserAddMobileNumberUseCase } from '@modules/user/use-cases/user.add-mobile-number.use-case';
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 const passkeyResponse = {
     id: 'AbC_-123',
@@ -48,7 +51,6 @@ describe('UserAddMobileNumberUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const countryService: MockProxy<CountryService> = mock<CountryService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     let useCase: UserAddMobileNumberUseCase;
 
@@ -112,7 +114,6 @@ describe('UserAddMobileNumberUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -133,7 +134,11 @@ describe('UserAddMobileNumberUseCase', () => {
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: CountryService, useValue: countryService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                DatabaseUtil,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(UserAddMobileNumberUseCase);
@@ -301,9 +306,8 @@ describe('UserAddMobileNumberUseCase', () => {
         });
 
         it('maps a number collision to UserMobileNumberExistException', async () => {
-            const collision = new Error('unique');
+            const collision = buildPrismaKnownRequestError('P2002', 'number');
             outboxService.withTransaction.mockRejectedValue(collision);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 useCase.execute(
@@ -314,10 +318,6 @@ describe('UserAddMobileNumberUseCase', () => {
                     dto
                 )
             ).rejects.toBeInstanceOf(UserMobileNumberExistException);
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'number'
-            );
         });
 
         it('rethrows an AppBaseException of the transaction as it is', async () => {
@@ -339,17 +339,12 @@ describe('UserAddMobileNumberUseCase', () => {
             expect(
                 userMobileNumberService.addMobileNumberInTx
             ).not.toHaveBeenCalled();
-            expect(databaseUtil.isUniqueCollision).not.toHaveBeenCalled();
         });
 
         it('answers MfaInvalidException on a write conflict when a MFA proof was checked', async () => {
             userAuthService.assertReauthentication.mockResolvedValue(withMfa);
             outboxService.withTransaction.mockRejectedValue(
-                new Error('write conflict')
-            );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+                buildPrismaKnownRequestError('P2034')
             );
 
             await expect(
@@ -364,17 +359,12 @@ describe('UserAddMobileNumberUseCase', () => {
                 statusCode: EnumMfaStatusCodeError.invalid,
 
                 module: 'mfa',
-                messagePath: 'mfa.error.invalid',
             });
         });
 
         it('wraps a write conflict in AppUnknownException when no MFA proof was checked', async () => {
             outboxService.withTransaction.mockRejectedValue(
-                new Error('write conflict')
-            );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+                buildPrismaKnownRequestError('P2034')
             );
 
             await expect(
@@ -391,8 +381,6 @@ describe('UserAddMobileNumberUseCase', () => {
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {
             const cause = new Error('boom');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

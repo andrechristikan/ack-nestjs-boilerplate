@@ -13,7 +13,7 @@ argument-hint: '<a .scratch/ plan path>'
 
 Input: $ARGUMENTS
 
-Every feature takes this review, once. `reviewer` judges and decides, the owner keeps or drops each finding, `coder` executes. The session assigns, asks, and checks; it writes the owner's answers and `## Fixes` into `review.md` and nothing under `src/` or `test/`. Every Agent call runs in the foreground.
+Every feature takes this review, once. `reviewer` judges and decides, the owner keeps or drops each finding, `coder` executes. The session assigns, asks, and checks; it writes the owner's answers and `## Fixes` into `review.md` and nothing under `src/` or `test/`.
 
 ## Start
 
@@ -43,8 +43,8 @@ Read `review.md` against `references/review-file.md`. A rule file from `Rules to
 A short form of `/ack-design` and `/ack-plan` over `review.md`.
 
 1. Put each finding to the owner with `AskUserQuestion`, one finding per question, in number order: the point in plain words, the code now and the code after, then the options keep, drop, or change, each explained.
-2. Write the answer into the finding as `**Owner:** kept | dropped | changed: <how>`. A changed finding is rewritten so its exact change matches the answer.
-3. Write `## Fixes` in `review.md`, one row per kept finding: `#`, `Finding`, `Route`, `Coder`, `Status`.
+2. Write the answer into the finding in the shape `references/review-file.md`, What the session adds, gives. A changed finding is rewritten so its exact change matches the answer.
+3. Write `## Fixes` in `review.md`, one row per kept finding, in that shape.
 
 | The finding | Route |
 | --- | --- |
@@ -65,7 +65,6 @@ Agent: coder
 Pin: <the finding's files, cause at file:line, and exact change, copied from review.md>
 First failing spec: <the finding's line>
 Decisions to honour: <the plan's line>
-Rules to read: <the output of bash .claude/hooks/rules.sh over the pin's files, pasted>
 ```
 
 - `DONE` with the spec quoted failing, then passing: set the row's `Status` to `done`.

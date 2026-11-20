@@ -15,6 +15,7 @@ import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enu
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagGuard } from '@modules/feature-flag/guards/feature-flag.guard';
 import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('FeatureFlagGuard', () => {
     const featureFlagService: MockProxy<FeatureFlagService> =
@@ -22,23 +23,13 @@ describe('FeatureFlagGuard', () => {
     const reflector: MockProxy<Reflector> = mock<Reflector>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const configGet =
-        vi.fn<(key: string) => string | number | RegExp | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
     let guard: FeatureFlagGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation(key => {
-            if (key === 'featureFlag.anonymous.idMaxLength') {
-                return 20;
-            } else if (key === 'featureFlag.anonymous.idRegex') {
-                return /^[a-zA-Z0-9-_]+$/;
-            }
-
-            return undefined;
+        configService = buildConfigService({
+            'featureFlag.anonymous.idMaxLength': 20,
+            'featureFlag.anonymous.idRegex': /^[a-zA-Z0-9-_]+$/,
         });
 
         const module: TestingModule = await Test.createTestingModule({
@@ -54,10 +45,12 @@ describe('FeatureFlagGuard', () => {
     });
 
     it('reads the anonymous id config once, in the constructor', () => {
-        expect(configGet).toHaveBeenCalledWith(
+        expect(configService.get).toHaveBeenCalledWith(
             'featureFlag.anonymous.idMaxLength'
         );
-        expect(configGet).toHaveBeenCalledWith('featureFlag.anonymous.idRegex');
+        expect(configService.get).toHaveBeenCalledWith(
+            'featureFlag.anonymous.idRegex'
+        );
     });
 
     describe('canActivate', () => {

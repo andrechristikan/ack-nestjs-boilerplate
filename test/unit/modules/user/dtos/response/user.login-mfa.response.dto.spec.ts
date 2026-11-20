@@ -44,7 +44,12 @@ describe('UserLoginMfaResponseSchema', () => {
             methods: ['sms'],
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['methods', 0],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects a row with no passkeyOptions key', () => {
@@ -54,7 +59,12 @@ describe('UserLoginMfaResponseSchema', () => {
             methods: row.methods,
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeyOptions'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('strips an undeclared key', () => {
@@ -72,6 +82,19 @@ describe('UserLoginMfaResponseSchema', () => {
             expiresInMs: 300000,
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['challengeToken'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['methods'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['passkeyOptions'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

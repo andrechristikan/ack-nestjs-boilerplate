@@ -4,33 +4,23 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
-import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
-import type { Role } from '@generated/prisma-client/client';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
-    RoleOrderBy,
-    RoleDefaultAvailableSearch,
-    RoleDefaultType,
-} from '@modules/role/constants/role.list.constant';
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { EnumRoleType } from '@generated/prisma-client/client';
+import type { Role } from '@generated/prisma-client/client';
 import type { RoleAdminListRequestDto } from '@modules/role/dtos/request/role.admin-list.request.dto';
 import { RoleService } from '@modules/role/services/role.service';
 import type { IRoleWithPolicyCount } from '@modules/role/interfaces/role.interface';
-import type {
-    IPaginationOffsetReturn,
-    IPaginationQueryCursorParams,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationOffsetReturn } from '@common/pagination/interfaces/pagination.interface';
 import { RoleGetListOffsetByAdminUseCase } from '@modules/role/use-cases/role.get-list-offset-by-admin.use-case';
-import { EnumRoleOrderBy } from '@modules/role/enums/role.enum';
 
 describe('RoleGetListOffsetByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
-    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
-        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
@@ -46,41 +36,23 @@ describe('RoleGetListOffsetByAdminUseCase', () => {
         updatedAt: now,
         updatedBy: 'user-1',
     };
-    const offsetPagination: IPaginationQueryOffsetParams = {
+    const offsetPagination = {
         skip: 0,
         limit: 20,
-        orderBy: [],
-    };
-    const cursorPagination: IPaginationQueryCursorParams = {
-        fingerprint: 'aaaaaaaaaaaaaaaa',
-        limit: 20,
-        orderBy: [],
+        orderBy: [{ createdAt: 'desc' }],
     };
 
     let useCase: RoleGetListOffsetByAdminUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        paginationQueryUtil.offset.mockReturnValue({
-            params: offsetPagination,
-            storePatch: {},
-        });
-        paginationQueryUtil.cursor.mockReturnValue({
-            params: cursorPagination,
-            storePatch: {},
-        });
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleGetListOffsetByAdminUseCase,
                 { provide: RoleService, useValue: roleService },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
-                },
-                {
-                    provide: PaginationFilterUtil,
-                    useValue: paginationFilterUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 {
                     provide: RequestStoreService,
@@ -95,11 +67,6 @@ describe('RoleGetListOffsetByAdminUseCase', () => {
     describe('execute', () => {
         it('parses the offset query, merges the type filter, and maps policy count rows', async () => {
             const query: RoleAdminListRequestDto = { type: 'admin' };
-            const typeFilter = {
-                where: { type: { in: [EnumRoleType.admin] } },
-                storeFilter: { type: [EnumRoleType.admin] },
-            };
-            paginationFilterUtil.inEnum.mockReturnValue(typeFilter);
             const offsetPage: IPaginationOffsetReturn<IRoleWithPolicyCount> = {
                 type: EnumPaginationType.offset,
                 count: 1,
@@ -124,29 +91,25 @@ describe('RoleGetListOffsetByAdminUseCase', () => {
                 hasPrevious: false,
                 data: [{ ...role, policies: 3 }],
             });
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                availableSearch: RoleDefaultAvailableSearch,
-                orderBy: RoleOrderBy,
-                defaultOrderBy: EnumRoleOrderBy.latest,
-            });
-            expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
-                Prisma.RoleScalarFieldEnum.type,
-                query.type,
-                RoleDefaultType
-            );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                { filters: { type: [EnumRoleType.admin] } }
+                {
+                    availableSearch: ['name'],
+                    availableOrderBy: ['latest', 'name'],
+                    orderBy: 'latest',
+                    perPage: 20,
+                    page: 1,
+                    filters: { type: [EnumRoleType.admin] },
+                }
             );
             expect(roleService.getListOffsetByAdmin).toHaveBeenCalledWith(
                 offsetPagination,
-                typeFilter.where
+                { type: { in: [EnumRoleType.admin] } }
             );
         });
 
         it('merges an empty filter set when type is absent', async () => {
             const query: RoleAdminListRequestDto = {};
-            paginationFilterUtil.inEnum.mockReturnValue(null);
             const emptyOffsetPage: IPaginationOffsetReturn<IRoleWithPolicyCount> =
                 {
                     type: EnumPaginationType.offset,
@@ -164,7 +127,14 @@ describe('RoleGetListOffsetByAdminUseCase', () => {
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                { filters: {} }
+                {
+                    availableSearch: ['name'],
+                    availableOrderBy: ['latest', 'name'],
+                    orderBy: 'latest',
+                    perPage: 20,
+                    page: 1,
+                    filters: {},
+                }
             );
             expect(roleService.getListOffsetByAdmin).toHaveBeenCalledWith(
                 offsetPagination,

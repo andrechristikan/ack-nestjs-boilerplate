@@ -17,47 +17,63 @@ describe('TermPolicyContentPresignRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            TermPolicyContentPresignRequestSchema.parse({
-                ...payload,
-                key: 'term-policies/privacy/v1/en.hbs',
-            })
-        ).toThrow();
+        const result = TermPolicyContentPresignRequestSchema.safeParse({
+            ...payload,
+            key: 'term-policies/privacy/v1/en.hbs',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a non-integer version', () => {
-        expect(() =>
-            TermPolicyContentPresignRequestSchema.parse({
-                ...payload,
-                version: 1.5,
-            })
-        ).toThrow();
+        const result = TermPolicyContentPresignRequestSchema.safeParse({
+            ...payload,
+            version: 1.5,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['version'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a version below 1', () => {
-        expect(() =>
-            TermPolicyContentPresignRequestSchema.parse({
-                ...payload,
-                version: 0,
-            })
-        ).toThrow();
+        const result = TermPolicyContentPresignRequestSchema.safeParse({
+            ...payload,
+            version: 0,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['version'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a size of 0', () => {
-        expect(() =>
-            TermPolicyContentPresignRequestSchema.parse({
-                ...payload,
-                size: 0,
-            })
-        ).toThrow();
+        const result = TermPolicyContentPresignRequestSchema.safeParse({
+            ...payload,
+            size: 0,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['size'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a language outside EnumMessageLanguage', () => {
-        expect(() =>
-            TermPolicyContentPresignRequestSchema.parse({
-                ...payload,
-                language: 'unknownLanguage',
-            })
-        ).toThrow();
+        const result = TermPolicyContentPresignRequestSchema.safeParse({
+            ...payload,
+            language: 'unknownLanguage',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['language'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 });

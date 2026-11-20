@@ -1,12 +1,17 @@
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import {
+    buildOpenedMfaChallengePushToken,
+    buildSealedMfaChallengePushToken,
+} from '@test/unit/helpers/test.unit.mfa.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { Duration } from 'luxon';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumDevicePlatform,
@@ -15,28 +20,19 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import type { MfaChallenge } from '@generated/prisma-client/client';
-import { MfaChallengeEncryptionPurpose } from '@modules/mfa/constants/mfa.constant';
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
+import type { IMfaChallengeCreateData } from '@modules/mfa/interfaces/mfa.interface';
 import { MfaChallengeRepository } from '@modules/mfa/repositories/mfa.challenge.repository';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 
 describe('MfaChallengeService', () => {
     const mfaChallengeRepository: MockProxy<MfaChallengeRepository> =
         mock<MfaChallengeRepository>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
-    const helperEncryptionService: MockProxy<HelperEncryptionService> =
-        mock<HelperEncryptionService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const configGet = vi.fn<(key: string) => string | number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    const tokenHash =
+        '34d328009b123fbbb0dc93f18b3e6de1ecf7b1a5783c33dff7ffe1926f09e943';
 
     let service: MfaChallengeService;
+    let helperStringService: HelperStringService;
 
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-01T00:00:00.000Z');
@@ -51,13 +47,16 @@ describe('MfaChallengeService', () => {
         id: 'challenge-quartz',
         userId: 'user-quartz',
         purpose: EnumMfaChallengePurpose.login,
-        tokenHash: 'hash-token',
+        tokenHash,
         webAuthnChallenge: null,
         device: {
             fingerprint: 'fingerprint-quartz',
             name: 'Quartz Phone',
             platform: EnumDevicePlatform.ios,
-            encryptedNotificationToken: 'sealed-push-token',
+            encryptedNotificationToken: buildSealedMfaChallengePushToken(
+                'push-token',
+                'user-quartz'
+            ),
         },
         loginFrom: EnumUserLoginFrom.website,
         loginWith: EnumUserLoginWith.credential,
@@ -69,23 +68,16 @@ describe('MfaChallengeService', () => {
         updatedBy: null,
     };
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.forward.mockImplementation(
-            (date, duration: Duration) =>
-                new Date(date.getTime() + duration.as('milliseconds'))
-        );
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, string | number> = {
-                'mfa.challengeTtlInMs': 300000,
-                'mfa.challengeRetentionInMs': 604800000,
-                'app.encryptionSecret': 'app-root-secret',
-            };
-
-            return values[key];
-        });
-
         const module = await Test.createTestingModule({
             providers: [
                 MfaChallengeService,
@@ -93,25 +85,31 @@ describe('MfaChallengeService', () => {
                     provide: MfaChallengeRepository,
                     useValue: mfaChallengeRepository,
                 },
-                { provide: HelperStringService, useValue: helperStringService },
-                { provide: HelperHashService, useValue: helperHashService },
+                ...TestUnitKitProviders,
                 {
-                    provide: HelperEncryptionService,
-                    useValue: helperEncryptionService,
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'mfa.challengeTtlInMs': 300000,
+                        'mfa.challengeRetentionInMs': 604800000,
+                    }),
                 },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         service = module.get(MfaChallengeService);
+        helperStringService = module.get(HelperStringService);
     });
 
     describe('createInTx', () => {
         it('stores the SHA-256 hash of the token and the encrypted push token and answers the raw token', async () => {
-            helperStringService.random.mockReturnValue('raw-token');
-            helperHashService.sha256Hash.mockReturnValue('hash-token');
-            helperEncryptionService.aes256Encrypt.mockReturnValue(
-                'sealed-push-token'
+            const random = vi
+                .spyOn(helperStringService, 'random')
+                .mockReturnValue('raw-token');
+            const stored: IMfaChallengeCreateData[] = [];
+            mfaChallengeRepository.createInTx.mockImplementation(
+                async (_tx, data) => {
+                    stored.push(data);
+                }
             );
 
             await expect(
@@ -127,36 +125,34 @@ describe('MfaChallengeService', () => {
                 challengeToken: 'raw-token',
                 expiresInMs: 300000,
             });
-            expect(helperStringService.random).toHaveBeenCalledWith(48);
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'raw-token'
-            );
-            expect(helperEncryptionService.aes256Encrypt).toHaveBeenCalledWith(
-                'push-token',
-                'app-root-secret',
-                MfaChallengeEncryptionPurpose,
-                'user-quartz'
-            );
+            expect(random).toHaveBeenCalledWith(48);
             expect(mfaChallengeRepository.createInTx).toHaveBeenCalledWith(tx, {
                 purpose: EnumMfaChallengePurpose.login,
                 userId: 'user-quartz',
-                tokenHash: 'hash-token',
+                tokenHash,
                 webAuthnChallenge: null,
                 device: {
                     fingerprint: 'fingerprint-quartz',
                     name: 'Quartz Phone',
                     platform: EnumDevicePlatform.ios,
-                    encryptedNotificationToken: 'sealed-push-token',
+                    encryptedNotificationToken: expect.any(String),
                 },
                 loginFrom: EnumUserLoginFrom.website,
                 loginWith: EnumUserLoginWith.credential,
                 expiredAt,
             });
+            expect(
+                buildOpenedMfaChallengePushToken(
+                    stored[0]?.device?.encryptedNotificationToken ?? '',
+                    'user-quartz'
+                )
+            ).toBe('push-token');
         });
 
         it('stores a null push token as null', async () => {
-            helperStringService.random.mockReturnValue('raw-token');
-            helperHashService.sha256Hash.mockReturnValue('hash-token');
+            vi.spyOn(helperStringService, 'random').mockReturnValue(
+                'raw-token'
+            );
 
             await service.createInTx(tx, {
                 purpose: EnumMfaChallengePurpose.login,
@@ -167,9 +163,6 @@ describe('MfaChallengeService', () => {
                 webAuthnChallenge: null,
             });
 
-            expect(
-                helperEncryptionService.aes256Encrypt
-            ).not.toHaveBeenCalled();
             expect(mfaChallengeRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 expect.objectContaining({
@@ -181,8 +174,9 @@ describe('MfaChallengeService', () => {
         });
 
         it('stores a null device as null', async () => {
-            helperStringService.random.mockReturnValue('raw-token');
-            helperHashService.sha256Hash.mockReturnValue('hash-token');
+            vi.spyOn(helperStringService, 'random').mockReturnValue(
+                'raw-token'
+            );
 
             await service.createInTx(tx, {
                 purpose: EnumMfaChallengePurpose.passwordless,
@@ -206,11 +200,13 @@ describe('MfaChallengeService', () => {
 
     describe('create', () => {
         it('stores the hashed token and the encrypted push token without a transaction and answers the raw token', async () => {
-            helperStringService.random.mockReturnValue('raw-token');
-            helperHashService.sha256Hash.mockReturnValue('hash-token');
-            helperEncryptionService.aes256Encrypt.mockReturnValue(
-                'sealed-push-token'
+            vi.spyOn(helperStringService, 'random').mockReturnValue(
+                'raw-token'
             );
+            const stored: IMfaChallengeCreateData[] = [];
+            mfaChallengeRepository.create.mockImplementation(async data => {
+                stored.push(data);
+            });
 
             await expect(
                 service.create({
@@ -228,27 +224,31 @@ describe('MfaChallengeService', () => {
             expect(mfaChallengeRepository.create).toHaveBeenCalledWith({
                 purpose: EnumMfaChallengePurpose.login,
                 userId: 'user-quartz',
-                tokenHash: 'hash-token',
+                tokenHash,
                 webAuthnChallenge: null,
                 device: {
                     fingerprint: 'fingerprint-quartz',
                     name: 'Quartz Phone',
                     platform: EnumDevicePlatform.ios,
-                    encryptedNotificationToken: 'sealed-push-token',
+                    encryptedNotificationToken: expect.any(String),
                 },
                 loginFrom: EnumUserLoginFrom.website,
                 loginWith: EnumUserLoginWith.credential,
                 expiredAt,
             });
+            expect(
+                buildOpenedMfaChallengePushToken(
+                    stored[0]?.device?.encryptedNotificationToken ?? '',
+                    'user-quartz'
+                )
+            ).toBe('push-token');
             expect(mfaChallengeRepository.createInTx).not.toHaveBeenCalled();
         });
     });
 
     describe('get', () => {
         it('answers the live challenge of the token and purpose with the push token opened', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-token');
             mfaChallengeRepository.findActiveByTokenHash.mockResolvedValue(row);
-            helperEncryptionService.aes256Decrypt.mockReturnValue('push-token');
 
             await expect(
                 service.get('raw-token', EnumMfaChallengePurpose.login)
@@ -263,20 +263,13 @@ describe('MfaChallengeService', () => {
             expect(
                 mfaChallengeRepository.findActiveByTokenHash
             ).toHaveBeenCalledWith(
-                'hash-token',
+                tokenHash,
                 EnumMfaChallengePurpose.login,
                 now
-            );
-            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
-                'sealed-push-token',
-                'app-root-secret',
-                MfaChallengeEncryptionPurpose,
-                'user-quartz'
             );
         });
 
         it('answers a null device and a null push token as null', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-token');
             mfaChallengeRepository.findActiveByTokenHash.mockResolvedValueOnce({
                 ...row,
                 device: null,
@@ -306,7 +299,6 @@ describe('MfaChallengeService', () => {
         });
 
         it('throws MfaChallengeInvalidException when no live row of that purpose holds the token', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-token');
             mfaChallengeRepository.findActiveByTokenHash.mockResolvedValue(
                 null
             );
@@ -320,7 +312,7 @@ describe('MfaChallengeService', () => {
             expect(
                 mfaChallengeRepository.findActiveByTokenHash
             ).toHaveBeenCalledWith(
-                'hash-token',
+                tokenHash,
                 EnumMfaChallengePurpose.registration,
                 now
             );
@@ -329,9 +321,7 @@ describe('MfaChallengeService', () => {
 
     describe('getLogin', () => {
         it('answers the login challenge with its device, origin, and method', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-token');
             mfaChallengeRepository.findActiveByTokenHash.mockResolvedValue(row);
-            helperEncryptionService.aes256Decrypt.mockReturnValue('push-token');
 
             await expect(service.getLogin('raw-token')).resolves.toEqual({
                 userId: 'user-quartz',
@@ -343,7 +333,7 @@ describe('MfaChallengeService', () => {
             expect(
                 mfaChallengeRepository.findActiveByTokenHash
             ).toHaveBeenCalledWith(
-                'hash-token',
+                tokenHash,
                 EnumMfaChallengePurpose.login,
                 now
             );
@@ -357,14 +347,10 @@ describe('MfaChallengeService', () => {
         ])(
             'throws MfaChallengeInvalidException for a login row whose %s is null',
             async (_field, patch) => {
-                helperHashService.sha256Hash.mockReturnValue('hash-token');
                 mfaChallengeRepository.findActiveByTokenHash.mockResolvedValue({
                     ...row,
                     ...patch,
                 });
-                helperEncryptionService.aes256Decrypt.mockReturnValue(
-                    'push-token'
-                );
 
                 await expect(
                     service.getLogin('raw-token')
@@ -378,13 +364,11 @@ describe('MfaChallengeService', () => {
 
     describe('getWebAuthnChallengeForUser', () => {
         it('answers the WebAuthn challenge of a row held by the user', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-token');
             mfaChallengeRepository.findActiveByTokenHash.mockResolvedValue({
                 ...row,
                 purpose: EnumMfaChallengePurpose.registration,
                 webAuthnChallenge: 'webauthn-challenge',
             });
-            helperEncryptionService.aes256Decrypt.mockReturnValue('push-token');
 
             await expect(
                 service.getWebAuthnChallengeForUser(
@@ -396,19 +380,17 @@ describe('MfaChallengeService', () => {
             expect(
                 mfaChallengeRepository.findActiveByTokenHash
             ).toHaveBeenCalledWith(
-                'hash-token',
+                tokenHash,
                 EnumMfaChallengePurpose.registration,
                 now
             );
         });
 
         it('throws MfaChallengeInvalidException when the row belongs to another user', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-token');
             mfaChallengeRepository.findActiveByTokenHash.mockResolvedValue({
                 ...row,
                 webAuthnChallenge: 'webauthn-challenge',
             });
-            helperEncryptionService.aes256Decrypt.mockReturnValue('push-token');
 
             await expect(
                 service.getWebAuthnChallengeForUser(
@@ -424,9 +406,7 @@ describe('MfaChallengeService', () => {
         });
 
         it('throws MfaChallengeInvalidException when the row holds no WebAuthn challenge', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-token');
             mfaChallengeRepository.findActiveByTokenHash.mockResolvedValue(row);
-            helperEncryptionService.aes256Decrypt.mockReturnValue('push-token');
 
             await expect(
                 service.getWebAuthnChallengeForUser(
@@ -444,21 +424,11 @@ describe('MfaChallengeService', () => {
 
     describe('purgeExpired', () => {
         it('deletes the challenges expired before now minus the retention and returns the count', async () => {
-            const retention = Duration.fromObject({ milliseconds: 604800000 });
             const threshold = new Date('2026-02-22T00:00:00.000Z');
-            helperDateService.createDuration.mockReturnValue(retention);
-            helperDateService.backward.mockReturnValue(threshold);
             mfaChallengeRepository.deleteExpiredBefore.mockResolvedValue(6);
 
             await expect(service.purgeExpired()).resolves.toBe(6);
 
-            expect(helperDateService.createDuration).toHaveBeenCalledWith({
-                milliseconds: 604800000,
-            });
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                retention
-            );
             expect(
                 mfaChallengeRepository.deleteExpiredBefore
             ).toHaveBeenCalledWith(threshold);
@@ -467,7 +437,6 @@ describe('MfaChallengeService', () => {
 
     describe('consumeInTx', () => {
         it('claims the live challenge of the purpose on the tx', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-token');
             mfaChallengeRepository.consumeInTx.mockResolvedValue(true);
 
             await service.consumeInTx(
@@ -479,7 +448,7 @@ describe('MfaChallengeService', () => {
 
             expect(mfaChallengeRepository.consumeInTx).toHaveBeenCalledWith(
                 tx,
-                'hash-token',
+                tokenHash,
                 EnumMfaChallengePurpose.login,
                 now,
                 'user-quartz'
@@ -487,7 +456,6 @@ describe('MfaChallengeService', () => {
         });
 
         it('throws MfaChallengeInvalidException when the claim is lost', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hash-token');
             mfaChallengeRepository.consumeInTx.mockResolvedValue(false);
 
             await expect(

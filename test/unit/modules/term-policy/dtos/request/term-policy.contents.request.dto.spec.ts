@@ -17,33 +17,42 @@ describe('TermPolicyContentsRequestSchema', () => {
     });
 
     it('rejects an empty contents list', () => {
-        expect(() =>
-            TermPolicyContentsRequestSchema.parse({ contents: [] })
-        ).toThrow();
+        const result = TermPolicyContentsRequestSchema.safeParse({
+            contents: [],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['contents'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a duplicated language across contents', () => {
-        expect(() =>
-            TermPolicyContentsRequestSchema.parse({
-                contents: [
-                    ...contents,
-                    {
-                        language: EnumMessageLanguage.en,
-                        size: 2048,
-                        key: 'term-policies/privacy/v1/en-2.hbs',
-                    },
-                ],
-            })
-        ).toThrow();
+        const result = TermPolicyContentsRequestSchema.safeParse({
+            contents: [
+                ...contents,
+                {
+                    language: EnumMessageLanguage.en,
+                    size: 2048,
+                    key: 'term-policies/privacy/v1/en-2.hbs',
+                },
+            ],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['contents'], code: 'too_big' }),
+            expect.objectContaining({ path: ['contents'], code: 'custom' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            TermPolicyContentsRequestSchema.parse({
-                contents,
-                version: 1,
-            })
-        ).toThrow();
+        const result = TermPolicyContentsRequestSchema.safeParse({
+            contents,
+            version: 1,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts one content per language and rejects more than the language count', () => {
@@ -54,8 +63,13 @@ describe('TermPolicyContentsRequestSchema', () => {
         expect(() =>
             TermPolicyContentsRequestSchema.parse({ contents })
         ).not.toThrow();
-        expect(() =>
-            TermPolicyContentsRequestSchema.parse({ contents: pastBound })
-        ).toThrow();
+        const result = TermPolicyContentsRequestSchema.safeParse({
+            contents: pastBound,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['contents'], code: 'too_big' }),
+            expect.objectContaining({ path: ['contents'], code: 'custom' }),
+        ]);
     });
 });

@@ -3,24 +3,13 @@ import type { TestingModule } from '@nestjs/testing';
 import type { Workspace } from '@generated/prisma-client/client';
 import { WorkspaceGetCurrentUseCase } from '@modules/workspace/use-cases/workspace.get-current.use-case';
 import {
-    buildWorkspaceMember,
+    buildWorkspace,
     buildWorkspaceContext,
+    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceGetCurrentUseCase', () => {
-    const workspace: Workspace = {
-        id: 'workspace-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: 'user-1',
-        deletedAt: null,
-        deletedBy: null,
-        name: 'Acme',
-        slug: 'acme-team',
-        description: null,
-        isPublic: false,
-    };
+    const workspace: Workspace = buildWorkspace();
     const workspaceContext = buildWorkspaceContext(
         workspace,
         buildWorkspaceMember('user-1')
@@ -28,8 +17,6 @@ describe('WorkspaceGetCurrentUseCase', () => {
     let useCase: WorkspaceGetCurrentUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [WorkspaceGetCurrentUseCase],
         }).compile();

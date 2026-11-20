@@ -35,17 +35,26 @@ describe('HelloResponseSchema', () => {
     });
 
     it('rejects an invalid app environment', () => {
-        expect(() =>
-            HelloResponseSchema.parse({
-                ...payload,
-                app: { ...payload.app, env: 'invalid' },
-            })
-        ).toThrow();
+        const result = HelloResponseSchema.safeParse({
+            ...payload,
+            app: { ...payload.app, env: 'invalid' },
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['app', 'env'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects a missing required field', () => {
         const { date: _date, ...withoutDate } = payload;
 
-        expect(() => HelloResponseSchema.parse(withoutDate)).toThrow();
+        const result = HelloResponseSchema.safeParse(withoutDate);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['date'], code: 'invalid_type' }),
+        ]);
     });
 });

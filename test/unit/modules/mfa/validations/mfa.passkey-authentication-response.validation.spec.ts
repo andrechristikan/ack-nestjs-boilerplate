@@ -37,7 +37,9 @@ describe('MfaPasskeyAuthenticationResponseSchema', () => {
             extra: 'value',
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects an undeclared response key', () => {
@@ -46,7 +48,12 @@ describe('MfaPasskeyAuthenticationResponseSchema', () => {
             response: { ...base.response, attestationObject: 'AbC' },
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['response'],
+                code: 'unrecognized_keys',
+            }),
+        ]);
     });
 
     it('accepts an id of 1364 characters and rejects one of 1365', () => {
@@ -60,7 +67,9 @@ describe('MfaPasskeyAuthenticationResponseSchema', () => {
         });
 
         expect(accepted.success).toBe(true);
-        expect(rejected.success).toBe(false);
+        expect(rejected.error?.issues).toEqual([
+            expect.objectContaining({ path: ['id'], code: 'too_big' }),
+        ]);
     });
 
     it('accepts a signature of 1024 characters and rejects one of 1025', () => {
@@ -74,7 +83,12 @@ describe('MfaPasskeyAuthenticationResponseSchema', () => {
         });
 
         expect(accepted.success).toBe(true);
-        expect(rejected.success).toBe(false);
+        expect(rejected.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['response', 'signature'],
+                code: 'too_big',
+            }),
+        ]);
     });
 
     it('accepts a userHandle of 86 characters and rejects one of 87', () => {
@@ -88,7 +102,12 @@ describe('MfaPasskeyAuthenticationResponseSchema', () => {
         });
 
         expect(accepted.success).toBe(true);
-        expect(rejected.success).toBe(false);
+        expect(rejected.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['response', 'userHandle'],
+                code: 'too_big',
+            }),
+        ]);
     });
 
     it('rejects a signature holding a character outside base64url', () => {
@@ -97,7 +116,12 @@ describe('MfaPasskeyAuthenticationResponseSchema', () => {
             response: { ...base.response, signature: 'ab+c' },
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['response', 'signature'],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects a type other than public-key', () => {
@@ -106,7 +130,9 @@ describe('MfaPasskeyAuthenticationResponseSchema', () => {
             type: 'password',
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'invalid_value' }),
+        ]);
     });
 
     it('strips an unknown key inside clientExtensionResults', () => {

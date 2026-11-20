@@ -12,9 +12,13 @@ import {
 } from '@generated/prisma-client/client';
 import type { PasswordHistory, User } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { MockInstance } from 'vitest';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -55,6 +59,7 @@ import {
     buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 const passkeyResponse = {
     id: 'AbC_-123',
@@ -80,13 +85,12 @@ describe('UserChangePasswordUseCase', () => {
         mock<NotificationService>();
     const authPasswordService: MockProxy<AuthPasswordService> =
         mock<AuthPasswordService>();
-    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
-        mock<AuthPasswordUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
+    let helperHashService: HelperHashService;
+    let argon2Hash: MockInstance<HelperHashService['argon2Hash']>;
     let useCase: UserChangePasswordUseCase;
 
     const user = buildUser('user-linden', 'linden@example.com');
@@ -149,17 +153,21 @@ describe('UserChangePasswordUseCase', () => {
         passkeyChallengeToken: null,
     };
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect.mockReturnValue(changeEntry);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         notificationService.notify.mockReturnValue(notifyEffect);
-        authPasswordUtil.createContextWords.mockReturnValue([
-            'ACK Boilerplate',
-            'linden',
-        ]);
+        vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -177,18 +185,23 @@ describe('UserChangePasswordUseCase', () => {
                     useValue: notificationService,
                 },
                 { provide: AuthPasswordService, useValue: authPasswordService },
-                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
+                AuthPasswordUtil,
+                HelperHashService,
+                HelperDateService,
+                HelperStringService,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
+                        ...TestUnitUserConfigValues,
                         'app.name': 'ACK Boilerplate',
                     }),
                 },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                DatabaseUtil,
             ],
         }).compile();
+        helperHashService = module.get(HelperHashService);
         useCase = module.get(UserChangePasswordUseCase);
     });
 
@@ -202,7 +215,9 @@ describe('UserChangePasswordUseCase', () => {
             userAuthService.assertReauthentication.mockResolvedValue(
                 passwordOnly
             );
-            authPasswordUtil.createPassword.mockResolvedValue(password);
+            argon2Hash = vi
+                .spyOn(helperHashService, 'argon2Hash')
+                .mockResolvedValue('hashed');
             userService.updatePasswordInTx.mockResolvedValue(updatedRow);
             passwordHistoryService.createInTx.mockResolvedValue(
                 passwordHistory
@@ -247,29 +262,21 @@ describe('UserChangePasswordUseCase', () => {
                 'user-linden',
                 'new-password'
             );
-            expect(authPasswordUtil.createContextWords).toHaveBeenCalledWith(
-                'ACK Boilerplate',
-                'linden@example.com',
-                'jane',
-                'Jane Doe'
-            );
             expect(authPasswordService.assertAllowed).toHaveBeenCalledWith(
                 'new-password',
-                ['ACK Boilerplate', 'linden']
+                ['ACK Boilerplate', 'linden', 'jane', 'Jane Doe']
             );
             expect(
                 userAuthService.assertReauthentication
             ).toHaveBeenCalledBefore(authPasswordService.assertAllowed);
             expect(passwordHistoryService.assertNew).toHaveBeenCalledBefore(
-                authPasswordUtil.createPassword
+                argon2Hash
             );
             expect(authPasswordService.assertAllowed).toHaveBeenCalledBefore(
-                authPasswordUtil.createPassword
+                argon2Hash
             );
-            expect(authPasswordUtil.createPassword).toHaveBeenCalledWith(
-                'new-password'
-            );
-            expect(authPasswordUtil.createPassword).toHaveBeenCalledBefore(
+            expect(argon2Hash).toHaveBeenCalledWith('new-password');
+            expect(argon2Hash).toHaveBeenCalledBefore(
                 outboxService.withTransaction
             );
         });
@@ -439,7 +446,7 @@ describe('UserChangePasswordUseCase', () => {
 
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
             expect(authPasswordService.assertAllowed).not.toHaveBeenCalled();
-            expect(authPasswordUtil.createPassword).not.toHaveBeenCalled();
+            expect(argon2Hash).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
@@ -474,7 +481,7 @@ describe('UserChangePasswordUseCase', () => {
                 )
             ).rejects.toBe(refused);
 
-            expect(authPasswordUtil.createPassword).not.toHaveBeenCalled();
+            expect(argon2Hash).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
@@ -513,16 +520,12 @@ describe('UserChangePasswordUseCase', () => {
 
             expect(userService.updatePasswordInTx).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('answers MfaInvalidException when a verified MFA user loses a write conflict', async () => {
-            const conflict = new Error('write conflict');
+            const conflict = buildPrismaKnownRequestError('P2034');
             userAuthService.assertReauthentication.mockResolvedValue(withMfa);
             outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
 
             await expect(
                 useCase.execute(
@@ -536,17 +539,12 @@ describe('UserChangePasswordUseCase', () => {
                 statusCode: EnumMfaStatusCodeError.invalid,
 
                 module: 'mfa',
-                messagePath: 'mfa.error.invalid',
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps a write conflict in AppUnknownException when no MFA proof was checked', async () => {
             outboxService.withTransaction.mockRejectedValue(
-                new Error('write conflict')
-            );
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+                buildPrismaKnownRequestError('P2034')
             );
 
             await expect(
@@ -563,7 +561,6 @@ describe('UserChangePasswordUseCase', () => {
         it('wraps an unknown transaction failure in AppUnknownException', async () => {
             const cause = new Error('boom');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

@@ -22,8 +22,6 @@ describe('TermPolicyGetContentByAdminUseCase', () => {
     let useCase: TermPolicyGetContentByAdminUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 TermPolicyGetContentByAdminUseCase,

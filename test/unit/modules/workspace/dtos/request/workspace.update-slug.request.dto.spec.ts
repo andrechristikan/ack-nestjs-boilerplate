@@ -10,15 +10,22 @@ describe('WorkspaceUpdateSlugRequestSchema', () => {
     });
 
     it('rejects an empty slug', () => {
-        expect(() =>
-            WorkspaceUpdateSlugRequestSchema.parse({ slug: '' })
-        ).toThrow();
+        const result = WorkspaceUpdateSlugRequestSchema.safeParse({ slug: '' });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['slug'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceUpdateSlugRequestSchema.parse({ ...payload, extra: true })
-        ).toThrow();
+        const result = WorkspaceUpdateSlugRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a slug of 100 characters and rejects one of 101', () => {
@@ -28,11 +35,13 @@ describe('WorkspaceUpdateSlugRequestSchema', () => {
                 slug: 'a'.repeat(100),
             })
         ).not.toThrow();
-        expect(() =>
-            WorkspaceUpdateSlugRequestSchema.parse({
-                ...payload,
-                slug: 'a'.repeat(101),
-            })
-        ).toThrow();
+        const result = WorkspaceUpdateSlugRequestSchema.safeParse({
+            ...payload,
+            slug: 'a'.repeat(101),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['slug'], code: 'too_big' }),
+        ]);
     });
 });

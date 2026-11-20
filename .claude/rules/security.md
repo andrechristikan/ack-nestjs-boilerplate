@@ -1,18 +1,39 @@
 ---
 paths:
-    - 'src/modules/auth/**'
-    - 'src/modules/session/**'
-    - 'src/modules/api-key/**'
-    - 'src/modules/device/**'
-    - 'src/modules/workspace/**'
-    - 'src/modules/project/**'
-    - 'src/modules/user/**'
-    - 'src/modules/role/**'
-    - 'src/modules/policy/**'
-    - 'src/modules/term-policy/**'
-    - 'src/modules/activity-log/**'
-    - 'src/modules/notification/**'
-    - 'src/modules/mfa/**'
+    - 'src/modules/auth/services/**'
+    - 'src/modules/auth/use-cases/**'
+    - 'src/modules/auth/guards/**'
+    - 'src/modules/session/services/**'
+    - 'src/modules/session/use-cases/**'
+    - 'src/modules/api-key/services/**'
+    - 'src/modules/api-key/use-cases/**'
+    - 'src/modules/api-key/guards/**'
+    - 'src/modules/device/services/**'
+    - 'src/modules/device/use-cases/**'
+    - 'src/modules/workspace/services/**'
+    - 'src/modules/workspace/use-cases/**'
+    - 'src/modules/workspace/guards/**'
+    - 'src/modules/project/services/**'
+    - 'src/modules/project/use-cases/**'
+    - 'src/modules/project/guards/**'
+    - 'src/modules/user/services/**'
+    - 'src/modules/user/use-cases/**'
+    - 'src/modules/user/guards/**'
+    - 'src/modules/role/services/**'
+    - 'src/modules/role/use-cases/**'
+    - 'src/modules/role/guards/**'
+    - 'src/modules/policy/services/**'
+    - 'src/modules/policy/use-cases/**'
+    - 'src/modules/policy/guards/**'
+    - 'src/modules/term-policy/services/**'
+    - 'src/modules/term-policy/use-cases/**'
+    - 'src/modules/term-policy/guards/**'
+    - 'src/modules/activity-log/services/**'
+    - 'src/modules/activity-log/use-cases/**'
+    - 'src/modules/notification/services/**'
+    - 'src/modules/notification/use-cases/**'
+    - 'src/modules/mfa/services/**'
+    - 'src/modules/mfa/use-cases/**'
     - 'src/common/request/**'
     - 'src/common/pagination/**'
     - 'src/common/helper/**'
@@ -30,7 +51,7 @@ A credential: a password hash or generated password; a TOTP secret, pending secr
 
 - Never in a log line, an error message, `JSON.stringify`, a URL path, activity metadata, a Sentry attribute, or `request.<field>`. Redaction (`logging.md`) is only a safety net.
 - A plaintext credential enters a database row, cache entry, or job payload only sealed: a value only compared (token, one-time code such as `Verification.token`, API key secret, the session jti as `Session.jtiDigest`, an MFA challenge as `MfaChallenge.tokenHash`, the social nonce as `AuthSocialNonce.nonceHash`) as its SHA-256 hash, a backup code as its argon2id hash (`argon2Hash`), a value read back (TOTP secret, queued password or link, the challenge's push token under `MfaChallengeEncryptionPurpose`) encrypted. A passkey public key and a WebAuthn challenge are no credential and are stored plain. In memory it rides plain; on the wire, only what the response schema declares.
-- A notification recipient's email and device tokens in `Outbox.data`, a `snapshot` included, are encrypted against the recipient's user id (`effects.md`, Payloads).
+- Job and outbox payloads: `effects.md`, Payloads.
 
 ## Cryptography
 
@@ -45,4 +66,4 @@ A credential: a password hash or generated password; a TOTP secret, pending secr
 
 ## Request store
 
-Per-request state lives in `RequestStoreService`, keyed by `*StoreKey` constants; add a key, never a second store. `IRequestApp` carries the transport only (`id`, `correlationId`). Each module owns its context: its guard or middleware translates a credential or header into `I<Module>[<Concern>]Context` under its own `<Module>[<Concern>]ContextStoreKey`; every reader takes the context, and no code stores a JWT or provider payload or reads `request.user`. The JWT guards also write the kit's `RequestActorStoreKey` (the user id) for the logger, audit stamping, and the per-user throttle. A guard, middleware, or interceptor injects it, and the kit reads it (`DatabaseExtensionFactory` audit stamping, `MessageService`, the logger mixin); a param decorator: `guards.md`. A service, use case, effect builder, or processor never reads it (a list use case's `PaginationStoreKey` merge is a write, `pagination.md`): the controller passes the contexts down (`http.md`, `service.md`), and the raw refresh token lives in `IAuthJwtRefreshContext` only, never in a job payload or a log. `RequestRequestIdMiddleware`, first in the `RequestMiddlewareModule` chain, alone writes `req.id`, `req.correlationId`, and both id store keys (`logging.md`). `IRequestContext.requestLog` holds the client IP, user agent, and geo-location, resolved once per request (`request.request-log.middleware.ts`) and never re-resolved. The client IP is `req.ip` under `trust proxy` (`src/configure.ts:38`).
+Per-request state lives in `RequestStoreService`, keyed by `*StoreKey` constants; add a key, never a second store. `IRequestApp` carries the transport only (`id`, `correlationId`). Each module owns its context: its guard or middleware translates a credential or header into `I<Module>[<Concern>]Context` under its own `<Module>[<Concern>]ContextStoreKey`; every reader takes the context, and no code stores a JWT or provider payload or reads `request.user`. The JWT guards also write the kit's `RequestActorStoreKey` (the user id) for the logger, audit stamping, and the per-user throttle. A guard, middleware, or interceptor injects it, and the kit reads it (`DatabaseExtensionFactory` audit stamping, `ResponseMetadataService`, the logger mixin); a param decorator: `guards.md`. A service, use case, effect builder, or processor never reads it (a list use case's `PaginationStoreKey` merge is a write, `pagination.md`): the controller passes the contexts down (`http.md`, `service.md`), and the raw refresh token lives in `IAuthJwtRefreshContext` only, never in a job payload or a log. `RequestRequestIdMiddleware`, first in the `RequestMiddlewareModule` chain, alone writes `req.id`, `req.correlationId`, and both id store keys (`logging.md`). `IRequestContext.requestLog` holds the client IP, user agent, and geo-location, resolved once per request (`request.request-log.middleware.ts`) and never re-resolved. The client IP is `req.ip` under `trust proxy` (`src/configure.ts:38`).

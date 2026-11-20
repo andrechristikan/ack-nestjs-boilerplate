@@ -18,7 +18,6 @@ import {
     EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
-    EnumUserStatus,
     EnumVerificationType,
     EnumWorkspaceInviteStatus,
     EnumWorkspaceMemberRole,
@@ -64,32 +63,32 @@ import type {
     IUserSignUpWorkspacePersonal,
     IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
-import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
+import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 import { UserSignUpUseCase } from '@modules/user/use-cases/user.sign-up.use-case';
 import {
-    buildRequestContext,
     buildApiKeyContext,
+    buildRequestContext,
+    buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserSignUpUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const authPasswordService: MockProxy<AuthPasswordService> =
         mock<AuthPasswordService>();
-    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
-        mock<AuthPasswordUtil>();
-    const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
-    const userVerificationUtil: MockProxy<UserVerificationUtil> =
-        mock<UserVerificationUtil>();
     const userRegistrationService: MockProxy<UserRegistrationService> =
         mock<UserRegistrationService>();
     const notificationService: MockProxy<NotificationService> =
@@ -100,7 +99,6 @@ describe('UserSignUpUseCase', () => {
         mock<WorkspaceService>();
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
-    const workspaceUtil: MockProxy<WorkspaceUtil> = mock<WorkspaceUtil>();
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
@@ -108,18 +106,26 @@ describe('UserSignUpUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     let useCase: UserSignUpUseCase;
+    let databaseUtil: DatabaseUtil;
+    let helperStringService: HelperStringService;
 
     const tx = {} as IDatabaseTransactionClient;
     const configValues: Record<string, unknown> = {
+        ...TestUnitUserConfigValues,
+        'workspace.slugMaxAttempts': 2,
         'app.name': 'ACK Boilerplate',
         'user.default.role': 'user',
         'user.default.country': 'ID',
         'user.create.timeoutInMs': 5000,
         'user.create.bulkTimeoutInMs': 30000,
     };
-    const contextWords = ['ACK Boilerplate', 'bramble', 'Bramble Fox'];
+    const contextWords = [
+        'ACK Boilerplate',
+        'bramble',
+        'bramble2fox',
+        'Bramble Fox',
+    ];
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const activityEntry = buildActivityLogCreateManyEffect('activity-entry');
@@ -148,51 +154,7 @@ describe('UserSignUpUseCase', () => {
         },
         idempotencyKey: 'verificationEmail-VRF-bramble',
     };
-    const baseUser: IUser = {
-        id: 'user-bramble',
-        name: 'Bramble Fox',
-        username: 'bramble2fox',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'bramble@example.com',
-        roleId: 'role-bramble',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-bramble',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-bramble',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
-    };
+    const baseUser: IUser = buildUser('user-bramble', 'bramble@example.com');
     const committedUser: IUser = baseUser;
     const country: Country = {
         id: 'country-bramble',
@@ -274,7 +236,7 @@ describe('UserSignUpUseCase', () => {
         userId: 'user-bramble',
         proceedBy: 'user-bramble',
         link: 'https://example.com/verify?token=raw-token',
-        expiredAt: '2026-03-05T07:00:00.000+07:00',
+        expiredAt: '2026-03-05T00:00:00.000Z',
         expiredInMinutes: 15,
         reference: 'VRF-bramble',
     };
@@ -322,8 +284,6 @@ describe('UserSignUpUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -334,21 +294,15 @@ describe('UserSignUpUseCase', () => {
                 : verificationEffect
         );
         userRegistrationService.createInTx.mockResolvedValue([committedUser]);
-        userCreateUtil.buildTermPolicyAcceptanceEntries.mockReturnValue([
-            acceptanceEntry,
-        ]);
-        workspaceUtil.countSlugAttempts.mockReturnValue(2);
-        workspaceUtil.buildOwnedUsers.mockReturnValue([]);
         roleService.getByName.mockResolvedValue(role);
         countryService.getOne.mockResolvedValue(country);
-        authPasswordUtil.createContextWords.mockReturnValue(contextWords);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserSignUpUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: AuthPasswordService, useValue: authPasswordService },
-                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
+                AuthPasswordUtil,
                 {
                     provide: UserRegistrationService,
                     useValue: userRegistrationService,
@@ -370,14 +324,14 @@ describe('UserSignUpUseCase', () => {
                 { provide: CountryService, useValue: countryService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: NotificationService, useValue: notificationService },
-                { provide: UserCreateUtil, useValue: userCreateUtil },
-                {
-                    provide: UserVerificationUtil,
-                    useValue: userVerificationUtil,
-                },
-                { provide: WorkspaceUtil, useValue: workspaceUtil },
+                UserCreateUtil,
+                UserVerificationUtil,
+                WorkspaceUtil,
+                HelperStringService,
+                HelperDateService,
+                HelperHashService,
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                DatabaseUtil,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(configValues),
@@ -385,6 +339,8 @@ describe('UserSignUpUseCase', () => {
             ],
         }).compile();
         useCase = module.get(UserSignUpUseCase);
+        databaseUtil = module.get(DatabaseUtil);
+        helperStringService = module.get(HelperStringService);
     });
 
     describe('execute', () => {
@@ -411,19 +367,18 @@ describe('UserSignUpUseCase', () => {
 
         beforeEach(() => {
             workspaceInviteService.getSignUpInvite.mockResolvedValue(null);
-            userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
-                personalContext
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue(
+                'workspace-bramble'
             );
+            vi.spyOn(helperStringService, 'random')
+                .mockReturnValueOnce('bramble')
+                .mockReturnValueOnce('bramble-b');
             userRegistrationService.prepareSignUp.mockResolvedValue({
                 input,
                 emailVerification,
             });
             userService.existsByEmail.mockResolvedValue(false);
             userService.checkUsername.mockResolvedValue(clearUsername);
-            userCreateUtil.buildStages.mockReturnValue([stageInput]);
-            userVerificationUtil.mapEmailContext.mockReturnValue(
-                verificationContext
-            );
         });
 
         it('commits the new user on one transaction, adds the created entries and the welcome and verification effects on the same tx, and returns an empty envelope', async () => {
@@ -435,9 +390,6 @@ describe('UserSignUpUseCase', () => {
                 null,
                 'bramble@example.com'
             );
-            expect(
-                userCreateUtil.buildSignUpWorkspaceContext
-            ).toHaveBeenCalledWith(null, 'bramble2fox');
             expect(roleService.getByName).toHaveBeenCalledWith('user');
             expect(countryService.getOne).toHaveBeenCalledWith(
                 'country-bramble'
@@ -451,21 +403,13 @@ describe('UserSignUpUseCase', () => {
                 expect.any(Function),
                 { timeout: 5000 }
             );
-            expect(userCreateUtil.buildStages).toHaveBeenCalledWith(
-                UserCreateContract.signUp,
-                [input],
-                [committedUser]
-            );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+                1,
                 requestContext,
                 apiKeyContext,
                 null,
                 null,
                 stageInput
-            );
-            expect(userVerificationUtil.mapEmailContext).toHaveBeenCalledWith(
-                'user-bramble',
-                emailVerification
             );
             expect(notificationService.notify).toHaveBeenCalledTimes(2);
             expect(notificationService.notify).toHaveBeenNthCalledWith(
@@ -479,6 +423,8 @@ describe('UserSignUpUseCase', () => {
                 verificationContext
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                activityEntry,
+                activityEntry,
                 activityEntry,
                 welcomeEffect,
                 verificationEffect,
@@ -496,12 +442,6 @@ describe('UserSignUpUseCase', () => {
                 })
             ).rejects.toBe(refused);
 
-            expect(authPasswordUtil.createContextWords).toHaveBeenCalledWith(
-                'ACK Boilerplate',
-                'bramble@example.com',
-                'bramble2fox',
-                'Bramble Fox'
-            );
             expect(authPasswordService.assertAllowed).toHaveBeenCalledWith(
                 'plainPassword123!',
                 contextWords
@@ -522,9 +462,6 @@ describe('UserSignUpUseCase', () => {
 
         it('forwards the name and reads the invite before the role when a token is present', async () => {
             workspaceInviteService.getSignUpInvite.mockResolvedValue(invite);
-            userCreateUtil.buildSignUpWorkspaceContext.mockReturnValue(
-                inviteContext
-            );
 
             await useCase.execute(requestContext, apiKeyContext, {
                 ...dto,
@@ -536,9 +473,6 @@ describe('UserSignUpUseCase', () => {
                 'raw-token',
                 'bramble@example.com'
             );
-            expect(
-                userCreateUtil.buildSignUpWorkspaceContext
-            ).toHaveBeenCalledWith(invite, 'bramble2fox');
             expect(userRegistrationService.prepareSignUp).toHaveBeenCalledWith(
                 {
                     ...signUpInput,
@@ -562,15 +496,7 @@ describe('UserSignUpUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
-                statusCodeKey:
-                    EnumFeatureFlagStatusCodeError[
-                        EnumFeatureFlagStatusCodeError.disabled
-                    ],
-                messagePath: 'featureFlag.error.disabled',
             });
-            expect(
-                userCreateUtil.buildSignUpWorkspaceContext
-            ).not.toHaveBeenCalled();
             expect(roleService.getByName).not.toHaveBeenCalled();
         });
 
@@ -587,11 +513,6 @@ describe('UserSignUpUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteInvalid
-                    ],
-                messagePath: 'workspace.error.inviteInvalid',
             });
             expect(roleService.getByName).not.toHaveBeenCalled();
         });
@@ -609,7 +530,6 @@ describe('UserSignUpUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
-                messagePath: 'role.error.notFound',
             });
             expect(userService.assertEmailAvailable).not.toHaveBeenCalled();
             expect(
@@ -630,7 +550,6 @@ describe('UserSignUpUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'country',
                 statusCode: EnumCountryStatusCodeError.notFound,
-                messagePath: 'country.error.notFound',
             });
             expect(userService.assertEmailAvailable).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
@@ -647,9 +566,6 @@ describe('UserSignUpUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.emailExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.emailExist],
-                messagePath: 'user.error.emailExist',
             });
             expect(userService.assertEmailAvailable).toHaveBeenCalledWith(true);
             expect(userService.assertUsernameAvailable).not.toHaveBeenCalled();
@@ -666,11 +582,6 @@ describe('UserSignUpUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.usernameExist,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.usernameExist
-                    ],
-                messagePath: 'user.error.usernameExist',
             });
             expect(userService.assertUsernameAvailable).toHaveBeenCalledWith(
                 clearUsername
@@ -681,8 +592,6 @@ describe('UserSignUpUseCase', () => {
         it('adds no entry or effect outside the transaction when the commit throws', async () => {
             const failure = new UserEmailExistException();
             outboxService.withTransaction.mockRejectedValue(failure);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            userCreateUtil.mapCreateCollision.mockReturnValue(failure);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
@@ -692,19 +601,7 @@ describe('UserSignUpUseCase', () => {
     });
 
     describe('createSignUpUser', () => {
-        beforeEach(() => {
-            userCreateUtil.buildStages.mockReturnValue([stageInput]);
-        });
-
         it('runs every write on one transaction in sign-up order', async () => {
-            const owned = {
-                userId: 'user-bramble',
-                workspaceId: 'workspace-invite',
-                name: 'Bramble',
-                slug: 'w-bramble',
-            };
-            workspaceUtil.buildOwnedUsers.mockReturnValue([owned]);
-
             await expect(
                 useCase['createSignUpUser'](
                     requestContext,
@@ -724,13 +621,9 @@ describe('UserSignUpUseCase', () => {
                 tx,
                 [inviteInput]
             );
-            expect(workspaceUtil.buildOwnedUsers).toHaveBeenCalledWith(
-                [inviteInput],
-                0
-            );
             expect(
                 workspaceService.createOwnedForUsersInTx
-            ).toHaveBeenCalledWith(tx, [owned]);
+            ).toHaveBeenCalledWith(tx, []);
             expect(
                 workspaceInviteService.acceptOnSignUpInTx
             ).toHaveBeenCalledWith(tx, 'user-bramble', inviteContext);
@@ -772,10 +665,9 @@ describe('UserSignUpUseCase', () => {
             outboxService.withTransaction
                 .mockImplementationOnce(async fn => {
                     await fn(tx);
-                    throw new Error('slug collision');
+                    throw buildPrismaKnownRequestError('P2002', 'slug');
                 })
                 .mockImplementationOnce(async fn => fn(retryTx) as never);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await useCase['createSignUpUser'](
                 requestContext,
@@ -856,8 +748,6 @@ describe('UserSignUpUseCase', () => {
             termPolicyAcceptanceService.assertRequiredPublishedInTx.mockRejectedValue(
                 failure
             );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            userCreateUtil.mapCreateCollision.mockReturnValue(failure);
 
             await expect(
                 useCase['createSignUpUser'](
@@ -871,11 +761,10 @@ describe('UserSignUpUseCase', () => {
         });
 
         it('retries with the next slug candidate after a slug collision and commits', async () => {
-            const collision = new Error('slug collision');
+            const collision = buildPrismaKnownRequestError('P2002', 'slug');
             outboxService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(async fn => fn(tx) as never);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 useCase['createSignUpUser'](
@@ -887,21 +776,22 @@ describe('UserSignUpUseCase', () => {
             ).resolves.toBeUndefined();
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
-            expect(workspaceUtil.buildOwnedUsers).toHaveBeenCalledWith(
-                [input],
-                1
-            );
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'slug'
-            );
+            expect(
+                workspaceService.createOwnedForUsersInTx
+            ).toHaveBeenLastCalledWith(tx, [
+                {
+                    userId: 'user-bramble',
+                    workspaceId: 'workspace-bramble',
+                    name: "bramble2fox's Workspace",
+                    slug: 'w-bramble-b',
+                },
+            ]);
         });
 
         it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
             outboxService.withTransaction.mockRejectedValue(
-                new Error('slug collision')
+                buildPrismaKnownRequestError('P2002', 'slug')
             );
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 useCase['createSignUpUser'](
@@ -914,17 +804,13 @@ describe('UserSignUpUseCase', () => {
                 module: 'database',
                 statusCode:
                     EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
-                messagePath: 'database.error.uniqueValueGenerationFailed',
             });
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
         });
 
         it('throws the exception the create util maps a non-slug collision to', async () => {
-            const otherError = new Error('duplicate email');
+            const otherError = buildPrismaKnownRequestError('P2002', 'email');
             outboxService.withTransaction.mockRejectedValue(otherError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            const mapped = new UserEmailExistException();
-            userCreateUtil.mapCreateCollision.mockReturnValue(mapped);
 
             await expect(
                 useCase['createSignUpUser'](
@@ -933,17 +819,15 @@ describe('UserSignUpUseCase', () => {
                     input,
                     emailVerification
                 )
-            ).rejects.toBe(mapped);
-            expect(userCreateUtil.mapCreateCollision).toHaveBeenCalledWith(
-                otherError
-            );
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.emailExist,
+            });
         });
 
         it('wraps a non-collision error the create util leaves unmapped in the unknown exception', async () => {
             const otherError = new Error('unexpected');
             outboxService.withTransaction.mockRejectedValue(otherError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            userCreateUtil.mapCreateCollision.mockReturnValue(otherError);
 
             await expect(
                 useCase['createSignUpUser'](

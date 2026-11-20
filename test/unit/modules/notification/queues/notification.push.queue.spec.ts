@@ -10,24 +10,20 @@ import { NotificationPushQueue } from '@modules/notification/queues/notification
 import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('NotificationPushQueue', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationPushQueue: MockProxy<Queue> = mock<Queue>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>();
+    let configService: MockProxy<ConfigService>;
     let queue: NotificationPushQueue;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
-        vi.mocked(configService.get).mockImplementation((key: string) => {
-            const values: Record<string, unknown> = {
-                'app.timezone': 'UTC',
-                'notification.push.cleanupStaleTokensCron': '0 3 * * *',
-            };
-
-            return values[key];
+        configService = buildConfigService({
+            'app.timezone': 'UTC',
+            'notification.push.cleanupStaleTokensCron': '0 3 * * *',
         });
         const module = await Test.createTestingModule({
             providers: [

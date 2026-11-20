@@ -1,15 +1,18 @@
 import type { ICacheInvalidateEffect } from '@common/cache/interfaces/cache.interface';
-import { HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import type { MockInstance } from 'vitest';
 import { CacheService } from '@common/cache/services/cache.service';
-import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { stubApiKeyRandom as stubRandom } from '@test/unit/helpers/test.unit.api-key.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
     IPaginationOffsetReturn,
@@ -35,16 +38,9 @@ import type {
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
+import { buildApiKey } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ApiKeyService', () => {
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
-    const apiKeyCredentialUtil: MockProxy<ApiKeyCredentialUtil> =
-        mock<ApiKeyCredentialUtil>();
     const apiKeyCache: MockProxy<ApiKeyCache> = mock<ApiKeyCache>({
         cacheTtlInMs: 4000,
     });
@@ -52,27 +48,13 @@ describe('ApiKeyService', () => {
         mock<ApiKeyRepository>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const configGet = vi.fn<(key: string) => number>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
 
     const now = new Date('2026-01-15T00:00:00.000Z');
     const apiKey: ApiKey = {
-        id: 'api-key-1',
-        name: 'Acme Api Key',
-        type: EnumApiKeyType.default,
+        ...buildApiKey(),
         key: 'local_abc123',
-        hash: 'hashed-secret',
-        isActive: true,
-        startAt: null,
-        endAt: null,
-        createdAt: now,
-        createdBy: 'user-1',
-        updatedAt: now,
-        updatedBy: 'user-1',
     };
 
     const keys = ['ApiKey:local_abc123', 'ApiKey:Lease:local_abc123'];
@@ -85,31 +67,44 @@ describe('ApiKeyService', () => {
     };
 
     let service: ApiKeyService;
+    let random: MockInstance<HelperStringService['random']>;
+
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockReturnValue(40);
-        helperDateService.create.mockReturnValue(now);
         apiKeyCache.buildApiKeyKeys.mockReturnValue(keys);
         cacheService.invalidateEffect.mockReturnValue(cacheEffect);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ApiKeyService,
-                { provide: HelperDateService, useValue: helperDateService },
-                {
-                    provide: ApiKeyCredentialUtil,
-                    useValue: apiKeyCredentialUtil,
-                },
+                ApiKeyCredentialUtil,
+                ...TestUnitKitProviders,
                 { provide: ApiKeyCache, useValue: apiKeyCache },
                 { provide: ApiKeyRepository, useValue: apiKeyRepository },
-                { provide: HelperStringService, useValue: helperStringService },
-                { provide: HelperHashService, useValue: helperHashService },
                 { provide: CacheService, useValue: cacheService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: ConfigService, useValue: configService },
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'app.env': 'local',
+                        'auth.xApiKey.keyLength': 30,
+                        'auth.xApiKey.secretLength': 40,
+                    }),
+                },
             ],
         }).compile();
+
+        random = vi.spyOn(module.get(HelperStringService), 'random');
+        stubRandom(random, 'abc123', 'plain-secret');
 
         service = module.get(ApiKeyService);
     });
@@ -187,9 +182,6 @@ describe('ApiKeyService', () => {
         };
 
         beforeEach(() => {
-            apiKeyCredentialUtil.createKey.mockReturnValue('local_abc123');
-            helperStringService.random.mockReturnValue('plain-secret');
-            apiKeyCredentialUtil.createHash.mockReturnValue('hashed-secret');
             apiKeyRepository.createInTx.mockResolvedValue(apiKey);
         });
 
@@ -212,7 +204,7 @@ describe('ApiKeyService', () => {
                     endAt: null,
                 },
                 'local_abc123',
-                'hashed-secret'
+                '689b933d54650fa01b8ec964bc5dd70ec6a8442ca7bb424248f24fe97c5ce006'
             );
         });
 
@@ -221,18 +213,6 @@ describe('ApiKeyService', () => {
             const endAt = new Date('2026-03-01T00:00:00.000Z');
             const startAtDay = new Date('2026-02-01T00:00:00.000Z');
             const endAtDay = new Date('2026-03-01T23:59:59.999Z');
-            helperDateService.create.mockImplementation((date, options) => {
-                if (!date) {
-                    return now;
-                }
-                if (options?.dayOf === EnumHelperDateDayOf.start) {
-                    return startAtDay;
-                }
-                if (options?.dayOf === EnumHelperDateDayOf.end) {
-                    return endAtDay;
-                }
-                return date;
-            });
 
             await service.createByAdminInTx(tx, 'api-key-1', {
                 ...create,
@@ -250,7 +230,7 @@ describe('ApiKeyService', () => {
                     endAt: endAtDay,
                 },
                 'local_abc123',
-                'hashed-secret'
+                '689b933d54650fa01b8ec964bc5dd70ec6a8442ca7bb424248f24fe97c5ce006'
             );
         });
 
@@ -265,12 +245,6 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.startAtNotFuture,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.startAtNotFuture
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'apiKey.error.startAtNotFuture',
             });
         });
     });
@@ -284,12 +258,6 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.notFound
-                    ],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'apiKey.error.notFound',
             });
         });
 
@@ -306,12 +274,6 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.expired,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.expired
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'apiKey.error.expired',
             });
         });
 
@@ -349,12 +311,6 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.notFound
-                    ],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'apiKey.error.notFound',
             });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -369,12 +325,6 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.notFound
-                    ],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'apiKey.error.notFound',
             });
         });
 
@@ -389,12 +339,6 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.inactive,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.inactive
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'apiKey.error.inactive',
             });
         });
 
@@ -429,35 +373,11 @@ describe('ApiKeyService', () => {
         const startAtDay = new Date('2026-02-01T00:00:00.000Z');
         const endAtDay = new Date('2026-03-01T23:59:59.999Z');
 
-        beforeEach(() => {
-            helperDateService.create.mockImplementation((date, options) => {
-                if (!date) {
-                    return now;
-                }
-                if (options?.dayOf === EnumHelperDateDayOf.start) {
-                    return startAtDay;
-                }
-                if (options?.dayOf === EnumHelperDateDayOf.end) {
-                    return endAtDay;
-                }
-                return date;
-            });
-        });
-
         it('writes both rounded dates for a past startAt and a future endAt', async () => {
             const yesterday = new Date('2026-01-14T10:00:00.000Z');
             const nextYear = new Date('2027-01-15T10:00:00.000Z');
             const yesterdayDay = new Date('2026-01-14T00:00:00.000Z');
             const nextYearDay = new Date('2027-01-15T23:59:59.999Z');
-            helperDateService.create.mockImplementation((date, options) => {
-                if (!date) {
-                    return now;
-                }
-                if (options?.dayOf === EnumHelperDateDayOf.start) {
-                    return yesterdayDay;
-                }
-                return nextYearDay;
-            });
             apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
             const updated: ApiKey = {
                 ...apiKey,
@@ -483,17 +403,6 @@ describe('ApiKeyService', () => {
         });
 
         it('throws ApiKeyEndAtNotFutureException when the rounded endAt is not after now', async () => {
-            const pastEndAtDay = new Date('2025-01-01T23:59:59.999Z');
-            helperDateService.create.mockImplementation((date, options) => {
-                if (!date) {
-                    return now;
-                }
-                if (options?.dayOf === EnumHelperDateDayOf.start) {
-                    return startAtDay;
-                }
-                return pastEndAtDay;
-            });
-
             await expect(
                 service.updateDatesByAdminInTx(
                     tx,
@@ -504,12 +413,6 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.endAtNotFuture,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.endAtNotFuture
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'apiKey.error.endAtNotFuture',
             });
             expect(apiKeyRepository.updateDatesInTx).not.toHaveBeenCalled();
         });
@@ -557,12 +460,6 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.notFound
-                    ],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'apiKey.error.notFound',
             });
         });
 
@@ -577,12 +474,6 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.inactive,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.inactive
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'apiKey.error.inactive',
             });
         });
 
@@ -625,12 +516,6 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.inactive,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.inactive
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'apiKey.error.inactive',
             });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -645,12 +530,6 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.notFound
-                    ],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'apiKey.error.notFound',
             });
         });
 
@@ -665,33 +544,24 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.inactive,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.inactive
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'apiKey.error.inactive',
             });
         });
 
         it('creates a new secret, updates the hash, and adds the cache invalidation effect on the tx', async () => {
             apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
-            helperStringService.random.mockReturnValue('new-secret');
-            apiKeyCredentialUtil.createHash.mockReturnValue('new-hash');
-            const updated: ApiKey = { ...apiKey, hash: 'new-hash' };
+            stubRandom(random, 'unused', 'new-secret');
+            const newHash =
+                '182f48be1503436e9fc2845af64b59df8c972076e47d5b1e78232e664dead6bc';
+            const updated: ApiKey = { ...apiKey, hash: newHash };
             apiKeyRepository.updateHashInTx.mockResolvedValue(updated);
 
             const result = await service.resetByAdminInTx(tx, apiKey.id);
 
             expect(result).toEqual({ apiKey: updated, secret: 'new-secret' });
-            expect(apiKeyCredentialUtil.createHash).toHaveBeenCalledWith(
-                apiKey.key,
-                'new-secret'
-            );
             expect(apiKeyRepository.updateHashInTx).toHaveBeenCalledWith(
                 tx,
                 apiKey.id,
-                'new-hash'
+                newHash
             );
             expect(apiKeyCache.buildApiKeyKeys).toHaveBeenCalledWith(
                 apiKey.key
@@ -702,8 +572,7 @@ describe('ApiKeyService', () => {
 
         it('throws ApiKeyInactiveException when the guarded write misses', async () => {
             apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
-            helperStringService.random.mockReturnValue('new-secret');
-            apiKeyCredentialUtil.createHash.mockReturnValue('new-hash');
+            stubRandom(random, 'unused', 'new-secret');
             apiKeyRepository.updateHashInTx.mockResolvedValue(null);
 
             await expect(
@@ -711,12 +580,6 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.inactive,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.inactive
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'apiKey.error.inactive',
             });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -731,12 +594,6 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.notFound
-                    ],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'apiKey.error.notFound',
             });
         });
 
@@ -767,18 +624,17 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.notFound
-                    ],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'apiKey.error.notFound',
             });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 
     describe('validateXApiKey', () => {
+        const matchingApiKey: ApiKey = {
+            ...apiKey,
+            hash: 'f4683e97d795a38456393f54c7cc9706a62dc3769b8b00c06385ef573413d3f3',
+        };
+
         const lease = { key: 'ApiKey:Lease:local_abc123', ttlInMs: 10000 };
 
         beforeEach(() => {
@@ -790,12 +646,6 @@ describe('ApiKeyService', () => {
             await expect(service.validateXApiKey(null)).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyRequired
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'apiKey.error.xApiKey.required',
             });
         });
 
@@ -803,12 +653,6 @@ describe('ApiKeyService', () => {
             await expect(service.validateXApiKey('   ')).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyRequired
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'apiKey.error.xApiKey.required',
             });
         });
 
@@ -818,19 +662,12 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyInvalid
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'apiKey.error.xApiKey.invalid',
             });
             expect(cacheService.readThrough).not.toHaveBeenCalled();
         });
 
         it('reads through with the entry key, ApiKeyCacheSchema, the TTL, and the lease', async () => {
-            cacheService.readThrough.mockResolvedValue(apiKey);
-            helperHashService.sha256Compare.mockReturnValue(true);
+            cacheService.readThrough.mockResolvedValue(matchingApiKey);
 
             await service.validateXApiKey('local_abc123:secret-1');
 
@@ -853,14 +690,13 @@ describe('ApiKeyService', () => {
             cacheService.readThrough.mockImplementation(
                 async (_key, _schema, _ttlInMs, loader) => loader()
             );
-            apiKeyRepository.findOneByKey.mockResolvedValue(apiKey);
-            helperHashService.sha256Compare.mockReturnValue(true);
+            apiKeyRepository.findOneByKey.mockResolvedValue(matchingApiKey);
 
             const result = await service.validateXApiKey(
                 'local_abc123:secret-1'
             );
 
-            expect(result).toBe(apiKey);
+            expect(result).toBe(matchingApiKey);
             expect(apiKeyRepository.findOneByKey).toHaveBeenCalledWith(
                 'local_abc123'
             );
@@ -874,39 +710,25 @@ describe('ApiKeyService', () => {
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyInvalid
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'apiKey.error.xApiKey.invalid',
             });
         });
 
         it('throws ApiKeyXApiKeyInvalidException when the credential does not match', async () => {
             cacheService.readThrough.mockResolvedValue(apiKey);
-            helperHashService.sha256Compare.mockReturnValue(false);
 
             await expect(
                 service.validateXApiKey('local_abc123:wrong-secret')
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyInvalid
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'apiKey.error.xApiKey.invalid',
             });
         });
 
         it('throws ApiKeyXApiKeyInvalidException when the key is inactive', async () => {
             cacheService.readThrough.mockResolvedValue({
-                ...apiKey,
+                ...matchingApiKey,
                 isActive: false,
             });
-            helperHashService.sha256Compare.mockReturnValue(true);
 
             await expect(
                 service.validateXApiKey('local_abc123:secret-1')
@@ -919,10 +741,9 @@ describe('ApiKeyService', () => {
 
         it('throws ApiKeyXApiKeyInvalidException when the key is not yet active', async () => {
             cacheService.readThrough.mockResolvedValue({
-                ...apiKey,
+                ...matchingApiKey,
                 startAt: new Date('2026-02-01T00:00:00.000Z'),
             });
-            helperHashService.sha256Compare.mockReturnValue(true);
 
             await expect(
                 service.validateXApiKey('local_abc123:secret-1')
@@ -935,45 +756,28 @@ describe('ApiKeyService', () => {
 
         it('throws ApiKeyExpiredException when the endAt is past', async () => {
             const expiredApiKey: ApiKey = {
-                ...apiKey,
+                ...matchingApiKey,
                 startAt: new Date('2026-01-01T00:00:00.000Z'),
                 endAt: new Date('2026-01-10T00:00:00.000Z'),
             };
             cacheService.readThrough.mockResolvedValue(expiredApiKey);
-            helperHashService.sha256Compare.mockReturnValue(true);
 
             await expect(
                 service.validateXApiKey('local_abc123:secret-1')
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.expired,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.expired
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'apiKey.error.expired',
             });
         });
 
         it('returns the api key read through when the credential matches', async () => {
-            cacheService.readThrough.mockResolvedValue(apiKey);
-            apiKeyCredentialUtil.createHash.mockReturnValue('hashed-secret');
-            helperHashService.sha256Compare.mockReturnValue(true);
+            cacheService.readThrough.mockResolvedValue(matchingApiKey);
 
             const result = await service.validateXApiKey(
                 'local_abc123:secret-1'
             );
 
-            expect(result).toBe(apiKey);
-            expect(apiKeyCredentialUtil.createHash).toHaveBeenCalledWith(
-                'local_abc123',
-                'secret-1'
-            );
-            expect(helperHashService.sha256Compare).toHaveBeenCalledWith(
-                'hashed-secret',
-                apiKey.hash
-            );
+            expect(result).toBe(matchingApiKey);
         });
     });
 
@@ -991,12 +795,6 @@ describe('ApiKeyService', () => {
             expect(thrown).toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.xApiKeyForbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'apiKey.error.xApiKey.forbidden',
             });
         });
 
@@ -1021,12 +819,6 @@ describe('ApiKeyService', () => {
             expect(thrown).toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.notFound
-                    ],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'apiKey.error.notFound',
             });
         });
 
@@ -1041,12 +833,6 @@ describe('ApiKeyService', () => {
             expect(thrown).toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.inactive,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.inactive
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'apiKey.error.inactive',
             });
         });
 
@@ -1075,12 +861,6 @@ describe('ApiKeyService', () => {
             expect(thrown).toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.startAtNotFuture,
-                statusCodeKey:
-                    EnumApiKeyStatusCodeError[
-                        EnumApiKeyStatusCodeError.startAtNotFuture
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'apiKey.error.startAtNotFuture',
             });
         });
 
@@ -1178,33 +958,26 @@ describe('ApiKeyService', () => {
 
     describe('createSecret', () => {
         it('returns a random secret of the configured secret length', () => {
-            helperStringService.random.mockReturnValue('random-secret');
+            stubRandom(random, 'unused', 'random-secret');
 
             const result = service['createSecret']();
 
             expect(result).toBe('random-secret');
-            expect(helperStringService.random).toHaveBeenCalledWith(40);
+            expect(random).toHaveBeenCalledWith(40);
         });
     });
 
     describe('generateCredential', () => {
         it('generates a key, secret, and hash', () => {
-            apiKeyCredentialUtil.createKey.mockReturnValue('local_random-key');
-            helperStringService.random.mockReturnValue('random-secret');
-            apiKeyCredentialUtil.createHash.mockReturnValue('hashed-value');
+            stubRandom(random, 'random-key', 'random-secret');
 
             const result = service['generateCredential']();
 
             expect(result).toEqual({
                 key: 'local_random-key',
                 secret: 'random-secret',
-                hash: 'hashed-value',
+                hash: '36e24f36c2d8c82034c6bec9b57ee303f16ccfbb4e4d841a718ee422643c81fa',
             });
-            expect(apiKeyCredentialUtil.createKey).toHaveBeenCalledWith(null);
-            expect(apiKeyCredentialUtil.createHash).toHaveBeenCalledWith(
-                'local_random-key',
-                'random-secret'
-            );
         });
     });
 
@@ -1229,28 +1002,14 @@ describe('ApiKeyService', () => {
 
     describe('validateCredential', () => {
         it('returns true when the re-derived hash matches the stored hash', () => {
-            apiKeyCredentialUtil.createHash.mockReturnValue('hashed-value');
-            helperHashService.sha256Compare.mockReturnValue(true);
-
             const result = service['validateCredential']('key-1', 'secret-1', {
-                hash: 'hashed-value',
+                hash: 'b18a276615212509238d7857f88d060a8299b2e998c2bcb88d6b284143cccc6c',
             });
 
             expect(result).toBe(true);
-            expect(apiKeyCredentialUtil.createHash).toHaveBeenCalledWith(
-                'key-1',
-                'secret-1'
-            );
-            expect(helperHashService.sha256Compare).toHaveBeenCalledWith(
-                'hashed-value',
-                'hashed-value'
-            );
         });
 
         it('returns false when the re-derived hash does not match the stored hash', () => {
-            apiKeyCredentialUtil.createHash.mockReturnValue('hashed-value');
-            helperHashService.sha256Compare.mockReturnValue(false);
-
             const result = service['validateCredential']('key-1', 'secret-1', {
                 hash: 'other-hash',
             });

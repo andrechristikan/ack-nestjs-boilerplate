@@ -21,15 +21,23 @@ describe('NotificationListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            NotificationListRequestSchema.parse({ ...payload, page: 1 })
-        ).toThrow();
+        const result = NotificationListRequestSchema.safeParse({
+            ...payload,
+            page: 1,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
         expect(
-            NotificationListRequestSchema.safeParse({ search: 'x' }).success
-        ).toBe(false);
+            NotificationListRequestSchema.safeParse({ search: 'x' }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -61,15 +69,25 @@ describe('NotificationListRequestSchema', () => {
         'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            NotificationListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            NotificationListRequestSchema.safeParse({ orderBy }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             NotificationListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

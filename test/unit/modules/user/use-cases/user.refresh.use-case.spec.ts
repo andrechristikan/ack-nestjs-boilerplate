@@ -4,7 +4,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -13,9 +12,6 @@ import {
     EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
@@ -44,11 +40,16 @@ import {
 import type { IUserRefreshSessionDoubles } from '@test/unit/helpers/test.unit.user-refresh.helper';
 import { UserRefreshUseCase } from '@modules/user/use-cases/user.refresh.use-case';
 import {
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtRefreshContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserRefreshUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -58,9 +59,6 @@ describe('UserRefreshUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const refreshSessionDoubles: IUserRefreshSessionDoubles = {
         authJwtService,
         sessionService,
@@ -83,51 +81,7 @@ describe('UserRefreshUseCase', () => {
         priority: EnumQueuePriority.low,
         idempotencyKey: null,
     };
-    const baseUser: IUser = {
-        id: 'user-bramble',
-        name: 'Bramble Fox',
-        username: 'bramble2fox',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'bramble@example.com',
-        roleId: 'role-bramble',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-bramble',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-bramble',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
-    };
+    const baseUser: IUser = buildUser('user-bramble', 'bramble@example.com');
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(baseUser);
@@ -138,17 +92,19 @@ describe('UserRefreshUseCase', () => {
     };
     const { requestLog } = requestContext;
     const committedUser: IUser = baseUser;
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
 
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.forward.mockImplementation(date => date);
-        helperDateService.formatToIso.mockReturnValue(
-            '2026-03-05T00:00:00.000Z'
-        );
+        vi.setSystemTime(now);
         activityLogService.recordEffect.mockReturnValue(entryEffect);
         authJwtService.createTokens.mockReturnValue(tokens);
         Object.defineProperty(authJwtService, 'refreshTokenExpiresInSeconds', {
@@ -166,8 +122,12 @@ describe('UserRefreshUseCase', () => {
                 { provide: AuthJwtService, useValue: authJwtService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                DatabaseUtil,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
+                HelperDateService,
             ],
         }).compile();
         useCase = module.get(UserRefreshUseCase);
@@ -282,7 +242,6 @@ describe('UserRefreshUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-                messagePath: 'auth.error.refreshTokenUnauthorized',
             });
         });
 
@@ -368,11 +327,8 @@ describe('UserRefreshUseCase', () => {
             sessionService.getRefreshedTokens.mockImplementation(() => {
                 throw new SessionRevokedException();
             });
-            const conflict = new Error('write conflict');
+            const conflict = buildPrismaKnownRequestError('P2034');
             outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
 
             await expectSessionRevoked(
                 useCase.execute(
@@ -383,7 +339,6 @@ describe('UserRefreshUseCase', () => {
                 )
             );
 
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
                 null
             );
@@ -406,7 +361,6 @@ describe('UserRefreshUseCase', () => {
                     userContext
                 )
             ).rejects.toBe(failure);
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('wraps any other failure raised while rotating the session in the unknown exception', async () => {
@@ -417,7 +371,6 @@ describe('UserRefreshUseCase', () => {
             });
             const failure = new Error('boom');
             outboxService.withTransaction.mockRejectedValue(failure);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

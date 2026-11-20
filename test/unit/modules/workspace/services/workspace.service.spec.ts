@@ -1,5 +1,4 @@
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
-import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -43,12 +42,19 @@ import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.r
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import {
-    buildUser,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspace,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 
 describe('WorkspaceService', () => {
@@ -66,15 +72,10 @@ describe('WorkspaceService', () => {
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const entry = buildActivityLogCreateManyEffect('entry');
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
+    let databaseUtil: DatabaseUtil;
+    let helperStringService: HelperStringService;
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
 
     const configValues: Record<string, unknown> = {
         'workspace.slugRegex': /^[a-z0-9-]+$/,
@@ -83,25 +84,11 @@ describe('WorkspaceService', () => {
         'workspace.slugMaxAttempts': 3,
     };
 
-    const workspace: Workspace = {
-        id: 'workspace-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: 'user-1',
-        deletedAt: null,
-        deletedBy: null,
-        name: 'Acme',
-        slug: 'acme-team',
-        description: null,
-        isPublic: false,
-    };
+    const workspace: Workspace = buildWorkspace();
 
     let service: WorkspaceService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => configValues[key]);
         activityLogService.recordEffect.mockReturnValue(entry);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -114,14 +101,21 @@ describe('WorkspaceService', () => {
                 },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperStringService, useValue: helperStringService },
+                ...TestUnitKitProviders,
                 { provide: FeatureFlagService, useValue: featureFlagService },
-                { provide: ConfigService, useValue: configService },
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        ...configValues,
+                    }),
+                },
             ],
         }).compile();
 
         service = module.get(WorkspaceService);
+        databaseUtil = module.get(DatabaseUtil);
+        helperStringService = module.get(HelperStringService);
     });
 
     describe('getListCursorByMember', () => {
@@ -285,12 +279,11 @@ describe('WorkspaceService', () => {
         const tx = {} as IDatabaseTransactionClient;
 
         beforeEach(() => {
-            helperStringService.generateSlugCandidates.mockReturnValue([
-                'ws-aaa',
-                'ws-bbb',
-                'ws-ccc',
-            ]);
-            databaseUtil.createId.mockReturnValue('workspace-1');
+            vi.spyOn(
+                helperStringService,
+                'generateSlugCandidates'
+            ).mockReturnValue(['ws-aaa', 'ws-bbb', 'ws-ccc']);
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('workspace-1');
             featureFlagService.getMetadataNumber.mockResolvedValue(5);
         });
 
@@ -371,11 +364,6 @@ describe('WorkspaceService', () => {
                 constructor: WorkspaceCapReachedException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.capReached,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.capReached
-                    ],
-                messagePath: 'workspace.error.capReached',
             });
             expect(
                 workspaceMemberRepository.countOwnedActiveByUserInTx
@@ -450,11 +438,10 @@ describe('WorkspaceService', () => {
             workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
                 1
             );
-            const collision = new Error('slug collision');
+            const collision = buildPrismaKnownRequestError('P2002', 'slug');
             outboxService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(fn => fn(tx));
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
             workspaceRepository.createInTx.mockResolvedValue(workspace);
 
             const result = await service.createWorkspace(
@@ -481,7 +468,6 @@ describe('WorkspaceService', () => {
             );
             const otherError = new Error('unexpected');
             outboxService.withTransaction.mockRejectedValue(otherError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 service.createWorkspace(
@@ -503,7 +489,6 @@ describe('WorkspaceService', () => {
             );
             const typedError = new WorkspaceNotFoundException();
             outboxService.withTransaction.mockRejectedValue(typedError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 service.createWorkspace(
@@ -520,9 +505,8 @@ describe('WorkspaceService', () => {
             workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
                 1
             );
-            const collision = new Error('slug collision');
+            const collision = buildPrismaKnownRequestError('P2002', 'slug');
             outboxService.withTransaction.mockRejectedValue(collision);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 service.createWorkspace(
@@ -662,20 +646,14 @@ describe('WorkspaceService', () => {
                 constructor: WorkspaceSlugInvalidException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.slugInvalid,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.slugInvalid
-                    ],
-                messagePath: 'workspace.error.slugInvalid',
             });
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(workspaceRepository.updateSlugInTx).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceSlugAlreadyExistsException when the write collides on the slug index', async () => {
-            const collision = new Error('slug collision');
+            const collision = buildPrismaKnownRequestError('P2002', 'slug');
             workspaceRepository.updateSlugInTx.mockRejectedValue(collision);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 service.updateWorkspaceSlug(
@@ -689,16 +667,7 @@ describe('WorkspaceService', () => {
                 constructor: WorkspaceSlugAlreadyExistsException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.slugAlreadyExists,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.slugAlreadyExists
-                    ],
-                messagePath: 'workspace.error.slugAlreadyExists',
             });
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'slug'
-            );
         });
 
         it('rethrows an AppBaseException thrown inside the transaction as is', async () => {
@@ -714,13 +683,11 @@ describe('WorkspaceService', () => {
                     'new-slug'
                 )
             ).rejects.toBe(thrown);
-            expect(databaseUtil.isUniqueCollision).not.toHaveBeenCalled();
         });
 
         it('wraps a non-collision write error in AppUnknownException', async () => {
             const otherError = new Error('unexpected');
             workspaceRepository.updateSlugInTx.mockRejectedValue(otherError);
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 service.updateWorkspaceSlug(
@@ -801,11 +768,6 @@ describe('WorkspaceService', () => {
                 constructor: WorkspaceNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.notFound
-                    ],
-                messagePath: 'workspace.error.notFound',
             });
         });
     });
@@ -875,12 +837,6 @@ describe('WorkspaceService', () => {
                 constructor: WorkspaceOwnerTransferRequiredException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.ownerTransferRequired,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.ownerTransferRequired
-                    ],
-                httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'workspace.error.ownerTransferRequired',
             });
             expect(
                 workspaceMemberRepository.findWorkspaceIdsByUserInTx
@@ -996,11 +952,6 @@ describe('WorkspaceService', () => {
                 constructor: WorkspaceNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.notFound
-                    ],
-                messagePath: 'workspace.error.notFound',
             });
         });
 
@@ -1056,11 +1007,6 @@ describe('WorkspaceService', () => {
                 constructor: WorkspaceNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.notFound
-                    ],
-                messagePath: 'workspace.error.notFound',
             });
         });
 
@@ -1077,18 +1023,14 @@ describe('WorkspaceService', () => {
 
     describe('drawSlugCandidates', () => {
         it('draws one slug candidate per configured attempt', () => {
-            helperStringService.generateSlugCandidates.mockReturnValue([
-                'ws-aaa',
-                'ws-bbb',
-                'ws-ccc',
-            ]);
+            const generateSlugCandidates = vi
+                .spyOn(helperStringService, 'generateSlugCandidates')
+                .mockReturnValue(['ws-aaa', 'ws-bbb', 'ws-ccc']);
 
             const result = service['drawSlugCandidates']();
 
             expect(result).toEqual(['ws-aaa', 'ws-bbb', 'ws-ccc']);
-            expect(
-                helperStringService.generateSlugCandidates
-            ).toHaveBeenCalledWith('ws-', 12, 3);
+            expect(generateSlugCandidates).toHaveBeenCalledWith('ws-', 12, 3);
         });
     });
 

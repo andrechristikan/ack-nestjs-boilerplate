@@ -14,8 +14,6 @@ describe('RequestUrlVersionMiddleware', () => {
     let next: NextFunction;
 
     beforeEach(() => {
-        vi.resetAllMocks();
-
         res = {} as Response;
         next = vi.fn();
     });

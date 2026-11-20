@@ -15,33 +15,53 @@ describe('AwsS3PresignPartRequestSchema', () => {
     });
 
     it('rejects an empty uploadId', () => {
-        expect(() =>
-            AwsS3PresignPartRequestSchema.parse({ ...payload, uploadId: '' })
-        ).toThrow();
+        const result = AwsS3PresignPartRequestSchema.safeParse({
+            ...payload,
+            uploadId: '',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['uploadId'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a non-integer partNumber', () => {
-        expect(() =>
-            AwsS3PresignPartRequestSchema.parse({
-                ...payload,
-                partNumber: 1.5,
-            })
-        ).toThrow();
+        const result = AwsS3PresignPartRequestSchema.safeParse({
+            ...payload,
+            partNumber: 1.5,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['partNumber'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a partNumber above 10000', () => {
-        expect(() =>
-            AwsS3PresignPartRequestSchema.parse({
-                ...payload,
-                partNumber: 10001,
-            })
-        ).toThrow();
+        const result = AwsS3PresignPartRequestSchema.safeParse({
+            ...payload,
+            partNumber: 10001,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['partNumber'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects a partNumber below 1', () => {
-        expect(() =>
-            AwsS3PresignPartRequestSchema.parse({ ...payload, partNumber: 0 })
-        ).toThrow();
+        const result = AwsS3PresignPartRequestSchema.safeParse({
+            ...payload,
+            partNumber: 0,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['partNumber'],
+                code: 'too_small',
+            }),
+        ]);
     });
 
     it('accepts the highest partNumber 10000', () => {
@@ -54,9 +74,14 @@ describe('AwsS3PresignPartRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            AwsS3PresignPartRequestSchema.parse({ ...payload, extra: true })
-        ).toThrow();
+        const result = AwsS3PresignPartRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a uploadId of 1024 characters and rejects one of 1025', () => {
@@ -66,11 +91,13 @@ describe('AwsS3PresignPartRequestSchema', () => {
                 uploadId: 'a'.repeat(1024),
             })
         ).not.toThrow();
-        expect(() =>
-            AwsS3PresignPartRequestSchema.parse({
-                ...payload,
-                uploadId: 'a'.repeat(1025),
-            })
-        ).toThrow();
+        const result = AwsS3PresignPartRequestSchema.safeParse({
+            ...payload,
+            uploadId: 'a'.repeat(1025),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['uploadId'], code: 'too_big' }),
+        ]);
     });
 });

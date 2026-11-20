@@ -13,7 +13,6 @@ describe('NotificationPushProcessCleanupTokensUseCase', () => {
     let useCase: NotificationPushProcessCleanupTokensUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module = await Test.createTestingModule({
             providers: [
                 NotificationPushProcessCleanupTokensUseCase,

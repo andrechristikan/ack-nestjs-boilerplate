@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -22,38 +23,42 @@ import {
     ResponseTimezoneHeaderName,
     ResponseVersionHeaderName,
 } from '@common/response/constants/response.constant';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 
 describe('ResponseMetadataService', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
+    let configService: MockProxy<ConfigService>;
 
     const today = new Date('2026-01-01T00:00:00.000Z');
     let service: ResponseMetadataService;
 
-    const configValues: Record<string, unknown> = {
-        'message.defaultLanguage': 'id',
-        'app.urlVersioning.defaultVersion': '1',
-        'app.version': '1.0.0',
-    };
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => configValues[key]);
+        vi.setSystemTime(today);
+        configService = buildConfigService({
+            ...TestUnitKitConfigValues,
+            'app.timezone': 'Asia/Jakarta',
+            'message.defaultLanguage': 'id',
+            'app.urlVersioning.defaultVersion': '1',
+            'app.version': '1.0.0',
+        });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ResponseMetadataService,
                 { provide: RequestStoreService, useValue: requestStoreService },
                 { provide: ConfigService, useValue: configService },
-                { provide: HelperDateService, useValue: helperDateService },
+                HelperDateService,
             ],
         }).compile();
 
@@ -62,9 +67,6 @@ describe('ResponseMetadataService', () => {
 
     describe('create', () => {
         it('builds metadata from the stored language and version', () => {
-            helperDateService.create.mockReturnValue(today);
-            helperDateService.getTimestamp.mockReturnValue(today.getTime());
-            helperDateService.getZone.mockReturnValue('Asia/Jakarta');
             requestStoreService.get.mockImplementation((key: string) => {
                 const stored: Record<string, unknown> = {
                     [RequestLanguageStoreKey]: EnumMessageLanguage.en,
@@ -89,9 +91,6 @@ describe('ResponseMetadataService', () => {
         });
 
         it('falls back to the default language and URL version when the store carries none', () => {
-            helperDateService.create.mockReturnValue(today);
-            helperDateService.getTimestamp.mockReturnValue(today.getTime());
-            helperDateService.getZone.mockReturnValue('Asia/Jakarta');
             requestStoreService.get.mockImplementation((key: string) => {
                 const stored: Record<string, unknown> = {
                     [RequestIdStoreKey]: 'request-id',
@@ -114,9 +113,6 @@ describe('ResponseMetadataService', () => {
         });
 
         it('falls back to the default language when the stored language is not an enum member', () => {
-            helperDateService.create.mockReturnValue(today);
-            helperDateService.getTimestamp.mockReturnValue(today.getTime());
-            helperDateService.getZone.mockReturnValue('Asia/Jakarta');
             requestStoreService.get.mockImplementation((key: string) => {
                 const stored: Record<string, unknown> = {
                     [RequestLanguageStoreKey]: 'klingon',
@@ -132,9 +128,6 @@ describe('ResponseMetadataService', () => {
         });
 
         it('answers a null request id when the store carries none', () => {
-            helperDateService.create.mockReturnValue(today);
-            helperDateService.getTimestamp.mockReturnValue(today.getTime());
-            helperDateService.getZone.mockReturnValue('Asia/Jakarta');
             requestStoreService.get.mockImplementation((key: string) => {
                 const stored: Record<string, unknown> = {
                     [RequestCorrelationIdStoreKey]: 'correlation-id',
@@ -149,9 +142,6 @@ describe('ResponseMetadataService', () => {
         });
 
         it('answers a null correlation id when the store carries none', () => {
-            helperDateService.create.mockReturnValue(today);
-            helperDateService.getTimestamp.mockReturnValue(today.getTime());
-            helperDateService.getZone.mockReturnValue('Asia/Jakarta');
             requestStoreService.get.mockImplementation((key: string) => {
                 const stored: Record<string, unknown> = {
                     [RequestIdStoreKey]: 'request-id',

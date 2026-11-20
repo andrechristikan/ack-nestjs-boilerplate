@@ -1,10 +1,10 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { argon2 as Argon2 } from 'node:crypto';
-import type { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { argon2 } from 'node:crypto';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 vi.mock('node:crypto', async importOriginal => {
     const actual = await importOriginal<typeof import('node:crypto')>();
@@ -13,41 +13,29 @@ vi.mock('node:crypto', async importOriginal => {
 });
 
 describe('HelperHashService', () => {
-    const configGet = vi.fn<(key: string) => object | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
 
     let service: HelperHashService;
-    let argon2: typeof Argon2;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        vi.resetModules();
-        ({ argon2 } = await import('node:crypto'));
-        const { HelperHashService: HelperHashServiceClass } =
-            await import('@common/helper/services/helper.hash.service');
-
-        configGet.mockImplementation((key: string) =>
-            key === 'helper.argon2'
-                ? {
-                      memoryInBytes: 19922944,
-                      passes: 2,
-                      parallelism: 1,
-                      saltLength: 16,
-                      tagLength: 32,
-                  }
-                : undefined
-        );
+        configService = buildConfigService({
+            'helper.argon2': {
+                memoryInBytes: 19922944,
+                passes: 2,
+                parallelism: 1,
+                saltLength: 16,
+                tagLength: 32,
+            },
+        });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                HelperHashServiceClass,
+                HelperHashService,
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
 
-        service = module.get(HelperHashServiceClass);
+        service = module.get(HelperHashService);
     });
 
     describe('argon2Hash', () => {

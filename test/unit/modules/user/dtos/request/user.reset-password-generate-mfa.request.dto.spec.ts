@@ -10,18 +10,22 @@ describe('UserResetPasswordGenerateMfaRequestSchema', () => {
     });
 
     it('rejects a payload with no token', () => {
-        expect(() =>
-            UserResetPasswordGenerateMfaRequestSchema.parse({})
-        ).toThrow();
+        const result = UserResetPasswordGenerateMfaRequestSchema.safeParse({});
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['token'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserResetPasswordGenerateMfaRequestSchema.parse({
-                ...payload,
-                newPassword: 'abcDE12345@@!',
-            })
-        ).toThrow();
+        const result = UserResetPasswordGenerateMfaRequestSchema.safeParse({
+            ...payload,
+            newPassword: 'abcDE12345@@!',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a token of 200 characters and rejects one of 201', () => {
@@ -30,10 +34,12 @@ describe('UserResetPasswordGenerateMfaRequestSchema', () => {
                 token: 'a'.repeat(200),
             })
         ).not.toThrow();
-        expect(() =>
-            UserResetPasswordGenerateMfaRequestSchema.parse({
-                token: 'a'.repeat(201),
-            })
-        ).toThrow();
+        const result = UserResetPasswordGenerateMfaRequestSchema.safeParse({
+            token: 'a'.repeat(201),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['token'], code: 'too_big' }),
+        ]);
     });
 });

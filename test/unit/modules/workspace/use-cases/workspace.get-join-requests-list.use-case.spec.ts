@@ -1,25 +1,20 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import {
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
+} from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
-import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumWorkspaceJoinRequestStatus,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumWorkspaceJoinRequestStatus } from '@generated/prisma-client/client';
 import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import {
-    WorkspaceJoinRequestOrderBy,
-    WorkspaceJoinRequestDefaultStatus,
-    WorkspaceJoinRequestUserListCursorScope,
-} from '@modules/workspace/constants/workspace.list.constant';
+import { WorkspaceJoinRequestOrderBy } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceJoinRequestListRequestDto } from '@modules/workspace/dtos/request/workspace.join-request-list.request.dto';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceGetJoinRequestsListUseCase } from '@modules/workspace/use-cases/workspace.get-join-requests-list.use-case';
@@ -28,21 +23,22 @@ import {
     buildWorkspaceMember,
     buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { EnumWorkspaceJoinRequestOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 describe('WorkspaceGetJoinRequestsListUseCase', () => {
     const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
         mock<WorkspaceJoinRequestService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
-    const paginationFilterUtil: MockProxy<PaginationFilterUtil> =
-        mock<PaginationFilterUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const cursorPagination: IPaginationQueryCursorParams = {
-        fingerprint: 'aaaaaaaaaaaaaaaa',
+        fingerprint: '73b86d8686dd71dd',
         limit: 20,
-        orderBy: [],
+        orderBy: [{ createdAt: EnumPaginationOrderDirectionType.desc }],
     };
     const workspaceContext = buildWorkspaceContext(
         buildWorkspace(),
@@ -51,12 +47,6 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
     let useCase: WorkspaceGetJoinRequestsListUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        paginationQueryUtil.cursor.mockReturnValue({
-            params: cursorPagination,
-            storePatch: {},
-        });
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceGetJoinRequestsListUseCase,
@@ -64,13 +54,10 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
                     provide: WorkspaceJoinRequestService,
                     useValue: workspaceJoinRequestService,
                 },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
-                },
-                {
-                    provide: PaginationFilterUtil,
-                    useValue: paginationFilterUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
@@ -88,7 +75,7 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
             await expect(
                 useCase.execute(workspaceContext, {})
             ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
-            expect(paginationQueryUtil.cursor).not.toHaveBeenCalled();
+            expect(requestStoreService.merge).not.toHaveBeenCalled();
             expect(
                 workspaceJoinRequestService.getJoinRequestsList
             ).not.toHaveBeenCalled();
@@ -98,15 +85,6 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
             const query: WorkspaceJoinRequestListRequestDto = {
                 status: 'pending',
             };
-            const statusFilter = {
-                where: {
-                    status: { in: [EnumWorkspaceJoinRequestStatus.pending] },
-                },
-                storeFilter: {
-                    status: [EnumWorkspaceJoinRequestStatus.pending],
-                },
-            };
-            paginationFilterUtil.inEnum.mockReturnValue(statusFilter);
             const page: IResponsePaginationReturn<WorkspaceJoinRequest> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -119,19 +97,13 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
 
             await useCase.execute(workspaceContext, query);
 
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                scope: WorkspaceJoinRequestUserListCursorScope,
-                orderBy: WorkspaceJoinRequestOrderBy,
-                defaultOrderBy: EnumWorkspaceJoinRequestOrderBy.latest,
-            });
-            expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
-                Prisma.WorkspaceJoinRequestScalarFieldEnum.status,
-                'pending',
-                WorkspaceJoinRequestDefaultStatus
-            );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 {
+                    perPage: 20,
+                    orderBy: EnumWorkspaceJoinRequestOrderBy.latest,
+                    availableSearch: [],
+                    availableOrderBy: Object.keys(WorkspaceJoinRequestOrderBy),
                     filters: {
                         status: [EnumWorkspaceJoinRequestStatus.pending],
                     },
@@ -139,15 +111,12 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
             );
             expect(
                 workspaceJoinRequestService.getJoinRequestsList
-            ).toHaveBeenCalledWith(
-                'workspace-1',
-                cursorPagination,
-                statusFilter.where
-            );
+            ).toHaveBeenCalledWith('workspace-1', cursorPagination, {
+                status: { in: [EnumWorkspaceJoinRequestStatus.pending] },
+            });
         });
 
         it('merges an empty filter set when status is absent', async () => {
-            paginationFilterUtil.inEnum.mockReturnValue(null);
             const page: IResponsePaginationReturn<WorkspaceJoinRequest> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -162,7 +131,13 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                { filters: {} }
+                {
+                    perPage: 20,
+                    orderBy: EnumWorkspaceJoinRequestOrderBy.latest,
+                    availableSearch: [],
+                    availableOrderBy: Object.keys(WorkspaceJoinRequestOrderBy),
+                    filters: {},
+                }
             );
         });
     });

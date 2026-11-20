@@ -4,32 +4,29 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { FeatureFlag } from '@generated/prisma-client/client';
-import {
-    FeatureFlagOrderBy,
-    FeatureFlagDefaultAvailableSearch,
-} from '@modules/feature-flag/constants/feature-flag.list.constant';
 import type { FeatureFlagAdminListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagGetListByAdminUseCase } from '@modules/feature-flag/use-cases/feature-flag.get-list-by-admin.use-case';
-import { EnumFeatureFlagOrderBy } from '@modules/feature-flag/enums/feature-flag.enum';
 
 describe('FeatureFlagGetListByAdminUseCase', () => {
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
     const pagination = {
-        fingerprint: 'aaaaaaaaaaaaaaaa',
         skip: 0,
         limit: 20,
-        orderBy: [],
+        orderBy: [{ createdAt: 'desc' }],
     };
 
     let useCase: FeatureFlagGetListByAdminUseCase;
@@ -49,15 +46,14 @@ describe('FeatureFlagGetListByAdminUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 FeatureFlagGetListByAdminUseCase,
                 { provide: FeatureFlagService, useValue: featureFlagService },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 {
                     provide: RequestStoreService,
@@ -75,10 +71,6 @@ describe('FeatureFlagGetListByAdminUseCase', () => {
                 page: 1,
                 perPage: 20,
             };
-            paginationQueryUtil.offset.mockReturnValue({
-                params: pagination,
-                storePatch: { page: 1 },
-            });
             const page: IResponsePaginationReturn<FeatureFlag> = {
                 type: EnumPaginationType.offset,
                 count: 1,
@@ -94,14 +86,15 @@ describe('FeatureFlagGetListByAdminUseCase', () => {
             const result = await useCase.execute(query);
 
             expect(result).toEqual(page);
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
-                availableSearch: FeatureFlagDefaultAvailableSearch,
-                orderBy: FeatureFlagOrderBy,
-                defaultOrderBy: EnumFeatureFlagOrderBy.latest,
-            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                { page: 1 }
+                {
+                    page: 1,
+                    perPage: 20,
+                    orderBy: 'latest',
+                    availableSearch: ['key'],
+                    availableOrderBy: ['latest', 'key'],
+                }
             );
             expect(featureFlagService.getListByAdmin).toHaveBeenCalledWith(
                 pagination

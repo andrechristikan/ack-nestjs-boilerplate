@@ -20,8 +20,6 @@ describe('AnalyticUsersBlockedUseCase', () => {
     let useCase: AnalyticUsersBlockedUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticUsersBlockedUseCase,

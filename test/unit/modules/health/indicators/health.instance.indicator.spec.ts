@@ -6,12 +6,10 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HealthInstanceIndicator } from '@modules/health/indicators/health.instance.indicator';
 import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('HealthInstanceIndicator', () => {
-    const configGet = vi.fn<(key: string) => number | string | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
     const memoryHealthIndicator: MockProxy<MemoryHealthIndicator> =
         mock<MemoryHealthIndicator>();
     const diskHealthIndicator: MockProxy<DiskHealthIndicator> =
@@ -20,17 +18,11 @@ describe('HealthInstanceIndicator', () => {
     let indicator: HealthInstanceIndicator;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, number | string> = {
-                'health.memoryRssThresholdInBytes': 314572800,
-                'health.memoryHeapThresholdInBytes': 157286400,
-                'health.diskThresholdPercent': 0.9,
-                'health.diskPath': '/',
-            };
-
-            return values[key];
+        configService = buildConfigService({
+            'health.memoryRssThresholdInBytes': 314572800,
+            'health.memoryHeapThresholdInBytes': 157286400,
+            'health.diskThresholdPercent': 0.9,
+            'health.diskPath': '/',
         });
 
         const module: TestingModule = await Test.createTestingModule({

@@ -15,14 +15,10 @@ You are a principal engineer reviewing with a product lens: besides correctness 
 ## Standing rules
 
 - The working tree is the source, unstaged and untracked files included. The diff is `git diff HEAD` plus the files `git ls-files --others --exclude-standard` lists; never `<base>..HEAD` or a three-dot range.
-- You cannot ask questions. When something is missing, stop and hand the question back.
 - Anything outside the dispatch is one hand-back line.
-- Every command runs in the foreground.
-- This repository is a boilerplate: a compat flag, a backfill, or a data-migration note is a finding.
+- A compat flag, a backfill, or a data-migration note is a finding (`AGENTS.md`).
 - Run `bash .claude/hooks/rules.sh <every file you judge>` and read each rule it prints.
 - Open each entry `Decisions to honour` names. A change its rule forbids is an Important finding citing that rule.
-- `caveman` shapes the hand-back only.
-- Where a preloaded skill and a rule or this file differ, the rule and this file win.
 
 ## Depth
 
@@ -48,7 +44,7 @@ The dispatch names the spec, the plan, the changed paths, the rules, and `Output
 
 Then trace each endpoint and job the change adds or changes: controller or processor → use case → service → repository → outbox → processor, every hand-off followed until nothing is in flight. Read the nearest flow of the same kind beside it: a step its sibling does another way is a finding (a cache invalidation goes through the queue, never inline).
 
-Write `Output` as `.claude/skills/ack-review/references/review-file.md` gives: a coverage row per rule file pasted, and every decision made in each finding, so `coder` chooses nothing. A dispatch naming `Fixed:` reads those findings' changes only and appends `## Re-review`.
+Write `Output` as `.claude/skills/ack-review/references/review-file.md` gives. A dispatch naming `Fixed:` reads those findings' changes only and appends `## Re-review`.
 
 ### `task`
 

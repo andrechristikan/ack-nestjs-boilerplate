@@ -20,7 +20,7 @@ The session assigns one `writer` dispatch and runs the `gh pr` commands on the o
 - `comment` writes a PR comment or a review reply.
 - `version` writes `.scratch/pr/version-<slug>.md`.
 
-This skill fetches from `origin` and moves a local compare ref; every other skill keeps git read-only. Run it once the branch or release set is settled, and run nothing after it. Every Agent call runs in the foreground.
+Run it once the branch or release set is settled, and run nothing after it.
 
 ## 1. Mode and inputs
 
@@ -31,8 +31,6 @@ The argument carries the mode. Ask for a missing piece (the base branch, the PR 
 Follow `references/refs.md`: fetch, point a local `ack-pr/*` ref at the fetched tip, count the commits ahead, and read the diff.
 
 - When the stop condition there holds, there is nothing to describe: say so and stop.
-- The dispatch names the local ref, never `origin/*` alone.
-- `description` and `create` diff with no second ref, so uncommitted and staged work is included. `version` diffs the resolved range.
 
 ## 3. Dispatch `writer`
 
@@ -43,14 +41,11 @@ Compare: <local ref, or from..to range>
 Title: <branch name, PR number and thread, or version label>
 Output: .scratch/pr/pr-<slug>.md | .scratch/pr/version-<slug>.md |
   .scratch/pr/pr-comment-<slug>.md
-Shape: description and create fill .github/pull_request_template.md, same headings and
-  checkbox labels, paste-ready (.claude/skills/ack-pr/references/example-pr-description.md);
-  version is lean release notes; comment answers the thread in the same voice.
+Shape: as .claude/agents/writer.md, PR and version text, gives
+  (.claude/skills/ack-pr/references/example-pr-description.md).
 Acceptance: every claim traced to the diff; public voice; no branch-compare framing, no
   local ref, no working-artifact path (.claude/rules/authoring.md); a version identity may
   appear.
-Rules to read: <the output of bash .claude/hooks/rules.sh over the Output path and
-  .github/pull_request_template.md, pasted>
 Report: the file path, and every open question the diff could not settle (hand-back only,
   not a document section).
 ```

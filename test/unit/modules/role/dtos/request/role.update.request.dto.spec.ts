@@ -24,43 +24,60 @@ describe('RoleUpdateRequestSchema', () => {
     });
 
     it('rejects a body missing the description', () => {
-        expect(() =>
-            RoleUpdateRequestSchema.parse({ type: EnumRoleType.user })
-        ).toThrow();
+        const result = RoleUpdateRequestSchema.safeParse({
+            type: EnumRoleType.user,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['description'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a missing type', () => {
-        expect(() =>
-            RoleUpdateRequestSchema.parse({ description: 'Team lead role' })
-        ).toThrow();
+        const result = RoleUpdateRequestSchema.safeParse({
+            description: 'Team lead role',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects a description over 500 characters', () => {
-        expect(() =>
-            RoleUpdateRequestSchema.parse({
-                description: 'a'.repeat(501),
-                type: EnumRoleType.admin,
-            })
-        ).toThrow();
+        const result = RoleUpdateRequestSchema.safeParse({
+            description: 'a'.repeat(501),
+            type: EnumRoleType.admin,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['description'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects an invalid type', () => {
-        expect(() =>
-            RoleUpdateRequestSchema.parse({
-                description: 'Team lead role',
-                type: 'invalid',
-            })
-        ).toThrow();
+        const result = RoleUpdateRequestSchema.safeParse({
+            description: 'Team lead role',
+            type: 'invalid',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            RoleUpdateRequestSchema.parse({
-                description: 'Team lead role',
-                type: EnumRoleType.admin,
-                extra: true,
-            })
-        ).toThrow();
+        const result = RoleUpdateRequestSchema.safeParse({
+            description: 'Team lead role',
+            type: EnumRoleType.admin,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects the superAdmin type', () => {
@@ -68,7 +85,9 @@ describe('RoleUpdateRequestSchema', () => {
             RoleUpdateRequestSchema.safeParse({
                 description: 'Team lead role',
                 type: EnumRoleType.superAdmin,
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'invalid_value' }),
+        ]);
     });
 });

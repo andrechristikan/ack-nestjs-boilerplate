@@ -23,16 +23,22 @@ describe('WorkspaceAdminMemberListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceAdminMemberListRequestSchema.parse({ extra: true })
-        ).toThrow();
+        const result = WorkspaceAdminMemberListRequestSchema.safeParse({
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
         expect(
             WorkspaceAdminMemberListRequestSchema.safeParse({ search: 'x' })
-                .success
-        ).toBe(false);
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -68,15 +74,26 @@ describe('WorkspaceAdminMemberListRequestSchema', () => {
         'joinedAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            WorkspaceAdminMemberListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            WorkspaceAdminMemberListRequestSchema.safeParse({ orderBy }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             WorkspaceAdminMemberListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

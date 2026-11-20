@@ -22,33 +22,68 @@ describe('DeviceRefreshRequestSchema', () => {
         expect(result).toEqual(cleared);
     });
 
-    it.each(['name', 'platform', 'notificationToken'] as const)(
+    it.each(['name', 'notificationToken'] as const)(
         'rejects a payload missing %s',
         field => {
             const { [field]: _omitted, ...rest } = payload;
 
-            expect(() => DeviceRefreshRequestSchema.parse(rest)).toThrow();
+            const result = DeviceRefreshRequestSchema.safeParse(rest);
+
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: [field],
+                    code: 'invalid_type',
+                }),
+            ]);
         }
     );
 
+    it('rejects a payload missing platform', () => {
+        const { platform: _omitted, ...rest } = payload;
+
+        const result = DeviceRefreshRequestSchema.safeParse(rest);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['platform'],
+                code: 'invalid_value',
+            }),
+        ]);
+    });
+
     it('rejects a null platform', () => {
-        expect(() =>
-            DeviceRefreshRequestSchema.parse({ ...payload, platform: null })
-        ).toThrow();
+        const result = DeviceRefreshRequestSchema.safeParse({
+            ...payload,
+            platform: null,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['platform'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects a fingerprint since the field was omitted', () => {
-        expect(() =>
-            DeviceRefreshRequestSchema.parse({
-                ...payload,
-                fingerprint: 'abc123def456ghi789jkl012mno345pq',
-            })
-        ).toThrow();
+        const result = DeviceRefreshRequestSchema.safeParse({
+            ...payload,
+            fingerprint: 'abc123def456ghi789jkl012mno345pq',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            DeviceRefreshRequestSchema.parse({ ...payload, extra: true })
-        ).toThrow();
+        const result = DeviceRefreshRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

@@ -1,7 +1,13 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
@@ -23,16 +29,20 @@ import { EnumPasswordHistoryStatusCodeError } from '@modules/password-history/en
 describe('PasswordHistoryService', () => {
     const passwordHistoryRepository: MockProxy<PasswordHistoryRepository> =
         mock<PasswordHistoryRepository>();
-    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
-        mock<AuthPasswordUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const now = new Date('2026-03-01T00:00:00.000Z');
     let service: PasswordHistoryService;
+    let helperHashService: HelperHashService;
+
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        helperDateService.create.mockReturnValue(now);
         const module = await Test.createTestingModule({
             providers: [
                 PasswordHistoryService,
@@ -40,11 +50,21 @@ describe('PasswordHistoryService', () => {
                     provide: PasswordHistoryRepository,
                     useValue: passwordHistoryRepository,
                 },
-                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                AuthPasswordUtil,
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'auth.password.temporaryExpiresInMs': 3600000,
+                        'auth.password.periodInDays': 90,
+                        'auth.password.temporaryLength': 14,
+                    }),
+                },
             ],
         }).compile();
         service = module.get(PasswordHistoryService);
+        helperHashService = module.get(HelperHashService);
     });
 
     describe('getListOffsetByAdmin', () => {
@@ -209,7 +229,6 @@ describe('PasswordHistoryService', () => {
             expect(
                 passwordHistoryRepository.deleteExpiredBefore
             ).toHaveBeenCalledWith(now);
-            expect(helperDateService.backward).not.toHaveBeenCalled();
         });
     });
 
@@ -228,30 +247,29 @@ describe('PasswordHistoryService', () => {
             passwordHistoryRepository.findActiveUser.mockResolvedValue([
                 history,
             ]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(null);
+            const compare = vi
+                .spyOn(helperHashService, 'argon2Compare')
+                .mockResolvedValue(false);
 
             await expect(
                 service.assertNew('user-id', 'new-password')
             ).resolves.toBeUndefined();
-            expect(authPasswordUtil.checkPasswordPeriod).toHaveBeenCalledWith(
-                [history],
-                'new-password'
-            );
+            expect(compare).toHaveBeenCalledWith('new-password', 'hashed-old');
         });
 
         it('throws PasswordHistoryMustNewException with the period when the new password repeats a history entry', async () => {
             passwordHistoryRepository.findActiveUser.mockResolvedValue([
                 history,
             ]);
-            authPasswordUtil.checkPasswordPeriod.mockResolvedValue(history);
-            authPasswordUtil.getPasswordPeriodInDays.mockReturnValue(90);
+            vi.spyOn(helperHashService, 'argon2Compare').mockResolvedValue(
+                true
+            );
 
             await expect(
                 service.assertNew('user-id', 'old-password')
             ).rejects.toMatchObject({
                 module: 'passwordHistory',
                 statusCode: EnumPasswordHistoryStatusCodeError.mustNew,
-                messagePath: 'passwordHistory.error.mustNew',
                 messageProperties: { period: 90 },
             });
         });

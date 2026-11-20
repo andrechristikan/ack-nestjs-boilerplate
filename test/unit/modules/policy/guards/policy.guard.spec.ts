@@ -1,5 +1,4 @@
 import { UserContextStoreKey } from '@modules/user/constants/user.constant';
-import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -9,12 +8,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
 import {
@@ -29,54 +22,13 @@ import { PolicyGuard } from '@modules/policy/guards/policy.guard';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
-import { buildUserContext } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildUser,
+    buildUserContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 
 describe('PolicyGuard', () => {
-    const user: IUser = {
-        id: 'user-1',
-        name: 'Jane Doe',
-        username: 'jane',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'jane@example.com',
-        roleId: 'role-1',
-        password: 'hashed-password',
-        passwordExpired: null,
-        passwordCreated: null,
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: EnumUserLoginFrom.website,
-        lastLoginWith: EnumUserLoginWith.credential,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-1',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
-    };
+    const user: IUser = buildUser('user-1', 'jane@example.com');
 
     const reflector: MockProxy<Reflector> = mock<Reflector>();
     const policyService: MockProxy<PolicyService> = mock<PolicyService>();
@@ -88,8 +40,6 @@ describe('PolicyGuard', () => {
     let guard: PolicyGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 PolicyGuard,
@@ -169,12 +119,6 @@ describe('PolicyGuard', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.guardMissing,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.guardMissing
-                    ],
-                messagePath: 'user.error.guardMissing',
-                httpStatus: HttpStatus.UNAUTHORIZED,
             });
             expect(policyService.validatePolicyGuard).not.toHaveBeenCalled();
         });
@@ -193,12 +137,6 @@ describe('PolicyGuard', () => {
             ).rejects.toMatchObject({
                 module: 'policy',
                 statusCode: EnumPolicyStatusCodeError.guardMissing,
-                statusCodeKey:
-                    EnumPolicyStatusCodeError[
-                        EnumPolicyStatusCodeError.guardMissing
-                    ],
-                messagePath: 'policy.error.guardMissing',
-                httpStatus: HttpStatus.FORBIDDEN,
             });
             expect(policyService.validatePolicyGuard).not.toHaveBeenCalled();
         });

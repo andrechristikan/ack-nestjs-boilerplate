@@ -5,46 +5,39 @@ import {
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { ConfigService } from '@nestjs/config';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
-import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
-import type { MockProxy } from 'vitest-mock-extended';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
+import { buildSealedNotificationPayload } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('NotificationUtil', () => {
-    const configService: MockProxy<ConfigService> = mock<ConfigService>();
-    const helperEncryptionService: MockProxy<HelperEncryptionService> =
-        mock<HelperEncryptionService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const loginAtIso = '2026-03-01T00:05:00.000Z';
     const loginAtRfc2822 = 'Sun, 01 Mar 2026 00:05:00 +0000';
-    const loginAtDate = new Date(loginAtIso);
     let util: NotificationUtil;
 
     beforeEach(() => {
-        vi.resetAllMocks();
-        vi.mocked(configService.get).mockReturnValue('secret-key');
-        helperDateService.createFromIso.mockReturnValue(loginAtDate);
-        helperDateService.formatToRFC2822.mockReturnValue(loginAtRfc2822);
         util = new NotificationUtil(
-            configService,
-            helperEncryptionService,
-            helperDateService
+            buildConfigService(TestUnitKitConfigValues) as ConfigService,
+            new HelperEncryptionService(),
+            new HelperDateService(
+                buildConfigService(TestUnitKitConfigValues) as ConfigService
+            )
         );
     });
 
     describe('decryptPayload', () => {
-        it('decrypts with the encryption secret and the notification purpose bound to the context', () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue('plain');
+        it('decrypts a payload sealed for the context with the notification purpose', () => {
+            const sealed = buildSealedNotificationPayload('plain', 'user-id');
 
-            expect(util.decryptPayload('cipher', 'user-id')).toBe('plain');
-            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
-                'cipher',
-                'secret-key',
-                'notification.payload',
-                'user-id'
-            );
+            expect(util.decryptPayload(sealed, 'user-id')).toBe('plain');
+        });
+
+        it('throws when the context differs from the sealed one', () => {
+            const sealed = buildSealedNotificationPayload('plain', 'user-id');
+
+            expect(() => util.decryptPayload(sealed, 'other-id')).toThrow();
         });
     });
 
@@ -56,13 +49,14 @@ describe('NotificationUtil', () => {
 
     describe('openContext', () => {
         it('decrypts each secret of the kind back into its plain field', () => {
-            helperEncryptionService.aes256Decrypt.mockReturnValue('plain-link');
-
             const result = util.openContext(
                 EnumNotificationKind.workspaceInvite,
                 {
                     reference: 'WI-ref',
-                    encryptedInviteAcceptLink: 'cipher-link',
+                    encryptedInviteAcceptLink: buildSealedNotificationPayload(
+                        'plain-link',
+                        'user-id'
+                    ),
                 },
                 'user-id'
             );
@@ -71,12 +65,6 @@ describe('NotificationUtil', () => {
                 reference: 'WI-ref',
                 inviteAcceptLink: 'plain-link',
             });
-            expect(helperEncryptionService.aes256Decrypt).toHaveBeenCalledWith(
-                'cipher-link',
-                'secret-key',
-                'notification.payload',
-                'user-id'
-            );
         });
     });
 
@@ -109,7 +97,6 @@ describe('NotificationUtil', () => {
             );
 
             expect(result.loginAt).toBe(loginAtIso);
-            expect(helperDateService.formatToRFC2822).not.toHaveBeenCalled();
         });
     });
 
@@ -133,12 +120,6 @@ describe('NotificationUtil', () => {
 
             expect(result.loginAt).toBe(loginAtRfc2822);
             expect(result.loginFrom).toBe('web');
-            expect(helperDateService.createFromIso).toHaveBeenCalledWith(
-                loginAtIso
-            );
-            expect(helperDateService.formatToRFC2822).toHaveBeenCalledWith(
-                loginAtDate
-            );
         });
     });
 
@@ -163,7 +144,6 @@ describe('NotificationUtil', () => {
             );
 
             expect(result).toEqual({ username: 'ana', workspaceName: 'Acme' });
-            expect(helperDateService.createFromIso).not.toHaveBeenCalled();
         });
 
         it('returns the properties as they are for a kind with no date field', () => {
@@ -175,7 +155,6 @@ describe('NotificationUtil', () => {
             );
 
             expect(result).toEqual(properties);
-            expect(helperDateService.formatToRFC2822).not.toHaveBeenCalled();
         });
     });
 

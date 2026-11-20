@@ -2,15 +2,21 @@ import { WorkspaceSlugRequestSchema } from '@modules/workspace/dtos/request/work
 
 describe('WorkspaceSlugRequestSchema', () => {
     it('rejects an empty slug', () => {
-        expect(() => WorkspaceSlugRequestSchema.parse('')).toThrow();
+        const result = WorkspaceSlugRequestSchema.safeParse('');
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'too_small' }),
+        ]);
     });
 
     it('accepts a slug of 100 characters and rejects one of 101', () => {
         expect(() =>
             WorkspaceSlugRequestSchema.parse('a'.repeat(100))
         ).not.toThrow();
-        expect(() =>
-            WorkspaceSlugRequestSchema.parse('a'.repeat(101))
-        ).toThrow();
+        const result = WorkspaceSlugRequestSchema.safeParse('a'.repeat(101));
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'too_big' }),
+        ]);
     });
 });

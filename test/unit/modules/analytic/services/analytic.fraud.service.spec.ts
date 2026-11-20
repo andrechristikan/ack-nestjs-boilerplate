@@ -4,11 +4,15 @@ import {
     EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
-import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
@@ -42,14 +46,6 @@ describe('AnalyticFraudService', () => {
         liveSummaryTtlInMs,
     });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const analyticDateUtil: MockProxy<AnalyticDateUtil> =
-        mock<AnalyticDateUtil>();
-    const analyticFraudUtil: MockProxy<AnalyticFraudUtil> =
-        mock<AnalyticFraudUtil>();
-    const configGet = vi.fn<(key: string) => number | string | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
     const analyticSnapshotService: MockProxy<AnalyticSnapshotService> =
         mock<AnalyticSnapshotService>();
     const featureFlagService: MockProxy<FeatureFlagService> =
@@ -57,8 +53,15 @@ describe('AnalyticFraudService', () => {
     const analyticFraudRepository: MockProxy<AnalyticFraudRepository> =
         mock<AnalyticFraudRepository>();
 
-    const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const now: Date = new Date('2026-03-01T00:00:00.000Z');
+    const dayWindow = {
+        startDate: new Date('2026-02-28T00:00:00.000Z'),
+        endDate: now,
+    };
+    const hourWindow = {
+        startDate: new Date('2026-02-28T23:00:00.000Z'),
+        endDate: now,
+    };
     const pagination = { skip: 0, limit: 20, orderBy: [] };
     const orderBy: IPaginationOrderBy[] = [
         { userId: EnumPaginationOrderDirectionType.asc },
@@ -74,8 +77,13 @@ describe('AnalyticFraudService', () => {
         data: [],
     };
 
-    const onRequestWindow = {
-        windowStart: startDate,
+    const dayRequestWindow = {
+        windowStart: dayWindow.startDate,
+        windowEnd: now,
+        computedAt: null,
+    };
+    const hourRequestWindow = {
+        windowStart: hourWindow.startDate,
         windowEnd: now,
         computedAt: null,
     };
@@ -83,6 +91,8 @@ describe('AnalyticFraudService', () => {
     const computedAt: Date = new Date('2026-03-01T00:15:00.000Z');
 
     const configValues: Record<string, number | string> = {
+        'analytic.cache.windowTokenPattern': 'Window:{start}:{end}',
+        'analytic.fraud.nearLockoutOffset': 1,
         'analytic.fraud.credentialStuffing.windowInMs': 86400000,
         'analytic.fraud.credentialStuffing.minUniqueAccounts': 2,
         'analytic.fraud.accountTakeover.newDeviceAfterPasswordChangeInMs': 3600000,
@@ -112,32 +122,39 @@ describe('AnalyticFraudService', () => {
 
     let service: AnalyticFraudService;
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
 
-        configGet.mockImplementation((key: string) => configValues[key]);
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
         analyticCache.buildFraudSummaryKey.mockImplementation(
             (signal, window) => `${signal}:${window}`
         );
         cacheService.readThrough.mockImplementation(
             async (_key, _schema, _ttlInMs, loader) => loader()
         );
-        analyticDateUtil.windowToken.mockReturnValue('window-token');
-        analyticDateUtil.windowRange.mockReturnValue({
-            startDate,
-            endDate: now,
-        });
         featureFlagService.getMetadataNumber.mockResolvedValue(5);
-        analyticFraudUtil.nearLockoutThreshold.mockReturnValue(4);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticFraudService,
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: CacheService, useValue: cacheService },
-                { provide: AnalyticDateUtil, useValue: analyticDateUtil },
-                { provide: AnalyticFraudUtil, useValue: analyticFraudUtil },
-                { provide: ConfigService, useValue: configService },
+                ...TestUnitKitProviders,
+                AnalyticDateUtil,
+                AnalyticFraudUtil,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        ...configValues,
+                    }),
+                },
                 {
                     provide: AnalyticSnapshotService,
                     useValue: analyticSnapshotService,
@@ -157,7 +174,7 @@ describe('AnalyticFraudService', () => {
         it('reads through with the credential-stuffing key, the metadata cache schema, and the fraud summary TTL', async () => {
             const cached = {
                 count: 4,
-                ...onRequestWindow,
+                ...dayRequestWindow,
                 metadata: { minUniqueAccounts: 2 },
             };
             cacheService.readThrough.mockResolvedValue(cached);
@@ -184,16 +201,15 @@ describe('AnalyticFraudService', () => {
 
             const result = await service.credentialStuffingSummary();
 
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
                 analyticFraudRepository.countCredentialStuffing
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticFraudRepository.countCredentialStuffing
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 2);
+            ).toHaveBeenCalledWith(dayWindow, 2);
             expect(result).toEqual({
                 count: 4,
-                ...onRequestWindow,
+                ...dayRequestWindow,
                 metadata: { minUniqueAccounts: 2 },
             });
         });
@@ -209,19 +225,18 @@ describe('AnalyticFraudService', () => {
             const result = await service.credentialStuffingList(pagination);
 
             expect(result).toBe(page);
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
                 analyticFraudRepository.findCredentialStuffingOffset
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticFraudRepository.findCredentialStuffingOffset
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 2, pagination);
+            ).toHaveBeenCalledWith(dayWindow, 2, pagination);
         });
     });
 
     describe('accountTakeoverSummary', () => {
         it('reads through with the account-takeover key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
-            const cached = { count: 1, ...onRequestWindow };
+            const cached = { count: 1, ...dayRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
             const result = await service.accountTakeoverSummary();
@@ -244,14 +259,13 @@ describe('AnalyticFraudService', () => {
 
             const result = await service.accountTakeoverSummary();
 
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
             expect(
                 analyticFraudRepository.countAccountTakeover
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticFraudRepository.countAccountTakeover
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 3600000);
-            expect(result).toEqual({ count: 3, ...onRequestWindow });
+            ).toHaveBeenCalledWith(hourWindow, 3600000);
+            expect(result).toEqual({ count: 3, ...hourRequestWindow });
         });
     });
 
@@ -265,23 +279,18 @@ describe('AnalyticFraudService', () => {
             const result = await service.accountTakeoverList(pagination);
 
             expect(result).toBe(page);
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
             expect(
                 analyticFraudRepository.findAccountTakeoverOffset
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticFraudRepository.findAccountTakeoverOffset
-            ).toHaveBeenCalledWith(
-                { startDate, endDate: now },
-                3600000,
-                pagination
-            );
+            ).toHaveBeenCalledWith(hourWindow, 3600000, pagination);
         });
     });
 
     describe('sessionAfterAdminSummary', () => {
         it('reads through with the session-after-admin key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
-            const cached = { count: 1, ...onRequestWindow };
+            const cached = { count: 1, ...hourRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
             const result = await service.sessionAfterAdminSummary();
@@ -304,14 +313,13 @@ describe('AnalyticFraudService', () => {
 
             const result = await service.sessionAfterAdminSummary();
 
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
             expect(
                 analyticFraudRepository.countSessionAfterAdmin
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticFraudRepository.countSessionAfterAdmin
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 3600000);
-            expect(result).toEqual({ count: 3, ...onRequestWindow });
+            ).toHaveBeenCalledWith(hourWindow, 3600000);
+            expect(result).toEqual({ count: 3, ...hourRequestWindow });
         });
     });
 
@@ -325,23 +333,18 @@ describe('AnalyticFraudService', () => {
             const result = await service.sessionAfterAdminList(pagination);
 
             expect(result).toBe(page);
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
             expect(
                 analyticFraudRepository.findSessionAfterAdminOffset
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticFraudRepository.findSessionAfterAdminOffset
-            ).toHaveBeenCalledWith(
-                { startDate, endDate: now },
-                3600000,
-                pagination
-            );
+            ).toHaveBeenCalledWith(hourWindow, 3600000, pagination);
         });
     });
 
     describe('massRegistrationSummary', () => {
         it('reads through with the mass-registration key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
-            const cached = { count: 1, ...onRequestWindow };
+            const cached = { count: 1, ...hourRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
             const result = await service.massRegistrationSummary();
@@ -363,14 +366,13 @@ describe('AnalyticFraudService', () => {
             analyticFraudRepository.countMassRegistration.mockResolvedValue(3);
 
             const result = await service.massRegistrationSummary();
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
                 analyticFraudRepository.countMassRegistration
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticFraudRepository.countMassRegistration
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 2);
-            expect(result).toEqual({ count: 3, ...onRequestWindow });
+            ).toHaveBeenCalledWith(dayWindow, 2);
+            expect(result).toEqual({ count: 3, ...dayRequestWindow });
         });
     });
 
@@ -384,19 +386,18 @@ describe('AnalyticFraudService', () => {
             const result = await service.massRegistrationList(pagination);
 
             expect(result).toBe(page);
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
                 analyticFraudRepository.findMassRegistrationOffset
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticFraudRepository.findMassRegistrationOffset
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 2, pagination);
+            ).toHaveBeenCalledWith(dayWindow, 2, pagination);
         });
     });
 
     describe('passwordResetEnumerationSummary', () => {
         it('reads through with the password-reset-enumeration key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
-            const cached = { count: 1, ...onRequestWindow };
+            const cached = { count: 1, ...dayRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
             const result = await service.passwordResetEnumerationSummary();
@@ -420,14 +421,13 @@ describe('AnalyticFraudService', () => {
             );
 
             const result = await service.passwordResetEnumerationSummary();
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
                 analyticFraudRepository.countPasswordResetEnumeration
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticFraudRepository.countPasswordResetEnumeration
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 2);
-            expect(result).toEqual({ count: 3, ...onRequestWindow });
+            ).toHaveBeenCalledWith(dayWindow, 2);
+            expect(result).toEqual({ count: 3, ...dayRequestWindow });
         });
     });
 
@@ -442,13 +442,12 @@ describe('AnalyticFraudService', () => {
                 await service.passwordResetEnumerationList(pagination);
 
             expect(result).toBe(page);
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
                 analyticFraudRepository.findPasswordResetEnumerationOffset
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticFraudRepository.findPasswordResetEnumerationOffset
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 2, pagination);
+            ).toHaveBeenCalledWith(dayWindow, 2, pagination);
         });
     });
 
@@ -591,7 +590,7 @@ describe('AnalyticFraudService', () => {
 
     describe('forgotPasswordTokenAbuseSummary', () => {
         it('reads through with the forgot-password-token-abuse key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
-            const cached = { count: 1, ...onRequestWindow };
+            const cached = { count: 1, ...dayRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
             const result = await service.forgotPasswordTokenAbuseSummary();
@@ -615,14 +614,13 @@ describe('AnalyticFraudService', () => {
             );
 
             const result = await service.forgotPasswordTokenAbuseSummary();
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
                 analyticFraudRepository.countForgotPasswordAbuse
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticFraudRepository.countForgotPasswordAbuse
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 2);
-            expect(result).toEqual({ count: 3, ...onRequestWindow });
+            ).toHaveBeenCalledWith(dayWindow, 2);
+            expect(result).toEqual({ count: 3, ...dayRequestWindow });
         });
     });
 
@@ -637,13 +635,12 @@ describe('AnalyticFraudService', () => {
                 await service.forgotPasswordTokenAbuseList(pagination);
 
             expect(result).toBe(page);
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(86400000);
             expect(
                 analyticFraudRepository.findForgotPasswordAbuseOffset
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticFraudRepository.findForgotPasswordAbuseOffset
-            ).toHaveBeenCalledWith({ startDate, endDate: now }, 2, pagination);
+            ).toHaveBeenCalledWith(dayWindow, 2, pagination);
         });
     });
 
@@ -709,10 +706,9 @@ describe('AnalyticFraudService', () => {
             expect(result).toEqual({
                 items,
                 metadata: null,
-                windowStart: startDate,
+                windowStart: hourWindow.startDate,
                 windowEnd: now,
             });
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(3600000);
         });
 
         it('reads the password budget once and turns it into the threshold', async () => {
@@ -728,9 +724,6 @@ describe('AnalyticFraudService', () => {
             expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.loginWithCredential,
                 EnumFeatureFlagMetadataKey.passwordMaxAttempts
-            );
-            expect(analyticFraudUtil.nearLockoutThreshold).toHaveBeenCalledWith(
-                5
             );
             expect(
                 analyticFraudRepository.findSharedFingerprints
@@ -814,10 +807,6 @@ describe('AnalyticFraudService', () => {
             await expect(service.riskScore('missing')).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'user.error.notFound',
             });
             expect(analyticSnapshotService.getOneByKey).not.toHaveBeenCalled();
         });

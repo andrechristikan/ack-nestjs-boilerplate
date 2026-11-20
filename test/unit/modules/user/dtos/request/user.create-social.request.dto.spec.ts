@@ -28,20 +28,24 @@ describe('UserCreateSocialRequestSchema', () => {
     });
 
     it('rejects an undeclared email key', () => {
-        expect(() =>
-            UserCreateSocialRequestSchema.parse({
-                ...payload,
-                email: 'john.doe@example.com',
-            })
-        ).toThrow();
+        const result = UserCreateSocialRequestSchema.safeParse({
+            ...payload,
+            email: 'john.doe@example.com',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects an undeclared password key', () => {
-        expect(() =>
-            UserCreateSocialRequestSchema.parse({
-                ...payload,
-                password: 'abcDE12345@@!',
-            })
-        ).toThrow();
+        const result = UserCreateSocialRequestSchema.safeParse({
+            ...payload,
+            password: 'abcDE12345@@!',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

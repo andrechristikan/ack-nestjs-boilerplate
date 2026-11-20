@@ -4,29 +4,35 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { ActivityLogAdminListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { ActivityLogOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
 import { ActivityLogGetListOffsetByUserUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-offset-by-user.use-case';
-import { EnumActivityLogOrderBy } from '@modules/activity-log/enums/activity-log.enum';
 
 describe('ActivityLogGetListOffsetByUserUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
     const params = {
         skip: 0,
         limit: 20,
-        orderBy: [],
-        fingerprint: 'aaaaaaaaaaaaaaaa',
+        orderBy: [{ createdAt: 'desc' }],
     };
-    const storePatch = { perPage: 20 };
+    const storePatch = {
+        page: 1,
+        perPage: 20,
+        orderBy: 'latest',
+        availableSearch: [],
+        availableOrderBy: ['latest'],
+    };
     const offsetQuery: ActivityLogAdminListRequestDto = {};
     const offsetPage = {
         type: EnumPaginationType.offset as const,
@@ -42,15 +48,14 @@ describe('ActivityLogGetListOffsetByUserUseCase', () => {
     let useCase: ActivityLogGetListOffsetByUserUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ActivityLogGetListOffsetByUserUseCase,
                 { provide: ActivityLogService, useValue: activityLogService },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 {
                     provide: RequestStoreService,
@@ -64,7 +69,6 @@ describe('ActivityLogGetListOffsetByUserUseCase', () => {
 
     describe('execute', () => {
         it('resolves offset pagination and returns the domain page', async () => {
-            paginationQueryUtil.offset.mockReturnValue({ params, storePatch });
             activityLogService.getListOffsetByUser.mockResolvedValue(
                 offsetPage
             );
@@ -72,13 +76,6 @@ describe('ActivityLogGetListOffsetByUserUseCase', () => {
             const result = await useCase.execute('user-1', offsetQuery);
 
             expect(result).toEqual(offsetPage);
-            expect(paginationQueryUtil.offset).toHaveBeenCalledWith(
-                offsetQuery,
-                {
-                    orderBy: ActivityLogOrderBy,
-                    defaultOrderBy: EnumActivityLogOrderBy.latest,
-                }
-            );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 storePatch

@@ -3,7 +3,6 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Response } from 'express';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
@@ -11,29 +10,23 @@ import {
     RequestCorrelationIdStoreKey,
     RequestIdStoreKey,
 } from '@common/request/constants/request.constant';
-import { LoggerUrlUtil } from '@common/logger/utils/logger.url.util';
-import { LoggerUtil } from '@common/logger/utils/logger.util';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
-import { LoggerAutoContext } from '@common/logger/constants/logger.constant';
+import {
+    LoggerAutoContext,
+    LoggerRedactedValue,
+} from '@common/logger/constants/logger.constant';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { createLoggerOptionService } from '@test/unit/helpers/test.unit.logger.helper';
 import type { ILoggerOptionServiceDoubles } from '@test/unit/helpers/test.unit.logger.helper';
 
 describe('LoggerOptionService', () => {
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const requestContextService: MockProxy<RequestContextService> =
         mock<RequestContextService>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const loggerUtil: MockProxy<LoggerUtil> = mock<LoggerUtil>();
-    const loggerUrlUtil: MockProxy<LoggerUrlUtil> = mock<LoggerUrlUtil>();
     const loggerDoubles: ILoggerOptionServiceDoubles = {
-        helperDateService,
         requestContextService,
         requestStoreService,
-        loggerUtil,
-        loggerUrlUtil,
     };
 
     const baseConfig: Record<string, unknown> = {
@@ -49,8 +42,16 @@ describe('LoggerOptionService', () => {
         'logger.excludedRoutes': ['/api/public/hello', '/metrics'],
     };
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(() => {
-        vi.resetAllMocks();
+        vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
     });
 
     describe('createOptions', () => {
@@ -200,27 +201,44 @@ describe('LoggerOptionService', () => {
     });
 
     describe('createSerializers', () => {
-        it('delegates each serializer to LoggerUtil', async () => {
+        it('serializes the request, response, and error through LoggerUtil', async () => {
             const service = await createLoggerOptionService(
                 baseConfig,
                 loggerDoubles
             );
-            const request = {} as IRequestApp;
-            const response = {} as Response;
+            const request = {
+                method: 'GET',
+                url: '/users/64a1f',
+                ip: '10.0.0.1',
+                headers: { 'user-agent': 'agent', authorization: 'secret' },
+                query: { page: '1' },
+                params: { id: '64a1f' },
+            } as unknown as IRequestApp;
+            const response = {
+                statusCode: 200,
+                getHeaders: vi.fn().mockReturnValue({ 'set-cookie': 'secret' }),
+                getHeader: vi.fn(),
+            } as unknown as Response;
             const error = new Error('boom');
-
-            loggerUtil.serializeRequest.mockReturnValue({ id: 'r' });
-            loggerUtil.serializeResponse.mockReturnValue({ httpCode: 200 });
-            loggerUtil.serializeError.mockReturnValue({ type: 'Error' });
 
             const serializers = service['createSerializers']();
 
-            expect(serializers.req(request)).toEqual({ id: 'r' });
-            expect(serializers.res(response)).toEqual({ httpCode: 200 });
-            expect(serializers.err(error)).toEqual({ type: 'Error' });
-            expect(loggerUtil.serializeRequest).toHaveBeenCalledWith(request);
-            expect(loggerUtil.serializeResponse).toHaveBeenCalledWith(response);
-            expect(loggerUtil.serializeError).toHaveBeenCalledWith(error);
+            expect(serializers.req(request)).toMatchObject({
+                method: 'GET',
+                route: '/users/[REDACTED]',
+                ip: '10.0.0.1',
+                userAgent: 'agent',
+                params: { id: LoggerRedactedValue },
+                headers: { authorization: LoggerRedactedValue },
+            });
+            expect(serializers.res(response)).toMatchObject({
+                httpCode: 200,
+                headers: { 'set-cookie': LoggerRedactedValue },
+            });
+            expect(serializers.err(error)).toMatchObject({
+                type: 'Error',
+                message: 'boom',
+            });
         });
     });
 
@@ -264,18 +282,15 @@ describe('LoggerOptionService', () => {
                 { ...baseConfig, 'logger.accessLogEnabled': true },
                 loggerDoubles
             );
-            loggerUrlUtil.matchesPatterns.mockReturnValue(true);
             const request = { url: '/metrics' } as IRequestApp;
+            const other = { url: '/users' } as IRequestApp;
 
             const config = service['createAutoLoggingConfig']() as {
                 ignore: (req: IRequestApp) => boolean;
             };
 
             expect(config.ignore(request)).toBe(true);
-            expect(loggerUrlUtil.matchesPatterns).toHaveBeenCalledWith(
-                '/metrics',
-                ['/api/public/hello', '/metrics']
-            );
+            expect(config.ignore(other)).toBe(false);
         });
     });
 
@@ -339,10 +354,8 @@ describe('LoggerOptionService', () => {
                 loggerDoubles
             );
             const today = new Date('2026-01-01T00:00:00.000Z');
-            helperDateService.create.mockReturnValue(today);
+            vi.setSystemTime(today);
             requestContextService.getHostname.mockReturnValue('host-1');
-            loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
-            loggerUtil.sanitizeMessage.mockImplementation(m => m);
 
             const formatter = service['createLogFormatter']();
             const result = formatter({
@@ -371,12 +384,7 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
             requestContextService.getHostname.mockReturnValue('host-1');
-            loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
-            loggerUtil.sanitizeMessage.mockImplementation(m => m);
 
             const formatter = service['createLogFormatter']();
             const result = formatter({
@@ -403,12 +411,7 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
             requestContextService.getHostname.mockReturnValue('host-1');
-            loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
-            loggerUtil.sanitizeMessage.mockImplementation(m => m);
 
             const formatter = service['createLogFormatter']();
             const result = formatter({
@@ -429,12 +432,7 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
             requestContextService.getHostname.mockReturnValue('host-1');
-            loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
-            loggerUtil.sanitizeMessage.mockImplementation(m => m);
 
             const formatter = service['createLogFormatter']();
             const result = formatter({ level: 30, context: 'CustomContext' });
@@ -447,12 +445,7 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
             requestContextService.getHostname.mockReturnValue('host-1');
-            loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
-            loggerUtil.sanitizeMessage.mockImplementation(m => m);
 
             const formatter = service['createLogFormatter']();
             const result = formatter({ level: 30 });
@@ -465,12 +458,7 @@ describe('LoggerOptionService', () => {
                 { ...baseConfig, 'app.env': EnumAppEnvironment.production },
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
             requestContextService.getHostname.mockReturnValue('host-1');
-            loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
-            loggerUtil.sanitizeMessage.mockImplementation(m => m);
 
             const formatter = service['createLogFormatter']();
             const result = formatter({ level: 30 });
@@ -483,13 +471,7 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
             requestContextService.getHostname.mockReturnValue('host-1');
-            loggerUtil.mapLevelToSeverity.mockReturnValue('ERROR');
-            loggerUtil.sanitizeMessage.mockImplementation(m => m);
-            loggerUtil.serializeError.mockReturnValue({ type: 'Error' });
             const error = new Error('boom');
             const wrapped = new Error('wrapped');
 
@@ -500,8 +482,10 @@ describe('LoggerOptionService', () => {
                 error,
             });
 
-            expect(loggerUtil.serializeError).toHaveBeenCalledWith(error);
-            expect(result.err).toEqual({ type: 'Error' });
+            expect(result.err).toMatchObject({
+                type: 'Error',
+                message: 'boom',
+            });
         });
 
         it('serializes err when no error field is present', async () => {
@@ -509,19 +493,13 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
             requestContextService.getHostname.mockReturnValue('host-1');
-            loggerUtil.mapLevelToSeverity.mockReturnValue('ERROR');
-            loggerUtil.sanitizeMessage.mockImplementation(m => m);
-            loggerUtil.serializeError.mockReturnValue({ type: 'Error' });
             const wrapped = new Error('wrapped');
 
             const formatter = service['createLogFormatter']();
-            formatter({ level: 50, err: wrapped });
+            const result = formatter({ level: 50, err: wrapped });
 
-            expect(loggerUtil.serializeError).toHaveBeenCalledWith(wrapped);
+            expect(result.err).toMatchObject({ message: 'wrapped' });
         });
 
         it('serializes error when no err field is present', async () => {
@@ -529,20 +507,16 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
             requestContextService.getHostname.mockReturnValue('host-1');
-            loggerUtil.mapLevelToSeverity.mockReturnValue('ERROR');
-            loggerUtil.sanitizeMessage.mockImplementation(m => m);
-            loggerUtil.serializeError.mockReturnValue({ type: 'Error' });
             const error = new Error('boom');
 
             const formatter = service['createLogFormatter']();
             const result = formatter({ level: 50, error });
 
-            expect(loggerUtil.serializeError).toHaveBeenCalledWith(error);
-            expect(result.err).toEqual({ type: 'Error' });
+            expect(result.err).toMatchObject({
+                type: 'Error',
+                message: 'boom',
+            });
         });
 
         it('carries the raw res and req fields through when present', async () => {
@@ -550,12 +524,7 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
             requestContextService.getHostname.mockReturnValue('host-1');
-            loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
-            loggerUtil.sanitizeMessage.mockImplementation(m => m);
             const req = { id: 'r' };
             const res = { httpCode: 200 };
 
@@ -571,17 +540,12 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
             requestContextService.getHostname.mockReturnValue('host-1');
-            loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
-            loggerUtil.sanitizeMessage.mockImplementation(m => m);
 
             const formatter = service['createLogFormatter']();
-            formatter({ level: 30, msg: 'from-msg' });
+            const result = formatter({ level: 30, msg: 'from-msg' });
 
-            expect(loggerUtil.sanitizeMessage).toHaveBeenCalledWith('from-msg');
+            expect(result.msg).toBe('from-msg');
         });
 
         it('prefers message over msg when both are present', async () => {
@@ -589,19 +553,16 @@ describe('LoggerOptionService', () => {
                 baseConfig,
                 loggerDoubles
             );
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
             requestContextService.getHostname.mockReturnValue('host-1');
-            loggerUtil.mapLevelToSeverity.mockReturnValue('INFO');
-            loggerUtil.sanitizeMessage.mockImplementation(m => m);
 
             const formatter = service['createLogFormatter']();
-            formatter({ level: 30, msg: 'from-msg', message: 'from-message' });
+            const result = formatter({
+                level: 30,
+                msg: 'from-msg',
+                message: 'from-message',
+            });
 
-            expect(loggerUtil.sanitizeMessage).toHaveBeenCalledWith(
-                'from-message'
-            );
+            expect(result.msg).toBe('from-message');
         });
     });
 });

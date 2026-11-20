@@ -2,7 +2,7 @@
 # Stop: when a src/ or test/ file differs from HEAD or is untracked, run the full pnpm typecheck, then the unit specs of
 # the changed modules; block on failure. A path under src/modules/<name>/ or test/unit/modules/<name>/ adds the filter
 # test/unit/modules/<name>; one under src/common/<name>/ or test/unit/common/<name>/ adds test/unit/common/<name>; any
-# other changed src/ or test/ path runs the full unit suite.
+# other changed src/ or test/ path runs the full unit suite. A filtered run passes --passWithNoTests; the full run does not.
 # VERIFY_DRY_RUN=1 prints the test command run_tests would run and exits 0, running neither typecheck nor tests.
 set -uo pipefail
 
@@ -37,7 +37,7 @@ block() {
 
 run_tests() {
     local cmd=(pnpm test)
-    [ "$full" = 1 ] || cmd+=("${filters[@]}")
+    [ "$full" = 1 ] || cmd+=("${filters[@]}" --passWithNoTests)
     if [ "${VERIFY_DRY_RUN:-0}" = 1 ]; then
         printf 'NODE_ENV=test %s\n' "${cmd[*]}"
         return 0

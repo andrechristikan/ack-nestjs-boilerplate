@@ -6,7 +6,7 @@ Binds every change in this repository: the session, every agent, every skill. A 
 
 Follow `.claude/skills/ponytail/SKILL.md`. The level is `full` unless a skill or an agent file names another. Where it and a rule differ, the rule wins:
 
-- Behaviour changes test-first with a unit spec (`testing.md`); its one-small-test clause does not replace that.
+- Behaviour changes test-first with a unit spec (Checks); its one-small-test clause does not replace that.
 - A shape change changes every call site (`AGENTS.md`): those lines are in scope.
 - No error handling for a case the types and guards already exclude; the failures `null-safety.md` and `exceptions.md` name are not such a case.
 - Duplication beats the wrong abstraction (`code-style.md`).

@@ -10,19 +10,29 @@ describe('ApiKeyUpdateRequestSchema', () => {
     });
 
     it('rejects a missing name', () => {
-        expect(() => ApiKeyUpdateRequestSchema.parse({})).toThrow();
+        const result = ApiKeyUpdateRequestSchema.safeParse({});
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects an empty name', () => {
-        expect(() => ApiKeyUpdateRequestSchema.parse({ name: '' })).toThrow();
+        const result = ApiKeyUpdateRequestSchema.safeParse({ name: '' });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects an undeclared type key picked out of the base schema', () => {
-        expect(() =>
-            ApiKeyUpdateRequestSchema.parse({
-                name: 'Renamed Api Key',
-                type: 'default',
-            })
-        ).toThrow();
+        const result = ApiKeyUpdateRequestSchema.safeParse({
+            name: 'Renamed Api Key',
+            type: 'default',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

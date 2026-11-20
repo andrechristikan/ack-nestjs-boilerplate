@@ -8,18 +8,18 @@ describe('RequestMongoIdSchema', () => {
     });
 
     it('rejects a value shorter than 24 characters', () => {
-        expect(() => RequestMongoIdSchema.parse('a'.repeat(23))).toThrow();
-    });
-
-    it('reports a length issue for a value shorter than 24 characters', () => {
         const result = RequestMongoIdSchema.safeParse('a'.repeat(23));
 
-        expect(result.error?.issues[0]?.code).toBe('too_small');
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a value carrying a non-hex character', () => {
-        expect(() =>
-            RequestMongoIdSchema.parse(`${'a'.repeat(23)}z`)
-        ).toThrow();
+        const result = RequestMongoIdSchema.safeParse(`${'a'.repeat(23)}z`);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'invalid_format' }),
+        ]);
     });
 });

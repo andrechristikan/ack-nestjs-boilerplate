@@ -43,11 +43,16 @@ describe('ResponsePaginationSchema', () => {
     it('rejects a metadata missing the pagination-specific required fields', () => {
         const { perPage: _perPage, ...incompleteMetadata } = payload.metadata;
 
-        expect(() =>
-            ResponsePaginationSchema.parse({
-                ...payload,
-                metadata: incompleteMetadata,
-            })
-        ).toThrow();
+        const result = ResponsePaginationSchema.safeParse({
+            ...payload,
+            metadata: incompleteMetadata,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['metadata', 'perPage'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

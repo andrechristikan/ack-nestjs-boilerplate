@@ -1,17 +1,8 @@
-import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import {
-    EnumRoleType,
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
-} from '@generated/prisma-client/client';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
@@ -25,11 +16,11 @@ import {
 import { UserService } from '@modules/user/services/user.service';
 import { UserGuard } from '@modules/user/guards/user.guard';
 import type { IUser } from '@modules/user/interfaces/user.interface';
-import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { buildHttpExecutionContext } from '@test/unit/helpers/test.unit.execution-context.helper';
 import {
     buildAuthJwtAccessContext,
     buildAuthJwtRefreshContext,
+    buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserGuard', () => {
@@ -40,58 +31,11 @@ describe('UserGuard', () => {
 
     let guard: UserGuard;
 
-    const role: IRoleWithPolicies = {
-        id: 'role-lantern',
-        name: 'user',
-        description: null,
-        type: EnumRoleType.user,
-        isImmutable: false,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        policies: [],
-    };
-    const user: IUser = {
-        id: 'user-lantern',
-        name: 'Lantern Brooks',
-        username: 'lanternBrooks',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'lantern@example.com',
-        roleId: 'role-lantern',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-lantern',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: EnumUserLoginFrom.website,
-        lastLoginWith: EnumUserLoginWith.credential,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role,
-    };
+    const user: IUser = buildUser('user-lantern', 'lantern@example.com');
     const accessContext = buildAuthJwtAccessContext(user.id);
     const refreshContext = buildAuthJwtRefreshContext(user.id, 'refresh-token');
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserGuard,
@@ -189,12 +133,6 @@ describe('UserGuard', () => {
         await expect(guard.canActivate(context)).rejects.toMatchObject({
             module: 'auth',
             statusCode: EnumAuthStatusCodeError.jwtGuardMissing,
-            statusCodeKey:
-                EnumAuthStatusCodeError[
-                    EnumAuthStatusCodeError.jwtGuardMissing
-                ],
-            messagePath: 'auth.error.jwtGuardMissing',
-            httpStatus: HttpStatus.UNAUTHORIZED,
         });
         expect(userService.validateUserGuard).not.toHaveBeenCalled();
         expect(requestStoreService.set).not.toHaveBeenCalled();

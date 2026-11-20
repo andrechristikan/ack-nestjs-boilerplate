@@ -8,7 +8,7 @@ Scan and claim the next free hundred, then create `src/modules/<module>/enums/<m
 
 ## 2. Schema
 
-Add the model to `prisma/schema.prisma` and run `pnpm db:generate`. Applying it is the owner's `pnpm db:migrate`; hand the command back.
+Add the model to `prisma/schema.prisma` and run `pnpm db:generate`.
 
 ## 3. Rank
 
@@ -30,26 +30,21 @@ The module's rank is the `imports:` its module file declares: it sits above ever
 | use case | `use-cases/<module>.<action>.use-case.ts`, one per endpoint or job, implements `IAppUseCase`, one public `async execute` | `src/modules/device/use-cases/` |
 | controller | `controllers/<module>.<scope>.controller.ts`, one per scope | `src/modules/device/controllers/device.shared.controller.ts` |
 
-A queue, a processor, and the use cases its jobs run follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by `<module>.module.ts`. The service injects its own module's classes, the services and utils of imported and `@Global()` modules, and the kit; a gate owned by another module goes in the use case around the service call, an effect or an activity entry in the write's transaction (`.claude/rules/effects.md`), and a write needing one transaction across modules goes in the use case, calling each service's `*InTx` method (`.claude/rules/use-case.md`).
+A queue, a processor, and the use cases its jobs run follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by `<module>.module.ts`. A gate owned by another module goes in the use case around the service call, an effect or an activity entry in the write's transaction (`.claude/rules/effects.md`), and a write needing one transaction across modules goes in the use case, calling each service's `*InTx` method (`.claude/rules/use-case.md`).
 
 ## 5. The module files
 
-Copy the shape, not the names:
-
-- `<module>.module.ts`: services, repositories, utils, caches, queue classes in `providers`; services, utils, and caches in `exports`, never a repository or a queue class; imports each non-`@Global()` `<Module>Module` whose services or utils its services inject (`src/modules/device/device.module.ts`).
-- `<module>.use-case.module.ts`: use cases in `providers` and `exports`, never a processor; imports each non-`@Global()` `<Module>Module` its use cases inject, its own included (`src/modules/project/project.use-case.module.ts`).
-
-`controllers: []` in both. Only a file with something to provide exists.
+Both files: `.claude/rules/module-files.md`, Module files. Copy the shape, not the names (`src/modules/device/device.module.ts`, `src/modules/project/project.use-case.module.ts`).
 
 ## 6. Register
 
-- Controller: add the class to `controllers` of `src/router/http/router.http.<scope>.module.ts`, and to its `imports` the modules `.claude/rules/module-files.md` (Module files) names for a router scope module, use-case modules first, one blank line, then the rest (`src/router/http/router.http.shared.module.ts`). A missing import fails the boot.
-- Processor: the processor into `providers` and the use-case module into `imports` of `src/router/processor/router.processor.module.ts`.
-- A `@Global()` module: `@Global()` plus a no-argument `forRoot()`, imported as `<Module>.forRoot()` by `src/common/common.module.ts` only, and only when a guard, strategy, interceptor, or decorator injects the module (`.claude/rules/module-files.md`, `@Global()`; `src/modules/session/session.module.ts`); the default is not global.
+- Controller: add the class to `controllers` of `src/router/http/router.http.<scope>.module.ts`, and to its `imports` the modules `.claude/rules/module-files.md` (Module files) names for a router scope module (`src/router/http/router.http.shared.module.ts`). A missing import fails the boot.
+- Processor: `.claude/skills/ack-build/references/add-queue.md`, New queue step 9.
+- A `@Global()` module: `.claude/rules/module-files.md`, `@Global()` (`src/modules/session/session.module.ts`); the default is not global.
 
 ## 7. Messages
 
-Create `src/languages/<lang>/<module>.json` in every directory under `src/languages/`: success keys at the top level by action, errors under `error` (`src/languages/en/device.json`). Paths: `<module>.<action>` on `@Response`, `<module>.error.<descriptor>` in an exception (`.claude/rules/i18n.md`).
+Create `src/languages/<lang>/<module>.json` in every directory under `src/languages/` (`src/languages/en/device.json`). Keys and paths: `.claude/rules/i18n.md`.
 
 ## 8. Seed and docs
 
@@ -62,4 +57,4 @@ pnpm typecheck
 pnpm test <module>
 ```
 
-Boot in the Docker `apis` container (`.claude/skills/ack-build/references/boot.md`): wiring defects surface only there. Check the boot log for the `App Name:` block and no `UnknownDependenciesException` line. Specs: `test/unit/modules/<module>/…` mirrors `src/`; controllers, repositories, modules, and processors are excluded from coverage (`coverage.exclude` in `vitest.config.ts`).
+Boot in the Docker `apis` container (`.claude/skills/ack-build/references/boot.md`): wiring defects surface only there. Check the boot log for no `UnknownDependenciesException` line. Specs: `test/unit/modules/<module>/…` mirrors `src/`; what gets no spec: `.claude/rules/testing.md`, Layout and runs.

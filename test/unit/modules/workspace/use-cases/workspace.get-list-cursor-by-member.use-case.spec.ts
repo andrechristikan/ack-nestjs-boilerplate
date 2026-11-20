@@ -1,61 +1,47 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import type {
-    IPaginationQueryCursorParams,
-    IPaginationQueryOffsetParams,
-} from '@common/pagination/interfaces/pagination.interface';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import {
+    EnumPaginationOrderDirectionType,
+    EnumPaginationType,
+} from '@common/pagination/enums/pagination.enum';
+import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { Workspace } from '@generated/prisma-client/client';
 import {
     WorkspaceCursorOrderBy,
     WorkspaceDefaultAvailableSearch,
-    WorkspaceUserListCursorScope,
 } from '@modules/workspace/constants/workspace.list.constant';
 import type { WorkspaceUserListRequestDto } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceGetListCursorByMemberUseCase } from '@modules/workspace/use-cases/workspace.get-list-cursor-by-member.use-case';
 import {
+    buildAuthJwtAccessContext,
     buildUser,
     buildUserContext,
-    buildAuthJwtAccessContext,
+    buildWorkspace,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumWorkspaceCursorOrderBy } from '@modules/workspace/enums/workspace.enum';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('WorkspaceGetListCursorByMemberUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
-    const workspace: Workspace = {
-        id: 'workspace-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: 'user-1',
-        deletedAt: null,
-        deletedBy: null,
-        name: 'Acme',
-        slug: 'acme-team',
-        description: null,
-        isPublic: false,
-    };
-    const offsetPagination: IPaginationQueryOffsetParams = {
-        skip: 0,
-        limit: 20,
-        orderBy: [],
-    };
+    const workspace: Workspace = buildWorkspace();
     const cursorPagination: IPaginationQueryCursorParams = {
-        fingerprint: 'aaaaaaaaaaaaaaaa',
+        fingerprint: '2548462ecb177b83',
         limit: 20,
-        orderBy: [],
+        orderBy: [{ createdAt: EnumPaginationOrderDirectionType.desc }],
     };
     const userContext = buildUserContext(
         buildUser('user-1', 'jane@example.com')
@@ -64,23 +50,14 @@ describe('WorkspaceGetListCursorByMemberUseCase', () => {
     let useCase: WorkspaceGetListCursorByMemberUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        paginationQueryUtil.offset.mockReturnValue({
-            params: offsetPagination,
-            storePatch: {},
-        });
-        paginationQueryUtil.cursor.mockReturnValue({
-            params: cursorPagination,
-            storePatch: {},
-        });
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceGetListCursorByMemberUseCase,
                 { provide: WorkspaceService, useValue: workspaceService },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 { provide: RequestStoreService, useValue: requestStoreService },
             ],
@@ -103,15 +80,14 @@ describe('WorkspaceGetListCursorByMemberUseCase', () => {
             const result = await useCase.execute(authContext, query);
 
             expect(result).toEqual(page);
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                scope: WorkspaceUserListCursorScope,
-                availableSearch: WorkspaceDefaultAvailableSearch,
-                orderBy: WorkspaceCursorOrderBy,
-                defaultOrderBy: EnumWorkspaceCursorOrderBy.latest,
-            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                {}
+                {
+                    perPage: 20,
+                    orderBy: EnumWorkspaceCursorOrderBy.latest,
+                    availableSearch: WorkspaceDefaultAvailableSearch,
+                    availableOrderBy: Object.keys(WorkspaceCursorOrderBy),
+                }
             );
             expect(workspaceService.getListCursorByMember).toHaveBeenCalledWith(
                 'user-1',

@@ -2,17 +2,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { EnumRoleType } from '@generated/prisma-client/client';
 import {
-    EnumRoleType,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
-} from '@generated/prisma-client/client';
-import {
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { RoleService } from '@modules/role/services/role.service';
@@ -28,37 +24,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const admin: IUser = {
-        id: 'admin-1',
-        name: 'Admin One',
-        username: 'admin.main',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'admin@example.com',
-        roleId: 'role-admin',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
+        ...buildUser('admin-1', 'admin@example.com'),
         role: {
             id: 'role-admin',
             name: 'admin',
@@ -85,8 +51,6 @@ describe('DeviceRemoveByAdminUseCase', () => {
     let useCase: DeviceRemoveByAdminUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 DeviceRemoveByAdminUseCase,

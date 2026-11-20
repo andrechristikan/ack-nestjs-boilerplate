@@ -10,15 +10,24 @@ describe('ActivityLogImportMetadataSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ActivityLogImportMetadataSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ActivityLogImportMetadataSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a missing userCount', () => {
-        expect(() => ActivityLogImportMetadataSchema.parse({})).toThrow();
+        const result = ActivityLogImportMetadataSchema.safeParse({});
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['userCount'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

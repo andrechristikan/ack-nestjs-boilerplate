@@ -31,6 +31,11 @@ describe('MfaPasskeyRegisterResponseSchema', () => {
             backupCodes: null,
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkey'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

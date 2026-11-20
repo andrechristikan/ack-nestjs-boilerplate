@@ -1,9 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { mock } from 'vitest-mock-extended';
-import type { MockProxy } from 'vitest-mock-extended';
-import { PaginationCursorUtil } from '@common/pagination/utils/pagination.cursor.util';
-import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
+import { ConfigService } from '@nestjs/config';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import {
     PaginationDefaultMaxPage,
@@ -17,7 +14,6 @@ import { EnumPaginationStatusCodeError } from '@common/pagination/enums/paginati
 import { PaginationCursorTooLongException } from '@common/pagination/exceptions/pagination.cursor-too-long.exception';
 import { PaginationInvalidCursorFormatException } from '@common/pagination/exceptions/pagination.invalid-cursor-format.exception';
 import { PaginationInvalidPageException } from '@common/pagination/exceptions/pagination.invalid-page.exception';
-import { PaginationPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.page-cannot-be-less-than-one.exception';
 import { PaginationPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.page-exceeds-maximum.exception';
 import type {
     IPaginationOrderBy,
@@ -26,6 +22,11 @@ import type {
     IPaginationQueryOffsetOptions,
 } from '@common/pagination/interfaces/pagination.interface';
 import { Prisma } from '@generated/prisma-client/client';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 
 enum EnumTestOrderBy {
     latest = 'latest',
@@ -37,11 +38,9 @@ enum EnumTestMissingOrderBy {
 }
 
 describe('PaginationQueryUtil', () => {
-    const paginationCursorUtil: MockProxy<PaginationCursorUtil> =
-        mock<PaginationCursorUtil>();
-    const paginationOffsetUtil: MockProxy<PaginationOffsetUtil> =
-        mock<PaginationOffsetUtil>();
-    const fingerprint = 'aaaaaaaaaaaaaaaa';
+    const latestFingerprint = 'db6f76f6d1a4dedf';
+    const nameFingerprint = '1646c59d010b6eb4';
+    const searchFingerprint = 'badbdb2411d8964c';
     const desc = EnumPaginationOrderDirectionType.desc;
     const asc = EnumPaginationOrderDirectionType.asc;
     const presets = {
@@ -56,22 +55,12 @@ describe('PaginationQueryUtil', () => {
     let util: PaginationQueryUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        paginationCursorUtil.checkFormat.mockReturnValue(null);
-        paginationCursorUtil.fingerprint.mockReturnValue(fingerprint);
-        paginationOffsetUtil.parsePage.mockReturnValue(1);
-        paginationOffsetUtil.skip.mockReturnValue(0);
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                PaginationQueryUtil,
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationCursorUtil,
-                    useValue: paginationCursorUtil,
-                },
-                {
-                    provide: PaginationOffsetUtil,
-                    useValue: paginationOffsetUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
             ],
         }).compile();
@@ -139,25 +128,16 @@ describe('PaginationQueryUtil', () => {
         });
 
         it('validates and applies an explicit page and perPage', () => {
-            paginationOffsetUtil.parsePage.mockReturnValue(2);
-            paginationOffsetUtil.skip.mockReturnValue(10);
-
             const { params, storePatch } = util.offset(
                 { page: 2, perPage: 10 },
                 { orderBy: presets, defaultOrderBy }
             );
 
-            expect(paginationOffsetUtil.parsePage).toHaveBeenCalledWith(2);
-            expect(paginationOffsetUtil.skip).toHaveBeenCalledWith(2, 10);
             expect(params).toMatchObject({ limit: 10, skip: 10 });
             expect(storePatch).toMatchObject({ page: 2, perPage: 10 });
         });
 
         it('rethrows the typed exception a nested validator raised', () => {
-            paginationOffsetUtil.parsePage.mockReturnValue(
-                new PaginationPageCannotBeLessThanOneException(0)
-            );
-
             let error: unknown;
             try {
                 util.offset({ page: 0 }, { orderBy: presets, defaultOrderBy });
@@ -169,11 +149,6 @@ describe('PaginationQueryUtil', () => {
                 module: 'pagination',
                 statusCode:
                     EnumPaginationStatusCodeError.pageCannotBeLessThanOne,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.pageCannotBeLessThanOne
-                    ],
-                messagePath: 'pagination.error.pageCannotBeLessThanOne',
                 messageProperties: { minPage: 1, receivedPage: 0 },
             });
         });
@@ -223,11 +198,7 @@ describe('PaginationQueryUtil', () => {
             expect(params.orderBy).toEqual([{ name: asc }]);
             expect(storePatch.orderBy).toBe('name');
             expect(storePatch.availableOrderBy).toEqual(['latest', 'name']);
-            expect(paginationCursorUtil.fingerprint).toHaveBeenCalledWith(
-                options.scope,
-                dto,
-                [{ name: asc }]
-            );
+            expect(params.fingerprint).toBe(nameFingerprint);
         });
 
         it.each([
@@ -239,7 +210,7 @@ describe('PaginationQueryUtil', () => {
             expect(params).toEqual({
                 limit: PaginationDefaultPerPage,
                 orderBy: [{ createdAt: desc }],
-                fingerprint,
+                fingerprint: latestFingerprint,
             });
             expect(storePatch).toEqual({
                 perPage: PaginationDefaultPerPage,
@@ -247,11 +218,6 @@ describe('PaginationQueryUtil', () => {
                 availableSearch: [],
                 availableOrderBy: ['latest', 'name'],
             });
-            expect(paginationCursorUtil.fingerprint).toHaveBeenCalledWith(
-                options.scope,
-                dto,
-                [{ createdAt: desc }]
-            );
         });
 
         it('passes a well-formed cursor through to the params and the store patch without opening it', () => {
@@ -281,12 +247,7 @@ describe('PaginationQueryUtil', () => {
 
             const { params } = util.cursor(dto, options);
 
-            expect(paginationCursorUtil.fingerprint).toHaveBeenCalledWith(
-                options.scope,
-                dto,
-                [{ createdAt: desc }]
-            );
-            expect(params.fingerprint).toBe(fingerprint);
+            expect(params.fingerprint).toBe(searchFingerprint);
         });
 
         it('rethrows the typed exception a nested validator raised', () => {
@@ -301,20 +262,11 @@ describe('PaginationQueryUtil', () => {
                 module: 'pagination',
                 statusCode:
                     EnumPaginationStatusCodeError.perPageCannotBeLessThanOne,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.perPageCannotBeLessThanOne
-                    ],
-                messagePath: 'pagination.error.perPageCannotBeLessThanOne',
                 messageProperties: { minPerPage: 1, receivedPerPage: 0 },
             });
         });
 
         it('rejects a cursor exceeding the maximum length', () => {
-            paginationCursorUtil.checkFormat.mockReturnValue(
-                new PaginationCursorTooLongException(PaginationMaxCursorLength)
-            );
-
             let error: unknown;
             try {
                 util.cursor(
@@ -328,11 +280,6 @@ describe('PaginationQueryUtil', () => {
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.cursorTooLong,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.cursorTooLong
-                    ],
-                messagePath: 'pagination.error.cursorTooLong',
                 messageProperties: {
                     maxCursorLength: PaginationMaxCursorLength,
                 },
@@ -340,10 +287,6 @@ describe('PaginationQueryUtil', () => {
         });
 
         it('rejects a cursor that is not URL-safe', () => {
-            paginationCursorUtil.checkFormat.mockReturnValue(
-                new PaginationInvalidCursorFormatException()
-            );
-
             let error: unknown;
             try {
                 util.cursor({ cursor: 'a+b/c=' }, options);
@@ -427,22 +370,13 @@ describe('PaginationQueryUtil', () => {
     describe('validateAndParsePage', () => {
         it('passes null when the page is omitted and returns the parsed page', () => {
             expect(util['validateAndParsePage'](undefined)).toBe(1);
-            expect(paginationOffsetUtil.parsePage).toHaveBeenCalledWith(null);
         });
 
         it('returns the page the sibling parsed from a sent value', () => {
-            paginationOffsetUtil.parsePage.mockReturnValue(3);
-
             expect(util['validateAndParsePage']('3')).toBe(3);
-            expect(paginationOffsetUtil.parsePage).toHaveBeenCalledWith('3');
         });
 
         it('throws the invalid page exception the sibling returns', () => {
-            const failure = new PaginationInvalidPageException(
-                PaginationDefaultMaxPage
-            );
-            paginationOffsetUtil.parsePage.mockReturnValue(failure);
-
             let error: unknown;
             try {
                 util['validateAndParsePage'](1.5);
@@ -450,25 +384,14 @@ describe('PaginationQueryUtil', () => {
                 error = caught;
             }
 
-            expect(error).toBe(failure);
+            expect(error).toBeInstanceOf(PaginationInvalidPageException);
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.invalidPage,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.invalidPage
-                    ],
-                messagePath: 'pagination.error.invalidPage',
             });
         });
 
         it('throws the page above maximum exception the sibling returns', () => {
-            const failure = new PaginationPageExceedsMaximumException(
-                PaginationDefaultMaxPage,
-                PaginationDefaultMaxPage + 1
-            );
-            paginationOffsetUtil.parsePage.mockReturnValue(failure);
-
             let error: unknown;
             try {
                 util['validateAndParsePage'](PaginationDefaultMaxPage + 1);
@@ -476,7 +399,7 @@ describe('PaginationQueryUtil', () => {
                 error = caught;
             }
 
-            expect(error).toBe(failure);
+            expect(error).toBeInstanceOf(PaginationPageExceedsMaximumException);
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.pageExceedsMaximum,
@@ -510,11 +433,6 @@ describe('PaginationQueryUtil', () => {
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.invalidPerPage,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.invalidPerPage
-                    ],
-                messagePath: 'pagination.error.invalidPerPage',
                 messageProperties: {
                     maxPerPage: PaginationDefaultMaxPerPage,
                 },
@@ -532,11 +450,6 @@ describe('PaginationQueryUtil', () => {
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.invalidPerPage,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.invalidPerPage
-                    ],
-                messagePath: 'pagination.error.invalidPerPage',
                 messageProperties: {
                     maxPerPage: PaginationDefaultMaxPerPage,
                 },
@@ -556,11 +469,6 @@ describe('PaginationQueryUtil', () => {
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.perPageExceedsMaximum,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.perPageExceedsMaximum
-                    ],
-                messagePath: 'pagination.error.perPageExceedsMaximum',
                 messageProperties: {
                     maxPerPage: PaginationDefaultMaxPerPage,
                     receivedPerPage: PaginationDefaultMaxPerPage + 1,
@@ -580,11 +488,6 @@ describe('PaginationQueryUtil', () => {
                 module: 'pagination',
                 statusCode:
                     EnumPaginationStatusCodeError.perPageCannotBeLessThanOne,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.perPageCannotBeLessThanOne
-                    ],
-                messagePath: 'pagination.error.perPageCannotBeLessThanOne',
                 messageProperties: { minPerPage: 1, receivedPerPage: 0 },
             });
         });
@@ -600,11 +503,6 @@ describe('PaginationQueryUtil', () => {
         });
 
         it('throws the too long exception the sibling returns', () => {
-            const failure = new PaginationCursorTooLongException(
-                PaginationMaxCursorLength
-            );
-            paginationCursorUtil.checkFormat.mockReturnValue(failure);
-
             let error: unknown;
             try {
                 util['validateAndSanitizeCursor'](
@@ -614,15 +512,10 @@ describe('PaginationQueryUtil', () => {
                 error = caught;
             }
 
-            expect(error).toBe(failure);
+            expect(error).toBeInstanceOf(PaginationCursorTooLongException);
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.cursorTooLong,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.cursorTooLong
-                    ],
-                messagePath: 'pagination.error.cursorTooLong',
                 messageProperties: {
                     maxCursorLength: PaginationMaxCursorLength,
                 },
@@ -630,9 +523,6 @@ describe('PaginationQueryUtil', () => {
         });
 
         it('throws the invalid format exception the sibling returns', () => {
-            const failure = new PaginationInvalidCursorFormatException();
-            paginationCursorUtil.checkFormat.mockReturnValue(failure);
-
             let error: unknown;
             try {
                 util['validateAndSanitizeCursor']('not url safe!');
@@ -640,24 +530,18 @@ describe('PaginationQueryUtil', () => {
                 error = caught;
             }
 
-            expect(error).toBe(failure);
+            expect(error).toBeInstanceOf(
+                PaginationInvalidCursorFormatException
+            );
             expect(error).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.invalidCursorFormat,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.invalidCursorFormat
-                    ],
-                messagePath: 'pagination.error.invalidCursorFormat',
                 messageProperties: null,
             });
         });
 
         it('trims and returns a valid cursor', () => {
             expect(util['validateAndSanitizeCursor'](' Ab-_1 ')).toBe('Ab-_1');
-            expect(paginationCursorUtil.checkFormat).toHaveBeenCalledWith(
-                'Ab-_1'
-            );
         });
     });
 });

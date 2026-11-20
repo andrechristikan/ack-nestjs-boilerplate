@@ -15,20 +15,27 @@ describe('ActivityLogSessionTargetMetadataSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ActivityLogSessionTargetMetadataSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ActivityLogSessionTargetMetadataSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a missing sessionId', () => {
-        expect(() =>
-            ActivityLogSessionTargetMetadataSchema.parse({
-                actorUserId: 'user-1',
-                timestamp,
-            })
-        ).toThrow();
+        const result = ActivityLogSessionTargetMetadataSchema.safeParse({
+            actorUserId: 'user-1',
+            timestamp,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['sessionId'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

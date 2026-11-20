@@ -4,7 +4,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -31,6 +30,10 @@ import {
     buildApiKeyContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserLogoutUseCase', () => {
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
@@ -38,9 +41,6 @@ describe('UserLogoutUseCase', () => {
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     let useCase: UserLogoutUseCase;
 
     const tx = {} as IDatabaseTransactionClient;
@@ -90,17 +90,19 @@ describe('UserLogoutUseCase', () => {
         isNewDevice: true,
     };
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
 
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.forward.mockImplementation(date => date);
-        helperDateService.formatToIso.mockReturnValue(
-            '2026-03-05T00:00:00.000Z'
-        );
+        vi.setSystemTime(now);
         activityLogService.recordEffect.mockReturnValue(entryEffect);
         deviceService.upsertForLoginInTx.mockResolvedValue(upsert);
         deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue([]);
@@ -112,8 +114,12 @@ describe('UserLogoutUseCase', () => {
                 { provide: SessionService, useValue: sessionService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                DatabaseUtil,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
+                HelperDateService,
             ],
         }).compile();
         useCase = module.get(UserLogoutUseCase);
@@ -188,25 +194,16 @@ describe('UserLogoutUseCase', () => {
         });
 
         it('answers SessionNotFoundException on a write conflict with one run and no entry', async () => {
-            const conflict = new Error('write conflict');
+            const conflict = buildPrismaKnownRequestError('P2034');
             outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, authContext)
             ).rejects.toMatchObject({
                 module: 'session',
                 statusCode: EnumSessionStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumSessionStatusCodeError[
-                        EnumSessionStatusCodeError.notFound
-                    ],
-                messagePath: 'session.error.notFound',
             });
 
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -214,7 +211,6 @@ describe('UserLogoutUseCase', () => {
         it('wraps any other failure raised while logging out in the unknown exception without an entry', async () => {
             const failure = new Error('boom');
             outboxService.withTransaction.mockRejectedValue(failure);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, authContext)

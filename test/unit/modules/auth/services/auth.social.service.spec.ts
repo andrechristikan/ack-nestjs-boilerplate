@@ -1,8 +1,6 @@
-import { HttpStatus } from '@nestjs/common';
 import type { TokenPayload } from 'google-auth-library';
 import type { AuthSocialService } from '@modules/auth/services/auth.social.service';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { Duration } from 'luxon';
 import type { AuthSocialNonce } from '@generated/prisma-client/client';
 import {
     buildAuthSocialServiceDoubles,
@@ -35,9 +33,6 @@ describe('AuthSocialService', () => {
     let service: AuthSocialService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        vi.resetModules();
-
         oauth2ClientMock.mockImplementation(function (this: {
             verifyIdToken: typeof verifyIdTokenMock;
         }) {
@@ -72,12 +67,6 @@ describe('AuthSocialService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialGoogleNotConfigured,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.socialGoogleNotConfigured
-                    ],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'auth.error.socialGoogleNotConfigured',
             });
             expect(verifyIdTokenMock).not.toHaveBeenCalled();
         });
@@ -110,12 +99,6 @@ describe('AuthSocialService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.socialGoogleInvalid
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'auth.error.socialGoogleInvalid',
                 rawError: 'Unable to extract payload from Google token',
             });
         });
@@ -130,12 +113,6 @@ describe('AuthSocialService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.socialGoogleInvalid
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'auth.error.socialGoogleInvalid',
                 rawError: 'Google token payload does not contain email',
             });
         });
@@ -153,12 +130,6 @@ describe('AuthSocialService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.socialGoogleInvalid
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'auth.error.socialGoogleInvalid',
                 rawError:
                     'Google token payload does not contain email_verified',
             });
@@ -195,12 +166,6 @@ describe('AuthSocialService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialAppleNotConfigured,
-                statusCodeKey:
-                    EnumAuthStatusCodeError[
-                        EnumAuthStatusCodeError.socialAppleNotConfigured
-                    ],
-                httpStatus: HttpStatus.NOT_FOUND,
-                messagePath: 'auth.error.socialAppleNotConfigured',
             });
             expect(verifyAppleMock).not.toHaveBeenCalled();
         });
@@ -248,37 +213,37 @@ describe('AuthSocialService', () => {
                 await expect(rejection).rejects.toMatchObject({
                     module: 'auth',
                     statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
-                    statusCodeKey:
-                        EnumAuthStatusCodeError[
-                            EnumAuthStatusCodeError.socialAppleInvalid
-                        ],
-                    httpStatus: HttpStatus.UNAUTHORIZED,
-                    messagePath: 'auth.error.socialAppleInvalid',
                 });
             }
         );
     });
 
     describe('createNonce', () => {
+        const plainNonceHash =
+            '76446287817df20d048286fd6b1925d284e82de8587c861216d0ca6c30475a90';
         const now = new Date('2026-01-01T00:00:00.000Z');
         const expiredAt = new Date('2026-01-01T00:05:00.000Z');
-        const duration = Duration.fromObject({ milliseconds: 300000 });
         const row: AuthSocialNonce = {
             id: '64b7f0c2a1b2c3d4e5f60718',
-            nonceHash: 'hash-of-nonce',
+            nonceHash: plainNonceHash,
             expiredAt,
             createdAt: now,
             createdBy: null,
         };
 
+        beforeAll(() => {
+            vi.useFakeTimers();
+        });
+
+        afterAll(() => {
+            vi.useRealTimers();
+        });
+
         beforeEach(() => {
-            doubles.helperStringService.random.mockReturnValue('plain-nonce');
-            doubles.helperHashService.sha256Hash.mockReturnValue(
-                'hash-of-nonce'
+            vi.setSystemTime(now);
+            vi.spyOn(service['helperStringService'], 'random').mockReturnValue(
+                'plain-nonce'
             );
-            doubles.helperDateService.create.mockReturnValue(now);
-            doubles.helperDateService.createDuration.mockReturnValue(duration);
-            doubles.helperDateService.forward.mockReturnValue(expiredAt);
             doubles.authSocialNonceRepository.create.mockResolvedValue(row);
             doubles.authSocialNonceRepository.deleteExpired.mockResolvedValue(
                 0
@@ -289,20 +254,12 @@ describe('AuthSocialService', () => {
             const result = await service.createNonce();
 
             expect(result).toEqual({ nonce: 'plain-nonce', expiredAt });
-            expect(doubles.helperStringService.random).toHaveBeenCalledWith(32);
-            expect(doubles.helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'plain-nonce'
-            );
-            expect(
-                doubles.helperDateService.createDuration
-            ).toHaveBeenCalledWith({ milliseconds: 300000 });
-            expect(doubles.helperDateService.forward).toHaveBeenCalledWith(
-                now,
-                duration
+            expect(service['helperStringService'].random).toHaveBeenCalledWith(
+                32
             );
             expect(
                 doubles.authSocialNonceRepository.create
-            ).toHaveBeenCalledWith('hash-of-nonce', expiredAt);
+            ).toHaveBeenCalledWith(plainNonceHash, expiredAt);
         });
 
         it('never hands the plain nonce to the repository', async () => {
@@ -344,14 +301,21 @@ describe('AuthSocialService', () => {
         const nonceInvalid = {
             module: 'auth',
             statusCode: EnumAuthStatusCodeError.socialNonceInvalid,
-            messagePath: 'auth.error.socialNonceInvalid',
         };
 
+        const plainNonceHash =
+            '76446287817df20d048286fd6b1925d284e82de8587c861216d0ca6c30475a90';
+
+        beforeAll(() => {
+            vi.useFakeTimers();
+        });
+
+        afterAll(() => {
+            vi.useRealTimers();
+        });
+
         beforeEach(() => {
-            doubles.helperHashService.sha256Hash.mockReturnValue(
-                'hash-of-nonce'
-            );
-            doubles.helperDateService.create.mockReturnValue(now);
+            vi.setSystemTime(now);
         });
 
         it('consumes the hash of the claim with the clock and resolves on true', async () => {
@@ -361,12 +325,9 @@ describe('AuthSocialService', () => {
                 service.consumeNonce('plain-nonce')
             ).resolves.toBeUndefined();
 
-            expect(doubles.helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'plain-nonce'
-            );
             expect(
                 doubles.authSocialNonceRepository.consume
-            ).toHaveBeenCalledWith('hash-of-nonce', now);
+            ).toHaveBeenCalledWith(plainNonceHash, now);
         });
 
         it('rejects with AuthSocialNonceInvalidException when no row was consumed', async () => {

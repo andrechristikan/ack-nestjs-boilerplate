@@ -28,7 +28,11 @@ describe('ApiKeyCreateResponseSchema', () => {
     it('rejects a missing secret', () => {
         const { secret: _secret, ...rest } = row;
 
-        expect(() => ApiKeyCreateResponseSchema.parse(rest)).toThrow();
+        const result = ApiKeyCreateResponseSchema.safeParse(rest);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['secret'], code: 'invalid_type' }),
+        ]);
     });
 
     it('strips the hash out of the parsed result', () => {

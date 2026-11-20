@@ -1,6 +1,6 @@
 # Add a notification
 
-Invariants: `.claude/rules/notification.md`, `.claude/rules/notify.md`, `.claude/rules/effects.md`. Reference: `workspaceInvite`; a broadcast: step 7. A kind adds no queue method, process, step, service, or use case.
+Invariants: `.claude/rules/notification.md`, `.claude/rules/notify.md`, `.claude/rules/effects.md`. Reference: `workspaceInvite`; a broadcast: step 7.
 
 ## 1. Name the kind
 
@@ -14,15 +14,13 @@ One camelCase member of `EnumNotificationKind` (`src/modules/notification/enums/
 
 ## 3. Context and key
 
-- Add `[EnumNotificationKind.<kind>]` to `INotificationContextMap` in `src/modules/notification/interfaces/notification.interface.ts`: the subject's ids and the template values. A date is ISO. A secret is sealed by `notify` as `encrypted<Field>`.
-- Pick the key in `notify`: an existing `notification.idempotencyKey.<name>Pattern` (`src/configs/notification.config.ts`) for a kind sent once per subject, a new pattern only for a new subject shape, `null` for a kind that repeats for one subject.
+- Add `[EnumNotificationKind.<kind>]` to `INotificationContextMap` in `src/modules/notification/interfaces/notification.interface.ts` (`.claude/rules/notify.md`).
+- Pick the key in `notify` as `.claude/rules/notify.md` gives (`src/configs/notification.config.ts`); a new pattern only for a new subject shape.
 
 ## 4. Producer
 
-1. The use case or service owning the write adds `this.notificationService.notify(EnumNotificationKind.<kind>, context)` with `OutboxService.addInTx(tx, ...)` inside the transaction it opened through `OutboxService.withTransaction`, or with `OutboxService.add(...)` when it writes nothing.
-2. A kind sent after a credential reset reads `NotificationService.getSnapshot(user)` inside the same callback, before the revoke, and passes it as `context.snapshot`.
-3. An invitee with no account: `notifyUnregisteredInvite(email, payload)` in the same place.
-4. A caller in another module reaches `NotificationService` through `NotificationModule`, imported by its own module file (`.claude/rules/layering.md`, Dependency order).
+1. The use case or service owning the write adds `this.notificationService.notify(EnumNotificationKind.<kind>, context)` as `.claude/rules/notify.md` gives: in the write's transaction, or `OutboxService.add` with no write; the snapshot and the unregistered invitee included.
+2. A caller in another module reaches `NotificationService` through `NotificationModule`, imported by its own module file (`.claude/rules/layering.md`, Dependency order).
 
 ## 5. Email template
 

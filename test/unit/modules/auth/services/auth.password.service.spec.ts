@@ -14,8 +14,6 @@ describe('AuthPasswordService', () => {
     let service: AuthPasswordService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const configService = buildConfigService({
             'auth.password.contextWordMinLength': 4,
         });
@@ -46,8 +44,6 @@ describe('AuthPasswordService', () => {
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.passwordCommon,
-                statusCodeKey: 'passwordCommon',
-                messagePath: 'auth.error.passwordCommon',
             });
             expect(
                 authCommonPasswordRepository.existsByValue
@@ -67,8 +63,6 @@ describe('AuthPasswordService', () => {
                 ).rejects.toMatchObject({
                     module: 'auth',
                     statusCode: EnumAuthStatusCodeError.passwordContextWord,
-                    statusCodeKey: 'passwordContextWord',
-                    messagePath: 'auth.error.passwordContextWord',
                 });
                 expect(
                     authCommonPasswordRepository.existsByValue

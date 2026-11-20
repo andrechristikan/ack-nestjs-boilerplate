@@ -12,8 +12,6 @@ describe('AnalyticAuthConcurrentSessionsUseCase', () => {
     let useCase: AnalyticAuthConcurrentSessionsUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticAuthConcurrentSessionsUseCase,

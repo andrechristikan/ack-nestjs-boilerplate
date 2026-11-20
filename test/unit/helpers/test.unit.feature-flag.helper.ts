@@ -25,9 +25,3 @@ export function stubPasswordMetadataNumbers(
                 : lockDurationInMinutes
     );
 }
-
-export function issueMessages(
-    issues: readonly { message: string }[] | undefined
-): string[] {
-    return (issues ?? []).map(issue => issue.message);
-}

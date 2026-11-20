@@ -10,21 +10,37 @@ describe('ApiKeyUpdateStatusRequestSchema', () => {
     });
 
     it('rejects a missing isActive', () => {
-        expect(() => ApiKeyUpdateStatusRequestSchema.parse({})).toThrow();
+        const result = ApiKeyUpdateStatusRequestSchema.safeParse({});
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['isActive'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a non-boolean isActive', () => {
-        expect(() =>
-            ApiKeyUpdateStatusRequestSchema.parse({ isActive: 'true' })
-        ).toThrow();
+        const result = ApiKeyUpdateStatusRequestSchema.safeParse({
+            isActive: 'true',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['isActive'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ApiKeyUpdateStatusRequestSchema.parse({
-                isActive: true,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ApiKeyUpdateStatusRequestSchema.safeParse({
+            isActive: true,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

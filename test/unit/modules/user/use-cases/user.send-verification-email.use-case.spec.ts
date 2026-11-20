@@ -60,7 +60,6 @@ describe('UserSendVerificationEmailUseCase', () => {
         deletedBy: null,
     };
     beforeEach(async () => {
-        vi.resetAllMocks();
         userVerificationService.getOneForResendByEmail.mockResolvedValue(user);
 
         const module: TestingModule = await Test.createTestingModule({

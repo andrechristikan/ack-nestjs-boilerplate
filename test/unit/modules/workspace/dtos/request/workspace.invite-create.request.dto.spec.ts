@@ -77,35 +77,49 @@ describe('WorkspaceInviteCreateRequestSchema', () => {
         });
 
         expect(email).toHaveLength(101);
+
         expect(result.error?.issues).toEqual([
             expect.objectContaining({ code: 'too_big', path: ['email'] }),
         ]);
     });
 
     it('rejects a workspaceRole of owner', () => {
-        expect(() =>
-            WorkspaceInviteCreateRequestSchema.parse({
-                ...payload,
-                workspaceRole: 'owner',
-            })
-        ).toThrow();
+        const result = WorkspaceInviteCreateRequestSchema.safeParse({
+            ...payload,
+            workspaceRole: 'owner',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['workspaceRole'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects a projectId that is not a MongoID', () => {
-        expect(() =>
-            WorkspaceInviteCreateRequestSchema.parse({
-                ...payload,
-                projectId: 'not-an-id',
-            })
-        ).toThrow();
+        const result = WorkspaceInviteCreateRequestSchema.safeParse({
+            ...payload,
+            projectId: 'not-an-id',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['projectId'], code: 'too_small' }),
+            expect.objectContaining({
+                path: ['projectId'],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceInviteCreateRequestSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = WorkspaceInviteCreateRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

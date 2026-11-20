@@ -1,13 +1,22 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { EnumHelperStatusCodeError } from '@common/helper/enums/helper.status-code.enum';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import { NotificationPushDeliveryService } from '@modules/notification/services/notification.push.delivery.service';
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
-import { TestPushStampedAt } from '@test/unit/helpers/test.unit.notification-push.helper';
+import {
+    buildSealedNotificationPayload,
+    TestPushStampedAt,
+} from '@test/unit/helpers/test.unit.notification-push.helper';
 import { UnrecoverableError } from 'bullmq';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IFirebasePushResult } from '@common/firebase/interfaces/firebase.interface';
@@ -19,17 +28,26 @@ describe('NotificationPushDeliveryService', () => {
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const firebaseService: MockProxy<FirebaseService> = mock<FirebaseService>();
-    const notificationUtil: MockProxy<NotificationUtil> =
-        mock<NotificationUtil>();
+    const sealed = {
+        token1: buildSealedNotificationPayload('token-1', 'user-id'),
+        token2: buildSealedNotificationPayload('token-2', 'user-id'),
+        token9: buildSealedNotificationPayload('token-9', 'user-id'),
+        old: buildSealedNotificationPayload('old', 'user-id'),
+    };
     let service: NotificationPushDeliveryService;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(TestPushStampedAt);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
-        helperDateService.create.mockReturnValue(TestPushStampedAt);
         const module = await Test.createTestingModule({
             providers: [
                 NotificationPushDeliveryService,
@@ -38,9 +56,13 @@ describe('NotificationPushDeliveryService', () => {
                     useValue: notificationRepository,
                 },
                 { provide: MessageService, useValue: messageService },
-                { provide: HelperDateService, useValue: helperDateService },
                 { provide: FirebaseService, useValue: firebaseService },
-                { provide: NotificationUtil, useValue: notificationUtil },
+                NotificationUtil,
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         service = module.get(NotificationPushDeliveryService);
@@ -103,28 +125,17 @@ describe('NotificationPushDeliveryService', () => {
             retryTokens: [],
         };
 
-        beforeEach(() => {
-            notificationUtil.decryptPayload.mockImplementation(
-                (encrypted: string) =>
-                    encrypted.replace(/^cipher\((.*)\)$/, '$1')
-            );
-        });
-
         it('sends to the pending tokens when recorded and returns the outcome', async () => {
             firebaseService.sendMulticast.mockResolvedValue(emptyResult);
 
             const sent = await service.sendMulticast(
                 'user-id',
-                ['cipher(token-1)', 'cipher(token-2)'],
+                [sealed.token1, sealed.token2],
                 payload,
                 [],
-                ['cipher(token-1)']
+                [sealed.token1]
             );
 
-            expect(notificationUtil.decryptPayload).toHaveBeenCalledWith(
-                'cipher(token-1)',
-                'user-id'
-            );
             expect(firebaseService.sendMulticast).toHaveBeenCalledWith(
                 ['token-1'],
                 payload
@@ -142,7 +153,7 @@ describe('NotificationPushDeliveryService', () => {
 
             await service.sendMulticast(
                 'user-id',
-                ['cipher(token-1)', 'cipher(token-2)'],
+                [sealed.token1, sealed.token2],
                 payload,
                 null,
                 null
@@ -155,20 +166,18 @@ describe('NotificationPushDeliveryService', () => {
         });
 
         it('rethrows a decryption failure', async () => {
-            const failure = new Error('decrypt');
-            notificationUtil.decryptPayload.mockImplementation(() => {
-                throw failure;
-            });
-
             await expect(
                 service.sendMulticast(
-                    'user-id',
-                    ['cipher(token-1)'],
+                    'user-9',
+                    [sealed.token1],
                     payload,
                     null,
                     null
                 )
-            ).rejects.toBe(failure);
+            ).rejects.toMatchObject({
+                module: 'helper',
+                statusCode: EnumHelperStatusCodeError.decryptFailed,
+            });
             expect(firebaseService.sendMulticast).not.toHaveBeenCalled();
         });
 
@@ -182,14 +191,14 @@ describe('NotificationPushDeliveryService', () => {
 
             const sent = await service.sendMulticast(
                 'user-id',
-                ['cipher(token-1)', 'cipher(token-2)'],
+                [sealed.token1, sealed.token2],
                 payload,
                 null,
                 null
             );
 
             expect(sent).toEqual({
-                encryptedFailureTokens: ['cipher(token-1)'],
+                encryptedFailureTokens: [sealed.token1],
                 encryptedPendingTokens: [],
                 failure: null,
             });
@@ -206,15 +215,15 @@ describe('NotificationPushDeliveryService', () => {
 
             const sent = await service.sendMulticast(
                 'user-id',
-                ['cipher(token-1)', 'cipher(token-2)'],
+                [sealed.token1, sealed.token2],
                 payload,
-                ['cipher(old)', 'cipher(token-1)'],
+                [sealed.old, sealed.token1],
                 null
             );
 
             expect(sent.encryptedFailureTokens).toEqual([
-                'cipher(old)',
-                'cipher(token-1)',
+                sealed.old,
+                sealed.token1,
             ]);
         });
 
@@ -228,7 +237,7 @@ describe('NotificationPushDeliveryService', () => {
 
             const sent = await service.sendMulticast(
                 'user-id',
-                ['cipher(token-1)', 'cipher(token-2)'],
+                [sealed.token1, sealed.token2],
                 payload,
                 null,
                 null
@@ -236,7 +245,7 @@ describe('NotificationPushDeliveryService', () => {
 
             expect(sent).toEqual({
                 encryptedFailureTokens: [],
-                encryptedPendingTokens: ['cipher(token-1)', 'cipher(token-2)'],
+                encryptedPendingTokens: [sealed.token1, sealed.token2],
                 failure: {
                     step: EnumNotificationStep.sendMulticast,
                     rawError: new Error(
@@ -256,14 +265,14 @@ describe('NotificationPushDeliveryService', () => {
 
             const sent = await service.sendMulticast(
                 'user-id',
-                ['cipher(token-1)'],
+                [sealed.token1],
                 payload,
-                ['cipher(token-9)'],
+                [sealed.token9],
                 null
             );
 
             expect(sent).toEqual({
-                encryptedFailureTokens: ['cipher(token-9)'],
+                encryptedFailureTokens: [sealed.token9],
                 encryptedPendingTokens: null,
                 failure: {
                     step: EnumNotificationStep.sendMulticast,
@@ -278,7 +287,7 @@ describe('NotificationPushDeliveryService', () => {
 
             const sent = await service.sendMulticast(
                 'user-id',
-                ['cipher(token-1)'],
+                [sealed.token1],
                 payload,
                 null,
                 null

@@ -35,7 +35,6 @@ describe('MfaGeneratePasskeyRegistrationUseCase', () => {
     } as PublicKeyCredentialCreationOptionsJSON;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         mfaPasskeyService.getRegistrationOptions.mockResolvedValue(
             passkeyOptions
         );

@@ -1,3 +1,9 @@
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { CacheService } from '@common/cache/services/cache.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
@@ -26,8 +32,6 @@ describe('AnalyticWorkspaceService', () => {
         dashboardTtlInMs,
     });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const analyticDateUtil: MockProxy<AnalyticDateUtil> =
-        mock<AnalyticDateUtil>();
     const analyticWorkspaceRepository: MockProxy<AnalyticWorkspaceRepository> =
         mock<AnalyticWorkspaceRepository>();
     const analyticSnapshotService: MockProxy<AnalyticSnapshotService> =
@@ -53,11 +57,6 @@ describe('AnalyticWorkspaceService', () => {
     let service: AnalyticWorkspaceService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        analyticDateUtil.cacheToken.mockImplementation((date: Date | null) =>
-            date ? date.toISOString() : '_'
-        );
         analyticCache.buildDashboardKey.mockImplementation(
             (metric, start, end) => `${metric}:${start}:${end}`
         );
@@ -78,7 +77,16 @@ describe('AnalyticWorkspaceService', () => {
                 AnalyticWorkspaceService,
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: CacheService, useValue: cacheService },
-                { provide: AnalyticDateUtil, useValue: analyticDateUtil },
+                AnalyticDateUtil,
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'analytic.cache.windowTokenPattern':
+                            'Window:{start}:{end}',
+                    }),
+                },
                 {
                     provide: AnalyticSnapshotService,
                     useValue: analyticSnapshotService,

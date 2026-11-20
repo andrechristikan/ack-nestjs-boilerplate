@@ -12,8 +12,6 @@ describe('AnalyticAuthMfaAdoptionUseCase', () => {
     let useCase: AnalyticAuthMfaAdoptionUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticAuthMfaAdoptionUseCase,

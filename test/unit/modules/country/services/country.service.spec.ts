@@ -30,8 +30,6 @@ describe('CountryService', () => {
     let service: CountryService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 CountryService,
@@ -85,11 +83,6 @@ describe('CountryService', () => {
                 {
                     module: 'country',
                     statusCode: EnumCountryStatusCodeError.notFound,
-                    statusCodeKey:
-                        EnumCountryStatusCodeError[
-                            EnumCountryStatusCodeError.notFound
-                        ],
-                    messagePath: 'country.error.notFound',
                 }
             );
         });
@@ -114,11 +107,6 @@ describe('CountryService', () => {
                 constructor: CountryNotFoundException,
                 module: 'country',
                 statusCode: EnumCountryStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumCountryStatusCodeError[
-                        EnumCountryStatusCodeError.notFound
-                    ],
-                messagePath: 'country.error.notFound',
             });
         });
     });

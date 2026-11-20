@@ -8,8 +8,6 @@ describe('RequestContextService', () => {
     let service: RequestContextService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [RequestContextService],
         }).compile();

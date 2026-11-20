@@ -12,7 +12,6 @@ describe('QueueWorkerFactory', () => {
     const setWorkerClass = vi.fn();
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         vi.spyOn(BullModule, 'workerClass', 'set').mockImplementation(
             setWorkerClass
         );
@@ -26,7 +25,6 @@ describe('QueueWorkerFactory', () => {
     });
 
     afterEach(() => {
-        vi.restoreAllMocks();
         QueueWorkerBase.connection = null;
     });
 

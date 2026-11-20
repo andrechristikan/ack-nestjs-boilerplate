@@ -1,8 +1,4 @@
-import { ZodError } from 'zod';
-import {
-    buildMetadataWithKeyCount,
-    issueMessages,
-} from '@test/unit/helpers/test.unit.feature-flag.helper';
+import { buildMetadataWithKeyCount } from '@test/unit/helpers/test.unit.feature-flag.helper';
 import { FeatureFlagUpdateMetadataRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 
 describe('FeatureFlagUpdateMetadataRequestSchema', () => {
@@ -23,90 +19,138 @@ describe('FeatureFlagUpdateMetadataRequestSchema', () => {
     });
 
     it('rejects a metadata key failing the camelCase pattern', () => {
-        expect(() =>
-            FeatureFlagUpdateMetadataRequestSchema.parse({
-                metadata: { NotCamel: true },
-            })
-        ).toThrow();
+        const result = FeatureFlagUpdateMetadataRequestSchema.safeParse({
+            metadata: { NotCamel: true },
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['metadata', 'NotCamel'],
+                code: 'invalid_key',
+            }),
+        ]);
     });
 
     it('rejects a boolean array value', () => {
-        expect(() =>
-            FeatureFlagUpdateMetadataRequestSchema.parse({
-                metadata: { flags: [true, false] },
-            })
-        ).toThrow();
+        const result = FeatureFlagUpdateMetadataRequestSchema.safeParse({
+            metadata: { flags: [true, false] },
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['metadata', 'flags'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects an empty string value', () => {
-        expect(() =>
-            FeatureFlagUpdateMetadataRequestSchema.parse({
-                metadata: { label: '' },
-            })
-        ).toThrow(ZodError);
+        const result = FeatureFlagUpdateMetadataRequestSchema.safeParse({
+            metadata: { label: '' },
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['metadata', 'label'],
+                code: 'too_small',
+                message: 'featureFlag.error.invalidMetadata',
+            }),
+        ]);
     });
 
     it('rejects an empty array value', () => {
-        expect(() =>
-            FeatureFlagUpdateMetadataRequestSchema.parse({
-                metadata: { tags: [] },
-            })
-        ).toThrow(ZodError);
+        const result = FeatureFlagUpdateMetadataRequestSchema.safeParse({
+            metadata: { tags: [] },
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['metadata', 'tags'],
+                code: 'invalid_union',
+                message: 'featureFlag.error.invalidMetadata',
+            }),
+        ]);
     });
 
     it('rejects an undeclared top-level key', () => {
-        expect(() =>
-            FeatureFlagUpdateMetadataRequestSchema.parse({
-                metadata: {},
-                extra: true,
-            })
-        ).toThrow();
+        const result = FeatureFlagUpdateMetadataRequestSchema.safeParse({
+            metadata: {},
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     describe('upper bounds', () => {
         it.each([
-            ['key', { ['a'.repeat(64)]: true }, { ['a'.repeat(65)]: true }],
+            [
+                'key',
+                { ['a'.repeat(64)]: true },
+                { ['a'.repeat(65)]: true },
+                ['metadata', 'a'.repeat(65)],
+                'invalid_key',
+            ],
             [
                 'string value',
                 { label: 'a'.repeat(500) },
                 { label: 'a'.repeat(501) },
+                ['metadata', 'label'],
+                'too_big',
             ],
             [
                 'string array item',
                 { tags: ['a'.repeat(500)] },
                 { tags: ['a'.repeat(501)] },
+                ['metadata', 'tags', 0],
+                'too_big',
             ],
             [
                 'string array length',
                 { tags: new Array(100).fill('a') },
                 { tags: new Array(101).fill('a') },
+                ['metadata', 'tags'],
+                'too_big',
             ],
             [
                 'number array length',
                 { weights: new Array(100).fill(1) },
                 { weights: new Array(101).fill(1) },
+                ['metadata', 'weights'],
+                'too_big',
             ],
             [
                 'key count',
                 buildMetadataWithKeyCount(50),
                 buildMetadataWithKeyCount(51),
+                ['metadata'],
+                'custom',
             ],
-        ])('bounds the %s at its limit', (_name, atLimit, pastLimit) => {
-            expect(
-                FeatureFlagUpdateMetadataRequestSchema.safeParse({
-                    metadata: atLimit,
-                }).success
-            ).toBe(true);
+        ])(
+            'bounds the %s at its limit',
+            (_name, atLimit, pastLimit, path, code) => {
+                expect(
+                    FeatureFlagUpdateMetadataRequestSchema.safeParse({
+                        metadata: atLimit,
+                    }).success
+                ).toBe(true);
 
-            const result = FeatureFlagUpdateMetadataRequestSchema.safeParse({
-                metadata: pastLimit,
-            });
+                const result = FeatureFlagUpdateMetadataRequestSchema.safeParse(
+                    {
+                        metadata: pastLimit,
+                    }
+                );
 
-            expect(result.success).toBe(false);
-            expect(result.error?.issues[0]?.message).toBe(
-                'featureFlag.error.invalidMetadata'
-            );
-        });
+                expect(result.error?.issues).toEqual([
+                    expect.objectContaining({
+                        path,
+                        code,
+                        message: 'featureFlag.error.invalidMetadata',
+                    }),
+                ]);
+            }
+        );
     });
 
     describe.each([
@@ -135,10 +179,13 @@ describe('FeatureFlagUpdateMetadataRequestSchema', () => {
                     { metadata: { [key]: value } }
                 );
 
-                expect(result.success).toBe(false);
-                expect(issueMessages(result.error?.issues)).toContain(
-                    'featureFlag.error.invalidMetadata'
-                );
+                expect(result.error?.issues).toEqual([
+                    expect.objectContaining({
+                        path: ['metadata', key],
+                        code: 'custom',
+                        message: 'featureFlag.error.invalidMetadata',
+                    }),
+                ]);
             }
         });
     });

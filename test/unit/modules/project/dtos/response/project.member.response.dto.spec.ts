@@ -67,17 +67,27 @@ describe('ProjectMemberResponseSchema', () => {
     });
 
     it('rejects a role outside EnumProjectMemberRole', () => {
-        expect(() =>
-            ProjectMemberResponseSchema.parse({ ...row, role: 'owner' })
-        ).toThrow();
+        const result = ProjectMemberResponseSchema.safeParse({
+            ...row,
+            role: 'owner',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['role'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects a joinedAt that is not a Date', () => {
-        expect(() =>
-            ProjectMemberResponseSchema.parse({
-                ...row,
-                joinedAt: joinedAt.toISOString(),
-            })
-        ).toThrow();
+        const result = ProjectMemberResponseSchema.safeParse({
+            ...row,
+            joinedAt: joinedAt.toISOString(),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['joinedAt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

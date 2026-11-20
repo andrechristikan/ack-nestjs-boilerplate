@@ -50,8 +50,6 @@ describe('DeviceUtil', () => {
     let util: DeviceUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [DeviceUtil],
         }).compile();

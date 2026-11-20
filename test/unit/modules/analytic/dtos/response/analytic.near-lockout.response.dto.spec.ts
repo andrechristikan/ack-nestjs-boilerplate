@@ -28,21 +28,31 @@ describe('AnalyticNearLockoutResponseSchema', () => {
     });
 
     it('rejects a null passwordAttempt', () => {
-        expect(() =>
-            AnalyticNearLockoutResponseSchema.parse({
-                ...row,
-                passwordAttempt: null,
-            })
-        ).toThrow();
+        const result = AnalyticNearLockoutResponseSchema.safeParse({
+            ...row,
+            passwordAttempt: null,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passwordAttempt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a createdAt that arrives as an ISO string', () => {
-        expect(() =>
-            AnalyticNearLockoutResponseSchema.parse({
-                ...row,
-                createdAt: createdAt.toISOString(),
-            })
-        ).toThrow();
+        const result = AnalyticNearLockoutResponseSchema.safeParse({
+            ...row,
+            createdAt: createdAt.toISOString(),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['createdAt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('strips the credential fields a full user row carries', () => {

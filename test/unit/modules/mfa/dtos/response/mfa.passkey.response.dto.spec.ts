@@ -45,6 +45,11 @@ describe('MfaPasskeyResponseSchema', () => {
             deviceType: 'cloud',
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['deviceType'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 });

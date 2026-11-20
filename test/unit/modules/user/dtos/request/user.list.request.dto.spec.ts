@@ -26,24 +26,42 @@ describe('UserListRequestSchema', () => {
     });
 
     it('rejects a roleId that is not a Mongo id', () => {
-        expect(() =>
-            UserListRequestSchema.parse({ ...payload, roleId: 'not-an-id' })
-        ).toThrow();
+        const result = UserListRequestSchema.safeParse({
+            ...payload,
+            roleId: 'not-an-id',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['roleId'], code: 'too_small' }),
+            expect.objectContaining({
+                path: ['roleId'],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserListRequestSchema.parse({ ...payload, name: 'john' })
-        ).toThrow();
+        const result = UserListRequestSchema.safeParse({
+            ...payload,
+            name: 'john',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a status of 256 characters and rejects one of 257', () => {
         expect(() =>
             UserListRequestSchema.parse({ status: 'a'.repeat(256) })
         ).not.toThrow();
-        expect(() =>
-            UserListRequestSchema.parse({ status: 'a'.repeat(257) })
-        ).toThrow();
+        const result = UserListRequestSchema.safeParse({
+            status: 'a'.repeat(257),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['status'], code: 'too_big' }),
+        ]);
     });
 
     it('keeps the module search description', () => {
@@ -80,16 +98,26 @@ describe('UserListRequestSchema', () => {
         'default',
         'createdAt',
     ])('rejects the orderBy %s', orderBy => {
-        expect(UserListRequestSchema.safeParse({ orderBy }).success).toBe(
-            false
-        );
+        expect(
+            UserListRequestSchema.safeParse({ orderBy }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             UserListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

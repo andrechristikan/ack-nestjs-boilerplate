@@ -3,25 +3,17 @@ import type { TestingModule } from '@nestjs/testing';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { ProjectUtil } from '@modules/project/utils/project.util';
+import { buildWorkspaceMember } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectUtil', () => {
     let util: ProjectUtil;
 
     const member: WorkspaceMember = {
-        id: '507f1f77bcf86cd799439011',
-        workspaceId: '507f1f77bcf86cd799439012',
-        userId: '507f1f77bcf86cd799439013',
+        ...buildWorkspaceMember('507f1f77bcf86cd799439013'),
         role: EnumWorkspaceMemberRole.member,
-        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [ProjectUtil],
         }).compile();

@@ -12,8 +12,6 @@ describe('RequestCorsMiddleware', () => {
     let next: NextFunction;
 
     beforeEach(() => {
-        vi.resetAllMocks();
-
         req = {} as Request;
         res = {} as Response;
         next = vi.fn();

@@ -1,12 +1,9 @@
 import { CacheService } from '@common/cache/services/cache.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { Duration } from 'luxon';
 import {
     EnumActivityLogAction,
     EnumAnalyticSnapshotSignal,
@@ -35,6 +32,10 @@ import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { MfaUtil } from '@modules/mfa/utils/mfa.util';
 import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('AnalyticAuthService', () => {
     const dashboardTtlInMs = 1800000;
@@ -43,17 +44,8 @@ describe('AnalyticAuthService', () => {
         dashboardTtlInMs,
     });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const analyticDateUtil: MockProxy<AnalyticDateUtil> =
-        mock<AnalyticDateUtil>();
-    const analyticBucketUtil: MockProxy<AnalyticBucketUtil> =
-        mock<AnalyticBucketUtil>();
     const analyticSnapshotService: MockProxy<AnalyticSnapshotService> =
         mock<AnalyticSnapshotService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const helperNumberService: MockProxy<HelperNumberService> =
-        mock<HelperNumberService>();
-    const mfaUtil: MockProxy<MfaUtil> = mock<MfaUtil>();
     const analyticAuthRepository: MockProxy<AnalyticAuthRepository> =
         mock<AnalyticAuthRepository>();
 
@@ -67,26 +59,31 @@ describe('AnalyticAuthService', () => {
     const cachedValue = { count: 99 };
 
     let configService: MockProxy<ConfigService>;
+
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     let service: AnalyticAuthService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         configService = buildConfigService({
+            ...TestUnitKitConfigValues,
+            'analytic.cache.windowTokenPattern': 'Window:{start}:{end}',
             'session.idleTimeoutInMs': idleTimeoutInMs,
         });
 
-        analyticDateUtil.cacheToken.mockImplementation((date: Date | null) =>
-            date ? date.toISOString() : '_'
-        );
         analyticCache.buildDashboardKey.mockImplementation(
             (metric, start, end) => `${metric}:${start}:${end}`
         );
         cacheService.readThrough.mockImplementation(
             async (_key, _schema, _ttlInMs, loader) => loader()
         );
-        helperDateService.create.mockReturnValue(now);
-        helperDateService.backward.mockReturnValue(idleSince);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -94,15 +91,14 @@ describe('AnalyticAuthService', () => {
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
-                { provide: AnalyticDateUtil, useValue: analyticDateUtil },
-                { provide: AnalyticBucketUtil, useValue: analyticBucketUtil },
+                ...TestUnitKitProviders,
+                AnalyticDateUtil,
+                AnalyticBucketUtil,
+                MfaUtil,
                 {
                     provide: AnalyticSnapshotService,
                     useValue: analyticSnapshotService,
                 },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: HelperNumberService, useValue: helperNumberService },
-                { provide: MfaUtil, useValue: mfaUtil },
                 {
                     provide: AnalyticAuthRepository,
                     useValue: analyticAuthRepository,
@@ -134,10 +130,6 @@ describe('AnalyticAuthService', () => {
             expect(
                 analyticAuthRepository.groupSessionsGeo
             ).toHaveBeenCalledWith(startDate, endDate, now, idleSince);
-            expect(helperDateService.backward).toHaveBeenCalledWith(
-                now,
-                Duration.fromMillis(idleTimeoutInMs)
-            );
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 `${EnumAnalyticDashboardMetric.authSessionsGeo}:${startToken}:${endToken}`,
                 AnalyticBucketsResultCacheSchema,
@@ -192,7 +184,6 @@ describe('AnalyticAuthService', () => {
             analyticAuthRepository.groupActivityByAction.mockResolvedValue(
                 rows
             );
-            analyticBucketUtil.toBuckets.mockReturnValue(buckets);
 
             const result = await service.authLoginMethod(null, null);
 
@@ -203,10 +194,6 @@ describe('AnalyticAuthService', () => {
             expect(
                 analyticAuthRepository.groupActivityByAction
             ).toHaveBeenCalledWith(UserLoginAnalyticActions, null, null);
-            expect(analyticBucketUtil.toBuckets).toHaveBeenCalledWith(
-                rows,
-                'action'
-            );
         });
 
         it('reads through with the dashboard key, AnalyticBucketsResultCacheSchema, and the dashboard TTL', async () => {
@@ -308,7 +295,32 @@ describe('AnalyticAuthService', () => {
                 { key: '6+', count: 0 },
             ];
             const snapshot = {
-                items: [],
+                items: [
+                    {
+                        key: '1',
+                        value: 0,
+                        occurredAt: null,
+                        data: { key: '1', count: 2 },
+                    },
+                    {
+                        key: '2',
+                        value: 1,
+                        occurredAt: null,
+                        data: { key: '2', count: 0 },
+                    },
+                    {
+                        key: '3-5',
+                        value: 2,
+                        occurredAt: null,
+                        data: { key: '3-5', count: 1 },
+                    },
+                    {
+                        key: '6+',
+                        value: 3,
+                        occurredAt: null,
+                        data: { key: '6+', count: 0 },
+                    },
+                ],
                 metadata: null,
                 windowStart: null,
                 windowEnd: null,
@@ -316,20 +328,16 @@ describe('AnalyticAuthService', () => {
             analyticAuthRepository.findConcurrentSessions.mockResolvedValue(
                 buckets
             );
-            analyticBucketUtil.toBucketSnapshot.mockReturnValue(snapshot);
 
             const result = await service.computeConcurrentSessions();
 
-            expect(result).toBe(snapshot);
+            expect(result).toEqual(snapshot);
             expect(
                 analyticAuthRepository.findConcurrentSessions
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticAuthRepository.findConcurrentSessions
             ).toHaveBeenCalledWith(now, idleSince);
-            expect(analyticBucketUtil.toBucketSnapshot).toHaveBeenCalledWith(
-                buckets
-            );
         });
     });
 
@@ -388,9 +396,6 @@ describe('AnalyticAuthService', () => {
                     count: 4,
                 },
             ]);
-            helperNumberService.percent
-                .mockReturnValueOnce(33)
-                .mockReturnValueOnce(100);
 
             const result = await service.authVerificationFunnel(
                 startDate,
@@ -398,7 +403,12 @@ describe('AnalyticAuthService', () => {
             );
 
             expect(result).toEqual({
-                email: { used: 1, unused: 2, total: 3, rate: 33 },
+                email: {
+                    used: 1,
+                    unused: 2,
+                    total: 3,
+                    rate: 33.33333333333333,
+                },
                 mobile: { used: 4, unused: 0, total: 4, rate: 100 },
             });
             expect(
@@ -407,16 +417,6 @@ describe('AnalyticAuthService', () => {
             expect(
                 analyticAuthRepository.groupVerificationFunnel
             ).toHaveBeenCalledWith(startDate, endDate);
-            expect(helperNumberService.percent).toHaveBeenNthCalledWith(
-                1,
-                1,
-                3
-            );
-            expect(helperNumberService.percent).toHaveBeenNthCalledWith(
-                2,
-                4,
-                4
-            );
         });
 
         it('reads through with the dashboard key, AnalyticVerificationFunnelsCacheSchema, and the dashboard TTL', async () => {
@@ -481,7 +481,6 @@ describe('AnalyticAuthService', () => {
                     { isUsed: false, count: 3 },
                 ]
             );
-            helperNumberService.percent.mockReturnValue(40);
 
             const result = await service.authForgotPasswordConversion(
                 startDate,
@@ -495,14 +494,12 @@ describe('AnalyticAuthService', () => {
             expect(
                 analyticAuthRepository.groupForgotPasswordConversion
             ).toHaveBeenCalledWith(startDate, endDate);
-            expect(helperNumberService.percent).toHaveBeenCalledWith(2, 5);
         });
 
         it('answers zero used when the grouped read holds no used tokens', async () => {
             analyticAuthRepository.groupForgotPasswordConversion.mockResolvedValue(
                 [{ isUsed: false, count: 3 }]
             );
-            helperNumberService.percent.mockReturnValue(0);
 
             const result = await service.authForgotPasswordConversion(
                 startDate,
@@ -542,7 +539,6 @@ describe('AnalyticAuthService', () => {
                 windowEnd: null,
                 computedAt,
             });
-            mfaUtil.mapAdoption.mockReturnValue(adoption);
 
             const result = await service.authMfaAdoption();
 
@@ -551,7 +547,6 @@ describe('AnalyticAuthService', () => {
                 EnumAnalyticSnapshotSignal.mfaAdoption,
                 AnalyticMfaAdoptionSnapshotMetaSchema
             );
-            expect(mfaUtil.mapAdoption).toHaveBeenCalledWith(40, 200);
             expect(
                 analyticAuthRepository.findMfaAdoption
             ).not.toHaveBeenCalled();
@@ -567,12 +562,10 @@ describe('AnalyticAuthService', () => {
                 windowEnd: null,
                 computedAt: null,
             });
-            mfaUtil.mapAdoption.mockReturnValue(adoption);
 
             const result = await service.authMfaAdoption();
 
             expect(result).toEqual({ ...adoption, computedAt: null });
-            expect(mfaUtil.mapAdoption).toHaveBeenCalledWith(0, 0);
         });
     });
 

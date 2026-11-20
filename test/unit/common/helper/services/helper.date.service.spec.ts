@@ -1,27 +1,29 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { DateTime, Duration } from 'luxon';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('HelperDateService', () => {
-    const configGet = vi.fn<(key: string) => string | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
 
     let service: HelperDateService;
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
         vi.useFakeTimers();
+    });
 
-        configGet.mockImplementation((key: string) =>
-            key === 'app.timezone' ? 'Asia/Jakarta' : undefined
-        );
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
+        configService = buildConfigService({
+            'app.timezone': 'Asia/Jakarta',
+        });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -31,11 +33,6 @@ describe('HelperDateService', () => {
         }).compile();
 
         service = module.get(HelperDateService);
-    });
-
-    afterEach(() => {
-        vi.useRealTimers();
-        vi.restoreAllMocks();
     });
 
     describe('calculateAge', () => {
@@ -292,15 +289,12 @@ describe('HelperDateService', () => {
     describe('createFromTimestamp', () => {
         const timestamp = new Date('2026-01-01T12:34:56.000Z').getTime();
 
-        it('creates the current date when no timestamp is given', () => {
-            const now = new Date('2026-01-01T00:00:00.000Z');
-            vi.setSystemTime(now);
+        it('creates the epoch instant for a zero timestamp', () => {
+            vi.setSystemTime(new Date('2026-01-02T00:00:00.000Z'));
 
-            const result = service.createFromTimestamp();
+            const result = service.createFromTimestamp(0);
 
-            expect(result.getTime()).toBe(
-                DateTime.now().setZone('Asia/Jakarta').toJSDate().getTime()
-            );
+            expect(result.getTime()).toBe(0);
         });
 
         it('creates from a given timestamp with no snapping', () => {

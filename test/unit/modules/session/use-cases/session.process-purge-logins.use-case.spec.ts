@@ -1,5 +1,8 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { DeviceService } from '@modules/device/services/device.service';
@@ -13,8 +16,6 @@ describe('SessionProcessPurgeLoginsUseCase', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const now: Date = new Date('2026-01-01T00:00:00.000Z');
     const payload: ISessionPurgeLoginsPayload = {
         userId: 'user-1',
@@ -22,10 +23,17 @@ describe('SessionProcessPurgeLoginsUseCase', () => {
     };
     let useCase: SessionProcessPurgeLoginsUseCase;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
-        helperDateService.create.mockReturnValue(now);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -33,7 +41,11 @@ describe('SessionProcessPurgeLoginsUseCase', () => {
                 SessionProcessPurgeLoginsUseCase,
                 { provide: SessionService, useValue: sessionService },
                 { provide: DeviceService, useValue: deviceService },
-                { provide: HelperDateService, useValue: helperDateService },
+                HelperDateService,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 

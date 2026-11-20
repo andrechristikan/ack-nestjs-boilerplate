@@ -8,8 +8,6 @@ describe('RoleUtil', () => {
     let util: RoleUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [RoleUtil],
         }).compile();

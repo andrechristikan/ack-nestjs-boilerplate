@@ -8,8 +8,12 @@ describe('ActivityLogEmptyMetadataSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ActivityLogEmptyMetadataSchema.parse({ extra: true })
-        ).toThrow();
+        const result = ActivityLogEmptyMetadataSchema.safeParse({
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

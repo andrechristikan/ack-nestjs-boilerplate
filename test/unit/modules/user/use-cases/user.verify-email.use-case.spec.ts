@@ -78,7 +78,6 @@ describe('UserVerifyEmailUseCase', () => {
         deletedBy: null,
     };
     beforeEach(async () => {
-        vi.resetAllMocks();
         userVerificationService.getOneActiveByEmailToken.mockResolvedValue({
             verification,
             user,

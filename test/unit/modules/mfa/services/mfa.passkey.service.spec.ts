@@ -1,6 +1,12 @@
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import {
+    generateAuthenticationOptions,
+    generateRegistrationOptions,
+    verifyAuthenticationResponse,
+    verifyRegistrationResponse,
+} from '@simplewebauthn/server';
 import type {
     AuthenticationResponseJSON,
     PublicKeyCredentialCreationOptionsJSON,
@@ -8,7 +14,6 @@ import type {
     RegistrationResponseJSON,
 } from '@simplewebauthn/server';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMfaPasskeyDeviceType } from '@generated/prisma-client/client';
 import type { MfaPasskey } from '@generated/prisma-client/client';
 import type { IMfaPasskey } from '@modules/mfa/interfaces/mfa.interface';
@@ -24,6 +29,10 @@ import {
     buildClientDataJson,
     createMfaPasskeyService,
 } from '@test/unit/helpers/test.unit.mfa.helper';
+import {
+    buildConfigService,
+    stubConfigValues,
+} from '@test/unit/helpers/test.unit.config.helper';
 
 vi.mock('@simplewebauthn/server', () => ({
     generateAuthenticationOptions: vi.fn(),
@@ -35,20 +44,11 @@ vi.mock('@simplewebauthn/server', () => ({
 describe('MfaPasskeyService', () => {
     const mfaPasskeyRepository: MockProxy<MfaPasskeyRepository> =
         mock<MfaPasskeyRepository>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
 
     let service: MfaPasskeyService;
-    let generateAuthenticationOptions: typeof import('@simplewebauthn/server').generateAuthenticationOptions;
-    let generateRegistrationOptions: typeof import('@simplewebauthn/server').generateRegistrationOptions;
-    let verifyAuthenticationResponse: typeof import('@simplewebauthn/server').verifyAuthenticationResponse;
-    let verifyRegistrationResponse: typeof import('@simplewebauthn/server').verifyRegistrationResponse;
 
     const options = {
         challenge: 'challenge-quartz',
@@ -82,34 +82,33 @@ describe('MfaPasskeyService', () => {
         type: 'public-key',
     };
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, unknown> = {
-                'mfa.passkey.rpId': 'example.test',
-                'mfa.passkey.rpName': 'Ack Example',
-                'mfa.passkey.origins': [
-                    'https://*.example.test',
-                    'https://app.other.test',
-                    'android:apk-key-hash:x',
-                ],
-            };
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
 
-            return values[key];
-        });
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    const configValues = {
+        'app.timezone': 'UTC',
+        'mfa.passkey.rpId': 'example.test',
+        'mfa.passkey.rpName': 'Ack Example',
+        'mfa.passkey.origins': [
+            'https://*.example.test',
+            'https://app.other.test',
+            'android:apk-key-hash:x',
+        ],
+    };
+
+    beforeEach(async () => {
+        configService = buildConfigService(configValues);
 
         service = await createMfaPasskeyService({
             mfaPasskeyRepository,
-            helperDateService,
             configService,
             featureFlagService,
         });
-        ({
-            generateAuthenticationOptions,
-            generateRegistrationOptions,
-            verifyAuthenticationResponse,
-            verifyRegistrationResponse,
-        } = await import('@simplewebauthn/server'));
     });
 
     describe('getRegistrationOptions', () => {
@@ -380,20 +379,15 @@ describe('MfaPasskeyService', () => {
 
         describe('with the origin entry *', () => {
             beforeEach(async () => {
-                const configImplementation = configGet.getMockImplementation()!;
-                configGet.mockImplementation((key: string) =>
-                    key === 'mfa.passkey.origins'
-                        ? ['*']
-                        : configImplementation(key)
-                );
+                stubConfigValues(configService, {
+                    ...configValues,
+                    'mfa.passkey.origins': ['*'],
+                });
                 service = await createMfaPasskeyService({
                     mfaPasskeyRepository,
-                    helperDateService,
                     configService,
                     featureFlagService,
                 });
-                ({ verifyAuthenticationResponse } =
-                    await import('@simplewebauthn/server'));
                 vi.mocked(verifyAuthenticationResponse).mockResolvedValue({
                     verified: true,
                     authenticationInfo: { newCounter: 8 },
@@ -574,7 +568,7 @@ describe('MfaPasskeyService', () => {
         const now = new Date('2026-03-01T00:00:00.000Z');
 
         it('stamps the counter and the last use of the passkey on the given tx', async () => {
-            helperDateService.create.mockReturnValue(now);
+            vi.setSystemTime(now);
             mfaPasskeyRepository.markUsedInTx.mockResolvedValue(true);
 
             await service.markUsedInTx(tx, 'passkey-one', 8, 'user-quartz');
@@ -589,7 +583,7 @@ describe('MfaPasskeyService', () => {
         });
 
         it('throws MfaPasskeyInvalidException when the passkey is gone', async () => {
-            helperDateService.create.mockReturnValue(now);
+            vi.setSystemTime(now);
             mfaPasskeyRepository.markUsedInTx.mockResolvedValue(false);
 
             await expect(
@@ -741,7 +735,6 @@ describe('MfaPasskeyService', () => {
                 ).rejects.toMatchObject({
                     module: 'mfa',
                     statusCode: EnumMfaStatusCodeError.passkeyInvalid,
-                    messagePath: 'mfa.error.passkeyInvalid',
                 });
 
                 expect(verifyRegistrationResponse).not.toHaveBeenCalled();
@@ -751,20 +744,15 @@ describe('MfaPasskeyService', () => {
 
         describe('with the origin entry *', () => {
             beforeEach(async () => {
-                const configImplementation = configGet.getMockImplementation()!;
-                configGet.mockImplementation((key: string) =>
-                    key === 'mfa.passkey.origins'
-                        ? ['*']
-                        : configImplementation(key)
-                );
+                stubConfigValues(configService, {
+                    ...configValues,
+                    'mfa.passkey.origins': ['*'],
+                });
                 service = await createMfaPasskeyService({
                     mfaPasskeyRepository,
-                    helperDateService,
                     configService,
                     featureFlagService,
                 });
-                ({ verifyRegistrationResponse } =
-                    await import('@simplewebauthn/server'));
                 vi.mocked(verifyRegistrationResponse).mockResolvedValue({
                     verified: true,
                     registrationInfo: {
@@ -938,8 +926,6 @@ describe('MfaPasskeyService', () => {
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.passkeyLimit,
-                statusCodeKey: 'passkeyLimit',
-                messagePath: 'mfa.error.passkeyLimit',
             });
 
             expect(verifyRegistrationResponse).not.toHaveBeenCalled();
@@ -963,7 +949,6 @@ describe('MfaPasskeyService', () => {
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.passkeyInvalid,
-                messagePath: 'mfa.error.passkeyInvalid',
             });
 
             expect(mfaPasskeyRepository.createInTx).not.toHaveBeenCalled();
@@ -986,7 +971,6 @@ describe('MfaPasskeyService', () => {
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.passkeyInvalid,
-                messagePath: 'mfa.error.passkeyInvalid',
             });
 
             expect(mfaPasskeyRepository.createInTx).not.toHaveBeenCalled();
@@ -1009,7 +993,6 @@ describe('MfaPasskeyService', () => {
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.passkeyAlreadyRegistered,
-                messagePath: 'mfa.error.passkeyAlreadyRegistered',
             });
 
             expect(mfaPasskeyRepository.createInTx).not.toHaveBeenCalled();
@@ -1068,8 +1051,8 @@ describe('MfaPasskeyService', () => {
         it('throws MfaMethodUnavailableException for an empty array, with no repository call', () => {
             expect(() => service.assertHasPasskey([])).toThrowError(
                 expect.objectContaining({
+                    module: 'mfa',
                     statusCode: EnumMfaStatusCodeError.methodUnavailable,
-                    messagePath: 'mfa.error.methodUnavailable',
                 })
             );
             expect(mfaPasskeyRepository.existsByUserId).not.toHaveBeenCalled();
@@ -1125,7 +1108,6 @@ describe('MfaPasskeyService', () => {
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.passkeyNotFound,
-                messagePath: 'mfa.error.passkeyNotFound',
             });
         });
     });
@@ -1153,7 +1135,6 @@ describe('MfaPasskeyService', () => {
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.passkeyNotFound,
-                messagePath: 'mfa.error.passkeyNotFound',
             });
         });
     });

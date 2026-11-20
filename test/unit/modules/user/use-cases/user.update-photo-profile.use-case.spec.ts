@@ -26,8 +26,6 @@ describe('UserUpdatePhotoProfileUseCase', () => {
     let useCase: UserUpdatePhotoProfileUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserUpdatePhotoProfileUseCase,

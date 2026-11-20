@@ -30,8 +30,6 @@ describe('AnalyticInviteFunnelUseCase', () => {
     let useCase: AnalyticInviteFunnelUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticInviteFunnelUseCase,

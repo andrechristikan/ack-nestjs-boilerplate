@@ -43,14 +43,27 @@ describe('NotificationUserSettingSchema', () => {
     });
 
     it('rejects a type outside EnumNotificationType', () => {
-        expect(() =>
-            NotificationUserSettingSchema.parse({ ...row, type: 'bogus' })
-        ).toThrow();
+        const result = NotificationUserSettingSchema.safeParse({
+            ...row,
+            type: 'bogus',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects a channel outside EnumNotificationChannel', () => {
-        expect(() =>
-            NotificationUserSettingSchema.parse({ ...row, channel: 'bogus' })
-        ).toThrow();
+        const result = NotificationUserSettingSchema.safeParse({
+            ...row,
+            channel: 'bogus',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['channel'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 });

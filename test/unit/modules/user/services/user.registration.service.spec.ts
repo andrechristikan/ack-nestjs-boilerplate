@@ -9,15 +9,12 @@ import {
     EnumActivityLogAction,
     EnumDevicePlatform,
     EnumPasswordHistoryType,
-    EnumRoleType,
     EnumTermPolicyType,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
-    EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
@@ -43,6 +40,12 @@ import type {
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { buildUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserRegistrationService', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -53,16 +56,11 @@ describe('UserRegistrationService', () => {
         mock<NotificationService>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
-    const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
-    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
-        mock<AuthPasswordUtil>();
-    const userVerificationUtil: MockProxy<UserVerificationUtil> =
-        mock<UserVerificationUtil>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
 
     let service: UserRegistrationService;
+    let databaseUtil: DatabaseUtil;
+    let helperStringService: HelperStringService;
+    let helperHashService: HelperHashService;
 
     const tx = {} as IDatabaseTransactionClient;
     const password: IAuthPassword = {
@@ -96,51 +94,10 @@ describe('UserRegistrationService', () => {
             createdBy: 'user-ochre',
         },
     ];
-    const createdUser: IUser = {
-        id: 'user-ochre',
-        name: null,
-        username: 'user-ochre',
-        isVerified: false,
-        verifiedAt: null,
-        email: 'user-ochre@example.com',
-        roleId: 'role-1',
-        password: null,
-        passwordExpired: null,
-        passwordCreated: null,
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-1',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
-    };
+    const createdUser: IUser = buildUser(
+        'user-ochre',
+        'user-ochre@example.com'
+    );
     const created: IUser[] = [createdUser];
     const histories: IPasswordHistoryCreate[] = [
         {
@@ -167,7 +124,6 @@ describe('UserRegistrationService', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         userService.createManyInTx.mockResolvedValue(created);
         featureFlagService.getMetadataByKey.mockResolvedValue({
             [EnumFeatureFlagMetadataKey.signUpAllowed]: true,
@@ -185,18 +141,24 @@ describe('UserRegistrationService', () => {
                 },
                 { provide: NotificationService, useValue: notificationService },
                 { provide: FeatureFlagService, useValue: featureFlagService },
-                { provide: UserCreateUtil, useValue: userCreateUtil },
-                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
+                UserCreateUtil,
+                AuthPasswordUtil,
+                UserVerificationUtil,
+                DatabaseUtil,
                 {
-                    provide: UserVerificationUtil,
-                    useValue: userVerificationUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitUserConfigValues),
                 },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                HelperDateService,
+                HelperHashService,
+                HelperStringService,
             ],
         }).compile();
 
         service = moduleRef.get(UserRegistrationService);
+        databaseUtil = moduleRef.get(DatabaseUtil);
+        helperStringService = moduleRef.get(HelperStringService);
+        helperHashService = moduleRef.get(HelperHashService);
     });
 
     describe('createInTx', () => {
@@ -302,14 +264,16 @@ describe('UserRegistrationService', () => {
             cookies: true,
             marketing: true,
         };
+        const signUpNow = new Date('2026-03-01T00:00:00.000Z');
         const emailVerification: IUserVerificationEmailCreate = {
             type: 'email',
-            expiredAt: new Date('2026-03-05T00:00:00.000Z'),
+            expiredAt: new Date('2026-03-01T00:15:00.000Z'),
             expiredInMinutes: 15,
             resendInMinutes: 5,
             reference: 'VRF-halcyon',
             token: 'raw-token',
-            hashedToken: 'hashed-token',
+            hashedToken:
+                '34d328009b123fbbb0dc93f18b3e6de1ecf7b1a5783c33dff7ffe1926f09e943',
             link: 'https://example.com/verify?token=raw-token',
         };
         const acceptedTermPolicyTypes = [
@@ -319,21 +283,31 @@ describe('UserRegistrationService', () => {
             EnumTermPolicyType.marketing,
         ];
 
+        beforeAll(() => {
+            vi.useFakeTimers();
+        });
+
+        afterAll(() => {
+            vi.useRealTimers();
+        });
+
         beforeEach(() => {
-            databaseUtil.createId.mockReturnValue('user-id-halcyon');
-            authPasswordUtil.createPassword.mockResolvedValue({
-                passwordHash: 'hashed',
-                passwordExpired: null,
-                passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-                passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
-            });
-            userVerificationUtil.createEmail.mockReturnValue(emailVerification);
+            vi.setSystemTime(signUpNow);
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue(
+                'user-id-halcyon'
+            );
+            vi.spyOn(helperStringService, 'random')
+                .mockReturnValueOnce('raw-token')
+                .mockReturnValueOnce('halcyon');
+            vi.spyOn(helperHashService, 'argon2Hash').mockResolvedValue(
+                'hashed'
+            );
         });
 
         it('prepares the sign-up input and the email verification', async () => {
             const result = await service.prepareSignUp(signUpInput, resolved);
 
-            expect(result.emailVerification).toBe(emailVerification);
+            expect(result.emailVerification).toEqual(emailVerification);
             expect(result.input).toMatchObject({
                 userId: 'user-id-halcyon',
                 email: signUpInput.email,
@@ -345,6 +319,12 @@ describe('UserRegistrationService', () => {
                 verifiedAt: null,
                 acceptedTermPolicyTypes,
                 createdBy: 'user-id-halcyon',
+                password: {
+                    passwordHash: 'hashed',
+                    passwordExpired: null,
+                    passwordCreated: signUpNow,
+                    passwordPeriodExpired: new Date('2026-05-30T00:00:00.000Z'),
+                },
                 verification: {
                     reference: emailVerification.reference,
                     token: emailVerification.hashedToken,
@@ -380,23 +360,8 @@ describe('UserRegistrationService', () => {
     describe('buildCreateByAdminStages', () => {
         it('leads with the adminUserCreate row naming the created user, then the admin contract rows', () => {
             const input = { ...inputs[0]!, createdBy: 'admin-ochre' };
-            const contractStages: IActivityLogInput<EnumActivityLogAction>[] = [
-                {
-                    action: UserCreateContract.admin.createdAction,
-                    userId: createdUser.id,
-                    createdBy: 'admin-ochre',
-                    metadata: {},
-                },
-            ];
-            userCreateUtil.buildStages.mockReturnValue(contractStages);
-
             const result = service.buildCreateByAdminStages(input, createdUser);
 
-            expect(userCreateUtil.buildStages).toHaveBeenCalledWith(
-                UserCreateContract.admin,
-                [input],
-                [createdUser]
-            );
             expect(result).toEqual([
                 {
                     action: EnumActivityLogAction.adminUserCreate,
@@ -406,7 +371,22 @@ describe('UserRegistrationService', () => {
                         timestamp: createdUser.createdAt,
                     },
                 },
-                ...contractStages,
+                {
+                    action: UserCreateContract.admin.createdAction,
+                    userId: createdUser.id,
+                    createdBy: 'admin-ochre',
+                    metadata: {
+                        actorUserId: 'admin-ochre',
+                        timestamp: createdUser.createdAt,
+                    },
+                },
+                {
+                    action: EnumActivityLogAction.workspaceCreatedByAdmin,
+                    userId: createdUser.id,
+                    createdBy: 'admin-ochre',
+                    workspaceId: 'workspace-1',
+                    metadata: { actorUserId: 'admin-ochre' },
+                },
             ]);
         });
     });
@@ -430,9 +410,17 @@ describe('UserRegistrationService', () => {
 
         const now = new Date('2026-03-01T00:00:00.000Z');
 
+        beforeAll(() => {
+            vi.useFakeTimers();
+        });
+
+        afterAll(() => {
+            vi.useRealTimers();
+        });
+
         beforeEach(() => {
-            databaseUtil.createId.mockReturnValue('user-id-ochre');
-            helperDateService.create.mockReturnValue(now);
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('user-id-ochre');
+            vi.setSystemTime(now);
         });
 
         it('stores the email trimmed and lowercased', () => {

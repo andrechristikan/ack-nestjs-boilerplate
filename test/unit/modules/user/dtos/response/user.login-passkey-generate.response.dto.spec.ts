@@ -24,7 +24,12 @@ describe('UserLoginPasskeyGenerateResponseSchema', () => {
             passkeyOptions: null,
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeyOptions'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a row with no passkeyOptions key', () => {
@@ -33,7 +38,12 @@ describe('UserLoginPasskeyGenerateResponseSchema', () => {
             expiresInMs: row.expiresInMs,
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeyOptions'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('strips an undeclared key', () => {

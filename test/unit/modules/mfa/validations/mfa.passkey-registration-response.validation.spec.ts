@@ -42,7 +42,9 @@ describe('MfaPasskeyRegistrationResponseSchema', () => {
             extra: 'value',
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects an undeclared response key', () => {
@@ -51,7 +53,12 @@ describe('MfaPasskeyRegistrationResponseSchema', () => {
             response: { ...base.response, signature: 'AbC' },
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['response'],
+                code: 'unrecognized_keys',
+            }),
+        ]);
     });
 
     it('accepts an id of 1364 characters and rejects one of 1365', () => {
@@ -65,7 +72,9 @@ describe('MfaPasskeyRegistrationResponseSchema', () => {
         });
 
         expect(accepted.success).toBe(true);
-        expect(rejected.success).toBe(false);
+        expect(rejected.error?.issues).toEqual([
+            expect.objectContaining({ path: ['id'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects an id holding a character outside base64url', () => {
@@ -74,7 +83,9 @@ describe('MfaPasskeyRegistrationResponseSchema', () => {
             id: 'ab+c',
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['id'], code: 'invalid_format' }),
+        ]);
     });
 
     it('rejects an assertion-shaped response with no attestationObject', () => {
@@ -87,7 +98,16 @@ describe('MfaPasskeyRegistrationResponseSchema', () => {
             },
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['response', 'attestationObject'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['response'],
+                code: 'unrecognized_keys',
+            }),
+        ]);
     });
 
     it('rejects a transport outside the known members', () => {
@@ -96,7 +116,12 @@ describe('MfaPasskeyRegistrationResponseSchema', () => {
             response: { ...base.response, transports: ['carrier-pigeon'] },
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['response', 'transports', 0],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects a type other than public-key', () => {
@@ -105,7 +130,9 @@ describe('MfaPasskeyRegistrationResponseSchema', () => {
             type: 'password',
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'invalid_value' }),
+        ]);
     });
 
     it('strips an unknown key inside clientExtensionResults', () => {

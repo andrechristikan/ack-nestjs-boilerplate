@@ -4,7 +4,12 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumDevicePlatform } from '@generated/prisma-client/client';
 import { DeviceService } from '@modules/device/services/device.service';
@@ -13,32 +18,29 @@ import type {
     IDeviceOwnership,
     IDeviceOwnershipWithSession,
 } from '@modules/device/interfaces/device.interface';
-import {
-    DeviceCursorOrderBy,
-    DeviceSharedListCursorScope,
-} from '@modules/device/constants/device.list.constant';
 import { DeviceGetListCursorUseCase } from '@modules/device/use-cases/device.get-list-cursor.use-case';
 import {
     buildUser,
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { EnumDeviceCursorOrderBy } from '@modules/device/enums/device.enum';
 
 describe('DeviceGetListCursorUseCase', () => {
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
     const updatedAt: Date = new Date('2026-01-01T00:00:00.000Z');
     const params = {
-        skip: 0,
         limit: 20,
-        orderBy: [],
-        fingerprint: 'aaaaaaaaaaaaaaaa',
+        orderBy: [{ createdAt: 'desc' }],
+        fingerprint: '5b94848c6a53aba0',
     };
-    const storePatch = { perPage: 20 };
+    const storePatch = {
+        perPage: 20,
+        orderBy: 'latest',
+        availableSearch: [],
+        availableOrderBy: ['latest'],
+    };
     const deviceOwnership: IDeviceOwnership = {
         id: 'device-ownership-1',
         createdAt: updatedAt,
@@ -86,15 +88,14 @@ describe('DeviceGetListCursorUseCase', () => {
     let useCase: DeviceGetListCursorUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 DeviceGetListCursorUseCase,
                 { provide: DeviceService, useValue: deviceService },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 {
                     provide: RequestStoreService,
@@ -113,7 +114,6 @@ describe('DeviceGetListCursorUseCase', () => {
                 ...deviceOwnership,
                 sessions: [{ id: 'session-1' }],
             };
-            paginationQueryUtil.cursor.mockReturnValue({ params, storePatch });
             deviceService.getListCursor.mockResolvedValue({
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -130,11 +130,6 @@ describe('DeviceGetListCursorUseCase', () => {
                     isCurrentDevice: true,
                 },
             ]);
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                scope: DeviceSharedListCursorScope,
-                orderBy: DeviceCursorOrderBy,
-                defaultOrderBy: EnumDeviceCursorOrderBy.latest,
-            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 storePatch
@@ -152,7 +147,6 @@ describe('DeviceGetListCursorUseCase', () => {
                 ...deviceOwnership,
                 sessions: [],
             };
-            paginationQueryUtil.cursor.mockReturnValue({ params, storePatch });
             deviceService.getListCursor.mockResolvedValue({
                 type: EnumPaginationType.cursor,
                 perPage: 20,

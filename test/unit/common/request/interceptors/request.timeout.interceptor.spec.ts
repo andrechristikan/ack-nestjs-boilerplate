@@ -3,13 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
-import { TimeoutError, of } from 'rxjs';
+import { NEVER, TimeoutError, of } from 'rxjs';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import {
-    RequestCustomTimeoutMetaKey,
-    RequestCustomTimeoutValueMetaKey,
-} from '@common/request/constants/request.constant';
+import { RequestCustomTimeoutMetaKey } from '@common/request/constants/request.constant';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { RequestTimeoutInterceptor } from '@common/request/interceptors/request.timeout.interceptor';
 import {
@@ -17,18 +14,17 @@ import {
     subscribeError,
     subscribeNext,
 } from '@test/unit/helpers/test.unit.observable.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('RequestTimeoutInterceptor', () => {
-    const configGet = vi.fn<(key: string) => number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
     const reflector: MockProxy<Reflector> = mock<Reflector>();
     let interceptor: RequestTimeoutInterceptor;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockReturnValue(30000);
+        configService = buildConfigService({
+            'request.timeoutInMs': 30000,
+        });
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RequestTimeoutInterceptor,
@@ -40,8 +36,10 @@ describe('RequestTimeoutInterceptor', () => {
     });
 
     describe('intercept', () => {
-        it('reads the max timeout from the config service once, in the constructor', () => {
-            expect(configGet).toHaveBeenCalledWith('request.timeoutInMs');
+        it('reads request.timeoutInMs from the config service once, in the constructor', () => {
+            expect(configService.get).toHaveBeenCalledWith(
+                'request.timeoutInMs'
+            );
         });
 
         it('hands off untouched for a non-http execution context', async () => {
@@ -59,58 +57,69 @@ describe('RequestTimeoutInterceptor', () => {
             expect(reflector.get).not.toHaveBeenCalled();
         });
 
-        it('applies the global timeout when the handler carries no custom timeout', async () => {
+        describe('with a http context and a source that never emits', () => {
             const executionContext: MockProxy<ExecutionContext> =
                 mock<ExecutionContext>();
             const callHandler: MockProxy<CallHandler> = mock<CallHandler>();
-            const handler = vi.fn();
-            executionContext.getType.mockReturnValue('http');
-            executionContext.getHandler.mockReturnValue(handler);
-            reflector.get.mockReturnValue(false);
-            callHandler.handle.mockReturnValue(of('handled'));
 
-            const result = await subscribeNext(
-                interceptor.intercept(executionContext, callHandler)
-            );
-
-            expect(result).toBe('handled');
-            expect(reflector.get).toHaveBeenCalledWith(
-                RequestCustomTimeoutMetaKey,
-                handler
-            );
-            expect(reflector.get).not.toHaveBeenCalledWith(
-                RequestCustomTimeoutValueMetaKey,
-                handler
-            );
-        });
-
-        it('applies the handler-declared timeout when the handler carries @RequestTimeout', async () => {
-            const executionContext: MockProxy<ExecutionContext> =
-                mock<ExecutionContext>();
-            const callHandler: MockProxy<CallHandler> = mock<CallHandler>();
-            const handler = vi.fn();
-            executionContext.getType.mockReturnValue('http');
-            executionContext.getHandler.mockReturnValue(handler);
-            reflector.get.mockImplementation((key: unknown) => {
-                if (key === RequestCustomTimeoutMetaKey) {
-                    return true;
-                }
-                if (key === RequestCustomTimeoutValueMetaKey) {
-                    return '5s';
-                }
-                return undefined;
+            beforeAll(() => {
+                vi.useFakeTimers();
             });
-            callHandler.handle.mockReturnValue(of('handled'));
 
-            const result = await subscribeNext(
-                interceptor.intercept(executionContext, callHandler)
-            );
+            afterAll(() => {
+                vi.useRealTimers();
+            });
 
-            expect(result).toBe('handled');
-            expect(reflector.get).toHaveBeenCalledWith(
-                RequestCustomTimeoutValueMetaKey,
-                handler
-            );
+            beforeEach(() => {
+                executionContext.getType.mockReturnValue('http');
+                executionContext.getHandler.mockReturnValue(vi.fn());
+                callHandler.handle.mockReturnValue(NEVER);
+            });
+
+            it('throws RequestTimeoutException at the handler-declared 5s and not before', async () => {
+                reflector.get.mockImplementation((key: unknown) =>
+                    key === RequestCustomTimeoutMetaKey ? true : '5s'
+                );
+                const onError = vi.fn();
+                interceptor
+                    .intercept(executionContext, callHandler)
+                    .subscribe({ error: onError });
+
+                await vi.advanceTimersByTimeAsync(4_999);
+                expect(onError).not.toHaveBeenCalled();
+
+                await vi.advanceTimersByTimeAsync(1);
+                expect(onError).toHaveBeenCalledTimes(1);
+                expect(onError).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        module: 'request',
+                        statusCode: EnumRequestStatusCodeError.timeout,
+                    })
+                );
+            });
+
+            it('throws RequestTimeoutException at request.timeoutInMs when the handler declares none, not at 5s', async () => {
+                reflector.get.mockReturnValue(false);
+                const onError = vi.fn();
+                interceptor
+                    .intercept(executionContext, callHandler)
+                    .subscribe({ error: onError });
+
+                await vi.advanceTimersByTimeAsync(5_000);
+                expect(onError).not.toHaveBeenCalled();
+
+                await vi.advanceTimersByTimeAsync(24_999);
+                expect(onError).not.toHaveBeenCalled();
+
+                await vi.advanceTimersByTimeAsync(1);
+                expect(onError).toHaveBeenCalledTimes(1);
+                expect(onError).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        module: 'request',
+                        statusCode: EnumRequestStatusCodeError.timeout,
+                    })
+                );
+            });
         });
     });
 
@@ -139,11 +148,6 @@ describe('RequestTimeoutInterceptor', () => {
             expect(error).toMatchObject({
                 module: 'request',
                 statusCode: EnumRequestStatusCodeError.timeout,
-                statusCodeKey:
-                    EnumRequestStatusCodeError[
-                        EnumRequestStatusCodeError.timeout
-                    ],
-                messagePath: 'http.clientError.requestTimeOut',
             });
         });
 

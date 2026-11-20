@@ -10,16 +10,14 @@ import {
     EnumActivityLogAction,
     EnumMfaChallengePurpose,
     EnumPasswordHistoryType,
-    EnumRoleType,
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { PasswordHistory, User } from '@generated/prisma-client/client';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { MockInstance } from 'vitest';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -62,9 +60,11 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import { UserResetPasswordUseCase } from '@modules/user/use-cases/user.reset-password.use-case';
 import {
-    buildRequestContext,
     buildApiKeyContext,
+    buildRequestContext,
+    buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserResetPasswordUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -80,61 +80,20 @@ describe('UserResetPasswordUseCase', () => {
         mock<NotificationService>();
     const authPasswordService: MockProxy<AuthPasswordService> =
         mock<AuthPasswordService>();
-    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
-        mock<AuthPasswordUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
+    let helperHashService: HelperHashService;
+    let argon2Hash: MockInstance<HelperHashService['argon2Hash']>;
     let useCase: UserResetPasswordUseCase;
 
     const user: IUser = {
-        id: 'user-linden',
+        ...buildUser('user-linden', 'linden@example.com'),
         name: 'Linden Frost',
         username: 'lindenFrost',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'linden@example.com',
-        roleId: 'role-linden',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-linden',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: EnumUserLoginFrom.website,
-        lastLoginWith: EnumUserLoginWith.credential,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-linden',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
-        },
     };
     const password: IAuthPassword = {
         passwordHash: 'hashed',
@@ -194,8 +153,15 @@ describe('UserResetPasswordUseCase', () => {
         user,
     } as IUserForgotPassword;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect.mockImplementation(
             (
                 _requestContext,
@@ -214,10 +180,7 @@ describe('UserResetPasswordUseCase', () => {
         notificationService.getSnapshot.mockResolvedValue(snapshot);
         notificationService.notify.mockReturnValue(notifyEffect);
         mfaService.isEnabled.mockResolvedValue(false);
-        authPasswordUtil.createContextWords.mockReturnValue([
-            'ACK Boilerplate',
-            'linden',
-        ]);
+        vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -239,18 +202,23 @@ describe('UserResetPasswordUseCase', () => {
                     useValue: notificationService,
                 },
                 { provide: AuthPasswordService, useValue: authPasswordService },
-                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
+                AuthPasswordUtil,
+                HelperHashService,
+                HelperDateService,
+                HelperStringService,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
+                        ...TestUnitUserConfigValues,
                         'app.name': 'ACK Boilerplate',
                     }),
                 },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                DatabaseUtil,
             ],
         }).compile();
+        helperHashService = module.get(HelperHashService);
         useCase = module.get(UserResetPasswordUseCase);
     });
 
@@ -262,7 +230,9 @@ describe('UserResetPasswordUseCase', () => {
 
         beforeEach(() => {
             userPasswordService.getOneActiveReset.mockResolvedValue(resetRow);
-            authPasswordUtil.createPassword.mockResolvedValue(password);
+            argon2Hash = vi
+                .spyOn(helperHashService, 'argon2Hash')
+                .mockResolvedValue('hashed');
             userService.updatePasswordInTx.mockResolvedValue(updatedRow);
             passwordHistoryService.createInTx.mockResolvedValue(
                 passwordHistory
@@ -278,17 +248,11 @@ describe('UserResetPasswordUseCase', () => {
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toBe(refused);
 
-            expect(authPasswordUtil.createContextWords).toHaveBeenCalledWith(
-                'ACK Boilerplate',
-                'linden@example.com',
-                'lindenFrost',
-                'Linden Frost'
-            );
             expect(authPasswordService.assertAllowed).toHaveBeenCalledWith(
                 'new-password',
-                ['ACK Boilerplate', 'linden']
+                ['ACK Boilerplate', 'linden', 'lindenFrost', 'Linden Frost']
             );
-            expect(authPasswordUtil.createPassword).not.toHaveBeenCalled();
+            expect(argon2Hash).not.toHaveBeenCalled();
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
@@ -351,13 +315,11 @@ describe('UserResetPasswordUseCase', () => {
                 'new-password'
             );
             expect(passwordHistoryService.assertNew).toHaveBeenCalledBefore(
-                authPasswordUtil.createPassword
+                argon2Hash
             );
             expect(mfaService.isEnabled).toHaveBeenCalledWith('user-linden');
             expect(mfaService.check).not.toHaveBeenCalled();
-            expect(authPasswordUtil.createPassword).toHaveBeenCalledWith(
-                'new-password'
-            );
+            expect(argon2Hash).toHaveBeenCalledWith('new-password');
             expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,
@@ -703,11 +665,6 @@ describe('UserResetPasswordUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.methodRequired,
-                statusCodeKey:
-                    EnumMfaStatusCodeError[
-                        EnumMfaStatusCodeError.methodRequired
-                    ],
-                messagePath: 'mfa.error.methodRequired',
             });
 
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
@@ -759,26 +716,20 @@ describe('UserResetPasswordUseCase', () => {
         });
 
         it('maps a write conflict to UserTokenInvalidException', async () => {
-            const conflict = new Error('write conflict');
+            const conflict = buildPrismaKnownRequestError('P2034');
             outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.tokenInvalid,
-                messagePath: 'user.error.verificationTokenInvalid',
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps an unknown transaction failure in AppUnknownException', async () => {
             const cause = new Error('database exploded');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)

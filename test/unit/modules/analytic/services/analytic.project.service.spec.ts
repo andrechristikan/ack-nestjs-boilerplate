@@ -8,6 +8,10 @@ import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -19,8 +23,6 @@ describe('AnalyticProjectService', () => {
         dashboardTtlInMs,
     });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const analyticDateUtil: MockProxy<AnalyticDateUtil> =
-        mock<AnalyticDateUtil>();
     const analyticProjectRepository: MockProxy<AnalyticProjectRepository> =
         mock<AnalyticProjectRepository>();
 
@@ -33,11 +35,6 @@ describe('AnalyticProjectService', () => {
     let service: AnalyticProjectService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        analyticDateUtil.cacheToken.mockImplementation((date: Date | null) =>
-            date ? date.toISOString() : '_'
-        );
         analyticCache.buildDashboardKey.mockImplementation(
             (metric, start, end) => `${metric}:${start}:${end}`
         );
@@ -53,10 +50,12 @@ describe('AnalyticProjectService', () => {
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
                         'analytic.project.perWorkspaceLimit': perWorkspaceLimit,
                     }),
                 },
-                { provide: AnalyticDateUtil, useValue: analyticDateUtil },
+                AnalyticDateUtil,
+                ...TestUnitKitProviders,
                 {
                     provide: AnalyticProjectRepository,
                     useValue: analyticProjectRepository,

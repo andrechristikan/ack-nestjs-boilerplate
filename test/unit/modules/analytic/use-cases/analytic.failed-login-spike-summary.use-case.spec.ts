@@ -12,8 +12,6 @@ describe('AnalyticFailedLoginSpikeSummaryUseCase', () => {
     let useCase: AnalyticFailedLoginSpikeSummaryUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticFailedLoginSpikeSummaryUseCase,

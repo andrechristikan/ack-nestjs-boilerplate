@@ -1,15 +1,12 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('AnalyticFraudUtil', () => {
-    const configGet = vi.fn<(key: string) => number | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
 
     const configValues: Record<string, number> = {
         'analytic.fraud.nearLockoutOffset': 1,
@@ -18,9 +15,7 @@ describe('AnalyticFraudUtil', () => {
     let util: AnalyticFraudUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        configGet.mockImplementation((key: string) => configValues[key]);
+        configService = buildConfigService(configValues);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [

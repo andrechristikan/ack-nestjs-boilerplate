@@ -13,19 +13,26 @@ describe('ActivityLogOwnershipTargetMetadataSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ActivityLogOwnershipTargetMetadataSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ActivityLogOwnershipTargetMetadataSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a missing field', () => {
-        expect(() =>
-            ActivityLogOwnershipTargetMetadataSchema.parse({
-                actorUserId: 'user-1',
-            })
-        ).toThrow();
+        const result = ActivityLogOwnershipTargetMetadataSchema.safeParse({
+            actorUserId: 'user-1',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['targetUserId'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

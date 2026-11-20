@@ -20,8 +20,6 @@ describe('UserGeneratePhotoProfilePresignUseCase', () => {
     let useCase: UserGeneratePhotoProfilePresignUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserGeneratePhotoProfilePresignUseCase,

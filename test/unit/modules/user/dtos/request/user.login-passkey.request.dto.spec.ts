@@ -34,34 +34,61 @@ describe('UserLoginPasskeyRequestSchema', () => {
     it('rejects a payload with no passkeyResponse', () => {
         const { passkeyResponse: _passkeyResponse, ...rest } = payload;
 
-        expect(() => UserLoginPasskeyRequestSchema.parse(rest)).toThrow();
+        const result = UserLoginPasskeyRequestSchema.safeParse(rest);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeyResponse'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a payload with no challengeToken', () => {
         const { challengeToken: _challengeToken, ...rest } = payload;
 
-        expect(() => UserLoginPasskeyRequestSchema.parse(rest)).toThrow();
+        const result = UserLoginPasskeyRequestSchema.safeParse(rest);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['challengeToken'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a payload with no from', () => {
         const { from: _from, ...rest } = payload;
 
-        expect(() => UserLoginPasskeyRequestSchema.parse(rest)).toThrow();
+        const result = UserLoginPasskeyRequestSchema.safeParse(rest);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['from'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects a payload with no device', () => {
         const { device: _device, ...rest } = payload;
 
-        expect(() => UserLoginPasskeyRequestSchema.parse(rest)).toThrow();
+        const result = UserLoginPasskeyRequestSchema.safeParse(rest);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['device'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects a passkeyResponse that is not an assertion', () => {
-        expect(() =>
-            UserLoginPasskeyRequestSchema.parse({
-                ...payload,
-                passkeyResponse: { ...payload.passkeyResponse, type: 'other' },
-            })
-        ).toThrow();
+        const result = UserLoginPasskeyRequestSchema.safeParse({
+            ...payload,
+            passkeyResponse: { ...payload.passkeyResponse, type: 'other' },
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['passkeyResponse', 'type'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('accepts a challengeToken of 128 characters and rejects one of 129', () => {
@@ -71,29 +98,41 @@ describe('UserLoginPasskeyRequestSchema', () => {
                 challengeToken: 'a'.repeat(128),
             })
         ).not.toThrow();
-        expect(() =>
-            UserLoginPasskeyRequestSchema.parse({
-                ...payload,
-                challengeToken: 'a'.repeat(129),
-            })
-        ).toThrow();
+        const result = UserLoginPasskeyRequestSchema.safeParse({
+            ...payload,
+            challengeToken: 'a'.repeat(129),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['challengeToken'],
+                code: 'too_big',
+            }),
+        ]);
     });
 
     it('rejects an empty challengeToken', () => {
-        expect(() =>
-            UserLoginPasskeyRequestSchema.parse({
-                ...payload,
-                challengeToken: '',
-            })
-        ).toThrow();
+        const result = UserLoginPasskeyRequestSchema.safeParse({
+            ...payload,
+            challengeToken: '',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['challengeToken'],
+                code: 'too_small',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserLoginPasskeyRequestSchema.parse({
-                ...payload,
-                email: 'user@example.com',
-            })
-        ).toThrow();
+        const result = UserLoginPasskeyRequestSchema.safeParse({
+            ...payload,
+            email: 'user@example.com',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

@@ -36,8 +36,6 @@ describe('AppHttpFilter', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         argumentsHost.switchToHttp.mockReturnValue(httpArgumentsHost);
         httpArgumentsHost.getResponse.mockReturnValue(response);
         response.status.mockReturnValue(response);
@@ -57,10 +55,6 @@ describe('AppHttpFilter', () => {
         }).compile();
 
         filter = module.get(AppHttpFilter);
-    });
-
-    afterEach(() => {
-        vi.restoreAllMocks();
     });
 
     describe('catch', () => {

@@ -21,29 +21,42 @@ describe('WorkspaceJoinRequestCreateRequestSchema', () => {
     });
 
     it('rejects a workspaceId that is not a MongoID', () => {
-        expect(() =>
-            WorkspaceJoinRequestCreateRequestSchema.parse({
-                ...payload,
-                workspaceId: 'not-an-id',
-            })
-        ).toThrow();
+        const result = WorkspaceJoinRequestCreateRequestSchema.safeParse({
+            ...payload,
+            workspaceId: 'not-an-id',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['workspaceId'],
+                code: 'too_small',
+            }),
+            expect.objectContaining({
+                path: ['workspaceId'],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects a message over 500 characters', () => {
-        expect(() =>
-            WorkspaceJoinRequestCreateRequestSchema.parse({
-                ...payload,
-                message: 'a'.repeat(501),
-            })
-        ).toThrow();
+        const result = WorkspaceJoinRequestCreateRequestSchema.safeParse({
+            ...payload,
+            message: 'a'.repeat(501),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['message'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceJoinRequestCreateRequestSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = WorkspaceJoinRequestCreateRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

@@ -1,20 +1,19 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { ActivityLogQueueFactory } from '@modules/activity-log/factories/activity-log.queue.factory';
+import {
+    buildConfigService,
+    stubConfigValues,
+} from '@test/unit/helpers/test.unit.config.helper';
 
 describe('ActivityLogQueueFactory', () => {
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
     let factory: ActivityLogQueueFactory;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
+        configService = buildConfigService({});
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ActivityLogQueueFactory,
@@ -27,16 +26,12 @@ describe('ActivityLogQueueFactory', () => {
 
     describe('createRegisterQueueOptions', () => {
         it('builds the default job options and no connection from queue config', () => {
-            configGet.mockImplementation((key: string) => {
-                const values: Record<string, unknown> = {
-                    'queue.job.attempts': 5,
-                    'queue.job.keepLogs': 100,
-                    'queue.job.activityLogBackoffDelayInMs': 2500,
-                    'queue.job.removeOnCompleteAgeInSeconds': 3600,
-                    'queue.job.removeOnFailAgeInSeconds': 86400,
-                };
-
-                return values[key];
+            stubConfigValues(configService, {
+                'queue.job.attempts': 5,
+                'queue.job.keepLogs': 100,
+                'queue.job.activityLogBackoffDelayInMs': 2500,
+                'queue.job.removeOnCompleteAgeInSeconds': 3600,
+                'queue.job.removeOnFailAgeInSeconds': 86400,
             });
 
             const options = factory.createRegisterQueueOptions();

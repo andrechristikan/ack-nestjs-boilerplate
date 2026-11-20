@@ -28,46 +28,90 @@ describe('DeviceRequestSchema', () => {
     });
 
     it('rejects a missing platform', () => {
-        expect(() =>
-            DeviceRequestSchema.parse({ fingerprint: payload.fingerprint })
-        ).toThrow();
+        const result = DeviceRequestSchema.safeParse({
+            fingerprint: payload.fingerprint,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['platform'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects a missing fingerprint', () => {
-        expect(() =>
-            DeviceRequestSchema.parse({
-                name: payload.name,
-                platform: payload.platform,
-            })
-        ).toThrow();
+        const result = DeviceRequestSchema.safeParse({
+            name: payload.name,
+            platform: payload.platform,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['fingerprint'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a platform outside the enum', () => {
-        expect(() =>
-            DeviceRequestSchema.parse({
-                ...payload,
-                platform: 'windows',
-            })
-        ).toThrow();
+        const result = DeviceRequestSchema.safeParse({
+            ...payload,
+            platform: 'windows',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['platform'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            DeviceRequestSchema.parse({ ...payload, extra: true })
-        ).toThrow();
+        const result = DeviceRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
-    it.each([
-        '',
-        ' ',
-        '   ',
-        'short',
-        'has space inside value',
-        'bad/char/fingerprint',
-    ])('rejects the fingerprint %j', fingerprint => {
-        expect(() =>
-            DeviceRequestSchema.parse({ ...payload, fingerprint })
-        ).toThrow();
+    it.each(['', ' ', '   ', 'has space inside value', 'bad/char/fingerprint'])(
+        'rejects the fingerprint %j',
+        fingerprint => {
+            const result = DeviceRequestSchema.safeParse({
+                ...payload,
+                fingerprint,
+            });
+
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['fingerprint'],
+                    code: 'too_small',
+                }),
+                expect.objectContaining({
+                    path: ['fingerprint'],
+                    code: 'invalid_format',
+                }),
+            ]);
+        }
+    );
+
+    it('rejects the fingerprint short', () => {
+        const result = DeviceRequestSchema.safeParse({
+            ...payload,
+            fingerprint: 'short',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['fingerprint'],
+                code: 'too_small',
+            }),
+        ]);
     });
 
     it('rejects a 31-character fingerprint at fingerprint', () => {
@@ -76,8 +120,12 @@ describe('DeviceRequestSchema', () => {
             fingerprint: 'a'.repeat(31),
         });
 
-        expect(result.success).toBe(false);
-        expect(result.error?.issues[0]?.path).toEqual(['fingerprint']);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['fingerprint'],
+                code: 'too_small',
+            }),
+        ]);
     });
 
     it('reports a length issue for a 31-character fingerprint', () => {
@@ -86,7 +134,12 @@ describe('DeviceRequestSchema', () => {
             fingerprint: 'a'.repeat(31),
         });
 
-        expect(result.error?.issues[0]?.code).toBe('too_small');
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['fingerprint'],
+                code: 'too_small',
+            }),
+        ]);
     });
 
     it('accepts a 32-character fingerprint', () => {
@@ -99,12 +152,14 @@ describe('DeviceRequestSchema', () => {
     });
 
     it('rejects a fingerprint above 128 characters', () => {
-        expect(() =>
-            DeviceRequestSchema.parse({
-                ...payload,
-                fingerprint: 'a'.repeat(129),
-            })
-        ).toThrow();
+        const result = DeviceRequestSchema.safeParse({
+            ...payload,
+            fingerprint: 'a'.repeat(129),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['fingerprint'], code: 'too_big' }),
+        ]);
     });
 
     it('trims the fingerprint before matching', () => {
@@ -117,29 +172,49 @@ describe('DeviceRequestSchema', () => {
     });
 
     it('rejects an empty or blank name', () => {
-        expect(() =>
-            DeviceRequestSchema.parse({ ...payload, name: ' ' })
-        ).toThrow();
+        const result = DeviceRequestSchema.safeParse({ ...payload, name: ' ' });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a name above 100 characters', () => {
-        expect(() =>
-            DeviceRequestSchema.parse({ ...payload, name: 'n'.repeat(101) })
-        ).toThrow();
+        const result = DeviceRequestSchema.safeParse({
+            ...payload,
+            name: 'n'.repeat(101),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects an empty or blank notification token', () => {
-        expect(() =>
-            DeviceRequestSchema.parse({ ...payload, notificationToken: ' ' })
-        ).toThrow();
+        const result = DeviceRequestSchema.safeParse({
+            ...payload,
+            notificationToken: ' ',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['notificationToken'],
+                code: 'too_small',
+            }),
+        ]);
     });
 
     it('rejects a notification token above 512 characters', () => {
-        expect(() =>
-            DeviceRequestSchema.parse({
-                ...payload,
-                notificationToken: 't'.repeat(513),
-            })
-        ).toThrow();
+        const result = DeviceRequestSchema.safeParse({
+            ...payload,
+            notificationToken: 't'.repeat(513),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['notificationToken'],
+                code: 'too_big',
+            }),
+        ]);
     });
 });

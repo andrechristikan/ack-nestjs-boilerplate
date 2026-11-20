@@ -8,10 +8,6 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-    EnumUserGender,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -21,10 +17,11 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import {
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -47,7 +44,6 @@ import { PolicyCreateByAdminUseCase } from '@modules/policy/use-cases/policy.cre
 describe('PolicyCreateByAdminUseCase', () => {
     const policyService: MockProxy<PolicyService> = mock<PolicyService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const policyUtil: MockProxy<PolicyUtil> = mock<PolicyUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
@@ -65,51 +61,7 @@ describe('PolicyCreateByAdminUseCase', () => {
         action: [EnumPolicyAction.manage],
     };
 
-    const baseUser: IUser = {
-        id: 'user-1',
-        name: 'Andre Christi',
-        username: 'johnSmith123',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'andre@example.com',
-        roleId: 'role-1',
-        password: 'hashed-password',
-        passwordExpired: null,
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: EnumUserGender.male,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-1',
-            name: 'Admin',
-            description: null,
-            type: EnumRoleType.admin,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [policy],
-        },
-    };
+    const baseUser: IUser = buildUser('user-1', 'andre@example.com');
 
     const policyMetadata: IActivityLogMetadata = {
         roleId: 'role-1',
@@ -152,13 +104,11 @@ describe('PolicyCreateByAdminUseCase', () => {
     let useCase: PolicyCreateByAdminUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect.mockReturnValue(effect);
         roleService.invalidateEffect.mockReturnValue(roleInvalidateEffect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        policyUtil.mapActivityLogMetadata.mockReturnValue(policyMetadata);
         roleService.getByIdInTx.mockResolvedValue(targetRole);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -166,7 +116,7 @@ describe('PolicyCreateByAdminUseCase', () => {
                 PolicyCreateByAdminUseCase,
                 { provide: PolicyService, useValue: policyService },
                 { provide: RoleService, useValue: roleService },
-                { provide: PolicyUtil, useValue: policyUtil },
+                PolicyUtil,
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
             ],
@@ -282,9 +232,6 @@ describe('PolicyCreateByAdminUseCase', () => {
                 body
             );
 
-            expect(policyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                policy
-            );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,

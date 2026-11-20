@@ -24,8 +24,6 @@ describe('TermPolicyGenerateContentPresignByAdminUseCase', () => {
     let useCase: TermPolicyGenerateContentPresignByAdminUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 TermPolicyGenerateContentPresignByAdminUseCase,

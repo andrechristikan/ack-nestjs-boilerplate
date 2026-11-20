@@ -14,7 +14,6 @@ describe('WorkspaceProcessExpireStaleInvitesUseCase', () => {
     let useCase: WorkspaceProcessExpireStaleInvitesUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
 
         const module: TestingModule = await Test.createTestingModule({

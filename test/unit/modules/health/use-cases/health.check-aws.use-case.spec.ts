@@ -11,7 +11,6 @@ import { HealthCheckAwsUseCase } from '@modules/health/use-cases/health.check-aw
 
 describe('HealthCheckAwsUseCase', () => {
     const healthService: MockProxy<HealthService> = mock<HealthService>();
-    const healthUtil: MockProxy<HealthUtil> = mock<HealthUtil>();
 
     const healthCheckResult: HealthCheckResult = {
         status: 'ok',
@@ -31,15 +30,11 @@ describe('HealthCheckAwsUseCase', () => {
     let useCase: HealthCheckAwsUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        healthUtil.toResponse.mockReturnValue(envelope.data);
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 HealthCheckAwsUseCase,
                 { provide: HealthService, useValue: healthService },
-                { provide: HealthUtil, useValue: healthUtil },
+                HealthUtil,
             ],
         }).compile();
 

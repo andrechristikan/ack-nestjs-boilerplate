@@ -127,14 +127,9 @@ describe('auth.jwt.decorator', () => {
         );
 
         beforeEach(() => {
-            vi.resetAllMocks();
             vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue(
                 clsService
             );
-        });
-
-        afterEach(() => {
-            vi.restoreAllMocks();
         });
 
         it('throws RequestContextMissingException naming the key when the store holds none', () => {
@@ -178,14 +173,9 @@ describe('auth.jwt.decorator', () => {
         );
 
         beforeEach(() => {
-            vi.resetAllMocks();
             vi.spyOn(ClsServiceManager, 'getClsService').mockReturnValue(
                 clsService
             );
-        });
-
-        afterEach(() => {
-            vi.restoreAllMocks();
         });
 
         it('throws RequestContextMissingException naming the key when the store holds none', () => {

@@ -37,7 +37,7 @@ With `diagnose`:
 - A change to the flow, a skill, an agent, or the copied-skill set updates `docs/ai-harness.md` in the same run.
 - A `src/` defect found on the way is one row in `generated/report-src-sweep.md`, not a fix.
 
-The copied skills (the folders `skills-lock.json` names) are never edited. Adapt one in the `ack-*` skill or the agent that follows it. Update them with `pnpm skills:update`, then re-read each `ack-*` departure against the new text.
+Copied skills: `.claude/rules/harness.md`, Copied skills.
 
 ## 3. Verify
 

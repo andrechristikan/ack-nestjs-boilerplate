@@ -18,31 +18,49 @@ describe('WorkspaceInvitePreviewRequestSchema', () => {
     });
 
     it('rejects an empty inviteToken', () => {
-        expect(() =>
-            WorkspaceInvitePreviewRequestSchema.parse({ inviteToken: '' })
-        ).toThrow();
+        const result = WorkspaceInvitePreviewRequestSchema.safeParse({
+            inviteToken: '',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['inviteToken'],
+                code: 'too_small',
+            }),
+        ]);
     });
 
     it('rejects a whitespace-only inviteToken', () => {
-        expect(() =>
-            WorkspaceInvitePreviewRequestSchema.parse({ inviteToken: '   ' })
-        ).toThrow();
+        const result = WorkspaceInvitePreviewRequestSchema.safeParse({
+            inviteToken: '   ',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['inviteToken'],
+                code: 'too_small',
+            }),
+        ]);
     });
 
     it('rejects an inviteToken longer than 200 characters', () => {
-        expect(() =>
-            WorkspaceInvitePreviewRequestSchema.parse({
-                inviteToken: 'a'.repeat(201),
-            })
-        ).toThrow();
+        const result = WorkspaceInvitePreviewRequestSchema.safeParse({
+            inviteToken: 'a'.repeat(201),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['inviteToken'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceInvitePreviewRequestSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = WorkspaceInvitePreviewRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

@@ -12,7 +12,6 @@ import {
 } from '@generated/prisma-client/client';
 import type { MfaPasskey } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -42,6 +41,10 @@ import {
     buildRequestContext,
     buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserLoginWithPasskeyUseCase', () => {
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
@@ -52,10 +55,6 @@ describe('UserLoginWithPasskeyUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
-    const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: UserLoginWithPasskeyUseCase;
@@ -128,11 +127,16 @@ describe('UserLoginWithPasskeyUseCase', () => {
         },
     };
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
 
-        helperDateService.create.mockReturnValue(now);
-        deviceUtil.toIdentity.mockReturnValue(deviceIdentity);
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
+        vi.setSystemTime(now);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -156,10 +160,14 @@ describe('UserLoginWithPasskeyUseCase', () => {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
                 },
-                { provide: DeviceUtil, useValue: deviceUtil },
+                DeviceUtil,
                 { provide: OutboxService, useValue: outboxService },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                HelperDateService,
+                DatabaseUtil,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(UserLoginWithPasskeyUseCase);
@@ -420,11 +428,8 @@ describe('UserLoginWithPasskeyUseCase', () => {
         });
 
         it('throws MfaChallengeInvalidException on a write conflict', async () => {
-            const conflict = new Error('write conflict');
+            const conflict = buildPrismaKnownRequestError('P2034');
             outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
@@ -433,13 +438,11 @@ describe('UserLoginWithPasskeyUseCase', () => {
 
                 statusCode: EnumMfaStatusCodeError.challengeInvalid,
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {
             const cause = new Error('boom');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)

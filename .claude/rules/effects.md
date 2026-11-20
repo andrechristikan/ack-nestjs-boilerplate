@@ -9,10 +9,10 @@ paths:
 
 # Side effects
 
-A request's side effect (notification, activity entry, session cache purge, cache invalidation, S3 object delete) is an `Outbox` row written in its write's transaction and dispatched to its BullMQ queue after the commit. The job carries `{ outboxId }` only; the row keeps the payload, `status` (`EnumOutboxStatus`), `attempts`, and `lastError`, and is never deleted. A failed dispatch never changes the response. BullMQ through the outbox is the one async mechanism: no `@nestjs/event-emitter`, no `@nestjs/cqrs`. Dispatch and processing: `outbox.md`. Notifications: `notify.md`. Activity entries: `activity-entry.md`.
+A request's side effect (notification, activity entry, session cache purge, cache invalidation, S3 object delete) is an `Outbox` row written in its write's transaction and dispatched to its BullMQ queue after the commit. The job carries `{ outboxId }` only; the row keeps the payload, `status` (`EnumOutboxStatus`), `attempts`, and `lastError`, and is never deleted. BullMQ through the outbox is the one async mechanism: no `@nestjs/event-emitter`, no `@nestjs/cqrs`. Dispatch and processing: `outbox.md`. Notifications: `notify.md`. Activity entries: `activity-entry.md`.
 
 - An exception the request throws stays its answer.
-- A route whose only work is a side effect (the term-policy resend) adds it through `OutboxService.add` or `addMany`: a failed insert answers as `database.md` maps it, and a failed dispatch leaves the row `pending` and the route answers 200.
+- A route whose only work is a side effect (the term-policy resend) adds it through `OutboxService.add` or `addMany`: a failed insert answers as `database.md` maps it.
 
 ## Effects
 
@@ -29,7 +29,7 @@ A request's side effect (notification, activity entry, session cache purge, cach
 
 ## Payloads
 
-Whoever builds a payload (an `<action>Effect` method, `NotificationService.notify`) encrypts a sensitive field (password, link, one-time code, recipient email, device tokens) with `HelperEncryptionService` (`security.md`, Cryptography), its context the id it belongs to: the recipient's user id, or the invite reference for an invitee with no account. Name it `encrypted<Field>`: job data is readable in BullBoard and `Outbox.data` in the database.
+Whoever builds a payload (an `<action>Effect` method, `NotificationService.notify`) encrypts a sensitive field (password, link, one-time code, recipient email, recipient mobile number, device tokens; a contact value an import row or a message carries as data included) with `HelperEncryptionService` (`security.md`, Cryptography), its context the id it belongs to: the recipient's user id, or the invite reference for an invitee with no account. Name it `encrypted<Field>`: `Outbox.data` is readable in the database.
 
 - BullMQ ignores a fixed-`jobId` enqueue while a job holding that id exists, until retention ages it out; a `jobId` never guards a race (`discipline.md`, Normal use).
 - No producer calls `getJob`, `getState`, `retry`, or `remove`, the outbox reconcile aside; no caller branches on an `add` result.

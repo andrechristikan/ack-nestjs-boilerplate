@@ -56,8 +56,6 @@ describe('HealthService', () => {
     let service: HealthService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 HealthService,

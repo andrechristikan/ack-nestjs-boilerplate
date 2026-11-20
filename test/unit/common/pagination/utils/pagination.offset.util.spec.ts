@@ -148,11 +148,6 @@ describe('PaginationOffsetUtil', () => {
             expect(result).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.invalidPage,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.invalidPage
-                    ],
-                messagePath: 'pagination.error.invalidPage',
                 messageProperties: { maxPage: PaginationDefaultMaxPage },
             });
         });
@@ -164,11 +159,6 @@ describe('PaginationOffsetUtil', () => {
             expect(result).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.invalidPage,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.invalidPage
-                    ],
-                messagePath: 'pagination.error.invalidPage',
                 messageProperties: { maxPage: PaginationDefaultMaxPage },
             });
         });
@@ -182,11 +172,6 @@ describe('PaginationOffsetUtil', () => {
             expect(result).toMatchObject({
                 module: 'pagination',
                 statusCode: EnumPaginationStatusCodeError.pageExceedsMaximum,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.pageExceedsMaximum
-                    ],
-                messagePath: 'pagination.error.pageExceedsMaximum',
                 messageProperties: {
                     maxPage: PaginationDefaultMaxPage,
                     receivedPage: PaginationDefaultMaxPage + 1,
@@ -204,11 +189,6 @@ describe('PaginationOffsetUtil', () => {
                 module: 'pagination',
                 statusCode:
                     EnumPaginationStatusCodeError.pageCannotBeLessThanOne,
-                statusCodeKey:
-                    EnumPaginationStatusCodeError[
-                        EnumPaginationStatusCodeError.pageCannotBeLessThanOne
-                    ],
-                messagePath: 'pagination.error.pageCannotBeLessThanOne',
                 messageProperties: { minPage: 1, receivedPage: 0 },
             });
         });

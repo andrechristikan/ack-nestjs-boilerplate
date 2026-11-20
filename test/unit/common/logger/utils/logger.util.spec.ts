@@ -29,17 +29,11 @@ describe('LoggerUtil', () => {
         headers: {},
     };
 
-    const loggerUrlUtil: MockProxy<LoggerUrlUtil> = mock<LoggerUrlUtil>();
-
     let util: LoggerUtil;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module: TestingModule = await Test.createTestingModule({
-            providers: [
-                LoggerUtil,
-                { provide: LoggerUrlUtil, useValue: loggerUrlUtil },
-            ],
+            providers: [LoggerUtil, LoggerUrlUtil],
         }).compile();
 
         util = module.get(LoggerUtil);
@@ -111,15 +105,8 @@ describe('LoggerUtil', () => {
                 params: { id: '1' },
             } as unknown as IRequestApp;
 
-            loggerUrlUtil.maskUrl.mockReturnValue(
-                `https://host.com/api/user/${LoggerRedactedValue}`
-            );
-
             const result = util.serializeRequest(request);
 
-            expect(loggerUrlUtil.maskUrl).toHaveBeenCalledWith(
-                'https://host.com/api/user/507f1f77bcf86cd799439011'
-            );
             expect(result).not.toHaveProperty('id');
             expect(result).not.toHaveProperty('user');
             expect(result).toMatchObject({
@@ -449,15 +436,9 @@ describe('LoggerUtil', () => {
                 route: undefined,
                 originalUrl: '/api/user/507f1f77bcf86cd799439011',
             } as unknown as IRequestApp;
-            loggerUrlUtil.maskUrl.mockReturnValue(
-                `/api/user/${LoggerRedactedValue}`
-            );
 
             expect(util['serializeRoute'](request)).toBe(
                 `/api/user/${LoggerRedactedValue}`
-            );
-            expect(loggerUrlUtil.maskUrl).toHaveBeenCalledWith(
-                '/api/user/507f1f77bcf86cd799439011'
             );
         });
 
@@ -468,15 +449,9 @@ describe('LoggerUtil', () => {
                 originalUrl: undefined,
                 url: '/api/user/507f1f77bcf86cd799439011',
             } as unknown as IRequestApp;
-            loggerUrlUtil.maskUrl.mockReturnValue(
-                `/api/user/${LoggerRedactedValue}`
-            );
 
             expect(util['serializeRoute'](request)).toBe(
                 `/api/user/${LoggerRedactedValue}`
-            );
-            expect(loggerUrlUtil.maskUrl).toHaveBeenCalledWith(
-                '/api/user/507f1f77bcf86cd799439011'
             );
         });
     });

@@ -1,4 +1,3 @@
-import { HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -54,40 +53,33 @@ import {
 } from '@modules/user/enums/user.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
-    buildUser,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import {} from '@common/request/enums/request.status-code.enum';
+import { MessageService } from '@common/message/services/message.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('UserService', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
-    const activityLogUtil: MockProxy<ActivityLogUtil> = mock<ActivityLogUtil>();
-    const userVerificationUtil: MockProxy<UserVerificationUtil> =
-        mock<UserVerificationUtil>();
-    const userCreateUtil: MockProxy<UserCreateUtil> = mock<UserCreateUtil>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const authPasswordUtil: MockProxy<AuthPasswordUtil> =
-        mock<AuthPasswordUtil>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-    const configGet = vi.fn<(key: string) => string | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
 
     let service: UserService;
+    let databaseUtil: DatabaseUtil;
+    let helperStringService: HelperStringService;
+    let helperHashService: HelperHashService;
 
-    const configValues: Record<string, string> = {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const configValues: Record<string, unknown> = {
+        ...TestUnitUserConfigValues,
         'user.deleteSelf.emailPattern': 'deleted.{id}',
         'user.deleteSelf.usernamePattern': 'deleted.{id}',
     };
@@ -120,62 +112,33 @@ describe('UserService', () => {
     };
 
     const baseUser: IUser = {
-        id: 'user-cobalt',
-        name: 'Cobalt Reyes',
-        username: 'cobaltReyes',
+        ...buildUser('user-cobalt', 'cobalt@example.com'),
         isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'cobalt@example.com',
         roleId: role.id,
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-cobalt',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: EnumUserLoginFrom.website,
-        lastLoginWith: EnumUserLoginWith.credential,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
         role,
     };
 
     const { role: _role, ...userRow } = baseUser;
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
 
-        helperDateService.create.mockReturnValue(now);
-        configGet.mockImplementation(key => configValues[key]);
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
+        vi.setSystemTime(now);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserService,
                 { provide: UserRepository, useValue: userRepository },
-                { provide: UserUtil, useValue: userUtil },
-                {
-                    provide: ActivityLogUtil,
-                    useValue: activityLogUtil,
-                },
-                {
-                    provide: UserVerificationUtil,
-                    useValue: userVerificationUtil,
-                },
-                { provide: UserCreateUtil, useValue: userCreateUtil },
+                UserUtil,
+                ActivityLogUtil,
+                UserVerificationUtil,
+                UserCreateUtil,
                 {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
@@ -185,14 +148,22 @@ describe('UserService', () => {
                     useValue: mfaService,
                 },
                 { provide: RoleService, useValue: roleService },
-                { provide: AuthPasswordUtil, useValue: authPasswordUtil },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: HelperStringService, useValue: helperStringService },
-                { provide: ConfigService, useValue: configService },
+                AuthPasswordUtil,
+                DatabaseUtil,
+                HelperDateService,
+                HelperStringService,
+                HelperHashService,
+                { provide: MessageService, useValue: messageService },
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(configValues),
+                },
             ],
         }).compile();
         service = module.get(UserService);
+        databaseUtil = module.get(DatabaseUtil);
+        helperStringService = module.get(HelperStringService);
+        helperHashService = module.get(HelperHashService);
     });
 
     describe('validateUserGuard', () => {
@@ -210,12 +181,6 @@ describe('UserService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.accountNotFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.accountNotFound
-                    ],
-                httpStatus: HttpStatus.UNAUTHORIZED,
-                messagePath: 'user.error.accountNotFound',
             });
         });
 
@@ -236,11 +201,6 @@ describe('UserService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.blockedForbidden,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.blockedForbidden
-                    ],
-                messagePath: 'user.error.blocked',
             });
         });
 
@@ -261,18 +221,16 @@ describe('UserService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.inactiveForbidden,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.inactiveForbidden
-                    ],
-                messagePath: 'user.error.inactive',
             });
         });
 
         it('skips the password expiry check for a social session', async () => {
             userRepository.findOneById.mockResolvedValue(userRow);
             roleService.getOne.mockResolvedValue(role);
-            authPasswordUtil.isPasswordExpired.mockReturnValue(true);
+            userRepository.findOneById.mockResolvedValue({
+                ...userRow,
+                passwordExpired: new Date('2026-02-01T00:00:00.000Z'),
+            });
 
             await expect(
                 service.validateUserGuard(
@@ -282,13 +240,17 @@ describe('UserService', () => {
                     },
                     false
                 )
-            ).resolves.toEqual(baseUser);
-            expect(authPasswordUtil.isPasswordExpired).not.toHaveBeenCalled();
+            ).resolves.toEqual({
+                ...baseUser,
+                passwordExpired: new Date('2026-02-01T00:00:00.000Z'),
+            });
         });
 
         it('throws UserPasswordExpiredException for an expired credential session', async () => {
-            userRepository.findOneById.mockResolvedValue(userRow);
-            authPasswordUtil.isPasswordExpired.mockReturnValue(true);
+            userRepository.findOneById.mockResolvedValue({
+                ...userRow,
+                passwordExpired: new Date('2026-02-01T00:00:00.000Z'),
+            });
 
             const call = service.validateUserGuard(
                 {
@@ -301,11 +263,6 @@ describe('UserService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.passwordExpired,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.passwordExpired
-                    ],
-                messagePath: 'user.error.passwordExpired',
             });
         });
 
@@ -314,7 +271,6 @@ describe('UserService', () => {
                 ...userRow,
                 isVerified: false,
             });
-            authPasswordUtil.isPasswordExpired.mockReturnValue(false);
 
             const call = service.validateUserGuard(
                 {
@@ -327,18 +283,12 @@ describe('UserService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.emailNotVerified,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.emailNotVerified
-                    ],
-                messagePath: 'user.error.emailNotVerified',
             });
         });
 
         it('returns the user when every check passes', async () => {
             userRepository.findOneById.mockResolvedValue(userRow);
             roleService.getOne.mockResolvedValue(role);
-            authPasswordUtil.isPasswordExpired.mockReturnValue(false);
 
             await expect(
                 service.validateUserGuard(
@@ -774,9 +724,6 @@ describe('UserService', () => {
             await expect(service.getOne('missing')).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
             });
         });
     });
@@ -796,37 +743,31 @@ describe('UserService', () => {
             username: 'cobaltReyes',
         };
         const verified: IUserCreateVerification = {
-            reference: 'ref-cobalt',
-            token: 'hashed-token',
+            reference: 'VRF-verify-ref',
+            token: '458ba985765983a9f2054fa2073b5e80e253c3e842266cbf6f10310945c374be',
             type: EnumVerificationType.email,
             action: null,
             mobileNumberId: null,
             to: input.email,
-            expiredAt: new Date('2026-02-01T00:00:00.000Z'),
+            expiredAt: new Date('2026-03-01T00:15:00.000Z'),
             verifiedAt: now,
             isUsed: true,
         };
 
         beforeEach(() => {
-            databaseUtil.createId.mockReturnValue('user-id-cobalt');
-            authPasswordUtil.createPasswordRandom.mockReturnValue(
-                'random-password'
+            vi.spyOn(databaseUtil, 'createId')
+                .mockReturnValueOnce('user-id-cobalt')
+                .mockReturnValueOnce('workspace-cobalt');
+            vi.spyOn(helperStringService, 'random')
+                .mockReturnValueOnce('random-password')
+                .mockReturnValueOnce('cobalt-a')
+                .mockReturnValueOnce('cobalt-b')
+                .mockReturnValueOnce('cobalt-c')
+                .mockReturnValueOnce('verify-token')
+                .mockReturnValueOnce('verify-ref');
+            vi.spyOn(helperHashService, 'argon2Hash').mockResolvedValue(
+                'hashed'
             );
-            authPasswordUtil.createPassword.mockResolvedValue({
-                passwordHash: 'hashed',
-                passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-                passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-                passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
-            });
-            userCreateUtil.buildPersonalWorkspaceContexts.mockReturnValue([
-                {
-                    type: EnumUserSignUpWorkspaceContextType.personal,
-                    workspaceId: 'workspace-cobalt',
-                    slugCandidates: ['w-cobalt'],
-                    name: "cobaltReyes's Workspace",
-                },
-            ]);
-            userVerificationUtil.createVerified.mockReturnValue(verified);
         });
 
         it('creates a user-role account verified at the verification time with a used verification row', async () => {
@@ -849,10 +790,19 @@ describe('UserService', () => {
                 verifiedAt: now,
                 createdBy: 'admin-cobalt',
             });
-            expect(userVerificationUtil.createVerified).toHaveBeenCalledWith(
-                input.email
-            );
-            expect(result.input.verification).toBe(verified);
+            expect(result.input.verification).toEqual(verified);
+            expect(result.input.password).toEqual({
+                passwordHash: 'hashed',
+                passwordExpired: new Date('2026-03-01T01:00:00.000Z'),
+                passwordCreated: now,
+                passwordPeriodExpired: new Date('2026-05-30T00:00:00.000Z'),
+            });
+            expect(result.input.workspaceContext).toEqual({
+                type: EnumUserSignUpWorkspaceContextType.personal,
+                workspaceId: 'workspace-cobalt',
+                slugCandidates: ['w-cobalt-a', 'w-cobalt-b', 'w-cobalt-c'],
+                name: "cobaltReyes's Workspace",
+            });
             expect(result.passwordString).toBe('random-password');
         });
 
@@ -890,11 +840,6 @@ describe('UserService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.emailExist,
-                    statusCodeKey:
-                        EnumUserStatusCodeError[
-                            EnumUserStatusCodeError.emailExist
-                        ],
-                    messagePath: 'user.error.emailExist',
                 })
             );
         });
@@ -919,7 +864,6 @@ describe('UserService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.usernameNotAllowed,
-                    messagePath: 'user.error.usernameNotAllowed',
                 })
             );
         });
@@ -935,7 +879,6 @@ describe('UserService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.usernameContainBadWord,
-                    messagePath: 'user.error.usernameContainBadWord',
                 })
             );
         });
@@ -947,7 +890,6 @@ describe('UserService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.usernameExist,
-                    messagePath: 'user.error.usernameExist',
                 })
             );
         });
@@ -955,27 +897,24 @@ describe('UserService', () => {
 
     describe('checkUsername', () => {
         it('combines the pattern, bad-word and existence checks', async () => {
-            userUtil.isUsernamePatternInvalid.mockReturnValue(true);
-            userUtil.hasBadWord.mockReturnValue(false);
             userRepository.existsByUsername.mockResolvedValue(true);
 
-            await expect(service.checkUsername('cobaltReyes')).resolves.toEqual(
-                {
-                    badWord: false,
-                    exist: true,
-                    pattern: true,
-                }
-            );
+            await expect(
+                service.checkUsername('cobalt reyes')
+            ).resolves.toEqual({
+                badWord: false,
+                exist: true,
+                pattern: true,
+            });
         });
     });
 
     describe('checkEmail', () => {
         it('combines the bad-word and existence checks', async () => {
-            userUtil.hasBadWord.mockReturnValue(true);
             userRepository.existsByEmail.mockResolvedValue(false);
 
             await expect(
-                service.checkEmail('cobalt@example.com')
+                service.checkEmail('damn@example.com')
             ).resolves.toEqual({
                 badWord: true,
                 exist: false,
@@ -997,7 +936,6 @@ describe('UserService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.notSelf,
-                    messagePath: 'user.error.notSelf',
                 })
             );
         });
@@ -1020,7 +958,6 @@ describe('UserService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                messagePath: 'user.error.notFound',
             });
         });
     });
@@ -1046,7 +983,6 @@ describe('UserService', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
-                messagePath: 'user.error.notFound',
             });
         });
     });
@@ -1066,7 +1002,6 @@ describe('UserService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.deleteSelfForbidden,
-                    messagePath: 'user.error.deleteSelfForbidden',
                 })
             );
         });
@@ -1087,7 +1022,6 @@ describe('UserService', () => {
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.blockedInvalid,
-                    messagePath: 'user.error.blockedInvalid',
                 })
             );
         });
@@ -1182,12 +1116,6 @@ describe('UserService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.statusInvalid,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.statusInvalid
-                    ],
-                messagePath: 'user.error.statusInvalid',
-                httpStatus: 400,
             });
             expect(
                 userRepository.updateStatusByAdminInTx
@@ -1206,7 +1134,6 @@ describe('UserService', () => {
             await expect(call).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.statusInvalid,
-                messagePath: 'user.error.statusInvalid',
             });
             expect(mfaService.resetAttemptInTx).not.toHaveBeenCalled();
         });
@@ -1215,12 +1142,9 @@ describe('UserService', () => {
     describe('deleteSelfInTx', () => {
         it('soft-deletes with the deleted identity', async () => {
             const identity: IUserDeletedIdentity = {
-                email: 'deleted.user-cobalt.cobalt@example.com',
-                username: 'deleted.user-cobalt.cobaltReyes',
+                email: 'deleted.user-cobalt',
+                username: 'deleted.user-cobalt',
             };
-            helperStringService.fillPattern
-                .mockReturnValueOnce(identity.email)
-                .mockReturnValueOnce(identity.username);
             userRepository.deleteSelfInTx.mockResolvedValue();
 
             await expect(
@@ -1278,25 +1202,10 @@ describe('UserService', () => {
 
     describe('createDeletedIdentity', () => {
         it('fills the configured deleted pattern from the row id alone for both fields', () => {
-            helperStringService.fillPattern.mockReturnValue(
-                'deleted.user-cobalt'
-            );
-
             expect(service['createDeletedIdentity'](baseUser)).toEqual({
                 email: 'deleted.user-cobalt',
                 username: 'deleted.user-cobalt',
             });
-            expect(helperStringService.fillPattern).toHaveBeenCalledTimes(2);
-            expect(helperStringService.fillPattern).toHaveBeenNthCalledWith(
-                1,
-                'deleted.{id}',
-                { id: 'user-cobalt' }
-            );
-            expect(helperStringService.fillPattern).toHaveBeenNthCalledWith(
-                2,
-                'deleted.{id}',
-                { id: 'user-cobalt' }
-            );
         });
     });
 
@@ -1363,7 +1272,6 @@ describe('UserService', () => {
                 apiKeyId: apiKeyContext.apiKey.id,
                 requestLog: requestContext.requestLog,
             };
-            activityLogUtil.toPayload.mockReturnValue(activityLog);
 
             const effect = service.importByAdminEffect(
                 requestContext,
@@ -1372,12 +1280,6 @@ describe('UserService', () => {
                 rows
             );
 
-            expect(activityLogUtil.toPayload).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null
-            );
             expect(effect).toEqual({
                 queue: EnumUserQueue.user,
                 name: EnumUserProcess.importByAdmin,

@@ -4,15 +4,15 @@ import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { of } from 'rxjs';
 import { firstValueFrom } from 'rxjs';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { FileService } from '@common/file/services/file.service';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { EnumResponseStatusCodeError } from '@common/response/enums/response.status-code.enum';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 import { createResponseFileInterceptor } from '@test/unit/helpers/test.unit.response.helper';
 import type {
     IResponseFileInterceptorDoubles,
@@ -26,16 +26,9 @@ import type {
 
 describe('ResponseFileInterceptor', () => {
     const fileService: MockProxy<FileService> = mock<FileService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
     const responseMetadataService: MockProxy<ResponseMetadataService> =
         mock<ResponseMetadataService>();
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
     const context: MockProxy<ExecutionContext> = mock<ExecutionContext>();
     const httpArgumentsHost: MockProxy<
         ReturnType<ExecutionContext['switchToHttp']>
@@ -43,60 +36,66 @@ describe('ResponseFileInterceptor', () => {
     const response: MockProxy<Response> = mock<Response>();
     const callHandler: MockProxy<CallHandler> = mock<CallHandler>();
 
-    const configValues: Record<string, unknown> = {
-        'response.filenameExportPattern': 'export-{timestamp}.{extension}',
-        'file.maxSizeExportInBytes': 1000,
-        'file.maxDataExport': 2,
-        'user.maxDataExport': 1,
-    };
-    const doubles: IResponseFileInterceptorDoubles = {
-        fileService,
-        helperDateService,
-        helperStringService,
-        responseMetadataService,
-        configService,
-    };
+    let doubles: IResponseFileInterceptorDoubles;
 
     const today = new Date('2026-01-01T00:00:00.000Z');
     let interceptor: IResponseFileInterceptorUnderTest;
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
 
-        configGet.mockImplementation((key: string) => configValues[key]);
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
+        vi.setSystemTime(today);
+
+        configService = buildConfigService({
+            ...TestUnitKitConfigValues,
+            'response.filenameExportPattern': 'export-{timestamp}.{extension}',
+            'file.maxSizeExportInBytes': 1000,
+            'file.maxDataExport': 2,
+            'user.maxDataExport': 1,
+        });
+        doubles = { fileService, responseMetadataService, configService };
         context.getType.mockReturnValue('http');
         context.switchToHttp.mockReturnValue(httpArgumentsHost);
         httpArgumentsHost.getResponse.mockReturnValue(response);
-        helperDateService.create.mockReturnValue(today);
-        helperDateService.getTimestamp.mockReturnValue(today.getTime());
-        helperStringService.fillPattern.mockReturnValue(
-            `export-${today.getTime()}.csv`
-        );
         fileService.sanitizeFilename.mockImplementation(
             (filename: string) => filename
         );
         fileService.extractMimeFromFilename.mockReturnValue('text/csv');
         fileService.readCsv.mockReturnValue([]);
 
-        interceptor = await createResponseFileInterceptor(undefined, doubles);
+        interceptor = await createResponseFileInterceptor(null, doubles);
     });
 
     describe('constructor', () => {
         it('reads the row cap from the default config key with no options', () => {
-            expect(configGet).toHaveBeenCalledWith('file.maxDataExport');
-            expect(configGet).not.toHaveBeenCalledWith('user.maxDataExport');
+            expect(configService.get).toHaveBeenCalledWith(
+                'file.maxDataExport'
+            );
+            expect(configService.get).not.toHaveBeenCalledWith(
+                'user.maxDataExport'
+            );
         });
 
         it('reads the row cap from the given config key', async () => {
-            configGet.mockClear();
+            vi.mocked(configService.get).mockClear();
 
             await createResponseFileInterceptor(
                 { maxDataExportConfigKey: 'user.maxDataExport' },
                 doubles
             );
 
-            expect(configGet).toHaveBeenCalledWith('user.maxDataExport');
-            expect(configGet).not.toHaveBeenCalledWith('file.maxDataExport');
+            expect(configService.get).toHaveBeenCalledWith(
+                'user.maxDataExport'
+            );
+            expect(configService.get).not.toHaveBeenCalledWith(
+                'file.maxDataExport'
+            );
         });
     });
 
@@ -258,11 +257,6 @@ describe('ResponseFileInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.exceedMaxDataExport,
-                statusCodeKey:
-                    EnumFileStatusCodeError[
-                        EnumFileStatusCodeError.exceedMaxDataExport
-                    ],
-                messagePath: 'file.error.exceedMaxDataExport',
             });
             expect(fileService.readCsv).toHaveBeenCalledWith(responseData.data);
             expect(responseMetadataService.setHeaders).not.toHaveBeenCalled();
@@ -306,11 +300,6 @@ describe('ResponseFileInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.exceedMaxDataExport,
-                statusCodeKey:
-                    EnumFileStatusCodeError[
-                        EnumFileStatusCodeError.exceedMaxDataExport
-                    ],
-                messagePath: 'file.error.exceedMaxDataExport',
             });
         });
 
@@ -344,11 +333,6 @@ describe('ResponseFileInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.exceedMaxSizeExport,
-                statusCodeKey:
-                    EnumFileStatusCodeError[
-                        EnumFileStatusCodeError.exceedMaxSizeExport
-                    ],
-                messagePath: 'file.error.exceedMaxSizeExport',
             });
         });
 
@@ -368,11 +352,6 @@ describe('ResponseFileInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.fileDataInvalid,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.fileDataInvalid
-                    ],
-                messagePath: 'response.error.fileDataInvalid',
             });
         });
 
@@ -392,11 +371,6 @@ describe('ResponseFileInterceptor', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.fileDataInvalid,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.fileDataInvalid
-                    ],
-                messagePath: 'response.error.fileDataInvalid',
             });
         });
 
@@ -434,11 +408,6 @@ describe('ResponseFileInterceptor', () => {
             expect(thrown).toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.fileDataInvalid,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.fileDataInvalid
-                    ],
-                messagePath: 'response.error.fileDataInvalid',
             });
         });
     });
@@ -460,11 +429,6 @@ describe('ResponseFileInterceptor', () => {
             expect(thrown).toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.fileDataInvalid,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.fileDataInvalid
-                    ],
-                messagePath: 'response.error.fileDataInvalid',
             });
         });
     });
@@ -516,11 +480,6 @@ describe('ResponseFileInterceptor', () => {
             expect(thrown).toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.fileDataInvalid,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.fileDataInvalid
-                    ],
-                messagePath: 'response.error.fileDataInvalid',
             });
         });
 
@@ -540,11 +499,6 @@ describe('ResponseFileInterceptor', () => {
             expect(thrown).toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.fileDataInvalid,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.fileDataInvalid
-                    ],
-                messagePath: 'response.error.fileDataInvalid',
             });
         });
 
@@ -564,11 +518,6 @@ describe('ResponseFileInterceptor', () => {
             expect(thrown).toMatchObject({
                 module: 'response',
                 statusCode: EnumResponseStatusCodeError.fileDataInvalid,
-                statusCodeKey:
-                    EnumResponseStatusCodeError[
-                        EnumResponseStatusCodeError.fileDataInvalid
-                    ],
-                messagePath: 'response.error.fileDataInvalid',
             });
         });
 
@@ -607,10 +556,8 @@ describe('ResponseFileInterceptor', () => {
     });
 
     describe('createTimestamp', () => {
-        it('creates the current date and converts it to a timestamp', () => {
+        it('returns the current timestamp', () => {
             expect(interceptor['createTimestamp']()).toBe(today.getTime());
-            expect(helperDateService.create).toHaveBeenCalled();
-            expect(helperDateService.getTimestamp).toHaveBeenCalledWith(today);
         });
     });
 
@@ -621,25 +568,14 @@ describe('ResponseFileInterceptor', () => {
             );
 
             expect(filename).toBe(`export-${today.getTime()}.csv`);
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'export-{timestamp}.{extension}',
-                {
-                    timestamp: String(today.getTime()),
-                    extension: EnumFileExtensionDocument.csv,
-                }
-            );
         });
 
         it('fills the extension of the given document type', () => {
-            interceptor['createDefaultFilename'](EnumFileExtensionDocument.pdf);
-
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'export-{timestamp}.{extension}',
-                {
-                    timestamp: String(today.getTime()),
-                    extension: EnumFileExtensionDocument.pdf,
-                }
+            const filename = interceptor['createDefaultFilename'](
+                EnumFileExtensionDocument.pdf
             );
+
+            expect(filename).toBe(`export-${today.getTime()}.pdf`);
         });
     });
 

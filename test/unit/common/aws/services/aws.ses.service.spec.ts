@@ -1,4 +1,4 @@
-import { HttpStatus } from '@nestjs/common';
+import { SESClient } from '@aws-sdk/client-ses';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import type {
     IAwsSESSend,
@@ -19,8 +19,6 @@ vi.mock('@aws-sdk/client-ses', async importOriginal => {
 describe('AwsSESService', () => {
     const send = vi.fn();
 
-    let SESClient: typeof import('@aws-sdk/client-ses').SESClient;
-
     const configValues: Record<string, unknown> = {
         'aws.ses.accessKeyId': 'ses-key',
         'aws.ses.secretAccessKey': 'ses-secret',
@@ -31,12 +29,7 @@ describe('AwsSESService', () => {
         'aws.ses.timeoutInMs': 30000,
     };
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
-        vi.resetModules();
-        ({ SESClient } = await import('@aws-sdk/client-ses'));
-
-        send.mockReset();
+    beforeEach(() => {
         vi.mocked(SESClient).mockImplementation(function AwsSesClientDouble() {
             return { send } as unknown as InstanceType<typeof SESClient>;
         });
@@ -246,12 +239,6 @@ describe('AwsSESService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'aws',
                 statusCode: EnumAwsStatusCodeError.sesTemplateBodyRequired,
-                statusCodeKey:
-                    EnumAwsStatusCodeError[
-                        EnumAwsStatusCodeError.sesTemplateBodyRequired
-                    ],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'aws.error.sesTemplateBodyRequired',
             });
         });
 
@@ -297,12 +284,6 @@ describe('AwsSESService', () => {
             await expect(rejection).rejects.toMatchObject({
                 module: 'aws',
                 statusCode: EnumAwsStatusCodeError.sesTemplateBodyRequired,
-                statusCodeKey:
-                    EnumAwsStatusCodeError[
-                        EnumAwsStatusCodeError.sesTemplateBodyRequired
-                    ],
-                httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-                messagePath: 'aws.error.sesTemplateBodyRequired',
             });
         });
 

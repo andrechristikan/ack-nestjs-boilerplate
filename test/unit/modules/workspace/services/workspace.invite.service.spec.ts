@@ -8,16 +8,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { Duration } from 'luxon';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -54,7 +51,6 @@ import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enu
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
-import { WorkspaceInviteNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
@@ -72,12 +68,20 @@ import type {
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
 import {
-    buildUser,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspace,
+    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 
 describe('WorkspaceInviteService', () => {
@@ -91,20 +95,10 @@ describe('WorkspaceInviteService', () => {
         mock<NotificationService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const userUtil: MockProxy<UserUtil> = mock<UserUtil>();
+    let databaseUtil: DatabaseUtil;
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let helperStringService: HelperStringService;
 
     const configValues: Record<string, unknown> = {
         'workspace.invite.referenceMaxAttempts': 5,
@@ -116,23 +110,19 @@ describe('WorkspaceInviteService', () => {
             '{frontendBaseUrl}/workspace/invites?inviteToken={token}',
         'workspace.invite.signUpLinkPattern':
             '{frontendBaseUrl}/sign-up/{token}',
+        'message.availableLanguages': ['en'],
     };
 
-    const workspace: Workspace = {
-        id: 'workspace-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: 'user-1',
-        deletedAt: null,
-        deletedBy: null,
-        name: 'Acme',
-        slug: 'acme-team',
-        description: null,
-        isPublic: false,
-    };
+    const workspace: Workspace = buildWorkspace();
 
-    const pendingNonce = 'a'.repeat(64);
+    const pendingNonce =
+        '28dbd2a5ea6f78b33ac88d3e3f462b41490294c060bcc2552d4a4afe45e7949f';
+    const rawTokenHash =
+        '34d328009b123fbbb0dc93f18b3e6de1ecf7b1a5783c33dff7ffe1926f09e943';
+    const tokenValueHash =
+        'e6c02a5742ea9d4de588eb9b9de7bed43dc17011552186bed3e98b2c5958ff4a';
+    const tokenValue2Hash =
+        '27de0bcb9ae8da628866bc759a010083566f4551d945a716bf268a3273574e6e';
 
     const baseInvite: WorkspaceInvite = {
         id: 'invite-1',
@@ -177,19 +167,12 @@ describe('WorkspaceInviteService', () => {
 
     const tokenData: IWorkspaceInviteTokenData = {
         token: 'token-value',
-        hashedToken: 'hashed-token',
+        hashedToken: tokenValueHash,
         reference: 'WIN-abc123',
         expiredAt: new Date('2026-02-01T00:00:00.000Z'),
         claimLink:
             'https://app.example.com/workspace/invites?inviteToken=token-value',
         signUpLink: 'https://app.example.com/sign-up/token-value',
-    };
-
-    const filledPatterns: Record<string, string> = {
-        [WorkspaceInviteNoncePattern]: 'workspace-1:invitee@example.com',
-        '{frontendBaseUrl}/workspace/invites?inviteToken={token}':
-            tokenData.claimLink,
-        '{frontendBaseUrl}/sign-up/{token}': tokenData.signUpLink,
     };
 
     const baseCreate: IWorkspaceInviteCreate = {
@@ -253,22 +236,16 @@ describe('WorkspaceInviteService', () => {
 
     let service: WorkspaceInviteService;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
-        configGet.mockImplementation((key: string) => configValues[key]);
         featureFlagService.getMetadataNumber.mockResolvedValue(7);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
         activityLogService.recordEffect
             .mockReturnValueOnce(actorEntry)
             .mockReturnValueOnce(inviteeEntry);
-        helperStringService.fillPattern.mockImplementation(
-            pattern => filledPatterns[pattern] ?? ''
-        );
-        helperHashService.sha256Hash.mockImplementation(value =>
-            value === 'workspace-1:invitee@example.com'
-                ? pendingNonce
-                : 'hashed-token'
-        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -284,17 +261,26 @@ describe('WorkspaceInviteService', () => {
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 { provide: NotificationService, useValue: notificationService },
                 { provide: ActivityLogService, useValue: activityLogService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: UserUtil, useValue: userUtil },
+                ...TestUnitKitProviders,
+                UserUtil,
                 { provide: OutboxService, useValue: outboxService },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: HelperHashService, useValue: helperHashService },
-                { provide: HelperStringService, useValue: helperStringService },
-                { provide: ConfigService, useValue: configService },
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        ...configValues,
+                    }),
+                },
             ],
         }).compile();
 
         service = module.get(WorkspaceInviteService);
+        databaseUtil = module.get(DatabaseUtil);
+        helperStringService = module.get(HelperStringService);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
     });
 
     describe('validateInviteToken', () => {
@@ -310,7 +296,6 @@ describe('WorkspaceInviteService', () => {
 
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
-                messagePath: 'featureFlag.error.disabled',
             });
             expect(
                 featureFlagService.validateFeatureFlagMetadata
@@ -327,7 +312,6 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
                 null
             );
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
 
             await expect(
                 service.validateInviteToken('raw-token')
@@ -335,19 +319,13 @@ describe('WorkspaceInviteService', () => {
                 constructor: WorkspaceInviteInvalidException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteInvalid
-                    ],
-                messagePath: 'workspace.error.inviteInvalid',
             });
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'raw-token'
-            );
+            expect(
+                workspaceInviteRepository.findPendingByHashedToken
+            ).toHaveBeenCalledWith(rawTokenHash);
         });
 
         it('throws WorkspaceNotFoundException when the invite workspace is soft-deleted', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
                 {
                     ...previewInvite,
@@ -364,12 +342,10 @@ describe('WorkspaceInviteService', () => {
                 constructor: WorkspaceNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.notFound,
-                messagePath: 'workspace.error.notFound',
             });
         });
 
         it('returns the pending invite matching the token', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
                 previewInvite
             );
@@ -385,7 +361,7 @@ describe('WorkspaceInviteService', () => {
             );
             expect(
                 workspaceInviteRepository.findPendingByHashedToken
-            ).toHaveBeenCalledWith('hashed-token');
+            ).toHaveBeenCalledWith(rawTokenHash);
         });
     });
 
@@ -402,7 +378,6 @@ describe('WorkspaceInviteService', () => {
 
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
-                messagePath: 'featureFlag.error.disabled',
             });
             expect(
                 featureFlagService.validateFeatureFlagMetadata
@@ -416,7 +391,6 @@ describe('WorkspaceInviteService', () => {
         });
 
         it('throws WorkspaceInviteInvalidException when no pending invite matches the token', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
                 null
             );
@@ -427,12 +401,10 @@ describe('WorkspaceInviteService', () => {
                 constructor: WorkspaceInviteInvalidException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-                messagePath: 'workspace.error.inviteInvalid',
             });
         });
 
         it('throws WorkspaceInviteInvalidException when the invite email does not match', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
                 { ...previewInvite, email: 'other@example.com' }
             );
@@ -443,12 +415,10 @@ describe('WorkspaceInviteService', () => {
                 constructor: WorkspaceInviteInvalidException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-                messagePath: 'workspace.error.inviteInvalid',
             });
         });
 
         it('returns the pending invite when its email matches', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
                 previewInvite
             );
@@ -482,7 +452,6 @@ describe('WorkspaceInviteService', () => {
         });
 
         it('gates on the invitation flag and returns the pending invite of the sign-up email', async () => {
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
             workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
                 previewInvite
             );
@@ -503,17 +472,7 @@ describe('WorkspaceInviteService', () => {
     });
 
     describe('assertInviteeNotMember', () => {
-        const member: WorkspaceMember = {
-            id: 'member-1',
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            workspaceId: 'workspace-1',
-            userId: 'user-2',
-            role: EnumWorkspaceMemberRole.member,
-            joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-        };
+        const member: WorkspaceMember = buildWorkspaceMember('user-2');
 
         it('resolves when the user is not a member of the workspace', async () => {
             workspaceMemberService.getOneByWorkspaceAndUser.mockResolvedValue(
@@ -539,11 +498,6 @@ describe('WorkspaceInviteService', () => {
                 constructor: WorkspaceMemberAlreadyExistsException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberAlreadyExists,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberAlreadyExists
-                    ],
-                messagePath: 'workspace.error.memberAlreadyExists',
             });
         });
     });
@@ -638,7 +592,6 @@ describe('WorkspaceInviteService', () => {
 
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
-                messagePath: 'featureFlag.error.disabled',
             });
             expect(
                 featureFlagService.validateFeatureFlagMetadata
@@ -708,7 +661,6 @@ describe('WorkspaceInviteService', () => {
 
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
-                messagePath: 'featureFlag.error.disabled',
             });
             expect(
                 featureFlagService.validateFeatureFlagMetadata
@@ -728,11 +680,6 @@ describe('WorkspaceInviteService', () => {
                 constructor: WorkspaceInviteRoleRequiredException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteRoleRequired,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteRoleRequired
-                    ],
-                messagePath: 'workspace.error.inviteRoleRequired',
             });
         });
 
@@ -784,11 +731,6 @@ describe('WorkspaceInviteService', () => {
                     module: 'workspace',
                     statusCode:
                         EnumWorkspaceStatusCodeError.inviteProjectMismatch,
-                    statusCodeKey:
-                        EnumWorkspaceStatusCodeError[
-                            EnumWorkspaceStatusCodeError.inviteProjectMismatch
-                        ],
-                    messagePath: 'workspace.error.inviteProjectMismatch',
                 })
             );
         });
@@ -807,23 +749,33 @@ describe('WorkspaceInviteService', () => {
     });
 
     describe('createInvite', () => {
-        const nonceCollision = new Error('nonce');
-        const tokenCollision = new Error('token');
-        const referenceCollision = new Error('reference');
-        const retriedTokenData: IWorkspaceInviteTokenData = {
-            ...tokenData,
-            hashedToken: 'hashed-token-2',
-            reference: 'WIN-def456',
-        };
+        const nonceCollision = buildPrismaKnownRequestError('P2002', 'nonce');
+        const tokenCollision = buildPrismaKnownRequestError('P2002', 'token');
+        const referenceCollision = buildPrismaKnownRequestError(
+            'P2002',
+            'reference'
+        );
         const createdAt = new Date('2026-01-01T00:00:00.000Z');
+        const issuedTokenData: IWorkspaceInviteTokenData = {
+            ...tokenData,
+            expiredAt: new Date('2026-01-08T00:00:00.000Z'),
+        };
+        const retriedTokenData: IWorkspaceInviteTokenData = {
+            ...issuedTokenData,
+            token: 'token-value-2',
+            hashedToken: tokenValue2Hash,
+            reference: 'WIN-def456',
+            claimLink:
+                'https://app.example.com/workspace/invites?inviteToken=token-value-2',
+            signUpLink: 'https://app.example.com/sign-up/token-value-2',
+        };
 
         beforeEach(() => {
-            databaseUtil.createId.mockReturnValue('invite-new');
-            helperStringService.random.mockImplementation(length =>
-                length === 40 ? 'token-value' : 'abc123'
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('invite-new');
+            vi.spyOn(helperStringService, 'random').mockImplementation(
+                length => (length === 40 ? 'token-value' : 'abc123')
             );
-            helperDateService.create.mockReturnValue(createdAt);
-            helperDateService.forward.mockReturnValue(tokenData.expiredAt);
+            vi.setSystemTime(createdAt);
         });
 
         it('draws the token data and creates the pending invite with the hashed nonce of workspace and email', async () => {
@@ -845,18 +797,13 @@ describe('WorkspaceInviteService', () => {
                 unregisteredNotice
             );
 
-            expect(result).toEqual({ invite: baseInvite, tokenData });
-            expect(helperDateService.forward).toHaveBeenCalledWith(
-                createdAt,
-                Duration.fromObject({ days: 14 })
-            );
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                WorkspaceInviteNoncePattern,
-                { workspaceId: 'workspace-1', email: 'invitee@example.com' }
-            );
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'workspace-1:invitee@example.com'
-            );
+            expect(result).toEqual({
+                invite: baseInvite,
+                tokenData: {
+                    ...tokenData,
+                    expiredAt: new Date('2026-01-15T00:00:00.000Z'),
+                },
+            });
             expect(
                 workspaceInviteRepository.createPendingInTx
             ).toHaveBeenCalledWith(tx, {
@@ -866,9 +813,9 @@ describe('WorkspaceInviteService', () => {
                 workspaceRole: EnumWorkspaceMemberRole.member,
                 projectId: 'project-1',
                 projectRole: EnumProjectMemberRole.member,
-                hashedToken: 'hashed-token',
+                hashedToken: tokenValueHash,
                 reference: 'WIN-abc123',
-                expiredAt: tokenData.expiredAt,
+                expiredAt: new Date('2026-01-15T00:00:00.000Z'),
                 invitedByUserId: 'user-1',
                 nonce: pendingNonce,
             });
@@ -893,9 +840,13 @@ describe('WorkspaceInviteService', () => {
                 EnumFeatureFlagKey.workspace,
                 EnumFeatureFlagMetadataKey.inviteExpiresInDays
             );
-            expect(helperDateService.forward).toHaveBeenCalledWith(
-                createdAt,
-                Duration.fromObject({ days: 9 })
+            expect(
+                workspaceInviteRepository.createPendingInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                expect.objectContaining({
+                    expiredAt: new Date('2026-01-10T00:00:00.000Z'),
+                })
             );
         });
 
@@ -945,7 +896,6 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
                 baseInvite
             );
-            helperDateService.formatToIso.mockReturnValue(expiredAtIso);
             notificationService.notify.mockReturnValue(notifyEffect);
 
             await service.createInvite(
@@ -957,9 +907,6 @@ describe('WorkspaceInviteService', () => {
                 registeredNotice
             );
 
-            expect(helperDateService.formatToIso).toHaveBeenCalledWith(
-                baseInvite.expiredAt
-            );
             expect(notificationService.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.workspaceInvite,
                 {
@@ -987,7 +934,6 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
                 baseInvite
             );
-            helperDateService.formatToIso.mockReturnValue(expiredAtIso);
             notificationService.notifyUnregisteredInvite.mockReturnValue(
                 unregisteredEffect
             );
@@ -1136,9 +1082,6 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.createPendingInTx.mockRejectedValue(
                 nonceCollision
             );
-            databaseUtil.isUniqueCollision.mockImplementation(
-                (_error, target) => target === 'nonce'
-            );
 
             await expect(
                 service.createInvite(
@@ -1153,11 +1096,6 @@ describe('WorkspaceInviteService', () => {
                 constructor: WorkspaceInviteDuplicateException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteDuplicate,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteDuplicate
-                    ],
-                messagePath: 'workspace.error.inviteDuplicate',
             });
             expect(
                 workspaceInviteRepository.createPendingInTx
@@ -1165,21 +1103,14 @@ describe('WorkspaceInviteService', () => {
         });
 
         it('draws a fresh token and retries when the token collides, returning the stored token data', async () => {
-            helperStringService.random
+            vi.spyOn(helperStringService, 'random')
                 .mockReturnValueOnce('token-value')
                 .mockReturnValueOnce('abc123')
-                .mockReturnValueOnce('token-value')
+                .mockReturnValueOnce('token-value-2')
                 .mockReturnValueOnce('def456');
-            helperHashService.sha256Hash
-                .mockReturnValueOnce(pendingNonce)
-                .mockReturnValueOnce('hashed-token')
-                .mockReturnValueOnce('hashed-token-2');
             workspaceInviteRepository.createPendingInTx
                 .mockRejectedValueOnce(tokenCollision)
                 .mockResolvedValueOnce(baseInvite);
-            databaseUtil.isUniqueCollision.mockImplementation(
-                (_error, target) => target === 'token'
-            );
 
             const result = await service.createInvite(
                 requestContext,
@@ -1200,28 +1131,21 @@ describe('WorkspaceInviteService', () => {
                 2,
                 tx,
                 expect.objectContaining({
-                    hashedToken: 'hashed-token-2',
+                    hashedToken: tokenValue2Hash,
                     reference: 'WIN-def456',
                 })
             );
         });
 
         it('draws a fresh reference and retries when the reference collides', async () => {
-            helperStringService.random
+            vi.spyOn(helperStringService, 'random')
                 .mockReturnValueOnce('token-value')
                 .mockReturnValueOnce('abc123')
-                .mockReturnValueOnce('token-value')
+                .mockReturnValueOnce('token-value-2')
                 .mockReturnValueOnce('def456');
-            helperHashService.sha256Hash
-                .mockReturnValueOnce(pendingNonce)
-                .mockReturnValueOnce('hashed-token')
-                .mockReturnValueOnce('hashed-token-2');
             workspaceInviteRepository.createPendingInTx
                 .mockRejectedValueOnce(referenceCollision)
                 .mockResolvedValueOnce(baseInvite);
-            databaseUtil.isUniqueCollision.mockImplementation(
-                (_error, target) => target === 'reference'
-            );
 
             const result = await service.createInvite(
                 requestContext,
@@ -1241,9 +1165,6 @@ describe('WorkspaceInviteService', () => {
         it('throws DatabaseUniqueValueGenerationFailedException once the attempt budget is spent', async () => {
             workspaceInviteRepository.createPendingInTx.mockRejectedValue(
                 tokenCollision
-            );
-            databaseUtil.isUniqueCollision.mockImplementation(
-                (_error, target) => target === 'token'
             );
 
             await expect(
@@ -1268,7 +1189,6 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.createPendingInTx.mockRejectedValue(
                 failure
             );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 service.createInvite(
@@ -1283,13 +1203,11 @@ describe('WorkspaceInviteService', () => {
         });
 
         it('throws WorkspaceInviteDuplicateException on a write conflict without retrying', async () => {
-            const conflict = new Error('write-conflict');
+            const conflict = buildPrismaKnownRequestError(
+                DatabaseWriteConflictCode
+            );
             workspaceInviteRepository.createPendingInTx.mockRejectedValue(
                 conflict
-            );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
             );
 
             await expect(
@@ -1306,9 +1224,7 @@ describe('WorkspaceInviteService', () => {
 
                 constructor: WorkspaceInviteDuplicateException,
                 statusCode: EnumWorkspaceStatusCodeError.inviteDuplicate,
-                messagePath: 'workspace.error.inviteDuplicate',
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
             expect(
                 workspaceInviteRepository.createPendingInTx
             ).toHaveBeenCalledTimes(1);
@@ -1319,7 +1235,6 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.createPendingInTx.mockRejectedValue(
                 cause
             );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 service.createInvite(
@@ -1353,7 +1268,6 @@ describe('WorkspaceInviteService', () => {
 
                 constructor: FeatureFlagDisabledException,
                 module: 'featureFlag',
-                messagePath: 'featureFlag.error.disabled',
             });
             expect(
                 featureFlagService.validateFeatureFlagMetadata
@@ -1377,11 +1291,6 @@ describe('WorkspaceInviteService', () => {
                 constructor: WorkspaceInviteNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteNotFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.inviteNotFound
-                    ],
-                messagePath: 'workspace.error.inviteNotFound',
             });
         });
 
@@ -1397,7 +1306,6 @@ describe('WorkspaceInviteService', () => {
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-                messagePath: 'workspace.error.inviteAlreadyProcessed',
             });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -1424,7 +1332,7 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
                 baseInvite
             );
-            helperDateService.create.mockReturnValue(baseInvite.expiredAt);
+            vi.setSystemTime(baseInvite.expiredAt);
 
             await expect(
                 service.getResendableById('invite-1', 'workspace-1')
@@ -1432,7 +1340,6 @@ describe('WorkspaceInviteService', () => {
                 constructor: WorkspaceInviteInvalidException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
-                messagePath: 'workspace.error.inviteInvalid',
             });
         });
 
@@ -1456,9 +1363,7 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
                 baseInvite
             );
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-31T23:59:59.000Z')
-            );
+            vi.setSystemTime(new Date('2026-01-31T23:59:59.000Z'));
 
             const result = await service.getResendableById(
                 'invite-1',
@@ -1473,19 +1378,24 @@ describe('WorkspaceInviteService', () => {
     });
 
     describe('resendInvite', () => {
+        const resentAt = new Date('2026-01-15T00:00:00.000Z');
+        const resentExpiredAt = new Date('2026-01-22T00:00:00.000Z');
         const retriedTokenData: IWorkspaceInviteTokenData = {
             ...tokenData,
-            hashedToken: 'hashed-token-2',
+            expiredAt: resentExpiredAt,
+            token: 'token-value-2',
+            hashedToken: tokenValue2Hash,
             reference: 'WIN-def456',
+            claimLink:
+                'https://app.example.com/workspace/invites?inviteToken=token-value-2',
+            signUpLink: 'https://app.example.com/sign-up/token-value-2',
         };
-        const resentAt = new Date('2026-01-15T00:00:00.000Z');
 
         beforeEach(() => {
-            helperStringService.random.mockImplementation(length =>
-                length === 40 ? 'token-value' : 'abc123'
+            vi.spyOn(helperStringService, 'random').mockImplementation(
+                length => (length === 40 ? 'token-value' : 'abc123')
             );
-            helperDateService.create.mockReturnValue(resentAt);
-            helperDateService.forward.mockReturnValue(tokenData.expiredAt);
+            vi.setSystemTime(resentAt);
         });
 
         it('draws the token data, rotates the token, and returns the rotated invite with the stored token data', async () => {
@@ -1502,19 +1412,19 @@ describe('WorkspaceInviteService', () => {
                 unregisteredNotice
             );
 
-            expect(result).toEqual({ invite: baseInvite, tokenData });
-            expect(helperDateService.forward).toHaveBeenCalledWith(
-                resentAt,
-                Duration.fromObject({ days: 14 })
-            );
+            const rotatedExpiredAt = new Date('2026-01-29T00:00:00.000Z');
+            expect(result).toEqual({
+                invite: baseInvite,
+                tokenData: { ...tokenData, expiredAt: rotatedExpiredAt },
+            });
             expect(
                 workspaceInviteRepository.rotateForResendInTx
             ).toHaveBeenCalledWith(
                 tx,
                 'invite-1',
-                'hashed-token',
+                tokenValueHash,
                 'WIN-abc123',
-                tokenData.expiredAt,
+                rotatedExpiredAt,
                 resentAt
             );
         });
@@ -1538,9 +1448,15 @@ describe('WorkspaceInviteService', () => {
                 EnumFeatureFlagKey.workspace,
                 EnumFeatureFlagMetadataKey.inviteExpiresInDays
             );
-            expect(helperDateService.forward).toHaveBeenCalledWith(
-                resentAt,
-                Duration.fromObject({ days: 9 })
+            expect(
+                workspaceInviteRepository.rotateForResendInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                'invite-1',
+                tokenValueHash,
+                'WIN-abc123',
+                new Date('2026-01-24T00:00:00.000Z'),
+                resentAt
             );
         });
 
@@ -1590,7 +1506,6 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
                 baseInvite
             );
-            helperDateService.formatToIso.mockReturnValue(expiredAtIso);
             notificationService.notify.mockReturnValue(notifyEffect);
 
             await service.resendInvite(
@@ -1710,26 +1625,19 @@ describe('WorkspaceInviteService', () => {
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-                messagePath: 'workspace.error.inviteAlreadyProcessed',
             });
         });
 
         it('draws a fresh token and retries when the token or reference collides, returning the stored token data', async () => {
-            const collision = new Error('token');
-            helperStringService.random
+            const collision = buildPrismaKnownRequestError('P2002', 'token');
+            vi.spyOn(helperStringService, 'random')
                 .mockReturnValueOnce('token-value')
                 .mockReturnValueOnce('abc123')
-                .mockReturnValueOnce('token-value')
+                .mockReturnValueOnce('token-value-2')
                 .mockReturnValueOnce('def456');
-            helperHashService.sha256Hash
-                .mockReturnValueOnce('hashed-token')
-                .mockReturnValueOnce('hashed-token-2');
             workspaceInviteRepository.rotateForResendInTx
                 .mockRejectedValueOnce(collision)
                 .mockResolvedValueOnce(baseInvite);
-            databaseUtil.isUniqueCollision.mockImplementation(
-                (_error, target) => target === 'token'
-            );
 
             const result = await service.resendInvite(
                 requestContext,
@@ -1750,19 +1658,16 @@ describe('WorkspaceInviteService', () => {
                 2,
                 tx,
                 'invite-1',
-                'hashed-token-2',
+                tokenValue2Hash,
                 'WIN-def456',
-                tokenData.expiredAt,
+                resentExpiredAt,
                 resentAt
             );
         });
 
         it('throws DatabaseUniqueValueGenerationFailedException once the attempt budget is spent', async () => {
             workspaceInviteRepository.rotateForResendInTx.mockRejectedValue(
-                new Error('reference')
-            );
-            databaseUtil.isUniqueCollision.mockImplementation(
-                (_error, target) => target === 'reference'
+                buildPrismaKnownRequestError('P2002', 'reference')
             );
 
             await expect(
@@ -1783,13 +1688,11 @@ describe('WorkspaceInviteService', () => {
         });
 
         it('maps a write conflict on the rotation to WorkspaceInviteAlreadyProcessedException', async () => {
-            const conflict = new Error('conflict');
+            const conflict = buildPrismaKnownRequestError(
+                DatabaseWriteConflictCode
+            );
             workspaceInviteRepository.rotateForResendInTx.mockRejectedValue(
                 conflict
-            );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
             );
 
             await expect(
@@ -1807,7 +1710,6 @@ describe('WorkspaceInviteService', () => {
 
                 constructor: WorkspaceInviteAlreadyProcessedException,
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps another rotation failure in AppUnknownException', async () => {
@@ -1815,8 +1717,6 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.rotateForResendInTx.mockRejectedValue(
                 cause
             );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.resendInvite(
@@ -1935,17 +1835,15 @@ describe('WorkspaceInviteService', () => {
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-                messagePath: 'workspace.error.inviteAlreadyProcessed',
             });
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('maps a write conflict to WorkspaceInviteAlreadyProcessedException', async () => {
-            const conflict = new Error('conflict');
-            workspaceInviteRepository.revokeInTx.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = buildPrismaKnownRequestError(
+                DatabaseWriteConflictCode
             );
+            workspaceInviteRepository.revokeInTx.mockRejectedValue(conflict);
 
             await expect(
                 service.revokeInvite(
@@ -1962,7 +1860,6 @@ describe('WorkspaceInviteService', () => {
         it('wraps an unknown failure in AppUnknownException', async () => {
             const failure = new Error('boom');
             workspaceInviteRepository.revokeInTx.mockRejectedValue(failure);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.revokeInvite(
@@ -1997,9 +1894,6 @@ describe('WorkspaceInviteService', () => {
                 'user-2',
                 acceptedAt
             );
-            expect(helperHashService.sha256Hash).not.toHaveBeenCalledWith(
-                'invite-1'
-            );
         });
 
         it('throws WorkspaceInviteAlreadyProcessedException when the guarded accept matches no pending invite', async () => {
@@ -2012,16 +1906,14 @@ describe('WorkspaceInviteService', () => {
 
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-                messagePath: 'workspace.error.inviteAlreadyProcessed',
             });
         });
 
         it('maps a write conflict on the accept to WorkspaceInviteAlreadyProcessedException', async () => {
-            const conflict = new Error('conflict');
-            workspaceInviteRepository.acceptInTx.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = buildPrismaKnownRequestError(
+                DatabaseWriteConflictCode
             );
+            workspaceInviteRepository.acceptInTx.mockRejectedValue(conflict);
 
             await expect(
                 service.acceptPendingInTx(tx, 'invite-1', 'user-2', acceptedAt)
@@ -2031,13 +1923,11 @@ describe('WorkspaceInviteService', () => {
 
                 constructor: WorkspaceInviteAlreadyProcessedException,
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps another accept failure in AppUnknownException', async () => {
             const cause = new Error('db-down');
             workspaceInviteRepository.acceptInTx.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.acceptPendingInTx(tx, 'invite-1', 'user-2', acceptedAt)
@@ -2062,9 +1952,7 @@ describe('WorkspaceInviteService', () => {
 
         beforeEach(() => {
             workspaceInviteRepository.acceptInTx.mockResolvedValue(true);
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
+            vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
         });
 
         it('throws WorkspaceInviteAlreadyProcessedException when the guarded accept matches no pending invite', async () => {
@@ -2077,7 +1965,6 @@ describe('WorkspaceInviteService', () => {
 
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-                messagePath: 'workspace.error.inviteAlreadyProcessed',
             });
         });
 
@@ -2105,13 +1992,8 @@ describe('WorkspaceInviteService', () => {
 
     describe('mapInvitePreview', () => {
         it('maps the inviter display name from the user util', () => {
-            userUtil.getDisplayName.mockReturnValue('Bramble');
-
             const result = service.mapInvitePreview(previewInvite);
 
-            expect(userUtil.getDisplayName).toHaveBeenCalledWith(
-                previewInvite.invitedBy
-            );
             expect(result).toEqual({
                 workspaceName: 'Acme',
                 inviterName: 'Bramble',
@@ -2129,30 +2011,16 @@ describe('WorkspaceInviteService', () => {
                 },
             });
 
-            expect(userUtil.getDisplayName).not.toHaveBeenCalled();
             expect(result.inviterName).toBe('Acme');
         });
     });
 
     describe('createInviteTokenData', () => {
         beforeEach(() => {
-            helperStringService.random
+            vi.spyOn(helperStringService, 'random')
                 .mockReturnValueOnce('token-value')
                 .mockReturnValueOnce('reference-suffix');
-            helperHashService.sha256Hash.mockReturnValue('hashed-token');
-            helperDateService.create.mockReturnValue(
-                new Date('2026-01-01T00:00:00.000Z')
-            );
-            helperDateService.forward.mockReturnValue(
-                new Date('2026-01-08T00:00:00.000Z')
-            );
-            helperStringService.fillPattern
-                .mockReturnValueOnce(
-                    'https://app.example.com/workspace/invites?inviteToken=token-value'
-                )
-                .mockReturnValueOnce(
-                    'https://app.example.com/sign-up/token-value'
-                );
+            vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
         });
 
         it('builds token data expiring after the given days', () => {
@@ -2160,7 +2028,7 @@ describe('WorkspaceInviteService', () => {
 
             expect(result).toEqual({
                 token: 'token-value',
-                hashedToken: 'hashed-token',
+                hashedToken: tokenValueHash,
                 reference: 'WIN-reference-suffix',
                 expiredAt: new Date('2026-01-08T00:00:00.000Z'),
                 claimLink:
@@ -2169,29 +2037,6 @@ describe('WorkspaceInviteService', () => {
             });
             expect(helperStringService.random).toHaveBeenNthCalledWith(1, 40);
             expect(helperStringService.random).toHaveBeenNthCalledWith(2, 6);
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'token-value'
-            );
-            expect(helperDateService.forward).toHaveBeenCalledWith(
-                new Date('2026-01-01T00:00:00.000Z'),
-                Duration.fromObject({ days: 7 })
-            );
-            expect(helperStringService.fillPattern).toHaveBeenNthCalledWith(
-                1,
-                '{frontendBaseUrl}/workspace/invites?inviteToken={token}',
-                {
-                    frontendBaseUrl: 'https://app.example.com',
-                    token: 'token-value',
-                }
-            );
-            expect(helperStringService.fillPattern).toHaveBeenNthCalledWith(
-                2,
-                '{frontendBaseUrl}/sign-up/{token}',
-                {
-                    frontendBaseUrl: 'https://app.example.com',
-                    token: 'token-value',
-                }
-            );
         });
     });
 

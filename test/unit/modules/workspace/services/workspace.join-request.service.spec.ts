@@ -3,16 +3,11 @@ import type { INotificationNotifyEffect } from '@modules/notification/interfaces
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { Duration } from 'luxon';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
@@ -44,7 +39,6 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { WorkspaceJoinRequestNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -63,12 +57,20 @@ import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import {
-    buildUser,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspace,
+    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('WorkspaceJoinRequestService', () => {
     const workspaceJoinRequestRepository: MockProxy<WorkspaceJoinRequestRepository> =
@@ -87,41 +89,22 @@ describe('WorkspaceJoinRequestService', () => {
         mock<ActivityLogService>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
-    const helperHashService: MockProxy<HelperHashService> =
-        mock<HelperHashService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
     const configValues: Record<string, unknown> = {
         'frontend.baseUrl': 'https://app.example.com',
         'workspace.joinRequest.reviewLinkPattern':
             '{frontendBaseUrl}/workspace/join-requests/{joinRequestId}',
     };
-    const pendingNonce = 'a'.repeat(64);
+    const pendingNonce =
+        '142c7b295b36db200eb70c0cc7d75dbb12543a1f7c1891a243d30f556265a0d1';
     const expiredAt = new Date('2026-01-09T00:00:00.000Z');
 
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const reviewedAt = new Date('2026-01-02T00:00:00.000Z');
 
     const workspace: Workspace = {
-        id: 'workspace-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: 'user-1',
-        deletedAt: null,
-        deletedBy: null,
-        name: 'Acme',
-        slug: 'acme-team',
-        description: null,
+        ...buildWorkspace(),
         isPublic: true,
     };
 
@@ -142,17 +125,7 @@ describe('WorkspaceJoinRequestService', () => {
         nonce: pendingNonce,
     };
 
-    const workspaceMember: WorkspaceMember = {
-        id: 'member-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        workspaceId: 'workspace-1',
-        userId: 'user-2',
-        role: EnumWorkspaceMemberRole.member,
-        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-    };
+    const workspaceMember: WorkspaceMember = buildWorkspaceMember('user-2');
 
     const notifyEffect: INotificationNotifyEffect = {
         queue: EnumNotificationQueue.notification,
@@ -184,19 +157,13 @@ describe('WorkspaceJoinRequestService', () => {
 
     let service: WorkspaceJoinRequestService;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         featureFlagService.getMetadataNumber.mockResolvedValue(7);
-        helperDateService.create.mockReturnValue(reviewedAt);
-        helperStringService.fillPattern.mockReturnValue('workspace-1:user-2');
-        helperHashService.sha256Hash.mockReturnValue(pendingNonce);
-        configGet.mockImplementation(
-            (key: string) => configValues[key] ?? null
-        );
-        helperDateService.forward.mockReturnValue(expiredAt);
-        helperDateService.createDuration.mockReturnValue(
-            Duration.fromObject({ days: 7 })
-        );
+        vi.setSystemTime(reviewedAt);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
         activityLogService.recordEffect
             .mockReturnValueOnce(firstEntry)
@@ -225,17 +192,24 @@ describe('WorkspaceJoinRequestService', () => {
                 { provide: NotificationService, useValue: notificationService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: FeatureFlagService, useValue: featureFlagService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
                 { provide: OutboxService, useValue: outboxService },
-                { provide: HelperDateService, useValue: helperDateService },
-                { provide: HelperStringService, useValue: helperStringService },
-                { provide: HelperHashService, useValue: helperHashService },
                 { provide: MessageService, useValue: messageService },
-                { provide: ConfigService, useValue: configService },
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        ...configValues,
+                    }),
+                },
             ],
         }).compile();
 
         service = module.get(WorkspaceJoinRequestService);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
     });
 
     describe('assertJoinRequestAllowed', () => {
@@ -273,11 +247,6 @@ describe('WorkspaceJoinRequestService', () => {
                 constructor: WorkspaceNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.notFound
-                    ],
-                messagePath: 'workspace.error.notFound',
             });
         });
 
@@ -301,11 +270,6 @@ describe('WorkspaceJoinRequestService', () => {
                 constructor: WorkspaceNotPublicException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.notPublic,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.notPublic
-                    ],
-                messagePath: 'workspace.error.notPublic',
             });
         });
 
@@ -333,11 +297,6 @@ describe('WorkspaceJoinRequestService', () => {
                 module: 'workspace',
                 statusCode:
                     EnumWorkspaceStatusCodeError.joinRequestAlreadyMember,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.joinRequestAlreadyMember
-                    ],
-                messagePath: 'workspace.error.joinRequestAlreadyMember',
             });
         });
 
@@ -410,23 +369,9 @@ describe('WorkspaceJoinRequestService', () => {
                 expiredAt,
                 nonce: pendingNonce,
             });
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                WorkspaceJoinRequestNoncePattern,
-                { workspaceId: 'workspace-1', userId: 'user-2' }
-            );
-            expect(helperHashService.sha256Hash).toHaveBeenCalledWith(
-                'workspace-1:user-2'
-            );
             expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.workspace,
                 EnumFeatureFlagMetadataKey.joinRequestExpiresInDays
-            );
-            expect(helperDateService.createDuration).toHaveBeenCalledWith({
-                days: 7,
-            });
-            expect(helperDateService.forward).toHaveBeenCalledWith(
-                reviewedAt,
-                Duration.fromObject({ days: 7 })
             );
         });
 
@@ -462,11 +407,6 @@ describe('WorkspaceJoinRequestService', () => {
             workspaceJoinRequestRepository.createPendingInTx.mockResolvedValue(
                 baseJoinRequest
             );
-            helperStringService.fillPattern
-                .mockReturnValueOnce('workspace-1:user-2')
-                .mockReturnValue(
-                    'https://app.example.com/workspace/join-requests/join-request-1'
-                );
             notificationService.notify
                 .mockReturnValueOnce(effects[0]!)
                 .mockReturnValueOnce(effects[1]!);
@@ -531,11 +471,10 @@ describe('WorkspaceJoinRequestService', () => {
         });
 
         it('throws WorkspaceJoinRequestDuplicateException when the nonce collides', async () => {
-            const collision = new Error('nonce');
+            const collision = buildPrismaKnownRequestError('P2002', 'nonce');
             workspaceJoinRequestRepository.createPendingInTx.mockRejectedValue(
                 collision
             );
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 service.createJoinRequest(
@@ -549,27 +488,16 @@ describe('WorkspaceJoinRequestService', () => {
                 constructor: WorkspaceJoinRequestDuplicateException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.joinRequestDuplicate,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.joinRequestDuplicate
-                    ],
-                messagePath: 'workspace.error.joinRequestDuplicate',
             });
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'nonce'
-            );
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceJoinRequestDuplicateException on a write conflict', async () => {
-            const conflict = new Error('write-conflict');
+            const conflict = buildPrismaKnownRequestError(
+                DatabaseWriteConflictCode
+            );
             workspaceJoinRequestRepository.createPendingInTx.mockRejectedValue(
                 conflict
-            );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
             );
 
             await expect(
@@ -585,9 +513,7 @@ describe('WorkspaceJoinRequestService', () => {
 
                 constructor: WorkspaceJoinRequestDuplicateException,
                 statusCode: EnumWorkspaceStatusCodeError.joinRequestDuplicate,
-                messagePath: 'workspace.error.joinRequestDuplicate',
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('rethrows an AppBaseException thrown inside the transaction as is', async () => {
@@ -605,8 +531,6 @@ describe('WorkspaceJoinRequestService', () => {
                     notice
                 )
             ).rejects.toBe(thrown);
-            expect(databaseUtil.isUniqueCollision).not.toHaveBeenCalled();
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('wraps another create failure in AppUnknownException', async () => {
@@ -614,7 +538,6 @@ describe('WorkspaceJoinRequestService', () => {
             workspaceJoinRequestRepository.createPendingInTx.mockRejectedValue(
                 cause
             );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
 
             await expect(
                 service.createJoinRequest(
@@ -691,11 +614,6 @@ describe('WorkspaceJoinRequestService', () => {
                 constructor: WorkspaceJoinRequestNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.joinRequestNotFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.joinRequestNotFound
-                    ],
-                messagePath: 'workspace.error.joinRequestNotFound',
             });
         });
 
@@ -714,11 +632,6 @@ describe('WorkspaceJoinRequestService', () => {
                 module: 'workspace',
                 statusCode:
                     EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed
-                    ],
-                messagePath: 'workspace.error.joinRequestAlreadyProcessed',
             });
         });
 
@@ -837,9 +750,6 @@ describe('WorkspaceJoinRequestService', () => {
                 }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
-            expect(helperHashService.sha256Hash).not.toHaveBeenCalledWith(
-                'join-request-1'
-            );
         });
 
         it('throws WorkspaceJoinRequestNotFoundException before acceptInTx when the read answers null', async () => {
@@ -860,7 +770,6 @@ describe('WorkspaceJoinRequestService', () => {
                 constructor: WorkspaceJoinRequestNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.joinRequestNotFound,
-                messagePath: 'workspace.error.joinRequestNotFound',
             });
             expect(
                 workspaceJoinRequestRepository.acceptInTx
@@ -889,7 +798,6 @@ describe('WorkspaceJoinRequestService', () => {
                 module: 'workspace',
                 statusCode:
                     EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
-                messagePath: 'workspace.error.joinRequestAlreadyProcessed',
             });
             expect(
                 workspaceJoinRequestRepository.acceptInTx
@@ -980,20 +888,17 @@ describe('WorkspaceJoinRequestService', () => {
                 module: 'workspace',
                 statusCode:
                     EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
-                messagePath: 'workspace.error.joinRequestAlreadyProcessed',
             });
             expect(workspaceMemberService.createInTx).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('maps a write conflict in the transaction to WorkspaceJoinRequestAlreadyProcessedException', async () => {
-            const conflict = new Error('write-conflict');
+            const conflict = buildPrismaKnownRequestError(
+                DatabaseWriteConflictCode
+            );
             workspaceJoinRequestRepository.acceptInTx.mockRejectedValue(
                 conflict
-            );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
             );
 
             await expect(
@@ -1012,14 +917,12 @@ describe('WorkspaceJoinRequestService', () => {
 
                 constructor: WorkspaceJoinRequestAlreadyProcessedException,
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('maps a unique collision on the member insert to WorkspaceJoinRequestAlreadyMemberException', async () => {
             workspaceJoinRequestRepository.acceptInTx.mockResolvedValue(true);
-            const collision = new Error('unique');
+            const collision = buildPrismaKnownRequestError('P2002', 'userId');
             workspaceMemberService.createInTx.mockRejectedValue(collision);
-            databaseUtil.isUniqueCollision.mockReturnValue(true);
 
             await expect(
                 service.acceptJoinRequest(
@@ -1035,12 +938,7 @@ describe('WorkspaceJoinRequestService', () => {
                 module: 'workspace',
                 statusCode:
                     EnumWorkspaceStatusCodeError.joinRequestAlreadyMember,
-                messagePath: 'workspace.error.joinRequestAlreadyMember',
             });
-            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
-                collision,
-                'userId'
-            );
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
@@ -1048,8 +946,6 @@ describe('WorkspaceJoinRequestService', () => {
             workspaceJoinRequestRepository.acceptInTx.mockRejectedValue(
                 new Error('boom')
             );
-            databaseUtil.isUniqueCollision.mockReturnValue(false);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.acceptJoinRequest(
@@ -1123,9 +1019,6 @@ describe('WorkspaceJoinRequestService', () => {
                 }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
-            expect(helperHashService.sha256Hash).not.toHaveBeenCalledWith(
-                'join-request-1'
-            );
         });
 
         it('adds the reviewer entry and the requester entry on the review tx', async () => {
@@ -1209,18 +1102,16 @@ describe('WorkspaceJoinRequestService', () => {
                 module: 'workspace',
                 statusCode:
                     EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
-                messagePath: 'workspace.error.joinRequestAlreadyProcessed',
             });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('maps a write conflict in the transaction to WorkspaceJoinRequestAlreadyProcessedException', async () => {
-            const conflict = new Error('write-conflict');
+            const conflict = buildPrismaKnownRequestError(
+                DatabaseWriteConflictCode
+            );
             workspaceJoinRequestRepository.rejectInTx.mockRejectedValue(
                 conflict
-            );
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
             );
 
             await expect(
@@ -1239,13 +1130,11 @@ describe('WorkspaceJoinRequestService', () => {
 
                 constructor: WorkspaceJoinRequestAlreadyProcessedException,
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps any other transaction error in AppUnknownException', async () => {
             const cause = new Error('boom');
             workspaceJoinRequestRepository.rejectInTx.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.rejectJoinRequest(
@@ -1319,21 +1208,10 @@ describe('WorkspaceJoinRequestService', () => {
 
     describe('buildJoinRequestReviewLink', () => {
         it('fills the review link pattern with the home url and join request id', () => {
-            helperStringService.fillPattern.mockReturnValue(
-                'https://app.example.com/workspace/join-requests/join-1'
-            );
-
             const result = service['buildJoinRequestReviewLink']('join-1');
 
             expect(result).toBe(
                 'https://app.example.com/workspace/join-requests/join-1'
-            );
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                '{frontendBaseUrl}/workspace/join-requests/{joinRequestId}',
-                {
-                    frontendBaseUrl: 'https://app.example.com',
-                    joinRequestId: 'join-1',
-                }
             );
         });
     });

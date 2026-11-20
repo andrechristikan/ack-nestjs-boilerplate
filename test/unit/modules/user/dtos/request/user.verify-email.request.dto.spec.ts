@@ -10,18 +10,22 @@ describe('UserVerifyEmailRequestSchema', () => {
     });
 
     it('rejects an empty token', () => {
-        expect(() =>
-            UserVerifyEmailRequestSchema.parse({ token: '' })
-        ).toThrow();
+        const result = UserVerifyEmailRequestSchema.safeParse({ token: '' });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['token'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            UserVerifyEmailRequestSchema.parse({
-                ...payload,
-                email: 'john.doe@example.com',
-            })
-        ).toThrow();
+        const result = UserVerifyEmailRequestSchema.safeParse({
+            ...payload,
+            email: 'john.doe@example.com',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('accepts a token of 200 characters and rejects one of 201', () => {
@@ -31,11 +35,13 @@ describe('UserVerifyEmailRequestSchema', () => {
                 token: 'a'.repeat(200),
             })
         ).not.toThrow();
-        expect(() =>
-            UserVerifyEmailRequestSchema.parse({
-                ...payload,
-                token: 'a'.repeat(201),
-            })
-        ).toThrow();
+        const result = UserVerifyEmailRequestSchema.safeParse({
+            ...payload,
+            token: 'a'.repeat(201),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['token'], code: 'too_big' }),
+        ]);
     });
 });

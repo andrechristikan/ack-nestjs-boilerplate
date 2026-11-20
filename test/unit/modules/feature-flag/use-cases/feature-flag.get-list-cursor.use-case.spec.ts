@@ -4,33 +4,29 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { FeatureFlag } from '@generated/prisma-client/client';
-import {
-    FeatureFlagOrderBy,
-    FeatureFlagDefaultAvailableSearch,
-    FeatureFlagSystemListCursorScope,
-} from '@modules/feature-flag/constants/feature-flag.list.constant';
 import type { FeatureFlagSystemListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.system-list.request.dto';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagGetListCursorUseCase } from '@modules/feature-flag/use-cases/feature-flag.get-list-cursor.use-case';
-import { EnumFeatureFlagOrderBy } from '@modules/feature-flag/enums/feature-flag.enum';
 
 describe('FeatureFlagGetListCursorUseCase', () => {
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
-    const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
-        mock<PaginationQueryUtil>();
     const requestStoreService: MockProxy<RequestStoreService> =
         mock<RequestStoreService>();
 
     const pagination = {
-        fingerprint: 'aaaaaaaaaaaaaaaa',
-        skip: 0,
+        fingerprint: '6788295d20ae009a',
         limit: 20,
-        orderBy: [],
+        orderBy: [{ createdAt: 'desc' }],
     };
 
     let useCase: FeatureFlagGetListCursorUseCase;
@@ -50,15 +46,14 @@ describe('FeatureFlagGetListCursorUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 FeatureFlagGetListCursorUseCase,
                 { provide: FeatureFlagService, useValue: featureFlagService },
+                ...TestUnitKitProviders,
                 {
-                    provide: PaginationQueryUtil,
-                    useValue: paginationQueryUtil,
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 {
                     provide: RequestStoreService,
@@ -75,10 +70,6 @@ describe('FeatureFlagGetListCursorUseCase', () => {
             const query: FeatureFlagSystemListRequestDto = {
                 perPage: 20,
             };
-            paginationQueryUtil.cursor.mockReturnValue({
-                params: pagination,
-                storePatch: { cursor: 'next-cursor' },
-            });
             const page: IResponsePaginationReturn<FeatureFlag> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -90,15 +81,14 @@ describe('FeatureFlagGetListCursorUseCase', () => {
             const result = await useCase.execute(query);
 
             expect(result).toEqual(page);
-            expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
-                scope: FeatureFlagSystemListCursorScope,
-                availableSearch: FeatureFlagDefaultAvailableSearch,
-                orderBy: FeatureFlagOrderBy,
-                defaultOrderBy: EnumFeatureFlagOrderBy.latest,
-            });
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                { cursor: 'next-cursor' }
+                {
+                    perPage: 20,
+                    orderBy: 'latest',
+                    availableSearch: ['key'],
+                    availableOrderBy: ['latest', 'key'],
+                }
             );
             expect(featureFlagService.getListCursor).toHaveBeenCalledWith(
                 pagination

@@ -38,7 +38,9 @@ describe('AnalyticFraudRiskScoreResponseSchema', () => {
             band: 'medium',
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['band'], code: 'invalid_value' }),
+        ]);
     });
 
     it('rejects a contributing signal code outside the known signals', () => {
@@ -47,7 +49,12 @@ describe('AnalyticFraudRiskScoreResponseSchema', () => {
             contributingSignalCodes: ['credentialStuffing'],
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['contributingSignalCodes', 0],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 });
 
@@ -82,6 +89,11 @@ describe('AnalyticFraudRiskScoreUserResponseSchema', () => {
     it('rejects a row with no computedAt', () => {
         const result = AnalyticFraudRiskScoreUserResponseSchema.safeParse(row);
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['computedAt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

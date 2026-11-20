@@ -1,10 +1,15 @@
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import type {
@@ -27,8 +32,6 @@ describe('NotificationEmailProcessPublishTermPolicyUseCase', () => {
         mock<NotificationService>();
     const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     let useCase: NotificationEmailProcessPublishTermPolicyUseCase;
 
@@ -65,10 +68,17 @@ describe('NotificationEmailProcessPublishTermPolicyUseCase', () => {
         unknownCount: 0,
     };
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
-        helperDateService.create.mockReturnValue(now);
         awsSESService.isInitialized.mockReturnValue(true);
         termPolicyRecipientService.claim.mockResolvedValue({
             claimNonce: 'claim-id',
@@ -92,8 +102,12 @@ describe('NotificationEmailProcessPublishTermPolicyUseCase', () => {
                 { provide: NotificationService, useValue: notificationService },
                 { provide: AwsSESService, useValue: awsSESService },
                 { provide: DatabaseService, useValue: databaseService },
-                { provide: HelperDateService, useValue: helperDateService },
                 { provide: MessageService, useValue: messageService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(NotificationEmailProcessPublishTermPolicyUseCase);

@@ -12,8 +12,6 @@ describe('AnalyticUsersRoleDistributionUseCase', () => {
     let useCase: AnalyticUsersRoleDistributionUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticUsersRoleDistributionUseCase,

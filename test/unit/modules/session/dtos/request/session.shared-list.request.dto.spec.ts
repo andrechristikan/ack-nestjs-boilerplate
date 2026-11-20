@@ -21,15 +21,23 @@ describe('SessionSharedListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            SessionSharedListRequestSchema.parse({ ...query, page: 1 })
-        ).toThrow();
+        const result = SessionSharedListRequestSchema.safeParse({
+            ...query,
+            page: 1,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
         expect(
-            SessionSharedListRequestSchema.safeParse({ search: 'x' }).success
-        ).toBe(false);
+            SessionSharedListRequestSchema.safeParse({ search: 'x' }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -61,15 +69,25 @@ describe('SessionSharedListRequestSchema', () => {
         'createdAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            SessionSharedListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            SessionSharedListRequestSchema.safeParse({ orderBy }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             SessionSharedListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

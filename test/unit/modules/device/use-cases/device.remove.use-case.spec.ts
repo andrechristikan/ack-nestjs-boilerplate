@@ -1,5 +1,11 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -9,10 +15,9 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
@@ -52,14 +57,10 @@ const passkeyResponse = {
 
 describe('DeviceRemoveUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const deviceUtil: MockProxy<DeviceUtil> = mock<DeviceUtil>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const user = buildUser('user-1', 'actor@example.com');
@@ -120,20 +121,30 @@ describe('DeviceRemoveUseCase', () => {
         revokedBy: null,
         _count: { sessions: 2 },
     };
-    const metadata = { deviceOwnershipId: 'device-ownership-1' };
+    const metadata = {
+        deviceOwnershipId: 'device-ownership-1',
+        deviceId: 'device-1',
+        sessionCount: 1,
+    };
     const dto = { password: 'Current-pass1' };
 
     let useCase: DeviceRemoveUseCase;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         userAuthService.assertReauthentication.mockResolvedValue(check);
-        helperDateService.create.mockReturnValue(now);
         activityLogService.recordEffect.mockReturnValue(entryEffect);
-        deviceUtil.mapActivityLogMetadata.mockReturnValue(metadata);
         sessionService.removeDeviceOwnershipInTx.mockResolvedValue({
             deviceOwnership,
             revokedSessions: [{ id: 'session-1' }, { id: 'session-2' }],
@@ -143,12 +154,15 @@ describe('DeviceRemoveUseCase', () => {
             providers: [
                 DeviceRemoveUseCase,
                 { provide: SessionService, useValue: sessionService },
-                { provide: DeviceUtil, useValue: deviceUtil },
+                DeviceUtil,
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(DeviceRemoveUseCase);
@@ -235,10 +249,6 @@ describe('DeviceRemoveUseCase', () => {
                 'device-ownership-1',
                 'user-1',
                 now
-            );
-            expect(deviceUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                deviceOwnership,
-                1
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,
@@ -334,7 +344,6 @@ describe('DeviceRemoveUseCase', () => {
             ).rejects.toBe(failure);
 
             expect(outboxService.addInTx).not.toHaveBeenCalled();
-            expect(databaseUtil.toException).not.toHaveBeenCalled();
         });
 
         it('rethrows a completion refusal as it is', async () => {
@@ -360,11 +369,14 @@ describe('DeviceRemoveUseCase', () => {
         });
 
         it('answers DeviceNotFoundException on a write conflict', async () => {
-            const conflict = new Error('write conflict');
-            outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                }
             );
+            outboxService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -376,13 +388,11 @@ describe('DeviceRemoveUseCase', () => {
                     dto
                 )
             ).rejects.toBeInstanceOf(DeviceNotFoundException);
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {
             const cause = new Error('boom');
             outboxService.withTransaction.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

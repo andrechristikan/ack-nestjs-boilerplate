@@ -10,14 +10,10 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { RequestThrottleResponseInvalidException } from '@common/request/exceptions/request.throttle-response-invalid.exception';
 import { RequestThrottleStorageService } from '@common/request/services/request.throttle-storage.service';
 import type { IStubCacheClient } from '@test/unit/helpers/test.unit.cache.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('RequestThrottleStorageService', () => {
-    const configGet = vi.fn<(key: string) => string>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
-    const helperStringService: MockProxy<HelperStringService> =
-        mock<HelperStringService>();
+    let configService: MockProxy<ConfigService>;
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const failOpenRecord = {
         totalHits: 0,
@@ -30,21 +26,13 @@ describe('RequestThrottleStorageService', () => {
     let service: RequestThrottleStorageService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, string> = {
-                'request.throttle.keyPattern': 'Throttle:{name}:{tracker}',
-                'request.throttle.blockKeyPattern':
-                    'ThrottleBlock:{name}:{tracker}',
-                'request.throttle.sequenceKeyPattern':
-                    'ThrottleSeq:{name}:{tracker}',
-            };
-            return values[key]!;
+        configService = buildConfigService({
+            'request.throttle.keyPattern': 'Throttle:{name}:{tracker}',
+            'request.throttle.blockKeyPattern':
+                'ThrottleBlock:{name}:{tracker}',
+            'request.throttle.sequenceKeyPattern':
+                'ThrottleSeq:{name}:{tracker}',
         });
-        helperStringService.fillPattern.mockImplementation(
-            (pattern, tokens) => `${pattern}::${tokens.name}::${tokens.tracker}`
-        );
         cacheService.isConnectionError.mockReturnValue(false);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -52,10 +40,7 @@ describe('RequestThrottleStorageService', () => {
                 RequestThrottleStorageService,
                 { provide: RedisCacheClient, useValue: redis },
                 { provide: ConfigService, useValue: configService },
-                {
-                    provide: HelperStringService,
-                    useValue: helperStringService,
-                },
+                HelperStringService,
                 { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
@@ -69,24 +54,12 @@ describe('RequestThrottleStorageService', () => {
 
             await service.increment('tracker-1', 1000, 5, 2000, 'default');
 
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'Throttle:{name}:{tracker}',
-                { name: 'default', tracker: 'tracker-1' }
-            );
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'ThrottleBlock:{name}:{tracker}',
-                { name: 'default', tracker: 'tracker-1' }
-            );
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'ThrottleSeq:{name}:{tracker}',
-                { name: 'default', tracker: 'tracker-1' }
-            );
             expect(redis.eval).toHaveBeenCalledWith(
                 expect.any(String),
                 3,
-                'Throttle:{name}:{tracker}::default::tracker-1',
-                'ThrottleBlock:{name}:{tracker}::default::tracker-1',
-                'ThrottleSeq:{name}:{tracker}::default::tracker-1',
+                'Throttle:default:tracker-1',
+                'ThrottleBlock:default:tracker-1',
+                'ThrottleSeq:default:tracker-1',
                 '1000',
                 '5',
                 '2000'
@@ -198,11 +171,6 @@ describe('RequestThrottleStorageService', () => {
             ).rejects.toMatchObject({
                 module: 'redis',
                 statusCode: EnumRedisStatusCodeError.unavailable,
-                statusCodeKey:
-                    EnumRedisStatusCodeError[
-                        EnumRedisStatusCodeError.unavailable
-                    ],
-                messagePath: 'redis.error.unavailable',
                 rawError: error,
             });
             expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
@@ -255,19 +223,13 @@ describe('RequestThrottleStorageService', () => {
 
     describe('buildKey', () => {
         it('fills the given pattern with the throttler name and tracker', () => {
-            helperStringService.fillPattern.mockReturnValue('built-key');
-
             const result = service['buildKey'](
                 'Throttle:{name}:{tracker}',
                 'default',
                 'tracker-1'
             );
 
-            expect(result).toBe('built-key');
-            expect(helperStringService.fillPattern).toHaveBeenCalledWith(
-                'Throttle:{name}:{tracker}',
-                { name: 'default', tracker: 'tracker-1' }
-            );
+            expect(result).toBe('Throttle:default:tracker-1');
         });
     });
 

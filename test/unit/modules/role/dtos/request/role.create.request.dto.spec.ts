@@ -26,46 +26,58 @@ describe('RoleCreateRequestSchema', () => {
     });
 
     it('rejects a name shorter than 3 characters', () => {
-        expect(() =>
-            RoleCreateRequestSchema.parse({
-                name: 'ab',
-                type: EnumRoleType.admin,
-            })
-        ).toThrow();
+        const result = RoleCreateRequestSchema.safeParse({
+            name: 'ab',
+            type: EnumRoleType.admin,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a name longer than 30 characters', () => {
-        expect(() =>
-            RoleCreateRequestSchema.parse({
-                name: 'a'.repeat(31),
-                type: EnumRoleType.admin,
-            })
-        ).toThrow();
+        const result = RoleCreateRequestSchema.safeParse({
+            name: 'a'.repeat(31),
+            type: EnumRoleType.admin,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_big' }),
+        ]);
     });
 
     it('rejects a name with a non-alphanumeric character', () => {
-        expect(() =>
-            RoleCreateRequestSchema.parse({
-                name: 'team-lead',
-                type: EnumRoleType.admin,
-            })
-        ).toThrow();
+        const result = RoleCreateRequestSchema.safeParse({
+            name: 'team-lead',
+            type: EnumRoleType.admin,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'invalid_format' }),
+        ]);
     });
 
     it('rejects a missing name', () => {
-        expect(() =>
-            RoleCreateRequestSchema.parse({ type: EnumRoleType.admin })
-        ).toThrow();
+        const result = RoleCreateRequestSchema.safeParse({
+            type: EnumRoleType.admin,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            RoleCreateRequestSchema.parse({
-                name: 'manager',
-                type: EnumRoleType.admin,
-                extra: true,
-            })
-        ).toThrow();
+        const result = RoleCreateRequestSchema.safeParse({
+            name: 'manager',
+            type: EnumRoleType.admin,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects the superAdmin type', () => {
@@ -73,7 +85,9 @@ describe('RoleCreateRequestSchema', () => {
             RoleCreateRequestSchema.safeParse({
                 name: 'manager',
                 type: EnumRoleType.superAdmin,
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: ['type'], code: 'invalid_value' }),
+        ]);
     });
 });

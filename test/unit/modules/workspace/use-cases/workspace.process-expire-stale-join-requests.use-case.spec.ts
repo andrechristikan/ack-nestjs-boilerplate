@@ -14,7 +14,6 @@ describe('WorkspaceProcessExpireStaleJoinRequestsUseCase', () => {
     let useCase: WorkspaceProcessExpireStaleJoinRequestsUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
 
         const module: TestingModule = await Test.createTestingModule({

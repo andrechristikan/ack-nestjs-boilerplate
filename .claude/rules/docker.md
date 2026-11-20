@@ -17,13 +17,13 @@ Production: `docker-production.md`. Images: `docker-image.md`.
     - `deps`: Mongo, `redis-queue` and `redis-cache` (host ports in the file), `bullboard`, the JWKS server.
     - `apis`: the application, `migrate` and `apis` in production; it starts only beside `deps`.
     - `vault`: `vault` and `vault-bootstrap`, in production only.
-- The local stack runs no Vault and takes no container hardening.
+- The local stack takes no container hardening.
 - Both compose files run two Redis services, and no instance serves both: `redis-queue` with `noeviction`, append-only, on the `redis_queue_data` volume; `redis-cache` with `allkeys-lru` under `--maxmemory 256mb`, no persistence, no volume.
 - No service sets `init: true`.
 - `apis` sets `NODE_OPTIONS: --max-old-space-size=2048` and a `4G` memory limit, so `start:dev` runs `typecheck:watch` beside the SWC watcher and logs `Found 0 errors`.
 - `apis` bind-mounts `./src` and `./prisma`: `src/` recompiles in the container. `typecheck:watch` checks `tsconfig.build.json`, `src/` only; `test/` stays out of the image (`.dockerignore`); the host's `pnpm typecheck` covers it and `scripts/`, which the production `pnpm generate` needs. A change outside the mounts (`package.json`, the lockfile, `pnpm-workspace.yaml`, `.swcrc`, `nest-cli.json`, `tsconfig*.json`) needs `--build` (`.claude/skills/ack-build/references/boot.md`, step 3).
 - `src/generated` never crosses into a container: `apis` mounts a tmpfs at `/app/src/generated` over the `./src` bind and fills it with `pnpm generate` at every start, and `.dockerignore` keeps the host copy out of both images. The host copy serves typecheck, specs, and host-run commands. After a schema edit run `pnpm db:generate`, then `docker compose --env-file .env.docker --profile deps --profile apis restart apis`.
-- Inside `apis` the app reaches Mongo, Redis, and the JWKS server through `host.docker.internal`, so the owner's `.env` URLs name that host. No agent reads `.env`; a logged connection failure goes to the owner.
+- Inside `apis` the app reaches Mongo, Redis, and the JWKS server through `host.docker.internal`, so the owner's `.env` URLs name that host.
 
 ## Credentials and variables
 

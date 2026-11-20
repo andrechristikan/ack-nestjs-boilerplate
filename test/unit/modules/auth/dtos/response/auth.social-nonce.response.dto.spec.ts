@@ -26,7 +26,9 @@ describe('AuthSocialNonceResponseSchema', () => {
             expiredAt: row.expiredAt,
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['nonce'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects a row missing the expiry', () => {
@@ -34,6 +36,11 @@ describe('AuthSocialNonceResponseSchema', () => {
             nonce: row.nonce,
         });
 
-        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['expiredAt'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

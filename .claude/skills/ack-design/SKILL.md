@@ -11,13 +11,13 @@ argument-hint: '<the feature or behaviour change, in one sentence>'
 
 Request: $ARGUMENTS
 
-The session works alone and writes one spec. Write nothing under `src/`, `test/`, or `prisma/`. Where a copied skill and a rule or this file differ, the rule and this file win.
+The session works alone and writes one spec. Write nothing under `src/`, `test/`, or `prisma/`.
 
 ## 1. Read first
 
 - Read the code the request touches and the module closest to it in shape.
 - Run `bash .claude/hooks/rules.sh` over the `src/` paths in scope and read each rule it prints.
-- Name the entries in `.claude/decisions/` (`README.md` there lists each file's scope) that touch the scope before offering any option. Offer no option a rule forbids or an entry rejects.
+- Name the entries in `.claude/decisions/` (`README.md` there lists each file's scope) that touch the scope before offering any option.
 - Follow `.claude/skills/ponytail/SKILL.md` at level `ultra`: challenge each part of the request the need does not justify, before any design.
 
 ## 2. Question rounds
@@ -44,7 +44,7 @@ Every behaviour is built test-first, so each one needs its seam before the spec 
 
 - A seam is the public boundary a unit spec asserts at: a use case's `execute`, a service method, a guard, a pipe, a zod schema, a queue class.
 - Propose the seams, each with one line on what it catches and what it misses, and confirm them with `AskUserQuestion`.
-- Specs are unit specs with every collaborator doubled (`.claude/rules/testing.md`). Integration and e2e are held.
+- Specs are unit specs (`.claude/rules/testing.md`, `.claude/rules/test-doubles.md`).
 - The rounds are not done while a behaviour has no agreed seam.
 
 ## 4. Spec

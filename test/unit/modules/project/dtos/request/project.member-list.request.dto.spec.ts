@@ -23,15 +23,22 @@ describe('ProjectMemberListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ProjectMemberListRequestSchema.parse({ extra: true })
-        ).toThrow();
+        const result = ProjectMemberListRequestSchema.safeParse({
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
         expect(
-            ProjectMemberListRequestSchema.safeParse({ search: 'x' }).success
-        ).toBe(false);
+            ProjectMemberListRequestSchema.safeParse({ search: 'x' }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -64,15 +71,25 @@ describe('ProjectMemberListRequestSchema', () => {
         'joinedAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            ProjectMemberListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            ProjectMemberListRequestSchema.safeParse({ orderBy }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             ProjectMemberListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

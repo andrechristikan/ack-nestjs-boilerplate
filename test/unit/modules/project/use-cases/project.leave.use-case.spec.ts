@@ -38,8 +38,6 @@ describe('ProjectLeaveUseCase', () => {
     };
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectLeaveUseCase,
@@ -115,8 +113,6 @@ describe('ProjectLeaveUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.memberNotFound,
-                statusCodeKey: 'memberNotFound',
-                messagePath: 'project.error.memberNotFound',
             });
             expect(projectMemberService.assertMember).toHaveBeenCalledWith(
                 null

@@ -1,34 +1,24 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { HelloService } from '@modules/hello/services/hello.service';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('HelloService', () => {
-    const configGet = vi.fn<(key: string) => unknown>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
+    let configService: MockProxy<ConfigService>;
 
     let service: HelloService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, unknown> = {
-                'app.name': 'Ack NestJS Boilerplate',
-                'app.env': EnumAppEnvironment.development,
-                'app.timezone': 'UTC',
-                'message.availableLanguages':
-                    Object.values(EnumMessageLanguage),
-                'message.defaultLanguage': EnumMessageLanguage.en,
-            };
-
-            return values[key];
+        configService = buildConfigService({
+            'app.name': 'Ack NestJS Boilerplate',
+            'app.env': EnumAppEnvironment.development,
+            'app.timezone': 'UTC',
+            'message.availableLanguages': Object.values(EnumMessageLanguage),
+            'message.defaultLanguage': EnumMessageLanguage.en,
         });
 
         const module: TestingModule = await Test.createTestingModule({

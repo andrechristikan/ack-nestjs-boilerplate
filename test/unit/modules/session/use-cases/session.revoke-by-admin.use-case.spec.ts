@@ -1,20 +1,19 @@
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import {
-    EnumRoleType,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
-} from '@generated/prisma-client/client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
 import {
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { RoleService } from '@modules/role/services/role.service';
 import { UserService } from '@modules/user/services/user.service';
@@ -29,8 +28,6 @@ describe('SessionRevokeByAdminUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
     const revokedAt = new Date('2026-01-05T00:00:00.000Z');
     const userRole: IRole = {
         id: 'role-user',
@@ -83,37 +80,7 @@ describe('SessionRevokeByAdminUseCase', () => {
         revokedBy: null,
     };
     const admin: IUser = {
-        id: 'admin-1',
-        name: 'Admin One',
-        username: 'admin.main',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'admin@example.com',
-        roleId: 'role-admin',
-        password: 'hashed-password',
-        passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
+        ...buildUser('admin-1', 'admin@example.com'),
         role: {
             id: 'role-admin',
             name: 'admin',
@@ -133,15 +100,27 @@ describe('SessionRevokeByAdminUseCase', () => {
     const authContext = buildAuthJwtAccessContext(admin.id);
     let useCase: SessionRevokeByAdminUseCase;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(revokedAt);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 SessionRevokeByAdminUseCase,
                 { provide: SessionService, useValue: sessionService },
                 { provide: RoleService, useValue: roleService },
                 { provide: UserService, useValue: userService },
-                { provide: HelperDateService, useValue: helperDateService },
+                HelperDateService,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(SessionRevokeByAdminUseCase);
@@ -150,7 +129,6 @@ describe('SessionRevokeByAdminUseCase', () => {
     describe('execute', () => {
         it('checks rank, then revokes as the admin passing the request context', async () => {
             userService.getRoleById.mockResolvedValue(userRole);
-            helperDateService.create.mockReturnValue(revokedAt);
             sessionService.revokeByAdmin.mockResolvedValue(session);
 
             const result = await useCase.execute(
@@ -200,7 +178,6 @@ describe('SessionRevokeByAdminUseCase', () => {
 
         it('rethrows the domain exception', async () => {
             userService.getRoleById.mockResolvedValue(userRole);
-            helperDateService.create.mockReturnValue(revokedAt);
             const failure = new SessionNotFoundException();
             sessionService.revokeByAdmin.mockRejectedValue(failure);
 

@@ -32,13 +32,25 @@ describe('PolicySchema', () => {
     });
 
     it('rejects an empty action list', () => {
-        expect(() => PolicySchema.parse({ ...row, action: [] })).toThrow();
+        const result = PolicySchema.safeParse({ ...row, action: [] });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['action'], code: 'too_small' }),
+        ]);
     });
 
     it('rejects a subject outside EnumPolicySubject', () => {
-        expect(() =>
-            PolicySchema.parse({ ...row, subject: 'unknownSubject' })
-        ).toThrow();
+        const result = PolicySchema.safeParse({
+            ...row,
+            subject: 'unknownSubject',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['subject'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('accepts one action per EnumPolicyAction and rejects more', () => {
@@ -47,8 +59,13 @@ describe('PolicySchema', () => {
         expect(() =>
             PolicySchema.parse({ ...row, action: actions })
         ).not.toThrow();
-        expect(() =>
-            PolicySchema.parse({ ...row, action: [...actions, actions[0]] })
-        ).toThrow();
+        const result = PolicySchema.safeParse({
+            ...row,
+            action: [...actions, actions[0]],
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['action'], code: 'too_big' }),
+        ]);
     });
 });

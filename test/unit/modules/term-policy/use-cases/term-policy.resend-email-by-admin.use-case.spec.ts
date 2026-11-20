@@ -1,10 +1,15 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { ITermPolicyPublishEffect } from '@modules/term-policy/interfaces/term-policy.interface';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumActivityLogAction,
     EnumTermPolicyStatus,
@@ -37,12 +42,9 @@ import { TermPolicyResendEmailByAdminUseCase } from '@modules/term-policy/use-ca
 describe('TermPolicyResendEmailByAdminUseCase', () => {
     const termPolicyService: MockProxy<TermPolicyService> =
         mock<TermPolicyService>();
-    const termPolicyUtil: MockProxy<TermPolicyUtil> = mock<TermPolicyUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
     const termPolicy: TermPolicy = {
@@ -104,14 +106,16 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
 
     let useCase: TermPolicyResendEmailByAdminUseCase;
 
-    beforeEach(async () => {
-        vi.resetAllMocks();
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(timestamp);
+    });
 
-        helperDateService.create.mockReturnValue(timestamp);
-        helperDateService.formatToIso.mockImplementation((date: Date) =>
-            date.toISOString()
-        );
-        termPolicyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
+    beforeEach(async () => {
         activityLogService.recordEffect.mockReturnValue(entryEffect);
         termPolicyService.resendPublishEffect.mockReturnValue(resendEffect);
 
@@ -119,10 +123,14 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
             providers: [
                 TermPolicyResendEmailByAdminUseCase,
                 { provide: TermPolicyService, useValue: termPolicyService },
-                { provide: TermPolicyUtil, useValue: termPolicyUtil },
+                TermPolicyUtil,
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: HelperDateService, useValue: helperDateService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
@@ -151,10 +159,6 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                     recipientCutoffAt: publishedAt.toISOString(),
                 },
                 'user-1'
-            );
-            expect(termPolicyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                publishedTermPolicy,
-                timestamp
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,

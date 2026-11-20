@@ -7,11 +7,7 @@ import {
     EnumActivityLogAction,
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
-    EnumUserGender,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
+    Prisma,
 } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -21,14 +17,20 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import {
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -48,13 +50,11 @@ import { PolicyDeleteByAdminUseCase } from '@modules/policy/use-cases/policy.del
 describe('PolicyDeleteByAdminUseCase', () => {
     const policyService: MockProxy<PolicyService> = mock<PolicyService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const policyUtil: MockProxy<PolicyUtil> = mock<PolicyUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
 
     const policy: Policy = {
         id: 'policy-1',
@@ -67,51 +67,7 @@ describe('PolicyDeleteByAdminUseCase', () => {
         action: [EnumPolicyAction.manage],
     };
 
-    const baseUser: IUser = {
-        id: 'user-1',
-        name: 'Andre Christi',
-        username: 'johnSmith123',
-        isVerified: true,
-        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        email: 'andre@example.com',
-        roleId: 'role-1',
-        password: 'hashed-password',
-        passwordExpired: null,
-        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: EnumUserGender.male,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: {
-            id: 'role-1',
-            name: 'Admin',
-            description: null,
-            type: EnumRoleType.admin,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [policy],
-        },
-    };
+    const baseUser: IUser = buildUser('user-1', 'andre@example.com');
 
     const policyMetadata: IActivityLogMetadata = {
         roleId: 'role-1',
@@ -147,23 +103,25 @@ describe('PolicyDeleteByAdminUseCase', () => {
     let useCase: PolicyDeleteByAdminUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         activityLogService.recordEffect.mockReturnValue(effect);
         roleService.invalidateEffect.mockReturnValue(roleInvalidateEffect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        policyUtil.mapActivityLogMetadata.mockReturnValue(policyMetadata);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 PolicyDeleteByAdminUseCase,
                 { provide: PolicyService, useValue: policyService },
                 { provide: RoleService, useValue: roleService },
-                { provide: PolicyUtil, useValue: policyUtil },
+                PolicyUtil,
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
             ],
         }).compile();
 
@@ -226,9 +184,6 @@ describe('PolicyDeleteByAdminUseCase', () => {
                 'policy-1'
             );
 
-            expect(policyUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                policy
-            );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
@@ -281,12 +236,15 @@ describe('PolicyDeleteByAdminUseCase', () => {
         });
 
         it('maps a write conflict to PolicyNotFoundException', async () => {
-            const conflict = new Error('conflict');
+            const conflict = new Prisma.PrismaClientKnownRequestError(
+                'conflict',
+                {
+                    code: DatabaseWriteConflictCode,
+                    clientVersion: 'test',
+                }
+            );
             roleService.assertWritableByActor.mockResolvedValue();
             policyService.deleteByAdminInTx.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
-            );
 
             await expect(
                 useCase.execute(
@@ -304,7 +262,6 @@ describe('PolicyDeleteByAdminUseCase', () => {
             const cause = new Error('boom');
             roleService.assertWritableByActor.mockResolvedValue();
             policyService.deleteByAdminInTx.mockRejectedValue(cause);
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 useCase.execute(

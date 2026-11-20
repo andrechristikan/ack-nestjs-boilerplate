@@ -158,7 +158,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 
 ## Model and Effort
 
-- `coder` builds every ticket and every review fix on sonnet. `/ack-plan` picks its effort per ticket and `/ack-review` per fix: high for work that touches the schema, a transaction, concurrency, or security, medium for any other.
+- `coder` builds every ticket and every review fix on sonnet. `/ack-plan` picks its effort per ticket, `/ack-review` and `/ack-debug` per fix: high for work that touches the schema, a transaction, concurrency, or security, medium for any other.
 - TypeSafe's Jev can pick that effort instead. It is optional: set `TYPESAFE_API_KEY` in `.env.harness` at the repository root, and remove it or add `JEV_ROUTER_ENABLED=false` there to turn it off. The file is gitignored and no agent reads it.
 - `/ack-review` runs `reviewer` on opus at high effort for every feature.
 - No agent runs below the `model` and `effort` in its own file.
@@ -172,6 +172,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 | --- | --- | --- |
 | `guard-bash.sh` | before every Bash call | denies owner-only database commands, secret reads, and non-pnpm installs |
 | `guard-write.sh` | before every file write | denies secrets, generated trees, edits to a copied skill, an `eslint-disable` comment, and a focused or skipped spec |
+| `rules-gate.sh` | before every file write, and after every file read | denies a write until the session or agent has read whole every path-scoped rule that binds the file, and names the rules still unread |
 | `format.sh` | after every file write | formats the file |
 | `verify.sh` | when a session stops | runs typecheck and the unit specs of the changed modules |
 | `roster.sh` | at session start | prints the `/ack-*` commands |

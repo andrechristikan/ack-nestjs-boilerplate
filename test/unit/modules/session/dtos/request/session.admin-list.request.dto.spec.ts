@@ -27,18 +27,28 @@ describe('SessionAdminListRequestSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            SessionAdminListRequestSchema.parse({ ...query, search: 'x' })
-        ).toThrow();
+        const result = SessionAdminListRequestSchema.safeParse({
+            ...query,
+            search: 'x',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects an isRevoked value that is neither true nor false', () => {
-        expect(() =>
-            SessionAdminListRequestSchema.parse({
-                ...query,
-                isRevoked: 'maybe',
-            })
-        ).toThrow();
+        const result = SessionAdminListRequestSchema.safeParse({
+            ...query,
+            isRevoked: 'maybe',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['isRevoked'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -71,15 +81,25 @@ describe('SessionAdminListRequestSchema', () => {
         'updatedAt',
     ])('rejects the orderBy %s', orderBy => {
         expect(
-            SessionAdminListRequestSchema.safeParse({ orderBy }).success
-        ).toBe(false);
+            SessionAdminListRequestSchema.safeParse({ orderBy }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             SessionAdminListRequestSchema.safeParse({
                 orderBy: ['latest', 'latest'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

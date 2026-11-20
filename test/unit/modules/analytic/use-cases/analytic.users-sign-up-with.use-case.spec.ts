@@ -20,8 +20,6 @@ describe('AnalyticUsersSignUpWithUseCase', () => {
     let useCase: AnalyticUsersSignUpWithUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AnalyticUsersSignUpWithUseCase,

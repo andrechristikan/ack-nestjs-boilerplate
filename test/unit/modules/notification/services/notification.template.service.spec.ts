@@ -148,7 +148,6 @@ describe('NotificationTemplateService', () => {
     let service: NotificationTemplateService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         const module = await Test.createTestingModule({
             providers: [
                 NotificationTemplateService,

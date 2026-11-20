@@ -13,7 +13,7 @@ argument-hint: "<named doc files, a .scratch/ plan or requirement path, or 'all'
 
 Input: $ARGUMENTS
 
-The session assigns one `writer` dispatch, then a reader test of what it added. The owner settles a scope question and each CONFLICT. The session edits no doc itself. The code on disk wins over a doc. Final state only: `.claude/rules/authoring.md`. Every Agent call runs in the foreground.
+The session assigns one `writer` dispatch, then a reader test of what it added. The owner settles a scope question and each CONFLICT. The session edits no doc itself. The code on disk wins over a doc. Final state only: `.claude/rules/authoring.md`.
 
 ## 1. Scope
 
@@ -33,8 +33,6 @@ The session assigns one `writer` dispatch, then a reader test of what it added. 
 | `.github/ISSUE_TEMPLATE/*` | advisory URL, contributing path, docs path |
 | `.github/dependabot.yml` | lockfile ecosystem against `package.json` |
 
-`docs/status-codes.md` takes the numbers a build handed back; it is not re-derived here.
-
 ## 2. Dispatch `writer`
 
 ```
@@ -42,13 +40,9 @@ Agent: writer
 Scope: <the files from step 1>
 Context: <what changed recently, when the owner said>
 Diagram: <name and subject, when the owner asked for one | none>
-Acceptance: every claim classified ACCURATE, STALE, MISSING, PHANTOM, CONTRADICTS, or
-  CONFLICT; the first five repaired in place against the code on disk; CONFLICT left
-  unresolved and reported with the evidence for both sides. Final state only.
-Rules to read: <the output of bash .claude/hooks/rules.sh over the paths in Scope, pasted>
-Report: findings by class (shape: .claude/skills/ack-doc/references/example-writer-report.md),
-  files changed, every CONFLICT with its evidence, the reader questions predicted per page
-  created or section added, and for a diagram its paths under docs/assets/.
+Acceptance: every claim classified and handled as .claude/agents/writer.md gives. Final state only.
+Report: as .claude/agents/writer.md, Finish and hand back, gives
+  (shape: .claude/skills/ack-doc/references/example-writer-report.md).
 ```
 
 ## 3. Reader test
@@ -69,16 +63,9 @@ Report: per question, the answer with its line, or "not answered"; every assumpt
 
 ## 4. Resolve each CONFLICT
 
-A CONFLICT is a doc and the code disagreeing about a decision, where the code may be the one that is wrong: authorization, credentials, session invalidation, a guard the doc says exists.
-
 - Put each one to the owner with `AskUserQuestion`, the evidence for both sides as the context.
 - The doc is wrong: one repair dispatch to `writer`.
 - The code is suspected wrong: the doc stays as it is; name `/ack-debug` with the symptom.
-
-## Boundaries
-
-- No `src/`, `test/`, `.claude/`, `prisma/`, `docs/ai-harness.md`, or `.github/copilot-instructions.md`.
-- No database or seed command.
 
 ## Hand back
 
@@ -87,7 +74,7 @@ A CONFLICT is a doc and the code disagreeing about a decision, where the code ma
 - The reader-test result per file, or the line that the step was skipped; each finding and its state (fixed, rejected with the reason, open).
 - The diagram paths, when one was drawn.
 - One line per thing noticed outside the scope.
-- The proposed commit subject, `<type>(<scope>): <description>` per `.commitlintrc`; omit it when Next is `/ack-debug`.
+- The proposed commit subject (`.claude/CLAUDE.md`, Etiquette); omit it when Next is `/ack-debug`.
 
 ## Next
 

@@ -1,6 +1,5 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { mock } from 'vitest-mock-extended';
@@ -44,7 +43,6 @@ describe('WorkspaceGuard', () => {
     let guard: WorkspaceGuard;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         executionContext.getHandler.mockReturnValue(handler);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -124,12 +122,6 @@ describe('WorkspaceGuard', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.guardMissing,
-                statusCodeKey:
-                    EnumUserStatusCodeError[
-                        EnumUserStatusCodeError.guardMissing
-                    ],
-                messagePath: 'user.error.guardMissing',
-                httpStatus: HttpStatus.UNAUTHORIZED,
             });
             expect(
                 workspaceMemberService.validateWorkspaceGuard

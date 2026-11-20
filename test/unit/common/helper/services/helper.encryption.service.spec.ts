@@ -89,11 +89,6 @@ describe('HelperEncryptionService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.encryptionSecretInvalid,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.encryptionSecretInvalid
-                    ],
-                messagePath: 'helper.error.encryptionSecretInvalid',
             });
         });
     });
@@ -110,11 +105,6 @@ describe('HelperEncryptionService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.decryptFailed,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.decryptFailed
-                    ],
-                messagePath: 'helper.error.decryptFailed',
             });
         });
 
@@ -145,11 +135,6 @@ describe('HelperEncryptionService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.decryptFailed,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.decryptFailed
-                    ],
-                messagePath: 'helper.error.decryptFailed',
             });
         });
 
@@ -180,11 +165,6 @@ describe('HelperEncryptionService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.decryptFailed,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.decryptFailed
-                    ],
-                messagePath: 'helper.error.decryptFailed',
             });
         });
 
@@ -215,11 +195,6 @@ describe('HelperEncryptionService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.decryptFailed,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.decryptFailed
-                    ],
-                messagePath: 'helper.error.decryptFailed',
             });
         });
 
@@ -250,11 +225,6 @@ describe('HelperEncryptionService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.decryptFailed,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.decryptFailed
-                    ],
-                messagePath: 'helper.error.decryptFailed',
             });
         });
 
@@ -288,11 +258,6 @@ describe('HelperEncryptionService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.decryptFailed,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.decryptFailed
-                    ],
-                messagePath: 'helper.error.decryptFailed',
             });
         });
 
@@ -326,11 +291,6 @@ describe('HelperEncryptionService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.decryptFailed,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.decryptFailed
-                    ],
-                messagePath: 'helper.error.decryptFailed',
             });
         });
 
@@ -364,11 +324,6 @@ describe('HelperEncryptionService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.decryptFailed,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.decryptFailed
-                    ],
-                messagePath: 'helper.error.decryptFailed',
             });
         });
 
@@ -405,11 +360,6 @@ describe('HelperEncryptionService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.decryptFailed,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.decryptFailed
-                    ],
-                messagePath: 'helper.error.decryptFailed',
             });
         });
 
@@ -436,11 +386,6 @@ describe('HelperEncryptionService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.decryptFailed,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.decryptFailed
-                    ],
-                messagePath: 'helper.error.decryptFailed',
             });
         });
 
@@ -467,11 +412,6 @@ describe('HelperEncryptionService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.decryptFailed,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.decryptFailed
-                    ],
-                messagePath: 'helper.error.decryptFailed',
             });
         });
     });
@@ -555,11 +495,6 @@ describe('HelperEncryptionService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.encryptionSecretInvalid,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.encryptionSecretInvalid
-                    ],
-                messagePath: 'helper.error.encryptionSecretInvalid',
             });
         });
 
@@ -576,11 +511,6 @@ describe('HelperEncryptionService', () => {
             expect(error).toMatchObject({
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.encryptionSecretInvalid,
-                statusCodeKey:
-                    EnumHelperStatusCodeError[
-                        EnumHelperStatusCodeError.encryptionSecretInvalid
-                    ],
-                messagePath: 'helper.error.encryptionSecretInvalid',
             });
         });
     });

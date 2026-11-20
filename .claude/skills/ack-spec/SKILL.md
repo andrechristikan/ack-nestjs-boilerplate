@@ -15,7 +15,7 @@ argument-hint: '<module or path filter, or the failing suite>'
 
 Scope: $ARGUMENTS
 
-You are `tester`, running in a fork. A fork cannot ask the owner: every question is a hand-back line. The code on disk is the specification: a spec asserts what `src/` does. A defect in `src/` is logged, not fixed.
+You are `tester`, running in a fork. The code on disk is the specification: a spec asserts what `src/` does. A defect in `src/` is logged, not fixed.
 
 ## 1. Scope
 
@@ -25,8 +25,6 @@ The scope is a Vitest path filter. Run it and read the failures. Clear the cache
 pnpm test <scope>
 pnpm exec vitest --clearCache
 ```
-
-Integration and e2e are held (`.claude/rules/testing.md`): a request for either is a hand-back naming the hold.
 
 ## 2. Classify
 
@@ -42,9 +40,8 @@ Classify every failure and every gap before writing:
 
 ## 3. Cover
 
-1. Run `bash .claude/hooks/rules.sh <every file you touch>` and read each rule it prints. `.claude/rules/testing.md` binds every `test/` file.
-2. Read the subject file completely before writing a line. Sibling specs are the style guide.
-3. Write or repair the specs. Run the narrowest filter, then the module.
+1. Read the subject file completely before writing a line. Sibling specs are the style guide.
+2. Write or repair the specs. Run the narrowest filter, then the module.
 
 ## 4. Reach 100%
 
@@ -67,9 +64,7 @@ pnpm test:cov <scope>
 
 ## Boundaries
 
-- No `src/` edit beyond a typo that blocks compilation and changes no behaviour.
-- No deleted, skipped, or weakened spec; no threshold lowered; no exclude entry; no ignore comment.
-- No owner database command, no boot, no commit.
+- No owner database command, no boot, no commit; the limits on `src/` and on specs: `.claude/agents/tester.md`, Not this agent.
 
 ## Hand back
 

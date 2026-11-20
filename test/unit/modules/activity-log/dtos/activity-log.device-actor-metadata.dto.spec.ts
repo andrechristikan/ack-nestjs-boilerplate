@@ -18,21 +18,36 @@ describe('ActivityLogDeviceActorMetadataSchema', () => {
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ActivityLogDeviceActorMetadataSchema.parse({
-                ...payload,
-                extra: true,
-            })
-        ).toThrow();
+        const result = ActivityLogDeviceActorMetadataSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a missing field', () => {
-        expect(() =>
-            ActivityLogDeviceActorMetadataSchema.parse({
-                targetUserId: 'user-1',
-                targetUsername: 'jane',
-                timestamp,
-            })
-        ).toThrow();
+        const result = ActivityLogDeviceActorMetadataSchema.safeParse({
+            targetUserId: 'user-1',
+            targetUsername: 'jane',
+            timestamp,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['deviceOwnershipId'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['deviceId'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({
+                path: ['sessionCount'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

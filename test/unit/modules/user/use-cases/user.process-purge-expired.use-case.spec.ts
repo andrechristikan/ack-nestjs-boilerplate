@@ -25,7 +25,6 @@ describe('UserProcessPurgeExpiredUseCase', () => {
     let useCase: UserProcessPurgeExpiredUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         messageService.setMessage.mockImplementation((path: string) => path);
 
         const module: TestingModule = await Test.createTestingModule({

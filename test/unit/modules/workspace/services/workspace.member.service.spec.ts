@@ -5,13 +5,13 @@ import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
@@ -47,12 +47,20 @@ import { WorkspaceMemberRepository } from '@modules/workspace/repositories/works
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import {
-    buildUser,
-    buildRequestContext,
     buildApiKeyContext,
-    buildUserContext,
     buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+    buildWorkspace,
+    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('WorkspaceMemberService', () => {
     const workspaceMemberRepository: MockProxy<WorkspaceMemberRepository> =
@@ -61,7 +69,6 @@ describe('WorkspaceMemberService', () => {
         mock<WorkspaceRepository>();
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
-    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
@@ -78,32 +85,12 @@ describe('WorkspaceMemberService', () => {
     let service: WorkspaceMemberService;
 
     const baseMember: WorkspaceMember = {
-        id: 'member-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        workspaceId: 'workspace-1',
-        userId: 'user-1',
+        ...buildWorkspaceMember('user-1'),
         role: EnumWorkspaceMemberRole.member,
-        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
-    const workspace: Workspace = {
-        id: 'workspace-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        name: 'Acme',
-        slug: 'acme-team',
-        description: null,
-        isPublic: false,
-    };
+    const workspace: Workspace = buildWorkspace();
 
     beforeEach(async () => {
-        vi.resetAllMocks();
         featureFlagService.getMetadataNumber.mockResolvedValue(5);
         activityLogService.recordEffect
             .mockReturnValueOnce(firstEntry)
@@ -122,7 +109,11 @@ describe('WorkspaceMemberService', () => {
                 },
                 { provide: WorkspaceRepository, useValue: workspaceRepository },
                 { provide: WorkspaceService, useValue: workspaceService },
-                { provide: DatabaseUtil, useValue: databaseUtil },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: FeatureFlagService, useValue: featureFlagService },
@@ -145,11 +136,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceMemberForbiddenException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberForbidden
-                    ],
-                messagePath: 'workspace.error.memberForbidden',
             });
             expect(
                 workspaceRepository.findActiveByIdWithMember
@@ -166,11 +152,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceHeaderMissingException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.headerMissing,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.headerMissing
-                    ],
-                messagePath: 'workspace.error.headerMissing',
             });
             expect(
                 workspaceRepository.findActiveByIdWithMember
@@ -188,11 +169,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.notFound
-                    ],
-                messagePath: 'workspace.error.notFound',
             });
         });
 
@@ -210,11 +186,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceRoleForbiddenException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.roleForbidden
-                    ],
-                messagePath: 'workspace.error.roleForbidden',
             });
         });
 
@@ -366,11 +337,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceSelfTransferException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.selfTransfer,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.selfTransfer
-                    ],
-                messagePath: 'workspace.error.selfTransfer',
             });
         });
 
@@ -392,7 +358,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-                messagePath: 'workspace.error.memberNotFound',
             });
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
@@ -430,7 +395,6 @@ describe('WorkspaceMemberService', () => {
                     module: 'workspace',
                     statusCode:
                         EnumWorkspaceStatusCodeError.transferTargetInactive,
-                    messagePath: 'workspace.error.transferTargetInactive',
                 });
                 expect(
                     workspaceMemberRepository.findOneByWorkspaceAndUserWithUser
@@ -462,11 +426,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceCapReachedException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.capReached,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.capReached
-                    ],
-                messagePath: 'workspace.error.capReached',
             });
             expect(workspaceService.countOwnedInTx).toHaveBeenCalledWith(
                 tx,
@@ -665,11 +624,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceMemberPeerForbiddenException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.memberPeerForbidden
-                    ],
-                messagePath: 'workspace.error.memberPeerForbidden',
             });
             expect(
                 workspaceMemberRepository.demoteOwnerInTx
@@ -707,11 +661,10 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
                 activeTarget
             );
-            const conflict = new Error('write-conflict');
-            outboxService.withTransaction.mockRejectedValue(conflict);
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
+            const conflict = buildPrismaKnownRequestError(
+                DatabaseWriteConflictCode
             );
+            outboxService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 service.transferOwnership(
@@ -728,7 +681,6 @@ describe('WorkspaceMemberService', () => {
 
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
-            expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
         });
 
         it('wraps any other transaction error in AppUnknownException', async () => {
@@ -736,7 +688,6 @@ describe('WorkspaceMemberService', () => {
                 activeTarget
             );
             outboxService.withTransaction.mockRejectedValue(new Error('boom'));
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.transferOwnership(
@@ -901,7 +852,6 @@ describe('WorkspaceMemberService', () => {
                     module: 'workspace',
                     statusCode:
                         EnumWorkspaceStatusCodeError.transferTargetInactive,
-                    messagePath: 'workspace.error.transferTargetInactive',
                 });
                 expect(
                     featureFlagService.getMetadataNumber
@@ -1042,11 +992,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceLastOwnerException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.lastOwner,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.lastOwner
-                    ],
-                messagePath: 'workspace.error.lastOwner',
             });
             expect(
                 workspaceMemberRepository.removeMemberInTx
@@ -1074,7 +1019,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-                messagePath: 'workspace.error.memberNotFound',
             });
         });
     });
@@ -1176,7 +1120,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-                messagePath: 'workspace.error.memberNotFound',
             });
             expect(
                 workspaceMemberRepository.updateRoleInTx
@@ -1230,7 +1173,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceMemberPeerForbiddenException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-                messagePath: 'workspace.error.memberPeerForbidden',
             });
             expect(
                 workspaceMemberRepository.updateRoleInTx
@@ -1325,12 +1267,11 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
                 target
             );
-            const conflict = new Error('write-conflict');
+            const conflict = buildPrismaKnownRequestError(
+                DatabaseWriteConflictCode
+            );
             workspaceMemberRepository.updateRoleInTx.mockRejectedValue(
                 conflict
-            );
-            databaseUtil.toException.mockReturnValue(
-                new DatabaseWriteConflictException()
             );
 
             await expect(
@@ -1358,7 +1299,6 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.updateRoleInTx.mockRejectedValue(
                 new Error('boom')
             );
-            databaseUtil.toException.mockReturnValue(null);
 
             await expect(
                 service.updateMemberRole(
@@ -1401,7 +1341,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-                messagePath: 'workspace.error.memberNotFound',
             });
             expect(
                 workspaceMemberRepository.removeMemberInTx
@@ -1443,7 +1382,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceMemberPeerForbiddenException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-                messagePath: 'workspace.error.memberPeerForbidden',
             });
             expect(
                 workspaceMemberRepository.removeMemberInTx
@@ -1523,11 +1461,6 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.notFound
-                    ],
-                messagePath: 'workspace.error.notFound',
             });
         });
 

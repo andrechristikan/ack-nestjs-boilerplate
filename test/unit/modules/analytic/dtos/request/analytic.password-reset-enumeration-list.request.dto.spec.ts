@@ -28,25 +28,32 @@ describe('AnalyticPasswordResetEnumerationListRequestSchema', () => {
         expect(
             AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
                 windowMs: '600000',
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            AnalyticPasswordResetEnumerationListRequestSchema.parse({
+        const result =
+            AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
                 page: 1,
                 extra: true,
-            })
-        ).toThrow();
+            });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects search', () => {
         expect(
             AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
                 search: 'x',
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('keeps the preset names in the orderBy description', () => {
@@ -86,15 +93,25 @@ describe('AnalyticPasswordResetEnumerationListRequestSchema', () => {
         expect(
             AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
                 orderBy,
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 
     it('rejects a repeated orderBy', () => {
         expect(
             AnalyticPasswordResetEnumerationListRequestSchema.safeParse({
                 orderBy: ['mostCount', 'mostCount'],
-            }).success
-        ).toBe(false);
+            }).error?.issues
+        ).toEqual([
+            expect.objectContaining({
+                path: ['orderBy'],
+                code: 'invalid_union',
+            }),
+        ]);
     });
 });

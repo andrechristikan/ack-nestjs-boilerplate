@@ -1,5 +1,10 @@
+import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { CacheService } from '@common/cache/services/cache.service';
-import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -18,10 +23,6 @@ describe('AnalyticTermPolicyService', () => {
         dashboardTtlInMs,
     });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const analyticDateUtil: MockProxy<AnalyticDateUtil> =
-        mock<AnalyticDateUtil>();
-    const helperNumberService: MockProxy<HelperNumberService> =
-        mock<HelperNumberService>();
     const analyticTermPolicyRepository: MockProxy<AnalyticTermPolicyRepository> =
         mock<AnalyticTermPolicyRepository>();
 
@@ -33,11 +34,6 @@ describe('AnalyticTermPolicyService', () => {
     let service: AnalyticTermPolicyService;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        analyticDateUtil.cacheToken.mockImplementation((date: Date | null) =>
-            date ? date.toISOString() : '_'
-        );
         analyticCache.buildDashboardKey.mockImplementation(
             (metric, start, end) => `${metric}:${start}:${end}`
         );
@@ -50,8 +46,16 @@ describe('AnalyticTermPolicyService', () => {
                 AnalyticTermPolicyService,
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: CacheService, useValue: cacheService },
-                { provide: AnalyticDateUtil, useValue: analyticDateUtil },
-                { provide: HelperNumberService, useValue: helperNumberService },
+                AnalyticDateUtil,
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'analytic.cache.windowTokenPattern':
+                            'Window:{start}:{end}',
+                    }),
+                },
                 {
                     provide: AnalyticTermPolicyRepository,
                     useValue: analyticTermPolicyRepository,
@@ -67,7 +71,6 @@ describe('AnalyticTermPolicyService', () => {
             analyticTermPolicyRepository.findAcceptanceCounts.mockResolvedValue(
                 { published: 2, acceptances: 40, users: 20 }
             );
-            helperNumberService.percent.mockReturnValue(100);
 
             const result = await service.termPoliciesAcceptanceRate(
                 startDate,
@@ -90,7 +93,6 @@ describe('AnalyticTermPolicyService', () => {
                 startDate,
                 endDate
             );
-            expect(helperNumberService.percent).toHaveBeenCalledWith(40, 40);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 `${EnumAnalyticDashboardMetric.termPoliciesAcceptance}:${startToken}:${endToken}`,
                 AnalyticTermPolicyAcceptanceRateCacheSchema,
@@ -103,7 +105,6 @@ describe('AnalyticTermPolicyService', () => {
             analyticTermPolicyRepository.findAcceptanceCounts.mockResolvedValue(
                 { published: 0, acceptances: 0, users: 20 }
             );
-            helperNumberService.percent.mockReturnValue(0);
 
             const result = await service.termPoliciesAcceptanceRate(null, null);
 
@@ -116,7 +117,6 @@ describe('AnalyticTermPolicyService', () => {
             expect(
                 analyticTermPolicyRepository.findAcceptanceCounts
             ).toHaveBeenCalledWith(TermPolicyDefaultRequiredTypes, null, null);
-            expect(helperNumberService.percent).toHaveBeenCalledWith(0, 0);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 `${EnumAnalyticDashboardMetric.termPoliciesAcceptance}:_:_`,
                 AnalyticTermPolicyAcceptanceRateCacheSchema,

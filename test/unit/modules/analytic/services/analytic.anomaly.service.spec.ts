@@ -1,7 +1,7 @@
 import { CacheService } from '@common/cache/services/cache.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ConfigService } from '@nestjs/config';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
@@ -19,15 +19,13 @@ import { EnumAnalyticAnomalySignal } from '@modules/analytic/enums/analytic.enum
 import { AnalyticAnomalyRepository } from '@modules/analytic/repositories/analytic.anomaly.repository';
 import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
-import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
 import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 import { createAnalyticAnomalyService } from '@test/unit/helpers/test.unit.analytic.helper';
-import type { IAnalyticAnomalyServiceDoubles } from '@test/unit/helpers/test.unit.analytic.helper';
 
 describe('AnalyticAnomalyService', () => {
     const anomalySummaryTtlInMs = 900000;
@@ -37,16 +35,7 @@ describe('AnalyticAnomalyService', () => {
         liveSummaryTtlInMs,
     });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const analyticDateUtil: MockProxy<AnalyticDateUtil> =
-        mock<AnalyticDateUtil>();
-    const analyticFraudUtil: MockProxy<AnalyticFraudUtil> =
-        mock<AnalyticFraudUtil>();
-    const configGet = vi.fn<(key: string) => number | string | undefined>();
-    const configService: MockProxy<ConfigService> = mock<ConfigService>({
-        get: configGet as ConfigService['get'],
-    });
-    const helperDateService: MockProxy<HelperDateService> =
-        mock<HelperDateService>();
+    let configService: MockProxy<ConfigService>;
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
     const analyticSnapshotService: MockProxy<AnalyticSnapshotService> =
@@ -57,7 +46,14 @@ describe('AnalyticAnomalyService', () => {
     const startDate: Date = new Date('2026-01-01T00:00:00.000Z');
     const endDate: Date = new Date('2026-02-01T00:00:00.000Z');
     const now: Date = new Date('2026-03-01T00:00:00.000Z');
-    const range = { startDate, endDate: now };
+    const loginSpikeRange = {
+        startDate: new Date('2026-02-28T23:50:00.000Z'),
+        endDate: now,
+    };
+    const lookbackRange = {
+        startDate: new Date('2026-01-30T00:00:00.000Z'),
+        endDate: now,
+    };
     const pagination = { skip: 0, limit: 20, orderBy: [] };
     const offsetPage = {
         type: EnumPaginationType.offset as const,
@@ -72,45 +68,44 @@ describe('AnalyticAnomalyService', () => {
 
     let service: AnalyticAnomalyService;
 
-    const doubles: IAnalyticAnomalyServiceDoubles = {
-        analyticCache,
-        cacheService,
-        analyticDateUtil,
-        analyticFraudUtil,
-        configService,
-        helperDateService,
-        featureFlagService,
-        analyticSnapshotService,
-        analyticAnomalyRepository,
-    };
+    beforeAll(() => {
+        vi.useFakeTimers();
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
-        configGet.mockImplementation((key: string) => {
-            const values: Record<string, number | string> = {
-                'analytic.anomaly.impossibleTravel.minDistanceKm': 500,
-                'analytic.anomaly.impossibleTravel.maxDeltaInMs': 3600000,
-                'analytic.anomaly.loginSpikeIp.minUniqueAccounts': 2,
-                'analytic.anomaly.loginSpikeIp.windowInMs': 600000,
-                'analytic.anomaly.lookbackInMs': 2592000000,
-                'analytic.anomaly.deviceProliferation.zScoreThreshold': 3,
-                'app.timezone': 'Asia/Jakarta',
-            };
-            return values[key];
+        configService = buildConfigService({
+            ...TestUnitKitConfigValues,
+            'analytic.cache.windowTokenPattern': '{start}:{end}',
+            'analytic.fraud.nearLockoutOffset': 1,
+            'analytic.anomaly.impossibleTravel.minDistanceKm': 500,
+            'analytic.anomaly.impossibleTravel.maxDeltaInMs': 3600000,
+            'analytic.anomaly.loginSpikeIp.minUniqueAccounts': 2,
+            'analytic.anomaly.loginSpikeIp.windowInMs': 600000,
+            'analytic.anomaly.lookbackInMs': 2592000000,
+            'analytic.anomaly.deviceProliferation.zScoreThreshold': 3,
+            'app.timezone': 'Asia/Jakarta',
         });
         featureFlagService.getMetadataNumber.mockResolvedValue(5);
-        analyticFraudUtil.nearLockoutThreshold.mockReturnValue(4);
         analyticCache.buildAnomalySummaryKey.mockImplementation(
             (signal, window) => `${signal}:${window}`
         );
         cacheService.readThrough.mockImplementation(
             async (_key, _schema, _ttlInMs, loader) => loader()
         );
-        analyticDateUtil.windowRange.mockReturnValue(range);
-        helperDateService.create.mockReturnValue(now);
+        vi.setSystemTime(now);
 
-        service = await createAnalyticAnomalyService(doubles);
+        service = await createAnalyticAnomalyService({
+            analyticCache,
+            cacheService,
+            configService,
+            featureFlagService,
+            analyticSnapshotService,
+            analyticAnomalyRepository,
+        });
     });
 
     describe('impossibleTravelSummary', () => {
@@ -205,18 +200,17 @@ describe('AnalyticAnomalyService', () => {
 
             expect(result).toEqual({
                 count: 3,
-                windowStart: startDate,
+                windowStart: loginSpikeRange.startDate,
                 windowEnd: now,
                 computedAt: null,
                 metadata: { minUniqueAccounts: 2 },
             });
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(600000);
             expect(
                 analyticAnomalyRepository.countLoginSpikeIp
             ).toHaveBeenCalledTimes(1);
             expect(
                 analyticAnomalyRepository.countLoginSpikeIp
-            ).toHaveBeenCalledWith(range, 2);
+            ).toHaveBeenCalledWith(loginSpikeRange, 2);
         });
 
         it('returns the cached answer without a count on a hit', async () => {
@@ -247,10 +241,9 @@ describe('AnalyticAnomalyService', () => {
             const result = await service.loginSpikeIpList(pagination);
 
             expect(result).toBe(offsetPage);
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(600000);
             expect(
                 analyticAnomalyRepository.findLoginSpikeIpOffset
-            ).toHaveBeenCalledWith(range, 2, pagination);
+            ).toHaveBeenCalledWith(loginSpikeRange, 2, pagination);
         });
     });
 
@@ -312,9 +305,6 @@ describe('AnalyticAnomalyService', () => {
                 featureFlagService.getMetadataNumber.mockResolvedValue(
                     maxAttempt
                 );
-                analyticFraudUtil.nearLockoutThreshold.mockReturnValue(
-                    minAttempt
-                );
                 analyticAnomalyRepository.countNearLockout.mockResolvedValue(0);
 
                 const result = await service.failedLoginSpikeSummary();
@@ -325,9 +315,6 @@ describe('AnalyticAnomalyService', () => {
                     EnumFeatureFlagKey.loginWithCredential,
                     EnumFeatureFlagMetadataKey.passwordMaxAttempts
                 );
-                expect(
-                    analyticFraudUtil.nearLockoutThreshold
-                ).toHaveBeenCalledWith(maxAttempt);
                 expect(
                     analyticAnomalyRepository.countNearLockout
                 ).toHaveBeenCalledWith(minAttempt, now);
@@ -362,9 +349,6 @@ describe('AnalyticAnomalyService', () => {
             expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.loginWithCredential,
                 EnumFeatureFlagMetadataKey.passwordMaxAttempts
-            );
-            expect(analyticFraudUtil.nearLockoutThreshold).toHaveBeenCalledWith(
-                5
             );
             expect(
                 analyticAnomalyRepository.findNearLockoutOffset
@@ -463,15 +447,12 @@ describe('AnalyticAnomalyService', () => {
             expect(result).toEqual({
                 items,
                 metadata: { minDistanceKm: 500, maxDeltaInMs: 3600000 },
-                windowStart: startDate,
+                windowStart: lookbackRange.startDate,
                 windowEnd: now,
             });
-            expect(analyticDateUtil.windowRange).toHaveBeenCalledWith(
-                2592000000
-            );
             expect(
                 analyticAnomalyRepository.findImpossibleTravel
-            ).toHaveBeenCalledWith(range, {
+            ).toHaveBeenCalledWith(lookbackRange, {
                 minDistanceKm: 500,
                 maxDeltaInMs: 3600000,
             });

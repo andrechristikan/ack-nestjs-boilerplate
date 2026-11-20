@@ -43,8 +43,6 @@ describe('PolicyListByRoleUseCase', () => {
     let useCase: PolicyListByRoleUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 PolicyListByRoleUseCase,

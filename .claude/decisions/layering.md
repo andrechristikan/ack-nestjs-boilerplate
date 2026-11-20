@@ -175,6 +175,32 @@ Rule: `testing.md`, Unit.
 
 - Four fields in every caller block: the exception's own spec already pins every field, so a caller repeats them and catches nothing more.
 
+### A unit spec runs the helpers and utils for real
+
+Rule: `test-doubles.md`.
+
+- Every collaborator doubled: a spec then asserts its own stub, and a helper bug passes every caller's spec.
+- A real `MessageService`: it needs the i18n runtime and its language files.
+- A real `PaginationService`: it runs the page query on the Prisma delegate it is handed.
+- A real repository or `DatabaseService`: that is the held integration suite.
+- A `vi.spyOn` stub on a deterministic helper method to reach a `src/` branch: the branch no real input reaches is dead code, and the stub hides it (`AuthJwtService.remainingSeconds`).
+
+### Mock reset and restore come from the unit project config
+
+Rule: `testing.md`, Unit.
+
+- A `vi.resetAllMocks()` and `vi.restoreAllMocks()` hook in every spec: order independence then rests on each of several hundred files remembering it.
+
+### Each unit spec file runs isolated, on the default pool with four workers
+
+Rule: `testing.md`, Unit.
+
+- `isolate: false`: a module mock in one file leaked into the next file a worker ran, failing an unrelated spec under a shuffled order, and only a hand-written cleanup rule guarded it.
+- An isolated project only for the specs that mock modules: the config would scan spec contents to split two projects, for a few seconds per run.
+- The `threads` pool: a few seconds faster, but the default `forks` pool is the most compatible with native modules and `process` APIs.
+- The `vmThreads` and `vmForks` pools: `instanceof` breaks across VM contexts, and the exception filters and Prisma error mapping rely on it.
+- More workers: measured barely faster, since loading each file's modules dominates, and they slow the machine.
+
 ## Logging line shape
 
 ### A line carrying an error or fields is object-first

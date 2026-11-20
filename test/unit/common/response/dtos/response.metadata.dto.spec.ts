@@ -31,19 +31,40 @@ describe('ResponseMetadataSchema', () => {
     it('rejects a missing required field', () => {
         const { language: _language, ...incomplete } = payload;
 
-        expect(() => ResponseMetadataSchema.parse(incomplete)).toThrow();
+        const result = ResponseMetadataSchema.safeParse(incomplete);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['language'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 
     it('rejects a missing requestId', () => {
         const { requestId: _requestId, ...incomplete } = payload;
 
-        expect(() => ResponseMetadataSchema.parse(incomplete)).toThrow();
+        const result = ResponseMetadataSchema.safeParse(incomplete);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['requestId'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('rejects a missing correlationId', () => {
         const { correlationId: _correlationId, ...incomplete } = payload;
 
-        expect(() => ResponseMetadataSchema.parse(incomplete)).toThrow();
+        const result = ResponseMetadataSchema.safeParse(incomplete);
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['correlationId'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 
     it('accepts a null requestId', () => {
@@ -65,8 +86,16 @@ describe('ResponseMetadataSchema', () => {
     });
 
     it('rejects a language outside the enum', () => {
-        expect(() =>
-            ResponseMetadataSchema.parse({ ...payload, language: 'klingon' })
-        ).toThrow();
+        const result = ResponseMetadataSchema.safeParse({
+            ...payload,
+            language: 'klingon',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['language'],
+                code: 'invalid_value',
+            }),
+        ]);
     });
 });

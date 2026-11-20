@@ -14,14 +14,27 @@ describe('ActivityLogPolicyMetadataSchema', () => {
     });
 
     it('rejects a payload missing a declared field', () => {
-        expect(() =>
-            ActivityLogPolicyMetadataSchema.parse({ roleId: 'role-1' })
-        ).toThrow();
+        const result = ActivityLogPolicyMetadataSchema.safeParse({
+            roleId: 'role-1',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['subject'],
+                code: 'invalid_type',
+            }),
+            expect.objectContaining({ path: ['action'], code: 'invalid_type' }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            ActivityLogPolicyMetadataSchema.parse({ ...payload, extra: true })
-        ).toThrow();
+        const result = ActivityLogPolicyMetadataSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

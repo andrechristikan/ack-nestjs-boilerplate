@@ -30,9 +30,11 @@ describe('AnalyticFraudSummaryResponseSchema', () => {
                 unknown
             >;
 
-            expect(() =>
-                AnalyticFraudSummaryResponseSchema.parse(rest)
-            ).toThrow();
+            const result = AnalyticFraudSummaryResponseSchema.safeParse(rest);
+
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({ path: [key], code: 'invalid_type' }),
+            ]);
         }
     );
 
@@ -53,11 +55,16 @@ describe('AnalyticFraudSummaryResponseSchema', () => {
     });
 
     it('rejects the former window string', () => {
-        expect(() =>
-            AnalyticFraudSummaryResponseSchema.parse({
-                ...summary,
-                windowStart: '3600000',
-            })
-        ).toThrow();
+        const result = AnalyticFraudSummaryResponseSchema.safeParse({
+            ...summary,
+            windowStart: '3600000',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['windowStart'],
+                code: 'invalid_type',
+            }),
+        ]);
     });
 });

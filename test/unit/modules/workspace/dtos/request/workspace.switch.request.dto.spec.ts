@@ -10,14 +10,30 @@ describe('WorkspaceSwitchRequestSchema', () => {
     });
 
     it('rejects a workspaceId that is not a MongoID', () => {
-        expect(() =>
-            WorkspaceSwitchRequestSchema.parse({ workspaceId: 'not-an-id' })
-        ).toThrow();
+        const result = WorkspaceSwitchRequestSchema.safeParse({
+            workspaceId: 'not-an-id',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['workspaceId'],
+                code: 'too_small',
+            }),
+            expect.objectContaining({
+                path: ['workspaceId'],
+                code: 'invalid_format',
+            }),
+        ]);
     });
 
     it('rejects an undeclared key', () => {
-        expect(() =>
-            WorkspaceSwitchRequestSchema.parse({ ...payload, extra: true })
-        ).toThrow();
+        const result = WorkspaceSwitchRequestSchema.safeParse({
+            ...payload,
+            extra: true,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

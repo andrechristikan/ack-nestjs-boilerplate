@@ -12,29 +12,35 @@ describe('UserUpdateProfilePhotoRequestSchema', () => {
     });
 
     it('rejects a size', () => {
-        expect(() =>
-            UserUpdateProfilePhotoRequestSchema.parse({
-                ...payload,
-                size: 102400,
-            })
-        ).toThrow();
+        const result = UserUpdateProfilePhotoRequestSchema.safeParse({
+            ...payload,
+            size: 102400,
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 
     it('rejects a key failing the object key pattern', () => {
-        expect(() =>
-            UserUpdateProfilePhotoRequestSchema.parse({
-                ...payload,
-                key: 'not a valid key!',
-            })
-        ).toThrow();
+        const result = UserUpdateProfilePhotoRequestSchema.safeParse({
+            ...payload,
+            key: 'not a valid key!',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['key'], code: 'invalid_format' }),
+        ]);
     });
 
     it('rejects an undeclared extension key', () => {
-        expect(() =>
-            UserUpdateProfilePhotoRequestSchema.parse({
-                ...payload,
-                extension: 'jpg',
-            })
-        ).toThrow();
+        const result = UserUpdateProfilePhotoRequestSchema.safeParse({
+            ...payload,
+            extension: 'jpg',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
     });
 });

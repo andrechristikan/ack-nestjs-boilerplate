@@ -12,8 +12,6 @@ describe('UserCheckUsernameUseCase', () => {
     let useCase: UserCheckUsernameUseCase;
 
     beforeEach(async () => {
-        vi.resetAllMocks();
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserCheckUsernameUseCase,

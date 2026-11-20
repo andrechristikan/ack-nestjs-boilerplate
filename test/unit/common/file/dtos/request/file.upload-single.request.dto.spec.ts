@@ -14,16 +14,28 @@ describe('FileUploadSingleRequestSchema', () => {
         it('rejects an undeclared key', () => {
             const file = { originalname: 'a.csv' } as IFile;
 
-            expect(() =>
-                FileUploadSingleRequestSchema.parse({
-                    file,
-                    extra: 'unexpected',
-                })
-            ).toThrow();
+            const result = FileUploadSingleRequestSchema.safeParse({
+                file,
+                extra: 'unexpected',
+            });
+
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: [],
+                    code: 'unrecognized_keys',
+                }),
+            ]);
         });
 
         it('rejects a payload missing the file field', () => {
-            expect(() => FileUploadSingleRequestSchema.parse({})).toThrow();
+            const result = FileUploadSingleRequestSchema.safeParse({});
+
+            expect(result.error?.issues).toEqual([
+                expect.objectContaining({
+                    path: ['file'],
+                    code: 'invalid_type',
+                }),
+            ]);
         });
     });
 });
