@@ -23,7 +23,7 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { Country, WorkspaceInvite } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
@@ -39,7 +39,7 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import type { INotificationVerificationLinkContext } from '@modules/notification/interfaces/notification.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -91,8 +91,8 @@ describe('UserSignUpUseCase', () => {
         mock<AuthPasswordService>();
     const userRegistrationService: MockProxy<UserRegistrationService> =
         mock<UserRegistrationService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
         mock<TermPolicyAcceptanceService>();
     const workspaceService: MockProxy<WorkspaceService> =
@@ -103,8 +103,8 @@ describe('UserSignUpUseCase', () => {
         mock<ProjectMemberService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const countryService: MockProxy<CountryService> = mock<CountryService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     let useCase: UserSignUpUseCase;
     let databaseUtil: DatabaseUtil;
@@ -287,8 +287,8 @@ describe('UserSignUpUseCase', () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        activityLogService.recordEffect.mockReturnValue(activityEntry);
-        notificationService.notify.mockImplementation(kind =>
+        activityLogQueue.recordEffect.mockReturnValue(activityEntry);
+        notificationQueue.notify.mockImplementation(kind =>
             kind === EnumNotificationKind.welcome
                 ? welcomeEffect
                 : verificationEffect
@@ -322,8 +322,8 @@ describe('UserSignUpUseCase', () => {
                 },
                 { provide: RoleService, useValue: roleService },
                 { provide: CountryService, useValue: countryService },
-                { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationService, useValue: notificationService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: NotificationQueue, useValue: notificationQueue },
                 UserCreateUtil,
                 UserVerificationUtil,
                 WorkspaceUtil,
@@ -403,7 +403,7 @@ describe('UserSignUpUseCase', () => {
                 expect.any(Function),
                 { timeout: 5000 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -411,13 +411,13 @@ describe('UserSignUpUseCase', () => {
                 null,
                 stageInput
             );
-            expect(notificationService.notify).toHaveBeenCalledTimes(2);
-            expect(notificationService.notify).toHaveBeenNthCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledTimes(2);
+            expect(notificationQueue.notify).toHaveBeenNthCalledWith(
                 1,
                 EnumNotificationKind.welcome,
                 { userId: 'user-bramble', proceedBy: 'user-bramble' }
             );
-            expect(notificationService.notify).toHaveBeenNthCalledWith(
+            expect(notificationQueue.notify).toHaveBeenNthCalledWith(
                 2,
                 EnumNotificationKind.verificationEmail,
                 verificationContext

@@ -10,7 +10,7 @@ import {
     EnumActivityLogAction,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { DeviceRemoveRequestDto } from '@modules/device/dtos/request/device.remove.request.dto';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { DeviceUtil } from '@modules/device/utils/device.util';
@@ -38,7 +38,7 @@ export class DeviceRemoveUseCase implements IAppUseCase<
         private readonly sessionService: SessionService,
         private readonly deviceUtil: DeviceUtil,
         private readonly userAuthService: UserAuthService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -102,7 +102,7 @@ export class DeviceRemoveUseCase implements IAppUseCase<
                     deviceOwnership,
                     revokedSessions.length
                 );
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

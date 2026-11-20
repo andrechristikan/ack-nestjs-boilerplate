@@ -3,10 +3,10 @@ import { RequestContextService } from '@common/request/services/request.context.
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationUserAgentDisplay } from '@modules/notification/interfaces/notification.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumActivityLogAction,
@@ -79,9 +79,9 @@ export class UserAuthService {
         private readonly authUtil: AuthUtil,
         private readonly sessionUtil: SessionUtil,
         private readonly outboxService: OutboxService,
-        private readonly notificationService: NotificationService,
+        private readonly notificationQueue: NotificationQueue,
         private readonly requestContextService: RequestContextService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -347,7 +347,7 @@ export class UserAuthService {
         }
         if (mfa !== null) {
             await this.mfaService.completeInTx(tx, authContext.userId, mfa);
-            const entry = this.activityLogService.recordEffect(
+            const entry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -425,7 +425,7 @@ export class UserAuthService {
             tx,
             user.id
         );
-        const entry = this.activityLogService.recordEffect(
+        const entry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
             null,
@@ -518,7 +518,7 @@ export class UserAuthService {
         );
 
         const effects: IOutboxEffect[] = [
-            this.activityLogService.recordEffect(
+            this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -536,7 +536,7 @@ export class UserAuthService {
                     user.id,
                     sessions.length
                 );
-            const revokeEntry = this.activityLogService.recordEffect(
+            const revokeEntry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -559,7 +559,7 @@ export class UserAuthService {
                 requestLog.geoLocation
             );
             const display = this.toUserAgentDisplay(requestLog.userAgent);
-            const newDevice = this.notificationService.notify(
+            const newDevice = this.notificationQueue.notify(
                 EnumNotificationKind.newDeviceLogin,
                 {
                     userId: user.id,

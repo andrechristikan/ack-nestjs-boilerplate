@@ -14,7 +14,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     buildApiKeyContext,
     buildRequestContext,
@@ -52,7 +52,7 @@ import {
     EnumNotificationProcess,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
@@ -64,12 +64,12 @@ describe('UserPasswordService', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
 
     let service: UserPasswordService;
     let helperStringService: HelperStringService;
@@ -134,16 +134,13 @@ describe('UserPasswordService', () => {
                 HelperDateService,
                 { provide: UserService, useValue: userService },
                 { provide: OutboxService, useValue: outboxService },
-                {
-                    provide: NotificationService,
-                    useValue: notificationService,
-                },
+                { provide: NotificationQueue, useValue: notificationQueue },
                 DatabaseUtil,
                 AuthPasswordUtil,
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 {
-                    provide: ActivityLogService,
-                    useValue: activityLogService,
+                    provide: ActivityLogQueue,
+                    useValue: activityLogQueue,
                 },
                 { provide: MessageService, useValue: messageService },
                 {
@@ -390,14 +387,14 @@ describe('UserPasswordService', () => {
             ).toHaveBeenCalledWith(tx, 'user-hollow', 5, lockedUntil);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-            expect(activityLogService.recordEffect).not.toHaveBeenCalled();
-            expect(notificationService.notify).not.toHaveBeenCalled();
+            expect(activityLogQueue.recordEffect).not.toHaveBeenCalled();
+            expect(notificationQueue.notify).not.toHaveBeenCalled();
         });
 
         it('adds the reach-max entry and the loginLocked effect on the counting tx when the failure locked, and no lockout effect', async () => {
             userRepository.incrementPasswordAttemptInTx.mockResolvedValue(true);
-            activityLogService.recordEffect.mockReturnValue(entryEffect);
-            notificationService.notify.mockReturnValue(notifyEffect);
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
+            notificationQueue.notify.mockReturnValue(notifyEffect);
             messageService.setMessage.mockReturnValue('Label');
 
             await expect(
@@ -410,8 +407,8 @@ describe('UserPasswordService', () => {
             expect(
                 userRepository.incrementPasswordAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-hollow', 5, lockedUntil);
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -422,7 +419,7 @@ describe('UserPasswordService', () => {
                     createdBy: 'user-hollow',
                 }
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.loginLocked,
                 {
                     userId: 'user-hollow',
@@ -608,8 +605,8 @@ describe('UserPasswordService', () => {
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
-            notificationService.notify.mockReturnValue(forgotEffect);
-            activityLogService.recordEffect.mockReturnValue(forgotEntry);
+            notificationQueue.notify.mockReturnValue(forgotEffect);
+            activityLogQueue.recordEffect.mockReturnValue(forgotEntry);
         });
 
         it('replaces the unused requests and adds the forgotPassword effect and entry on one transaction', async () => {
@@ -629,7 +626,7 @@ describe('UserPasswordService', () => {
                 'hollow@example.com',
                 forgot
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.forgotPassword,
                 {
                     userId: 'user-hollow',
@@ -640,7 +637,7 @@ describe('UserPasswordService', () => {
                     expiredInMinutes: 15,
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,

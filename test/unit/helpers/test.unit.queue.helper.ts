@@ -1,10 +1,13 @@
 import type { Job } from 'bullmq';
+import { EnumOutboxStatus } from '@generated/prisma-client/client';
+import type { Outbox } from '@generated/prisma-client/client';
 import type { Mock } from 'vitest';
 import type { CacheService } from '@common/cache/services/cache.service';
 import type { MessageService } from '@common/message/services/message.service';
 import type { SentryService } from '@common/sentry/services/sentry.service';
 import type { OutboxService } from '@common/outbox/services/outbox.service';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
+import type { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 
 export function buildProcessorJob(overrides: Partial<Job>): Job {
     return {
@@ -38,4 +41,29 @@ export function buildQueueProcessor(
     });
 
     return { processor, handle };
+}
+
+export function buildOutboxRow(
+    id: string,
+    priority: EnumQueuePriority
+): Outbox {
+    return {
+        id,
+        queue: 'test',
+        name: `job-${id}`,
+        data: {},
+        priority,
+        idempotencyKey: `key-${id}`,
+        status: EnumOutboxStatus.pending,
+        attempts: 0,
+        lastError: null,
+        enqueuedAt: null,
+        sweptAt: null,
+        completedAt: null,
+        failedAt: null,
+        createdAt: new Date('2026-11-11T09:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-11-11T09:00:00.000Z'),
+        updatedBy: null,
+    };
 }

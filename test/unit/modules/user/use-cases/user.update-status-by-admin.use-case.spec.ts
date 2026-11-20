@@ -13,7 +13,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
@@ -41,8 +41,8 @@ describe('UserUpdateStatusByAdminUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
 
     let useCase: UserUpdateStatusByAdminUseCase;
 
@@ -72,7 +72,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 { provide: OutboxService, useValue: outboxService },
                 HelperDateService,
                 { provide: RoleService, useValue: roleService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 SessionUtil,
                 UserUtil,
                 DatabaseUtil,
@@ -104,7 +104,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
         const authContext = buildAuthJwtAccessContext(admin.id);
 
         beforeEach(() => {
-            activityLogService.recordEffect.mockImplementation(
+            activityLogQueue.recordEffect.mockImplementation(
                 (
                     _requestContext,
                     _apiKeyContext,
@@ -188,7 +188,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 'revokeSessions',
                 'commit',
             ]);
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -198,7 +198,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     metadata: { targetUserId: 'user-cinder', sessionCount: 1 },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -210,7 +210,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     metadata: { actorUserId: 'admin-cinder', sessionCount: 1 },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -224,7 +224,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -295,7 +295,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 }
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -381,7 +381,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledTimes(
                 1
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

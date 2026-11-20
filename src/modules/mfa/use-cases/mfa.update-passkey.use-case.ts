@@ -3,7 +3,7 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 import type { MfaPasskeyUpdateRequestDto } from '@modules/mfa/dtos/request/mfa.passkey-update.request.dto';
@@ -23,7 +23,7 @@ export class MfaUpdatePasskeyUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly mfaPasskeyService: MfaPasskeyService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService
     ) {}
 
@@ -41,7 +41,7 @@ export class MfaUpdatePasskeyUseCase implements IAppUseCase<
                 passkeyId,
                 name
             );
-            const entry = this.activityLogService.recordEffect(
+            const entry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,

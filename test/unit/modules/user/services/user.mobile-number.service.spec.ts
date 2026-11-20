@@ -13,7 +13,7 @@ import {
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
@@ -34,8 +34,8 @@ describe('UserMobileNumberService', () => {
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(
@@ -79,7 +79,7 @@ describe('UserMobileNumberService', () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        activityLogService.recordEffect.mockReturnValue(entry);
+        activityLogQueue.recordEffect.mockReturnValue(entry);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -99,7 +99,7 @@ describe('UserMobileNumberService', () => {
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
             ],
         }).compile();
         service = module.get(UserMobileNumberService);
@@ -169,7 +169,7 @@ describe('UserMobileNumberService', () => {
                 tx,
                 'user-marlin'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -277,7 +277,7 @@ describe('UserMobileNumberService', () => {
                 tx,
                 'user-marlin'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -429,7 +429,7 @@ describe('UserMobileNumberService', () => {
                 tx,
                 'user-marlin'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

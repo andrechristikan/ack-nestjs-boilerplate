@@ -16,7 +16,7 @@ import {
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
     IDeviceIdentity,
@@ -46,7 +46,7 @@ export class DeviceService {
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly outboxService: OutboxService,
-        private readonly activityLogService: ActivityLogService
+        private readonly activityLogQueue: ActivityLogQueue
     ) {
         this.idleTimeoutInMs = this.configService.get<number>(
             'session.idleTimeoutInMs'
@@ -338,7 +338,7 @@ export class DeviceService {
                     );
                 }
 
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

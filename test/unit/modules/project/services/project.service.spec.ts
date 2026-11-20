@@ -20,7 +20,7 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
@@ -51,8 +51,8 @@ describe('ProjectService', () => {
     const projectRepository: MockProxy<ProjectRepository> =
         mock<ProjectRepository>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const tx = {} as IDatabaseTransactionClient;
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
@@ -90,7 +90,7 @@ describe('ProjectService', () => {
     );
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockReturnValue(entry);
+        activityLogQueue.recordEffect.mockReturnValue(entry);
         outboxService.withTransaction.mockImplementation(fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
@@ -100,7 +100,7 @@ describe('ProjectService', () => {
                 ...TestUnitKitProviders,
                 ProjectUtil,
                 { provide: OutboxService, useValue: outboxService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
@@ -237,7 +237,7 @@ describe('ProjectService', () => {
                 create,
                 'p-abc123'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -359,7 +359,7 @@ describe('ProjectService', () => {
                 project.id,
                 update
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -483,7 +483,7 @@ describe('ProjectService', () => {
                 project.id,
                 'p-new-slug'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

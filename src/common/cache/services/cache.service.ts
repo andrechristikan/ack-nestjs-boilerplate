@@ -2,16 +2,10 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Redis } from 'ioredis';
 import type { ZodType } from 'zod';
-import {
-    EnumCacheProcess,
-    EnumCacheQueue,
-} from '@common/cache/enums/cache.enum';
 import type {
-    ICacheInvalidateEffect,
     ICacheLease,
     ICacheReadThroughOptions,
 } from '@common/cache/interfaces/cache.interface';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
@@ -193,17 +187,6 @@ export class CacheService {
         } catch (error: unknown) {
             this.handleError('flushdb', error, 'Cache flush failed');
         }
-    }
-
-    /** The outbox effect that deletes the keys through the cache queue. */
-    invalidateEffect(keys: string[]): ICacheInvalidateEffect {
-        return {
-            queue: EnumCacheQueue.cache,
-            name: EnumCacheProcess.invalidate,
-            data: { keys },
-            priority: EnumQueuePriority.high,
-            idempotencyKey: null,
-        };
     }
 
     isConnectionError(error: unknown): boolean {

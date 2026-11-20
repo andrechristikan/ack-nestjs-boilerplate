@@ -23,7 +23,7 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { MfaPasskeyNotFoundException } from '@modules/mfa/exceptions/mfa.passkey-not-found.exception';
@@ -59,8 +59,8 @@ describe('MfaDeletePasskeyUseCase', () => {
         mock<MfaPasskeyService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: MfaDeletePasskeyUseCase;
@@ -101,7 +101,7 @@ describe('MfaDeletePasskeyUseCase', () => {
         );
         userAuthService.assertReauthentication.mockResolvedValue(passwordOnly);
         sessionService.revokeActiveByUserExceptInTx.mockResolvedValue([]);
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -110,7 +110,7 @@ describe('MfaDeletePasskeyUseCase', () => {
                 { provide: MfaPasskeyService, useValue: mfaPasskeyService },
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: SessionService, useValue: sessionService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -218,7 +218,7 @@ describe('MfaDeletePasskeyUseCase', () => {
                 'user-quartz',
                 now
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

@@ -11,7 +11,7 @@ import {
     EnumActivityLogAction,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 import type { MfaPasskeyDeleteRequestDto } from '@modules/mfa/dtos/request/mfa.passkey-delete.request.dto';
@@ -41,7 +41,7 @@ export class MfaDeletePasskeyUseCase implements IAppUseCase<
         private readonly mfaPasskeyService: MfaPasskeyService,
         private readonly userAuthService: UserAuthService,
         private readonly sessionService: SessionService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -105,7 +105,7 @@ export class MfaDeletePasskeyUseCase implements IAppUseCase<
                     authContext.userId,
                     now
                 );
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

@@ -1,5 +1,17 @@
 import { CacheService } from '@common/cache/services/cache.service';
-import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationPushProcess,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
+import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
+import type {
+    INotificationPushCleanupTokensEffect,
+    INotificationPushSendEffect,
+    INotificationRecipientRecord,
+    INotificationSealedData,
+} from '@modules/notification/interfaces/notification.interface';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import type { OnModuleInit } from '@nestjs/common';
@@ -18,7 +30,8 @@ export class NotificationPushQueue extends QueueBase implements OnModuleInit {
         @InjectQueue(EnumNotificationQueue.notificationPush)
         protected readonly queue: Queue,
         protected readonly cacheService: CacheService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly notificationUtil: NotificationUtil
     ) {
         super(queue, cacheService);
         this.timezone = this.configService.get<string>('app.timezone')!;
@@ -46,5 +59,49 @@ export class NotificationPushQueue extends QueueBase implements OnModuleInit {
                 },
             }
         );
+    }
+
+    sendEffect(
+        kind: EnumNotificationKind,
+        notificationId: string,
+        context: INotificationSealedData,
+        { userId, username, encryptedTokens }: INotificationRecipientRecord
+    ): INotificationPushSendEffect {
+        const { queuePriority } = NotificationKindContract[kind];
+        const idempotencyKey = this.notificationUtil.toStepKey(
+            notificationId,
+            EnumNotificationStep.sendPush
+        );
+
+        return {
+            queue: EnumNotificationQueue.notificationPush,
+            name: EnumNotificationPushProcess.send,
+            data: {
+                kind,
+                notificationId,
+                userId,
+                username,
+                encryptedTokens,
+                context,
+                completedSteps: [],
+                encryptedPendingTokens: null,
+                encryptedFailureTokens: null,
+            },
+            priority: queuePriority,
+            idempotencyKey,
+        };
+    }
+
+    cleanupTokensEffect(
+        userId: string,
+        encryptedFailureTokens: string[]
+    ): INotificationPushCleanupTokensEffect {
+        return {
+            queue: EnumNotificationQueue.notificationPush,
+            name: EnumNotificationPushProcess.cleanupTokens,
+            data: { userId, encryptedFailureTokens },
+            priority: EnumQueuePriority.low,
+            idempotencyKey: null,
+        };
     }
 }

@@ -1,5 +1,6 @@
 import { EnumActivityLogQueue } from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogQueueFactory } from '@modules/activity-log/factories/activity-log.queue.factory';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
@@ -8,8 +9,17 @@ import { Module } from '@nestjs/common';
 
 @Module({
     controllers: [],
-    providers: [ActivityLogRepository, ActivityLogService, ActivityLogUtil],
-    exports: [ActivityLogService, ActivityLogUtil],
+    providers: [
+        ActivityLogRepository,
+        ActivityLogService,
+        ActivityLogUtil,
+        ActivityLogQueue,
+        {
+            provide: EnumActivityLogQueue.activityLog,
+            useExisting: ActivityLogQueue,
+        },
+    ],
+    exports: [ActivityLogService, ActivityLogUtil, ActivityLogQueue],
     imports: [
         BullModule.registerQueueAsync({
             name: EnumActivityLogQueue.activityLog,

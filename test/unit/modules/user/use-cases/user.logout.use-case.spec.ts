@@ -14,7 +14,7 @@ import {
     EnumDevicePlatform,
 } from '@generated/prisma-client/client';
 import type { DeviceOwnership } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -38,8 +38,8 @@ import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.datab
 describe('UserLogoutUseCase', () => {
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     let useCase: UserLogoutUseCase;
 
@@ -103,7 +103,7 @@ describe('UserLogoutUseCase', () => {
             async fn => fn(tx) as never
         );
         vi.setSystemTime(now);
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         deviceService.upsertForLoginInTx.mockResolvedValue(upsert);
         deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue([]);
 
@@ -112,7 +112,7 @@ describe('UserLogoutUseCase', () => {
                 UserLogoutUseCase,
                 { provide: DeviceService, useValue: deviceService },
                 { provide: SessionService, useValue: sessionService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
                 {
@@ -164,7 +164,7 @@ describe('UserLogoutUseCase', () => {
             expect(sessionService.revokeInTx).toHaveBeenCalledBefore(
                 deviceService.clearNotificationInTx
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

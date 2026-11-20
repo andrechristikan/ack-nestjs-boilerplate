@@ -16,7 +16,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import {
@@ -42,8 +42,8 @@ import { RoleCreateByAdminUseCase } from '@modules/role/use-cases/role.create-by
 
 describe('RoleCreateByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
@@ -106,7 +106,7 @@ describe('RoleCreateByAdminUseCase', () => {
     });
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockReturnValue(effect);
+        activityLogQueue.recordEffect.mockReturnValue(effect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -115,7 +115,7 @@ describe('RoleCreateByAdminUseCase', () => {
             providers: [
                 RoleCreateByAdminUseCase,
                 { provide: RoleService, useValue: roleService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 RoleUtil,
                 ...TestUnitKitProviders,
@@ -173,7 +173,7 @@ describe('RoleCreateByAdminUseCase', () => {
                 body
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

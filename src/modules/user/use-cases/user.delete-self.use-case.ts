@@ -11,7 +11,7 @@ import {
     EnumActivityLogAction,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -62,7 +62,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
         private readonly projectService: ProjectService,
         private readonly projectMemberService: ProjectMemberService,
         private readonly sessionService: SessionService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly userProfileService: UserProfileService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
@@ -203,7 +203,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
                         user.photo
                     );
 
-                    const revokeAllEntry = this.activityLogService.recordEffect(
+                    const revokeAllEntry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         authContext,
@@ -214,18 +214,17 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
                             createdBy: userId,
                         }
                     );
-                    const deleteSelfEntry =
-                        this.activityLogService.recordEffect(
-                            requestContext,
-                            apiKeyContext,
-                            authContext,
-                            null,
-                            {
-                                action: EnumActivityLogAction.userDeleteSelf,
-                            }
-                        );
+                    const deleteSelfEntry = this.activityLogQueue.recordEffect(
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        null,
+                        {
+                            action: EnumActivityLogAction.userDeleteSelf,
+                        }
+                    );
                     const workspaceEntries = ownedIds.map(workspaceId =>
-                        this.activityLogService.recordEffect(
+                        this.activityLogQueue.recordEffect(
                             requestContext,
                             apiKeyContext,
                             authContext,

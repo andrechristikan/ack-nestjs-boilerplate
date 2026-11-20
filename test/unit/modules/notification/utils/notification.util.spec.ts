@@ -10,6 +10,8 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { EnumNotificationStep } from '@modules/notification/enums/notification.enum';
 import { buildSealedNotificationPayload } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('NotificationUtil', () => {
@@ -19,11 +21,16 @@ describe('NotificationUtil', () => {
 
     beforeEach(() => {
         util = new NotificationUtil(
-            buildConfigService(TestUnitKitConfigValues) as ConfigService,
+            buildConfigService({
+                ...TestUnitKitConfigValues,
+                'notification.idempotencyKey.stepPattern':
+                    '{notificationId}-{step}',
+            }) as ConfigService,
             new HelperEncryptionService(),
             new HelperDateService(
                 buildConfigService(TestUnitKitConfigValues) as ConfigService
-            )
+            ),
+            new HelperStringService()
         );
     });
 
@@ -38,6 +45,45 @@ describe('NotificationUtil', () => {
             const sealed = buildSealedNotificationPayload('plain', 'user-id');
 
             expect(() => util.decryptPayload(sealed, 'other-id')).toThrow();
+        });
+    });
+
+    describe('encryptPayload', () => {
+        it('round-trips through decryptPayload under its context', () => {
+            const sealed = util.encryptPayload('plain', 'user-id');
+
+            expect(sealed).not.toBe('plain');
+            expect(util.decryptPayload(sealed, 'user-id')).toBe('plain');
+        });
+    });
+
+    describe('sealContext', () => {
+        it('renames and encrypts only the secret fields', () => {
+            const result = util.sealContext(
+                { userId: 'user-id', proceedBy: 'actor-id', otp: '482913' },
+                ['otp'],
+                'user-id'
+            );
+
+            expect(result).toEqual({
+                userId: 'user-id',
+                proceedBy: 'actor-id',
+                encryptedOtp: expect.any(String),
+            });
+            expect(
+                util.decryptPayload(String(result.encryptedOtp), 'user-id')
+            ).toBe('482913');
+        });
+    });
+
+    describe('toStepKey', () => {
+        it('fills the step pattern', () => {
+            expect(
+                util.toStepKey(
+                    'notification-id',
+                    EnumNotificationStep.sendEmail
+                )
+            ).toBe('notification-id-sendEmail');
         });
     });
 

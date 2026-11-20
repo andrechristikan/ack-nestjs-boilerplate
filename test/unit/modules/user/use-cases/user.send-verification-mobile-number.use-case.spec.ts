@@ -5,7 +5,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { UserMobileNumberAlreadyVerifiedException } from '@modules/user/exceptions/user.mobile-number-already-verified.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
 import type { IUserMobileNumberSummary } from '@modules/user/interfaces/user.interface';
@@ -24,8 +24,8 @@ describe('UserSendVerificationMobileNumberUseCase', () => {
         mock<UserMobileNumberService>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: UserSendVerificationMobileNumberUseCase;
@@ -46,7 +46,7 @@ describe('UserSendVerificationMobileNumberUseCase', () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        activityLogService.recordEffect.mockReturnValue(entry);
+        activityLogQueue.recordEffect.mockReturnValue(entry);
         userMobileNumberService.getOneUnverifiedMobileNumber.mockResolvedValue(
             mobileNumber
         );
@@ -66,7 +66,7 @@ describe('UserSendVerificationMobileNumberUseCase', () => {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -95,7 +95,7 @@ describe('UserSendVerificationMobileNumberUseCase', () => {
                 'mobile-swift',
                 '+6281234567890'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -123,7 +123,7 @@ describe('UserSendVerificationMobileNumberUseCase', () => {
             expect(
                 userVerificationService.sendMobileInTx
             ).not.toHaveBeenCalled();
-            expect(activityLogService.recordEffect).not.toHaveBeenCalled();
+            expect(activityLogQueue.recordEffect).not.toHaveBeenCalled();
         });
 
         it('throws UserMobileNumberNotFoundException for a number that is not the caller and reads nothing else', async () => {

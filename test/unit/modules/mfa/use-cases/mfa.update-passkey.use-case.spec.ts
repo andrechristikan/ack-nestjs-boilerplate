@@ -11,7 +11,7 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { MfaPasskeyNotFoundException } from '@modules/mfa/exceptions/mfa.passkey-not-found.exception';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaUpdatePasskeyUseCase } from '@modules/mfa/use-cases/mfa.update-passkey.use-case';
@@ -24,8 +24,8 @@ import {
 describe('MfaUpdatePasskeyUseCase', () => {
     const mfaPasskeyService: MockProxy<MfaPasskeyService> =
         mock<MfaPasskeyService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: MfaUpdatePasskeyUseCase;
@@ -46,13 +46,13 @@ describe('MfaUpdatePasskeyUseCase', () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 MfaUpdatePasskeyUseCase,
                 { provide: MfaPasskeyService, useValue: mfaPasskeyService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -77,7 +77,7 @@ describe('MfaUpdatePasskeyUseCase', () => {
                 'passkey-one',
                 'Laptop'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

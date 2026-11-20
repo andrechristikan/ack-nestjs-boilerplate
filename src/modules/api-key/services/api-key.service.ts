@@ -1,3 +1,4 @@
+import { CacheQueue } from '@common/cache/queues/cache.queue';
 import { CacheService } from '@common/cache/services/cache.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumHelperDateDayOf } from '@common/helper/enums/helper.enum';
@@ -47,6 +48,7 @@ export class ApiKeyService {
         private readonly helperStringService: HelperStringService,
         private readonly helperHashService: HelperHashService,
         private readonly cacheService: CacheService,
+        private readonly cacheQueue: CacheQueue,
         private readonly outboxService: OutboxService,
         private readonly configService: ConfigService
     ) {
@@ -142,7 +144,7 @@ export class ApiKeyService {
         key: string
     ): Promise<void> {
         const keys = this.apiKeyCache.buildApiKeyKeys(key);
-        const effect = this.cacheService.invalidateEffect(keys);
+        const effect = this.cacheQueue.invalidateEffect(keys);
         await this.outboxService.addInTx(tx, effect);
     }
 

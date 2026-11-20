@@ -15,7 +15,7 @@ import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.datab
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
@@ -38,8 +38,8 @@ import {
 describe('WorkspaceLeaveUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
     const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
@@ -61,7 +61,7 @@ describe('WorkspaceLeaveUseCase', () => {
     let useCase: WorkspaceLeaveUseCase;
 
     beforeEach(async () => {
-        activityLogService.recordEffect
+        activityLogQueue.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
@@ -73,7 +73,7 @@ describe('WorkspaceLeaveUseCase', () => {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 {
                     provide: ProjectMemberService,
                     useValue: projectMemberService,
@@ -149,7 +149,7 @@ describe('WorkspaceLeaveUseCase', () => {
                 'user-1',
                 'workspace-1'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

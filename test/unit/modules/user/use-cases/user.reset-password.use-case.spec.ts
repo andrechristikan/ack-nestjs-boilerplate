@@ -21,7 +21,7 @@ import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.help
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -35,6 +35,7 @@ import { AuthPasswordCommonException } from '@modules/auth/exceptions/auth.passw
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import {
     EnumNotificationKind,
     EnumNotificationProcess,
@@ -78,10 +79,12 @@ describe('UserResetPasswordUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
     const authPasswordService: MockProxy<AuthPasswordService> =
         mock<AuthPasswordService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
@@ -162,7 +165,7 @@ describe('UserResetPasswordUseCase', () => {
     });
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockImplementation(
+        activityLogQueue.recordEffect.mockImplementation(
             (
                 _requestContext,
                 _apiKeyContext,
@@ -178,7 +181,7 @@ describe('UserResetPasswordUseCase', () => {
             async fn => fn(tx) as never
         );
         notificationService.getSnapshot.mockResolvedValue(snapshot);
-        notificationService.notify.mockReturnValue(notifyEffect);
+        notificationQueue.notify.mockReturnValue(notifyEffect);
         mfaService.isEnabled.mockResolvedValue(false);
         vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
 
@@ -201,6 +204,7 @@ describe('UserResetPasswordUseCase', () => {
                     provide: NotificationService,
                     useValue: notificationService,
                 },
+                { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: AuthPasswordService, useValue: authPasswordService },
                 AuthPasswordUtil,
                 HelperHashService,
@@ -213,7 +217,7 @@ describe('UserResetPasswordUseCase', () => {
                         'app.name': 'ACK Boilerplate',
                     }),
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
             ],
@@ -320,8 +324,8 @@ describe('UserResetPasswordUseCase', () => {
             expect(mfaService.isEnabled).toHaveBeenCalledWith('user-linden');
             expect(mfaService.check).not.toHaveBeenCalled();
             expect(argon2Hash).toHaveBeenCalledWith('new-password');
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -333,7 +337,7 @@ describe('UserResetPasswordUseCase', () => {
                 }
             );
             expect(notificationService.getSnapshot).toHaveBeenCalledWith(user);
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.resetPassword,
                 {
                     userId: 'user-linden',
@@ -445,7 +449,7 @@ describe('UserResetPasswordUseCase', () => {
             expect(mfaService.completeInTx).toHaveBeenCalledBefore(
                 userService.updatePasswordInTx
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,

@@ -7,9 +7,6 @@ import type {
     IPaginationIn,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
@@ -27,10 +24,8 @@ import type {
     IAuthPasswordTemporary,
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import type { IUserImportByAdminEffect } from '@modules/user/interfaces/user.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
-import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserBlockedForbiddenException } from '@modules/user/exceptions/user.blocked-forbidden.exception';
 import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
 import { UserDeleteSelfForbiddenException } from '@modules/user/exceptions/user.delete-self-forbidden.exception';
@@ -54,7 +49,6 @@ import type {
     IUserCreateRole,
     IUserCreateWithWorkspaceInput,
     IUserDeletedIdentity,
-    IUserImport,
     IUserList,
     IUserProfile,
     IUserRecipient,
@@ -69,7 +63,6 @@ import { UserVerificationUtil } from '@modules/user/utils/user.verification.util
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @Injectable()
 export class UserService {
@@ -86,7 +79,6 @@ export class UserService {
         private readonly roleService: RoleService,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly activityLogUtil: ActivityLogUtil,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
@@ -490,27 +482,5 @@ export class UserService {
         return status === EnumUserStatus.blocked
             ? EnumActivityLogAction.userBlocked
             : EnumActivityLogAction.userUpdateStatus;
-    }
-
-    importByAdminEffect(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
-        rows: IUserImport[]
-    ): IUserImportByAdminEffect {
-        const activityLog = this.activityLogUtil.toPayload(
-            requestContext,
-            apiKeyContext,
-            authContext,
-            null
-        );
-
-        return {
-            queue: EnumUserQueue.user,
-            name: EnumUserProcess.importByAdmin,
-            data: { rows, activityLog, created: null },
-            priority: EnumQueuePriority.medium,
-            idempotencyKey: null,
-        };
     }
 }

@@ -23,7 +23,7 @@ import {
     buildUser,
     buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyUtil } from '@modules/policy/utils/policy.util';
@@ -44,8 +44,8 @@ import { PolicyCreateByAdminUseCase } from '@modules/policy/use-cases/policy.cre
 describe('PolicyCreateByAdminUseCase', () => {
     const policyService: MockProxy<PolicyService> = mock<PolicyService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
@@ -104,7 +104,7 @@ describe('PolicyCreateByAdminUseCase', () => {
     let useCase: PolicyCreateByAdminUseCase;
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockReturnValue(effect);
+        activityLogQueue.recordEffect.mockReturnValue(effect);
         roleService.invalidateEffect.mockReturnValue(roleInvalidateEffect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
@@ -117,7 +117,7 @@ describe('PolicyCreateByAdminUseCase', () => {
                 { provide: PolicyService, useValue: policyService },
                 { provide: RoleService, useValue: roleService },
                 PolicyUtil,
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -232,7 +232,7 @@ describe('PolicyCreateByAdminUseCase', () => {
                 body
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

@@ -18,7 +18,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
@@ -63,8 +63,8 @@ describe('WorkspaceService', () => {
     const workspaceMemberRepository: MockProxy<WorkspaceMemberRepository> =
         mock<WorkspaceMemberRepository>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(
@@ -89,7 +89,7 @@ describe('WorkspaceService', () => {
     let service: WorkspaceService;
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockReturnValue(entry);
+        activityLogQueue.recordEffect.mockReturnValue(entry);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -100,7 +100,7 @@ describe('WorkspaceService', () => {
                     useValue: workspaceMemberRepository,
                 },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 ...TestUnitKitProviders,
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 {
@@ -419,7 +419,7 @@ describe('WorkspaceService', () => {
                 create
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -554,7 +554,7 @@ describe('WorkspaceService', () => {
                 'workspace-1',
                 update
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -594,7 +594,7 @@ describe('WorkspaceService', () => {
                 'workspace-1',
                 true
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -720,7 +720,7 @@ describe('WorkspaceService', () => {
                 'workspace-1',
                 'new-slug'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

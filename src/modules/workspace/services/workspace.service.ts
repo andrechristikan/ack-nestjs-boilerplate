@@ -16,7 +16,7 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
@@ -52,7 +52,7 @@ export class WorkspaceService {
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly featureFlagService: FeatureFlagService,
         private readonly outboxService: OutboxService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
@@ -185,7 +185,7 @@ export class WorkspaceService {
                         slug,
                         workspaceId
                     );
-                    const entry = this.activityLogService.recordEffect(
+                    const entry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         authContext,
@@ -233,7 +233,7 @@ export class WorkspaceService {
                 workspaceId,
                 update
             );
-            const entry = this.activityLogService.recordEffect(
+            const entry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -265,7 +265,7 @@ export class WorkspaceService {
                 workspaceId,
                 isPublic
             );
-            const entry = this.activityLogService.recordEffect(
+            const entry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -303,7 +303,7 @@ export class WorkspaceService {
                     workspaceId,
                     slug
                 );
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

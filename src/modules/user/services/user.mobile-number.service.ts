@@ -1,7 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { UserMobileNumberAlreadyVerifiedException } from '@modules/user/exceptions/user.mobile-number-already-verified.exception';
@@ -29,7 +29,7 @@ export class UserMobileNumberService {
         private readonly userVerificationService: UserVerificationService,
         private readonly helperDateService: HelperDateService,
         private readonly outboxService: OutboxService,
-        private readonly activityLogService: ActivityLogService
+        private readonly activityLogQueue: ActivityLogQueue
     ) {}
 
     private checkMobileNumber(
@@ -85,7 +85,7 @@ export class UserMobileNumberService {
         );
         await this.userService.touchUpdatedByInTx(tx, userId);
 
-        const entry = this.activityLogService.recordEffect(
+        const entry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
             authContext,
@@ -204,7 +204,7 @@ export class UserMobileNumberService {
             );
         }
 
-        const entry = this.activityLogService.recordEffect(
+        const entry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
             authContext,
@@ -242,7 +242,7 @@ export class UserMobileNumberService {
             mobileNumberId
         );
 
-        const entry = this.activityLogService.recordEffect(
+        const entry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
             authContext,

@@ -6,7 +6,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
@@ -39,7 +39,7 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
         private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
         private readonly projectMemberService: ProjectMemberService,
         private readonly userService: UserService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -93,7 +93,7 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
                         userId
                     );
                 }
-                const inviteeEntry = this.activityLogService.recordEffect(
+                const inviteeEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -108,7 +108,7 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
                 );
                 const entries = [inviteeEntry];
                 if (invite.invitedByUserId !== userId) {
-                    const inviterEntry = this.activityLogService.recordEffect(
+                    const inviterEntry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         authContext,

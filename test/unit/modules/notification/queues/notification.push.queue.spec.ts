@@ -10,7 +10,18 @@ import { NotificationPushQueue } from '@modules/notification/queues/notification
 import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { MessageService } from '@common/message/services/message.service';
+import { EnumNotificationChannel } from '@generated/prisma-client/client';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type {
+    INotificationRecipientRecord,
+    INotificationSealedData,
+} from '@modules/notification/interfaces/notification.interface';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('NotificationPushQueue', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
@@ -22,11 +33,14 @@ describe('NotificationPushQueue', () => {
     beforeEach(async () => {
         messageService.setMessage.mockImplementation((path: string) => path);
         configService = buildConfigService({
-            'app.timezone': 'UTC',
+            ...TestUnitKitConfigValues,
+            'notification.idempotencyKey.stepPattern':
+                '{notificationId}-{step}',
             'notification.push.cleanupStaleTokensCron': '0 3 * * *',
         });
         const module = await Test.createTestingModule({
             providers: [
+                ...TestUnitKitProviders,
                 { provide: MessageService, useValue: messageService },
                 NotificationPushQueue,
                 {
@@ -36,6 +50,7 @@ describe('NotificationPushQueue', () => {
                     useValue: notificationPushQueue,
                 },
                 { provide: CacheService, useValue: cacheService },
+                NotificationUtil,
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -85,6 +100,71 @@ describe('NotificationPushQueue', () => {
             notificationPushQueue.upsertJobScheduler.mockRejectedValue(error);
 
             await expect(queue.sendCleanupStaleTokens()).rejects.toBe(error);
+        });
+    });
+
+    describe('sendEffect', () => {
+        it('returns the push send effect keyed by the sendPush step with the kind priority', () => {
+            const context: INotificationSealedData = {
+                userId: 'user-id',
+                proceedBy: 'actor-id',
+                workspaceId: 'workspace-id',
+                encryptedInviteAcceptLink: 'encrypted-link',
+                snapshot: null,
+                verificationId: null,
+            };
+            const recipient: INotificationRecipientRecord = {
+                userId: 'user-id',
+                username: 'invitee',
+                encryptedEmail: 'encrypted-email',
+                encryptedTokens: ['encrypted-token'],
+                encryptedMobileNumber: null,
+                channels: [EnumNotificationChannel.push],
+            };
+
+            const result = queue.sendEffect(
+                EnumNotificationKind.workspaceInvite,
+                'notification-id',
+                context,
+                recipient
+            );
+
+            expect(result).toEqual({
+                queue: EnumNotificationQueue.notificationPush,
+                name: EnumNotificationPushProcess.send,
+                data: {
+                    kind: EnumNotificationKind.workspaceInvite,
+                    notificationId: 'notification-id',
+                    userId: 'user-id',
+                    username: 'invitee',
+                    encryptedTokens: ['encrypted-token'],
+                    context,
+                    completedSteps: [],
+                    encryptedPendingTokens: null,
+                    encryptedFailureTokens: null,
+                },
+                priority: EnumQueuePriority.medium,
+                idempotencyKey: 'notification-id-sendPush',
+            });
+        });
+    });
+
+    describe('cleanupTokensEffect', () => {
+        it('returns the push cleanup effect for the failure tokens', () => {
+            const result = queue.cleanupTokensEffect('user-id', [
+                'encrypted-token',
+            ]);
+
+            expect(result).toEqual({
+                queue: EnumNotificationQueue.notificationPush,
+                name: EnumNotificationPushProcess.cleanupTokens,
+                data: {
+                    userId: 'user-id',
+                    encryptedFailureTokens: ['encrypted-token'],
+                },
+                priority: EnumQueuePriority.low,
+                idempotencyKey: null,
+            });
         });
     });
 });

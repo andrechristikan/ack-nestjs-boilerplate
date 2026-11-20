@@ -12,9 +12,9 @@ import {
 } from '@generated/prisma-client/client';
 import type { User, Verification } from '@generated/prisma-client/client';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
 import { UserReauthenticationOtpInvalidException } from '@modules/user/exceptions/user.reauthentication-otp-invalid.exception';
@@ -45,8 +45,8 @@ export class UserVerificationService {
         private readonly userVerificationRepository: UserVerificationRepository,
         private readonly userRepository: UserRepository,
         private readonly outboxService: OutboxService,
-        private readonly activityLogService: ActivityLogService,
-        private readonly notificationService: NotificationService,
+        private readonly activityLogQueue: ActivityLogQueue,
+        private readonly notificationQueue: NotificationQueue,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperHashService: HelperHashService,
         private readonly helperDateService: HelperDateService,
@@ -164,7 +164,7 @@ export class UserVerificationService {
                     verification.userId,
                     verifiedAt
                 );
-                const effect = this.notificationService.notify(
+                const effect = this.notificationQueue.notify(
                     EnumNotificationKind.verifiedEmail,
                     {
                         userId: verification.userId,
@@ -172,7 +172,7 @@ export class UserVerificationService {
                         reference: verification.reference,
                     }
                 );
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     null,
@@ -258,7 +258,7 @@ export class UserVerificationService {
     ): Promise<void> {
         await this.outboxService.withTransaction(async tx => {
             await this.sendEmailInTx(tx, userId, email);
-            const entry = this.activityLogService.recordEffect(
+            const entry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -293,7 +293,7 @@ export class UserVerificationService {
             userId,
             verification
         );
-        const effect = this.notificationService.notify(
+        const effect = this.notificationQueue.notify(
             EnumNotificationKind.verificationEmail,
             context
         );
@@ -363,7 +363,7 @@ export class UserVerificationService {
             created.verification,
             userId
         );
-        const effect = this.notificationService.notify(
+        const effect = this.notificationQueue.notify(
             EnumNotificationKind.reauthenticationOtp,
             {
                 userId,
@@ -461,7 +461,7 @@ export class UserVerificationService {
             created.verification,
             userId
         );
-        const effect = this.notificationService.notify(
+        const effect = this.notificationQueue.notify(
             EnumNotificationKind.verificationMobileNumber,
             {
                 userId,

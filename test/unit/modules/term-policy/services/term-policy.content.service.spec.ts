@@ -31,7 +31,8 @@ import {
     EnumTermPolicyProcess,
     EnumTermPolicyQueue,
 } from '@modules/term-policy/enums/term-policy.enum';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -56,7 +57,10 @@ import { TermPolicyContentNotFoundException } from '@modules/term-policy/excepti
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
-import type { ITermPolicyContent } from '@modules/term-policy/interfaces/term-policy.interface';
+import type {
+    ITermPolicyContent,
+    ITermPolicyDeleteContentEffect,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import {
@@ -69,8 +73,16 @@ describe('TermPolicyContentService', () => {
         mock<TermPolicyRepository>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
+    const termPolicyQueue: MockProxy<TermPolicyQueue> = mock<TermPolicyQueue>();
+    const deleteEffect: ITermPolicyDeleteContentEffect = {
+        queue: EnumTermPolicyQueue.termPolicy,
+        name: EnumTermPolicyProcess.deleteContent,
+        data: { keys: ['term-policies/privacy/v1/en-1.hbs'] },
+        priority: EnumQueuePriority.low,
+        idempotencyKey: null,
+    };
     const fileService: MockProxy<FileService> = mock<FileService>();
     const head = Buffer.from('{{title}}');
     const tx = {} as IDatabaseTransactionClient;
@@ -170,7 +182,8 @@ describe('TermPolicyContentService', () => {
         awsS3Service.isInitialized.mockReturnValue(true);
         awsS3Service.getItemBytes.mockResolvedValue(head);
         fileService.isContentOfExtension.mockResolvedValue(true);
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
+        termPolicyQueue.deleteContentEffect.mockReturnValue(deleteEffect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -185,7 +198,8 @@ describe('TermPolicyContentService', () => {
                 { provide: AwsS3Service, useValue: awsS3Service },
                 TermPolicyUtil,
                 { provide: OutboxService, useValue: outboxService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: TermPolicyQueue, useValue: termPolicyQueue },
                 { provide: FileService, useValue: fileService },
                 ...TestUnitKitProviders,
                 {
@@ -380,20 +394,6 @@ describe('TermPolicyContentService', () => {
                 { key: 'term-policies/privacy/v1/en-abc123.hbs', size: 1024 },
                 { forceUpdate: true, access: EnumAwsS3Accessibility.private }
             );
-        });
-    });
-
-    describe('deleteContentEffect', () => {
-        it('builds the low priority deleteContent effect carrying the keys', () => {
-            const effect = service.deleteContentEffect(['a/en-x.hbs']);
-
-            expect(effect).toEqual({
-                queue: EnumTermPolicyQueue.termPolicy,
-                name: EnumTermPolicyProcess.deleteContent,
-                data: { keys: ['a/en-x.hbs'] },
-                priority: EnumQueuePriority.low,
-                idempotencyKey: null,
-            });
         });
     });
 
@@ -621,9 +621,12 @@ describe('TermPolicyContentService', () => {
                 }
             );
 
+            expect(termPolicyQueue.deleteContentEffect).toHaveBeenCalledWith([
+                existingContent.key,
+            ]);
             expect(outboxService.addInTx).toHaveBeenCalledWith(
                 tx,
-                service.deleteContentEffect([existingContent.key])
+                deleteEffect
             );
             expect(outboxService.addInTx).toHaveBeenCalledAfter(
                 termPolicyRepository.updateContentInTx
@@ -669,7 +672,7 @@ describe('TermPolicyContentService', () => {
             );
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -1067,7 +1070,7 @@ describe('TermPolicyContentService', () => {
                 }
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -1317,9 +1320,12 @@ describe('TermPolicyContentService', () => {
                 EnumMessageLanguage.en
             );
 
+            expect(termPolicyQueue.deleteContentEffect).toHaveBeenCalledWith([
+                existingContent.key,
+            ]);
             expect(outboxService.addInTx).toHaveBeenCalledWith(
                 tx,
-                service.deleteContentEffect([existingContent.key])
+                deleteEffect
             );
             expect(outboxService.addInTx).toHaveBeenCalledAfter(
                 termPolicyRepository.removeContentInTx
@@ -1338,7 +1344,7 @@ describe('TermPolicyContentService', () => {
                 EnumMessageLanguage.en
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

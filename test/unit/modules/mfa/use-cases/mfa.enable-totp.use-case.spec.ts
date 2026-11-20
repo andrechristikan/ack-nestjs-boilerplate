@@ -24,7 +24,7 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
@@ -59,8 +59,8 @@ describe('MfaEnableTotpUseCase', () => {
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const mfaTotpService: MockProxy<MfaTotpService> = mock<MfaTotpService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: MfaEnableTotpUseCase;
@@ -97,7 +97,7 @@ describe('MfaEnableTotpUseCase', () => {
                 { provide: MfaService, useValue: mfaService },
                 { provide: MfaTotpService, useValue: mfaTotpService },
                 { provide: UserAuthService, useValue: userAuthService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -116,7 +116,7 @@ describe('MfaEnableTotpUseCase', () => {
             );
             mfaService.checkTotpSetupCode.mockResolvedValue(42);
             mfaService.createBackupCodesInTx.mockResolvedValue(['CODE000001']);
-            activityLogService.recordEffect.mockReturnValue(entryEffect);
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         });
 
         it('rejects with the enrolment gate exception and calls no other collaborator', async () => {
@@ -218,7 +218,7 @@ describe('MfaEnableTotpUseCase', () => {
                 tx,
                 'user-nell'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

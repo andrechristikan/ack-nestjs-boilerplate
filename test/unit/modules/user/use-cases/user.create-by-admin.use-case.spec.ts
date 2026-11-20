@@ -16,7 +16,7 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { Country } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IAuthPasswordTemporary } from '@modules/auth/interfaces/auth.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
@@ -26,7 +26,7 @@ import {
     EnumNotificationProcess,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -69,14 +69,14 @@ import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.datab
 
 describe('UserCreateByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const countryService: MockProxy<CountryService> = mock<CountryService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const tx = {} as IDatabaseTransactionClient;
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const userRegistrationService: MockProxy<UserRegistrationService> =
@@ -194,11 +194,11 @@ describe('UserCreateByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.setSystemTime(now);
-        activityLogService.recordEffect.mockReturnValue(activityEntry);
+        activityLogQueue.recordEffect.mockReturnValue(activityEntry);
         userRegistrationService.buildCreateByAdminStages.mockReturnValue([
             stageInput,
         ]);
-        notificationService.notify.mockReturnValue(welcomeEffect);
+        notificationQueue.notify.mockReturnValue(welcomeEffect);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
         userRegistrationService.createInTx.mockResolvedValue([committedUser]);
         roleService.getByName.mockResolvedValue(role);
@@ -222,8 +222,8 @@ describe('UserCreateByAdminUseCase', () => {
                 },
                 { provide: RoleService, useValue: roleService },
                 { provide: CountryService, useValue: countryService },
-                { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationService, useValue: notificationService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: NotificationQueue, useValue: notificationQueue },
                 UserCreateUtil,
                 HelperStringService,
                 HelperDateService,
@@ -305,7 +305,7 @@ describe('UserCreateByAdminUseCase', () => {
                 tx,
                 [input]
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.welcomeByAdmin,
                 {
                     userId: 'user-bramble',
@@ -318,7 +318,7 @@ describe('UserCreateByAdminUseCase', () => {
             expect(
                 userRegistrationService.buildCreateByAdminStages
             ).toHaveBeenCalledWith(input, committedUser);
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -350,7 +350,7 @@ describe('UserCreateByAdminUseCase', () => {
                 'actor-bramble',
                 role
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.welcomeByAdmin,
                 expect.objectContaining({ proceedBy: 'actor-bramble' })
             );

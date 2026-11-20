@@ -7,6 +7,7 @@ import {
     EnumCacheProcess,
     EnumCacheQueue,
 } from '@common/cache/enums/cache.enum';
+import { CacheQueue } from '@common/cache/queues/cache.queue';
 import { CacheService } from '@common/cache/services/cache.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { ConfigService } from '@nestjs/config';
@@ -49,6 +50,7 @@ describe('FeatureFlagService', () => {
             cacheTtlInMs: 3600000,
         });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
+    const cacheQueue: MockProxy<CacheQueue> = mock<CacheQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
@@ -82,7 +84,7 @@ describe('FeatureFlagService', () => {
 
     beforeEach(async () => {
         featureFlagCache.buildFeatureFlagKeys.mockReturnValue(keys);
-        cacheService.invalidateEffect.mockReturnValue(cacheEffect);
+        cacheQueue.invalidateEffect.mockReturnValue(cacheEffect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -95,6 +97,7 @@ describe('FeatureFlagService', () => {
                 },
                 { provide: FeatureFlagCache, useValue: featureFlagCache },
                 { provide: CacheService, useValue: cacheService },
+                { provide: CacheQueue, useValue: cacheQueue },
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
@@ -740,7 +743,7 @@ describe('FeatureFlagService', () => {
             expect(featureFlagCache.buildFeatureFlagKeys).toHaveBeenCalledWith(
                 updated.key
             );
-            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(keys);
+            expect(cacheQueue.invalidateEffect).toHaveBeenCalledWith(keys);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
             expect(cacheService.readThrough).not.toHaveBeenCalled();
         });
@@ -828,7 +831,7 @@ describe('FeatureFlagService', () => {
             expect(featureFlagCache.buildFeatureFlagKeys).toHaveBeenCalledWith(
                 updated.key
             );
-            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(keys);
+            expect(cacheQueue.invalidateEffect).toHaveBeenCalledWith(keys);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
             expect(cacheService.readThrough).not.toHaveBeenCalled();
         });

@@ -1,3 +1,4 @@
+import { CacheQueue } from '@common/cache/queues/cache.queue';
 import { CacheService } from '@common/cache/services/cache.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -33,6 +34,7 @@ export class FeatureFlagService {
         private readonly featureFlagRepository: FeatureFlagRepository,
         private readonly featureFlagCache: FeatureFlagCache,
         private readonly cacheService: CacheService,
+        private readonly cacheQueue: CacheQueue,
         private readonly helperHashService: HelperHashService,
         private readonly outboxService: OutboxService
     ) {}
@@ -110,7 +112,7 @@ export class FeatureFlagService {
         key: string
     ): Promise<void> {
         const keys = this.featureFlagCache.buildFeatureFlagKeys(key);
-        const effect = this.cacheService.invalidateEffect(keys);
+        const effect = this.cacheQueue.invalidateEffect(keys);
         await this.outboxService.addInTx(tx, effect);
     }
 

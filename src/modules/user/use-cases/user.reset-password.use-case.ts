@@ -10,7 +10,7 @@ import {
     EnumMfaChallengePurpose,
     EnumPasswordHistoryType,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
@@ -18,6 +18,7 @@ import type { IMfaCheck } from '@modules/mfa/interfaces/mfa.interface';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -45,9 +46,10 @@ export class UserResetPasswordUseCase implements IAppUseCase<
         private readonly passwordHistoryService: PasswordHistoryService,
         private readonly sessionService: SessionService,
         private readonly notificationService: NotificationService,
+        private readonly notificationQueue: NotificationQueue,
         private readonly authPasswordService: AuthPasswordService,
         private readonly authPasswordUtil: AuthPasswordUtil,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
@@ -165,7 +167,7 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                     password.passwordCreated
                 );
                 const entries = [
-                    this.activityLogService.recordEffect(
+                    this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         null,
@@ -178,7 +180,7 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                     ),
                 ];
                 if (mfaCheck !== null) {
-                    const verifyEntry = this.activityLogService.recordEffect(
+                    const verifyEntry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         null,
@@ -191,7 +193,7 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                     );
                     entries.push(verifyEntry);
                 }
-                const effect = this.notificationService.notify(
+                const effect = this.notificationQueue.notify(
                     EnumNotificationKind.resetPassword,
                     {
                         userId: reset.userId,

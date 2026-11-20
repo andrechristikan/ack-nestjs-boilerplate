@@ -1,17 +1,9 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MessageService } from '@common/message/services/message.service';
-import type {
-    IRequestContext,
-    IRequestLog,
-} from '@common/request/interfaces/request.interface';
-import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
-import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
-import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
 import type {
     IActivityLog,
-    IActivityLogActorPayload,
-    IActivityLogContextPayload,
     IActivityLogMasked,
     IActivityLogMetadata,
 } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -57,32 +49,6 @@ export class ActivityLogUtil {
         return this.messageService.setMessage(`activityLog.${action}`, {
             ...(metadata !== null && { properties: metadata }),
         });
-    }
-
-    toPayload(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
-        workspaceContext: IWorkspaceContext | null
-    ): IActivityLogActorPayload;
-    toPayload(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext | null,
-        workspaceContext: IWorkspaceContext | null
-    ): IActivityLogContextPayload;
-    toPayload(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext | null,
-        workspaceContext: IWorkspaceContext | null
-    ): IActivityLogContextPayload {
-        return {
-            apiKeyId: apiKeyContext.apiKey.id,
-            actorUserId: authContext?.userId ?? null,
-            workspaceId: workspaceContext?.workspaceId ?? null,
-            requestLog: requestContext.requestLog,
-        };
     }
 
     buildCreateManyUserData(

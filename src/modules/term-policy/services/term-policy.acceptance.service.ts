@@ -7,9 +7,9 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
@@ -35,10 +35,10 @@ export class TermPolicyAcceptanceService {
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly outboxService: OutboxService,
-        private readonly notificationService: NotificationService,
+        private readonly notificationQueue: NotificationQueue,
         private readonly helperDateService: HelperDateService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly activityLogService: ActivityLogService
+        private readonly activityLogQueue: ActivityLogQueue
     ) {}
 
     async getPendingForUser(
@@ -150,7 +150,7 @@ export class TermPolicyAcceptanceService {
                     acceptedAt
                 );
 
-                const effect = this.notificationService.notify(
+                const effect = this.notificationQueue.notify(
                     EnumNotificationKind.userAcceptTermPolicy,
                     {
                         userId,
@@ -162,7 +162,7 @@ export class TermPolicyAcceptanceService {
                 );
                 await this.outboxService.addInTx(tx, effect);
 
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

@@ -13,7 +13,7 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectSlugAlreadyExistsException } from '@modules/project/exceptions/project.slug-already-exists.exception';
@@ -41,7 +41,7 @@ export class ProjectService {
         private readonly projectUtil: ProjectUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly outboxService: OutboxService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
@@ -116,7 +116,7 @@ export class ProjectService {
                         create,
                         slug
                     );
-                    const entry = this.activityLogService.recordEffect(
+                    const entry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         authContext,
@@ -164,7 +164,7 @@ export class ProjectService {
                 project.id,
                 update
             );
-            const entry = this.activityLogService.recordEffect(
+            const entry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -202,7 +202,7 @@ export class ProjectService {
                     project.id,
                     slug
                 );
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

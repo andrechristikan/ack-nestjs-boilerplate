@@ -56,7 +56,9 @@ Rule: `effects.md`, Writing.
 Rule: `effects.md`, Effects and Writing; `outbox.md`, Dispatch; `layering.md`, Roles.
 
 - The queue class writing the outbox row itself, on the caller's `tx`: every effect builder then becomes an `*InTx` write, and a fan-out of several effects is several inserts where one `addManyInTx` serves.
-- The outbox enqueuing through the queue token alone: the enqueue then happens outside the module that owns the job.
+- The outbox enqueuing through BullMQ's queue token alone: the enqueue then happens outside the module that owns the job.
+- A kit function taking the queue name and returning `<name>QueueClass` as the queue class's token: a function assembling a string where the queue name is already a constant.
+- One token constant per queue: the outbox then needs a map from queue name to token, and the kit would know every feature.
 
 ### The outbox key is unique per queue and process
 

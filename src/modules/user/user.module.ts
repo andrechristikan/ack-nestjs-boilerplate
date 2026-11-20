@@ -48,6 +48,10 @@ import { Module } from '@nestjs/common';
         UserCreateUtil,
         UserVerificationUtil,
         UserQueue,
+        {
+            provide: EnumUserQueue.user,
+            useExisting: UserQueue,
+        },
     ],
     exports: [
         UserService,
@@ -62,6 +66,7 @@ import { Module } from '@nestjs/common';
         UserCreateUtil,
         UserUtil,
         UserVerificationUtil,
+        UserQueue,
     ],
     imports: [
         ActivityLogModule,

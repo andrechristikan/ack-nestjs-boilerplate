@@ -41,23 +41,13 @@ import { UserRepository } from '@modules/user/repositories/user.repository';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserUtil } from '@modules/user/utils/user.util';
-import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
+import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import {
-    EnumUserProcess,
-    EnumUserQueue,
-    EnumUserSignUpWorkspaceContextType,
-} from '@modules/user/enums/user.enum';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import {
-    buildApiKeyContext,
     buildAuthJwtAccessContext,
-    buildRequestContext,
     buildUser,
-    buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import {} from '@common/request/enums/request.status-code.enum';
 import { MessageService } from '@common/message/services/message.service';
@@ -136,7 +126,6 @@ describe('UserService', () => {
                 UserService,
                 { provide: UserRepository, useValue: userRepository },
                 UserUtil,
-                ActivityLogUtil,
                 UserVerificationUtil,
                 UserCreateUtil,
                 {
@@ -1247,46 +1236,6 @@ describe('UserService', () => {
             expect(
                 service['gatesPasswordExpiryOn'](EnumUserLoginWith.socialApple)
             ).toBe(false);
-        });
-    });
-
-    describe('importByAdminEffect', () => {
-        it('returns a medium-priority importByAdmin effect on the user queue holding the rows and the activity log payload, with no business key', () => {
-            const rows = [
-                {
-                    username: 'bramble2fox',
-                    email: 'bramble@example.com',
-                    name: null,
-                },
-            ];
-            const requestContext = buildRequestContext();
-            const apiKeyContext = buildApiKeyContext();
-            const userContext = buildUserContext(
-                buildUser('admin-bramble', 'admin@example.com')
-            );
-            const authContext = buildAuthJwtAccessContext(userContext.user.id);
-
-            const activityLog: IActivityLogActorPayload = {
-                actorUserId: authContext.userId,
-                workspaceId: null,
-                apiKeyId: apiKeyContext.apiKey.id,
-                requestLog: requestContext.requestLog,
-            };
-
-            const effect = service.importByAdminEffect(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                rows
-            );
-
-            expect(effect).toEqual({
-                queue: EnumUserQueue.user,
-                name: EnumUserProcess.importByAdmin,
-                data: { rows, activityLog, created: null },
-                priority: EnumQueuePriority.medium,
-                idempotencyKey: null,
-            });
         });
     });
 });

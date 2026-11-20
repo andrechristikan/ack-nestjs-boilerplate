@@ -7,10 +7,10 @@ import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import type { IUserImportByAdminQueueResponse } from '@modules/user/interfaces/user.interface';
 import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { RoleService } from '@modules/role/services/role.service';
@@ -44,8 +44,8 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         private readonly workspaceService: WorkspaceService,
         private readonly roleService: RoleService,
         private readonly countryService: CountryService,
-        private readonly activityLogService: ActivityLogService,
-        private readonly notificationService: NotificationService,
+        private readonly activityLogQueue: ActivityLogQueue,
+        private readonly notificationQueue: NotificationQueue,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userRegistrationService: UserRegistrationService,
         private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
@@ -103,12 +103,12 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
                                 users
                             );
                         const entries = stages.map(stage =>
-                            this.activityLogService.recordEffectFromPayload(
+                            this.activityLogQueue.recordEffectFromPayload(
                                 activityLog,
                                 stage
                             )
                         );
-                        const result = this.notificationService.notify(
+                        const result = this.notificationQueue.notify(
                             EnumNotificationKind.userImportResult,
                             {
                                 userId: activityLog.actorUserId,
@@ -197,7 +197,7 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
                 passwordHasheds[index]!.passwordExpired
             );
 
-            return this.notificationService.notify(
+            return this.notificationQueue.notify(
                 EnumNotificationKind.welcomeByAdmin,
                 {
                     userId: input.userId,
@@ -223,7 +223,7 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         }
 
         const reason = this.messageService.setMessage(created.messagePath);
-        const result = this.notificationService.notify(
+        const result = this.notificationQueue.notify(
             EnumNotificationKind.userImportResult,
             {
                 userId: actorUserId,

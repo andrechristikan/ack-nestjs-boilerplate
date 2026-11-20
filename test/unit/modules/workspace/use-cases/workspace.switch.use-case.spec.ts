@@ -9,7 +9,7 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -32,8 +32,8 @@ describe('WorkspaceSwitchUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx = mock<IDatabaseTransactionClient>();
     const entry = buildActivityLogCreateManyEffect('entry');
@@ -54,7 +54,7 @@ describe('WorkspaceSwitchUseCase', () => {
     let useCase: WorkspaceSwitchUseCase;
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockReturnValue(entry);
+        activityLogQueue.recordEffect.mockReturnValue(entry);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -67,7 +67,7 @@ describe('WorkspaceSwitchUseCase', () => {
                     useValue: workspaceMemberService,
                 },
                 { provide: UserService, useValue: userService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -120,7 +120,7 @@ describe('WorkspaceSwitchUseCase', () => {
                 'user-1',
                 'workspace-1'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

@@ -6,8 +6,9 @@ import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { RoleService } from '@modules/role/services/role.service';
@@ -38,8 +39,9 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
         private readonly passwordHistoryService: PasswordHistoryService,
         private readonly sessionService: SessionService,
         private readonly notificationService: NotificationService,
+        private readonly notificationQueue: NotificationQueue,
         private readonly roleService: RoleService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly userUtil: UserUtil,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
@@ -101,7 +103,7 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                 authContext.userId,
                 password.passwordCreated
             );
-            const effect = this.notificationService.notify(
+            const effect = this.notificationQueue.notify(
                 EnumNotificationKind.temporaryPasswordByAdmin,
                 {
                     userId,
@@ -118,7 +120,7 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                 updated,
                 authContext.userId
             );
-            const actorEntry = this.activityLogService.recordEffect(
+            const actorEntry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -128,7 +130,7 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                     metadata: actorMetadata,
                 }
             );
-            const targetEntry = this.activityLogService.recordEffect(
+            const targetEntry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,

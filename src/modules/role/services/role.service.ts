@@ -1,4 +1,5 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { CacheQueue } from '@common/cache/queues/cache.queue';
 import { CacheService } from '@common/cache/services/cache.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -43,6 +44,7 @@ export class RoleService {
         private readonly roleRepository: RoleRepository,
         private readonly roleCache: RoleCache,
         private readonly cacheService: CacheService,
+        private readonly cacheQueue: CacheQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
@@ -158,7 +160,7 @@ export class RoleService {
     invalidateEffect(roleId: string): IOutboxEffect {
         const keys = this.roleCache.buildRoleKeys(roleId);
 
-        return this.cacheService.invalidateEffect(keys);
+        return this.cacheQueue.invalidateEffect(keys);
     }
 
     assertActorOutranks(

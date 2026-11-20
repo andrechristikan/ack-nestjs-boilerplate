@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { CacheQueue } from '@common/cache/queues/cache.queue';
 import { CacheService } from '@common/cache/services/cache.service';
 import {
     EnumCacheProcess,
@@ -51,6 +52,7 @@ describe('RoleService', () => {
     const roleRepository: MockProxy<RoleRepository> = mock<RoleRepository>();
     const roleCache: MockProxy<RoleCache> = mock<RoleCache>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
+    const cacheQueue: MockProxy<CacheQueue> = mock<CacheQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
@@ -114,7 +116,7 @@ describe('RoleService', () => {
         roleCache.buildRoleKey.mockReturnValue('Role:role-1');
         roleCache.buildRoleLease.mockReturnValue(roleLease);
         roleCache.buildRoleKeys.mockReturnValue(roleKeys);
-        cacheService.invalidateEffect.mockReturnValue(cacheEffect);
+        cacheQueue.invalidateEffect.mockReturnValue(cacheEffect);
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleService,
@@ -126,6 +128,7 @@ describe('RoleService', () => {
                 },
                 { provide: RoleCache, useValue: roleCache },
                 { provide: CacheService, useValue: cacheService },
+                { provide: CacheQueue, useValue: cacheQueue },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -396,9 +399,7 @@ describe('RoleService', () => {
 
             expect(result).toBe(cacheEffect);
             expect(roleCache.buildRoleKeys).toHaveBeenCalledWith(role.id);
-            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(
-                roleKeys
-            );
+            expect(cacheQueue.invalidateEffect).toHaveBeenCalledWith(roleKeys);
         });
     });
 
@@ -787,9 +788,7 @@ describe('RoleService', () => {
                 update
             );
             expect(roleCache.buildRoleKeys).toHaveBeenCalledWith(role.id);
-            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(
-                roleKeys
-            );
+            expect(cacheQueue.invalidateEffect).toHaveBeenCalledWith(roleKeys);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
         });
 
@@ -916,9 +915,7 @@ describe('RoleService', () => {
                 role.id
             );
             expect(roleCache.buildRoleKeys).toHaveBeenCalledWith(role.id);
-            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(
-                roleKeys
-            );
+            expect(cacheQueue.invalidateEffect).toHaveBeenCalledWith(roleKeys);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
         });
     });

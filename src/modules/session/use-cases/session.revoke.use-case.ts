@@ -10,7 +10,7 @@ import {
     EnumActivityLogAction,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { SessionRevokeRequestDto } from '@modules/session/dtos/request/session.revoke.request.dto';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionService } from '@modules/session/services/session.service';
@@ -36,7 +36,7 @@ export class SessionRevokeUseCase implements IAppUseCase<
     constructor(
         private readonly sessionService: SessionService,
         private readonly userAuthService: UserAuthService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -95,7 +95,7 @@ export class SessionRevokeUseCase implements IAppUseCase<
                     revokedAt
                 );
 
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

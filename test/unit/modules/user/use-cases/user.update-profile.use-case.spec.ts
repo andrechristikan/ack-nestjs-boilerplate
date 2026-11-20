@@ -8,7 +8,7 @@ import {
     EnumActivityLogAction,
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -27,8 +27,8 @@ describe('UserUpdateProfileUseCase', () => {
     const userProfileService: MockProxy<UserProfileService> =
         mock<UserProfileService>();
     const countryService: MockProxy<CountryService> = mock<CountryService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx = mock<IDatabaseTransactionClient>();
     const requestContext = buildRequestContext();
@@ -42,7 +42,7 @@ describe('UserUpdateProfileUseCase', () => {
     let useCase: UserUpdateProfileUseCase;
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockReturnValue(entry);
+        activityLogQueue.recordEffect.mockReturnValue(entry);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -52,7 +52,7 @@ describe('UserUpdateProfileUseCase', () => {
                 UserUpdateProfileUseCase,
                 { provide: UserProfileService, useValue: userProfileService },
                 { provide: CountryService, useValue: countryService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -84,7 +84,7 @@ describe('UserUpdateProfileUseCase', () => {
                     name: dto.name,
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

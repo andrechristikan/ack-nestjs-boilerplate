@@ -27,7 +27,7 @@ import type {
     Verification,
 } from '@generated/prisma-client/client';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -66,7 +66,7 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { RequestContextService } from '@common/request/services/request.context.service';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import {
     EnumNotificationKind,
     EnumNotificationProcess,
@@ -116,12 +116,12 @@ describe('UserAuthService', () => {
     let helperStringService: HelperStringService;
     let argon2Compare: MockInstance<HelperHashService['argon2Compare']>;
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
     const requestContextService: MockProxy<RequestContextService> =
         mock<RequestContextService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userRequestContext = buildRequestContext();
@@ -181,10 +181,7 @@ describe('UserAuthService', () => {
                 DatabaseUtil,
                 SessionUtil,
                 { provide: OutboxService, useValue: outboxService },
-                {
-                    provide: NotificationService,
-                    useValue: notificationService,
-                },
+                { provide: NotificationQueue, useValue: notificationQueue },
                 {
                     provide: RequestContextService,
                     useValue: requestContextService,
@@ -195,8 +192,8 @@ describe('UserAuthService', () => {
                     useValue: buildConfigService(TestUnitUserConfigValues),
                 },
                 {
-                    provide: ActivityLogService,
-                    useValue: activityLogService,
+                    provide: ActivityLogQueue,
+                    useValue: activityLogQueue,
                 },
             ],
         }).compile();
@@ -766,7 +763,7 @@ describe('UserAuthService', () => {
             userVerificationService.markVerifiedBySocialInTx.mockResolvedValue(
                 writtenRow
             );
-            activityLogService.recordEffect.mockReturnValue(entryEffect);
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
             await expect(
                 service.verifyEmailBySocialInTx(
@@ -782,7 +779,7 @@ describe('UserAuthService', () => {
             expect(
                 userVerificationService.markVerifiedBySocialInTx
             ).toHaveBeenCalledWith(tx, user.id);
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -926,7 +923,7 @@ describe('UserAuthService', () => {
         };
 
         beforeEach(() => {
-            notificationService.notify.mockReturnValue(newDeviceEffect);
+            notificationQueue.notify.mockReturnValue(newDeviceEffect);
             requestContextService.resolveDevice.mockReturnValue(
                 'Linux Desktop'
             );
@@ -934,7 +931,7 @@ describe('UserAuthService', () => {
                 'Unknown Location'
             );
             vi.setSystemTime(now);
-            activityLogService.recordEffect.mockImplementation(
+            activityLogQueue.recordEffect.mockImplementation(
                 (
                     _requestContext,
                     _apiKeyContext,
@@ -1020,7 +1017,7 @@ describe('UserAuthService', () => {
             expect(requestContextService.resolveCity).toHaveBeenCalledWith(
                 null
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.newDeviceLogin,
                 {
                     userId: 'user-halcyon',
@@ -1072,7 +1069,7 @@ describe('UserAuthService', () => {
                 loginAt
             );
 
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.newDeviceLogin,
                 expect.objectContaining({
                     browser: ' ',
@@ -1111,7 +1108,7 @@ describe('UserAuthService', () => {
                 loginAt
             );
 
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.newDeviceLogin,
                 expect.objectContaining({
                     browser: ' ',
@@ -1138,7 +1135,7 @@ describe('UserAuthService', () => {
                 loginAt
             );
 
-            expect(notificationService.notify).not.toHaveBeenCalled();
+            expect(notificationQueue.notify).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 expect.objectContaining({
                     idempotencyKey: 'userLoginCredential:user-halcyon',
@@ -1307,7 +1304,7 @@ describe('UserAuthService', () => {
                 loginAt
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -1319,7 +1316,7 @@ describe('UserAuthService', () => {
                     metadata: thistleMetadata,
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -1379,7 +1376,7 @@ describe('UserAuthService', () => {
                     loginAt
                 );
 
-                expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                     requestContext,
                     apiKeyContext,
                     null,
@@ -2296,7 +2293,7 @@ describe('UserAuthService', () => {
         };
 
         beforeEach(() => {
-            activityLogService.recordEffect.mockReturnValue(entryEffect);
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         });
 
         it('resets only the password counter for a password proof', async () => {
@@ -2334,7 +2331,7 @@ describe('UserAuthService', () => {
                 'user-halcyon',
                 mfaCheck
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 userRequestContext,
                 userApiKeyContext,
                 authContext,

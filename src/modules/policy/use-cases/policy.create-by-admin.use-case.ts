@@ -1,7 +1,7 @@
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
@@ -30,7 +30,7 @@ export class PolicyCreateByAdminUseCase implements IAppUseCase<
         private readonly policyService: PolicyService,
         private readonly roleService: RoleService,
         private readonly policyUtil: PolicyUtil,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService
     ) {}
 
@@ -59,7 +59,7 @@ export class PolicyCreateByAdminUseCase implements IAppUseCase<
             );
 
             const metadata = this.policyUtil.mapActivityLogMetadata(policy);
-            const effect = this.activityLogService.recordEffect(
+            const effect = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,

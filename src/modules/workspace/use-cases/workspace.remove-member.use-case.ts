@@ -5,7 +5,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
@@ -32,7 +32,7 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly workspaceMemberService: WorkspaceMemberService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly projectMemberService: ProjectMemberService,
         private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
         private readonly workspaceInviteService: WorkspaceInviteService,
@@ -79,7 +79,7 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
                     removed.userId,
                     workspaceId
                 );
-                const actorEntry = this.activityLogService.recordEffect(
+                const actorEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -92,7 +92,7 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
                         metadata: { targetUserId: removed.userId },
                     }
                 );
-                const targetEntry = this.activityLogService.recordEffect(
+                const targetEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

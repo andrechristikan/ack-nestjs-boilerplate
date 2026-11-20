@@ -18,7 +18,6 @@ import type {
 } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import type { UserPhoto } from '@generated/prisma-client/client';
-import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserPhotoContentInvalidException } from '@modules/user/exceptions/user.photo-content-invalid.exception';
 import { UserPhotoKeyInvalidException } from '@modules/user/exceptions/user.photo-key-invalid.exception';
@@ -35,11 +34,10 @@ import { UserService } from '@modules/user/services/user.service';
 import { FileExtensionInvalidException } from '@common/file/exceptions/file.extension-invalid.exception';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IUserDeletePhotoEffect } from '@modules/user/interfaces/user.interface';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -58,7 +56,8 @@ export class UserProfileService {
         private readonly fileService: FileService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly outboxService: OutboxService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
+        private readonly userQueue: UserQueue,
         private readonly configService: ConfigService
     ) {
         this.photoFilenameRandomLength = this.configService.get<number>(
@@ -87,19 +86,6 @@ export class UserProfileService {
 
     private isPhotoSizeAllowed(size: number): boolean {
         return size <= this.photoMaxSizeInBytes;
-    }
-
-    private deletePhotoEffect(
-        userId: string,
-        photo: UserPhoto
-    ): IUserDeletePhotoEffect {
-        return {
-            queue: EnumUserQueue.user,
-            name: EnumUserProcess.deletePhoto,
-            data: { userId, key: photo.key, access: photo.access },
-            priority: EnumQueuePriority.low,
-            idempotencyKey: null,
-        };
     }
 
     private async deletePreviousPhotoInTx(
@@ -131,7 +117,7 @@ export class UserProfileService {
                 previousPhoto,
                 photo.key
             );
-            const entry = this.activityLogService.recordEffect(
+            const entry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -159,7 +145,7 @@ export class UserProfileService {
             return;
         }
 
-        const effect = this.deletePhotoEffect(userId, photo);
+        const effect = this.userQueue.deletePhotoEffect(userId, photo);
         await this.outboxService.addInTx(tx, effect);
     }
 
@@ -278,7 +264,7 @@ export class UserProfileService {
                 aws.extension
             );
             if (!isContentValid) {
-                const effect = this.deletePhotoEffect(userId, aws);
+                const effect = this.userQueue.deletePhotoEffect(userId, aws);
                 await this.outboxService.add(effect);
 
                 throw new UserPhotoContentInvalidException();
@@ -405,7 +391,7 @@ export class UserProfileService {
                         username,
                     }
                 );
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

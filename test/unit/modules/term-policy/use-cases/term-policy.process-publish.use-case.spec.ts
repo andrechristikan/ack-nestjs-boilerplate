@@ -23,6 +23,7 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import type { INotificationEmailPublishTermPolicyEffect } from '@modules/notification/interfaces/notification.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import type { ITermPolicyBulkQueuePayload } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRecipientService } from '@modules/term-policy/services/term-policy.recipient.service';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
@@ -35,6 +36,8 @@ describe('TermPolicyProcessPublishUseCase', () => {
         mock<TermPolicyRecipientService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
+    const notificationEmailQueue: MockProxy<NotificationEmailQueue> =
+        mock<NotificationEmailQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const tx = {} as IDatabaseTransactionClient;
@@ -52,6 +55,10 @@ describe('TermPolicyProcessPublishUseCase', () => {
                     useValue: termPolicyRecipientService,
                 },
                 { provide: NotificationService, useValue: notificationService },
+                {
+                    provide: NotificationEmailQueue,
+                    useValue: notificationEmailQueue,
+                },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: UserService, useValue: userService },
                 ...TestUnitKitProviders,
@@ -110,7 +117,7 @@ describe('TermPolicyProcessPublishUseCase', () => {
 
                 return { batchId: `batch-${users[0]?.id}`, recipients };
             });
-            notificationService.emailPublishTermPolicyEffect.mockImplementation(
+            notificationEmailQueue.emailPublishTermPolicyEffect.mockImplementation(
                 (effectData, batchId, proceedBy) => ({
                     ...batchEffect,
                     data: {
@@ -192,7 +199,7 @@ describe('TermPolicyProcessPublishUseCase', () => {
                 u2,
             ]);
             expect(
-                notificationService.emailPublishTermPolicyEffect
+                notificationEmailQueue.emailPublishTermPolicyEffect
             ).toHaveBeenCalledWith(data, 'batch-u1', 'admin-id', recipients);
             expect(notificationService.createManyInTx).toHaveBeenCalledWith(
                 tx,

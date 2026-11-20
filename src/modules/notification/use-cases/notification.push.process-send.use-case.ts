@@ -11,6 +11,7 @@ import {
 import type { INotificationPushSendPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushDeliveryService } from '@modules/notification/services/notification.push.delivery.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
@@ -24,6 +25,7 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
         private readonly firebaseService: FirebaseService,
         private readonly notificationPushDeliveryService: NotificationPushDeliveryService,
         private readonly notificationService: NotificationService,
+        private readonly notificationPushQueue: NotificationPushQueue,
         private readonly notificationUtil: NotificationUtil,
         private readonly outboxService: OutboxService,
         private readonly messageService: MessageService
@@ -129,10 +131,11 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
                     context.proceedBy
                 );
                 if (tokens.length > 0) {
-                    const effect = this.notificationService.cleanupTokensEffect(
-                        userId,
-                        tokens
-                    );
+                    const effect =
+                        this.notificationPushQueue.cleanupTokensEffect(
+                            userId,
+                            tokens
+                        );
                     await this.outboxService.addInTx(tx, effect);
                 }
             });

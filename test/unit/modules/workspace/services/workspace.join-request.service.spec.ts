@@ -23,7 +23,7 @@ import type {
     WorkspaceJoinRequest,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import {
@@ -31,7 +31,7 @@ import {
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import {
     EnumNotificationKind,
     EnumNotificationProcess,
@@ -83,10 +83,10 @@ describe('WorkspaceJoinRequestService', () => {
         mock<WorkspaceMemberService>();
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
@@ -165,7 +165,7 @@ describe('WorkspaceJoinRequestService', () => {
         featureFlagService.getMetadataNumber.mockResolvedValue(7);
         vi.setSystemTime(reviewedAt);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
-        activityLogService.recordEffect
+        activityLogQueue.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
 
@@ -189,8 +189,8 @@ describe('WorkspaceJoinRequestService', () => {
                     provide: WorkspaceInviteService,
                     useValue: workspaceInviteService,
                 },
-                { provide: NotificationService, useValue: notificationService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 ...TestUnitKitProviders,
                 { provide: OutboxService, useValue: outboxService },
@@ -407,7 +407,7 @@ describe('WorkspaceJoinRequestService', () => {
             workspaceJoinRequestRepository.createPendingInTx.mockResolvedValue(
                 baseJoinRequest
             );
-            notificationService.notify
+            notificationQueue.notify
                 .mockReturnValueOnce(effects[0]!)
                 .mockReturnValueOnce(effects[1]!);
 
@@ -420,7 +420,7 @@ describe('WorkspaceJoinRequestService', () => {
             );
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(notificationService.notify).toHaveBeenNthCalledWith(
+            expect(notificationQueue.notify).toHaveBeenNthCalledWith(
                 1,
                 EnumNotificationKind.workspaceJoinRequest,
                 {
@@ -434,7 +434,7 @@ describe('WorkspaceJoinRequestService', () => {
                         'https://app.example.com/workspace/join-requests/join-request-1',
                 }
             );
-            expect(notificationService.notify).toHaveBeenNthCalledWith(
+            expect(notificationQueue.notify).toHaveBeenNthCalledWith(
                 2,
                 EnumNotificationKind.workspaceJoinRequest,
                 expect.objectContaining({ userId: 'reviewer-2' })
@@ -455,7 +455,7 @@ describe('WorkspaceJoinRequestService', () => {
                 notice
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContextOfUser2,
@@ -694,7 +694,7 @@ describe('WorkspaceJoinRequestService', () => {
                     calls.push('revokeInvite');
                 }
             );
-            notificationService.notify.mockReturnValue(effect);
+            notificationQueue.notify.mockReturnValue(effect);
             outboxService.addInTx.mockImplementation(async () => {
                 calls.push('addEffect');
 
@@ -739,7 +739,7 @@ describe('WorkspaceJoinRequestService', () => {
             expect(
                 workspaceInviteService.revokePendingByEmailInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-2@example.com');
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.workspaceJoinAccepted,
                 {
                     userId: 'user-2',
@@ -816,7 +816,7 @@ describe('WorkspaceJoinRequestService', () => {
                 'Acme'
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -830,7 +830,7 @@ describe('WorkspaceJoinRequestService', () => {
                     metadata: { targetUserId: 'user-2' },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -865,7 +865,7 @@ describe('WorkspaceJoinRequestService', () => {
                 'Acme'
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 firstEntry,
             ]);
@@ -975,7 +975,7 @@ describe('WorkspaceJoinRequestService', () => {
                 }
             );
             messageService.setMessage.mockReturnValue('Not a good fit');
-            notificationService.notify.mockReturnValue(effect);
+            notificationQueue.notify.mockReturnValue(effect);
             outboxService.addInTx.mockImplementation(async () => {
                 calls.push('addEffect');
 
@@ -1005,7 +1005,7 @@ describe('WorkspaceJoinRequestService', () => {
             expect(messageService.setMessage).toHaveBeenCalledWith(
                 'notification.rejectReason.wrongWorkspace'
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.workspaceJoinRejected,
                 {
                     userId: 'user-2',
@@ -1033,7 +1033,7 @@ describe('WorkspaceJoinRequestService', () => {
                 EnumWorkspaceJoinRejectReason.wrongWorkspace
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -1047,7 +1047,7 @@ describe('WorkspaceJoinRequestService', () => {
                     metadata: { targetUserId: 'user-2' },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -1079,7 +1079,7 @@ describe('WorkspaceJoinRequestService', () => {
                 EnumWorkspaceJoinRejectReason.wrongWorkspace
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 firstEntry,
             ]);

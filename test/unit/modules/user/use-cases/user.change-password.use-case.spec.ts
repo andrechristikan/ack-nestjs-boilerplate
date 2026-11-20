@@ -21,7 +21,7 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -33,7 +33,7 @@ import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordCommonException } from '@modules/auth/exceptions/auth.password-common.exception';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import {
     EnumNotificationKind,
     EnumNotificationProcess,
@@ -81,12 +81,12 @@ describe('UserChangePasswordUseCase', () => {
     const passwordHistoryService: MockProxy<PasswordHistoryService> =
         mock<PasswordHistoryService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
     const authPasswordService: MockProxy<AuthPasswordService> =
         mock<AuthPasswordService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let helperHashService: HelperHashService;
@@ -162,11 +162,11 @@ describe('UserChangePasswordUseCase', () => {
     });
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockReturnValue(changeEntry);
+        activityLogQueue.recordEffect.mockReturnValue(changeEntry);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        notificationService.notify.mockReturnValue(notifyEffect);
+        notificationQueue.notify.mockReturnValue(notifyEffect);
         vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
 
         const module: TestingModule = await Test.createTestingModule({
@@ -180,10 +180,7 @@ describe('UserChangePasswordUseCase', () => {
                     useValue: passwordHistoryService,
                 },
                 { provide: SessionService, useValue: sessionService },
-                {
-                    provide: NotificationService,
-                    useValue: notificationService,
-                },
+                { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: AuthPasswordService, useValue: authPasswordService },
                 AuthPasswordUtil,
                 HelperHashService,
@@ -196,7 +193,7 @@ describe('UserChangePasswordUseCase', () => {
                         'app.name': 'ACK Boilerplate',
                     }),
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
             ],
@@ -369,15 +366,15 @@ describe('UserChangePasswordUseCase', () => {
                 'user-linden',
                 password.passwordCreated
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
                 null,
                 { action: EnumActivityLogAction.userChangePassword }
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.changePassword,
                 { userId: 'user-linden', proceedBy: 'user-linden' }
             );

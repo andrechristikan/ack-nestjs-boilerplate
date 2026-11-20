@@ -11,7 +11,7 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Mfa } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.exception';
@@ -39,7 +39,7 @@ import {
     EnumNotificationKind,
     EnumNotificationLoginLockedMethod,
 } from '@modules/notification/enums/notification.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
@@ -54,8 +54,8 @@ export class MfaService {
         private readonly mfaRepository: MfaRepository,
         private readonly mfaTotpService: MfaTotpService,
         private readonly mfaPasskeyService: MfaPasskeyService,
-        private readonly activityLogService: ActivityLogService,
-        private readonly notificationService: NotificationService,
+        private readonly activityLogQueue: ActivityLogQueue,
+        private readonly notificationQueue: NotificationQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly messageService: MessageService,
@@ -402,7 +402,7 @@ export class MfaService {
                     lockedUntil,
                     userId
                 );
-                const failedEntry = this.activityLogService.recordEffect(
+                const failedEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     null,
@@ -419,7 +419,7 @@ export class MfaService {
                     return false;
                 }
 
-                const reachMaxEntry = this.activityLogService.recordEffect(
+                const reachMaxEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     null,
@@ -433,7 +433,7 @@ export class MfaService {
                 const methodLabel = this.messageService.setMessage(
                     'notification.loginLockedMethod.mfa'
                 );
-                const effect = this.notificationService.notify(
+                const effect = this.notificationQueue.notify(
                     EnumNotificationKind.loginLocked,
                     {
                         userId,

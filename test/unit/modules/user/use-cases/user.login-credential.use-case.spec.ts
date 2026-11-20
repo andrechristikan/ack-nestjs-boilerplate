@@ -11,7 +11,7 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -61,8 +61,8 @@ describe('UserLoginCredentialUseCase', () => {
         mock<UserVerificationService>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx = {} as IDatabaseTransactionClient;
     const requestContext = buildRequestContext();
@@ -124,7 +124,7 @@ describe('UserLoginCredentialUseCase', () => {
 
     beforeEach(async () => {
         vi.setSystemTime(now);
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -145,7 +145,7 @@ describe('UserLoginCredentialUseCase', () => {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 UserUtil,
                 { provide: MfaService, useValue: mfaService },
                 DeviceUtil,
@@ -295,7 +295,7 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userPasswordService.assertPasswordNotLocked
             ).toHaveBeenCalledWith(false);
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -426,7 +426,7 @@ describe('UserLoginCredentialUseCase', () => {
                 'user-bramble',
                 'bramble@example.com'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,

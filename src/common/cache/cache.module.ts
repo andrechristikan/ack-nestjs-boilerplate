@@ -3,9 +3,10 @@ import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { EnumCacheQueue } from '@common/cache/enums/cache.enum';
 import { CacheQueueFactory } from '@common/cache/factories/cache.queue.factory';
+import { CacheQueue } from '@common/cache/queues/cache.queue';
 import { CacheService } from '@common/cache/services/cache.service';
 
-/** Shared module: CacheService for every service and cache class reading through Redis, and for the cache invalidation processor. */
+/** Shared module: CacheService for every service and cache class reading through Redis and for the cache invalidation processor; CacheQueue for every service adding a cache invalidation. */
 @Global()
 @Module({})
 export class CacheModule {
@@ -13,8 +14,15 @@ export class CacheModule {
         return {
             module: CacheModule,
             controllers: [],
-            providers: [CacheService],
-            exports: [CacheService],
+            providers: [
+                CacheService,
+                CacheQueue,
+                {
+                    provide: EnumCacheQueue.cache,
+                    useExisting: CacheQueue,
+                },
+            ],
+            exports: [CacheService, CacheQueue],
             imports: [
                 BullModule.registerQueueAsync({
                     name: EnumCacheQueue.cache,

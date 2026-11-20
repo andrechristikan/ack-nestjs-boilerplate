@@ -28,7 +28,7 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     stubBackupCodes,
     stubMfaMetadataNumbers,
@@ -54,7 +54,7 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import {
     buildApiKeyContext,
     buildRequestContext,
@@ -65,10 +65,10 @@ describe('MfaService', () => {
     const mfaTotpService: MockProxy<MfaTotpService> = mock<MfaTotpService>();
     const mfaPasskeyService: MockProxy<MfaPasskeyService> =
         mock<MfaPasskeyService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const featureFlagService: MockProxy<FeatureFlagService> =
@@ -172,11 +172,8 @@ describe('MfaService', () => {
                 { provide: MfaRepository, useValue: mfaRepository },
                 { provide: MfaTotpService, useValue: mfaTotpService },
                 { provide: MfaPasskeyService, useValue: mfaPasskeyService },
-                { provide: ActivityLogService, useValue: activityLogService },
-                {
-                    provide: NotificationService,
-                    useValue: notificationService,
-                },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: MessageService, useValue: messageService },
                 ...TestUnitKitProviders,
@@ -394,8 +391,8 @@ describe('MfaService', () => {
         it('throws MfaAttemptMaxException when the failure reached the budget', async () => {
             mfaTotpService.checkCode.mockResolvedValue(null);
             mfaRepository.incrementAttemptInTx.mockResolvedValue(true);
-            activityLogService.recordEffect.mockReturnValue(entryEffect);
-            notificationService.notify.mockReturnValue(notifyEffect);
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
+            notificationQueue.notify.mockReturnValue(notifyEffect);
             messageService.setMessage.mockReturnValue('Label');
 
             await expect(
@@ -607,8 +604,8 @@ describe('MfaService', () => {
         it('throws MfaAttemptMaxException when the passkey failure reached the budget', async () => {
             mfaPasskeyService.checkAssertion.mockResolvedValue(null);
             mfaRepository.incrementAttemptInTx.mockResolvedValue(true);
-            activityLogService.recordEffect.mockReturnValue(entryEffect);
-            notificationService.notify.mockReturnValue(notifyEffect);
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
+            notificationQueue.notify.mockReturnValue(notifyEffect);
             messageService.setMessage.mockReturnValue('Label');
 
             await expect(
@@ -681,8 +678,8 @@ describe('MfaService', () => {
             );
             mfaTotpService.checkCode.mockResolvedValue(null);
             mfaPasskeyService.checkAssertion.mockResolvedValue(null);
-            activityLogService.recordEffect.mockReturnValue(entryEffect);
-            notificationService.notify.mockReturnValue(notifyEffect);
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
+            notificationQueue.notify.mockReturnValue(notifyEffect);
             messageService.setMessage.mockReturnValue('Label');
 
             for (let i = 0; i < 4; i += 1) {
@@ -840,8 +837,8 @@ describe('MfaService', () => {
         it('throws MfaAttemptMaxException when the failure locked', async () => {
             mfaTotpService.checkSetupCode.mockResolvedValue(null);
             mfaRepository.incrementAttemptInTx.mockResolvedValue(true);
-            activityLogService.recordEffect.mockReturnValue(entryEffect);
-            notificationService.notify.mockReturnValue(notifyEffect);
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
+            notificationQueue.notify.mockReturnValue(notifyEffect);
 
             await expect(
                 service.checkTotpSetupCode(
@@ -936,7 +933,7 @@ describe('MfaService', () => {
                     minutes
                 );
                 mfaRepository.incrementAttemptInTx.mockResolvedValue(false);
-                activityLogService.recordEffect.mockReturnValue(entryEffect);
+                activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
                 await service.countFailedAttempt(
                     requestContext,
@@ -1002,7 +999,7 @@ describe('MfaService', () => {
 
         it('adds the userVerifyMfaFailed entry on its transaction below the budget', async () => {
             mfaRepository.incrementAttemptInTx.mockResolvedValue(false);
-            activityLogService.recordEffect.mockReturnValue(entryEffect);
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
             await expect(
                 service.countFailedAttempt(
@@ -1018,8 +1015,8 @@ describe('MfaService', () => {
                 lockedUntil,
                 'user-quartz'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -1032,16 +1029,16 @@ describe('MfaService', () => {
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-            expect(notificationService.notify).not.toHaveBeenCalled();
+            expect(notificationQueue.notify).not.toHaveBeenCalled();
         });
 
         it('adds the failed entry, the reach-max entry and the mfa loginLocked effect when the failure locked', async () => {
             const reachMaxEffect = { ...entryEffect, idempotencyKey: 'reach' };
             mfaRepository.incrementAttemptInTx.mockResolvedValue(true);
-            activityLogService.recordEffect
+            activityLogQueue.recordEffect
                 .mockReturnValueOnce(entryEffect)
                 .mockReturnValueOnce(reachMaxEffect);
-            notificationService.notify.mockReturnValue(notifyEffect);
+            notificationQueue.notify.mockReturnValue(notifyEffect);
             messageService.setMessage.mockReturnValue('Label');
 
             await expect(
@@ -1051,7 +1048,7 @@ describe('MfaService', () => {
                     'user-quartz'
                 )
             ).resolves.toBe(true);
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -1063,7 +1060,7 @@ describe('MfaService', () => {
                     createdBy: 'user-quartz',
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -1078,7 +1075,7 @@ describe('MfaService', () => {
             expect(messageService.setMessage).toHaveBeenCalledWith(
                 'notification.loginLockedMethod.mfa'
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.loginLocked,
                 {
                     userId: 'user-quartz',

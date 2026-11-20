@@ -65,6 +65,10 @@ import { Module } from '@nestjs/common';
         AnalyticProjectService,
         AnalyticNotificationService,
         AnalyticQueue,
+        {
+            provide: EnumAnalyticQueue.analytic,
+            useExisting: AnalyticQueue,
+        },
     ],
     exports: [
         AnalyticCache,
@@ -80,6 +84,7 @@ import { Module } from '@nestjs/common';
         AnalyticWorkspaceService,
         AnalyticProjectService,
         AnalyticNotificationService,
+        AnalyticQueue,
     ],
     imports: [
         MfaModule,

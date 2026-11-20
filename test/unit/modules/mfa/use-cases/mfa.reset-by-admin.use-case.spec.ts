@@ -17,8 +17,9 @@ import {
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { SessionService } from '@modules/session/services/session.service';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumNotificationKind,
     EnumNotificationProcess,
@@ -47,10 +48,12 @@ describe('MfaResetByAdminUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
 
     let useCase: MfaResetByAdminUseCase;
@@ -97,7 +100,7 @@ describe('MfaResetByAdminUseCase', () => {
     });
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockImplementation(
+        activityLogQueue.recordEffect.mockImplementation(
             (
                 _requestContext,
                 _apiKeyContext,
@@ -113,7 +116,7 @@ describe('MfaResetByAdminUseCase', () => {
             async fn => fn(tx) as never
         );
         notificationService.getSnapshot.mockResolvedValue(snapshot);
-        notificationService.notify.mockReturnValue(notifyEffect);
+        notificationQueue.notify.mockReturnValue(notifyEffect);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -126,6 +129,7 @@ describe('MfaResetByAdminUseCase', () => {
                     provide: NotificationService,
                     useValue: notificationService,
                 },
+                { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -136,7 +140,7 @@ describe('MfaResetByAdminUseCase', () => {
                     }),
                 },
                 { provide: RoleService, useValue: roleService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
             ],
         }).compile();
         useCase = module.get(MfaResetByAdminUseCase);
@@ -232,11 +236,11 @@ describe('MfaResetByAdminUseCase', () => {
                 'addEffects',
                 'commit',
             ]);
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.resetMfaByAdmin,
                 { userId: 'user-marten', proceedBy: 'admin-marten', snapshot }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -251,7 +255,7 @@ describe('MfaResetByAdminUseCase', () => {
                     },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -323,7 +327,7 @@ describe('MfaResetByAdminUseCase', () => {
                 'admin-other',
                 expect.anything()
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.resetMfaByAdmin,
                 expect.objectContaining({ proceedBy: 'admin-other' })
             );

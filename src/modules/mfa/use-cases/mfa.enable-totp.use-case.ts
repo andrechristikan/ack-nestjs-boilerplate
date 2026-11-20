@@ -9,7 +9,7 @@ import {
     EnumActivityLogAction,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaTotpSetupRequiredException } from '@modules/mfa/exceptions/mfa.totp-setup-required.exception';
 import { MfaService } from '@modules/mfa/services/mfa.service';
@@ -38,7 +38,7 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
         private readonly mfaService: MfaService,
         private readonly mfaTotpService: MfaTotpService,
         private readonly userAuthService: UserAuthService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
@@ -106,7 +106,7 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
                         tx,
                         authContext.userId
                     );
-                    const entry = this.activityLogService.recordEffect(
+                    const entry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         authContext,

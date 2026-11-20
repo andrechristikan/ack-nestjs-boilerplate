@@ -20,13 +20,13 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -61,8 +61,8 @@ export class WorkspaceJoinRequestService {
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly workspaceInviteService: WorkspaceInviteService,
-        private readonly notificationService: NotificationService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly notificationQueue: NotificationQueue,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly featureFlagService: FeatureFlagService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly outboxService: OutboxService,
@@ -94,7 +94,7 @@ export class WorkspaceJoinRequestService {
         joinRequest: WorkspaceJoinRequest
     ): IOutboxEffect[] {
         const reviewerId = authContext.userId;
-        const reviewerEntry = this.activityLogService.recordEffect(
+        const reviewerEntry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
             authContext,
@@ -111,7 +111,7 @@ export class WorkspaceJoinRequestService {
             return [reviewerEntry];
         }
 
-        const requesterEntry = this.activityLogService.recordEffect(
+        const requesterEntry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
             authContext,
@@ -204,7 +204,7 @@ export class WorkspaceJoinRequestService {
                     joinRequest.id
                 );
                 const effects = reviewerIds.map(reviewerId =>
-                    this.notificationService.notify(
+                    this.notificationQueue.notify(
                         EnumNotificationKind.workspaceJoinRequest,
                         {
                             userId: reviewerId,
@@ -218,7 +218,7 @@ export class WorkspaceJoinRequestService {
                     )
                 );
                 await this.outboxService.addManyInTx(tx, effects);
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -341,7 +341,7 @@ export class WorkspaceJoinRequestService {
                     joinRequest.user.email
                 );
 
-                const effect = this.notificationService.notify(
+                const effect = this.notificationQueue.notify(
                     EnumNotificationKind.workspaceJoinAccepted,
                     {
                         userId: joinRequest.userId,
@@ -413,7 +413,7 @@ export class WorkspaceJoinRequestService {
                     throw new WorkspaceJoinRequestAlreadyProcessedException();
                 }
 
-                const effect = this.notificationService.notify(
+                const effect = this.notificationQueue.notify(
                     EnumNotificationKind.workspaceJoinRejected,
                     {
                         userId: joinRequest.userId,

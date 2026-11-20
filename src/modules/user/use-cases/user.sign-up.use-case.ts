@@ -4,12 +4,12 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
@@ -54,8 +54,8 @@ export class UserSignUpUseCase implements IAppUseCase<
         private readonly projectMemberService: ProjectMemberService,
         private readonly roleService: RoleService,
         private readonly countryService: CountryService,
-        private readonly activityLogService: ActivityLogService,
-        private readonly notificationService: NotificationService,
+        private readonly activityLogQueue: ActivityLogQueue,
+        private readonly notificationQueue: NotificationQueue,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userVerificationUtil: UserVerificationUtil,
@@ -135,7 +135,7 @@ export class UserSignUpUseCase implements IAppUseCase<
                             termPolicyAcceptances
                         );
 
-                        const welcome = this.notificationService.notify(
+                        const welcome = this.notificationQueue.notify(
                             EnumNotificationKind.welcome,
                             { userId: input.userId, proceedBy: input.userId }
                         );
@@ -144,7 +144,7 @@ export class UserSignUpUseCase implements IAppUseCase<
                                 input.userId,
                                 emailVerification
                             );
-                        const verification = this.notificationService.notify(
+                        const verification = this.notificationQueue.notify(
                             EnumNotificationKind.verificationEmail,
                             verificationContext
                         );
@@ -154,7 +154,7 @@ export class UserSignUpUseCase implements IAppUseCase<
                             created
                         );
                         const entries = stages.map(stage =>
-                            this.activityLogService.recordEffect(
+                            this.activityLogQueue.recordEffect(
                                 requestContext,
                                 apiKeyContext,
                                 null,

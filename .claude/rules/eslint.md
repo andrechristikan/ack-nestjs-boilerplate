@@ -20,3 +20,4 @@ paths:
 - A `layerPolicies` entry in the `ts/boundaries` block carries `layering.md`, Roles: a feature module's `utils/` file is imported only from its own module and from `use-cases/`.
 - A `no-restricted-syntax` selector over `src/modules/**` outside `use-cases/` carries "a service and a repository never call `withTransaction`" of `transaction.md`, Transactions.
 - A `no-restricted-syntax` selector over `src/**` outside `queues/`, `src/common/queue/bases/`, and `health.queue.indicator.ts` carries "only a queue class and `HealthQueueIndicator` call a method of the BullMQ `Queue`" of `outbox.md`, Dispatch.
+- A `no-restricted-syntax` selector over `src/**` on `@Inject` with an `Enum*Queue` member argument carries "no `@Inject(<queue enum>)` is written" of `queue.md`, Where things live.

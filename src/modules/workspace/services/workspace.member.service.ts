@@ -16,7 +16,7 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
@@ -54,7 +54,7 @@ export class WorkspaceMemberService {
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceService: WorkspaceService,
         private readonly outboxService: OutboxService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly featureFlagService: FeatureFlagService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
@@ -266,7 +266,7 @@ export class WorkspaceMemberService {
             throw new WorkspaceTransferTargetInactiveException();
         }
 
-        const ownerEntry = this.activityLogService.recordEffect(
+        const ownerEntry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
             authContext,
@@ -279,7 +279,7 @@ export class WorkspaceMemberService {
                 metadata: { targetUserId: targetMember.userId },
             }
         );
-        const newOwnerEntry = this.activityLogService.recordEffect(
+        const newOwnerEntry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
             authContext,
@@ -342,7 +342,7 @@ export class WorkspaceMemberService {
             throw new WorkspaceTransferTargetInactiveException();
         }
 
-        const adminEntry = this.activityLogService.recordEffect(
+        const adminEntry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
             authContext,
@@ -359,7 +359,7 @@ export class WorkspaceMemberService {
                 },
             }
         );
-        const previousOwnerEntry = this.activityLogService.recordEffect(
+        const previousOwnerEntry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
             authContext,
@@ -372,7 +372,7 @@ export class WorkspaceMemberService {
                 metadata: { actorUserId: authContext.userId, targetUserId },
             }
         );
-        const newOwnerEntry = this.activityLogService.recordEffect(
+        const newOwnerEntry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
             authContext,
@@ -469,7 +469,7 @@ export class WorkspaceMemberService {
                     throw new WorkspaceMemberPeerForbiddenException();
                 }
 
-                const actorEntry = this.activityLogService.recordEffect(
+                const actorEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -482,7 +482,7 @@ export class WorkspaceMemberService {
                         metadata: { targetUserId: targetMember.userId },
                     }
                 );
-                const targetEntry = this.activityLogService.recordEffect(
+                const targetEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

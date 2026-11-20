@@ -33,7 +33,7 @@ import {
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyUtil } from '@modules/policy/utils/policy.util';
@@ -54,8 +54,8 @@ import { PolicyUpdateByAdminUseCase } from '@modules/policy/use-cases/policy.upd
 describe('PolicyUpdateByAdminUseCase', () => {
     const policyService: MockProxy<PolicyService> = mock<PolicyService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
@@ -114,7 +114,7 @@ describe('PolicyUpdateByAdminUseCase', () => {
     let useCase: PolicyUpdateByAdminUseCase;
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockReturnValue(effect);
+        activityLogQueue.recordEffect.mockReturnValue(effect);
         roleService.invalidateEffect.mockReturnValue(roleInvalidateEffect);
         roleService.getByIdInTx.mockResolvedValue(targetRole);
         outboxService.withTransaction.mockImplementation(
@@ -132,7 +132,7 @@ describe('PolicyUpdateByAdminUseCase', () => {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -254,7 +254,7 @@ describe('PolicyUpdateByAdminUseCase', () => {
                 body
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

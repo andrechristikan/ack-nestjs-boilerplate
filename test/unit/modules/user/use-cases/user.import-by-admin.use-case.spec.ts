@@ -16,7 +16,8 @@ import type {
     IUserImportUsernameChecks,
 } from '@modules/user/interfaces/user.interface';
 import { UserImportService } from '@modules/user/services/user.import.service';
-import { UserService } from '@modules/user/services/user.service';
+import { UserQueue } from '@modules/user/queues/user.queue';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { UserImportByAdminUseCase } from '@modules/user/use-cases/user.import-by-admin.use-case';
 import {
     buildUser,
@@ -27,7 +28,9 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserImportByAdminUseCase', () => {
-    const userService: MockProxy<UserService> = mock<UserService>();
+    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const userImportService: MockProxy<UserImportService> =
         mock<UserImportService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
@@ -64,12 +67,16 @@ describe('UserImportByAdminUseCase', () => {
 
     beforeEach(async () => {
         outboxService.add.mockResolvedValue('outbox-bramble');
-        userService.importByAdminEffect.mockReturnValue(importEffect);
+        activityLogQueue.toPayload.mockReturnValue(
+            importEffect.data.activityLog
+        );
+        userQueue.importByAdminEffect.mockReturnValue(importEffect);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserImportByAdminUseCase,
-                { provide: UserService, useValue: userService },
+                { provide: UserQueue, useValue: userQueue },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: UserImportService, useValue: userImportService },
                 { provide: OutboxService, useValue: outboxService },
             ],
@@ -115,11 +122,15 @@ describe('UserImportByAdminUseCase', () => {
                 data: { outboxId: 'outbox-bramble' },
             });
 
-            expect(userService.importByAdminEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.toPayload).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
-                imported
+                null
+            );
+            expect(userQueue.importByAdminEffect).toHaveBeenCalledWith(
+                imported,
+                importEffect.data.activityLog
             );
             expect(outboxService.add).toHaveBeenCalledWith(importEffect);
         });
@@ -194,7 +205,7 @@ describe('UserImportByAdminUseCase', () => {
                 statusCode: EnumUserStatusCodeError.importUsernameExist,
             });
             expect(outboxService.add).not.toHaveBeenCalled();
-            expect(userService.importByAdminEffect).not.toHaveBeenCalled();
+            expect(userQueue.importByAdminEffect).not.toHaveBeenCalled();
         });
 
         it('throws the bad-word error and adds no effect when a username holds a bad word', async () => {

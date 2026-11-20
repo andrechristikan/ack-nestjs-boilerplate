@@ -8,7 +8,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { UserReauthenticationOtpNotAllowedException } from '@modules/user/exceptions/user.reauthentication-otp-not-allowed.exception';
 import { UserReauthenticationOtpResendLimitException } from '@modules/user/exceptions/user.reauthentication-otp-resend-limit.exception';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
@@ -27,8 +27,8 @@ describe('UserSendReauthenticationOtpUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: UserSendReauthenticationOtpUseCase;
@@ -46,7 +46,7 @@ describe('UserSendReauthenticationOtpUseCase', () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        activityLogService.recordEffect.mockReturnValue(entry);
+        activityLogQueue.recordEffect.mockReturnValue(entry);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -56,7 +56,7 @@ describe('UserSendReauthenticationOtpUseCase', () => {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -156,7 +156,7 @@ describe('UserSendReauthenticationOtpUseCase', () => {
                 'user-swift@example.com',
                 EnumUserReauthenticationAction.mobileNumberDelete
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

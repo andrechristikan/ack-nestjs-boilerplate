@@ -9,7 +9,7 @@ import {
     EnumActivityLogAction,
     EnumMfaChallengePurpose,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
@@ -30,7 +30,7 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
         private readonly userAuthService: UserAuthService,
         private readonly mfaService: MfaService,
         private readonly mfaChallengeService: MfaChallengeService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService,
         private readonly databaseUtil: DatabaseUtil
@@ -74,7 +74,7 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
                         user.id
                     );
                     await this.mfaService.completeInTx(tx, user.id, checked);
-                    const entry = this.activityLogService.recordEffect(
+                    const entry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         null,

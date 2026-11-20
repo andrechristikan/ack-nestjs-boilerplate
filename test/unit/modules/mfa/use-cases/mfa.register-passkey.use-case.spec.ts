@@ -26,7 +26,7 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { MfaPasskeyRegisterRequestDto } from '@modules/mfa/dtos/request/mfa.passkey-register.request.dto';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import {
@@ -70,8 +70,8 @@ describe('MfaRegisterPasskeyUseCase', () => {
     const mfaChallengeService: MockProxy<MfaChallengeService> =
         mock<MfaChallengeService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: MfaRegisterPasskeyUseCase;
@@ -130,7 +130,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
         mfaPasskeyService.getMaxPerUser.mockResolvedValue(10);
         mfaPasskeyService.registerInTx.mockResolvedValue(passkey);
         mfaService.createBackupCodesInTx.mockResolvedValue(['CODE000001']);
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -139,7 +139,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 { provide: MfaPasskeyService, useValue: mfaPasskeyService },
                 { provide: MfaChallengeService, useValue: mfaChallengeService },
                 { provide: UserAuthService, useValue: userAuthService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -322,7 +322,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 tx,
                 'user-quartz'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

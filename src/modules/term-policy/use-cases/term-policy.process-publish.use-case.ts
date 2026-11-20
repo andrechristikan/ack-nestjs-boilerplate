@@ -5,6 +5,7 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { ITermPolicyPublishQueueResponse } from '@modules/term-policy/interfaces/term-policy.interface';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import type {
     ITermPolicyBulkQueuePayload,
     ITermPolicyPublishPayload,
@@ -23,6 +24,7 @@ export class TermPolicyProcessPublishUseCase implements IAppUseCase<
     constructor(
         private readonly termPolicyRecipientService: TermPolicyRecipientService,
         private readonly notificationService: NotificationService,
+        private readonly notificationEmailQueue: NotificationEmailQueue,
         private readonly userService: UserService,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService,
@@ -71,7 +73,7 @@ export class TermPolicyProcessPublishUseCase implements IAppUseCase<
 
         const { batchId, recipients } =
             this.termPolicyRecipientService.buildBatch(freshUsers);
-        const effect = this.notificationService.emailPublishTermPolicyEffect(
+        const effect = this.notificationEmailQueue.emailPublishTermPolicyEffect(
             data,
             batchId,
             proceedBy,

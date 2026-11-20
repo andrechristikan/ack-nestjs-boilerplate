@@ -7,11 +7,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { z } from 'zod';
 import type { ICacheLease } from '@common/cache/interfaces/cache.interface';
 import { CacheService } from '@common/cache/services/cache.service';
-import {
-    EnumCacheProcess,
-    EnumCacheQueue,
-} from '@common/cache/enums/cache.enum';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     TestUnitKitConfigValues,
@@ -466,20 +461,6 @@ describe('CacheService', () => {
 
             await expect(service.flush()).resolves.toBeUndefined();
             expect(service['warnedAtByKey'].get('flushdb')).toBe(now.getTime());
-        });
-    });
-
-    describe('invalidateEffect', () => {
-        it('returns the high-priority cache invalidate effect carrying the keys and no business key', () => {
-            const effect = service.invalidateEffect(['Entry:1', 'Lease:1']);
-
-            expect(effect).toEqual({
-                queue: EnumCacheQueue.cache,
-                name: EnumCacheProcess.invalidate,
-                data: { keys: ['Entry:1', 'Lease:1'] },
-                priority: EnumQueuePriority.high,
-                idempotencyKey: null,
-            });
         });
     });
 

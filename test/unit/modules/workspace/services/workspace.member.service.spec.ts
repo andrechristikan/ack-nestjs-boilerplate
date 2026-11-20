@@ -28,7 +28,7 @@ import type {
     Workspace,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
@@ -70,8 +70,8 @@ describe('WorkspaceMemberService', () => {
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(
@@ -92,7 +92,7 @@ describe('WorkspaceMemberService', () => {
 
     beforeEach(async () => {
         featureFlagService.getMetadataNumber.mockResolvedValue(5);
-        activityLogService.recordEffect
+        activityLogQueue.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
         workspaceMemberRepository.updateRoleInTx.mockResolvedValue(true);
@@ -115,7 +115,7 @@ describe('WorkspaceMemberService', () => {
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: FeatureFlagService, useValue: featureFlagService },
             ],
         }).compile();
@@ -564,7 +564,7 @@ describe('WorkspaceMemberService', () => {
                 'user-2'
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -578,7 +578,7 @@ describe('WorkspaceMemberService', () => {
                     metadata: { targetUserId: 'user-2' },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -725,8 +725,8 @@ describe('WorkspaceMemberService', () => {
             workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
                 { ...workspace, members: [owner, target] }
             );
-            activityLogService.recordEffect.mockReset();
-            activityLogService.recordEffect
+            activityLogQueue.recordEffect.mockReset();
+            activityLogQueue.recordEffect
                 .mockReturnValueOnce(firstEntry)
                 .mockReturnValueOnce(secondEntry)
                 .mockReturnValueOnce(thirdEntry);
@@ -905,7 +905,7 @@ describe('WorkspaceMemberService', () => {
             expect(
                 workspaceMemberRepository.demoteOwnerInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', 'member-1');
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -923,7 +923,7 @@ describe('WorkspaceMemberService', () => {
                     },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -940,7 +940,7 @@ describe('WorkspaceMemberService', () => {
                     },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 3,
                 requestContext,
                 apiKeyContext,
@@ -1205,7 +1205,7 @@ describe('WorkspaceMemberService', () => {
                 EnumWorkspaceMemberRole.member,
                 EnumWorkspaceMemberRole.admin
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -1219,7 +1219,7 @@ describe('WorkspaceMemberService', () => {
                     metadata: { targetUserId: 'user-2' },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,

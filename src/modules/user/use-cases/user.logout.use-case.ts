@@ -7,7 +7,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { DeviceService } from '@modules/device/services/device.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
@@ -24,7 +24,7 @@ export class UserLogoutUseCase implements IAppUseCase<
     constructor(
         private readonly deviceService: DeviceService,
         private readonly sessionService: SessionService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -54,7 +54,7 @@ export class UserLogoutUseCase implements IAppUseCase<
                     userId,
                     now
                 );
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

@@ -4,8 +4,9 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import type { UserImportResponseDto } from '@modules/user/dtos/response/user.import.response.dto';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { UserImportService } from '@modules/user/services/user.import.service';
-import { UserService } from '@modules/user/services/user.service';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { Injectable } from '@nestjs/common';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -21,7 +22,8 @@ export class UserImportByAdminUseCase implements IAppUseCase<
     IResponseReturn<UserImportResponseDto>
 > {
     constructor(
-        private readonly userService: UserService,
+        private readonly userQueue: UserQueue,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly userImportService: UserImportService,
         private readonly outboxService: OutboxService
     ) {}
@@ -47,12 +49,13 @@ export class UserImportByAdminUseCase implements IAppUseCase<
         this.userImportService.assertEmailsAvailable(existingEmails);
         this.userImportService.assertImportByAdminRows(rows, usernameChecks);
 
-        const effect = this.userService.importByAdminEffect(
+        const activityLog = this.activityLogQueue.toPayload(
             requestContext,
             apiKeyContext,
             authContext,
-            rows
+            null
         );
+        const effect = this.userQueue.importByAdminEffect(rows, activityLog);
         const outboxId = await this.outboxService.add(effect);
 
         return { data: { outboxId } };

@@ -55,9 +55,10 @@ import { SessionRepository } from '@modules/session/repositories/session.reposit
 import { SessionService } from '@modules/session/services/session.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { SessionQueue } from '@modules/session/queues/session.queue';
+import type { ISessionPurgeLoginsEffect } from '@modules/session/interfaces/session.interface';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -87,8 +88,9 @@ describe('SessionService', () => {
         mock<IDatabaseTransactionClient>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const idleTimeoutInMs = 604800000;
     const retentionInMs = 7776000000;
     const now = new Date('2026-01-08T00:00:00.000Z');
@@ -102,6 +104,17 @@ describe('SessionService', () => {
         data: { rows: [] },
         priority: EnumQueuePriority.low,
         idempotencyKey: 'actor',
+    };
+    const purgeEffect: ISessionPurgeLoginsEffect = {
+        queue: EnumSessionQueue.session,
+        name: EnumSessionProcess.purgeLogins,
+        data: { userId: 'user-1', sessions: [] },
+        priority: EnumQueuePriority.high,
+        idempotencyKey: null,
+    };
+    const otherPurgeEffect: ISessionPurgeLoginsEffect = {
+        ...purgeEffect,
+        data: { userId: 'user-2', sessions: [] },
     };
     const targetEffect: IActivityLogCreateManyEffect = {
         ...actorEffect,
@@ -159,6 +172,7 @@ describe('SessionService', () => {
     });
 
     beforeEach(async () => {
+        sessionQueue.purgeLoginsEffect.mockReturnValue(purgeEffect);
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 SessionService,
@@ -177,7 +191,8 @@ describe('SessionService', () => {
                 { provide: DeviceService, useValue: deviceService },
                 DeviceUtil,
                 { provide: OutboxService, useValue: outboxService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: SessionQueue, useValue: sessionQueue },
                 SessionUtil,
             ],
         }).compile();
@@ -546,13 +561,11 @@ describe('SessionService', () => {
                 new Date('2025-12-29T00:00:00.000Z')
             );
             expect(sessionRepository.revokeInTx).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, {
-                queue: EnumSessionQueue.session,
-                name: EnumSessionProcess.purgeLogins,
-                data: { userId: 'user-1', sessions: [{ id: 'session-1' }] },
-                priority: EnumQueuePriority.high,
-                idempotencyKey: null,
-            });
+            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+                'user-1',
+                [{ id: 'session-1' }]
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
         });
 
         it('answers false and adds no row when no live session matched', async () => {
@@ -598,13 +611,6 @@ describe('SessionService', () => {
     describe('revokeInTx', () => {
         it('revokes the session and adds its purge row on the given tx', async () => {
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
-            const effect: IOutboxEffect = {
-                queue: EnumSessionQueue.session,
-                name: EnumSessionProcess.purgeLogins,
-                data: { userId: 'user-1', sessions: [{ id: 'session-1' }] },
-                priority: EnumQueuePriority.high,
-                idempotencyKey: null,
-            };
             sessionRepository.revokeInTx.mockResolvedValue(true);
 
             await expect(
@@ -624,7 +630,11 @@ describe('SessionService', () => {
                 'admin-1',
                 revokedAt
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
+            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+                'user-1',
+                [{ id: 'session-1' }]
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
         });
 
         it('throws SessionNotFoundException when no session matched', async () => {
@@ -654,13 +664,6 @@ describe('SessionService', () => {
                 { id: 'session-1' },
                 { id: 'session-2' },
             ];
-            const effect: IOutboxEffect = {
-                queue: EnumSessionQueue.session,
-                name: EnumSessionProcess.purgeLogins,
-                data: { userId: 'user-1', sessions: refs },
-                priority: EnumQueuePriority.high,
-                idempotencyKey: null,
-            };
             sessionRepository.revokeActiveByUserInTx.mockResolvedValue(refs);
 
             const result = await service.revokeActiveByUserInTx(
@@ -674,7 +677,11 @@ describe('SessionService', () => {
             expect(
                 sessionRepository.revokeActiveByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-1', null, 'admin-1', revokedAt);
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
+            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+                'user-1',
+                refs
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.dispatch).not.toHaveBeenCalled();
         });
@@ -702,13 +709,6 @@ describe('SessionService', () => {
                 { id: 'session-1' },
                 { id: 'session-2' },
             ];
-            const effect: IOutboxEffect = {
-                queue: EnumSessionQueue.session,
-                name: EnumSessionProcess.purgeLogins,
-                data: { userId: 'user-1', sessions: refs },
-                priority: EnumQueuePriority.high,
-                idempotencyKey: null,
-            };
             sessionRepository.revokeActiveByUserInTx.mockResolvedValue(refs);
 
             const result = await service.revokeActiveByUserExceptInTx(
@@ -729,7 +729,11 @@ describe('SessionService', () => {
                 'user-1',
                 revokedAt
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
+            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+                'user-1',
+                refs
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.dispatch).not.toHaveBeenCalled();
         });
@@ -798,13 +802,11 @@ describe('SessionService', () => {
 
             expect(result).toBe(refs);
             expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, {
-                queue: EnumSessionQueue.session,
-                name: EnumSessionProcess.purgeLogins,
-                data: { userId: 'user-1', sessions: refs },
-                priority: EnumQueuePriority.high,
-                idempotencyKey: null,
-            });
+            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+                'user-1',
+                refs
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
         });
     });
 
@@ -835,13 +837,11 @@ describe('SessionService', () => {
                 'admin-1',
                 revokedAt
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, {
-                queue: EnumSessionQueue.session,
-                name: EnumSessionProcess.purgeLogins,
-                data: { userId: 'user-1', sessions: refs },
-                priority: EnumQueuePriority.high,
-                idempotencyKey: null,
-            });
+            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+                'user-1',
+                refs
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
         });
 
         it('adds no row when no session was revoked', async () => {
@@ -877,6 +877,9 @@ describe('SessionService', () => {
             sessionRepository.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
                 rows
             );
+            sessionQueue.purgeLoginsEffect
+                .mockReturnValueOnce(purgeEffect)
+                .mockReturnValueOnce(otherPurgeEffect);
 
             const result = await service.revokeByDeviceOwnershipIdsInTx(
                 tx,
@@ -894,24 +897,19 @@ describe('SessionService', () => {
                 new Date('2026-01-05T00:00:00.000Z')
             );
             expect(result).toEqual(grouped);
+            expect(sessionQueue.purgeLoginsEffect).toHaveBeenNthCalledWith(
+                1,
+                'user-2',
+                [{ id: 'session-2' }, { id: 'session-3' }]
+            );
+            expect(sessionQueue.purgeLoginsEffect).toHaveBeenNthCalledWith(
+                2,
+                'user-3',
+                [{ id: 'session-4' }]
+            );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                {
-                    queue: EnumSessionQueue.session,
-                    name: EnumSessionProcess.purgeLogins,
-                    data: {
-                        userId: 'user-2',
-                        sessions: [{ id: 'session-2' }, { id: 'session-3' }],
-                    },
-                    priority: EnumQueuePriority.high,
-                    idempotencyKey: null,
-                },
-                {
-                    queue: EnumSessionQueue.session,
-                    name: EnumSessionProcess.purgeLogins,
-                    data: { userId: 'user-3', sessions: [{ id: 'session-4' }] },
-                    priority: EnumQueuePriority.high,
-                    idempotencyKey: null,
-                },
+                purgeEffect,
+                otherPurgeEffect,
             ]);
         });
 
@@ -936,7 +934,7 @@ describe('SessionService', () => {
         const revokedAt = new Date('2026-01-05T00:00:00.000Z');
 
         beforeEach(() => {
-            activityLogService.recordEffect
+            activityLogQueue.recordEffect
                 .mockReturnValueOnce(actorEffect)
                 .mockReturnValueOnce(targetEffect);
             outboxService.withTransaction.mockImplementation(
@@ -956,7 +954,7 @@ describe('SessionService', () => {
                 revokedAt
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -972,7 +970,7 @@ describe('SessionService', () => {
                     },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -1016,7 +1014,7 @@ describe('SessionService', () => {
                 revokedAt
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
             expect(outboxService.addInTx).toHaveBeenCalledTimes(2);
         });
 
@@ -1041,13 +1039,11 @@ describe('SessionService', () => {
                 'admin-1',
                 revokedAt
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, {
-                queue: EnumSessionQueue.session,
-                name: EnumSessionProcess.purgeLogins,
-                data: { userId: 'user-1', sessions: [{ id: 'session-1' }] },
-                priority: EnumQueuePriority.high,
-                idempotencyKey: null,
-            });
+            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+                'user-1',
+                [{ id: 'session-1' }]
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
         });
 
         it('throws SessionNotFoundException and adds no row when the guarded revoke matches no active session', async () => {
@@ -1135,7 +1131,7 @@ describe('SessionService', () => {
         const revokedAt = new Date('2026-01-05T00:00:00.000Z');
 
         beforeEach(() => {
-            activityLogService.recordEffect
+            activityLogQueue.recordEffect
                 .mockReturnValueOnce(actorEffect)
                 .mockReturnValueOnce(targetEffect);
             outboxService.withTransaction.mockImplementation(
@@ -1157,7 +1153,7 @@ describe('SessionService', () => {
                 revokedAt
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -1168,7 +1164,7 @@ describe('SessionService', () => {
                     metadata: { targetUserId: 'user-1', sessionCount: 2 },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -1208,13 +1204,11 @@ describe('SessionService', () => {
                 sessionRepository.revokeActiveByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-1', null, 'admin-1', revokedAt);
             expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, {
-                queue: EnumSessionQueue.session,
-                name: EnumSessionProcess.purgeLogins,
-                data: { userId: 'user-1', sessions: refs },
-                priority: EnumQueuePriority.high,
-                idempotencyKey: null,
-            });
+            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+                'user-1',
+                refs
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
         });
 
         it('throws SessionNotFoundException and adds no row when no session was revoked', async () => {
@@ -1365,13 +1359,11 @@ describe('SessionService', () => {
             );
             expect(calls).toEqual(['revokeSessions', 'removeOwnership']);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, {
-                queue: EnumSessionQueue.session,
-                name: EnumSessionProcess.purgeLogins,
-                data: { userId: 'user-1', sessions: revokedSessions },
-                priority: EnumQueuePriority.high,
-                idempotencyKey: null,
-            });
+            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+                'user-1',
+                revokedSessions
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
         });
 
         it('adds no purge row when the ownership has no live session', async () => {
@@ -1456,7 +1448,7 @@ describe('SessionService', () => {
         };
 
         beforeEach(() => {
-            activityLogService.recordEffect
+            activityLogQueue.recordEffect
                 .mockReturnValueOnce(actorEffect)
                 .mockReturnValueOnce(targetEffect);
             outboxService.withTransaction.mockImplementation(
@@ -1507,7 +1499,7 @@ describe('SessionService', () => {
                 'device-ownership-1'
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -1518,7 +1510,7 @@ describe('SessionService', () => {
                     metadata: DeviceActorMetadata,
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -1552,7 +1544,7 @@ describe('SessionService', () => {
                 'device-ownership-1'
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
             expect(outboxService.addInTx).toHaveBeenCalledTimes(2);
         });
 

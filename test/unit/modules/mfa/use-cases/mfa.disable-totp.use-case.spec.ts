@@ -19,7 +19,7 @@ import { Prisma } from '@generated/prisma-client/client';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { SessionService } from '@modules/session/services/session.service';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -61,8 +61,8 @@ describe('MfaDisableTotpUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const mfaTotpService: MockProxy<MfaTotpService> = mock<MfaTotpService>();
 
@@ -105,7 +105,7 @@ describe('MfaDisableTotpUseCase', () => {
     });
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -126,7 +126,7 @@ describe('MfaDisableTotpUseCase', () => {
                 },
                 { provide: SessionService, useValue: sessionService },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
             ],
         }).compile();
         useCase = module.get(MfaDisableTotpUseCase);
@@ -236,7 +236,7 @@ describe('MfaDisableTotpUseCase', () => {
                 'user-marten',
                 now
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

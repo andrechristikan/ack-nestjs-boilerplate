@@ -8,6 +8,9 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserQueue } from '@modules/user/queues/user.queue';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
+import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('UserQueue', () => {
@@ -56,6 +59,60 @@ describe('UserQueue', () => {
             userQueue.upsertJobScheduler.mockRejectedValue(error);
 
             await expect(queue.onModuleInit()).rejects.toBe(error);
+        });
+    });
+
+    describe('deletePhotoEffect', () => {
+        it('returns the low-priority deletePhoto effect carrying the user, key, and access and no business key', () => {
+            const effect = queue.deletePhotoEffect('user-persimmon', {
+                bucket: 'bucket',
+                key: 'photo-profile/user-persimmon/previous.png',
+                cdnUrl: null,
+                completedUrl: 'https://cdn.example.com/previous.png',
+                mime: 'image/png',
+                extension: 'png',
+                access: EnumAwsS3Accessibility.public,
+            });
+
+            expect(effect).toEqual({
+                queue: EnumUserQueue.user,
+                name: EnumUserProcess.deletePhoto,
+                data: {
+                    userId: 'user-persimmon',
+                    key: 'photo-profile/user-persimmon/previous.png',
+                    access: EnumAwsS3Accessibility.public,
+                },
+                priority: EnumQueuePriority.low,
+                idempotencyKey: null,
+            });
+        });
+    });
+
+    describe('importByAdminEffect', () => {
+        it('returns the medium-priority importByAdmin effect holding the rows and the activity payload given, created null, no business key', () => {
+            const rows = [
+                {
+                    username: 'bramble2fox',
+                    email: 'bramble@example.com',
+                    name: null,
+                },
+            ];
+            const activityLog: IActivityLogActorPayload = {
+                actorUserId: 'admin-bramble',
+                workspaceId: null,
+                apiKeyId: 'api-key-1',
+                requestLog: buildRequestContext().requestLog,
+            };
+
+            const effect = queue.importByAdminEffect(rows, activityLog);
+
+            expect(effect).toEqual({
+                queue: EnumUserQueue.user,
+                name: EnumUserProcess.importByAdmin,
+                data: { rows, activityLog, created: null },
+                priority: EnumQueuePriority.medium,
+                idempotencyKey: null,
+            });
         });
     });
 });

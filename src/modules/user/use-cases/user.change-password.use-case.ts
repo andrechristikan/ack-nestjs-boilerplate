@@ -10,11 +10,11 @@ import {
     EnumPasswordHistoryType,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -48,10 +48,10 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         private readonly userAuthService: UserAuthService,
         private readonly passwordHistoryService: PasswordHistoryService,
         private readonly sessionService: SessionService,
-        private readonly notificationService: NotificationService,
+        private readonly notificationQueue: NotificationQueue,
         private readonly authPasswordService: AuthPasswordService,
         private readonly authPasswordUtil: AuthPasswordUtil,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
@@ -145,7 +145,7 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                     authContext.userId,
                     password.passwordCreated
                 );
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -154,7 +154,7 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                         action: EnumActivityLogAction.userChangePassword,
                     }
                 );
-                const effect = this.notificationService.notify(
+                const effect = this.notificationQueue.notify(
                     EnumNotificationKind.changePassword,
                     {
                         userId: authContext.userId,

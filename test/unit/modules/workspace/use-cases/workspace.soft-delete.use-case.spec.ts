@@ -9,7 +9,7 @@ import { DatabaseWriteConflictCode } from '@common/database/constants/database.c
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
@@ -42,8 +42,8 @@ describe('WorkspaceSoftDeleteUseCase', () => {
     const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
         mock<WorkspaceJoinRequestService>();
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const firstEntry = buildActivityLogCreateManyEffect('first-entry');
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
@@ -70,7 +70,7 @@ describe('WorkspaceSoftDeleteUseCase', () => {
     });
 
     beforeEach(async () => {
-        activityLogService.recordEffect
+        activityLogQueue.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
         vi.setSystemTime(deletedAt);
@@ -91,7 +91,7 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                 { provide: ProjectService, useValue: projectService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
@@ -160,7 +160,7 @@ describe('WorkspaceSoftDeleteUseCase', () => {
             expect(
                 workspaceJoinRequestService.cancelPendingByWorkspaceInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1');
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

@@ -9,7 +9,7 @@ import {
     EnumActivityLogAction,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { MfaBackupCodeRegenerateRequestDto } from '@modules/mfa/dtos/request/mfa.backup-code-regenerate.request.dto';
 import type { MfaBackupCodesResponseDto } from '@modules/mfa/dtos/response/mfa.backup-codes.response.dto';
 import { MfaNotEnabledException } from '@modules/mfa/exceptions/mfa.not-enabled.exception';
@@ -35,7 +35,7 @@ export class MfaRegenerateBackupCodesUseCase implements IAppUseCase<
     constructor(
         private readonly mfaService: MfaService,
         private readonly userAuthService: UserAuthService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
@@ -90,7 +90,7 @@ export class MfaRegenerateBackupCodesUseCase implements IAppUseCase<
                             tx,
                             authContext.userId
                         );
-                    const entry = this.activityLogService.recordEffect(
+                    const entry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         authContext,

@@ -18,7 +18,7 @@ import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { INotificationEmailPublishTermPolicyEffect } from '@modules/notification/interfaces/notification.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import type { ITermPolicyRecipientPage } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRecipientRepository } from '@modules/term-policy/repositories/term-policy.recipient.repository';
 import { TermPolicyRecipientService } from '@modules/term-policy/services/term-policy.recipient.service';
@@ -27,8 +27,8 @@ describe('TermPolicyRecipientService', () => {
     const termPolicyRecipientRepository: MockProxy<TermPolicyRecipientRepository> =
         mock<TermPolicyRecipientRepository>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
+    const notificationEmailQueue: MockProxy<NotificationEmailQueue> =
+        mock<NotificationEmailQueue>();
     const tx = {} as IDatabaseTransactionClient;
     let service: TermPolicyRecipientService;
     let databaseUtil: DatabaseUtil;
@@ -62,7 +62,7 @@ describe('TermPolicyRecipientService', () => {
     });
 
     beforeEach(async () => {
-        notificationService.emailPublishTermPolicyEffect.mockImplementation(
+        notificationEmailQueue.emailPublishTermPolicyEffect.mockImplementation(
             (effectData, batchId, proceedBy, recipients) => ({
                 ...batchEffect,
                 data: { data: effectData, batchId, proceedBy, recipients: [] },
@@ -72,7 +72,10 @@ describe('TermPolicyRecipientService', () => {
         const module = await Test.createTestingModule({
             providers: [
                 TermPolicyRecipientService,
-                { provide: NotificationService, useValue: notificationService },
+                {
+                    provide: NotificationEmailQueue,
+                    useValue: notificationEmailQueue,
+                },
                 {
                     provide: TermPolicyRecipientRepository,
                     useValue: termPolicyRecipientRepository,
@@ -336,7 +339,7 @@ describe('TermPolicyRecipientService', () => {
             );
 
             expect(
-                notificationService.emailPublishTermPolicyEffect
+                notificationEmailQueue.emailPublishTermPolicyEffect
             ).toHaveBeenNthCalledWith(1, data, 'B1', 'admin-id', [
                 {
                     userId: 'u1',
@@ -346,7 +349,7 @@ describe('TermPolicyRecipientService', () => {
                 },
             ]);
             expect(
-                notificationService.emailPublishTermPolicyEffect
+                notificationEmailQueue.emailPublishTermPolicyEffect
             ).toHaveBeenNthCalledWith(2, data, 'B2', 'admin-id', [
                 {
                     userId: 'u2',
@@ -385,7 +388,7 @@ describe('TermPolicyRecipientService', () => {
             );
 
             expect(
-                notificationService.emailPublishTermPolicyEffect
+                notificationEmailQueue.emailPublishTermPolicyEffect
             ).toHaveBeenCalledWith(data, 'B', 'admin-id', [
                 expect.objectContaining({ userId: 'u1' }),
             ]);
@@ -406,7 +409,7 @@ describe('TermPolicyRecipientService', () => {
             );
 
             expect(
-                notificationService.emailPublishTermPolicyEffect
+                notificationEmailQueue.emailPublishTermPolicyEffect
             ).toHaveBeenCalledWith(data, 'B', 'admin-id', []);
             expect(outboxService.addMany).toHaveBeenCalledTimes(1);
             expect(batches).toBe(1);

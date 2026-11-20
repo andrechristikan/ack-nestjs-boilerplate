@@ -22,7 +22,7 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
@@ -54,8 +54,8 @@ describe('UserLoginVerifyMfaUseCase', () => {
     const mfaChallengeService: MockProxy<MfaChallengeService> =
         mock<MfaChallengeService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: UserLoginVerifyMfaUseCase;
@@ -127,7 +127,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
 
     beforeEach(async () => {
         vi.setSystemTime(now);
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -139,7 +139,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 { provide: MfaService, useValue: mfaService },
                 { provide: MfaChallengeService, useValue: mfaChallengeService },
                 { provide: UserAuthService, useValue: userAuthService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 HelperDateService,
                 DatabaseUtil,
@@ -224,7 +224,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 'user-bramble',
                 checked
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -315,7 +315,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 'user-bramble',
                 passkeyChecked
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,

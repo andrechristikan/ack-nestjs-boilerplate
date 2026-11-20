@@ -15,7 +15,7 @@ import type {
     ProjectMember,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
@@ -44,7 +44,7 @@ export class ProjectMemberService {
         private readonly projectRepository: ProjectRepository,
         private readonly projectUtil: ProjectUtil,
         private readonly outboxService: OutboxService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
@@ -179,7 +179,7 @@ export class ProjectMemberService {
                     role,
                     actor.userId
                 );
-                const actorEntry = this.activityLogService.recordEffect(
+                const actorEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -194,7 +194,7 @@ export class ProjectMemberService {
                 );
                 const entries = [actorEntry];
                 if (targetMember.userId !== actor.userId) {
-                    const assigneeEntry = this.activityLogService.recordEffect(
+                    const assigneeEntry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         authContext,
@@ -264,7 +264,7 @@ export class ProjectMemberService {
                     throw new ProjectMemberPeerForbiddenException();
                 }
 
-                const actorEntry = this.activityLogService.recordEffect(
+                const actorEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -279,7 +279,7 @@ export class ProjectMemberService {
                 );
                 const entries = [actorEntry];
                 if (targetMember.userId !== actor.userId) {
-                    const targetEntry = this.activityLogService.recordEffect(
+                    const targetEntry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         authContext,
@@ -346,7 +346,7 @@ export class ProjectMemberService {
                     throw new ProjectMemberPeerForbiddenException();
                 }
 
-                const actorEntry = this.activityLogService.recordEffect(
+                const actorEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -359,7 +359,7 @@ export class ProjectMemberService {
                         metadata: { targetUserId: targetMember.userId },
                     }
                 );
-                const targetEntry = this.activityLogService.recordEffect(
+                const targetEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -410,7 +410,7 @@ export class ProjectMemberService {
                     throw new ProjectMemberNotFoundException();
                 }
 
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

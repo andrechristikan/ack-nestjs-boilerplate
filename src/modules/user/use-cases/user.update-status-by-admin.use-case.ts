@@ -8,7 +8,7 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { RoleService } from '@modules/role/services/role.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { SessionService } from '@modules/session/services/session.service';
@@ -39,7 +39,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
         private readonly userService: UserService,
         private readonly roleService: RoleService,
         private readonly sessionService: SessionService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly sessionUtil: SessionUtil,
         private readonly userUtil: UserUtil,
         private readonly outboxService: OutboxService,
@@ -97,7 +97,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                             revoked.length
                         );
                     const revokeAllActorEntry =
-                        this.activityLogService.recordEffect(
+                        this.activityLogQueue.recordEffect(
                             requestContext,
                             apiKeyContext,
                             authContext,
@@ -108,7 +108,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                             }
                         );
                     const revokeAllTargetEntry =
-                        this.activityLogService.recordEffect(
+                        this.activityLogQueue.recordEffect(
                             requestContext,
                             apiKeyContext,
                             authContext,
@@ -130,7 +130,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                         row,
                         authContext.userId
                     );
-                const actorEntry = this.activityLogService.recordEffect(
+                const actorEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -140,7 +140,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                         metadata: actorMetadata,
                     }
                 );
-                const targetEntry = this.activityLogService.recordEffect(
+                const targetEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

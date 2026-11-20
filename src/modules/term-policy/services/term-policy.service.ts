@@ -12,10 +12,8 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
@@ -26,25 +24,18 @@ import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-p
 import { TermPolicyLanguageDuplicateException } from '@modules/term-policy/exceptions/term-policy.language-duplicate.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
-import {
-    EnumTermPolicyProcess,
-    EnumTermPolicyQueue,
-} from '@modules/term-policy/enums/term-policy.enum';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import type {
     ITermPolicyContent,
     ITermPolicyContentUpload,
     ITermPolicyCreate,
-    ITermPolicyPublishEffect,
-    ITermPolicyPublishInput,
-    ITermPolicyPublishPayload,
     ITermPolicyRef,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
+import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
     EnumActivityLogAction,
     EnumTermPolicyStatus,
@@ -55,50 +46,18 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 
 @Injectable()
 export class TermPolicyService {
-    private readonly publishPattern: string;
-    private readonly resendPublishPattern: string;
-
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperArrayService: HelperArrayService,
-        private readonly helperStringService: HelperStringService,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService,
-        private readonly configService: ConfigService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
+        private readonly termPolicyQueue: TermPolicyQueue,
         private readonly termPolicyContentService: TermPolicyContentService
-    ) {
-        this.publishPattern = this.configService.get<string>(
-            'termPolicy.idempotencyKey.publishPattern'
-        )!;
-        this.resendPublishPattern = this.configService.get<string>(
-            'termPolicy.idempotencyKey.resendPublishPattern'
-        )!;
-    }
-
-    private publishEffect(
-        payload: ITermPolicyPublishPayload,
-        proceedBy: string
-    ): ITermPolicyPublishEffect {
-        const idempotencyKey = this.helperStringService.fillPattern(
-            this.publishPattern,
-            {
-                process: EnumTermPolicyProcess.publish,
-                termPolicyId: payload.termPolicyId,
-            }
-        );
-
-        return {
-            queue: EnumTermPolicyQueue.termPolicy,
-            name: EnumTermPolicyProcess.publish,
-            data: { proceedBy, data: payload },
-            priority: EnumQueuePriority.medium,
-            idempotencyKey,
-        };
-    }
+    ) {}
 
     private validateUniqueLanguages(
         contents: TermPolicyContentRequestDto[]
@@ -122,30 +81,6 @@ export class TermPolicyService {
             size,
             key: `${destination}/${key.slice(key.lastIndexOf('/') + 1)}`,
         }));
-    }
-
-    /** Draws one fresh nonce and puts it in the effect's data and its key. */
-    resendPublishEffect(
-        payload: ITermPolicyPublishInput,
-        proceedBy: string
-    ): ITermPolicyPublishEffect {
-        const resendNonce = this.databaseUtil.createId();
-        const idempotencyKey = this.helperStringService.fillPattern(
-            this.resendPublishPattern,
-            {
-                process: EnumTermPolicyProcess.publish,
-                termPolicyId: payload.termPolicyId,
-                resendNonce,
-            }
-        );
-
-        return {
-            queue: EnumTermPolicyQueue.termPolicy,
-            name: EnumTermPolicyProcess.publish,
-            data: { proceedBy, data: { ...payload, resendNonce } },
-            priority: EnumQueuePriority.medium,
-            idempotencyKey,
-        };
     }
 
     async getListByAdmin(
@@ -250,7 +185,7 @@ export class TermPolicyService {
                     { id: termPolicyId, type, version },
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -316,9 +251,7 @@ export class TermPolicyService {
 
                 if (contentKeys.length > 0) {
                     const effect =
-                        this.termPolicyContentService.deleteContentEffect(
-                            contentKeys
-                        );
+                        this.termPolicyQueue.deleteContentEffect(contentKeys);
                     await this.outboxService.addInTx(tx, effect);
                 }
 
@@ -327,7 +260,7 @@ export class TermPolicyService {
                     termPolicy,
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -446,16 +379,17 @@ export class TermPolicyService {
                             this.helperDateService.formatToIso(
                                 row.publishedAt!
                             );
-                        const publishEffect = this.publishEffect(
-                            {
-                                termPolicyId,
-                                type: row.type,
-                                version: row.version,
-                                recipientCutoffAt,
-                                resendNonce: null,
-                            },
-                            authContext.userId
-                        );
+                        const publishEffect =
+                            this.termPolicyQueue.publishEffect(
+                                {
+                                    termPolicyId,
+                                    type: row.type,
+                                    version: row.version,
+                                    recipientCutoffAt,
+                                    resendNonce: null,
+                                },
+                                authContext.userId
+                            );
                         await this.outboxService.addInTx(tx, publishEffect);
 
                         const metadata =
@@ -463,7 +397,7 @@ export class TermPolicyService {
                                 row,
                                 row.updatedAt
                             );
-                        const entry = this.activityLogService.recordEffect(
+                        const entry = this.activityLogQueue.recordEffect(
                             requestContext,
                             apiKeyContext,
                             authContext,

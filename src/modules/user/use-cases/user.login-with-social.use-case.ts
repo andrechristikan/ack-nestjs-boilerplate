@@ -9,12 +9,12 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IAuthSocialContext } from '@modules/auth/interfaces/auth.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -66,7 +66,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         private readonly mfaService: MfaService,
         private readonly userSocialService: UserSocialService,
         private readonly userRegistrationService: UserRegistrationService,
-        private readonly notificationService: NotificationService,
+        private readonly notificationQueue: NotificationQueue,
         private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
         private readonly workspaceService: WorkspaceService,
         private readonly workspaceInviteService: WorkspaceInviteService,
@@ -74,7 +74,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         private readonly projectMemberService: ProjectMemberService,
         private readonly roleService: RoleService,
         private readonly countryService: CountryService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userUtil: UserUtil,
         private readonly workspaceUtil: WorkspaceUtil,
@@ -185,7 +185,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                             termPolicyAcceptances
                         );
 
-                        const welcome = this.notificationService.notify(
+                        const welcome = this.notificationQueue.notify(
                             EnumNotificationKind.welcomeSocial,
                             { userId: input.userId, proceedBy: input.userId }
                         );
@@ -195,7 +195,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                             created
                         );
                         const entries = stages.map(stage =>
-                            this.activityLogService.recordEffect(
+                            this.activityLogQueue.recordEffect(
                                 requestContext,
                                 apiKeyContext,
                                 null,

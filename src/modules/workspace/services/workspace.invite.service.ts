@@ -18,13 +18,14 @@ import {
     EnumWorkspaceInviteStatus,
 } from '@generated/prisma-client/client';
 import type { Project, WorkspaceInvite } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -70,8 +71,9 @@ export class WorkspaceInviteService {
     constructor(
         private readonly workspaceInviteRepository: WorkspaceInviteRepository,
         private readonly workspaceMemberService: WorkspaceMemberService,
-        private readonly notificationService: NotificationService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly notificationEmailQueue: NotificationEmailQueue,
+        private readonly notificationQueue: NotificationQueue,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly featureFlagService: FeatureFlagService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly userUtil: UserUtil,
@@ -168,13 +170,13 @@ export class WorkspaceInviteService {
             expiredAt,
         };
         if (inviteeUserId === null) {
-            return this.notificationService.notifyUnregisteredInvite(
+            return this.notificationEmailQueue.notifyUnregisteredInvite(
                 invite.email,
                 { ...fields, inviteAcceptLink: signUpLink }
             );
         }
 
-        return this.notificationService.notify(
+        return this.notificationQueue.notify(
             EnumNotificationKind.workspaceInvite,
             {
                 userId: inviteeUserId,
@@ -196,7 +198,7 @@ export class WorkspaceInviteService {
         inviteeUserId: string | null
     ): IOutboxEffect[] {
         const actorId = authContext.userId;
-        const actorEntry = this.activityLogService.recordEffect(
+        const actorEntry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
             authContext,
@@ -216,7 +218,7 @@ export class WorkspaceInviteService {
             return [actorEntry];
         }
 
-        const inviteeEntry = this.activityLogService.recordEffect(
+        const inviteeEntry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
             authContext,

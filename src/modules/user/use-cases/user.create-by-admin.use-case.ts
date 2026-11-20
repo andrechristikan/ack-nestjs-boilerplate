@@ -6,10 +6,10 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { RoleService } from '@modules/role/services/role.service';
@@ -49,8 +49,8 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         private readonly workspaceService: WorkspaceService,
         private readonly roleService: RoleService,
         private readonly countryService: CountryService,
-        private readonly activityLogService: ActivityLogService,
-        private readonly notificationService: NotificationService,
+        private readonly activityLogQueue: ActivityLogQueue,
+        private readonly notificationQueue: NotificationQueue,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userRegistrationService: UserRegistrationService,
         private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
@@ -106,7 +106,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
                                 );
 
                             return stages.map(stage =>
-                                this.activityLogService.recordEffect(
+                                this.activityLogQueue.recordEffect(
                                     requestContext,
                                     apiKeyContext,
                                     null,
@@ -179,7 +179,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         const passwordExpiredAt = this.helperDateService.formatToIso(
             password.passwordExpired
         );
-        const welcome = this.notificationService.notify(
+        const welcome = this.notificationQueue.notify(
             EnumNotificationKind.welcomeByAdmin,
             {
                 userId: input.userId,

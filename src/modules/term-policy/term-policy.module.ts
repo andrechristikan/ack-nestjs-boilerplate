@@ -3,6 +3,7 @@ import { AwsModule } from '@common/aws/aws.module';
 import { NotificationModule } from '@modules/notification/notification.module';
 import { EnumTermPolicyQueue } from '@modules/term-policy/enums/term-policy.enum';
 import { TermPolicyQueueFactory } from '@modules/term-policy/factories/term-policy.queue.factory';
+import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyRecipientRepository } from '@modules/term-policy/repositories/term-policy.recipient.repository';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
@@ -30,6 +31,11 @@ export class TermPolicyModule {
                 TermPolicyContentService,
                 TermPolicyAcceptanceService,
                 TermPolicyUtil,
+                TermPolicyQueue,
+                {
+                    provide: EnumTermPolicyQueue.termPolicy,
+                    useExisting: TermPolicyQueue,
+                },
             ],
             exports: [
                 TermPolicyService,
@@ -37,6 +43,7 @@ export class TermPolicyModule {
                 TermPolicyContentService,
                 TermPolicyAcceptanceService,
                 TermPolicyUtil,
+                TermPolicyQueue,
             ],
             imports: [
                 ActivityLogModule,

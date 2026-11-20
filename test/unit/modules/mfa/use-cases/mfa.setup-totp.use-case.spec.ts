@@ -25,7 +25,7 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import type { IMfaTotpSetup } from '@modules/mfa/interfaces/mfa.interface';
@@ -59,8 +59,8 @@ describe('MfaSetupTotpUseCase', () => {
     const mfaTotpService: MockProxy<MfaTotpService> = mock<MfaTotpService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
 
     let useCase: MfaSetupTotpUseCase;
 
@@ -105,7 +105,7 @@ describe('MfaSetupTotpUseCase', () => {
         );
         userAuthService.assertReauthentication.mockResolvedValue(passwordOnly);
         mfaTotpService.setupInTx.mockResolvedValue(setup);
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -113,7 +113,7 @@ describe('MfaSetupTotpUseCase', () => {
                 { provide: MfaService, useValue: mfaService },
                 { provide: MfaTotpService, useValue: mfaTotpService },
                 { provide: UserAuthService, useValue: userAuthService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -238,7 +238,7 @@ describe('MfaSetupTotpUseCase', () => {
                 'user-marten',
                 'marten@example.com'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

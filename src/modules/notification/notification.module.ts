@@ -7,7 +7,10 @@ import { NotificationEmailQueueFactory } from '@modules/notification/factories/n
 import { NotificationPushQueueFactory } from '@modules/notification/factories/notification.push.queue.factory';
 import { NotificationQueueFactory } from '@modules/notification/factories/notification.queue.factory';
 import { NotificationSmsQueueFactory } from '@modules/notification/factories/notification.sms.queue.factory';
+import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { NotificationSmsQueue } from '@modules/notification/queues/notification.sms.queue';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
 import { NotificationEmailDeliveryService } from '@modules/notification/services/notification.email.delivery.service';
@@ -29,7 +32,26 @@ import { Module } from '@nestjs/common';
         NotificationEmailDeliveryService,
         NotificationPushDeliveryService,
         NotificationSmsDeliveryService,
+        NotificationQueue,
+        NotificationEmailQueue,
         NotificationPushQueue,
+        NotificationSmsQueue,
+        {
+            provide: EnumNotificationQueue.notification,
+            useExisting: NotificationQueue,
+        },
+        {
+            provide: EnumNotificationQueue.notificationEmail,
+            useExisting: NotificationEmailQueue,
+        },
+        {
+            provide: EnumNotificationQueue.notificationPush,
+            useExisting: NotificationPushQueue,
+        },
+        {
+            provide: EnumNotificationQueue.notificationSms,
+            useExisting: NotificationSmsQueue,
+        },
         NotificationUtil,
     ],
     exports: [
@@ -38,6 +60,10 @@ import { Module } from '@nestjs/common';
         NotificationEmailDeliveryService,
         NotificationPushDeliveryService,
         NotificationSmsDeliveryService,
+        NotificationQueue,
+        NotificationEmailQueue,
+        NotificationPushQueue,
+        NotificationSmsQueue,
         NotificationUtil,
     ],
     imports: [

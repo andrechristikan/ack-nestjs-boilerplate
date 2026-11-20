@@ -16,7 +16,7 @@ import {
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -36,14 +36,16 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
+import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { TermPolicyResendEmailByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.resend-email-by-admin.use-case';
 
 describe('TermPolicyResendEmailByAdminUseCase', () => {
     const termPolicyService: MockProxy<TermPolicyService> =
         mock<TermPolicyService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const termPolicyQueue: MockProxy<TermPolicyQueue> = mock<TermPolicyQueue>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
@@ -116,15 +118,16 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
     });
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
-        termPolicyService.resendPublishEffect.mockReturnValue(resendEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
+        termPolicyQueue.resendPublishEffect.mockReturnValue(resendEffect);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 TermPolicyResendEmailByAdminUseCase,
                 { provide: TermPolicyService, useValue: termPolicyService },
+                { provide: TermPolicyQueue, useValue: termPolicyQueue },
                 TermPolicyUtil,
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -151,7 +154,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
             );
 
             expect(result).toEqual({});
-            expect(termPolicyService.resendPublishEffect).toHaveBeenCalledWith(
+            expect(termPolicyQueue.resendPublishEffect).toHaveBeenCalledWith(
                 {
                     termPolicyId: 'term-policy-1',
                     type: EnumTermPolicyType.privacy,
@@ -160,7 +163,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                 },
                 'user-1'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

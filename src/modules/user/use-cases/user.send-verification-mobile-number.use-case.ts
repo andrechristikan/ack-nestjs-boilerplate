@@ -2,7 +2,7 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { Injectable } from '@nestjs/common';
@@ -18,7 +18,7 @@ export class UserSendVerificationMobileNumberUseCase implements IAppUseCase<
     constructor(
         private readonly userMobileNumberService: UserMobileNumberService,
         private readonly userVerificationService: UserVerificationService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService
     ) {}
 
@@ -52,7 +52,7 @@ export class UserSendVerificationMobileNumberUseCase implements IAppUseCase<
                 mobileNumberId,
                 to
             );
-            const entry = this.activityLogService.recordEffect(
+            const entry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,

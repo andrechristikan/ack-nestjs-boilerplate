@@ -9,7 +9,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
@@ -36,8 +36,8 @@ import {
 describe('ProjectSoftDeleteUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
 
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
 
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
@@ -83,7 +83,7 @@ describe('ProjectSoftDeleteUseCase', () => {
     });
 
     beforeEach(async () => {
-        activityLogService.recordEffect
+        activityLogQueue.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
         vi.setSystemTime(deletedAt);
@@ -97,7 +97,7 @@ describe('ProjectSoftDeleteUseCase', () => {
                     provide: WorkspaceInviteService,
                     useValue: workspaceInviteService,
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -159,7 +159,7 @@ describe('ProjectSoftDeleteUseCase', () => {
                 projectContext
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

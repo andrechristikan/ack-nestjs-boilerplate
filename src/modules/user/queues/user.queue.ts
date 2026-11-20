@@ -7,6 +7,13 @@ import { Queue } from 'bullmq';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { UserPhoto } from '@generated/prisma-client/client';
+import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
+import type {
+    IUserDeletePhotoEffect,
+    IUserImport,
+    IUserImportByAdminEffect,
+} from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class UserQueue extends QueueBase implements OnModuleInit {
@@ -41,5 +48,31 @@ export class UserQueue extends QueueBase implements OnModuleInit {
                 },
             }
         );
+    }
+
+    deletePhotoEffect(
+        userId: string,
+        photo: UserPhoto
+    ): IUserDeletePhotoEffect {
+        return {
+            queue: EnumUserQueue.user,
+            name: EnumUserProcess.deletePhoto,
+            data: { userId, key: photo.key, access: photo.access },
+            priority: EnumQueuePriority.low,
+            idempotencyKey: null,
+        };
+    }
+
+    importByAdminEffect(
+        rows: IUserImport[],
+        activityLog: IActivityLogActorPayload
+    ): IUserImportByAdminEffect {
+        return {
+            queue: EnumUserQueue.user,
+            name: EnumUserProcess.importByAdmin,
+            data: { rows, activityLog, created: null },
+            priority: EnumQueuePriority.medium,
+            idempotencyKey: null,
+        };
     }
 }

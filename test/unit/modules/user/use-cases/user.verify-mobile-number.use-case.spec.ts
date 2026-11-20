@@ -11,7 +11,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumNotificationKind,
@@ -19,7 +19,7 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserMobileNumberAlreadyVerifiedException } from '@modules/user/exceptions/user.mobile-number-already-verified.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
@@ -43,10 +43,10 @@ describe('UserVerifyMobileNumberUseCase', () => {
         mock<UserMobileNumberService>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: UserVerifyMobileNumberUseCase;
@@ -102,8 +102,8 @@ describe('UserVerifyMobileNumberUseCase', () => {
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        activityLogService.recordEffect.mockReturnValue(entry);
-        notificationService.notify.mockReturnValue(notifyEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entry);
+        notificationQueue.notify.mockReturnValue(notifyEffect);
         userMobileNumberService.getOneUnverifiedMobileNumber.mockResolvedValue(
             mobileNumber
         );
@@ -123,8 +123,8 @@ describe('UserVerifyMobileNumberUseCase', () => {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
                 },
-                { provide: NotificationService, useValue: notificationService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
                 {
@@ -156,7 +156,7 @@ describe('UserVerifyMobileNumberUseCase', () => {
             expect(
                 userMobileNumberService.markVerifiedInTx
             ).toHaveBeenCalledWith(tx, 'user-swift', 'mobile-swift');
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.verifiedMobileNumber,
                 {
                     userId: 'user-swift',
@@ -165,7 +165,7 @@ describe('UserVerifyMobileNumberUseCase', () => {
                     mobileNumber: '+6281234567890',
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

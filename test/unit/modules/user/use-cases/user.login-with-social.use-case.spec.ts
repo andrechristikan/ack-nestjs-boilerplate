@@ -28,7 +28,7 @@ import {
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { Country, WorkspaceInvite } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -43,7 +43,7 @@ import { CountryNotFoundException } from '@modules/country/exceptions/country.no
 import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import {
     EnumNotificationKind,
     EnumNotificationProcess,
@@ -107,8 +107,8 @@ describe('UserLoginWithSocialUseCase', () => {
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const userRegistrationService: MockProxy<UserRegistrationService> =
         mock<UserRegistrationService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
         mock<TermPolicyAcceptanceService>();
     const workspaceService: MockProxy<WorkspaceService> =
@@ -121,8 +121,8 @@ describe('UserLoginWithSocialUseCase', () => {
         mock<ProjectMemberService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const countryService: MockProxy<CountryService> = mock<CountryService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     let useCase: UserLoginWithSocialUseCase;
     let databaseUtil: DatabaseUtil;
@@ -325,8 +325,8 @@ describe('UserLoginWithSocialUseCase', () => {
             async fn => fn(tx) as never
         );
         vi.setSystemTime(now);
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
-        notificationService.notify.mockReturnValue(welcomeSocialEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
+        notificationQueue.notify.mockReturnValue(welcomeSocialEffect);
         mfaService.isEnabled.mockResolvedValue(false);
         userAuthService.createTokenAndSessionInTx.mockResolvedValue(session);
         userRegistrationService.createInTx.mockResolvedValue([committedUser]);
@@ -344,7 +344,7 @@ describe('UserLoginWithSocialUseCase', () => {
                     provide: UserRegistrationService,
                     useValue: userRegistrationService,
                 },
-                { provide: NotificationService, useValue: notificationService },
+                { provide: NotificationQueue, useValue: notificationQueue },
                 {
                     provide: TermPolicyAcceptanceService,
                     useValue: termPolicyAcceptanceService,
@@ -364,7 +364,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 },
                 { provide: RoleService, useValue: roleService },
                 { provide: CountryService, useValue: countryService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 UserCreateUtil,
                 HelperStringService,
                 UserUtil,
@@ -510,7 +510,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 expect.any(Function),
                 { timeout: 5000 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -518,7 +518,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 null,
                 stageInput
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.welcomeSocial,
                 { userId: 'user-bramble', proceedBy: 'user-bramble' }
             );
@@ -573,7 +573,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 userAuthService.verifyEmailBySocialInTx
             ).not.toHaveBeenCalled();
             expect(userAuthService.assertVerified).not.toHaveBeenCalled();
-            expect(notificationService.notify).not.toHaveBeenCalledWith(
+            expect(notificationQueue.notify).not.toHaveBeenCalledWith(
                 EnumNotificationKind.welcomeSocial,
                 expect.anything()
             );
@@ -829,7 +829,7 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
-            expect(notificationService.notify).not.toHaveBeenCalledWith(
+            expect(notificationQueue.notify).not.toHaveBeenCalledWith(
                 EnumNotificationKind.welcomeSocial,
                 expect.anything()
             );
@@ -956,7 +956,7 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(
                 userRegistrationService.buildSocialCreate
             ).not.toHaveBeenCalled();
-            expect(notificationService.notify).not.toHaveBeenCalledWith(
+            expect(notificationQueue.notify).not.toHaveBeenCalledWith(
                 EnumNotificationKind.welcomeSocial,
                 expect.anything()
             );
@@ -1206,11 +1206,11 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(projectMemberService.createInTx).toHaveBeenCalledBefore(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.welcomeSocial,
                 { userId: 'user-bramble', proceedBy: 'user-bramble' }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,

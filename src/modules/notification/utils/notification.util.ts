@@ -1,28 +1,39 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { NotificationSettingContract } from '@modules/notification/contracts/notification.setting.contract';
 import type {
+    INotificationContext,
     INotificationSealedRecord,
     INotificationUserSettingPreference,
+    INotificationWorkspaceInviteFields,
 } from '@modules/notification/interfaces/notification.interface';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class NotificationUtil {
     private readonly encryptionSecret: string;
+    private readonly stepPattern: string;
 
     constructor(
         private readonly configService: ConfigService,
         private readonly helperEncryptionService: HelperEncryptionService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly helperStringService: HelperStringService
     ) {
         this.encryptionSecret = this.configService.get<string>(
             'app.encryptionSecret'
+        )!;
+        this.stepPattern = this.configService.get<string>(
+            'notification.idempotencyKey.stepPattern'
         )!;
     }
 
@@ -152,5 +163,43 @@ export class NotificationUtil {
             NotificationPayloadEncryptionPurpose,
             context
         );
+    }
+
+    encryptPayload(value: string, context: string): string {
+        return this.helperEncryptionService.aes256Encrypt(
+            value,
+            this.encryptionSecret,
+            NotificationPayloadEncryptionPurpose,
+            context
+        );
+    }
+
+    /** The context with each secret field renamed `encrypted<Field>` and encrypted against the encryption context. */
+    sealContext(
+        context: INotificationContext | INotificationWorkspaceInviteFields,
+        secrets: string[],
+        encryptionContext: string
+    ): INotificationSealedRecord {
+        const sealed: INotificationSealedRecord = {};
+        for (const [field, value] of Object.entries(context)) {
+            const isSecret = secrets.includes(field);
+            if (!isSecret) {
+                sealed[field] = value;
+
+                continue;
+            }
+
+            const sealedField = this.toSealedField(field);
+            sealed[sealedField] = this.encryptPayload(value, encryptionContext);
+        }
+
+        return sealed;
+    }
+
+    toStepKey(notificationId: string, step: EnumNotificationStep): string {
+        return this.helperStringService.fillPattern(this.stepPattern, {
+            notificationId,
+            step,
+        });
     }
 }

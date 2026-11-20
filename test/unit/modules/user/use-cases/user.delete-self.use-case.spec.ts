@@ -16,7 +16,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -73,8 +73,8 @@ describe('UserDeleteSelfUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const userProfileService: MockProxy<UserProfileService> =
         mock<UserProfileService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
@@ -131,7 +131,7 @@ describe('UserDeleteSelfUseCase', () => {
                 { provide: SessionService, useValue: sessionService },
                 { provide: OutboxService, useValue: outboxService },
                 HelperDateService,
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: UserProfileService, useValue: userProfileService },
                 { provide: UserAuthService, useValue: userAuthService },
                 {
@@ -203,7 +203,7 @@ describe('UserDeleteSelfUseCase', () => {
         } as const;
 
         beforeEach(() => {
-            activityLogService.recordEffect.mockReturnValue(entryEffect);
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
             userAuthService.assertReauthentication.mockResolvedValue(check);
             workspaceService.assertOwnedHasNoOtherMembersInTx.mockResolvedValue(
                 []
@@ -447,7 +447,7 @@ describe('UserDeleteSelfUseCase', () => {
             expect(
                 userProfileService.deleteOwnedPhotoInTx
             ).toHaveBeenCalledWith(tx, 'user-cinder', null);
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -459,7 +459,7 @@ describe('UserDeleteSelfUseCase', () => {
                     createdBy: 'user-cinder',
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -676,7 +676,7 @@ describe('UserDeleteSelfUseCase', () => {
                 dto
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -688,7 +688,7 @@ describe('UserDeleteSelfUseCase', () => {
                     workspaceId: 'workspace-one',
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -700,7 +700,7 @@ describe('UserDeleteSelfUseCase', () => {
                     workspaceId: 'workspace-two',
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(4);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(4);
             expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 entryEffect,

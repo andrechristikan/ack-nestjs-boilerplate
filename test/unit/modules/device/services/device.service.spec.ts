@@ -15,7 +15,7 @@ import { DatabaseWriteConflictCode } from '@common/database/constants/database.c
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -52,8 +52,8 @@ describe('DeviceService', () => {
     const deviceRepository: MockProxy<DeviceRepository> =
         mock<DeviceRepository>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const idleTimeoutInMs = 604800000;
 
     const now: Date = new Date('2026-01-01T00:00:00.000Z');
@@ -132,7 +132,7 @@ describe('DeviceService', () => {
                 },
                 { provide: DeviceRepository, useValue: deviceRepository },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 ...TestUnitKitProviders,
             ],
         }).compile();
@@ -645,7 +645,7 @@ describe('DeviceService', () => {
 
         it('adds the userDeviceRefresh entry from the passed context on the same tx after the writes', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            activityLogService.recordEffect.mockReturnValue(entry);
+            activityLogQueue.recordEffect.mockReturnValue(entry);
             outboxService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
@@ -658,7 +658,7 @@ describe('DeviceService', () => {
                 data
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

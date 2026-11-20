@@ -20,7 +20,7 @@ import type {
     ProjectMember,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
@@ -55,8 +55,8 @@ describe('ProjectMemberService', () => {
     const projectRepository: MockProxy<ProjectRepository> =
         mock<ProjectRepository>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const tx = {} as IDatabaseTransactionClient;
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
@@ -125,7 +125,7 @@ describe('ProjectMemberService', () => {
     };
 
     beforeEach(async () => {
-        activityLogService.recordEffect
+        activityLogQueue.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
         outboxService.withTransaction.mockImplementation(fn => fn(tx));
@@ -145,7 +145,7 @@ describe('ProjectMemberService', () => {
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
             ],
         }).compile();
         service = module.get(ProjectMemberService);
@@ -585,7 +585,7 @@ describe('ProjectMemberService', () => {
                 EnumProjectMemberRole.member,
                 bypassActor.userId
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -599,7 +599,7 @@ describe('ProjectMemberService', () => {
                     metadata: { targetUserId: targetMember.userId },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -640,7 +640,7 @@ describe('ProjectMemberService', () => {
                 EnumProjectMemberRole.member
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 firstEntry,
             ]);
@@ -753,7 +753,7 @@ describe('ProjectMemberService', () => {
                 EnumProjectMemberRole.member,
                 EnumProjectMemberRole.admin
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -767,7 +767,7 @@ describe('ProjectMemberService', () => {
                     metadata: { targetUserId: targetMember.userId },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -807,7 +807,7 @@ describe('ProjectMemberService', () => {
                 EnumProjectMemberRole.admin
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 firstEntry,
             ]);
@@ -995,7 +995,7 @@ describe('ProjectMemberService', () => {
                 targetMember.id,
                 EnumProjectMemberRole.member
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -1009,7 +1009,7 @@ describe('ProjectMemberService', () => {
                     metadata: { targetUserId: targetMember.userId },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -1119,7 +1119,7 @@ describe('ProjectMemberService', () => {
             expect(
                 projectMemberRepository.removeMemberInTx
             ).not.toHaveBeenCalled();
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

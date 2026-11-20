@@ -17,7 +17,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type {
     IAuthJwtAccessContext,
     IAuthToken,
@@ -26,10 +26,6 @@ import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-f
 import type { IDeviceRemoveResult } from '@modules/device/interfaces/device.interface';
 import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceUtil } from '@modules/device/utils/device.util';
-import {
-    EnumSessionProcess,
-    EnumSessionQueue,
-} from '@modules/session/enums/session.enum';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type {
@@ -42,16 +38,15 @@ import type {
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { SessionLoginCacheSchema } from '@modules/session/constants/session.constant';
+import { SessionQueue } from '@modules/session/queues/session.queue';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { CacheService } from '@common/cache/services/cache.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import type { ISessionPurgeLoginsEffect } from '@modules/session/interfaces/session.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
@@ -71,7 +66,8 @@ export class SessionService {
         private readonly deviceUtil: DeviceUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly outboxService: OutboxService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
+        private readonly sessionQueue: SessionQueue,
         private readonly sessionUtil: SessionUtil
     ) {
         this.idleTimeoutInMs = this.configService.get<number>(
@@ -80,19 +76,6 @@ export class SessionService {
         this.retentionInMs = this.configService.get<number>(
             'session.retentionInMs'
         )!;
-    }
-
-    private purgeLoginsEffect(
-        userId: string,
-        sessions: ISessionRef[]
-    ): ISessionPurgeLoginsEffect {
-        return {
-            queue: EnumSessionQueue.session,
-            name: EnumSessionProcess.purgeLogins,
-            data: { userId, sessions },
-            priority: EnumQueuePriority.high,
-            idempotencyKey: null,
-        };
     }
 
     private groupRefsByUser(
@@ -174,7 +157,10 @@ export class SessionService {
             revokedAt
         );
         if (sessions.length > 0) {
-            const effect = this.purgeLoginsEffect(userId, sessions);
+            const effect = this.sessionQueue.purgeLoginsEffect(
+                userId,
+                sessions
+            );
             await this.outboxService.addInTx(tx, effect);
         }
 
@@ -339,7 +325,9 @@ export class SessionService {
             return false;
         }
 
-        const effect = this.purgeLoginsEffect(userId, [{ id: sessionId }]);
+        const effect = this.sessionQueue.purgeLoginsEffect(userId, [
+            { id: sessionId },
+        ]);
         await this.outboxService.addInTx(tx, effect);
 
         return true;
@@ -364,7 +352,9 @@ export class SessionService {
             throw new SessionNotFoundException();
         }
 
-        const effect = this.purgeLoginsEffect(userId, [{ id: sessionId }]);
+        const effect = this.sessionQueue.purgeLoginsEffect(userId, [
+            { id: sessionId },
+        ]);
         await this.outboxService.addInTx(tx, effect);
     }
 
@@ -435,7 +425,10 @@ export class SessionService {
                 revokedAt
             );
         if (sessions.length > 0) {
-            const effect = this.purgeLoginsEffect(userId, sessions);
+            const effect = this.sessionQueue.purgeLoginsEffect(
+                userId,
+                sessions
+            );
             await this.outboxService.addInTx(tx, effect);
         }
 
@@ -460,7 +453,10 @@ export class SessionService {
         const grouped = this.groupRefsByUser(sessions);
         if (grouped.length > 0) {
             const effects = grouped.map(group =>
-                this.purgeLoginsEffect(group.userId, group.sessions)
+                this.sessionQueue.purgeLoginsEffect(
+                    group.userId,
+                    group.sessions
+                )
             );
             await this.outboxService.addManyInTx(tx, effects);
         }
@@ -517,7 +513,7 @@ export class SessionService {
                     throw new SessionNotFoundException();
                 }
 
-                const effect = this.purgeLoginsEffect(userId, [
+                const effect = this.sessionQueue.purgeLoginsEffect(userId, [
                     { id: sessionId },
                 ]);
                 await this.outboxService.addInTx(tx, effect);
@@ -526,7 +522,7 @@ export class SessionService {
                     session,
                     revokedAt
                 );
-                const actorEntry = this.activityLogService.recordEffect(
+                const actorEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -544,7 +540,7 @@ export class SessionService {
                         revokedBy,
                         revokedAt
                     );
-                    const targetEntry = this.activityLogService.recordEffect(
+                    const targetEntry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         authContext,
@@ -607,7 +603,7 @@ export class SessionService {
                         userId,
                         sessions.length
                     );
-                const actorEntry = this.activityLogService.recordEffect(
+                const actorEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -622,7 +618,7 @@ export class SessionService {
                         revokedBy,
                         sessions.length
                     );
-                const targetEntry = this.activityLogService.recordEffect(
+                const targetEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -682,7 +678,7 @@ export class SessionService {
                         deviceOwnership,
                         revokedSessions.length
                     );
-                const actorEntry = this.activityLogService.recordEffect(
+                const actorEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -701,7 +697,7 @@ export class SessionService {
                             removedBy,
                             revokedSessions.length
                         );
-                    const targetEntry = this.activityLogService.recordEffect(
+                    const targetEntry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         authContext,

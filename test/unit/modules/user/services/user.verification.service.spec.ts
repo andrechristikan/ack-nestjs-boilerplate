@@ -23,13 +23,13 @@ import {
     EnumNotificationProcess,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     buildApiKeyContext,
     buildRequestContext,
     buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type {
     INotificationReauthenticationOtpContext,
@@ -61,13 +61,13 @@ describe('UserVerificationService', () => {
         mock<UserVerificationRepository>();
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const entry = buildActivityLogCreateManyEffect('activityLog');
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
 
     let service: UserVerificationService;
     let helperStringService: HelperStringService;
@@ -130,8 +130,8 @@ describe('UserVerificationService', () => {
     });
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockReturnValue(entry);
-        notificationService.notify.mockReturnValue(notifyEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entry);
+        notificationQueue.notify.mockReturnValue(notifyEffect);
         userRepository.findOneById.mockResolvedValue(baseUser);
         userRepository.markVerifiedInTx.mockResolvedValue(baseUser);
         userVerificationRepository.markUsedInTx.mockResolvedValue(true);
@@ -150,8 +150,8 @@ describe('UserVerificationService', () => {
                 },
                 { provide: UserRepository, useValue: userRepository },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationService, useValue: notificationService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: NotificationQueue, useValue: notificationQueue },
                 DatabaseUtil,
                 HelperHashService,
                 HelperDateService,
@@ -235,7 +235,7 @@ describe('UserVerificationService', () => {
             );
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.verifiedEmail,
                 {
                     userId: 'user-flint',
@@ -243,7 +243,7 @@ describe('UserVerificationService', () => {
                     reference: 'VRF-flint',
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -506,7 +506,7 @@ describe('UserVerificationService', () => {
                 emailVerification,
                 now
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.verificationEmail,
                 context
             );
@@ -517,7 +517,7 @@ describe('UserVerificationService', () => {
             expect(
                 userVerificationRepository.createReplacingActiveInTx
             ).toHaveBeenCalledBefore(outboxService.addInTx);
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -548,7 +548,7 @@ describe('UserVerificationService', () => {
                 )
             ).rejects.toThrow('boom');
             expect(outboxService.addInTx).not.toHaveBeenCalled();
-            expect(activityLogService.recordEffect).not.toHaveBeenCalled();
+            expect(activityLogQueue.recordEffect).not.toHaveBeenCalled();
         });
     });
 
@@ -590,7 +590,7 @@ describe('UserVerificationService', () => {
                 emailVerification,
                 now
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.verificationEmail,
                 context
             );
@@ -753,7 +753,7 @@ describe('UserVerificationService', () => {
                 },
                 'user-flint'
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.reauthenticationOtp,
                 context
             );
@@ -849,7 +849,7 @@ describe('UserVerificationService', () => {
             expect(
                 userVerificationRepository.markUnusedMobileUsedInTx
             ).toHaveBeenCalledBefore(userVerificationRepository.createInTx);
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.verificationMobileNumber,
                 context
             );

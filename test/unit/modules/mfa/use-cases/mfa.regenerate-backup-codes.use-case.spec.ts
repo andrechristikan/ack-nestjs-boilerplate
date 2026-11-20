@@ -28,7 +28,7 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import type { MfaBackupCodeRegenerateRequestDto } from '@modules/mfa/dtos/request/mfa.backup-code-regenerate.request.dto';
 import type { IUserReauthenticationCheck } from '@modules/user/interfaces/user.interface';
@@ -57,8 +57,8 @@ const passkeyResponse = {
 describe('MfaRegenerateBackupCodesUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: MfaRegenerateBackupCodesUseCase;
@@ -93,14 +93,14 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
             async fn => fn(tx) as never
         );
         userAuthService.assertReauthentication.mockResolvedValue(check);
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 MfaRegenerateBackupCodesUseCase,
                 { provide: MfaService, useValue: mfaService },
                 { provide: UserAuthService, useValue: userAuthService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
@@ -174,7 +174,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                 tx,
                 'user-marten'
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

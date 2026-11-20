@@ -2,7 +2,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
@@ -29,7 +29,7 @@ export class RoleCreateByAdminUseCase implements IAppUseCase<
     constructor(
         private readonly roleService: RoleService,
         private readonly roleUtil: RoleUtil,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -68,7 +68,7 @@ export class RoleCreateByAdminUseCase implements IAppUseCase<
                 },
                 timestamp
             );
-            const effect = this.activityLogService.recordEffect(
+            const effect = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,

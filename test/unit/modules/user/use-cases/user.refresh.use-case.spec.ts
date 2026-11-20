@@ -13,7 +13,7 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -56,8 +56,8 @@ describe('UserRefreshUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const authJwtService: MockProxy<AuthJwtService> = mock<AuthJwtService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const refreshSessionDoubles: IUserRefreshSessionDoubles = {
         authJwtService,
@@ -105,7 +105,7 @@ describe('UserRefreshUseCase', () => {
             async fn => fn(tx) as never
         );
         vi.setSystemTime(now);
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         authJwtService.createTokens.mockReturnValue(tokens);
         Object.defineProperty(authJwtService, 'refreshTokenExpiresInSeconds', {
             value: 2592000,
@@ -120,7 +120,7 @@ describe('UserRefreshUseCase', () => {
                 { provide: SessionService, useValue: sessionService },
                 { provide: DeviceService, useValue: deviceService },
                 { provide: AuthJwtService, useValue: authJwtService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
                 {
@@ -200,7 +200,7 @@ describe('UserRefreshUseCase', () => {
                 requestLog.ipAddress,
                 now
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -274,7 +274,7 @@ describe('UserRefreshUseCase', () => {
                 'user-bramble',
                 now
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -311,7 +311,7 @@ describe('UserRefreshUseCase', () => {
             );
 
             expect(sessionService.revokeReusedInTx).toHaveBeenCalledTimes(1);
-            expect(activityLogService.recordEffect).not.toHaveBeenCalled();
+            expect(activityLogQueue.recordEffect).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
                 null

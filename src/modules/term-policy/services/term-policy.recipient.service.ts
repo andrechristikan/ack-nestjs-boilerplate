@@ -3,7 +3,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { INotificationTermPolicyBatchRecipient } from '@modules/notification/interfaces/notification.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import type {
     ITermPolicyPublishPayload,
     ITermPolicyRecipientBatch,
@@ -24,7 +24,7 @@ export class TermPolicyRecipientService {
 
     constructor(
         private readonly termPolicyRecipientRepository: TermPolicyRecipientRepository,
-        private readonly notificationService: NotificationService,
+        private readonly notificationEmailQueue: NotificationEmailQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
@@ -126,7 +126,7 @@ export class TermPolicyRecipientService {
         }
 
         const effects = pendingBatchIds.map(batchId =>
-            this.notificationService.emailPublishTermPolicyEffect(
+            this.notificationEmailQueue.emailPublishTermPolicyEffect(
                 data,
                 batchId,
                 proceedBy,

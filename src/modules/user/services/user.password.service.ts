@@ -9,7 +9,7 @@ import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import {
     EnumFeatureFlagKey,
@@ -20,7 +20,7 @@ import {
     EnumNotificationKind,
     EnumNotificationLoginLockedMethod,
 } from '@modules/notification/enums/notification.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type {
@@ -62,11 +62,11 @@ export class UserPasswordService {
         private readonly helperDateService: HelperDateService,
         private readonly userService: UserService,
         private readonly outboxService: OutboxService,
-        private readonly notificationService: NotificationService,
+        private readonly notificationQueue: NotificationQueue,
         private readonly databaseUtil: DatabaseUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly featureFlagService: FeatureFlagService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly messageService: MessageService,
         private readonly configService: ConfigService
     ) {
@@ -216,7 +216,7 @@ export class UserPasswordService {
                         lockedUntil
                     );
                 if (isLocked) {
-                    const entry = this.activityLogService.recordEffect(
+                    const entry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         null,
@@ -230,7 +230,7 @@ export class UserPasswordService {
                     const methodLabel = this.messageService.setMessage(
                         'notification.loginLockedMethod.password'
                     );
-                    const effect = this.notificationService.notify(
+                    const effect = this.notificationQueue.notify(
                         EnumNotificationKind.loginLocked,
                         {
                             userId,
@@ -310,7 +310,7 @@ export class UserPasswordService {
                 email,
                 forgot
             );
-            const effect = this.notificationService.notify(
+            const effect = this.notificationQueue.notify(
                 EnumNotificationKind.forgotPassword,
                 {
                     userId,
@@ -321,7 +321,7 @@ export class UserPasswordService {
                     expiredInMinutes: forgot.expiredInMinutes,
                 }
             );
-            const entry = this.activityLogService.recordEffect(
+            const entry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 null,

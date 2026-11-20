@@ -24,7 +24,7 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
@@ -58,8 +58,8 @@ const passkeyResponse = {
 describe('DeviceRemoveUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
@@ -144,7 +144,7 @@ describe('DeviceRemoveUseCase', () => {
             async fn => fn(tx) as never
         );
         userAuthService.assertReauthentication.mockResolvedValue(check);
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         sessionService.removeDeviceOwnershipInTx.mockResolvedValue({
             deviceOwnership,
             revokedSessions: [{ id: 'session-1' }, { id: 'session-2' }],
@@ -156,7 +156,7 @@ describe('DeviceRemoveUseCase', () => {
                 { provide: SessionService, useValue: sessionService },
                 DeviceUtil,
                 { provide: UserAuthService, useValue: userAuthService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -250,7 +250,7 @@ describe('DeviceRemoveUseCase', () => {
                 'user-1',
                 now
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

@@ -6,7 +6,7 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
@@ -36,7 +36,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         private readonly userVerificationService: UserVerificationService,
         private readonly mfaService: MfaService,
         private readonly workspaceMemberService: WorkspaceMemberService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly userUtil: UserUtil,
         private readonly deviceUtil: DeviceUtil,
         private readonly outboxService: OutboxService,
@@ -135,7 +135,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
                 user.id,
                 user.email
             );
-            const entry = this.activityLogService.recordEffect(
+            const entry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 null,
@@ -173,7 +173,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
                     apiKeyContext,
                     user
                 );
-            const failedEntry = this.activityLogService.recordEffect(
+            const failedEntry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 null,

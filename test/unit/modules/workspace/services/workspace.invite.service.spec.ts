@@ -30,7 +30,7 @@ import type {
     WorkspaceInvite,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import {
@@ -38,7 +38,8 @@ import {
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import {
     EnumNotificationEmailProcess,
     EnumNotificationKind,
@@ -91,10 +92,12 @@ describe('WorkspaceInviteService', () => {
         mock<WorkspaceMemberService>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const notificationEmailQueue: MockProxy<NotificationEmailQueue> =
+        mock<NotificationEmailQueue>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     let databaseUtil: DatabaseUtil;
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
@@ -243,7 +246,7 @@ describe('WorkspaceInviteService', () => {
     beforeEach(async () => {
         featureFlagService.getMetadataNumber.mockResolvedValue(7);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
-        activityLogService.recordEffect
+        activityLogQueue.recordEffect
             .mockReturnValueOnce(actorEntry)
             .mockReturnValueOnce(inviteeEntry);
 
@@ -259,8 +262,12 @@ describe('WorkspaceInviteService', () => {
                     useValue: workspaceMemberService,
                 },
                 { provide: FeatureFlagService, useValue: featureFlagService },
-                { provide: NotificationService, useValue: notificationService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: NotificationQueue, useValue: notificationQueue },
+                {
+                    provide: NotificationEmailQueue,
+                    useValue: notificationEmailQueue,
+                },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 ...TestUnitKitProviders,
                 UserUtil,
                 { provide: OutboxService, useValue: outboxService },
@@ -896,7 +903,7 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
                 baseInvite
             );
-            notificationService.notify.mockReturnValue(notifyEffect);
+            notificationQueue.notify.mockReturnValue(notifyEffect);
 
             await service.createInvite(
                 requestContext,
@@ -907,7 +914,7 @@ describe('WorkspaceInviteService', () => {
                 registeredNotice
             );
 
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.workspaceInvite,
                 {
                     userId: 'user-2',
@@ -926,7 +933,7 @@ describe('WorkspaceInviteService', () => {
                 notifyEffect
             );
             expect(
-                notificationService.notifyUnregisteredInvite
+                notificationEmailQueue.notifyUnregisteredInvite
             ).not.toHaveBeenCalled();
         });
 
@@ -934,7 +941,7 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
                 baseInvite
             );
-            notificationService.notifyUnregisteredInvite.mockReturnValue(
+            notificationEmailQueue.notifyUnregisteredInvite.mockReturnValue(
                 unregisteredEffect
             );
 
@@ -948,7 +955,7 @@ describe('WorkspaceInviteService', () => {
             );
 
             expect(
-                notificationService.notifyUnregisteredInvite
+                notificationEmailQueue.notifyUnregisteredInvite
             ).toHaveBeenCalledWith('invitee@example.com', {
                 workspaceId: 'workspace-1',
                 workspaceName: 'Acme',
@@ -962,14 +969,14 @@ describe('WorkspaceInviteService', () => {
                 tx,
                 unregisteredEffect
             );
-            expect(notificationService.notify).not.toHaveBeenCalled();
+            expect(notificationQueue.notify).not.toHaveBeenCalled();
         });
 
         it('adds the creator entry and the invitee entry beside the notify effect on the invite tx for an invitee with an account', async () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
                 baseInvite
             );
-            notificationService.notify.mockReturnValue(notifyEffect);
+            notificationQueue.notify.mockReturnValue(notifyEffect);
 
             await service.createInvite(
                 requestContext,
@@ -980,7 +987,7 @@ describe('WorkspaceInviteService', () => {
                 registeredNotice
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -997,7 +1004,7 @@ describe('WorkspaceInviteService', () => {
                     },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -1025,7 +1032,7 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
                 baseInvite
             );
-            notificationService.notifyUnregisteredInvite.mockReturnValue(
+            notificationEmailQueue.notifyUnregisteredInvite.mockReturnValue(
                 unregisteredEffect
             );
 
@@ -1038,8 +1045,8 @@ describe('WorkspaceInviteService', () => {
                 unregisteredNotice
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -1061,7 +1068,7 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
                 baseInvite
             );
-            notificationService.notify.mockReturnValue(notifyEffect);
+            notificationQueue.notify.mockReturnValue(notifyEffect);
 
             await service.createInvite(
                 requestContext,
@@ -1072,7 +1079,7 @@ describe('WorkspaceInviteService', () => {
                 registeredNotice
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 actorEntry,
             ]);
@@ -1506,7 +1513,7 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
                 baseInvite
             );
-            notificationService.notify.mockReturnValue(notifyEffect);
+            notificationQueue.notify.mockReturnValue(notifyEffect);
 
             await service.resendInvite(
                 requestContext,
@@ -1517,7 +1524,7 @@ describe('WorkspaceInviteService', () => {
                 registeredNotice
             );
 
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.workspaceInvite,
                 expect.objectContaining({
                     userId: 'user-2',
@@ -1536,7 +1543,7 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
                 baseInvite
             );
-            notificationService.notify.mockReturnValue(notifyEffect);
+            notificationQueue.notify.mockReturnValue(notifyEffect);
 
             await service.resendInvite(
                 requestContext,
@@ -1547,7 +1554,7 @@ describe('WorkspaceInviteService', () => {
                 registeredNotice
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -1564,7 +1571,7 @@ describe('WorkspaceInviteService', () => {
                     },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -1588,7 +1595,7 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
                 baseInvite
             );
-            notificationService.notifyUnregisteredInvite.mockReturnValue(
+            notificationEmailQueue.notifyUnregisteredInvite.mockReturnValue(
                 unregisteredEffect
             );
 
@@ -1601,7 +1608,7 @@ describe('WorkspaceInviteService', () => {
                 unregisteredNotice
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 actorEntry,
             ]);
@@ -1751,7 +1758,7 @@ describe('WorkspaceInviteService', () => {
                 tx,
                 'invite-1'
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -1768,7 +1775,7 @@ describe('WorkspaceInviteService', () => {
                     },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -1800,8 +1807,8 @@ describe('WorkspaceInviteService', () => {
                 null
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

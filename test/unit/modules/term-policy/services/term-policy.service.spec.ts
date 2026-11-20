@@ -26,8 +26,8 @@ import {
     DatabaseUniqueConstraintCode,
     DatabaseWriteConflictCode,
 } from '@common/database/constants/database.constant';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -78,8 +78,9 @@ describe('TermPolicyService', () => {
         mock<TermPolicyRepository>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
+    const termPolicyQueue: MockProxy<TermPolicyQueue> = mock<TermPolicyQueue>();
     const termPolicyContentService: MockProxy<TermPolicyContentService> =
         mock<TermPolicyContentService>();
 
@@ -108,6 +109,22 @@ describe('TermPolicyService', () => {
         data: { rows: [] },
         priority: EnumQueuePriority.low,
         idempotencyKey: null,
+    };
+    const publishEffect: ITermPolicyPublishEffect = {
+        queue: EnumTermPolicyQueue.termPolicy,
+        name: EnumTermPolicyProcess.publish,
+        data: {
+            proceedBy: 'admin-1',
+            data: {
+                termPolicyId: 'term-policy-1',
+                type: EnumTermPolicyType.privacy,
+                version: 1,
+                recipientCutoffAt: '2026-01-01T00:00:00.000Z',
+                resendNonce: null,
+            },
+        },
+        priority: EnumQueuePriority.medium,
+        idempotencyKey: 'publish-term-policy-1',
     };
     const activityMetadata = {
         termPolicyId: 'term-policy-1',
@@ -170,7 +187,6 @@ describe('TermPolicyService', () => {
     };
 
     let service: TermPolicyService;
-    let databaseUtil: DatabaseUtil;
 
     beforeAll(() => {
         vi.useFakeTimers();
@@ -183,7 +199,7 @@ describe('TermPolicyService', () => {
 
     beforeEach(async () => {
         awsS3Service.isInitialized.mockReturnValue(true);
-        activityLogService.recordEffect.mockReturnValue(entryEffect);
+        activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -202,16 +218,13 @@ describe('TermPolicyService', () => {
                 { provide: AwsS3Service, useValue: awsS3Service },
                 TermPolicyUtil,
                 { provide: OutboxService, useValue: outboxService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: TermPolicyQueue, useValue: termPolicyQueue },
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
                         ...TestUnitKitConfigValues,
-                        'termPolicy.idempotencyKey.publishPattern':
-                            '{process}-{termPolicyId}',
-                        'termPolicy.idempotencyKey.resendPublishPattern':
-                            '{process}-{termPolicyId}-{resendNonce}',
                         'termPolicy.uploadContentPathPattern':
                             'term-policies/{type}/{version}',
                         'termPolicy.contentPublicPathPattern':
@@ -224,7 +237,6 @@ describe('TermPolicyService', () => {
         }).compile();
 
         service = module.get(TermPolicyService);
-        databaseUtil = module.get(DatabaseUtil);
     });
 
     describe('getListByAdmin', () => {
@@ -594,7 +606,7 @@ describe('TermPolicyService', () => {
                 }
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -755,7 +767,7 @@ describe('TermPolicyService', () => {
 
         it('deletes the draft and adds the content delete row on one outbox tx', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            termPolicyContentService.deleteContentEffect.mockReturnValue(
+            termPolicyQueue.deleteContentEffect.mockReturnValue(
                 deleteContentEffect
             );
             outboxService.withTransaction.mockImplementation(
@@ -776,9 +788,9 @@ describe('TermPolicyService', () => {
                 tx,
                 'term-policy-1'
             );
-            expect(
-                termPolicyContentService.deleteContentEffect
-            ).toHaveBeenCalledWith([contentEn.key]);
+            expect(termPolicyQueue.deleteContentEffect).toHaveBeenCalledWith([
+                contentEn.key,
+            ]);
             expect(outboxService.addInTx).toHaveBeenCalledWith(
                 tx,
                 deleteContentEffect
@@ -801,9 +813,7 @@ describe('TermPolicyService', () => {
                 'term-policy-1'
             );
 
-            expect(
-                termPolicyContentService.deleteContentEffect
-            ).not.toHaveBeenCalled();
+            expect(termPolicyQueue.deleteContentEffect).not.toHaveBeenCalled();
             expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
@@ -819,7 +829,7 @@ describe('TermPolicyService', () => {
                 'term-policy-1'
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -953,11 +963,9 @@ describe('TermPolicyService', () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             const error = new TermPolicyNotFoundException();
             termPolicyRepository.deleteDraftInTx.mockResolvedValue(true);
-            termPolicyContentService.deleteContentEffect.mockImplementation(
-                () => {
-                    throw error;
-                }
-            );
+            termPolicyQueue.deleteContentEffect.mockImplementation(() => {
+                throw error;
+            });
 
             const promise = service.deleteByAdmin(
                 requestContext,
@@ -1064,7 +1072,7 @@ describe('TermPolicyService', () => {
                     'term-policy-1'
                 );
 
-                expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -1215,22 +1223,7 @@ describe('TermPolicyService', () => {
             });
 
             it('adds the publish row on one publish tx after the guards, and dispatches once', async () => {
-                const publishEffect: ITermPolicyPublishEffect = {
-                    queue: EnumTermPolicyQueue.termPolicy,
-                    name: EnumTermPolicyProcess.publish,
-                    data: {
-                        proceedBy: 'admin-1',
-                        data: {
-                            termPolicyId: 'term-policy-1',
-                            type: EnumTermPolicyType.privacy,
-                            version: 1,
-                            recipientCutoffAt: '2026-01-01T00:00:00.000Z',
-                            resendNonce: null,
-                        },
-                    },
-                    priority: EnumQueuePriority.medium,
-                    idempotencyKey: 'publish-term-policy-1',
-                };
+                termPolicyQueue.publishEffect.mockReturnValue(publishEffect);
                 await service.publishByAdmin(
                     requestContext,
                     apiKeyContext,
@@ -1239,6 +1232,16 @@ describe('TermPolicyService', () => {
                 );
 
                 expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+                expect(termPolicyQueue.publishEffect).toHaveBeenCalledWith(
+                    {
+                        termPolicyId: 'term-policy-1',
+                        type: EnumTermPolicyType.privacy,
+                        version: 1,
+                        recipientCutoffAt: '2026-01-01T00:00:00.000Z',
+                        resendNonce: null,
+                    },
+                    'admin-1'
+                );
                 expect(outboxService.addInTx).toHaveBeenCalledWith(
                     tx,
                     publishEffect
@@ -1533,43 +1536,6 @@ describe('TermPolicyService', () => {
                 statusCode: EnumAppStatusCodeError.unknown,
                 rawError: cause,
             });
-        });
-    });
-
-    describe('resendPublishEffect', () => {
-        it('returns a resend effect on the term-policy queue with one fresh nonce in its data and its key', () => {
-            const resendEffect: ITermPolicyPublishEffect = {
-                queue: EnumTermPolicyQueue.termPolicy,
-                name: EnumTermPolicyProcess.publish,
-                data: {
-                    proceedBy: 'admin-1',
-                    data: {
-                        termPolicyId: 'term-policy-1',
-                        type: EnumTermPolicyType.privacy,
-                        version: 1,
-                        recipientCutoffAt: '2026-01-01T00:00:00.000Z',
-                        resendNonce: 'nonce-1',
-                    },
-                },
-                priority: EnumQueuePriority.medium,
-                idempotencyKey: 'publish-term-policy-1-nonce-1',
-            };
-            const createId = vi
-                .spyOn(databaseUtil, 'createId')
-                .mockReturnValue('nonce-1');
-
-            const effect = service.resendPublishEffect(
-                {
-                    termPolicyId: 'term-policy-1',
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                    recipientCutoffAt: '2026-01-01T00:00:00.000Z',
-                },
-                'admin-1'
-            );
-
-            expect(createId).toHaveBeenCalledTimes(1);
-            expect(effect).toEqual(resendEffect);
         });
     });
 

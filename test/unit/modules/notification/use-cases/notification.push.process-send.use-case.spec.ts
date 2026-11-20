@@ -23,6 +23,7 @@ import {
 import type { INotificationPushSendPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushDeliveryService } from '@modules/notification/services/notification.push.delivery.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationPushProcessSendUseCase } from '@modules/notification/use-cases/notification.push.process-send.use-case';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -33,6 +34,8 @@ describe('NotificationPushProcessSendUseCase', () => {
         mock<NotificationPushDeliveryService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
+    const notificationPushQueue: MockProxy<NotificationPushQueue> =
+        mock<NotificationPushQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
@@ -87,6 +90,10 @@ describe('NotificationPushProcessSendUseCase', () => {
                     useValue: notificationPushDeliveryService,
                 },
                 { provide: NotificationService, useValue: notificationService },
+                {
+                    provide: NotificationPushQueue,
+                    useValue: notificationPushQueue,
+                },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -140,7 +147,7 @@ describe('NotificationPushProcessSendUseCase', () => {
             notificationService.decryptFailureTokens.mockReturnValue([
                 'token-2',
             ]);
-            notificationService.cleanupTokensEffect.mockReturnValue(
+            notificationPushQueue.cleanupTokensEffect.mockReturnValue(
                 cleanupEffect
             );
 
@@ -186,7 +193,7 @@ describe('NotificationPushProcessSendUseCase', () => {
                 'actor-id'
             );
             expect(
-                notificationService.cleanupTokensEffect
+                notificationPushQueue.cleanupTokensEffect
             ).toHaveBeenCalledWith('user-id', ['cipher(token-2)']);
             expect(outboxService.addInTx).toHaveBeenCalledWith(
                 tx,

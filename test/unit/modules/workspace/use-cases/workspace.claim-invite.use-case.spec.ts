@@ -23,7 +23,7 @@ import type {
     WorkspaceInvite,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -59,8 +59,8 @@ describe('WorkspaceClaimInviteUseCase', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const firstEntry = buildActivityLogCreateManyEffect('first-entry');
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const invite: WorkspaceInvite = {
         id: 'invite-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -98,7 +98,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
     });
 
     beforeEach(async () => {
-        activityLogService.recordEffect
+        activityLogQueue.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
         vi.setSystemTime(now);
@@ -130,7 +130,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
             ],
         }).compile();
 
@@ -230,7 +230,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 'workspace-1'
             );
             expect(projectMemberService.createInTx).not.toHaveBeenCalled();
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -244,7 +244,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                     metadata: { targetUserId: 'user-1' },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -318,7 +318,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 body
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 firstEntry,
             ]);

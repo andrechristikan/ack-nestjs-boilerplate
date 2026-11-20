@@ -11,7 +11,7 @@ import {
     EnumMfaChallengePurpose,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 import type { MfaPasskeyRegisterRequestDto } from '@modules/mfa/dtos/request/mfa.passkey-register.request.dto';
@@ -42,7 +42,7 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
         private readonly mfaPasskeyService: MfaPasskeyService,
         private readonly mfaChallengeService: MfaChallengeService,
         private readonly userAuthService: UserAuthService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
@@ -118,7 +118,7 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
                     tx,
                     authContext.userId
                 );
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

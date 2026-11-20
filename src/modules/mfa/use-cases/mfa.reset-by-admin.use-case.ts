@@ -3,9 +3,10 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -34,7 +35,8 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
         private readonly roleService: RoleService,
         private readonly sessionService: SessionService,
         private readonly notificationService: NotificationService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly notificationQueue: NotificationQueue,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly userUtil: UserUtil,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
@@ -71,7 +73,7 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
                 authContext.userId,
                 now
             );
-            const effect = this.notificationService.notify(
+            const effect = this.notificationQueue.notify(
                 EnumNotificationKind.resetMfaByAdmin,
                 { userId, proceedBy: authContext.userId, snapshot }
             );
@@ -81,7 +83,7 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
                 target,
                 authContext.userId
             );
-            const actorEntry = this.activityLogService.recordEffect(
+            const actorEntry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -91,7 +93,7 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
                     metadata: actorMetadata,
                 }
             );
-            const targetEntry = this.activityLogService.recordEffect(
+            const targetEntry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,

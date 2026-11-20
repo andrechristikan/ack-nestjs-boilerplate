@@ -5,6 +5,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { MockInstance } from 'vitest';
+import { CacheQueue } from '@common/cache/queues/cache.queue';
 import { CacheService } from '@common/cache/services/cache.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { stubApiKeyRandom as stubRandom } from '@test/unit/helpers/test.unit.api-key.helper';
@@ -47,6 +48,7 @@ describe('ApiKeyService', () => {
     const apiKeyRepository: MockProxy<ApiKeyRepository> =
         mock<ApiKeyRepository>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
+    const cacheQueue: MockProxy<CacheQueue> = mock<CacheQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
@@ -80,7 +82,7 @@ describe('ApiKeyService', () => {
 
     beforeEach(async () => {
         apiKeyCache.buildApiKeyKeys.mockReturnValue(keys);
-        cacheService.invalidateEffect.mockReturnValue(cacheEffect);
+        cacheQueue.invalidateEffect.mockReturnValue(cacheEffect);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -90,6 +92,7 @@ describe('ApiKeyService', () => {
                 { provide: ApiKeyCache, useValue: apiKeyCache },
                 { provide: ApiKeyRepository, useValue: apiKeyRepository },
                 { provide: CacheService, useValue: cacheService },
+                { provide: CacheQueue, useValue: cacheQueue },
                 { provide: OutboxService, useValue: outboxService },
                 {
                     provide: ConfigService,
@@ -298,7 +301,7 @@ describe('ApiKeyService', () => {
             expect(apiKeyCache.buildApiKeyKeys).toHaveBeenCalledWith(
                 apiKey.key
             );
-            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(keys);
+            expect(cacheQueue.invalidateEffect).toHaveBeenCalledWith(keys);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
         });
 
@@ -362,7 +365,7 @@ describe('ApiKeyService', () => {
             expect(apiKeyCache.buildApiKeyKeys).toHaveBeenCalledWith(
                 apiKey.key
             );
-            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(keys);
+            expect(cacheQueue.invalidateEffect).toHaveBeenCalledWith(keys);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
         });
     });
@@ -503,7 +506,7 @@ describe('ApiKeyService', () => {
             expect(apiKeyCache.buildApiKeyKeys).toHaveBeenCalledWith(
                 apiKey.key
             );
-            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(keys);
+            expect(cacheQueue.invalidateEffect).toHaveBeenCalledWith(keys);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
         });
 
@@ -566,7 +569,7 @@ describe('ApiKeyService', () => {
             expect(apiKeyCache.buildApiKeyKeys).toHaveBeenCalledWith(
                 apiKey.key
             );
-            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(keys);
+            expect(cacheQueue.invalidateEffect).toHaveBeenCalledWith(keys);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
         });
 
@@ -611,7 +614,7 @@ describe('ApiKeyService', () => {
             expect(apiKeyCache.buildApiKeyKeys).toHaveBeenCalledWith(
                 apiKey.key
             );
-            expect(cacheService.invalidateEffect).toHaveBeenCalledWith(keys);
+            expect(cacheQueue.invalidateEffect).toHaveBeenCalledWith(keys);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
         });
 

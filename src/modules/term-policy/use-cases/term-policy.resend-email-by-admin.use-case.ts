@@ -2,7 +2,8 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
@@ -18,8 +19,9 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly termPolicyService: TermPolicyService,
+        private readonly termPolicyQueue: TermPolicyQueue,
         private readonly termPolicyUtil: TermPolicyUtil,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -36,7 +38,7 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
         const recipientCutoffAt = this.helperDateService.formatToIso(
             termPolicy.publishedAt!
         );
-        const resend = this.termPolicyService.resendPublishEffect(
+        const resend = this.termPolicyQueue.resendPublishEffect(
             {
                 termPolicyId: termPolicy.id,
                 type: termPolicy.type,
@@ -51,7 +53,7 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
             termPolicy,
             timestamp
         );
-        const entry = this.activityLogService.recordEffect(
+        const entry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
             authContext,

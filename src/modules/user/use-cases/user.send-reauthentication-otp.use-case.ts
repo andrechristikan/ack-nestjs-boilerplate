@@ -2,7 +2,7 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { UserReauthenticationSendRequestDto } from '@modules/user/dtos/request/user.reauthentication-send.request.dto';
 import type { IUserContext } from '@modules/user/interfaces/user.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
@@ -26,7 +26,7 @@ export class UserSendReauthenticationOtpUseCase implements IAppUseCase<
     constructor(
         private readonly userAuthService: UserAuthService,
         private readonly userVerificationService: UserVerificationService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService
     ) {}
 
@@ -51,7 +51,7 @@ export class UserSendReauthenticationOtpUseCase implements IAppUseCase<
                 user.email,
                 action
             );
-            const entry = this.activityLogService.recordEffect(
+            const entry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,

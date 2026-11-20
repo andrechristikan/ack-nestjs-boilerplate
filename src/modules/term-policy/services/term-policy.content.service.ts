@@ -13,13 +13,8 @@ import { NoSuchKey } from '@aws-sdk/client-s3';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import {
-    EnumTermPolicyProcess,
-    EnumTermPolicyQueue,
-} from '@modules/term-policy/enums/term-policy.enum';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentKeyInvalidException } from '@modules/term-policy/exceptions/term-policy.content-key-invalid.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
@@ -32,8 +27,8 @@ import type {
     ITermPolicyContent,
     ITermPolicyContentPresign,
     ITermPolicyContentUpload,
-    ITermPolicyDeleteContentEffect,
 } from '@modules/term-policy/interfaces/term-policy.interface';
+import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
@@ -52,7 +47,8 @@ export class TermPolicyContentService {
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly outboxService: OutboxService,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
+        private readonly termPolicyQueue: TermPolicyQueue,
         private readonly helperDateService: HelperDateService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly fileService: FileService
@@ -86,16 +82,6 @@ export class TermPolicyContentService {
         if (!isInPath) {
             throw new TermPolicyContentKeyInvalidException();
         }
-    }
-
-    deleteContentEffect(keys: string[]): ITermPolicyDeleteContentEffect {
-        return {
-            queue: EnumTermPolicyQueue.termPolicy,
-            name: EnumTermPolicyProcess.deleteContent,
-            data: { keys },
-            priority: EnumQueuePriority.low,
-            idempotencyKey: null,
-        };
     }
 
     async assertContentText(key: string): Promise<void> {
@@ -235,9 +221,10 @@ export class TermPolicyContentService {
                 }
 
                 if (existingContent.key !== key) {
-                    const deleteEffect = this.deleteContentEffect([
-                        existingContent.key,
-                    ]);
+                    const deleteEffect =
+                        this.termPolicyQueue.deleteContentEffect([
+                            existingContent.key,
+                        ]);
                     await this.outboxService.addInTx(tx, deleteEffect);
                 }
 
@@ -246,7 +233,7 @@ export class TermPolicyContentService {
                     termPolicy,
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -332,7 +319,7 @@ export class TermPolicyContentService {
                     termPolicy,
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -392,7 +379,7 @@ export class TermPolicyContentService {
                     throw new TermPolicyStatusInvalidException();
                 }
 
-                const deleteEffect = this.deleteContentEffect([
+                const deleteEffect = this.termPolicyQueue.deleteContentEffect([
                     existingContent.key,
                 ]);
                 await this.outboxService.addInTx(tx, deleteEffect);
@@ -402,7 +389,7 @@ export class TermPolicyContentService {
                     termPolicy,
                     timestamp
                 );
-                const entry = this.activityLogService.recordEffect(
+                const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,

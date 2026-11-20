@@ -35,9 +35,10 @@ import { UserProfileService } from '@modules/user/services/user.profile.service'
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import type { IUserDeletePhotoEffect } from '@modules/user/interfaces/user.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { UserQueue } from '@modules/user/queues/user.queue';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     buildUser,
     buildRequestContext,
@@ -62,8 +63,9 @@ describe('UserProfileService', () => {
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const fileService: MockProxy<FileService> = mock<FileService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
+    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(
@@ -154,7 +156,7 @@ describe('UserProfileService', () => {
     };
 
     const tx = {} as IDatabaseTransactionClient;
-    const deletePhotoEffect: IOutboxEffect = {
+    const deletePhotoEffect: IUserDeletePhotoEffect = {
         queue: EnumUserQueue.user,
         name: EnumUserProcess.deletePhoto,
         data: {
@@ -167,7 +169,8 @@ describe('UserProfileService', () => {
     };
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockReturnValue(entry);
+        activityLogQueue.recordEffect.mockReturnValue(entry);
+        userQueue.deletePhotoEffect.mockReturnValue(deletePhotoEffect);
         userRepository.findOneById.mockResolvedValue(profile);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -179,7 +182,8 @@ describe('UserProfileService', () => {
                 { provide: FileService, useValue: fileService },
                 DatabaseUtil,
                 { provide: OutboxService, useValue: outboxService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: UserQueue, useValue: userQueue },
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(configValues),
@@ -345,17 +349,11 @@ describe('UserProfileService', () => {
                 head,
                 aws.extension
             );
-            expect(outboxService.add).toHaveBeenCalledWith({
-                queue: EnumUserQueue.user,
-                name: EnumUserProcess.deletePhoto,
-                data: {
-                    userId: profile.id,
-                    key: aws.key,
-                    access: EnumAwsS3Accessibility.public,
-                },
-                priority: EnumQueuePriority.low,
-                idempotencyKey: null,
-            });
+            expect(userQueue.deletePhotoEffect).toHaveBeenCalledWith(
+                profile.id,
+                aws
+            );
+            expect(outboxService.add).toHaveBeenCalledWith(deletePhotoEffect);
             expect(userRepository.findOneById).not.toHaveBeenCalled();
             expect(
                 userRepository.updatePhotoProfileInTx
@@ -421,7 +419,7 @@ describe('UserProfileService', () => {
                 profile.id,
                 aws
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -499,6 +497,10 @@ describe('UserProfileService', () => {
                 tx,
                 profile.id,
                 aws
+            );
+            expect(userQueue.deletePhotoEffect).toHaveBeenCalledWith(
+                profile.id,
+                previousPhoto
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(
                 tx,
@@ -771,6 +773,10 @@ describe('UserProfileService', () => {
                 profile.id,
                 aws
             );
+            expect(userQueue.deletePhotoEffect).toHaveBeenCalledWith(
+                profile.id,
+                previousPhoto
+            );
             expect(outboxService.addInTx).toHaveBeenCalledWith(
                 tx,
                 deletePhotoEffect
@@ -1000,7 +1006,7 @@ describe('UserProfileService', () => {
                 profile.id,
                 { username }
             );
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -1129,6 +1135,10 @@ describe('UserProfileService', () => {
             await service.deleteOwnedPhotoInTx(tx, profile.id, previousPhoto);
 
             expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
+            expect(userQueue.deletePhotoEffect).toHaveBeenCalledWith(
+                profile.id,
+                previousPhoto
+            );
             expect(outboxService.addInTx).toHaveBeenCalledWith(
                 tx,
                 deletePhotoEffect

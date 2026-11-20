@@ -19,7 +19,7 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyDeleteByAdminUseCase } from '@modules/api-key/use-cases/api-key.delete-by-admin.use-case';
@@ -36,8 +36,8 @@ import {
 
 describe('ApiKeyDeleteByAdminUseCase', () => {
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
@@ -76,7 +76,7 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
     });
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockReturnValue(effect);
+        activityLogQueue.recordEffect.mockReturnValue(effect);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -85,7 +85,7 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
             providers: [
                 ApiKeyDeleteByAdminUseCase,
                 { provide: ApiKeyService, useValue: apiKeyService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: OutboxService, useValue: outboxService },
                 ApiKeyUtil,
                 ...TestUnitKitProviders,
@@ -127,7 +127,7 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
                 apiKey.id
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

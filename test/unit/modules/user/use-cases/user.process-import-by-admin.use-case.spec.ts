@@ -25,7 +25,7 @@ import {
     EnumUserSignUpWith,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IAuthPasswordTemporary } from '@modules/auth/interfaces/auth.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
@@ -35,7 +35,7 @@ import {
     EnumNotificationProcess,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -70,14 +70,14 @@ import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.datab
 describe('UserProcessImportByAdminUseCase', () => {
     const userImportService: MockProxy<UserImportService> =
         mock<UserImportService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const countryService: MockProxy<CountryService> = mock<CountryService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const userRegistrationService: MockProxy<UserRegistrationService> =
@@ -215,10 +215,10 @@ describe('UserProcessImportByAdminUseCase', () => {
 
     beforeEach(async () => {
         messageService.setMessage.mockImplementation((path: string) => path);
-        activityLogService.recordEffectFromPayload.mockReturnValue(
+        activityLogQueue.recordEffectFromPayload.mockReturnValue(
             activityEffect
         );
-        notificationService.notify.mockImplementation(kind =>
+        notificationQueue.notify.mockImplementation(kind =>
             kind === EnumNotificationKind.userImportResult
                 ? resultEffect
                 : welcomeEffect
@@ -254,8 +254,8 @@ describe('UserProcessImportByAdminUseCase', () => {
                 },
                 { provide: RoleService, useValue: roleService },
                 { provide: CountryService, useValue: countryService },
-                { provide: ActivityLogService, useValue: activityLogService },
-                { provide: NotificationService, useValue: notificationService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: NotificationQueue, useValue: notificationQueue },
                 UserCreateUtil,
                 HelperStringService,
                 HelperDateService,
@@ -305,7 +305,7 @@ describe('UserProcessImportByAdminUseCase', () => {
                 userImportService.buildImportByAdminStages
             ).toHaveBeenCalledWith([input], [committedUser]);
             expect(
-                activityLogService.recordEffectFromPayload
+                activityLogQueue.recordEffectFromPayload
             ).toHaveBeenCalledWith(activityLog, stageInput);
             expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -353,13 +353,13 @@ describe('UserProcessImportByAdminUseCase', () => {
             expect(outboxService.updateDataInTx).not.toHaveBeenCalled();
             expect(outboxService.add).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-            expect(notificationService.notify).not.toHaveBeenCalled();
+            expect(notificationQueue.notify).not.toHaveBeenCalled();
         });
 
         it('notifies each created user with a welcome carrying the admin as the proceeding user', async () => {
             await useCase.execute('outbox-bramble', payload);
 
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.welcomeByAdmin,
                 {
                     userId: 'user-bramble',
@@ -374,7 +374,7 @@ describe('UserProcessImportByAdminUseCase', () => {
         it('notifies the admin with a result of the created count, no failures, and no reasons keyed by the row id', async () => {
             await useCase.execute('outbox-bramble', payload);
 
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.userImportResult,
                 {
                     userId: 'admin-bramble',
@@ -398,7 +398,7 @@ describe('UserProcessImportByAdminUseCase', () => {
                 'country-bramble'
             );
             expect(
-                activityLogService.recordEffectFromPayload
+                activityLogQueue.recordEffectFromPayload
             ).toHaveBeenCalledWith(payload.activityLog, stageInput);
         });
 
@@ -450,7 +450,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             expect(messageService.setMessage).toHaveBeenCalledWith(
                 'user.error.usernameExist'
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.userImportResult,
                 {
                     userId: 'admin-bramble',
@@ -479,7 +479,7 @@ describe('UserProcessImportByAdminUseCase', () => {
                 failed: 1,
             });
 
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.userImportResult,
                 expect.objectContaining({
                     created: 0,

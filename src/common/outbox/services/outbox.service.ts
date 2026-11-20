@@ -2,8 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { OnApplicationBootstrap } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { getQueueToken } from '@nestjs/bullmq';
-import type { Queue } from 'bullmq';
 import { EnumOutboxStatus } from '@generated/prisma-client/client';
 import type { Outbox, Prisma } from '@generated/prisma-client/client';
 import { CacheService } from '@common/cache/services/cache.service';
@@ -14,10 +12,10 @@ import type {
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { QueueBase } from '@common/queue/bases/queue.base';
 import { EnumQueueJobState } from '@common/queue/enums/queue.enum';
 import type {
     IOutboxEffect,
-    IOutboxJobPayload,
     IOutboxReconcileResult,
 } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxDispatchWarnKey } from '@common/outbox/constants/outbox.constant';
@@ -77,25 +75,26 @@ export class OutboxService implements OnApplicationBootstrap {
 
     private async reconcile(row: Outbox): Promise<IOutboxReconcileResult> {
         try {
-            const queue = this.moduleRef.get<Queue<IOutboxJobPayload>>(
-                getQueueToken(row.queue),
-                { strict: false }
-            );
-            const found = await queue.getJob(row.idempotencyKey);
-            const job = found ?? null;
+            const queueClass = this.moduleRef.get<QueueBase>(row.queue, {
+                strict: false,
+            });
+            const job = await queueClass.getJobState(row.idempotencyKey);
             if (job === null) {
                 return { stamped: false, missingRow: row };
             }
 
-            const state = await job.getState();
-            if (state === EnumQueueJobState.completed) {
+            if (job.state === EnumQueueJobState.completed) {
                 await this.complete(row.id, job.attemptsMade);
 
                 return { stamped: true, missingRow: null };
             }
 
-            if (state === EnumQueueJobState.failed) {
-                await this.fail(row.id, job.attemptsMade, job.failedReason);
+            if (job.state === EnumQueueJobState.failed) {
+                await this.fail(
+                    row.id,
+                    job.attemptsMade,
+                    job.failedReason ?? ''
+                );
 
                 return { stamped: true, missingRow: null };
             }
@@ -111,17 +110,10 @@ export class OutboxService implements OnApplicationBootstrap {
         rows: Outbox[]
     ): Promise<string[]> {
         try {
-            const queue = this.moduleRef.get<Queue<IOutboxJobPayload>>(
-                getQueueToken(queueName),
-                { strict: false }
-            );
-            await queue.addBulk(
-                rows.map(row => ({
-                    name: row.name,
-                    data: { outboxId: row.id },
-                    opts: { jobId: row.idempotencyKey, priority: row.priority },
-                }))
-            );
+            const queueClass = this.moduleRef.get<QueueBase>(queueName, {
+                strict: false,
+            });
+            await queueClass.enqueue(rows);
         } catch (error: unknown) {
             this.warnDispatchFailure(error);
 

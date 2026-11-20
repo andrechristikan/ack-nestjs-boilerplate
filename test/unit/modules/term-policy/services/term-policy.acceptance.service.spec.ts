@@ -18,7 +18,7 @@ import {
 } from '@common/database/constants/database.constant';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -34,7 +34,7 @@ import {
     EnumNotificationProcess,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
@@ -54,10 +54,10 @@ describe('TermPolicyAcceptanceService', () => {
     const termPolicyRepository: MockProxy<TermPolicyRepository> =
         mock<TermPolicyRepository>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const requestContext: IRequestContext = {
         requestLog: {
             userAgent: {
@@ -127,13 +127,13 @@ describe('TermPolicyAcceptanceService', () => {
                     useValue: termPolicyRepository,
                 },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: NotificationService, useValue: notificationService },
+                { provide: NotificationQueue, useValue: notificationQueue },
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
             ],
         }).compile();
 
@@ -540,7 +540,7 @@ describe('TermPolicyAcceptanceService', () => {
             termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
                 [latest]
             );
-            notificationService.notify.mockReturnValue(effect);
+            notificationQueue.notify.mockReturnValue(effect);
             outboxService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
@@ -562,7 +562,7 @@ describe('TermPolicyAcceptanceService', () => {
                 'user-1',
                 timestamp
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.userAcceptTermPolicy,
                 {
                     userId: 'user-1',
@@ -582,8 +582,8 @@ describe('TermPolicyAcceptanceService', () => {
             termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
                 [latest]
             );
-            notificationService.notify.mockReturnValue(notifyEffect);
-            activityLogService.recordEffect.mockReturnValue(entryEffect);
+            notificationQueue.notify.mockReturnValue(notifyEffect);
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
             outboxService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
@@ -595,7 +595,7 @@ describe('TermPolicyAcceptanceService', () => {
                 EnumTermPolicyType.privacy
             );
 
-            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,

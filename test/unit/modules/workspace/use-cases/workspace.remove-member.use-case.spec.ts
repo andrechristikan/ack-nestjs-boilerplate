@@ -19,7 +19,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import type { IWorkspaceMemberWithEmail } from '@modules/workspace/interfaces/workspace.interface';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
@@ -43,8 +43,8 @@ import {
 describe('WorkspaceRemoveMemberUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
     const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
@@ -68,7 +68,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
     let useCase: WorkspaceRemoveMemberUseCase;
 
     beforeEach(async () => {
-        activityLogService.recordEffect
+        activityLogQueue.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
@@ -80,7 +80,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
                 },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 {
                     provide: ProjectMemberService,
                     useValue: projectMemberService,
@@ -178,7 +178,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 'joinRequests',
                 'lastWorkspace',
             ]);
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -192,7 +192,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                     metadata: { targetUserId: 'user-2' },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,

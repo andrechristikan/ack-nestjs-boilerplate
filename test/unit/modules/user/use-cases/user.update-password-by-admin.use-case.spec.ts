@@ -13,9 +13,10 @@ import type { PasswordHistory, User } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IAuthPasswordTemporary } from '@modules/auth/interfaces/auth.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import {
     EnumNotificationKind,
     EnumNotificationProcess,
@@ -52,9 +53,11 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
+    const notificationQueue: MockProxy<NotificationQueue> =
+        mock<NotificationQueue>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const activityLogService: MockProxy<ActivityLogService> =
-        mock<ActivityLogService>();
+    const activityLogQueue: MockProxy<ActivityLogQueue> =
+        mock<ActivityLogQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: UserUpdatePasswordByAdminUseCase;
@@ -118,7 +121,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
     });
 
     beforeEach(async () => {
-        activityLogService.recordEffect.mockImplementation(
+        activityLogQueue.recordEffect.mockImplementation(
             (
                 _requestContext,
                 _apiKeyContext,
@@ -135,7 +138,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             async fn => fn(tx) as never
         );
         notificationService.getSnapshot.mockResolvedValue(snapshot);
-        notificationService.notify.mockReturnValue(notifyEffect);
+        notificationQueue.notify.mockReturnValue(notifyEffect);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -151,8 +154,9 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     provide: NotificationService,
                     useValue: notificationService,
                 },
+                { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: RoleService, useValue: roleService },
-                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: ActivityLogQueue, useValue: activityLogQueue },
                 UserUtil,
                 { provide: OutboxService, useValue: outboxService },
                 HelperDateService,
@@ -272,7 +276,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 'addEffects',
                 'commit',
             ]);
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.temporaryPasswordByAdmin,
                 {
                     userId: 'user-linden',
@@ -283,7 +287,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     snapshot,
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
                 apiKeyContext,
@@ -298,7 +302,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     },
                 }
             );
-            expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 2,
                 requestContext,
                 apiKeyContext,
@@ -380,7 +384,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 'admin-other',
                 password.passwordCreated
             );
-            expect(notificationService.notify).toHaveBeenCalledWith(
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.temporaryPasswordByAdmin,
                 expect.objectContaining({ proceedBy: 'admin-other' })
             );

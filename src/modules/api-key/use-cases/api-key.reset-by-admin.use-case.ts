@@ -6,7 +6,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
@@ -25,7 +25,7 @@ export class ApiKeyResetByAdminUseCase implements IAppUseCase<
     constructor(
         private readonly apiKeyService: ApiKeyService,
         private readonly apiKeyUtil: ApiKeyUtil,
-        private readonly activityLogService: ActivityLogService,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -50,7 +50,7 @@ export class ApiKeyResetByAdminUseCase implements IAppUseCase<
                         reset.apiKey,
                         timestamp
                     );
-                    const effect = this.activityLogService.recordEffect(
+                    const effect = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         authContext,

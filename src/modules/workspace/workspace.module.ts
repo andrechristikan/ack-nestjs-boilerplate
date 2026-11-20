@@ -31,6 +31,10 @@ import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
         WorkspaceJoinRequestService,
         WorkspaceUtil,
         WorkspaceQueue,
+        {
+            provide: EnumWorkspaceQueue.workspace,
+            useExisting: WorkspaceQueue,
+        },
     ],
     exports: [
         WorkspaceService,
@@ -38,6 +42,7 @@ import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
         WorkspaceInviteService,
         WorkspaceJoinRequestService,
         WorkspaceUtil,
+        WorkspaceQueue,
     ],
     imports: [
         ActivityLogModule,
