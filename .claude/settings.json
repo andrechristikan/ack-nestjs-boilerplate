@@ -53,6 +53,7 @@
             "Bash(pnpm run vault:push*)",
             "Bash(sh ci/vault/*)",
             "Edit(~/.claude/**)",
+            "Edit(/.claude/rules/discipline.md)",
             "Bash(git commit:*)",
             "Bash(git add:*)",
             "Bash(git stash:*)",
@@ -239,6 +240,10 @@
                         "type": "command",
                         "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format.sh",
                         "timeout": 120
+                    },
+                    {
+                        "type": "command",
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verify.sh"
                     }
                 ]
             }

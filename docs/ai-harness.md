@@ -81,8 +81,8 @@ Each command runs in a fresh session, so it starts from the files the previous o
 
 `/ack-harness .scratch/<feature>/plan.md` runs in the session when the plan lists a harness change.
 
-1. It applies each rule change and decision entry the plan lists.
-2. It ticks each one in `plan.md`. `/ack-build` does not start while one is open.
+1. `harness` writes each rule change and decision entry the plan lists.
+2. The session ticks each one in `plan.md`. `/ack-build` does not start while one is open.
 
 ### Build
 
@@ -100,7 +100,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 
 `/ack-review .scratch/<feature>/plan.md` runs in the session on every feature, once.
 
-1. One `reviewer` on opus at high effort checks three things: every acceptance criterion of the spec, every rule binding the changed files, and each changed endpoint and job traced end to end beside the nearest flow of the same kind.
+1. One `reviewer` checks three things: every acceptance criterion of the spec, every rule binding the changed files, and each changed endpoint and job traced end to end beside the nearest flow of the same kind.
 2. It writes `.scratch/<feature>/review.md`: a coverage table with a row per rule file, decision entry, and flow, and one section per finding with the exact change to make.
 3. The session puts each finding to the owner, one at a time. The owner keeps it, drops it, or changes it.
 4. The session writes the fix list into `review.md` and the owner approves it.
@@ -123,14 +123,15 @@ A build that was interrupted resumes from the first ticket that is not done.
 | Agent | Does | Writes | Default level |
 | --- | --- | --- | --- |
 | `coder` | builds one ticket or one pinned fix, test-first | `src/`, `test/unit/`, `prisma/schema.prisma`, the run surface | sonnet, medium |
-| `reviewer` | cold-reads a plan, reviews a built feature, judges a fix or the harness | `.scratch/<feature>/review.md` | sonnet, high; opus, high in `/ack-review` |
+| `reviewer` | cold-reads a plan, reviews a built feature, judges a fix or the harness | `.scratch/<feature>/review.md` | opus, high |
 | `advisor` | settles what two cold reads of a plan left open | the spec, the plan, and the tickets under `.scratch/` | fable, medium |
 | `debugger` | reproduces a symptom and finds its root cause | nothing | opus, high |
 | `tester` | covers existing code with unit specs | `test/unit/` | sonnet, high |
 | `writer` | docs, root people files, pull request text | `docs/`, `.scratch/pr/` | sonnet, medium |
+| `harness` | writes the harness from a settled requirement | `.claude/`, `AGENTS.md`, the Copilot digest, decision entries, this page | opus, high |
 
 - An agent cannot ask the owner. It hands the question back, and the session asks.
-- The session itself designs, plans, orchestrates, and changes the harness.
+- The session itself designs, plans, and orchestrates; it settles a harness change with the owner and `harness` writes it.
 
 ## Work Artifacts
 
@@ -160,7 +161,8 @@ A build that was interrupted resumes from the first ticket that is not done.
 
 - `coder` builds every ticket and every review fix on sonnet. `/ack-plan` picks its effort per ticket, `/ack-review` and `/ack-debug` per fix: high for work that touches the schema, a transaction, concurrency, or security, medium for any other.
 - TypeSafe's Jev can pick that effort instead. It is optional: set `TYPESAFE_API_KEY` in `.env.harness` at the repository root, and remove it or add `JEV_ROUTER_ENABLED=false` there to turn it off. The file is gitignored and no agent reads it.
-- `/ack-review` runs `reviewer` on opus at high effort for every feature.
+- `reviewer` runs on opus at high effort for every dispatch, the plan's cold read included.
+- `/ack-harness` runs `harness` on opus at high effort.
 - No agent runs below the `model` and `effort` in its own file.
 
 ## Rules and Hooks
@@ -170,16 +172,16 @@ A build that was interrupted resumes from the first ticket that is not done.
 
 | Hook | Runs | Does |
 | --- | --- | --- |
-| `guard-bash.sh` | before every Bash call | denies owner-only database commands, secret reads, and non-pnpm installs |
+| `guard-bash.sh` | before every Bash call | denies owner-only database commands, secret reads, non-pnpm installs, and a command that writes `.claude/rules/discipline.md` |
 | `guard-write.sh` | before every file write | denies secrets, generated trees, edits to a copied skill, an `eslint-disable` comment, and a focused or skipped spec |
 | `rules-gate.sh` | before every file write, and after every file read | denies a write until the session or agent has read whole every path-scoped rule that binds the file, and names the rules still unread |
 | `format.sh` | after every file write | formats the file |
-| `verify.sh` | when a session stops | runs typecheck and the unit specs of the changed modules |
+| `verify.sh` | after every file write, and when a session stops | records each `src/` and `test/` file the session writes; at stop, for those still changed, runs typecheck and the unit specs of their modules |
 | `roster.sh` | at session start | prints the `/ack-*` commands |
 
 `jev.sh` and `check.sh` are scripts a skill runs, and `mcp.sh` is the launcher `.mcp.json` runs. None is a hook.
 
-`.claude/settings.json` also asks before a git command that moves a ref, before `pnpm add`, `remove`, or `up`, and before a `gh` command that writes.
+`.claude/settings.json` also asks before a git command that moves a ref, before `pnpm add`, `remove`, or `up`, before a `gh` command that writes, and before every edit of `.claude/rules/discipline.md`, which `guard-bash.sh` keeps out of Bash.
 
 ## Permission Mode
 
@@ -224,8 +226,8 @@ Each skill below is copied unchanged from its repository by the [`skills` CLI][r
 | `codebase-design` | [mattpocock/skills][ref-mattpocock-skills] | MIT | `tdd` refers to it for seam vocabulary |
 | `code-review` | [mattpocock/skills][ref-mattpocock-skills] | MIT | `reviewer` |
 | `diagnosing-bugs` | [mattpocock/skills][ref-mattpocock-skills] | MIT | `debugger` |
-| `writing-for-agents` | [mattpocock/skills][ref-mattpocock-skills] | MIT | `/ack-harness` |
-| `ponytail` | [DietrichGebert/ponytail][ref-ponytail] | MIT | the session, `coder`, `debugger` |
+| `writing-for-agents` | [mattpocock/skills][ref-mattpocock-skills] | MIT | `harness` |
+| `ponytail` | [DietrichGebert/ponytail][ref-ponytail] | MIT | the session, `coder`, `debugger`, `harness` |
 | `caveman` | [JuliusBrussee/caveman][ref-caveman] | Apache-2.0 | agent hand-backs |
 | `humanizer` | [blader/humanizer][ref-humanizer] | MIT | `writer` |
 | `diagram-design` | [cathrynlavery/diagram-design][ref-diagram-design] | MIT | `writer`, for a designed diagram |

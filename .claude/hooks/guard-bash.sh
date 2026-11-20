@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse Bash: foreground only; pnpm only; owner-only database commands; no read of the root .env, .env.harness,
-# .env.docker, keys/, or generated/vault/; no print of the session environment; commits, staging, and discarding work ask; docker
-# compose down with volumes asks.
+# .env.docker, keys/, or generated/vault/; no print of the session environment; no write of .claude/rules/discipline.md;
+# commits, staging, and discarding work ask; docker compose down with volumes asks.
 set -euo pipefail
 
 decide() {
@@ -63,6 +63,19 @@ env_dump="${at_command_start}(env|printenv([[:space:]]+[A-Za-z_][A-Za-z0-9_]*)*|
 key_print="${at_command_start}(echo|printf)[^;&|]*\\$\\{?TYPESAFE_API_KEY"
 if printf '%s' "$cmd" | grep -qE "${env_dump}|${key_print}"; then
     decide deny "The session environment may hold credentials: do not print it. Test whether a variable is set with [ -n \"\${NAME:-}\" ] && echo set."
+fi
+
+# .claude/rules/discipline.md changes through the Edit tool alone, which asks the owner: a command naming it beside a
+# write form (a redirect onto it, tee, sed -i, mv, cp, rm, truncate, dd, a git checkout/restore/apply/stash, an
+# interpreter) is denied. A read (cat, grep, wc, git diff, git log, rules.sh) passes.
+if printf '%s' "$cmd" | grep -qE 'rules/discipline\.md'; then
+    discipline_redirect=">>?[[:space:]]*[^[:space:];&|]*rules/discipline\.md"
+    discipline_tool="${at_command_start}(tee|mv|cp|rm|truncate|dd|python3?|node|perl|ruby|awk)${word_end}"
+    discipline_sed="${at_command_start}sed([[:space:]]+[^[:space:];&|]+)*[[:space:]]+(-[A-Za-z]*i|--in-place)"
+    discipline_git="${at_command_start}git([[:space:]]+-[Cc][[:space:]]+[^[:space:]]+|[[:space:]]+-[^[:space:]]+)*[[:space:]]+(checkout|restore|apply|stash)${word_end}"
+    if printf '%s' "$cmd" | grep -qE "${discipline_redirect}|${discipline_tool}|${discipline_sed}|${discipline_git}"; then
+        decide deny ".claude/rules/discipline.md changes only on the owner's word: edit it with the Edit tool, which asks the owner. A Bash command that writes, moves, deletes, restores, or runs an interpreter on it is denied; cat, grep, wc, git diff, and git log read it."
+    fi
 fi
 
 git_write="${at_command_start}git([[:space:]]+-[Cc][[:space:]]+[^[:space:]]+|[[:space:]]+-[^[:space:]]+)*[[:space:]]+((commit|add|reset)${word_end}|stash(([[:space:]]+(push|pop|apply|drop|clear|save|branch|store)|[[:space:]]+-[^[:space:]]+)${word_end}|[[:space:]]*([;&|)]|$)))"

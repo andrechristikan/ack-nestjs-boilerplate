@@ -19,7 +19,7 @@ Data file: `.claude/rules/seeding.md`, Anatomy (`src/migration/data/migration.co
 - `seed()` opens `this.databaseService.withTransaction(async tx => { … }, { timeout })` (`MigrationCountrySeed.seed`). Every write is idempotent (`.claude/rules/seeding.md`, Idempotency and reset).
 - Audit fields: `.claude/rules/seeding.md`, Anatomy (`MigrationUserSeed.seed`, `src/migration/seeds/migration.user.seed.ts`).
 - `remove()` resets the collections `seed()` owns with `deleteMany` (`MigrationCountrySeed.remove`).
-- A failed write: `.claude/rules/seeding.md`, Anatomy (`MigrationCountrySeed.seed`); `throw new Error(...)` and a bare rethrow fail `pnpm lint`.
+- A failed write: `.claude/rules/seeding.md`, Anatomy (`MigrationCountrySeed.seed`); never `throw new Error(...)` or a bare rethrow.
 
 ## 4. Register
 

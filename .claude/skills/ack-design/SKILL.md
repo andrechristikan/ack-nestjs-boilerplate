@@ -34,7 +34,7 @@ The frontier covers what the owner has not named:
 - Shape: request and response fields, which are optional and which are nullable. For a list: pagination type, the search allow-list, the sort presets and the default one, filter defaults.
 - Failures: each new failure, the module that owns its status code, its message key.
 - Data: the Prisma delta (model, field, index, relation, soft delete), a seed and its remove pair, config keys.
-- Flow: the transaction boundary, the service that owns a sequence several use cases share, whether the flow carries an idempotency key.
+- Flow: the checks that fail fast before the transaction, the transaction the use case opens and each module's `*InTx` participant, whether the flow carries an idempotency key.
 - Side effects: the activity-log row, the notification kind and channel, the queue job (name, payload, retry), the cache key and what invalidates it.
 - Scope: what is out, stated as a list.
 

@@ -13,7 +13,7 @@ argument-hint: '<the change: files, what changes, expected outcome> | <a .scratc
 
 Requirement: $ARGUMENTS
 
-The session settles the requirement with the owner, writes the files itself, and verifies them. No agent runs while the session writes: an agent would read the tree the run is rewriting. Final state only: `.claude/rules/authoring.md`.
+The session settles the requirement with the owner, dispatches `harness` to write the files, and verifies them. No other agent runs while `harness` writes: it would read the tree the run is rewriting. Final state only: `.claude/rules/authoring.md`.
 
 ## 1. Settle
 
@@ -31,11 +31,15 @@ With `diagnose`:
 
 ## 2. Write
 
-- Verify every path, class, script, and flag against the checkout before writing it: `package.json`, `vitest.config.ts`, `docker-compose.yml`, `.husky/`, `.commitlintrc`, `eslint.config.mjs`, `knip.json`, the source file itself.
-- A skill, an agent, or a rule: follow `.claude/skills/writing-for-agents/SKILL.md`. Where it and `.claude/rules/authoring.md` or `.claude/rules/harness.md` differ, the rule wins.
-- A decision: `.claude/skills/ack-harness/references/decision-record.md`.
-- A change to the flow, a skill, an agent, or the copied-skill set updates `docs/ai-harness.md` in the same run.
-- A `src/` defect found on the way is one row in `generated/report-src-sweep.md`, not a fix.
+Dispatch `harness` in the foreground, and wait for its hand-back:
+
+- `Requirement`: the settled text, or its `.scratch/` path.
+- `Files`: each file edited, added, or deleted.
+- `Left alone`: what stays out.
+- `Expected outcomes`: the checks the settled requirement names.
+- `Report`: `.claude/agents/harness.md`, Hand back.
+
+A question it hands back goes to the owner with `AskUserQuestion`; dispatch again with the answer. A `src/` defect it reports is one row in `generated/report-src-sweep.md`, not a fix.
 
 Copied skills: `.claude/rules/harness.md`, Copied skills.
 
@@ -45,9 +49,9 @@ Copied skills: `.claude/rules/harness.md`, Copied skills.
 bash .claude/hooks/check.sh
 ```
 
-- Every line it prints is a defect: fix it and run it again.
+- Every line it prints is a defect.
 - When a skill, an agent, or a rule body changed, dispatch `reviewer` with `Depth: harness` and the changed paths. Confirm or reject each finding by opening the file.
-- A path permission in `.claude/settings.json` takes the `Edit(path)` form only: `Edit` rules cover every file-editing tool, and a `Write(path)` rule never matches.
+- The `check.sh` lines and the confirmed findings go back to `harness` in one repair dispatch; run `check.sh` again after it.
 
 ## Boundaries
 

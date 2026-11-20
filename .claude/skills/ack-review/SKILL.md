@@ -23,7 +23,7 @@ Every feature takes this review, once. `reviewer` judges and decides, the owner 
 
 ## 1. Review
 
-Dispatch `reviewer` with the Agent call's `model` set to `opus` and `effort` to `high`, on every feature:
+Dispatch `reviewer` on every feature:
 
 ```
 Agent: reviewer
@@ -73,7 +73,7 @@ Decisions to honour: <the plan's line>
 ## 4. Re-review
 
 1. Run the gates of `/ack-build`, Prove, steps 1, 2, and 4, over the modules the fixes touched. A changed file's coverage row under 100 goes back to `coder` once, as that finding's pin.
-2. Dispatch one new `reviewer`, `opus` and `high`, with `Depth: review`, the same lines as step 1, and `Fixed: <the finding numbers>`. It appends `## Re-review` to `review.md`.
+2. Dispatch one new `reviewer` with `Depth: review`, the same lines as step 1, and `Fixed: <the finding numbers>`. It appends `## Re-review` to `review.md`.
 3. A finding still open goes to the owner with `AskUserQuestion`. One fix round, one re-review.
 
 ## Hand back

@@ -14,7 +14,7 @@ Decorator position is `guards.md`.
 
 ## Keys
 
-- A flag key is an `EnumFeatureFlagKey` member and a metadata sub-key code reads is an `EnumFeatureFlagMetadataKey` member (`src/modules/feature-flag/enums/feature-flag.enum.ts`), named by the seed data and every caller, never a literal. A metadata key is camelCase and validated: `FeatureFlagUpdateMetadataRequestSchema` (`src/modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto.ts`) rejects any key failing `/^[a-z][a-zA-Z0-9]*$/`. The regex is the single source of the rule.
+- A flag key is an `EnumFeatureFlagKey` member and a metadata sub-key code reads is an `EnumFeatureFlagMetadataKey` member (`src/modules/feature-flag/enums/feature-flag.enum.ts`), named by the seed data and every caller, never a literal. A metadata key is camelCase and validated: `FeatureFlagUpdateMetadataRequestSchema` (`src/modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto.ts`) rejects any key failing `/^[a-z][a-zA-Z0-9]*$/`. The regex, a constant in `feature-flag.constant.ts`, is the single source of the rule.
 
 ## Metadata
 
@@ -22,7 +22,7 @@ Decorator position is `guards.md`.
 - A gating sub-key: `service.md`, Shape. A sub-key that decides whether a module's own subject applies is read with `FeatureFlagService.isMetadataAllowed`: `true` only for an enabled flag whose sub-key is `true`, `false` otherwise, `FeatureFlagNotConfiguredException` for no row; it ignores rollout and targeting.
 - A numeric sub-key holds one feature's policy an operator tunes: `maxWorkspacesPerUser`, `inviteExpiresInDays`, and `joinRequestExpiresInDays` on `workspace`; `passkeyMaxPerUser`, `mfaMaxAttempts`, and `mfaLockDurationInMinutes` on `mfa`; `passwordMaxAttempts` and `passwordLockDurationInMinutes` on `loginWithCredential`. A duration is stored in the unit a person types (`InMinutes`, `InDays`), and its reader builds the duration in that unit.
 - Each numeric sub-key has one zod schema const, `FeatureFlagMetadata<Key>Schema`, an integer with its bounds, in the module's `validations/`; `FeatureFlagUpdateMetadataRequestSchema` checks it in its `superRefine`. The service checks no bound and a reader clamps nothing.
-- `FeatureFlagService.getMetadataNumber(key, metadataKey)` returns the stored number whatever `isEnable`, rollout, and targeting say, and throws `FeatureFlagNotConfiguredException` for no row, no sub-key, or a value that is not a number. The seed data is the one source: no config key holds the same value. A reader calls it before its transaction opens; an `analytic` service reads the password budget (`loginWithCredential`, `passwordMaxAttempts`) through it.
+- `FeatureFlagService.getMetadataNumber(key, metadataKey)` returns the stored number whatever `isEnable`, rollout, and targeting say, and throws `FeatureFlagNotConfiguredException` for no row, no sub-key, or a value that is not a number. The seed data is the one source: no config key holds the same value. A reader calls it before the use case opens the flow's transaction; an `analytic` service reads the password budget (`loginWithCredential`, `passwordMaxAttempts`) through it.
 - Keys are frozen; the admin API updates values and never adds or removes a key.
 - Per-feature config lives in metadata; per-user rollout lives in `targetUserIds` and `rolloutPercent`, never in metadata.
 

@@ -28,7 +28,7 @@ export class UserNotFoundException extends AppBaseException {
 
 ## Status codes
 
-`statusCode` is a 5-digit integer in `Enum<Module>StatusCodeError` at `<module>/enums/<module>.status-code.enum.ts`, camelCase keys, referenced by member name only. Each owner (a feature module, or a `src/common/` sub-tree such as `file`, `pagination`, `request`, `database`, `redis`) holds one contiguous hundred (`51000`–`51099`), members sequential from the block base. The integer is client-visible; prefer keying a client on `module` + `statusCodeKey`. Procedure: `.claude/skills/ack-build/references/add-status-code.md`.
+`statusCode` is a 5-digit integer in `Enum<Module>StatusCodeError` at `<module>/enums/<module>.status-code.enum.ts`, camelCase keys, referenced by member name only. Each owner (a feature module, or a `src/common/` sub-tree such as `file`, `pagination`, `request`, `database`, `redis`) holds one contiguous hundred (`51000`–`51099`), members sequential from the block base. Removing a member renumbers every member after it: a block never holds a gap. The integer is client-visible; prefer keying a client on `module` + `statusCodeKey`. Procedure: `.claude/skills/ack-build/references/add-status-code.md`.
 
 ## Messages
 

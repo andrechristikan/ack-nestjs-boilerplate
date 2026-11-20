@@ -11,13 +11,14 @@ Rule: `layering.md`, Roles.
 - Grouped multi-method use cases: a use case is one action called by one entry point.
 - A separate `src/application/` tier: it gives the same cycle guarantee as use cases kept in their feature at a larger blast, moving the test hook's module mapping, the layout, the router, knip, and every spec mirror.
 
-### A shared cross-module sequence sits in the highest module's service when its subject is that module's
+### A sequence over two modules of one level is sequenced by each use case
 
 Rule: `service.md`, Shared transactions.
 
-- Always in the highest participating module's service: it puts a lower module's subject into a higher module's service, `WorkspaceService` creating users.
+- In one participating module's service: it puts another domain's subject into that module's service, `WorkspaceService` creating users.
 - A module's statements copied per use case: logic left unshared becomes duplicated code.
 - A shared use case: a use case calling another use case brings the private-helper problem back one layer up.
+- In the service of the module that owns the subject, calling the other module's `*InTx`: a service then reaches a module on its own level, and two domains are coupled below the use case.
 
 ### Every use case implements `IAppUseCase` with its own argument and result types
 
@@ -38,14 +39,14 @@ Rule: `security.md`, Request store.
 - The full context in a job payload: a delayed or retried job decides on rows copied at request time.
 - Identity on `request.user`: the request object would mix transport with authentication and authorization, which belong to the context.
 
-### The feature dependency order puts workspace above user, password-history above auth, and mfa between notification and term-policy
+### Levels, and a module is a domain
 
-Rule: `layering.md`, Dependency order.
+Rule: `layering.md`, Levels.
 
+- A dependency order ranking every feature module, a service injecting any module below it: every new module renegotiates the list, and a service reaching a sibling's service couples two domains below the use case.
+- A side effect reached through the owning module's service: the caller then injects a sibling's service; the queue class is the module's side-effect entry.
+- A feature util exported to another module's service: the util's rule then changes under a caller its module does not own.
 - Two-factor kept in `user` and `auth`: the pieces in `auth` had no caller there, and one factor's logic sat in two modules.
-- `mfa` above `user`: the login and the re-authentication in `user` call it, so `user` would need a higher module's service.
-- User above workspace: workspace services need user lookups and `lastWorkspaceId` writes as their own logic, while the user-side calls into workspace are orchestration that fits a use case.
-- Password-history in the kernel: its service injects `AuthPasswordUtil`, so it sits above auth.
 - `AuthPasswordUtil` in the kit: it is auth-specific, and the kit takes only a module-agnostic concept with three callers or more.
 
 ### A processor injects its use cases only
@@ -77,7 +78,7 @@ Rule: `module-files.md`, `@Global()`.
 
 ### Only a repository queries the database client; the kit imports no module code or type
 
-Rule: `layering.md`, Roles and Dependency order.
+Rule: `layering.md`, Roles and Levels.
 
 - `databaseService.client` in a service or use case: outside `withTransaction` every statement belongs to the repository that owns the model.
 - `import type` from a feature into the kit: the kit still changes with a feature's shape.
@@ -110,7 +111,7 @@ Rule: `analytic.md`, On request or generated.
 
 ### Every analytic read lives in the analytic module
 
-Rule: `layering.md`, Dependency order.
+Rule: `layering.md`, Levels.
 
 - A per-module analytic service and repository: a metric is spread over fourteen modules, and a cross-collection pipeline has no owner.
 - The root collection's module owning a cross-collection pipeline: the risk score would sit in the user module.
@@ -140,13 +141,13 @@ Rule: `naming.md`, Identifiers.
 
 ### Lint enforces the layer matrix only
 
-Rule: `layering.md`, Dependency order.
+Rule: `layering.md`, Levels.
 
 - Lint derives the module graph, per-feature policies, and cycles: about 230 lines of config for what the boot and the reviewer catch.
-- The dependency order hard-coded in the config: it drifts from the module files.
+- The levels hard-coded in the config: it drifts from the module files.
 - `dependency-cruiser` as a second runner: a separate script and pre-commit step where the plugin runs inside `pnpm lint`.
 - Rules text alone for the layer matrix: carve-outs are written one by one instead of following from a declared order.
-- The dependency order in a separate data file: the feature names only move to another file.
+- The levels in a separate data file: the feature names only move to another file.
 
 ### The typed lint rules are the four promise and exhaustiveness rules
 

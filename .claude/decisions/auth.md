@@ -269,6 +269,7 @@ Rule: `session.md`, Session invalidation.
 Rule: `notify.md`.
 
 - Resolving after the revoke: the revoke destroys the live-session set, so the alert would reach nothing.
+- Reading the snapshot inside the transaction's callback: a read off `tx` then runs while the transaction is open, beside its writes.
 - Every registered device: a logged-out device's token is already cleared, so no wider set exists.
 - Honouring opt-outs on a credential reset: a credential-reset alert is not optional.
 

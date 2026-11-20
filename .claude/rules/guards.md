@@ -25,7 +25,7 @@ Nest runs guards bottom-up: the decorator nearest the method executes first, so 
 @WorkspaceProtected(...)               // 8.  Workspace and the caller's member; pass roles to gate by role
 @UserProtected()                       // 9.  User status
 @FeatureFlagProtected(...)             // 10. Feature flag; reads RequestActorStoreKey, so above JWT
-@RequestThrottle({ user: true })       // 11. Per-user throttle guard; runs after JWT
+@RequestThrottleProtected({ user: true }) // 11. Per-user throttle guard; runs after JWT
 @AuthJwtAccessProtected()              // 12. JWT; a social login guard sits above 10, so the flag runs first
 @ApiKeyProtected()                     // 13. API key; @ApiKeySystemProtected() on every system route
 @FileUploadSingle() @RequestTimeout(RequestUploadTimeout) // 14. Upload routes: multipart interceptor, then timeout
@@ -33,7 +33,7 @@ Nest runs guards bottom-up: the decorator nearest the method executes first, so 
 @Get('/endpoint')                      // 16. HTTP method, always last
 ```
 
-- `@RequestThrottle` (`src/common/request/decorators/request.decorator.ts`) mounts the per-user throttle guard directly above `@AuthJwtAccessProtected()`, so it runs after the JWT guard and before every guard that reads the database; a route with no JWT guard keeps the slot, directly above `@ApiKeyProtected()`. It takes `{ user: true, route? }` when JWT-protected and `{ route }` only on `public` and `system` (`EnumRequestThrottleRoute`).
+- `@RequestThrottleProtected` (`src/common/request/decorators/request.decorator.ts`) mounts the per-user throttle guard directly above `@AuthJwtAccessProtected()`, so it runs after the JWT guard and before every guard that reads the database; a route with no JWT guard keeps the slot, directly above `@ApiKeyProtected()`. It takes `{ user: true, route? }` when JWT-protected and `{ route }` only on `public` and `system` (`EnumRequestThrottleRoute`).
 - A `@Post` whose action creates the row its path names (`/create`, `/sign-up`, `/mobile-number/add`) keeps the default 201; every other `@Post` carries `@HttpCode(HttpStatus.OK)`.
 - `@WorkspaceProtected(...roles)` mounts `WorkspaceGuard`, which loads the workspace and the caller's member in one call: a member row is always required, and with roles the member's role is in the list, an owner always passing. `@ProjectProtected(...roles)` mounts `ProjectGuard`, which loads the project and the caller's project member in one call: with no roles a member row is required; with roles a workspace owner or admin passes with the row or `null` as `projectMember`, and anyone else needs a row whose role is in the list.
 - Admin scope carries no `Workspace*` or `Project*` guard (they resolve `x-workspace-id` from CLS; an admin reads across workspaces): it scopes through `@RoleProtected` plus `@PolicyProtected` and a validated `:workspaceId` / `:projectId` param. `@RoleProtected` never lists `superAdmin`; `RoleService.validateRoleGuard` and `PolicyService.validatePolicyGuard` pass it.

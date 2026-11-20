@@ -12,11 +12,12 @@ Rule: `authoring.md`, Decisions.
 
 ## Review and agents
 
-### `/ack-review` dispatches one `reviewer` at opus, high
+### `reviewer` runs at opus, high, on every dispatch
 
 Rule: `.claude/CLAUDE.md`, Levels.
 
 - Effort medium: the reviewer is the only judge of a build and may miss no rule.
+- The reviewer's effort set per review by Jev: a low-effort review misses a rule, and the reviewer is the only judge.
 
 ### Agents read MongoDB and Redis through read-only MCP servers
 
@@ -33,6 +34,20 @@ Rule: `.claude/hooks/rules-gate.sh`, registered in `.claude/settings.json`.
 - The reader runs `rules.sh` on its own word: an agent told to read each rule it prints searched the rule files for keywords and read few of them whole.
 - Claude Code's path-scoped loading alone: a file read through Bash loads no rule, and a new file's rules arrive after it is written.
 - A `SubagentStop` hook running the gates: `coder` runs its gates and `/ack-review` runs them again.
+
+### The code follows the rule, never the count of sites
+
+Rule: `discipline.md`, Boilerplate stance and Hard rules.
+
+- Rewording a rule to what most sites do: a site count measures what was written, not what is right, and an audit would then ratify each drift it finds.
+- The hard rules kept in an agent's memory alone: a memory binds one tool on one machine, where a rule binds every agent, every skill, and the review.
+
+### `discipline.md` is locked by an `ask` permission
+
+Rule: `discipline.md`; `.claude/settings.json`, `permissions.ask`; `.claude/hooks/guard-bash.sh`.
+
+- A sentence alone: nothing stops an edit.
+- A `guard-write.sh` deny opened by an environment variable: every rightful change needs a manual step outside the conversation.
 
 ### A generated file is no check
 

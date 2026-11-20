@@ -1,10 +1,10 @@
 # GitHub Copilot instructions
 
-The root `AGENTS.md` is the shared digest; this file adds what an inline suggestion needs beyond it. When this file and a `.claude/rules/` rule disagree, the rule wins.
+Where this file and a `.claude/rules/` rule differ, the rule wins.
 
 ## Route decorator order
 
-The decorator nearest the method runs first. Keep this order; omit what a route does not need. Rule: `.claude/rules/guards.md`.
+The decorator nearest the method runs first. Keep this order, skipping what a route lacks. Rule: `.claude/rules/guards.md`.
 
 ```typescript
 @Doc({ summary: '…' })                 // 1.  OpenAPI operation + global error kit
@@ -17,7 +17,7 @@ The decorator nearest the method runs first. Keep this order; omit what a route 
 @WorkspaceProtected(...)               // 8.  Workspace and the caller's member; pass roles to gate by role
 @UserProtected()                       // 9.  User status
 @FeatureFlagProtected(...)             // 10. Feature flag; reads RequestActorStoreKey, so above JWT
-@RequestThrottle({ user: true })       // 11. Per-user throttle guard; runs after JWT
+@RequestThrottleProtected({ user: true }) // 11. Per-user throttle guard; runs after JWT
 @AuthJwtAccessProtected()              // 12. JWT; a social login guard sits above 10, so the flag runs first
 @ApiKeyProtected()                     // 13. API key; @ApiKeySystemProtected() on every system route
 @FileUploadSingle() @RequestTimeout(RequestUploadTimeout) // 14. Upload routes: multipart interceptor, then timeout
@@ -25,32 +25,35 @@ The decorator nearest the method runs first. Keep this order; omit what a route 
 @Get('/endpoint')                      // 16. HTTP method, always last
 ```
 
-`@RequestThrottle` takes `{ user: true, route? }` on a JWT route and `{ route }` only on `public` and `system`. A creating `@Post` keeps 201. An admin-scope controller carries no `Workspace*` or `Project*` guard. An endpoint body is `return this.<module>[<Concern>]<Action>UseCase.execute(...);`: the use case builds every envelope, `{}` included.
+`@RequestThrottleProtected` takes `{ user: true, route? }` on a JWT route and `{ route }` only on `public` and `system`. A creating `@Post` keeps 201. An admin-scope controller carries no `Workspace*` or `Project*` guard. An endpoint body is `return this.<module>[<Concern>]<Action>UseCase.execute(...);`: the use case builds every envelope, `{}` included.
 
 ## DTOs are zod
 
-A `*.dto.ts` file exports one schema const and its type: `export const XRequestSchema = z.strictObject({ ... })`, `export type XRequestDto = z.infer<typeof XRequestSchema>`. A response schema is `z.object`. No hand-written interface beside a schema, no class DTO. Folders: `dtos/request/`, `dtos/response/`. Rule: `.claude/rules/dto.md`.
+A `*.dto.ts` file exports one schema const and its type: `export const XRequestSchema = z.strictObject({ ... })`, `export type XRequestDto = z.infer<typeof XRequestSchema>`. A response schema is `z.object`. Rule: `.claude/rules/dto.md`.
 
 ## Concurrency
 
-Async-first: independent calls run concurrently in `Promise.all([...])` or `Promise.allSettled([...])`; a held promise or a sequential `await` of independent work only where `.claude/rules/concurrency.md` allows.
+Independent calls run concurrently in `Promise.all([...])` or `Promise.allSettled([...])`; statements on one `tx` run in sequence. Rule: `.claude/rules/concurrency.md`.
 
 ## Imports
 
-Aliases: `tsconfig.json` `paths`. A class Nest injects is a value import, not `import type`. Rule: `.claude/rules/code-style.md`.
+A class Nest injects is a value import, not `import type`. Rule: `.claude/rules/code-style.md`.
 
 ## Tests
 
-A spec mirrors its subject's `src/` path under `test/unit/`; `pnpm test user` filters. Reused logic is a helper. Rule: `.claude/rules/testing.md`.
+Behaviour is built test-first; a spec mirrors its subject's `src/` path under `test/unit/`. Rule: `.claude/rules/testing.md`.
 
 ## Errors
 
-A request failure extends `AppBaseException`, a job failure `QueueException`, anything else `AppUnknownException`. Rethrow only inside an `instanceof` guard of our own exception, else wrap: `AppUnknownException`, in a processor `throwUnknownException`. Rule: `.claude/rules/exceptions.md`.
+A request failure extends `AppBaseException`, a job failure `QueueException`, anything else `AppUnknownException`; a caught error is wrapped, never swallowed. Rule: `.claude/rules/exceptions.md`.
 
-## Discipline
+## Hard rules
 
-Suggest the minimum the change needs: no unrequested option or abstraction, no handling for a case the types exclude, nothing beside the change. Rule: `.claude/rules/discipline.md`.
+From `.claude/rules/discipline.md`, which outranks every other rule:
 
-## Prisma schema
-
-Edit `prisma/schema.prisma`; applying it is the owner's (`AGENTS.md`).
+- A flow's writes commit in one transaction, or one per chunk of a paging job, opened by its use case; services and repositories join through `*InTx` methods.
+- Validation fails fast, before the transaction opens, and the write still carries its guard.
+- A side effect is an outbox row written in the transaction of the action that causes it, enqueued after the commit through the owning module's queue class; a scheduler job has no row.
+- A service injects no service of another module on its level, and no util of another module; a use case sequences them.
+- A result is one statement, never a first query whose rows drive a second.
+- A row a guard loaded comes from its context, never read again.

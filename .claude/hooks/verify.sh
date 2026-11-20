@@ -1,19 +1,37 @@
 #!/usr/bin/env bash
-# Stop: when a src/ or test/ file differs from HEAD or is untracked, run the full pnpm typecheck, then the unit specs of
-# the changed modules; block on failure. A path under src/modules/<name>/ or test/unit/modules/<name>/ adds the filter
+# PostToolUse Write|Edit|MultiEdit|NotebookEdit: records a written path under src/ or test/, one state file per session
+# under ${TMPDIR:-/tmp}/claude-verify/, never under the repository; a subagent's write counts for its session.
+# Stop: when a recorded path differs from HEAD or is untracked, run the full pnpm typecheck, then the unit specs of the
+# changed modules; block on failure. A path under src/modules/<name>/ or test/unit/modules/<name>/ adds the filter
 # test/unit/modules/<name>; one under src/common/<name>/ or test/unit/common/<name>/ adds test/unit/common/<name>; any
-# other changed src/ or test/ path runs the full unit suite. A filtered run passes --passWithNoTests; the full run does not.
+# other recorded src/ or test/ path runs the full unit suite. A filtered run passes --passWithNoTests; the full run does not.
 # VERIFY_DRY_RUN=1 prints the test command run_tests would run and exits 0, running neither typecheck nor tests.
 set -uo pipefail
 
 input=$(cat)
+root="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+session=$(printf '%s' "$input" | jq -r '.session_id // "session"' 2>/dev/null)
+state="${TMPDIR:-/tmp}/claude-verify/${session//[^A-Za-z0-9_-]/_}"
+
+if [ "$(printf '%s' "$input" | jq -r '.hook_event_name // empty' 2>/dev/null)" = "PostToolUse" ]; then
+    path=$(printf '%s' "$input" | jq -r '.tool_input.file_path // .tool_input.notebook_path // empty' 2>/dev/null)
+    rel="${path#"$root"/}"
+    case "$rel" in
+        src/*|test/*)
+            mkdir -p "$(dirname "$state")"
+            echo "$rel" >>"$state"
+            ;;
+    esac
+    exit 0
+fi
+
 active=$(printf '%s' "$input" | jq -r '.stop_hook_active // false' 2>/dev/null)
 [ "$active" = "true" ] && exit 0
 
-root="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 cd "$root" || exit 0
 
-changed=$( { git diff --name-only HEAD; git ls-files --others --exclude-standard; } 2>/dev/null | grep -E '^(src|test)/' | sort -u)
+[ -s "$state" ] || exit 0
+changed=$( { git diff --name-only HEAD; git ls-files --others --exclude-standard; } 2>/dev/null | grep -xFf "$state" | sort -u)
 [ -n "$changed" ] || exit 0
 
 full=0

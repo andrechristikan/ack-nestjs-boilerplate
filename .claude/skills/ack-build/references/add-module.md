@@ -1,6 +1,6 @@
 # Add a module
 
-Invariants: `.claude/rules/layering.md` (roles, dependency order), `.claude/rules/module-files.md` (`@Global()`, module files, boot-only defects), `.claude/rules/use-case.md` and `.claude/rules/service.md`, `.claude/rules/http.md` (scopes, route paths), `.claude/rules/guards.md` (decorator order), `.claude/rules/naming.md`. Reference implementation: `src/modules/device/` (no queue) and `src/modules/workspace/` (with a queue and a processor).
+Invariants: `.claude/rules/layering.md` (roles, levels), `.claude/rules/module-files.md` (`@Global()`, module files, boot-only defects), `.claude/rules/use-case.md` and `.claude/rules/service.md`, `.claude/rules/http.md` (scopes, route paths), `.claude/rules/guards.md` (decorator order), `.claude/rules/naming.md`. Reference implementation: `src/modules/device/` (no queue) and `src/modules/workspace/` (with a queue and a processor).
 
 ## 1. Claim the status-code block
 
@@ -10,9 +10,9 @@ Scan and claim the next free hundred, then create `src/modules/<module>/enums/<m
 
 Add the model to `prisma/schema.prisma` and run `pnpm db:generate`.
 
-## 3. Rank
+## 3. Level
 
-The module's rank is the `imports:` its module file declares: it sits above every module it imports (`.claude/rules/layering.md`, Dependency order). That list is a harness file `/ack-harness` updates to match: hand the rank back, never edit it.
+A module is `@Global()` only when a guard, strategy, interceptor, or decorator injects its classes (`.claude/rules/module-files.md`, `@Global()`); otherwise it is a plain feature module, whose services inject no other plain module's service or util (`.claude/rules/layering.md`, Levels).
 
 ## 4. Files, bottom up
 
@@ -22,7 +22,7 @@ The module's rank is the `imports:` its module file declares: it sits above ever
 | repository | `repositories/<module>.repository.ts`, `implements I<Module>Repository` | `DeviceRepository`, `src/modules/device/repositories/device.repository.ts` |
 | data shapes | `interfaces/<module>.interface.ts` | `src/modules/device/interfaces/device.interface.ts` |
 | list fields | `constants/<module>.list.constant.ts`, the sort presets `as const satisfies IPaginationOrderByPresets<Prisma.<Model>ScalarFieldEnum, Enum<Module>OrderBy>` and the search tuple `as const satisfies ReadonlyArray<…>` | `DeviceOrderBy` keyed by `EnumDeviceOrderBy` (`device.enum.ts`), `src/modules/device/constants/device.list.constant.ts` |
-| service | `services/<module>.service.ts`, its own module's collaborators plus the services and utils of the modules it imports | `src/modules/country/services/country.service.ts` |
+| service | `services/<module>.service.ts`, its own module's collaborators, the services of a lower level (`.claude/rules/layering.md`, Levels), and the queue class of any module | `src/modules/country/services/country.service.ts` |
 | util (optional) | `utils/<module>.util.ts` | `src/modules/device/utils/device.util.ts` |
 | exceptions | `exceptions/<module>.<descriptor>.exception.ts`, one class per file | `DeviceNotFoundException`, `src/modules/device/exceptions/device.not-found.exception.ts` |
 | request DTO | `dtos/request/<module>.<action>.request.dto.ts`: a zod schema plus `z.infer` type; an update DTO requires every editable field (`.claude/rules/null-safety.md`, Update and create) | `src/modules/device/dtos/request/device.refresh.request.dto.ts` |

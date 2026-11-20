@@ -1,6 +1,24 @@
 # Discipline
 
-Binds every change in this repository: the session, every agent, every skill. A trivial task applies it with judgment. Where a more specific rule speaks (`null-safety.md`, `exceptions.md`, `code-style.md`, `testing.md`), it wins.
+Binds every change in this repository: the session, every agent, every skill. It outranks every other rule, every skill, and every agent file: where one differs, this file wins. It changes only on the owner's word naming the change; no audit, review, design, or agent rewords it on its own. A trivial task applies it with judgment.
+
+## Hard rules
+
+They bind every flow and outrank the smaller diff. The rule named states each in full.
+
+- One flow, one transaction, or one per chunk in a job that pages an unbounded collection, opened by its use case and by nothing below it: every write of a flow or a chunk commits together (`transaction.md`).
+- Validation fails fast, before the transaction opens, and the write still carries its guard; each failure is a typed exception with its own status code and message (`transaction.md`, `exception-class.md`).
+- A side effect, a notification and an email included, is an outbox row written in the transaction of the action that causes it. Every async process a write causes runs through the outbox, a scheduler being the one job with no row, and the enqueue comes last, after the commit, through the owning module's queue class (`effects.md`).
+- A notification snapshot is read before the transaction opens (`notify.md`).
+- A controller and a feature processor call a use case only, a kit processor its kit service; a use case calls any module's services (`layering.md`, Roles).
+- A module is a domain: its service injects no service or util of another module on its level, a feature util serves its own module and use cases, a level imports downward only, a queue class aside, and no import cycle exists (`layering.md`, Levels; `cross-module.md`).
+- Every `@db.ObjectId` field but `id` and the audit fields carries a relation (`repository.md`, Schema).
+- A result is fetched by one statement, never by a first query whose rows drive a second (`repository.md`, Queries).
+- MongoDB is the source of truth and the cache a side resource: every entry has a TTL, and no cache error breaks the flow (`cache.md`).
+- A row a guard loaded is taken from its context, never read again (`use-case.md`, Shape).
+- A status-code block never holds a gap (`exception-class.md`).
+- Behaviour is built test-first (Checks).
+- The code follows the rule (Boilerplate stance).
 
 ## The smallest complete change
 
@@ -20,6 +38,7 @@ Follow `.claude/skills/ponytail/SKILL.md`. The level is `full` unless a skill or
 ## Boilerplate stance
 
 - Best practice decides the shape, over the smaller diff (`AGENTS.md`: no compatibility path).
+- Where code and a rule differ, the code changes. The number of sites written another way is no reason to reword a rule, and no audit, review, or design offers it as one; a rule changes only where it contradicts best practice or another rule.
 
 ## Normal use
 
@@ -43,4 +62,4 @@ Follow `.claude/skills/ponytail/SKILL.md`. The level is `full` unless a skill or
 ## Enforcement
 
 - `bash .claude/hooks/rules.sh` prints this rule for every path, so a dispatch's `Rules to read:`, pasted from that output, carries it.
-- `reviewer` reports a breach as a finding at `task` and `review`: a line that traces to nothing, a speculative abstraction or option, error handling for an excluded case, code or a spec for a case normal use does not reach, a check not run.
+- `reviewer` reports a breach as a finding at `task` and `review`: a hard rule broken, a line that traces to nothing, a speculative abstraction or option, error handling for an excluded case, code or a spec for a case normal use does not reach, a check not run.

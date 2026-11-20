@@ -6,7 +6,7 @@ paths:
 
 # Module files
 
-Roles and the dependency order: `layering.md`.
+Roles and the levels: `layering.md`.
 
 ## `@Global()`
 
@@ -17,7 +17,7 @@ Roles and the dependency order: `layering.md`.
 
 ## Module files
 
-- `<module>.module.ts`, `<Module>Module`: services, repositories, utils, caches, queue classes, factories, strategies, interceptors, indicators in `providers`; its services, utils, and caches in `exports`, never a repository or a queue class; imports the `<Module>Module` of each non-`@Global()` feature whose services or utils its services inject, plus one `BullModule.registerQueueAsync` for the queues it owns, each with its factory, plus `AwsModule` or `FirebaseModule` where a provider injects it and a third-party module the feature alone uses (`JwtModule.registerAsync` in `AuthModule`, `HttpClientModule.registerAsync` and `TerminusModule.forRootAsync` in `HealthModule`), nothing else.
+- `<module>.module.ts`, `<Module>Module`: services, repositories, utils, caches, queue classes, factories, strategies, interceptors, indicators in `providers`, each queue class also as `{ provide: getQueueClassToken(<its queue>), useExisting: <the class> }`; its services, utils, caches, and queue classes in `exports`, never a repository; imports the `<Module>Module` of each non-`@Global()` feature whose queue class its services inject, plus one `BullModule.registerQueueAsync` for the queues it owns, each with its factory, plus `AwsModule` or `FirebaseModule` where a provider injects it and a third-party module the feature alone uses (`JwtModule.registerAsync` in `AuthModule`, `HttpClientModule.registerAsync` and `TerminusModule.forRootAsync` in `HealthModule`), nothing else.
 - `<module>.use-case.module.ts`, `<Module>UseCaseModule`: the feature's use cases in `providers` and `exports`, never a processor; imports each non-`@Global()` `<Module>Module` its use cases inject, its own included. A leaf: only `src/router/` imports it.
 - `src/router/http/router.http.<scope>.module.ts` declares the scope's controllers and imports each `<Module>UseCaseModule` whose use cases they inject, plus the `<Module>Module` of every non-`@Global()` feature whose guard they carry (`src/router/http/router.http.user.module.ts`).
 - `src/router/processor/router.processor.module.ts` lists every processor in `providers` and imports each `<Module>UseCaseModule` whose use cases they inject.

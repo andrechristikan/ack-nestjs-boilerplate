@@ -43,13 +43,20 @@ Rule: `outbox.md`.
 - Importing `OutboxModule` in every module that needs it: the processor router and every module writing an effect would carry the same import.
 - A `@nestjs/schedule` cron sweep: it runs on every replica and adds a dependency, where a BullMQ job scheduler runs each tick once.
 
-### A statement and its outbox row share one transaction, and the opener dispatches
+### A statement and its outbox row share one transaction, and the transaction wrapper dispatches
 
 Rule: `effects.md`, Writing.
 
 - A non-transactional add after the statement: a crash or a MongoDB failure between the two loses the effect the outbox exists to keep.
-- Only the use case dispatches, the ids returned through every layer: every `*InTx` signature and callback carries outbox ids, and a dropped return leaves the row to the sweep.
+- The use case calling `enqueue` itself after its transaction: every `*InTx` signature and callback then carries outbox ids through every layer, and a dropped return or a forgotten call leaves the row to the sweep.
 - The opener keeps its `tx` and asks `OutboxService` to dispatch after the commit: every opener holds `tx` outside its callback, and a forgotten call fails silently.
+
+### The queue class is a module's side-effect entry, and enqueues after the commit
+
+Rule: `effects.md`, Effects and Writing; `outbox.md`, Dispatch; `layering.md`, Roles.
+
+- The queue class writing the outbox row itself, on the caller's `tx`: every effect builder then becomes an `*InTx` write, and a fan-out of several effects is several inserts where one `addManyInTx` serves.
+- The outbox enqueuing through the queue token alone: the enqueue then happens outside the module that owns the job.
 
 ### The outbox key is unique per queue and process
 
@@ -147,4 +154,4 @@ Rule: `notification.md`, Term-policy publish.
 
 Rule: `notification.md`, Term-policy publish.
 
-- The recipient statements, the fan-out, and the publish jobs in the notification module: term-policy sits above notification in the dependency order, so the lower module would hold the higher module's data and flow.
+- The recipient statements, the fan-out, and the publish jobs in the notification module: the term-policy data and flow would sit in another domain, and the use case already sequences both.

@@ -4,19 +4,20 @@
 
 | From another module | From a service | From a use case |
 | --- | --- | --- |
-| its exported service | yes, when your `<Module>Module` imports its `<Module>Module` or it is a lower `@Global()` module (`layering.md`, Dependency order) | yes, through its `<Module>Module` |
-| its exported util | yes, when your `<Module>Module` imports its `<Module>Module` or it is a lower `@Global()` module (`layering.md`, Dependency order) | yes, through its `<Module>Module` |
+| its exported service | yes, when it sits on a lower level (`layering.md`, Levels) | yes, through its `<Module>Module` |
+| its exported util | no | yes, through its `<Module>Module` |
+| its queue class | yes, through its `<Module>Module` | yes, through its `<Module>Module` |
 | its cache or repository | no | no; ask the owning service |
 | its use case, controller, or processor | no | no |
 | its enums, interfaces, constants, schemas | yes, compile-time only | yes, compile-time only |
 | its exceptions | yes, when the failed subject is its entity | yes, when the failed subject is its entity |
 | its Prisma model through your own `DatabaseService` | no | no |
 
-A guard, strategy, interceptor, or decorator injects the exported services and utils of a `@Global()` module (`module-files.md`, `@Global()`), and nothing else from another feature module.
+A guard, strategy, interceptor, or decorator injects the exported services of a `@Global()` module (`module-files.md`, `@Global()`), and nothing else from another feature module.
 
-A repository reaches another module's util only when the owner is `@Global()`. Anything a `@Global()` module exports is reachable with no import by the callers this table allows. `@Global()` removes the import, never the dependency order.
+A repository reaches no other module's util. Anything a `@Global()` module exports is reachable with no import by the callers this table allows. `@Global()` removes the import, never the level.
 
-`src/modules/analytic/` reads every feature's models in its own repositories, read-only (`layering.md`, Dependency order): the one exception to the table's last row and to model ownership below.
+`src/modules/analytic/` reads every feature's models in its own repositories, read-only (`layering.md`, Levels): the one exception to the table's last row and to model ownership below.
 
 ## A repository owns its model
 
@@ -24,13 +25,14 @@ A repository issues statements against the model it owns and satellite models wi
 
 Who opens a transaction spanning repositories or modules, and how the others join: `transaction.md`, Transactions. A method the owning service lacks is added there, even three lines long. `src/migration/` sits outside this file (`seeding.md`).
 
-## Composition follows the dependency order
+## Composition follows the levels
 
-A module import cycle is a broken boundary: the boot fails on one (`ReferenceError`), and `forwardRef` hides one and is lint-forbidden. When a service needs a higher module, the ways out:
+A module import cycle is a broken boundary: the boot fails on one (`ReferenceError`), and no `forwardRef` hides one. When a service needs a module on its own level or above, the ways out:
 
 1. Orchestration: the sequence moves up into a use case, which injects both modules' services, one shared write transaction included.
-2. A shared piece: it moves down into the lower module's service, or into `src/common/` when module-agnostic (`layering.md`, Dependency order).
-3. A fire-and-forget hand-off: an outbox effect the use case adds in its transaction (`effects.md`), a notification included.
+2. A shared piece: it moves down into a lower level's service, or into `src/common/` when module-agnostic (`layering.md`, Levels).
+3. A side effect: the owning module's queue class builds the effect and the caller adds it in its transaction (`effects.md`), a notification included.
+4. Two queue classes: two modules that would each import the other for its queue class form a cycle, so the use case adds the effect, injecting both queue classes (a use-case module imports any `<Module>Module`).
 
 ## An exception names the subject that failed
 

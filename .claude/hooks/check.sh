@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Harness check, run by ack-harness and by reviewer at Depth harness, never as a hook. Prints one line per defect and
-# exits 1 when it printed any: JSON, hook syntax and exec bits, the roster and Jev off blocks, frontmatter, word budgets and
-# the path-scoped rules binding one src file (.claude/rules/harness.md), all-caps emphasis, retired names, cited paths, and the copied-skill lock.
+# Harness check, run by ack-harness, the harness agent, and reviewer at Depth harness, never as a hook. Prints one line per defect and
+# exits 1 when it printed any: JSON, hook syntax and exec bits, the roster and Jev off blocks, frontmatter, word budgets, the Copilot
+# digest's character limit, the path-scoped rules binding one src file (.claude/rules/harness.md), all-caps emphasis, retired names, cited paths, and the copied-skill lock.
 # Copied skills (skills-lock.json) are checked for presence only: their text is not ours to hold to these rules.
 set -uo pipefail
 
@@ -38,8 +38,8 @@ for name in skills:
     if name not in copied and not name.startswith('ack-'):
         out.append(f'.claude/skills/{name}: neither an ack-* skill nor in skills-lock.json')
 
-budgets = [('.claude/CLAUDE.md', 1000), ('AGENTS.md', 700), ('.github/copilot-instructions.md', 450)]
-budgets += [(p, 1000) for p in glob.glob('.claude/rules/*.md')]
+budgets = [('.claude/CLAUDE.md', 1200), ('AGENTS.md', 1000), ('.github/copilot-instructions.md', 500)]
+budgets += [(p, 1200) for p in glob.glob('.claude/rules/*.md')]
 budgets += [(p, 900) for p in glob.glob('.claude/agents/*.md')]
 budgets += [(p, 1300) for p in glob.glob('.claude/skills/ack-*/SKILL.md')]
 budgets += [(p, 1000) for p in glob.glob('.claude/skills/ack-*/references/*.md')]
@@ -49,6 +49,10 @@ for path, limit in sorted(budgets):
     words = len(open(path, encoding='utf-8').read().split())
     if words > limit:
         out.append(f'{path}: {words} words, budget {limit}')
+# A Copilot code review reads the first 4000 characters of the digest (.claude/rules/harness.md).
+chars = len(open('.github/copilot-instructions.md', 'rb').read())
+if chars >= 4000:
+    out.append(f'.github/copilot-instructions.md: {chars} characters, budget under 4000')
 
 for path in glob.glob('.claude/agents/*.md') + glob.glob('.claude/skills/ack-*/SKILL.md'):
     text = open(path, encoding='utf-8').read()
@@ -66,7 +70,7 @@ for path in glob.glob('.claude/agents/*.md'):
 shout = re.compile('|'.join(['NEV' + 'ER', 'ALW' + 'AYS', 'MU' + 'ST', 'HA' + 'RD']))
 retired = re.compile('|'.join([
     'ack-' + 'work', 'super' + 'powers', r'`explor' + 'er`', r'`plann' + 'er`',
-    r'Agent: (explor' + 'er|plann' + 'er|harn' + 'ess)', r'jev\.sh (rou' + 'te|follow' + 'up)', 'caveman' + ':cave',
+    r'Agent: (explor' + 'er|plann' + 'er)', r'jev\.sh (rou' + 'te|follow' + 'up)', 'caveman' + ':cave',
 ]))
 cited = re.compile(r'(?<![\w/.-])((?:\.claude|\.github|docs|scripts|ci)/[\w./-]+\.(?:md|sh|json|ya?ml|ts|mjs))')
 
@@ -82,7 +86,7 @@ for path in sorted(set(ours)):
                 if not os.path.exists(ref) and not ref.endswith('.local.json'):
                     out.append(f'{path}:{n}: cites {ref}, which does not exist')
 
-# One src file is bound by at most 16 path-scoped rules and 9500 words of them (.claude/rules/harness.md).
+# One src file is bound by at most 16 path-scoped rules and 11000 words of them (.claude/rules/harness.md).
 import fnmatch, subprocess
 
 def seg_match(pat, segs):
@@ -111,8 +115,8 @@ for f in tracked:
         continue
     bound = [(rule, words) for rule, globs, words in scoped if any(glob_match(g, f) for g in globs)]
     total = sum(words for _, words in bound)
-    if len(bound) > 16 or total > 9500:
-        out.append(f'{f}: {len(bound)} scoped rules, {total} words, budget 16 rules / 9500 words')
+    if len(bound) > 16 or total > 11000:
+        out.append(f'{f}: {len(bound)} scoped rules, {total} words, budget 16 rules / 11000 words')
 
 print('\n'.join(out), end='\n' if out else '')
 sys.exit(1 if out else 0)

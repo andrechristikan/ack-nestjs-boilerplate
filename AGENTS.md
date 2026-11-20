@@ -9,7 +9,7 @@ An opinionated, production-shaped NestJS starter. It is a boilerplate: no extern
 
 ## Stack
 
-NestJS, TypeScript strict, native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`), SWC build, Vitest (unit). Node and pnpm versions are `engines` and `packageManager` in `package.json`; pnpm only: `engines` and the `preinstall` guard reject `npm` and `yarn`. Prisma with a MongoDB replica set (transactions need one) and no migration files: `prisma db push` applies the schema. Redis: cache (`REDIS_CACHE_URL`) and BullMQ (`REDIS_QUEUE_URL`) on separate instances. Every transport shape is a zod schema, validated by `RequestSchemaValidationPipe` on the way in and `ResponseInterceptor` on the way out; Swagger through `zod-openapi`; nestjs-i18n from `src/languages/`; Pino logging; Sentry (`src/instrument.ts`); nest-commander seeds (`src/migration.ts`); Vault for secrets.
+NestJS, TypeScript strict, native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`), SWC build, Vitest (unit). Node and pnpm versions are `engines` and `packageManager` in `package.json`; pnpm only: `engines` and the `preinstall` guard reject `npm` and `yarn`. Prisma with a MongoDB replica set (transactions need one) and no migration files: `prisma db push` applies the schema. Redis: cache (`REDIS_CACHE_URL`) and BullMQ (`REDIS_QUEUE_URL`) on separate instances. MongoDB is the source of truth and the cache a side resource: while the cache Redis fails, a cache read falls back to the database and the rate limit to in-memory counters. Every transport shape is a zod schema, validated by `RequestSchemaValidationPipe` on the way in and `ResponseInterceptor` on the way out; Swagger through `zod-openapi`; nestjs-i18n from `src/languages/`; Pino logging; Sentry (`src/instrument.ts`); nest-commander seeds (`src/migration.ts`); Vault for secrets.
 
 ## Layout
 
@@ -44,11 +44,22 @@ Propose no option a rule forbids or an entry in `.claude/decisions/` rejects unl
 
 ## Layering
 
-Feature modules share one shape: `Controller → Use case → Service → Repository`; `Processor → Use case` for jobs (`.claude/rules/layering.md`). Only a repository queries `databaseService.client`, health indicators excepted. `src/migration/` seeds write through `DatabaseService` directly (`.claude/rules/seeding.md`). `src/app/app.module.ts` registers `APP_FILTER` providers general → http → validation → validation-import; NestJS runs them reversed, most specific first.
+Feature modules share one shape: `Controller → Use case → Service → Repository`; `Processor → Use case` for jobs (`.claude/rules/layering.md`).
+
+- Levels, lowest first: the kit (`src/common/`, `src/app/`), the `@Global()` feature modules, every other feature module, then use cases, controllers, and processors. A level imports downward only, a queue class aside, with no import cycle.
+- A module is a domain: a service injects no service of another module on its level, and no util of another module; what two modules do together is a use case's sequence.
+- In a feature module only the use case opens a transaction, one per flow or per chunk of a paging job; services and repositories join it through `*InTx` methods (`.claude/rules/transaction.md`).
+- A side effect, a notification included, is an outbox row written in the transaction of the action that causes it. The owning module's queue class is its side-effect entry: it builds the effect, and any module's service or use case injects it; the row is enqueued through it after the commit (`.claude/rules/effects.md`).
+
+Only a repository queries `databaseService.client`, health indicators excepted. `src/migration/` seeds write through `DatabaseService` directly (`.claude/rules/seeding.md`). `src/app/app.module.ts` registers `APP_FILTER` providers general → http → validation → validation-import; NestJS runs them reversed, most specific first.
 
 ## Discipline
 
-Before an edit, read each rule `bash .claude/hooks/rules.sh <path>` prints. `.claude/rules/discipline.md` binds every change.
+Before an edit, read each rule `bash .claude/hooks/rules.sh <path>` prints. `.claude/rules/discipline.md` binds every change and outranks every other rule; read its Hard rules first.
+
+- Validation fails fast, before the transaction opens; the write keeps its guard; a failure is a typed exception with its own status code.
+- One statement per result; a guard-loaded row comes from its context; every relation scalar carries `@relation`; behaviour is test-first.
+- A status-code block holds no gap; a notification snapshot is read before the transaction; the cache is a side resource whose failure never breaks a flow.
 
 ## Commands
 

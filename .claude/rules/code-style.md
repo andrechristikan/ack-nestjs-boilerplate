@@ -42,7 +42,7 @@ Contexts run in the `http.md` order.
 
 ## Dates
 
-- A date stored or passed inside the system (a Prisma column, a Redis value, a job or outbox payload, `Notification.metadata`, a response body) is a `Date` or an ISO 8601 string (`HelperDateService.formatToIso`; a pipeline `$date`, a cursor token, and a cache key token use `toISOString`, UTC); the response metadata `timestamp` and the hello probe's `date.timestamp` are epoch milliseconds.
+- A date stored or passed inside the system (a Prisma column, a Redis value, a job or outbox payload, `Notification.metadata`, a response body) is a `Date` or an ISO 8601 string (`HelperDateService.formatToIso`; a pipeline `$date`, a cursor token, and a cache key token use `toISOString`, UTC).
 - RFC 2822 (`HelperDateService.formatToRFC2822`) appears only in text rendered for a person: an email template's data, a push or in-app notification title or body, a generated document. Clock and persistence: `transaction.md`, Dates.
 
 ## Types and comments

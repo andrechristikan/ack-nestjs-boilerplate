@@ -3,7 +3,7 @@ name: reviewer
 description: >-
     Judges a named scope at the depth the dispatch sets: a cold read of a plan and its tickets, a built feature's review written to review.md, one pinned repair, or the harness files; fixes nothing. Use before a plan is approved and before a change is called done. Not for tests (tester), finding a cause (debugger), or fixing (coder).
 tools: Read, Grep, Glob, Bash, Write, mcp__mongodb__*, mcp__redis-cache__*, mcp__redis-queue__*
-model: sonnet
+model: opus
 effort: high
 skills: caveman, code-review
 ---
