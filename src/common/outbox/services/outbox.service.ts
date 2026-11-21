@@ -5,10 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { EnumOutboxStatus } from '@generated/prisma-client/client';
 import type { Outbox, Prisma } from '@generated/prisma-client/client';
 import { CacheService } from '@common/cache/services/cache.service';
-import type {
-    IDatabaseTransactionClient,
-    IDatabaseTransactionOptions,
-} from '@common/database/interfaces/database.client.interface';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -19,7 +16,6 @@ import type {
     IOutboxReconcileResult,
 } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxDispatchWarnKey } from '@common/outbox/constants/outbox.constant';
-import { OutboxTransactionMissingException } from '@common/outbox/exceptions/outbox.transaction-missing.exception';
 import { OutboxRepository } from '@common/outbox/repositories/outbox.repository';
 
 @Injectable()
@@ -28,8 +24,8 @@ export class OutboxService implements OnApplicationBootstrap {
     private readonly pendingAfterInMs: number;
     private readonly enqueuedAfterInMs: number;
     private readonly sweepBatch: number;
-    private readonly idsByTx: Map<IDatabaseTransactionClient, string[]> =
-        new Map();
+    private readonly idsByTx: WeakMap<IDatabaseTransactionClient, string[]> =
+        new WeakMap();
 
     constructor(
         private readonly outboxRepository: OutboxRepository,
@@ -71,6 +67,19 @@ export class OutboxService implements OnApplicationBootstrap {
         await this.outboxRepository.updateEnqueued(enqueuedIds, enqueuedAt);
 
         return enqueuedIds.length;
+    }
+
+    private async dispatch(ids: string[]): Promise<void> {
+        if (ids.length === 0) {
+            return;
+        }
+
+        try {
+            const rows = await this.outboxRepository.findManyPendingByIds(ids);
+            await this.enqueue(rows);
+        } catch (error: unknown) {
+            this.warnDispatchFailure(error);
+        }
     }
 
     private async reconcile(row: Outbox): Promise<IOutboxReconcileResult> {
@@ -152,26 +161,7 @@ export class OutboxService implements OnApplicationBootstrap {
         await this.sweep();
     }
 
-    /** Opens a transaction, then dispatches every outbox row added on its tx after the commit. */
-    async withTransaction<T>(
-        fn: (tx: IDatabaseTransactionClient) => Promise<T>,
-        options?: IDatabaseTransactionOptions
-    ): Promise<T> {
-        const ids: string[] = [];
-        const result = await this.databaseService.withTransaction(async tx => {
-            this.idsByTx.set(tx, ids);
-            try {
-                return await fn(tx);
-            } finally {
-                this.idsByTx.delete(tx);
-            }
-        }, options);
-
-        await this.dispatch(ids);
-
-        return result;
-    }
-
+    /** Adds the row on the tx and returns its id, or the id of the row its key already has; the row is dispatched after the commit. */
     async addInTx(
         tx: IDatabaseTransactionClient,
         effect: IOutboxEffect
@@ -181,16 +171,11 @@ export class OutboxService implements OnApplicationBootstrap {
         return id!;
     }
 
+    /** Adds the rows on the tx and returns their ids, an effect whose key already has a row returning that row's id; the rows are dispatched after the commit. */
     async addManyInTx(
         tx: IDatabaseTransactionClient,
         effects: IOutboxEffect[]
     ): Promise<string[]> {
-        const registered = this.idsByTx.get(tx);
-        const txIds = registered ?? null;
-        if (txIds === null) {
-            throw new OutboxTransactionMissingException();
-        }
-
         const keys: Prisma.OutboxQueueNameIdempotencyKeyCompoundUniqueInput[] =
             [];
         for (const effect of effects) {
@@ -263,33 +248,19 @@ export class OutboxService implements OnApplicationBootstrap {
             await this.outboxRepository.createManyInTx(tx, rows);
         }
 
-        txIds.push(...ids);
+        const registered = this.idsByTx.get(tx);
+        const txIds = registered ?? null;
+        if (txIds === null) {
+            const addedIds = [...ids];
+            this.idsByTx.set(tx, addedIds);
+            this.databaseService.afterCommit(tx, async () =>
+                this.dispatch(addedIds)
+            );
+        } else {
+            txIds.push(...ids);
+        }
 
         return ids;
-    }
-
-    /** Inserts the row for an effect with no business write, then dispatches it; returns the row id. */
-    async add(effect: IOutboxEffect): Promise<string> {
-        return this.withTransaction(async tx => this.addInTx(tx, effect));
-    }
-
-    /** Inserts the rows for effects with no business write, then dispatches them; returns the row ids. */
-    async addMany(effects: IOutboxEffect[]): Promise<string[]> {
-        return this.withTransaction(async tx => this.addManyInTx(tx, effects));
-    }
-
-    /** Enqueues the rows among the ids still pending and stamps them; never throws, a failure leaves its rows pending. */
-    async dispatch(ids: string[]): Promise<void> {
-        if (ids.length === 0) {
-            return;
-        }
-
-        try {
-            const rows = await this.outboxRepository.findManyPendingByIds(ids);
-            await this.enqueue(rows);
-        } catch (error: unknown) {
-            this.warnDispatchFailure(error);
-        }
     }
 
     /** The row by id; null when it does not exist. */

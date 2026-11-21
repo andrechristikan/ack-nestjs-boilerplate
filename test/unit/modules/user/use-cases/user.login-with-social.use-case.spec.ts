@@ -8,6 +8,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -123,6 +124,7 @@ describe('UserLoginWithSocialUseCase', () => {
     const countryService: MockProxy<CountryService> = mock<CountryService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     let useCase: UserLoginWithSocialUseCase;
     let databaseUtil: DatabaseUtil;
@@ -321,7 +323,7 @@ describe('UserLoginWithSocialUseCase', () => {
     });
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         vi.setSystemTime(now);
@@ -371,6 +373,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 { provide: MfaService, useValue: mfaService },
                 WorkspaceUtil,
                 DeviceUtil,
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
                 HelperDateService,
@@ -505,7 +508,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 social,
                 { roleId: 'role-bramble', workspaceContext: personalContext }
             );
-            expect(outboxService.withTransaction).toHaveBeenNthCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenNthCalledWith(
                 1,
                 expect.any(Function),
                 { timeout: 5000 }
@@ -531,7 +534,7 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(
                 workspaceMemberService.resolveLastWorkspaceId
             ).toHaveBeenCalledWith('user-bramble', null);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).toHaveBeenCalledWith(
@@ -577,7 +580,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 EnumNotificationKind.welcomeSocial,
                 expect.anything()
             );
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).toHaveBeenCalledWith(
@@ -640,12 +643,12 @@ describe('UserLoginWithSocialUseCase', () => {
                 'subject-bramble'
             );
             expect(userSocialService.assertLinkable).toHaveBeenCalledBefore(
-                outboxService.withTransaction
+                databaseService.withTransaction
             );
             expect(userSocialService.linkInTx).toHaveBeenCalledBefore(
                 userAuthService.createTokenAndSessionInTx
             );
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
         it('rejects with the not found exception and opens no transaction when no account holds the email', async () => {
@@ -666,7 +669,7 @@ describe('UserLoginWithSocialUseCase', () => {
             ).rejects.toBe(failure);
 
             expect(userSocialService.assertLinkable).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('rejects with the provider exception and writes nothing when the account holds another subject', async () => {
@@ -688,7 +691,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(userSocialService.linkInTx).not.toHaveBeenCalled();
             expect(
                 userAuthService.createTokenAndSessionInTx
@@ -725,7 +728,7 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(
                 workspaceMemberService.resolveLastWorkspaceId
             ).toHaveBeenCalledBefore(userAuthService.createMfaChallengeInTx);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userAuthService.createMfaChallengeInTx).toHaveBeenCalledWith(
                 tx,
                 baseUser.id,
@@ -791,7 +794,7 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).toHaveBeenCalledTimes(1);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
         it('leaves no user row when the workspace join fails', async () => {
@@ -817,7 +820,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
                 tx,
                 [inviteInput]
@@ -1023,7 +1026,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 dto
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userAuthService.verifyEmailBySocialInTx
             ).toHaveBeenCalledWith(
@@ -1073,7 +1076,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 dto
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userAuthService.verifyEmailBySocialInTx
             ).toHaveBeenCalledWith(tx, requestContext, apiKeyContext, mfaUser);
@@ -1105,7 +1108,7 @@ describe('UserLoginWithSocialUseCase', () => {
                     dto
                 )
             ).rejects.toBe(failure);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('wraps a session failure of a new user, whose sign-up shares the transaction', async () => {
@@ -1242,8 +1245,8 @@ describe('UserLoginWithSocialUseCase', () => {
                 EnumUserLoginWith.socialGoogle,
                 now
             );
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(outboxService.withTransaction).toHaveBeenCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 5000 }
             );
@@ -1338,7 +1341,7 @@ describe('UserLoginWithSocialUseCase', () => {
         it('retries with the next slug candidate after a slug collision and commits', async () => {
             userRegistrationService.buildSocialCreate.mockReturnValue(input);
             const collision = buildPrismaKnownRequestError('P2002', 'slug');
-            outboxService.withTransaction
+            databaseService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(async fn => fn(tx) as never);
 
@@ -1352,7 +1355,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 'subject-bramble'
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
             expect(
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenLastCalledWith(tx, [
@@ -1367,7 +1370,7 @@ describe('UserLoginWithSocialUseCase', () => {
 
         it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
             userRegistrationService.buildSocialCreate.mockReturnValue(input);
-            outboxService.withTransaction.mockRejectedValue(
+            databaseService.withTransaction.mockRejectedValue(
                 buildPrismaKnownRequestError('P2002', 'slug')
             );
 
@@ -1386,11 +1389,11 @@ describe('UserLoginWithSocialUseCase', () => {
                 statusCode:
                     EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
             });
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });
 
         it('throws the exception the create util maps a non-slug collision to', async () => {
-            outboxService.withTransaction.mockRejectedValue(
+            databaseService.withTransaction.mockRejectedValue(
                 buildPrismaKnownRequestError('P2002', 'email')
             );
 
@@ -1412,7 +1415,7 @@ describe('UserLoginWithSocialUseCase', () => {
 
         it('wraps a non-collision error the create util leaves unmapped in the unknown exception', async () => {
             const otherError = new Error('unexpected');
-            outboxService.withTransaction.mockRejectedValue(otherError);
+            databaseService.withTransaction.mockRejectedValue(otherError);
 
             await expect(
                 useCase['signUpWithSocial'](

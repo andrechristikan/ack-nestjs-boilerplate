@@ -21,7 +21,7 @@ A lint rule that cannot hold everywhere is the owner's to remove, for every file
 
 ## Composed strings
 
-A config string with placeholders is a `{token}` pattern (`naming.md`), and a value composed inside one method is a template literal: one token is `String.prototype.replace` with a function replacement whenever the value is not a literal in the same file (the string form expands `$&` and `$1`); two or more tokens go through one pass of `HelperStringService.fillPattern` (`helper.string.service.ts`).
+A config string with placeholders is a `{token}` pattern (`naming.md`): one token is `String.prototype.replace` with a function replacement whenever the value is not a literal in the same file (the string form expands `$&` and `$1`); two or more tokens go through one pass of `HelperStringService.fillPattern` (`helper.string.service.ts`). Under `test/`, a value composed inside one method is a template literal.
 
 ## Functions and parameters
 
@@ -47,7 +47,7 @@ Contexts run in the `http.md` order.
 
 ## Types and comments
 
-Import a shape that already has a name; a hand-written copy or structural subset is a mirror that drifts. Zero copy-paste logic (the `config.md` optional-env ternary and a queue factory's option block (`queue.md`) excepted), one source per config value, connection, and constant; repeated declarative data (a doc error entry list, a decorator stack on a route) and a call repeated at two sites are not copy-paste logic; a body repeated is, and logic stays single-source (two subjects whose rule can change apart keep their own copy, `service.md`, Methods); duplication still beats the wrong abstraction. No helper taking a function parameter to share a loop: share the predicate, repeat the loop. No helper taking a function or a promise as a parameter to wrap its execution (try/catch, retry, cache-or-compute, a logging wrapper): the wrapping lives in the class that owns the call (`OutboxService.dispatch`). Three exceptions: `DatabaseService.withTransaction`; `OutboxService.withTransaction`, which wraps it (`effects.md`); and `CacheService.readThrough` (`cache.md`). Sentry scope data rides in `SentryService.captureException(exception, captureContext)`.
+Import a shape that already has a name; a hand-written copy or structural subset is a mirror that drifts. Zero copy-paste logic (the `config.md` optional-env ternary and a queue factory's option block (`queue.md`) excepted), one source per config value, connection, and constant; repeated declarative data (a doc error entry list, a decorator stack on a route) and a call repeated at two sites are not copy-paste logic; a body repeated is, and logic stays single-source (two subjects whose rule can change apart keep their own copy, `service.md`, Methods); duplication still beats the wrong abstraction. No helper taking a function parameter to share a loop: share the predicate, repeat the loop. Sentry scope data rides in `SentryService.captureException(exception, captureContext)`.
 
 No signature declares `asserts x is T` or `asserts x`. An assert that narrows a nullable input returns the narrowed value, `(value: T | null): T`, and the caller uses the return; a plain assert returns `void`.
 
@@ -58,7 +58,7 @@ JSDoc lives in six places only; a name, a signature, and `docs/` explain everyth
 1. A `@Global()` module class: the one line `Shared module: <what it exports, for whom>.` (`module-files.md`, `@Global()`).
 2. Every export of `*.dto.ts`, `*.decorator.ts`, `*.enum.ts` (on the enum), `*.exception.ts`, `*.constant.ts`, `*.contract.ts`, `*.validation.ts`, and `src/common/doc/interfaces/doc.interface.ts`: the bare `/** @public */` (a knip directive), `/** @alias */` on an intentional alias, no description line. No other export carries it.
 3. A public service, util, cache, or queue method whose signature hides its contract: what `null` or `false` means, a side effect the name omits (a counter, an enqueue, a cache eviction), or a precondition the caller owns. One line, present tense.
-4. Nothing else, places 5 and 6 aside: no class line, constant, field, property, enum member, interface field, constructor, private method, or controller, repository, guard, or service method; no `@param`, `@returns`, `@throws`, `@example`.
+4. Nothing else, places 5 and 6 aside: no class line, constant, field, property, enum member, interface field, constructor, private method, or controller, repository, guard, or service method.
 5. A piece kept until a named later change: `/** Temporary: <what replaces it>. */` on the method, private included, deleted with the piece.
 6. A bulk seed list cut from a public list (`seeding.md`): one line on the export naming how many entries it keeps, the filter applied, and the source URL that holds the full list.
 

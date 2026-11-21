@@ -24,6 +24,7 @@ import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyUpdateStatusByAdminUseCase } from '@modules/api-key/use-cases/api-key.update-status-by-admin.use-case';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import {
     buildApiKey,
@@ -38,6 +39,7 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
@@ -77,7 +79,7 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
 
     beforeEach(async () => {
         activityLogQueue.recordEffect.mockReturnValue(effect);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
 
@@ -86,6 +88,7 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
                 ApiKeyUpdateStatusByAdminUseCase,
                 { provide: ApiKeyService, useValue: apiKeyService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ApiKeyUtil,
                 ...TestUnitKitProviders,

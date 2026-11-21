@@ -10,6 +10,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
@@ -44,6 +45,7 @@ describe('WorkspaceSoftDeleteUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const firstEntry = buildActivityLogCreateManyEffect('first-entry');
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
@@ -74,7 +76,7 @@ describe('WorkspaceSoftDeleteUseCase', () => {
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
         vi.setSystemTime(deletedAt);
-        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -89,6 +91,7 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                     useValue: workspaceJoinRequestService,
                 },
                 { provide: ProjectService, useValue: projectService },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
@@ -144,7 +147,7 @@ describe('WorkspaceSoftDeleteUseCase', () => {
             );
 
             expect(result).toEqual({});
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(workspaceService.softDeleteInTx).toHaveBeenCalledWith(
                 tx,
                 'workspace-1',
@@ -195,7 +198,7 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                     workspaceContext
                 )
             ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 projectService.softDeleteByWorkspaceInTx
             ).not.toHaveBeenCalled();
@@ -216,7 +219,7 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                 workspaceContext
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 10000 }
             );

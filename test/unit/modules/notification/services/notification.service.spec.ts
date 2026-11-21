@@ -67,6 +67,7 @@ import type {
     INotificationSealedData,
     INotificationSnapshot,
 } from '@modules/notification/interfaces/notification.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -75,6 +76,7 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('NotificationService', () => {
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -146,6 +148,7 @@ describe('NotificationService', () => {
                         ...configValues,
                     }),
                 },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 {
@@ -817,7 +820,7 @@ describe('NotificationService', () => {
 
         beforeEach(() => {
             activityLogQueue.recordEffect.mockReturnValue(entryEffect);
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
         });

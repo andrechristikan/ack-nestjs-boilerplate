@@ -16,6 +16,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { Prisma } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.exception';
@@ -59,6 +60,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: MfaRegenerateBackupCodesUseCase;
@@ -89,7 +91,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
     };
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         userAuthService.assertReauthentication.mockResolvedValue(check);
@@ -106,6 +108,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -157,7 +160,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
             );
             expect(
                 userAuthService.assertReauthentication
-            ).toHaveBeenCalledBefore(outboxService.withTransaction);
+            ).toHaveBeenCalledBefore(databaseService.withTransaction);
             expect(
                 userAuthService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
@@ -304,7 +307,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                 )
             ).rejects.toBe(limit);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('regenerates nothing when the completion refuses the proof', async () => {
@@ -334,7 +337,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                     clientVersion: 'test',
                 }
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -353,7 +356,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
 
         it('wraps any other transaction failure in the unknown exception', async () => {
             const cause = new Error('boom');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(

@@ -25,6 +25,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     private readonly slowQueryThresholdInMs: number;
     private readonly warnWindowInMs: number;
     private readonly warnedAtByKey: Map<string, number> = new Map();
+    private readonly callbacksByTx: WeakMap<
+        IDatabaseTransactionClient,
+        Array<() => Promise<void>>
+    > = new WeakMap();
     readonly client: IDatabaseClient;
 
     constructor(
@@ -136,7 +140,28 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         fn: (tx: IDatabaseTransactionClient) => Promise<T>,
         options?: IDatabaseTransactionOptions
     ): Promise<T> {
-        return this.client.$transaction(async tx => fn(tx), options);
+        const callbacks: Array<() => Promise<void>> = [];
+        const result = await this.client.$transaction(async tx => {
+            this.callbacksByTx.set(tx, callbacks);
+
+            return fn(tx);
+        }, options);
+
+        for (const callback of callbacks) {
+            // Sequential by design: side effects whose order is part of the contract
+            await callback();
+        }
+
+        return result;
+    }
+
+    /** Runs the callback after the commit of the transaction that opened the tx, in registration order; a rollback runs none. */
+    afterCommit(
+        tx: IDatabaseTransactionClient,
+        callback: () => Promise<void>
+    ): void {
+        const callbacks = this.callbacksByTx.get(tx)!;
+        callbacks.push(callback);
     }
 
     /** True at most once per database.warnWindowInMs; a true call records its time. */

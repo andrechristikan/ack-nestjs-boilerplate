@@ -32,6 +32,8 @@ import {
     EnumTermPolicyProcess,
     EnumTermPolicyQueue,
 } from '@modules/term-policy/enums/term-policy.enum';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
@@ -46,7 +48,9 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
     const termPolicyQueue: MockProxy<TermPolicyQueue> = mock<TermPolicyQueue>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const tx = {} as IDatabaseTransactionClient;
 
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
     const termPolicy: TermPolicy = {
@@ -118,6 +122,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
     });
 
     beforeEach(async () => {
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         termPolicyQueue.resendPublishEffect.mockReturnValue(resendEffect);
 
@@ -128,6 +133,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                 { provide: TermPolicyQueue, useValue: termPolicyQueue },
                 TermPolicyUtil,
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -173,8 +179,9 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                     metadata,
                 }
             );
-            expect(outboxService.addMany).toHaveBeenCalledTimes(1);
-            expect(outboxService.addMany).toHaveBeenCalledWith([
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 resendEffect,
                 entryEffect,
             ]);
@@ -185,7 +192,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                 publishedTermPolicy
             );
             const cause = new Error('database down');
-            outboxService.addMany.mockRejectedValue(cause);
+            outboxService.addManyInTx.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(
@@ -209,7 +216,8 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                     'term-policy-1'
                 )
             ).rejects.toBe(error);
-            expect(outboxService.addMany).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 });

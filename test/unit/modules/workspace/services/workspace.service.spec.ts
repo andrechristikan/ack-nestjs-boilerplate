@@ -19,6 +19,7 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
@@ -62,6 +63,7 @@ describe('WorkspaceService', () => {
         mock<WorkspaceRepository>();
     const workspaceMemberRepository: MockProxy<WorkspaceMemberRepository> =
         mock<WorkspaceMemberRepository>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -99,6 +101,7 @@ describe('WorkspaceService', () => {
                     provide: WorkspaceMemberRepository,
                     useValue: workspaceMemberRepository,
                 },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 ...TestUnitKitProviders,
@@ -289,7 +292,7 @@ describe('WorkspaceService', () => {
 
         it('refuses a create for an owner of 2 workspaces when the flag caps at 2', async () => {
             featureFlagService.getMetadataNumber.mockResolvedValue(2);
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
                 2
             );
@@ -310,7 +313,7 @@ describe('WorkspaceService', () => {
 
         it('allows a create for an owner of 2 workspaces when the flag caps at 3', async () => {
             featureFlagService.getMetadataNumber.mockResolvedValue(3);
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
                 2
             );
@@ -343,12 +346,12 @@ describe('WorkspaceService', () => {
                     create
                 )
             ).rejects.toBe(notConfigured);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(workspaceRepository.createInTx).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceCapReachedException from inside the transaction when the owner already meets the cap', async () => {
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
                 5
             );
@@ -368,7 +371,7 @@ describe('WorkspaceService', () => {
             expect(
                 workspaceMemberRepository.countOwnedActiveByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-1');
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(workspaceRepository.createInTx).not.toHaveBeenCalled();
             expect(
                 workspaceMemberRepository.createOwnerInTx
@@ -379,7 +382,7 @@ describe('WorkspaceService', () => {
             workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
                 1
             );
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceRepository.createInTx.mockResolvedValue(workspace);
 
             const result = await service.createWorkspace(
@@ -409,7 +412,7 @@ describe('WorkspaceService', () => {
             workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
                 1
             );
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceRepository.createInTx.mockResolvedValue(workspace);
 
             await service.createWorkspace(
@@ -439,7 +442,7 @@ describe('WorkspaceService', () => {
                 1
             );
             const collision = buildPrismaKnownRequestError('P2002', 'slug');
-            outboxService.withTransaction
+            databaseService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(fn => fn(tx));
             workspaceRepository.createInTx.mockResolvedValue(workspace);
@@ -452,7 +455,7 @@ describe('WorkspaceService', () => {
             );
 
             expect(result).toBe(workspace);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
             expect(workspaceRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
@@ -467,7 +470,7 @@ describe('WorkspaceService', () => {
                 1
             );
             const otherError = new Error('unexpected');
-            outboxService.withTransaction.mockRejectedValue(otherError);
+            databaseService.withTransaction.mockRejectedValue(otherError);
 
             await expect(
                 service.createWorkspace(
@@ -480,7 +483,7 @@ describe('WorkspaceService', () => {
                 constructor: AppUnknownException,
                 rawError: otherError,
             });
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
         it('propagates an AppBaseException raised in the transaction without retrying', async () => {
@@ -488,7 +491,7 @@ describe('WorkspaceService', () => {
                 1
             );
             const typedError = new WorkspaceNotFoundException();
-            outboxService.withTransaction.mockRejectedValue(typedError);
+            databaseService.withTransaction.mockRejectedValue(typedError);
 
             await expect(
                 service.createWorkspace(
@@ -498,7 +501,7 @@ describe('WorkspaceService', () => {
                     create
                 )
             ).rejects.toBe(typedError);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
         it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
@@ -506,7 +509,7 @@ describe('WorkspaceService', () => {
                 1
             );
             const collision = buildPrismaKnownRequestError('P2002', 'slug');
-            outboxService.withTransaction.mockRejectedValue(collision);
+            databaseService.withTransaction.mockRejectedValue(collision);
 
             await expect(
                 service.createWorkspace(
@@ -522,7 +525,7 @@ describe('WorkspaceService', () => {
                 constructor: DatabaseUniqueValueGenerationFailedException,
                 module: 'database',
             });
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(3);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(3);
         });
     });
 
@@ -530,7 +533,7 @@ describe('WorkspaceService', () => {
         const tx = {} as IDatabaseTransactionClient;
 
         beforeEach(() => {
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
         });
 
         it('writes the details as given and adds the entry on the same tx', async () => {
@@ -574,7 +577,7 @@ describe('WorkspaceService', () => {
         const tx = {} as IDatabaseTransactionClient;
 
         beforeEach(() => {
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
         });
 
         it('writes the visibility and adds the entry on the same tx', async () => {
@@ -614,7 +617,7 @@ describe('WorkspaceService', () => {
         const tx = {} as IDatabaseTransactionClient;
 
         beforeEach(() => {
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
         });
 
         it('throws WorkspaceSlugInvalidException before writing when the slug has an upper-case letter', async () => {
@@ -647,7 +650,7 @@ describe('WorkspaceService', () => {
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.slugInvalid,
             });
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(workspaceRepository.updateSlugInTx).not.toHaveBeenCalled();
         });
 

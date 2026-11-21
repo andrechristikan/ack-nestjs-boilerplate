@@ -6,7 +6,7 @@ import { EnumUserReauthenticationAction } from '@generated/prisma-client/client'
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { OutboxService } from '@common/outbox/services/outbox.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
@@ -46,7 +46,7 @@ describe('UserDeleteMobileNumberUseCase', () => {
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
         mock<UserMobileNumberService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
-    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
 
     let useCase: UserDeleteMobileNumberUseCase;
 
@@ -91,7 +91,7 @@ describe('UserDeleteMobileNumberUseCase', () => {
     const dto = { password: 'Current-pass1' };
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         userAuthService.assertReauthentication.mockResolvedValue(passwordOnly);
@@ -110,7 +110,7 @@ describe('UserDeleteMobileNumberUseCase', () => {
                     useValue: userMobileNumberService,
                 },
                 { provide: UserAuthService, useValue: userAuthService },
-                { provide: OutboxService, useValue: outboxService },
+                { provide: DatabaseService, useValue: databaseService },
                 DatabaseUtil,
                 {
                     provide: ConfigService,
@@ -154,7 +154,7 @@ describe('UserDeleteMobileNumberUseCase', () => {
             ).toHaveBeenCalledWith('user-swift', mobileNumber.id);
             expect(
                 userMobileNumberService.getOneMobileNumber
-            ).toHaveBeenCalledBefore(outboxService.withTransaction);
+            ).toHaveBeenCalledBefore(databaseService.withTransaction);
             expect(
                 userAuthService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
@@ -257,7 +257,7 @@ describe('UserDeleteMobileNumberUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userMobileNumberService.deleteMobileNumberInTx
             ).not.toHaveBeenCalled();
@@ -280,12 +280,12 @@ describe('UserDeleteMobileNumberUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('answers UserMobileNumberNotFoundException on a write conflict', async () => {
             const conflict = buildPrismaKnownRequestError('P2034');
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -319,7 +319,7 @@ describe('UserDeleteMobileNumberUseCase', () => {
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {
             const cause = new Error('boom');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(

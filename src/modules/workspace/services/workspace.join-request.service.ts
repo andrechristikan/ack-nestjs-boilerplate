@@ -29,6 +29,7 @@ import {
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { WorkspaceJoinRequestNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
@@ -65,6 +66,7 @@ export class WorkspaceJoinRequestService {
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly featureFlagService: FeatureFlagService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
@@ -188,7 +190,7 @@ export class WorkspaceJoinRequestService {
         const expiredAt = this.helperDateService.forward(now, duration);
 
         try {
-            return await this.outboxService.withTransaction(async tx => {
+            return await this.databaseService.withTransaction(async tx => {
                 const joinRequest =
                     await this.workspaceJoinRequestRepository.createPendingInTx(
                         tx,
@@ -301,7 +303,7 @@ export class WorkspaceJoinRequestService {
         const reviewedAt = this.helperDateService.create();
 
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const joinRequest =
                     await this.workspaceJoinRequestRepository.findByIdAndWorkspaceInTx(
                         tx,
@@ -400,7 +402,7 @@ export class WorkspaceJoinRequestService {
         );
 
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const rejected =
                     await this.workspaceJoinRequestRepository.rejectInTx(
                         tx,

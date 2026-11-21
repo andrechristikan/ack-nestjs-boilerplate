@@ -8,6 +8,7 @@ import { TermPolicyService } from '@modules/term-policy/services/term-policy.ser
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -22,6 +23,7 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
         private readonly termPolicyQueue: TermPolicyQueue,
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -63,7 +65,9 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
                 metadata,
             }
         );
-        await this.outboxService.addMany([resend, entry]);
+        await this.databaseService.withTransaction(async tx =>
+            this.outboxService.addManyInTx(tx, [resend, entry])
+        );
 
         return {};
     }

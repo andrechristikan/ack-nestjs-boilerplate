@@ -33,7 +33,7 @@ The browser PUTs straight to S3; the API signs and never proxies bytes. The pres
 
 ## S3 deletes
 
-An S3 object delete is a side effect: an outbox row of the module owning the object, added in the database write's transaction (`effects.md`), or through `OutboxService.add` when no write happens (a presigned object refused for its content). A replaced or deleted term-policy content object and a user's previous profile photo, once a new one replaces it, are deleted this way. Saving a profile photo key outside the user's profile path (`UserProfileService.buildPhotoProfilePath`) is rejected with 400 (`UserPhotoKeyInvalidException`); the replace and the account self-delete add a photo delete only for a key `UserProfileService.isPhotoProfileKeyOwned` (`src/modules/user/services/user.profile.service.ts`) accepts.
+An S3 object delete is a side effect: an outbox row of the module owning the object, added in the database write's transaction, or in one holding the add alone when no write happens (a presigned object refused for its content) (`effects.md`, Writing). A replaced or deleted term-policy content object and a user's previous profile photo, once a new one replaces it, are deleted this way. Saving a profile photo key outside the user's profile path (`UserProfileService.buildPhotoProfilePath`) is rejected with 400 (`UserPhotoKeyInvalidException`); the replace and the account self-delete add a photo delete only for a key `UserProfileService.isPhotoProfileKeyOwned` (`src/modules/user/services/user.profile.service.ts`) accepts.
 
 ## AWS without credentials
 

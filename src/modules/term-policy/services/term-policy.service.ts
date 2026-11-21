@@ -14,6 +14,7 @@ import { HelperArrayService } from '@common/helper/services/helper.array.service
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
@@ -52,6 +53,7 @@ export class TermPolicyService {
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperArrayService: HelperArrayService,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService,
         private readonly activityLogQueue: ActivityLogQueue,
@@ -171,7 +173,7 @@ export class TermPolicyService {
                 }
             );
 
-            return await this.outboxService.withTransaction(async tx => {
+            return await this.databaseService.withTransaction(async tx => {
                 const created = await this.termPolicyRepository.createInTx(
                     tx,
                     termPolicyId,
@@ -239,7 +241,7 @@ export class TermPolicyService {
 
         try {
             const contentKeys = termPolicy.contents.map(content => content.key);
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const isDeleted =
                     await this.termPolicyRepository.deleteDraftInTx(
                         tx,
@@ -339,7 +341,7 @@ export class TermPolicyService {
             });
 
             const published =
-                await this.outboxService.withTransaction<TermPolicy>(
+                await this.databaseService.withTransaction<TermPolicy>(
                     async tx => {
                         const isPublished =
                             await this.termPolicyRepository.publishInTx(

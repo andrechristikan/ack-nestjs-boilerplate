@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -26,6 +27,7 @@ describe('MfaUpdatePasskeyUseCase', () => {
         mock<MfaPasskeyService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: MfaUpdatePasskeyUseCase;
@@ -43,7 +45,7 @@ describe('MfaUpdatePasskeyUseCase', () => {
     };
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
@@ -53,6 +55,7 @@ describe('MfaUpdatePasskeyUseCase', () => {
                 MfaUpdatePasskeyUseCase,
                 { provide: MfaPasskeyService, useValue: mfaPasskeyService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();

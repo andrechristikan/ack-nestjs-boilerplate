@@ -3,6 +3,7 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { CountryService } from '@modules/country/services/country.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
@@ -25,6 +26,7 @@ export class UserUpdateProfileUseCase implements IAppUseCase<
         private readonly userProfileService: UserProfileService,
         private readonly countryService: CountryService,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService
     ) {}
 
@@ -37,7 +39,7 @@ export class UserUpdateProfileUseCase implements IAppUseCase<
         // Sequential by design: gate before the work it guards
         await this.countryService.getOne(countryId);
 
-        await this.outboxService.withTransaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.userProfileService.updateProfileInTx(
                 tx,
                 authContext.userId,

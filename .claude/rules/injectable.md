@@ -26,7 +26,7 @@ An outbound HTTP call goes through `HttpClient` from `@nestjs/http-client`, neve
 
 ## Config
 
-- Outside `src/configs/` and `src/instrument.ts`, code reads `ConfigService.get<T>('namespace.key')`, `T` named, once into a `private readonly` constructor field. A module `useFactory`, a queue options factory, a `super(...)` argument, `bootstrap.ts`, `configure.ts`, and `swagger.ts` read where they build.
+- A `ConfigService.get<T>('namespace.key')` read names `T` and runs once, into a `private readonly` constructor field. A module `useFactory`, a queue options factory, a `super(...)` argument, `bootstrap.ts`, `configure.ts`, and `swagger.ts` read where they build.
 - A field or a local holding a config value takes its name from the path, and no other word:
     - the last segment, whole (`cacheTtlInMs` for `auth.xApiKey.cacheTtlInMs`);
     - an earlier segment only where two fields of the class would share a name, or the bare name is a reserved word or reads as another thing (`s3Public` for `aws.s3.public`, `throttleUser` for `request.throttle.user`);

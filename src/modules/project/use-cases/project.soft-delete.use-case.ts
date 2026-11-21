@@ -7,6 +7,7 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectService } from '@modules/project/services/project.service';
@@ -33,6 +34,7 @@ export class ProjectSoftDeleteUseCase implements IAppUseCase<
         private readonly projectService: ProjectService,
         private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -49,7 +51,7 @@ export class ProjectSoftDeleteUseCase implements IAppUseCase<
         const actorId = authContext.userId;
         const deletedAt = this.helperDateService.create();
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.projectService.softDeleteProjectInTx(
                     tx,
                     project,

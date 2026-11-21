@@ -15,7 +15,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { OutboxService } from '@common/outbox/services/outbox.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
@@ -55,7 +55,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
-    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
 
     let useCase: UserLoginWithPasskeyUseCase;
 
@@ -137,7 +137,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
 
     beforeEach(async () => {
         vi.setSystemTime(now);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         mfaChallengeService.get.mockResolvedValue(challenge);
@@ -161,7 +161,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
                     useValue: workspaceMemberService,
                 },
                 DeviceUtil,
-                { provide: OutboxService, useValue: outboxService },
+                { provide: DatabaseService, useValue: databaseService },
                 HelperDateService,
                 DatabaseUtil,
                 {
@@ -343,7 +343,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 statusCode: EnumMfaStatusCodeError.challengeInvalid,
             });
             expect(mfaPasskeyService.getOneForLogin).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('passes on the MfaPasskeyInvalidException of an unknown credential and counts nothing', async () => {
@@ -362,7 +362,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
             ).not.toHaveBeenCalled();
             expect(mfaService.checkPasskeyLogin).not.toHaveBeenCalled();
             expect(mfaService.countFailedAttempt).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('answers UserCredentialInvalidException for an inactive user and checks nothing', async () => {
@@ -378,7 +378,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
             });
             expect(mfaService.assertAttemptAvailable).not.toHaveBeenCalled();
             expect(mfaService.checkPasskeyLogin).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws MfaAttemptMaxException for a locked user and checks nothing', async () => {
@@ -393,7 +393,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
             expect(mfaService.checkPasskeyLogin).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('issues nothing and opens no transaction when the check fails', async () => {
@@ -408,7 +408,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
 
                 statusCode: EnumMfaStatusCodeError.passkeyInvalid,
             });
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
@@ -429,7 +429,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
 
         it('throws MfaChallengeInvalidException on a write conflict', async () => {
             const conflict = buildPrismaKnownRequestError('P2034');
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
@@ -442,7 +442,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {
             const cause = new Error('boom');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)

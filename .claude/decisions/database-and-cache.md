@@ -114,7 +114,7 @@ Rule: `role.md`.
 
 Rule: `cache.md`.
 
-- Cache-class read methods taking the loader too: it widens the exception to every cache class.
+- Cache-class read methods taking the loader too: every cache class then carries a loader parameter and its own miss and set handling.
 - No callback at all: get, lease, load, and set are copied at about 55 call sites.
 
 ### Health follows Redis, behind the system API key, and the database route answers 503 while a dependency is down

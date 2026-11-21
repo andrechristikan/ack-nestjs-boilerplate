@@ -17,6 +17,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { Prisma } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -61,6 +62,7 @@ describe('MfaEnableTotpUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: MfaEnableTotpUseCase;
@@ -87,7 +89,7 @@ describe('MfaEnableTotpUseCase', () => {
     const enableDto = { code: '654321', password: 'Current-pass1' };
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
 
@@ -98,6 +100,7 @@ describe('MfaEnableTotpUseCase', () => {
                 { provide: MfaTotpService, useValue: mfaTotpService },
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -140,7 +143,7 @@ describe('MfaEnableTotpUseCase', () => {
                 userAuthService.assertReauthentication
             ).not.toHaveBeenCalled();
             expect(mfaService.checkTotpSetupCode).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('asserts the password with no old MFA proof, then checks the code of the new authenticator', async () => {
@@ -330,7 +333,7 @@ describe('MfaEnableTotpUseCase', () => {
             ).rejects.toBe(failure);
 
             expect(mfaService.checkTotpSetupCode).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('leaves the work undone when the new authenticator code is wrong', async () => {
@@ -347,7 +350,7 @@ describe('MfaEnableTotpUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(mfaTotpService.enableInTx).not.toHaveBeenCalled();
         });
 
@@ -376,7 +379,7 @@ describe('MfaEnableTotpUseCase', () => {
                     clientVersion: 'test',
                 }
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -395,7 +398,7 @@ describe('MfaEnableTotpUseCase', () => {
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {
             const cause = new Error('boom');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(

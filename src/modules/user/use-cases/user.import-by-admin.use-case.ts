@@ -1,6 +1,7 @@
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import type { UserImportResponseDto } from '@modules/user/dtos/response/user.import.response.dto';
@@ -25,6 +26,7 @@ export class UserImportByAdminUseCase implements IAppUseCase<
         private readonly userQueue: UserQueue,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly userImportService: UserImportService,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService
     ) {}
 
@@ -56,7 +58,9 @@ export class UserImportByAdminUseCase implements IAppUseCase<
             null
         );
         const effect = this.userQueue.importByAdminEffect(rows, activityLog);
-        const outboxId = await this.outboxService.add(effect);
+        const outboxId = await this.databaseService.withTransaction(async tx =>
+            this.outboxService.addInTx(tx, effect)
+        );
 
         return { data: { outboxId } };
     }

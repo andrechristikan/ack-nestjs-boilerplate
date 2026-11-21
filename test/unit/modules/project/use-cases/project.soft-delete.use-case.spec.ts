@@ -10,6 +10,7 @@ import { DatabaseWriteConflictCode } from '@common/database/constants/database.c
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
@@ -42,6 +43,7 @@ describe('ProjectSoftDeleteUseCase', () => {
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
 
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const firstEntry = buildActivityLogCreateManyEffect('first-entry');
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
@@ -87,7 +89,7 @@ describe('ProjectSoftDeleteUseCase', () => {
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
         vi.setSystemTime(deletedAt);
-        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -98,6 +100,7 @@ describe('ProjectSoftDeleteUseCase', () => {
                     useValue: workspaceInviteService,
                 },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -137,7 +140,7 @@ describe('ProjectSoftDeleteUseCase', () => {
             );
 
             expect(result).toEqual({});
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(projectService.softDeleteProjectInTx).toHaveBeenCalledWith(
                 tx,
                 project,

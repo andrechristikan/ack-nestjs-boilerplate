@@ -18,6 +18,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
@@ -60,6 +61,7 @@ describe('DeviceRemoveUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
@@ -140,7 +142,7 @@ describe('DeviceRemoveUseCase', () => {
     });
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         userAuthService.assertReauthentication.mockResolvedValue(check);
@@ -157,6 +159,7 @@ describe('DeviceRemoveUseCase', () => {
                 DeviceUtil,
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -178,7 +181,7 @@ describe('DeviceRemoveUseCase', () => {
                     return check;
                 }
             );
-            outboxService.withTransaction.mockImplementation(async fn => {
+            databaseService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -322,7 +325,7 @@ describe('DeviceRemoveUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 sessionService.removeDeviceOwnershipInTx
             ).not.toHaveBeenCalled();
@@ -376,7 +379,7 @@ describe('DeviceRemoveUseCase', () => {
                     clientVersion: 'test',
                 }
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -392,7 +395,7 @@ describe('DeviceRemoveUseCase', () => {
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {
             const cause = new Error('boom');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(

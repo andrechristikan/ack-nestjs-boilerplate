@@ -1,6 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -50,6 +51,7 @@ export class UserResetPasswordUseCase implements IAppUseCase<
         private readonly authPasswordService: AuthPasswordService,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
@@ -115,7 +117,7 @@ export class UserResetPasswordUseCase implements IAppUseCase<
             await this.authPasswordUtil.createPassword(newPassword);
 
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 if (claimedChallengeToken !== null) {
                     await this.mfaChallengeService.consumeInTx(
                         tx,

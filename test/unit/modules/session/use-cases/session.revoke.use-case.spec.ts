@@ -16,6 +16,7 @@ import { DatabaseWriteConflictCode } from '@common/database/constants/database.c
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
@@ -56,6 +57,7 @@ describe('SessionRevokeUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
@@ -91,7 +93,7 @@ describe('SessionRevokeUseCase', () => {
     });
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         userAuthService.assertReauthentication.mockResolvedValue(check);
@@ -103,6 +105,7 @@ describe('SessionRevokeUseCase', () => {
                 { provide: SessionService, useValue: sessionService },
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
                 HelperDateService,
@@ -125,7 +128,7 @@ describe('SessionRevokeUseCase', () => {
                     return check;
                 }
             );
-            outboxService.withTransaction.mockImplementation(async fn => {
+            databaseService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -255,7 +258,7 @@ describe('SessionRevokeUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionService.revokeInTx).not.toHaveBeenCalled();
         });
 
@@ -305,7 +308,7 @@ describe('SessionRevokeUseCase', () => {
                     clientVersion: 'test',
                 }
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -321,7 +324,7 @@ describe('SessionRevokeUseCase', () => {
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {
             const cause = new Error('boom');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(

@@ -10,6 +10,7 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import {
     EnumActivityLogProcess,
@@ -52,6 +53,7 @@ describe('PolicyDeleteByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
@@ -105,7 +107,7 @@ describe('PolicyDeleteByAdminUseCase', () => {
     beforeEach(async () => {
         activityLogQueue.recordEffect.mockReturnValue(effect);
         roleService.invalidateEffect.mockReturnValue(roleInvalidateEffect);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
 
@@ -121,6 +123,7 @@ describe('PolicyDeleteByAdminUseCase', () => {
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -147,7 +150,7 @@ describe('PolicyDeleteByAdminUseCase', () => {
                 'role-1',
                 { roleId: actor.roleId, roleType: actor.role.type }
             );
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('deletes the policy on the outbox transaction after the role gate and wraps the response', async () => {

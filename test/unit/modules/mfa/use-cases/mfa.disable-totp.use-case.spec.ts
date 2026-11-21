@@ -16,6 +16,7 @@ import {
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { Prisma } from '@generated/prisma-client/client';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { SessionService } from '@modules/session/services/session.service';
@@ -60,6 +61,7 @@ const passkeyResponse = {
 describe('MfaDisableTotpUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -106,7 +108,7 @@ describe('MfaDisableTotpUseCase', () => {
 
     beforeEach(async () => {
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         mfaTotpService.assertConfirmed.mockResolvedValue();
@@ -125,6 +127,7 @@ describe('MfaDisableTotpUseCase', () => {
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 { provide: SessionService, useValue: sessionService },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
             ],
@@ -148,7 +151,7 @@ describe('MfaDisableTotpUseCase', () => {
                     return check;
                 }
             );
-            outboxService.withTransaction.mockImplementation(async fn => {
+            databaseService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -359,7 +362,7 @@ describe('MfaDisableTotpUseCase', () => {
             expect(
                 userAuthService.assertReauthentication
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('leaves the work undone when the proof fails', async () => {
@@ -376,7 +379,7 @@ describe('MfaDisableTotpUseCase', () => {
                 )
             ).rejects.toBe(limit);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(mfaTotpService.disableInTx).not.toHaveBeenCalled();
             expect(
                 sessionService.revokeActiveByUserExceptInTx
@@ -391,7 +394,7 @@ describe('MfaDisableTotpUseCase', () => {
                     clientVersion: 'test',
                 }
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -430,7 +433,7 @@ describe('MfaDisableTotpUseCase', () => {
 
         it('wraps any other transaction failure in the unknown exception', async () => {
             const cause = new Error('boom');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(

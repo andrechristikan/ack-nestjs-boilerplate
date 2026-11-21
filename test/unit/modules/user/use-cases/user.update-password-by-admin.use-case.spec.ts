@@ -11,6 +11,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { PasswordHistory, User } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
@@ -58,6 +59,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: UserUpdatePasswordByAdminUseCase;
@@ -134,7 +136,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     : targetEntry
         );
         vi.setSystemTime(now);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         notificationService.getSnapshot.mockResolvedValue(snapshot);
@@ -158,6 +160,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 UserUtil,
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 HelperDateService,
                 {
@@ -180,7 +183,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
 
         it('gates the actor rank, writes the password, history, and revoke on one transaction, and adds both entries and the notification on it', async () => {
             const calls: string[] = [];
-            outboxService.withTransaction.mockImplementation(async fn => {
+            databaseService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -333,7 +336,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
 
                 return snapshot;
             });
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
             userService.updatePasswordInTx.mockImplementation(async () => {
@@ -405,7 +408,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 )
             ).rejects.toThrow('rank');
             expect(userService.assertUnblocked).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('revokes nothing and adds no effect when the snapshot read rejects', async () => {
@@ -430,7 +433,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
 
         it('adds nothing when the transaction fails', async () => {
             const cause = new Error('database exploded');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(

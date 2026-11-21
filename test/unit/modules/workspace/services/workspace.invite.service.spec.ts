@@ -46,6 +46,7 @@ import {
     EnumNotificationProcess,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
@@ -99,6 +100,7 @@ describe('WorkspaceInviteService', () => {
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
     let databaseUtil: DatabaseUtil;
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     let helperStringService: HelperStringService;
@@ -245,7 +247,7 @@ describe('WorkspaceInviteService', () => {
 
     beforeEach(async () => {
         featureFlagService.getMetadataNumber.mockResolvedValue(7);
-        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
         activityLogQueue.recordEffect
             .mockReturnValueOnce(actorEntry)
             .mockReturnValueOnce(inviteeEntry);
@@ -270,6 +272,7 @@ describe('WorkspaceInviteService', () => {
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 ...TestUnitKitProviders,
                 UserUtil,
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 {
                     provide: ConfigService,
@@ -893,7 +896,7 @@ describe('WorkspaceInviteService', () => {
                     unregisteredNotice
                 )
             ).rejects.toBe(notConfigured);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 workspaceInviteRepository.createPendingInTx
             ).not.toHaveBeenCalled();
@@ -1503,7 +1506,7 @@ describe('WorkspaceInviteService', () => {
                     unregisteredNotice
                 )
             ).rejects.toBe(notConfigured);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 workspaceInviteRepository.rotateForResendInTx
             ).not.toHaveBeenCalled();

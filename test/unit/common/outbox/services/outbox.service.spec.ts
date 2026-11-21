@@ -28,7 +28,6 @@ import {
 } from '@common/queue/enums/queue.enum';
 import type { IQueueJobState } from '@common/queue/interfaces/queue.interface';
 import { OutboxDispatchWarnKey } from '@common/outbox/constants/outbox.constant';
-import { EnumOutboxStatusCodeError } from '@common/outbox/enums/outbox.status-code.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxRepository } from '@common/outbox/repositories/outbox.repository';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -124,105 +123,21 @@ describe('OutboxService', () => {
         databaseUtil = module.get(DatabaseUtil);
     });
 
-    describe('withTransaction', () => {
-        it('runs the callback on the opened tx and dispatches its rows after the commit', async () => {
+    describe('addInTx', () => {
+        it('returns the row id, inserts the row on the tx, and registers one after-commit callback', async () => {
             vi.spyOn(databaseUtil, 'createId').mockReturnValue('outbox-1');
-            outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
 
-            const callback = vi
-                .fn<(openedTx: IDatabaseTransactionClient) => Promise<string>>()
-                .mockImplementation(async openedTx => {
-                    await service.addInTx(openedTx, purgeEffect);
+            const id = await service.addInTx(tx, purgeEffect);
 
-                    return 'result';
-                });
-
-            const result = await service.withTransaction(callback);
-
-            expect(result).toBe('result');
+            expect(id).toBe('outbox-1');
             expect(outboxRepository.createManyInTx).toHaveBeenCalledWith(tx, [
                 expect.objectContaining({ id: 'outbox-1' }),
             ]);
-            expect(outboxRepository.findManyPendingByIds).toHaveBeenCalledWith([
-                'outbox-1',
-            ]);
-            expect(moduleRef.get).toHaveBeenCalledWith(
-                EnumSessionQueue.session,
-                { strict: false }
+            expect(databaseService.afterCommit).toHaveBeenCalledTimes(1);
+            expect(databaseService.afterCommit).toHaveBeenCalledWith(
+                tx,
+                expect.any(Function)
             );
-            expect(sessionQueue.enqueue).toHaveBeenCalledWith([purgeRow]);
-            expect(outboxRepository.updateEnqueued).toHaveBeenCalledWith(
-                ['outbox-1'],
-                now
-            );
-        });
-
-        it('dispatches every id added on the tx, by any caller on it', async () => {
-            vi.spyOn(databaseUtil, 'createId')
-                .mockReturnValueOnce('outbox-1')
-                .mockReturnValueOnce('outbox-2');
-
-            const callback = vi
-                .fn<(openedTx: IDatabaseTransactionClient) => Promise<void>>()
-                .mockImplementation(async openedTx => {
-                    await service.addInTx(openedTx, purgeEffect);
-                    await service.addManyInTx(openedTx, [purgeEffect]);
-                });
-
-            await service.withTransaction(callback);
-
-            expect(outboxRepository.findManyPendingByIds).toHaveBeenCalledWith([
-                'outbox-1',
-                'outbox-2',
-            ]);
-        });
-
-        it('rethrows a failed callback and dispatches nothing', async () => {
-            const error = new Error('write failed');
-            vi.spyOn(databaseUtil, 'createId').mockReturnValue('outbox-1');
-
-            const callback = vi
-                .fn<(openedTx: IDatabaseTransactionClient) => Promise<void>>()
-                .mockImplementation(async openedTx => {
-                    await service.addInTx(openedTx, purgeEffect);
-                    throw error;
-                });
-
-            await expect(service.withTransaction(callback)).rejects.toBe(error);
-
-            expect(
-                outboxRepository.findManyPendingByIds
-            ).not.toHaveBeenCalled();
-            expect(sessionQueue.enqueue).not.toHaveBeenCalled();
-        });
-
-        it('passes the options to the database transaction and reads nothing when no row was added', async () => {
-            const callback = vi
-                .fn<(openedTx: IDatabaseTransactionClient) => Promise<null>>()
-                .mockResolvedValue(null);
-
-            await service.withTransaction(callback, { timeout: 5000 });
-
-            expect(databaseService.withTransaction).toHaveBeenCalledWith(
-                expect.any(Function),
-                { timeout: 5000 }
-            );
-            expect(
-                outboxRepository.findManyPendingByIds
-            ).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('addInTx', () => {
-        it('throws when the tx was not opened by withTransaction', async () => {
-            await expect(
-                service.addInTx(tx, purgeEffect)
-            ).rejects.toMatchObject({
-                module: 'outbox',
-                statusCode: EnumOutboxStatusCodeError.transactionMissing,
-            });
-
-            expect(outboxRepository.createManyInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -235,18 +150,74 @@ describe('OutboxService', () => {
             idempotencyKey: 'publish:term-policy-1',
         };
 
+        it('registers one after-commit callback on the first add on a tx, none on a second add, and its own on another tx', async () => {
+            const otherTx: MockProxy<IDatabaseTransactionClient> =
+                mock<IDatabaseTransactionClient>();
+
+            await service.addManyInTx(tx, [purgeEffect]);
+
+            expect(databaseService.afterCommit).toHaveBeenCalledTimes(1);
+            expect(databaseService.afterCommit).toHaveBeenCalledWith(
+                tx,
+                expect.any(Function)
+            );
+
+            await service.addManyInTx(tx, [purgeEffect]);
+
+            expect(databaseService.afterCommit).toHaveBeenCalledTimes(1);
+
+            await service.addManyInTx(otherTx, [purgeEffect]);
+
+            expect(databaseService.afterCommit).toHaveBeenCalledTimes(2);
+            expect(databaseService.afterCommit).toHaveBeenLastCalledWith(
+                otherTx,
+                expect.any(Function)
+            );
+        });
+
+        it('dispatches every id added on the tx, an existing row id included, when the registered callback runs', async () => {
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('outbox-2');
+            outboxRepository.findManyByIdempotencyKeysInTx.mockResolvedValue([
+                {
+                    ...purgeRow,
+                    id: 'outbox-existing',
+                    queue: EnumTermPolicyQueue.termPolicy,
+                    name: EnumTermPolicyProcess.publish,
+                    idempotencyKey: 'publish:term-policy-1',
+                },
+            ]);
+            outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
+            const callbacks: Array<() => Promise<void>> = [];
+            databaseService.afterCommit.mockImplementation((_tx, captured) => {
+                callbacks.push(captured);
+            });
+
+            await service.addManyInTx(tx, [publishEffect]);
+            await service.addManyInTx(tx, [purgeEffect]);
+
+            expect(
+                outboxRepository.findManyPendingByIds
+            ).not.toHaveBeenCalled();
+
+            expect(callbacks).toHaveLength(1);
+
+            await callbacks[0]!();
+
+            expect(outboxRepository.findManyPendingByIds).toHaveBeenCalledWith([
+                'outbox-existing',
+                'outbox-2',
+            ]);
+            expect(sessionQueue.enqueue).toHaveBeenCalledWith([purgeRow]);
+            expect(outboxRepository.updateEnqueued).toHaveBeenCalledWith(
+                ['outbox-1'],
+                now
+            );
+        });
+
         it('inserts pending rows with generated ids, a null key stored as the row id, and returns the ids', async () => {
             vi.spyOn(databaseUtil, 'createId').mockReturnValue('outbox-1');
 
-            const callback = vi
-                .fn<
-                    (openedTx: IDatabaseTransactionClient) => Promise<string[]>
-                >()
-                .mockImplementation(async openedTx =>
-                    service.addManyInTx(openedTx, [purgeEffect])
-                );
-
-            const ids = await service.withTransaction(callback);
+            const ids = await service.addManyInTx(tx, [purgeEffect]);
 
             expect(ids).toEqual(['outbox-1']);
             expect(
@@ -277,15 +248,10 @@ describe('OutboxService', () => {
                 },
             ]);
 
-            const callback = vi
-                .fn<
-                    (openedTx: IDatabaseTransactionClient) => Promise<string[]>
-                >()
-                .mockImplementation(async openedTx =>
-                    service.addManyInTx(openedTx, [publishEffect, purgeEffect])
-                );
-
-            const ids = await service.withTransaction(callback);
+            const ids = await service.addManyInTx(tx, [
+                publishEffect,
+                purgeEffect,
+            ]);
 
             expect(ids).toEqual(['outbox-existing', 'outbox-2']);
             expect(
@@ -304,10 +270,6 @@ describe('OutboxService', () => {
                     idempotencyKey: 'outbox-2',
                 }),
             ]);
-            expect(outboxRepository.findManyPendingByIds).toHaveBeenCalledWith([
-                'outbox-existing',
-                'outbox-2',
-            ]);
         });
 
         it('inserts nothing when every keyed effect already has a row', async () => {
@@ -321,15 +283,7 @@ describe('OutboxService', () => {
                 },
             ]);
 
-            const callback = vi
-                .fn<
-                    (openedTx: IDatabaseTransactionClient) => Promise<string[]>
-                >()
-                .mockImplementation(async openedTx =>
-                    service.addManyInTx(openedTx, [publishEffect])
-                );
-
-            const ids = await service.withTransaction(callback);
+            const ids = await service.addManyInTx(tx, [publishEffect]);
 
             expect(ids).toEqual(['outbox-existing']);
             expect(outboxRepository.createManyInTx).not.toHaveBeenCalled();
@@ -354,15 +308,10 @@ describe('OutboxService', () => {
                 },
             ]);
 
-            const callback = vi
-                .fn<
-                    (openedTx: IDatabaseTransactionClient) => Promise<string[]>
-                >()
-                .mockImplementation(async openedTx =>
-                    service.addManyInTx(openedTx, [publishEffect, deleteEffect])
-                );
-
-            const ids = await service.withTransaction(callback);
+            const ids = await service.addManyInTx(tx, [
+                publishEffect,
+                deleteEffect,
+            ]);
 
             expect(ids).toEqual(['outbox-existing', 'outbox-2']);
             expect(
@@ -394,18 +343,10 @@ describe('OutboxService', () => {
                 []
             );
 
-            const callback = vi
-                .fn<
-                    (openedTx: IDatabaseTransactionClient) => Promise<string[]>
-                >()
-                .mockImplementation(async openedTx =>
-                    service.addManyInTx(openedTx, [
-                        publishEffect,
-                        publishEffect,
-                    ])
-                );
-
-            const ids = await service.withTransaction(callback);
+            const ids = await service.addManyInTx(tx, [
+                publishEffect,
+                publishEffect,
+            ]);
 
             expect(ids).toEqual(['outbox-1', 'outbox-1']);
             expect(outboxRepository.createManyInTx).toHaveBeenCalledWith(tx, [
@@ -414,229 +355,6 @@ describe('OutboxService', () => {
                     idempotencyKey: 'publish:term-policy-1',
                 }),
             ]);
-        });
-    });
-
-    describe('add', () => {
-        it('inserts the row, then dispatches it and returns its id', async () => {
-            vi.spyOn(databaseUtil, 'createId').mockReturnValue('outbox-1');
-            outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
-
-            const id = await service.add(purgeEffect);
-
-            expect(id).toBe('outbox-1');
-
-            expect(outboxRepository.createManyInTx).toHaveBeenCalledWith(tx, [
-                expect.objectContaining({ id: 'outbox-1' }),
-            ]);
-            expect(outboxRepository.findManyPendingByIds).toHaveBeenCalledWith([
-                'outbox-1',
-            ]);
-            expect(moduleRef.get).toHaveBeenCalledWith(
-                EnumSessionQueue.session,
-                { strict: false }
-            );
-            expect(sessionQueue.enqueue).toHaveBeenCalledTimes(1);
-            expect(sessionQueue.enqueue).toHaveBeenCalledWith([purgeRow]);
-            expect(outboxRepository.updateEnqueued).toHaveBeenCalledWith(
-                ['outbox-1'],
-                now
-            );
-        });
-    });
-
-    describe('addMany', () => {
-        it('inserts the rows, then dispatches them and returns their ids', async () => {
-            vi.spyOn(databaseUtil, 'createId')
-                .mockReturnValueOnce('outbox-1')
-                .mockReturnValueOnce('outbox-2');
-
-            outboxRepository.findManyPendingByIds.mockResolvedValue([
-                purgeRow,
-                { ...purgeRow, id: 'outbox-2', idempotencyKey: 'outbox-2' },
-            ]);
-
-            const ids = await service.addMany([purgeEffect, purgeEffect]);
-
-            expect(ids).toEqual(['outbox-1', 'outbox-2']);
-
-            expect(outboxRepository.createManyInTx).toHaveBeenCalledWith(tx, [
-                expect.objectContaining({ id: 'outbox-1' }),
-                expect.objectContaining({ id: 'outbox-2' }),
-            ]);
-            expect(outboxRepository.findManyPendingByIds).toHaveBeenCalledWith([
-                'outbox-1',
-                'outbox-2',
-            ]);
-            expect(moduleRef.get).toHaveBeenCalledWith(
-                EnumSessionQueue.session,
-                { strict: false }
-            );
-            expect(sessionQueue.enqueue).toHaveBeenCalledTimes(1);
-            expect(sessionQueue.enqueue).toHaveBeenCalledWith([
-                purgeRow,
-                expect.objectContaining({ id: 'outbox-2' }),
-            ]);
-            expect(outboxRepository.updateEnqueued).toHaveBeenCalledWith(
-                ['outbox-1', 'outbox-2'],
-                now
-            );
-        });
-    });
-
-    describe('dispatch', () => {
-        const userRow: Outbox = {
-            ...purgeRow,
-            id: 'outbox-2',
-            queue: EnumUserQueue.user,
-            name: EnumUserProcess.deletePhoto,
-            data: { userId: 'user-1', key: 'photo-key', access: 'private' },
-            idempotencyKey: 'outbox-2',
-        };
-
-        it('enqueues only the rows still pending, one enqueue per queue, then stamps them enqueued', async () => {
-            const userQueue: MockProxy<QueueBase> = mock<QueueBase>();
-            moduleRef.get.mockImplementation(token =>
-                token === EnumUserQueue.user ? userQueue : sessionQueue
-            );
-            outboxRepository.findManyPendingByIds.mockResolvedValue([
-                purgeRow,
-                userRow,
-            ]);
-
-            await service.dispatch(['outbox-1', 'outbox-2', 'outbox-done']);
-
-            expect(outboxRepository.findManyPendingByIds).toHaveBeenCalledWith([
-                'outbox-1',
-                'outbox-2',
-                'outbox-done',
-            ]);
-            expect(moduleRef.get).toHaveBeenCalledWith(
-                EnumSessionQueue.session,
-                { strict: false }
-            );
-            expect(moduleRef.get).toHaveBeenCalledWith(EnumUserQueue.user, {
-                strict: false,
-            });
-            expect(sessionQueue.enqueue).toHaveBeenCalledTimes(1);
-            expect(sessionQueue.enqueue).toHaveBeenCalledWith([purgeRow]);
-            expect(userQueue.enqueue).toHaveBeenCalledTimes(1);
-            expect(userQueue.enqueue).toHaveBeenCalledWith([userRow]);
-            expect(outboxRepository.updateEnqueued).toHaveBeenCalledTimes(1);
-            expect(outboxRepository.updateEnqueued).toHaveBeenCalledWith(
-                ['outbox-1', 'outbox-2'],
-                now
-            );
-        });
-
-        it('leaves the rows of a rejected enqueue pending, stamps the other queue, and consults the window on a connection error', async () => {
-            const userQueue: MockProxy<QueueBase> = mock<QueueBase>();
-            const error = new Error('Connection is closed.');
-            moduleRef.get.mockImplementation(token =>
-                token === EnumUserQueue.user ? userQueue : sessionQueue
-            );
-            outboxRepository.findManyPendingByIds.mockResolvedValue([
-                purgeRow,
-                userRow,
-            ]);
-            sessionQueue.enqueue.mockRejectedValue(error);
-            cacheService.isConnectionError.mockReturnValue(true);
-            cacheService.isFirstInWindow.mockReturnValue(false);
-
-            await expect(
-                service.dispatch(['outbox-1', 'outbox-2'])
-            ).resolves.toBeUndefined();
-
-            expect(outboxRepository.updateEnqueued).toHaveBeenCalledWith(
-                ['outbox-2'],
-                now
-            );
-            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
-            expect(cacheService.isFirstInWindow).toHaveBeenCalledWith(
-                OutboxDispatchWarnKey
-            );
-        });
-
-        it('leaves the rows unstamped and warns once when the queue class cannot be resolved', async () => {
-            const warn = vi.spyOn(Logger.prototype, 'warn');
-            const error = new Error('queue class not found');
-            moduleRef.get.mockImplementation(() => {
-                throw error;
-            });
-            outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
-            cacheService.isConnectionError.mockReturnValue(false);
-
-            await expect(
-                service.dispatch(['outbox-1'])
-            ).resolves.toBeUndefined();
-
-            expect(sessionQueue.enqueue).not.toHaveBeenCalled();
-            expect(outboxRepository.updateEnqueued).not.toHaveBeenCalled();
-            expect(warn).toHaveBeenCalledTimes(1);
-            expect(warn).toHaveBeenCalledWith(
-                { key: OutboxDispatchWarnKey, err: error },
-                'Outbox dispatch failed'
-            );
-        });
-
-        it('resolves, warns once, and leaves the rows unstamped on any other enqueue error', async () => {
-            const warn = vi.spyOn(Logger.prototype, 'warn');
-            outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
-            sessionQueue.enqueue.mockRejectedValue(new Error('bad job'));
-            cacheService.isConnectionError.mockReturnValue(false);
-
-            await expect(
-                service.dispatch(['outbox-1'])
-            ).resolves.toBeUndefined();
-
-            expect(outboxRepository.updateEnqueued).not.toHaveBeenCalled();
-            expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
-            expect(warn).toHaveBeenCalledTimes(1);
-        });
-
-        it('resolves when the connection error is the first in its window', async () => {
-            outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
-            sessionQueue.enqueue.mockRejectedValue(
-                new Error('Connection is closed.')
-            );
-            cacheService.isConnectionError.mockReturnValue(true);
-            cacheService.isFirstInWindow.mockReturnValue(true);
-
-            await expect(
-                service.dispatch(['outbox-1'])
-            ).resolves.toBeUndefined();
-
-            expect(cacheService.isFirstInWindow).toHaveBeenCalledTimes(1);
-        });
-
-        it('resolves when the pending read fails', async () => {
-            outboxRepository.findManyPendingByIds.mockRejectedValue(
-                new Error('server selection timeout')
-            );
-
-            await expect(
-                service.dispatch(['outbox-1'])
-            ).resolves.toBeUndefined();
-
-            expect(sessionQueue.enqueue).not.toHaveBeenCalled();
-        });
-
-        it('resolves when the enqueued stamp fails', async () => {
-            outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
-            outboxRepository.updateEnqueued.mockRejectedValue(
-                new Error('server selection timeout')
-            );
-
-            await expect(
-                service.dispatch(['outbox-1'])
-            ).resolves.toBeUndefined();
-        });
-
-        it('enqueues nothing when no id is still pending', async () => {
-            await service.dispatch(['outbox-done']);
-
-            expect(moduleRef.get).not.toHaveBeenCalled();
-            expect(outboxRepository.updateEnqueued).not.toHaveBeenCalled();
         });
     });
 
@@ -1015,6 +733,172 @@ describe('OutboxService', () => {
             expect(
                 outboxRepository.findManyEnqueuedBefore
             ).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('dispatch', () => {
+        const userRow: Outbox = {
+            ...purgeRow,
+            id: 'outbox-2',
+            queue: EnumUserQueue.user,
+            name: EnumUserProcess.deletePhoto,
+            data: { userId: 'user-1', key: 'photo-key', access: 'private' },
+            idempotencyKey: 'outbox-2',
+        };
+
+        it('enqueues only the rows still pending, one enqueue per queue, then stamps them enqueued', async () => {
+            const userQueue: MockProxy<QueueBase> = mock<QueueBase>();
+            moduleRef.get.mockImplementation(token =>
+                token === EnumUserQueue.user ? userQueue : sessionQueue
+            );
+            outboxRepository.findManyPendingByIds.mockResolvedValue([
+                purgeRow,
+                userRow,
+            ]);
+
+            await service['dispatch'](['outbox-1', 'outbox-2', 'outbox-done']);
+
+            expect(outboxRepository.findManyPendingByIds).toHaveBeenCalledWith([
+                'outbox-1',
+                'outbox-2',
+                'outbox-done',
+            ]);
+            expect(moduleRef.get).toHaveBeenCalledWith(
+                EnumSessionQueue.session,
+                { strict: false }
+            );
+            expect(moduleRef.get).toHaveBeenCalledWith(EnumUserQueue.user, {
+                strict: false,
+            });
+            expect(sessionQueue.enqueue).toHaveBeenCalledTimes(1);
+            expect(sessionQueue.enqueue).toHaveBeenCalledWith([purgeRow]);
+            expect(userQueue.enqueue).toHaveBeenCalledTimes(1);
+            expect(userQueue.enqueue).toHaveBeenCalledWith([userRow]);
+            expect(outboxRepository.updateEnqueued).toHaveBeenCalledTimes(1);
+            expect(outboxRepository.updateEnqueued).toHaveBeenCalledWith(
+                ['outbox-1', 'outbox-2'],
+                now
+            );
+        });
+
+        it('resolves and reads, enqueues, and stamps nothing when no id is given', async () => {
+            await expect(service['dispatch']([])).resolves.toBeUndefined();
+
+            expect(
+                outboxRepository.findManyPendingByIds
+            ).not.toHaveBeenCalled();
+            expect(sessionQueue.enqueue).not.toHaveBeenCalled();
+            expect(outboxRepository.updateEnqueued).not.toHaveBeenCalled();
+        });
+
+        it('leaves the rows of a rejected enqueue pending, stamps the other queue, and consults the window on a connection error', async () => {
+            const userQueue: MockProxy<QueueBase> = mock<QueueBase>();
+            const error = new Error('Connection is closed.');
+            moduleRef.get.mockImplementation(token =>
+                token === EnumUserQueue.user ? userQueue : sessionQueue
+            );
+            outboxRepository.findManyPendingByIds.mockResolvedValue([
+                purgeRow,
+                userRow,
+            ]);
+            sessionQueue.enqueue.mockRejectedValue(error);
+            cacheService.isConnectionError.mockReturnValue(true);
+            cacheService.isFirstInWindow.mockReturnValue(false);
+
+            await expect(
+                service['dispatch'](['outbox-1', 'outbox-2'])
+            ).resolves.toBeUndefined();
+
+            expect(outboxRepository.updateEnqueued).toHaveBeenCalledWith(
+                ['outbox-2'],
+                now
+            );
+            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+            expect(cacheService.isFirstInWindow).toHaveBeenCalledWith(
+                OutboxDispatchWarnKey
+            );
+        });
+
+        it('leaves the rows unstamped and warns once when the queue class cannot be resolved', async () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
+            const error = new Error('queue class not found');
+            moduleRef.get.mockImplementation(() => {
+                throw error;
+            });
+            outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
+            cacheService.isConnectionError.mockReturnValue(false);
+
+            await expect(
+                service['dispatch'](['outbox-1'])
+            ).resolves.toBeUndefined();
+
+            expect(sessionQueue.enqueue).not.toHaveBeenCalled();
+            expect(outboxRepository.updateEnqueued).not.toHaveBeenCalled();
+            expect(warn).toHaveBeenCalledTimes(1);
+            expect(warn).toHaveBeenCalledWith(
+                { key: OutboxDispatchWarnKey, err: error },
+                'Outbox dispatch failed'
+            );
+        });
+
+        it('resolves, warns once, and leaves the rows unstamped on any other enqueue error', async () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
+            outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
+            sessionQueue.enqueue.mockRejectedValue(new Error('bad job'));
+            cacheService.isConnectionError.mockReturnValue(false);
+
+            await expect(
+                service['dispatch'](['outbox-1'])
+            ).resolves.toBeUndefined();
+
+            expect(outboxRepository.updateEnqueued).not.toHaveBeenCalled();
+            expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
+            expect(warn).toHaveBeenCalledTimes(1);
+        });
+
+        it('resolves when the connection error is the first in its window', async () => {
+            outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
+            sessionQueue.enqueue.mockRejectedValue(
+                new Error('Connection is closed.')
+            );
+            cacheService.isConnectionError.mockReturnValue(true);
+            cacheService.isFirstInWindow.mockReturnValue(true);
+
+            await expect(
+                service['dispatch'](['outbox-1'])
+            ).resolves.toBeUndefined();
+
+            expect(cacheService.isFirstInWindow).toHaveBeenCalledTimes(1);
+        });
+
+        it('resolves when the pending read fails', async () => {
+            outboxRepository.findManyPendingByIds.mockRejectedValue(
+                new Error('server selection timeout')
+            );
+
+            await expect(
+                service['dispatch'](['outbox-1'])
+            ).resolves.toBeUndefined();
+
+            expect(sessionQueue.enqueue).not.toHaveBeenCalled();
+        });
+
+        it('resolves when the enqueued stamp fails', async () => {
+            outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
+            outboxRepository.updateEnqueued.mockRejectedValue(
+                new Error('server selection timeout')
+            );
+
+            await expect(
+                service['dispatch'](['outbox-1'])
+            ).resolves.toBeUndefined();
+        });
+
+        it('enqueues nothing when no id is still pending', async () => {
+            await service['dispatch'](['outbox-done']);
+
+            expect(moduleRef.get).not.toHaveBeenCalled();
+            expect(outboxRepository.updateEnqueued).not.toHaveBeenCalled();
         });
     });
 });

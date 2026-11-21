@@ -7,6 +7,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { MessageService } from '@common/message/services/message.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -56,6 +57,7 @@ export class MfaService {
         private readonly mfaPasskeyService: MfaPasskeyService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly notificationQueue: NotificationQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly messageService: MessageService,
@@ -394,7 +396,7 @@ export class MfaService {
         const lockedUntilIso = this.helperDateService.formatToIso(lockedUntil);
 
         try {
-            return await this.outboxService.withTransaction(async tx => {
+            return await this.databaseService.withTransaction(async tx => {
                 const isLocked = await this.mfaRepository.incrementAttemptInTx(
                     tx,
                     userId,

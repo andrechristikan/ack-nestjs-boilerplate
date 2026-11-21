@@ -6,6 +6,7 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
@@ -29,6 +30,7 @@ export class WorkspaceLeaveUseCase implements IAppUseCase<
         private readonly projectMemberService: ProjectMemberService,
         private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
         private readonly userService: UserService,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
@@ -42,7 +44,7 @@ export class WorkspaceLeaveUseCase implements IAppUseCase<
         const workspaceId = workspaceContext.workspace.id;
         const member = workspaceContext.workspaceMember;
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.workspaceMemberService.leaveWorkspaceInTx(
                     tx,
                     member

@@ -25,6 +25,7 @@ import type {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 
@@ -36,6 +37,7 @@ export class FeatureFlagService {
         private readonly cacheService: CacheService,
         private readonly cacheQueue: CacheQueue,
         private readonly helperHashService: HelperHashService,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService
     ) {}
 
@@ -237,7 +239,7 @@ export class FeatureFlagService {
         id: string,
         data: IFeatureFlagUpdateStatus
     ): Promise<FeatureFlag> {
-        return this.outboxService.withTransaction(async tx => {
+        return this.databaseService.withTransaction(async tx => {
             const updated = await this.featureFlagRepository.updateStatusInTx(
                 tx,
                 id,
@@ -271,7 +273,7 @@ export class FeatureFlagService {
             throw new FeatureFlagInvalidMetadataException();
         }
 
-        return this.outboxService.withTransaction(async tx => {
+        return this.databaseService.withTransaction(async tx => {
             const updated = await this.featureFlagRepository.updateMetadataInTx(
                 tx,
                 id,

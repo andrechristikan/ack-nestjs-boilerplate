@@ -29,6 +29,7 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
@@ -69,6 +70,7 @@ describe('WorkspaceMemberService', () => {
         mock<WorkspaceRepository>();
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -114,6 +116,7 @@ describe('WorkspaceMemberService', () => {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: FeatureFlagService, useValue: featureFlagService },
@@ -359,7 +362,7 @@ describe('WorkspaceMemberService', () => {
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
             });
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it.each([
@@ -402,7 +405,7 @@ describe('WorkspaceMemberService', () => {
                 expect(
                     featureFlagService.getMetadataNumber
                 ).not.toHaveBeenCalled();
-                expect(outboxService.withTransaction).not.toHaveBeenCalled();
+                expect(databaseService.withTransaction).not.toHaveBeenCalled();
             }
         );
 
@@ -410,7 +413,7 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
                 activeTarget
             );
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(5);
 
             await expect(
@@ -441,7 +444,7 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
                 activeTarget
             );
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(2);
 
             await expect(
@@ -465,7 +468,7 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
                 activeTarget
             );
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(2);
 
             await expect(
@@ -502,7 +505,7 @@ describe('WorkspaceMemberService', () => {
                     'user-2'
                 )
             ).rejects.toBe(notConfigured);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 workspaceMemberRepository.promoteToOwnerInTx
             ).not.toHaveBeenCalled();
@@ -512,7 +515,7 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
                 activeTarget
             );
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(4);
 
             await expect(
@@ -529,7 +532,7 @@ describe('WorkspaceMemberService', () => {
             expect(
                 workspaceMemberRepository.findOneByWorkspaceAndUserWithUser
             ).toHaveBeenCalledWith('workspace-1', 'user-2');
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(workspaceService.countOwnedInTx).toHaveBeenCalledWith(
                 tx,
                 'user-2'
@@ -552,7 +555,7 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
                 activeTarget
             );
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(0);
 
             await service.transferOwnership(
@@ -605,7 +608,7 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
                 activeTarget
             );
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(0);
             workspaceMemberRepository.promoteToOwnerInTx.mockResolvedValue(
                 false
@@ -634,7 +637,7 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
                 activeTarget
             );
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(0);
             workspaceMemberRepository.demoteOwnerInTx.mockResolvedValue(false);
 
@@ -653,8 +656,8 @@ describe('WorkspaceMemberService', () => {
 
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(outboxService.withTransaction).not.toHaveResolved();
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).not.toHaveResolved();
         });
 
         it('maps a write conflict in the ownership swap to WorkspaceMemberPeerForbiddenException', async () => {
@@ -664,7 +667,7 @@ describe('WorkspaceMemberService', () => {
             const conflict = buildPrismaKnownRequestError(
                 DatabaseWriteConflictCode
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 service.transferOwnership(
@@ -687,7 +690,9 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
                 activeTarget
             );
-            outboxService.withTransaction.mockRejectedValue(new Error('boom'));
+            databaseService.withTransaction.mockRejectedValue(
+                new Error('boom')
+            );
 
             await expect(
                 service.transferOwnership(
@@ -730,7 +735,7 @@ describe('WorkspaceMemberService', () => {
                 .mockReturnValueOnce(firstEntry)
                 .mockReturnValueOnce(secondEntry)
                 .mockReturnValueOnce(thirdEntry);
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
             workspaceService.countOwnedInTx.mockResolvedValue(0);
         });
 
@@ -755,7 +760,7 @@ describe('WorkspaceMemberService', () => {
             expect(
                 workspaceRepository.findActiveByIdWithTransferMembers
             ).toHaveBeenCalledWith('workspace-1', 'user-2');
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceSelfTransferException when the target is the current owner', async () => {
@@ -776,7 +781,7 @@ describe('WorkspaceMemberService', () => {
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.selfTransfer,
             });
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceMemberNotFoundException when the workspace has no owner row', async () => {
@@ -796,7 +801,7 @@ describe('WorkspaceMemberService', () => {
                 constructor: WorkspaceMemberNotFoundException,
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
             });
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceMemberNotFoundException when the target is not a member', async () => {
@@ -817,7 +822,7 @@ describe('WorkspaceMemberService', () => {
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
             });
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it.each([
@@ -856,7 +861,7 @@ describe('WorkspaceMemberService', () => {
                 expect(
                     featureFlagService.getMetadataNumber
                 ).not.toHaveBeenCalled();
-                expect(outboxService.withTransaction).not.toHaveBeenCalled();
+                expect(databaseService.withTransaction).not.toHaveBeenCalled();
             }
         );
 
@@ -1098,7 +1103,7 @@ describe('WorkspaceMemberService', () => {
         };
 
         beforeEach(() => {
-            outboxService.withTransaction.mockImplementation(fn => fn(tx));
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
         });
 
         it('throws WorkspaceMemberNotFoundException when the target member does not exist', async () => {

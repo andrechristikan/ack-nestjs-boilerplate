@@ -35,6 +35,7 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
@@ -53,6 +54,7 @@ import {
 describe('TermPolicyAcceptanceService', () => {
     const termPolicyRepository: MockProxy<TermPolicyRepository> =
         mock<TermPolicyRepository>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
@@ -126,6 +128,7 @@ describe('TermPolicyAcceptanceService', () => {
                     provide: TermPolicyRepository,
                     useValue: termPolicyRepository,
                 },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 ...TestUnitKitProviders,
@@ -467,7 +470,7 @@ describe('TermPolicyAcceptanceService', () => {
             termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
                 []
             );
-            outboxService.withTransaction.mockImplementation(async fn =>
+            databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
 
@@ -494,7 +497,7 @@ describe('TermPolicyAcceptanceService', () => {
                     meta: { target: ['termPolicyId'] },
                 }
             );
-            outboxService.withTransaction.mockRejectedValue(collision);
+            databaseService.withTransaction.mockRejectedValue(collision);
 
             const promise = service.userAccept(
                 requestContext,
@@ -515,7 +518,7 @@ describe('TermPolicyAcceptanceService', () => {
                 'conflict',
                 { code: DatabaseWriteConflictCode, clientVersion: 'test' }
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             const promise = service.userAccept(
                 requestContext,
@@ -541,7 +544,7 @@ describe('TermPolicyAcceptanceService', () => {
                 [latest]
             );
             notificationQueue.notify.mockReturnValue(effect);
-            outboxService.withTransaction.mockImplementation(async fn =>
+            databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
 
@@ -584,7 +587,7 @@ describe('TermPolicyAcceptanceService', () => {
             );
             notificationQueue.notify.mockReturnValue(notifyEffect);
             activityLogQueue.recordEffect.mockReturnValue(entryEffect);
-            outboxService.withTransaction.mockImplementation(async fn =>
+            databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
 
@@ -607,7 +610,7 @@ describe('TermPolicyAcceptanceService', () => {
 
         it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
             const rawError = new Error('write failed');
-            outboxService.withTransaction.mockRejectedValue(rawError);
+            databaseService.withTransaction.mockRejectedValue(rawError);
 
             const promise = service.userAccept(
                 requestContext,

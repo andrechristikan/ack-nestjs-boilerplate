@@ -7,8 +7,7 @@
 | its exported service | yes, when it sits on a lower level (`layering.md`, Levels) | yes, through its `<Module>Module` |
 | its exported util | no | yes, through its `<Module>Module` |
 | its queue class | yes, through its `<Module>Module` | yes, through its `<Module>Module` |
-| its cache or repository | no | no; ask the owning service |
-| its use case, controller, or processor | no | no |
+| its cache or repository | no | ask the owning service |
 | its enums, interfaces, constants, schemas | yes, compile-time only | yes, compile-time only |
 | its exceptions | yes, when the failed subject is its entity | yes, when the failed subject is its entity |
 | its Prisma model through your own `DatabaseService` | no | no |
@@ -27,7 +26,7 @@ Who opens a transaction spanning repositories or modules, and how the others joi
 
 ## Composition follows the levels
 
-A module import cycle is a broken boundary: the boot fails on one (`ReferenceError`), and no `forwardRef` hides one. When a service needs a module on its own level or above, the ways out:
+A module import cycle is a broken boundary: the boot fails on one (`ReferenceError`). When a service needs a module on its own level or above, the ways out:
 
 1. Orchestration: the sequence moves up into a use case, which injects both modules' services, one shared write transaction included.
 2. A shared piece: it moves down into a lower level's service, or into `src/common/` when module-agnostic (`layering.md`, Levels).

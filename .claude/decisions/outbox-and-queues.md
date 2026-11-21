@@ -43,13 +43,18 @@ Rule: `outbox.md`.
 - Importing `OutboxModule` in every module that needs it: the processor router and every module writing an effect would carry the same import.
 - A `@nestjs/schedule` cron sweep: it runs on every replica and adds a dependency, where a BullMQ job scheduler runs each tick once.
 
-### A statement and its outbox row share one transaction, and the transaction wrapper dispatches
+### A statement and its outbox row share the use case's transaction, and an `afterCommit` callback dispatches
 
-Rule: `effects.md`, Writing.
+Rule: `effects.md`, Writing; `database.md`.
 
 - A non-transactional add after the statement: a crash or a MongoDB failure between the two loses the effect the outbox exists to keep.
-- The use case calling `enqueue` itself after its transaction: every `*InTx` signature and callback then carries outbox ids through every layer, and a dropped return or a forgotten call leaves the row to the sweep.
-- The opener keeps its `tx` and asks `OutboxService` to dispatch after the commit: every opener holds `tx` outside its callback, and a forgotten call fails silently.
+- A transaction wrapper on the outbox service that opens the transaction and dispatches after it, with insert-and-dispatch methods on the outbox service for an effect with no business write: the outbox, a kit module, would open a transaction, where the kit opens none.
+- A commit listener registered on `DatabaseService` at boot: it is a publish and subscribe mechanism, which this project does not use.
+- The use case asking the outbox to dispatch after its transaction, with no ids or by its `tx`: a dispatch with no ids costs one more query in every flow, one by `tx` holds `tx` outside its callback, and a forgotten call leaves the row to the sweep.
+- The use case enqueueing or dispatching the ids its transaction added: every `*InTx` method then returns outbox ids through every layer, and a dropped return or a forgotten call leaves the row to the sweep.
+- A Prisma client extension in two layers: a second wrapper on every query and a client type derived twice.
+- A Prisma client extension handing the callback a `Proxy` of `tx`: every access to `tx` passes a trap, and the method is typed by hand.
+- The sweep alone: a one-time code, an email, and a session cache purge wait for the next sweep.
 
 ### The queue class is a module's side-effect entry, and enqueues after the commit
 

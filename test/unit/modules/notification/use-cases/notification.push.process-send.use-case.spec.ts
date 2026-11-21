@@ -26,6 +26,7 @@ import { NotificationService } from '@modules/notification/services/notification
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationPushProcessSendUseCase } from '@modules/notification/use-cases/notification.push.process-send.use-case';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 
 describe('NotificationPushProcessSendUseCase', () => {
@@ -36,6 +37,7 @@ describe('NotificationPushProcessSendUseCase', () => {
         mock<NotificationService>();
     const notificationPushQueue: MockProxy<NotificationPushQueue> =
         mock<NotificationPushQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
@@ -79,7 +81,7 @@ describe('NotificationPushProcessSendUseCase', () => {
     beforeEach(async () => {
         messageService.setMessage.mockImplementation((path: string) => path);
         firebaseService.isInitialized.mockReturnValue(true);
-        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
         const module = await Test.createTestingModule({
             providers: [
                 NotificationPushProcessSendUseCase,
@@ -94,6 +96,7 @@ describe('NotificationPushProcessSendUseCase', () => {
                     provide: NotificationPushQueue,
                     useValue: notificationPushQueue,
                 },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -221,7 +224,7 @@ describe('NotificationPushProcessSendUseCase', () => {
             notificationService.decryptFailureTokens.mockReturnValue([
                 'token-2',
             ]);
-            outboxService.withTransaction.mockRejectedValue(rawError);
+            databaseService.withTransaction.mockRejectedValue(rawError);
 
             await expect(useCase.execute('outbox-id', data)).rejects.toBe(
                 rawError
@@ -291,7 +294,7 @@ describe('NotificationPushProcessSendUseCase', () => {
                 encryptedPendingTokens: ['cipher(token-1)'],
                 encryptedFailureTokens: [],
             });
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('retries only the pending tokens and skips a completed step', async () => {
@@ -338,7 +341,7 @@ describe('NotificationPushProcessSendUseCase', () => {
             expect(
                 notificationPushDeliveryService.sendMulticast
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.updateData).toHaveBeenCalledWith('outbox-id', {
                 completedSteps: [
                     EnumNotificationStep.updateProcessAt,

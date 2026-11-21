@@ -13,6 +13,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { UserService } from '@modules/user/services/user.service';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -72,6 +73,7 @@ const passkeyResponse = {
 describe('UserDeleteSelfUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -120,7 +122,7 @@ describe('UserDeleteSelfUseCase', () => {
 
     beforeEach(async () => {
         vi.setSystemTime(now);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
 
@@ -129,6 +131,7 @@ describe('UserDeleteSelfUseCase', () => {
                 UserDeleteSelfUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: SessionService, useValue: sessionService },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 HelperDateService,
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
@@ -239,12 +242,12 @@ describe('UserDeleteSelfUseCase', () => {
             expect(
                 userAuthService.assertReauthentication
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('verifies the password, then cascades the owned workspaces and every membership and adds the entries on one transaction', async () => {
             const calls: string[] = [];
-            outboxService.withTransaction.mockImplementation(async fn => {
+            databaseService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -501,7 +504,7 @@ describe('UserDeleteSelfUseCase', () => {
         });
 
         it('completes nothing outside the transaction when the main step fails after a correct proof', async () => {
-            outboxService.withTransaction.mockRejectedValue(
+            databaseService.withTransaction.mockRejectedValue(
                 buildPrismaKnownRequestError('P2034')
             );
 
@@ -638,7 +641,7 @@ describe('UserDeleteSelfUseCase', () => {
                 dto
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 30000 }
             );
@@ -646,7 +649,7 @@ describe('UserDeleteSelfUseCase', () => {
 
         it('answers UserNotFoundException on a write conflict', async () => {
             const conflict = buildPrismaKnownRequestError('P2034');
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -805,7 +808,7 @@ describe('UserDeleteSelfUseCase', () => {
                 statusCode: EnumUserStatusCodeError.passwordNotMatch,
             });
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(userService.deleteSelfInTx).not.toHaveBeenCalled();
         });
 
@@ -823,7 +826,7 @@ describe('UserDeleteSelfUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(userService.deleteSelfInTx).not.toHaveBeenCalled();
         });
 
@@ -860,7 +863,7 @@ describe('UserDeleteSelfUseCase', () => {
 
         it('wraps an unknown error in AppUnknownException', async () => {
             const cause = new Error('database exploded');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(

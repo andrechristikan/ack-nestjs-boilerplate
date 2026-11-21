@@ -22,7 +22,7 @@ Open the owner's enum and find a member that already means the thing. Add a memb
 ## 3. Add a member to an existing block
 
 1. Check headroom: the next sequential number stays inside the owner's hundred. When it does not, stop and report.
-2. Append the member at the next number, no gap, camelCase descriptor (`src/modules/user/enums/user.status-code.enum.ts`).
+2. Append the member at the next number, no gap, named by its descriptor (`src/modules/user/enums/user.status-code.enum.ts`).
 3. Create `exceptions/<module>.<descriptor>.exception.ts` from `DeviceNotFoundException` (`src/modules/device/exceptions/device.not-found.exception.ts`).
 4. Choose `httpStatus` as `.claude/rules/exceptions.md`, The hierarchy, gives.
 5. Add `error.<descriptor>` to `src/languages/<lang>/<module>.json` in every language directory (`.claude/rules/i18n.md`).

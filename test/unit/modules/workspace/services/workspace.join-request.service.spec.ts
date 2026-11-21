@@ -38,6 +38,7 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
@@ -89,6 +90,7 @@ describe('WorkspaceJoinRequestService', () => {
         mock<ActivityLogQueue>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const configValues: Record<string, unknown> = {
@@ -164,7 +166,7 @@ describe('WorkspaceJoinRequestService', () => {
     beforeEach(async () => {
         featureFlagService.getMetadataNumber.mockResolvedValue(7);
         vi.setSystemTime(reviewedAt);
-        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
         activityLogQueue.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
@@ -193,6 +195,7 @@ describe('WorkspaceJoinRequestService', () => {
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 ...TestUnitKitProviders,
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: MessageService, useValue: messageService },
                 {
@@ -393,7 +396,7 @@ describe('WorkspaceJoinRequestService', () => {
                     notice
                 )
             ).rejects.toBe(notConfigured);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 workspaceJoinRequestRepository.createPendingInTx
             ).not.toHaveBeenCalled();
@@ -419,7 +422,7 @@ describe('WorkspaceJoinRequestService', () => {
                 notice
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(notificationQueue.notify).toHaveBeenNthCalledWith(
                 1,
                 EnumNotificationKind.workspaceJoinRequest,
@@ -717,7 +720,7 @@ describe('WorkspaceJoinRequestService', () => {
                 'revokeInvite',
                 'addEffect',
             ]);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 workspaceJoinRequestRepository.acceptInTx
             ).toHaveBeenCalledWith(
@@ -992,7 +995,7 @@ describe('WorkspaceJoinRequestService', () => {
             );
 
             expect(calls).toEqual(['reject', 'addEffect']);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 workspaceJoinRequestRepository.rejectInTx
             ).toHaveBeenCalledWith(

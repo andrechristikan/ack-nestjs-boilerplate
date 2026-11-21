@@ -19,6 +19,7 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
@@ -58,6 +59,7 @@ describe('UserRefreshUseCase', () => {
     const authJwtService: MockProxy<AuthJwtService> = mock<AuthJwtService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const refreshSessionDoubles: IUserRefreshSessionDoubles = {
         authJwtService,
@@ -101,7 +103,7 @@ describe('UserRefreshUseCase', () => {
     });
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         vi.setSystemTime(now);
@@ -121,6 +123,7 @@ describe('UserRefreshUseCase', () => {
                 { provide: DeviceService, useValue: deviceService },
                 { provide: AuthJwtService, useValue: authJwtService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
                 {
@@ -185,7 +188,7 @@ describe('UserRefreshUseCase', () => {
                 )
             ).resolves.toEqual({ data: tokens });
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(sessionService.updateJtiInTx).toHaveBeenCalledWith(
                 tx,
                 'session-bramble',
@@ -266,7 +269,7 @@ describe('UserRefreshUseCase', () => {
                 )
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(sessionService.revokeReusedInTx).toHaveBeenCalledWith(
                 tx,
                 'user-bramble',
@@ -328,7 +331,7 @@ describe('UserRefreshUseCase', () => {
                 throw new SessionRevokedException();
             });
             const conflict = buildPrismaKnownRequestError('P2034');
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expectSessionRevoked(
                 useCase.execute(
@@ -351,7 +354,7 @@ describe('UserRefreshUseCase', () => {
                 refreshed,
             });
             const failure = new SessionRevokedException();
-            outboxService.withTransaction.mockRejectedValue(failure);
+            databaseService.withTransaction.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -370,7 +373,7 @@ describe('UserRefreshUseCase', () => {
                 refreshed,
             });
             const failure = new Error('boom');
-            outboxService.withTransaction.mockRejectedValue(failure);
+            databaseService.withTransaction.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(

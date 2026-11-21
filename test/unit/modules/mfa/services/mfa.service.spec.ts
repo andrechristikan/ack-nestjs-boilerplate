@@ -17,6 +17,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { MessageService } from '@common/message/services/message.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
@@ -69,6 +70,7 @@ describe('MfaService', () => {
         mock<ActivityLogQueue>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const featureFlagService: MockProxy<FeatureFlagService> =
@@ -162,7 +164,7 @@ describe('MfaService', () => {
 
     beforeEach(async () => {
         stubMfaMetadataNumbers(featureFlagService, 5, 15);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
 
@@ -174,6 +176,7 @@ describe('MfaService', () => {
                 { provide: MfaPasskeyService, useValue: mfaPasskeyService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: MessageService, useValue: messageService },
                 ...TestUnitKitProviders,
@@ -990,7 +993,7 @@ describe('MfaService', () => {
                         'user-quartz'
                     )
                 ).rejects.toBe(failure);
-                expect(outboxService.withTransaction).not.toHaveBeenCalled();
+                expect(databaseService.withTransaction).not.toHaveBeenCalled();
                 expect(
                     mfaRepository.incrementAttemptInTx
                 ).not.toHaveBeenCalled();
@@ -1098,7 +1101,7 @@ describe('MfaService', () => {
                 'conflict',
                 { code: DatabaseWriteConflictCode, clientVersion: 'test' }
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 service.countFailedAttempt(
@@ -1115,7 +1118,7 @@ describe('MfaService', () => {
 
         it('rethrows an AppBaseException unchanged', async () => {
             const failure = new DatabaseUnavailableException();
-            outboxService.withTransaction.mockRejectedValue(failure);
+            databaseService.withTransaction.mockRejectedValue(failure);
 
             await expect(
                 service.countFailedAttempt(
@@ -1128,7 +1131,7 @@ describe('MfaService', () => {
 
         it('wraps any other error in AppUnknownException', async () => {
             const cause = new Error('database exploded');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 service.countFailedAttempt(

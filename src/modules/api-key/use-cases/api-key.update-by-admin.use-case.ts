@@ -10,6 +10,7 @@ import type {
 } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -30,6 +31,7 @@ export class ApiKeyUpdateByAdminUseCase implements IAppUseCase<
         private readonly apiKeyService: ApiKeyService,
         private readonly apiKeyUtil: ApiKeyUtil,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -41,7 +43,7 @@ export class ApiKeyUpdateByAdminUseCase implements IAppUseCase<
         id: string,
         { name }: ApiKeyUpdateRequestDto
     ): Promise<IResponseReturn<IApiKey>> {
-        const updated = await this.outboxService.withTransaction(async tx => {
+        const updated = await this.databaseService.withTransaction(async tx => {
             const apiKey = await this.apiKeyService.updateByAdminInTx(
                 tx,
                 id,

@@ -55,6 +55,7 @@ import { SessionRepository } from '@modules/session/repositories/session.reposit
 import { SessionService } from '@modules/session/services/session.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { ISessionPurgeLoginsEffect } from '@modules/session/interfaces/session.interface';
@@ -87,6 +88,7 @@ describe('SessionService', () => {
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
@@ -190,6 +192,7 @@ describe('SessionService', () => {
                 ...TestUnitKitProviders,
                 { provide: DeviceService, useValue: deviceService },
                 DeviceUtil,
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: SessionQueue, useValue: sessionQueue },
@@ -682,8 +685,7 @@ describe('SessionService', () => {
                 refs
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
-            expect(outboxService.dispatch).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('adds no row when no session was revoked', async () => {
@@ -734,8 +736,7 @@ describe('SessionService', () => {
                 refs
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
-            expect(outboxService.dispatch).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('adds no row when no other session was revoked', async () => {
@@ -937,7 +938,7 @@ describe('SessionService', () => {
             activityLogQueue.recordEffect
                 .mockReturnValueOnce(actorEffect)
                 .mockReturnValueOnce(targetEffect);
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
         });
@@ -1031,7 +1032,7 @@ describe('SessionService', () => {
             );
 
             expect(result).toBe(session);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(sessionRepository.revokeByAdminInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
@@ -1073,7 +1074,7 @@ describe('SessionService', () => {
                     clientVersion: 'test',
                 }
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 service.revokeByAdmin(
@@ -1092,7 +1093,7 @@ describe('SessionService', () => {
 
         it('wraps any other error in AppUnknownException', async () => {
             const cause = new Error('database exploded');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 service.revokeByAdmin(
@@ -1134,7 +1135,7 @@ describe('SessionService', () => {
             activityLogQueue.recordEffect
                 .mockReturnValueOnce(actorEffect)
                 .mockReturnValueOnce(targetEffect);
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
         });
@@ -1199,7 +1200,7 @@ describe('SessionService', () => {
             );
 
             expect(result).toBe(refs);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 sessionRepository.revokeActiveByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-1', null, 'admin-1', revokedAt);
@@ -1237,7 +1238,7 @@ describe('SessionService', () => {
                     clientVersion: 'test',
                 }
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 service.revokeAllByAdmin(
@@ -1255,7 +1256,7 @@ describe('SessionService', () => {
 
         it('wraps any other error in AppUnknownException', async () => {
             const cause = new Error('database exploded');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 service.revokeAllByAdmin(
@@ -1358,7 +1359,7 @@ describe('SessionService', () => {
                 now
             );
             expect(calls).toEqual(['revokeSessions', 'removeOwnership']);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
                 'user-1',
                 revokedSessions
@@ -1451,7 +1452,7 @@ describe('SessionService', () => {
             activityLogQueue.recordEffect
                 .mockReturnValueOnce(actorEffect)
                 .mockReturnValueOnce(targetEffect);
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
             sessionRepository.revokeByDeviceOwnershipInTx.mockResolvedValue(
@@ -1471,7 +1472,7 @@ describe('SessionService', () => {
                 'device-ownership-1'
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 sessionRepository.revokeByDeviceOwnershipInTx
             ).toHaveBeenCalledWith(
@@ -1556,7 +1557,7 @@ describe('SessionService', () => {
                     clientVersion: 'test',
                 }
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 service.removeDeviceOwnershipByAdmin(
@@ -1591,7 +1592,7 @@ describe('SessionService', () => {
 
         it('wraps any other error in AppUnknownException', async () => {
             const cause = new Error('database exploded');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 service.removeDeviceOwnershipByAdmin(

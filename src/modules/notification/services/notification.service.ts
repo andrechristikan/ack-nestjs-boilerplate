@@ -20,6 +20,7 @@ import { NotificationInvalidChannelException } from '@modules/notification/excep
 import { NotificationInvalidTypeException } from '@modules/notification/exceptions/notification.invalid-type.exception';
 import { NotificationNotFoundException } from '@modules/notification/exceptions/notification.not-found.exception';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
@@ -56,6 +57,7 @@ export class NotificationService {
         private readonly notificationUtil: NotificationUtil,
         private readonly deviceService: DeviceService,
         private readonly messageService: MessageService,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly notificationEmailQueue: NotificationEmailQueue,
@@ -338,7 +340,7 @@ export class NotificationService {
     ): Promise<void> {
         this.validateUserSetting(data.type, data.channel);
 
-        await this.outboxService.withTransaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             const updated =
                 await this.notificationUserSettingRepository.updateUserSettingInTx(
                     tx,

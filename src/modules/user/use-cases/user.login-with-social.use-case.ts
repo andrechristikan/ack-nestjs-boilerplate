@@ -16,6 +16,7 @@ import type { IDeviceIdentity } from '@modules/device/interfaces/device.interfac
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
@@ -79,6 +80,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         private readonly userUtil: UserUtil,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly deviceUtil: DeviceUtil,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
@@ -129,7 +131,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
-                return await this.outboxService.withTransaction(
+                return await this.databaseService.withTransaction(
                     async tx => {
                         await this.termPolicyAcceptanceService.assertRequiredPublishedInTx(
                             tx,
@@ -267,7 +269,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         ]);
         const isUnverified = this.userUtil.isUnverified(user);
 
-        return this.outboxService.withTransaction(
+        return this.databaseService.withTransaction(
             async (tx): Promise<IUserLoginOutcome> => {
                 if (subject !== null) {
                     await this.userSocialService.linkInTx(

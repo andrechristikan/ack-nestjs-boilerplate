@@ -21,6 +21,7 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
@@ -54,6 +55,7 @@ describe('ProjectMemberService', () => {
         mock<ProjectMemberRepository>();
     const projectRepository: MockProxy<ProjectRepository> =
         mock<ProjectRepository>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -128,7 +130,7 @@ describe('ProjectMemberService', () => {
         activityLogQueue.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
-        outboxService.withTransaction.mockImplementation(fn => fn(tx));
+        databaseService.withTransaction.mockImplementation(fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -144,6 +146,7 @@ describe('ProjectMemberService', () => {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
             ],

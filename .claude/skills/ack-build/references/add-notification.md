@@ -4,7 +4,7 @@ Invariants: `.claude/rules/notification.md`, `.claude/rules/notify.md`, `.claude
 
 ## 1. Name the kind
 
-One camelCase member of `EnumNotificationKind` (`src/modules/notification/enums/notification.enum.ts`).
+One member of `EnumNotificationKind` (`src/modules/notification/enums/notification.enum.ts`).
 
 ## 2. Contract and messages
 
@@ -19,7 +19,7 @@ One camelCase member of `EnumNotificationKind` (`src/modules/notification/enums/
 
 ## 4. Producer
 
-1. The use case or service owning the write adds `this.notificationQueue.notify(EnumNotificationKind.<kind>, context)` as `.claude/rules/notify.md` gives: in the write's transaction, or `OutboxService.add` with no write; the snapshot and the unregistered invitee included.
+1. The use case or service owning the write adds `this.notificationQueue.notify(EnumNotificationKind.<kind>, context)` as `.claude/rules/notify.md` gives: in the write's transaction, or in one holding the add alone with no write; the snapshot and the unregistered invitee included.
 2. A caller in another module reaches `NotificationQueue` through `NotificationModule`, imported by its own module file (`.claude/rules/layering.md`, Levels).
 
 ## 5. Email template
@@ -36,7 +36,7 @@ Push properties come from the contract row; `NotificationPushProcessSendUseCase`
 
 A bulk email follows `publishTermPolicy` (`.claude/rules/notification.md`, Term-policy publish):
 
-1. `TermPolicyPublishByAdminUseCase`'s transaction adds the publish effect through `TermPolicyService.publishByAdminInTx`; the resend adds `TermPolicyQueue.resendPublishEffect` with a fresh nonce through `OutboxService.addMany`. Both add the `publish` job on the owning module's queue.
+1. `TermPolicyPublishByAdminUseCase`'s transaction adds the publish effect through `TermPolicyService.publishByAdminInTx`; the resend adds `TermPolicyQueue.resendPublishEffect` with a fresh nonce through `addManyInTx`, in a transaction its use case opens for it alone. Both add the `publish` job on the owning module's queue.
 2. `TermPolicyProcessPublishUseCase` (`src/modules/term-policy/use-cases/term-policy.process-publish.use-case.ts`) pages active recipients up to the bound (`UserService.getListActiveRecipientCursor`, `email.batchSize` per page) and passes each page to `TermPolicyRecipientService`; `UserService.getManyActiveRecipientsByIds` fills a pending batch's off-page recipients.
 3. Markers and batches: the use case opens one transaction per fresh batch over `NotificationService.createManyInTx`, `TermPolicyRecipientService.createManyInTx`, and the batch row from `NotificationEmailQueue.emailPublishTermPolicyEffect`; a pending batch is re-added with only its sendable rows (`TermPolicyRecipientSendWhere`).
 4. Send: `NotificationEmailProcessPublishTermPolicyUseCase` (`src/modules/notification/use-cases/notification.email.process-publish-term-policy.use-case.ts`) claims through the owning module's service, sends in bulk through `NotificationEmailDeliveryService.sendPublishTermPolicy`, and marks each success sent.

@@ -2,6 +2,7 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -39,6 +40,7 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
         private readonly mfaTotpService: MfaTotpService,
         private readonly userAuthService: UserAuthService,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
@@ -84,7 +86,7 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
         );
 
         try {
-            const backupCodes = await this.outboxService.withTransaction(
+            const backupCodes = await this.databaseService.withTransaction(
                 async tx => {
                     await this.userAuthService.completeReauthenticationInTx(
                         tx,

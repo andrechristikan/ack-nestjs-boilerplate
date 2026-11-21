@@ -8,6 +8,7 @@ import type { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-k
 import type { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -28,6 +29,7 @@ export class ApiKeyCreateByAdminUseCase implements IAppUseCase<
         private readonly apiKeyService: ApiKeyService,
         private readonly apiKeyUtil: ApiKeyUtil,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -40,7 +42,7 @@ export class ApiKeyCreateByAdminUseCase implements IAppUseCase<
         body: ApiKeyCreateRequestDto
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
         const apiKeyId = this.databaseUtil.createId();
-        const { apiKey, secret } = await this.outboxService.withTransaction(
+        const { apiKey, secret } = await this.databaseService.withTransaction(
             async tx => {
                 const created = await this.apiKeyService.createByAdminInTx(
                     tx,

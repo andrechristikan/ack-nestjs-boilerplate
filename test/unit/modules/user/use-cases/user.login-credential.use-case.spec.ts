@@ -18,6 +18,7 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
@@ -63,6 +64,7 @@ describe('UserLoginCredentialUseCase', () => {
         mock<WorkspaceMemberService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx = {} as IDatabaseTransactionClient;
     const requestContext = buildRequestContext();
@@ -125,7 +127,7 @@ describe('UserLoginCredentialUseCase', () => {
     beforeEach(async () => {
         vi.setSystemTime(now);
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         mfaService.isEnabled.mockResolvedValue(false);
@@ -149,6 +151,7 @@ describe('UserLoginCredentialUseCase', () => {
                 UserUtil,
                 { provide: MfaService, useValue: mfaService },
                 DeviceUtil,
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 HelperDateService,
                 {
@@ -227,8 +230,8 @@ describe('UserLoginCredentialUseCase', () => {
                 EnumUserLoginWith.credential,
                 now
             );
-            expect(outboxService.add).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
         it('rejects with the session failure of the one transaction', async () => {
@@ -275,7 +278,7 @@ describe('UserLoginCredentialUseCase', () => {
             );
         });
 
-        it('counts the mismatch, adds the failed-login entry through OutboxService.add, and answers the credential error below the budget', async () => {
+        it('counts the mismatch, adds the failed-login entry through OutboxService.addInTx, and answers the credential error below the budget', async () => {
             const failure = new UserCredentialInvalidException();
             userAuthService.isCredentialMatch.mockResolvedValue(false);
             userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
@@ -306,11 +309,12 @@ describe('UserLoginCredentialUseCase', () => {
                     createdBy: 'user-bramble',
                 }
             );
-            expect(outboxService.add).toHaveBeenCalledWith(entryEffect);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
             expect(
                 userPasswordService.countFailedPasswordAttempt
-            ).toHaveBeenCalledBefore(outboxService.add);
-            expect(outboxService.add).toHaveBeenCalledBefore(
+            ).toHaveBeenCalledBefore(outboxService.addInTx);
+            expect(outboxService.addInTx).toHaveBeenCalledBefore(
                 userAuthService.assertCredentialMatched
             );
             expect(
@@ -340,8 +344,9 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userPasswordService.assertPasswordNotLocked
             ).toHaveBeenCalledWith(true);
-            expect(outboxService.add).toHaveBeenCalledWith(entryEffect);
-            expect(outboxService.add).toHaveBeenCalledBefore(
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
+            expect(outboxService.addInTx).toHaveBeenCalledBefore(
                 userPasswordService.assertPasswordNotLocked
             );
             expect(
@@ -368,7 +373,7 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userPasswordService.countFailedPasswordAttempt
             ).not.toHaveBeenCalled();
-            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
@@ -420,7 +425,7 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userVerificationService.isEmailResendable
             ).toHaveBeenCalledWith(unverifiedUser);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userVerificationService.sendEmailInTx).toHaveBeenCalledWith(
                 tx,
                 'user-bramble',
@@ -474,7 +479,7 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userVerificationService.isEmailResendable
             ).toHaveBeenCalledWith(unverifiedUser);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userPasswordService.resetPasswordAttemptInTx
             ).not.toHaveBeenCalled();
@@ -552,7 +557,7 @@ describe('UserLoginCredentialUseCase', () => {
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toBeInstanceOf(UserPasswordExpiredException);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userPasswordService.resetPasswordAttemptInTx
             ).not.toHaveBeenCalled();
@@ -578,7 +583,8 @@ describe('UserLoginCredentialUseCase', () => {
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
             });
 
-            expect(outboxService.add).toHaveBeenCalledWith(entryEffect);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
             expect(
                 userVerificationService.isEmailResendable
             ).not.toHaveBeenCalled();
@@ -653,7 +659,7 @@ describe('UserLoginCredentialUseCase', () => {
                 },
             });
             expect(mfaService.isEnabled).toHaveBeenCalledWith('user-bramble');
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userPasswordService.resetPasswordAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-bramble');

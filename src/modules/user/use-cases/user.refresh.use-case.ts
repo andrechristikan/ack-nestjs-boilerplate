@@ -7,6 +7,7 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import type {
@@ -36,6 +37,7 @@ export class UserRefreshUseCase implements IAppUseCase<
         private readonly deviceService: DeviceService,
         private readonly authJwtService: AuthJwtService,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -62,7 +64,7 @@ export class UserRefreshUseCase implements IAppUseCase<
         );
         try {
             // Sequential by design: write must not run if an earlier step throws
-            return await this.outboxService.withTransaction(async tx => {
+            return await this.databaseService.withTransaction(async tx => {
                 const isJtiUpdated = await this.sessionService.updateJtiInTx(
                     tx,
                     sessionId,

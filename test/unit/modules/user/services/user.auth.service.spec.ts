@@ -62,6 +62,7 @@ import { SessionService } from '@modules/session/services/session.service';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserService } from '@modules/user/services/user.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
@@ -115,6 +116,7 @@ describe('UserAuthService', () => {
     let databaseUtil: DatabaseUtil;
     let helperStringService: HelperStringService;
     let argon2Compare: MockInstance<HelperHashService['argon2Compare']>;
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
@@ -180,6 +182,7 @@ describe('UserAuthService', () => {
                 AuthUtil,
                 DatabaseUtil,
                 SessionUtil,
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 {
@@ -290,8 +293,8 @@ describe('UserAuthService', () => {
                 'plain-password',
                 'hashed-password'
             );
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
-            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('returns false on a wrong password', async () => {
@@ -485,8 +488,8 @@ describe('UserAuthService', () => {
             expect(
                 userPasswordService.countFailedPasswordAttempt
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
-            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('returns without comparing when the account has no password', async () => {
@@ -973,7 +976,7 @@ describe('UserAuthService', () => {
                 loginAt
             );
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
                 tx,
                 'user-halcyon',
@@ -1405,7 +1408,7 @@ describe('UserAuthService', () => {
             expect(outboxService.addManyInTx).toHaveBeenCalledBefore(
                 authJwtService.createTokens
             );
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('signs no tokens when a write fails', async () => {

@@ -6,6 +6,7 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
 import { PolicyService } from '@modules/policy/services/policy.service';
@@ -34,6 +35,7 @@ export class PolicyDeleteByAdminUseCase implements IAppUseCase<
         private readonly roleService: RoleService,
         private readonly policyUtil: PolicyUtil,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
@@ -53,7 +55,7 @@ export class PolicyDeleteByAdminUseCase implements IAppUseCase<
         });
 
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const deleted = await this.policyService.deleteByAdminInTx(
                     tx,
                     roleId,

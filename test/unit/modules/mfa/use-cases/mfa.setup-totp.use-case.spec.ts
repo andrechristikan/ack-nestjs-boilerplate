@@ -18,6 +18,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { Prisma } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -57,6 +58,7 @@ const passkeyResponse = {
 describe('MfaSetupTotpUseCase', () => {
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const mfaTotpService: MockProxy<MfaTotpService> = mock<MfaTotpService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
@@ -100,7 +102,7 @@ describe('MfaSetupTotpUseCase', () => {
     };
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         userAuthService.assertReauthentication.mockResolvedValue(passwordOnly);
@@ -114,6 +116,7 @@ describe('MfaSetupTotpUseCase', () => {
                 { provide: MfaTotpService, useValue: mfaTotpService },
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -147,7 +150,7 @@ describe('MfaSetupTotpUseCase', () => {
                 userAuthService.assertReauthentication
             ).not.toHaveBeenCalled();
             expect(mfaTotpService.setupInTx).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('asserts the whole re-authentication request, the MFA proof included', async () => {
@@ -266,7 +269,7 @@ describe('MfaSetupTotpUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(mfaTotpService.setupInTx).not.toHaveBeenCalled();
         });
 
@@ -296,7 +299,7 @@ describe('MfaSetupTotpUseCase', () => {
             userAuthService.assertReauthentication.mockResolvedValue(
                 withBackupCode
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -325,7 +328,7 @@ describe('MfaSetupTotpUseCase', () => {
                     clientVersion: 'test',
                 }
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -340,7 +343,7 @@ describe('MfaSetupTotpUseCase', () => {
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {
             const cause = new Error('boom');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(

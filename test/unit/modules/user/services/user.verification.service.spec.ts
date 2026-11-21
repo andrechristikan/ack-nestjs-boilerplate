@@ -30,6 +30,7 @@ import {
     buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type {
     INotificationReauthenticationOtpContext,
@@ -60,6 +61,7 @@ describe('UserVerificationService', () => {
     const userVerificationRepository: MockProxy<UserVerificationRepository> =
         mock<UserVerificationRepository>();
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -136,7 +138,7 @@ describe('UserVerificationService', () => {
         userRepository.markVerifiedInTx.mockResolvedValue(baseUser);
         userVerificationRepository.markUsedInTx.mockResolvedValue(true);
 
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         vi.setSystemTime(now);
@@ -149,6 +151,7 @@ describe('UserVerificationService', () => {
                     useValue: userVerificationRepository,
                 },
                 { provide: UserRepository, useValue: userRepository },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
@@ -234,7 +237,7 @@ describe('UserVerificationService', () => {
                 verification
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.verifiedEmail,
                 {
@@ -312,7 +315,7 @@ describe('UserVerificationService', () => {
 
         it('rethrows an AppBaseException raised inside the transaction', async () => {
             const error = new UserNotFoundException();
-            outboxService.withTransaction.mockRejectedValueOnce(error);
+            databaseService.withTransaction.mockRejectedValueOnce(error);
 
             const call = service.verifyEmail(
                 requestContext,
@@ -329,7 +332,7 @@ describe('UserVerificationService', () => {
 
         it('wraps an unknown error raised inside the transaction', async () => {
             const error = new Error('boom');
-            outboxService.withTransaction.mockRejectedValueOnce(error);
+            databaseService.withTransaction.mockRejectedValueOnce(error);
 
             const call = service.verifyEmail(
                 requestContext,
@@ -496,7 +499,7 @@ describe('UserVerificationService', () => {
                 'flint@example.com'
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userVerificationRepository.createReplacingActiveInTx
             ).toHaveBeenCalledWith(
@@ -580,7 +583,7 @@ describe('UserVerificationService', () => {
 
             await service.sendEmailInTx(tx, 'user-flint', 'flint@example.com');
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userVerificationRepository.createReplacingActiveInTx
             ).toHaveBeenCalledWith(
@@ -726,7 +729,7 @@ describe('UserVerificationService', () => {
                 EnumUserReauthenticationAction.mobileNumberAdd
             );
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userVerificationRepository.markUnusedReauthenticationUsedInTx
             ).toHaveBeenCalledWith(
@@ -842,7 +845,7 @@ describe('UserVerificationService', () => {
                 '+6281234567890'
             );
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userVerificationRepository.markUnusedMobileUsedInTx
             ).toHaveBeenCalledWith(tx, 'mobile-flint');

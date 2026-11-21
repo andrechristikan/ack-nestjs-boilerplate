@@ -10,6 +10,7 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
@@ -34,6 +35,7 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 export class TermPolicyAcceptanceService {
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly notificationQueue: NotificationQueue,
         private readonly helperDateService: HelperDateService,
@@ -131,7 +133,7 @@ export class TermPolicyAcceptanceService {
     ): Promise<void> {
         const userId = authContext.userId;
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const [latest] =
                     await this.termPolicyRepository.findLatestPublishedByTypesInTx(
                         tx,

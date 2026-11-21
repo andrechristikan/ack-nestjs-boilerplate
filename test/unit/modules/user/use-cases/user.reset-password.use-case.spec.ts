@@ -19,6 +19,7 @@ import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
@@ -87,6 +88,7 @@ describe('UserResetPasswordUseCase', () => {
         mock<ActivityLogQueue>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let helperHashService: HelperHashService;
@@ -177,7 +179,7 @@ describe('UserResetPasswordUseCase', () => {
                     ? verifyEntry
                     : resetEntry
         );
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         notificationService.getSnapshot.mockResolvedValue(snapshot);
@@ -218,6 +220,7 @@ describe('UserResetPasswordUseCase', () => {
                     }),
                 },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
             ],
@@ -257,12 +260,12 @@ describe('UserResetPasswordUseCase', () => {
                 ['ACK Boilerplate', 'linden', 'lindenFrost', 'Linden Frost']
             );
             expect(argon2Hash).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('checks the history, hashes, and writes the reset, its entry, and the notification on one transaction', async () => {
             const calls: string[] = [];
-            outboxService.withTransaction.mockImplementation(async fn => {
+            databaseService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -401,7 +404,7 @@ describe('UserResetPasswordUseCase', () => {
 
                 return snapshot;
             });
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
             userService.updatePasswordInTx.mockImplementation(async () => {
@@ -562,7 +565,7 @@ describe('UserResetPasswordUseCase', () => {
                     'user-linden'
                 );
                 expect(mfaService.check).not.toHaveBeenCalled();
-                expect(outboxService.withTransaction).not.toHaveBeenCalled();
+                expect(databaseService.withTransaction).not.toHaveBeenCalled();
             });
 
             it('rethrows the failure the check counts and writes and claims nothing on a wrong passkey', async () => {
@@ -573,7 +576,7 @@ describe('UserResetPasswordUseCase', () => {
                     useCase.execute(requestContext, apiKeyContext, passkeyDto)
                 ).rejects.toBe(mismatch);
 
-                expect(outboxService.withTransaction).not.toHaveBeenCalled();
+                expect(databaseService.withTransaction).not.toHaveBeenCalled();
                 expect(mfaChallengeService.consumeInTx).not.toHaveBeenCalled();
             });
 
@@ -651,7 +654,7 @@ describe('UserResetPasswordUseCase', () => {
                 })
             ).rejects.toBe(limit);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws the method-required exception and writes nothing', async () => {
@@ -671,7 +674,7 @@ describe('UserResetPasswordUseCase', () => {
                 statusCode: EnumMfaStatusCodeError.methodRequired,
             });
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('checks and writes nothing when the reset lookup rejects', async () => {
@@ -682,7 +685,7 @@ describe('UserResetPasswordUseCase', () => {
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toBe(failure);
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('writes nothing when the history check rejects', async () => {
@@ -692,7 +695,7 @@ describe('UserResetPasswordUseCase', () => {
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toBe(failure);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('revokes nothing and adds no effect when the snapshot read rejects', async () => {
@@ -712,7 +715,7 @@ describe('UserResetPasswordUseCase', () => {
 
         it('rethrows a typed exception the transaction raises', async () => {
             const failure = new UserTokenInvalidException();
-            outboxService.withTransaction.mockRejectedValue(failure);
+            databaseService.withTransaction.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
@@ -721,7 +724,7 @@ describe('UserResetPasswordUseCase', () => {
 
         it('maps a write conflict to UserTokenInvalidException', async () => {
             const conflict = buildPrismaKnownRequestError('P2034');
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
@@ -733,7 +736,7 @@ describe('UserResetPasswordUseCase', () => {
 
         it('wraps an unknown transaction failure in AppUnknownException', async () => {
             const cause = new Error('database exploded');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)

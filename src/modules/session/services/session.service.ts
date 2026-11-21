@@ -47,6 +47,7 @@ import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
 import { CacheService } from '@common/cache/services/cache.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
@@ -65,6 +66,7 @@ export class SessionService {
         private readonly deviceService: DeviceService,
         private readonly deviceUtil: DeviceUtil,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly sessionQueue: SessionQueue,
@@ -501,7 +503,7 @@ export class SessionService {
     ): Promise<ISession> {
         const revokedBy = authContext.userId;
         try {
-            return await this.outboxService.withTransaction(async tx => {
+            return await this.databaseService.withTransaction(async tx => {
                 const session = await this.sessionRepository.revokeByAdminInTx(
                     tx,
                     userId,
@@ -587,7 +589,7 @@ export class SessionService {
     ): Promise<ISessionRef[]> {
         const revokedBy = authContext.userId;
         try {
-            return await this.outboxService.withTransaction(async tx => {
+            return await this.databaseService.withTransaction(async tx => {
                 const sessions = await this.revokeActiveByUserInTx(
                     tx,
                     userId,
@@ -663,7 +665,7 @@ export class SessionService {
         const now = this.helperDateService.create();
 
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const { deviceOwnership, revokedSessions } =
                     await this.removeDeviceOwnershipInTx(
                         tx,

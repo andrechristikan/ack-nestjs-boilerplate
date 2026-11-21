@@ -26,7 +26,7 @@ Under `test/`, a spec with a subject file is that file's name plus `.spec.ts`. E
 
 ## Spec content
 
-- A fake is a plain object, a decorator is applied to one and its metadata read, a class ref is `{} as Type<unknown>` plus metadata.
+- A decorator is applied to a plain object and its metadata read; a class ref is `{} as Type<unknown>` plus metadata.
 - One root `describe` per spec, named for the subject class or schema (a decorator spec: its file stem); inside it one `describe` per method under its bare name, privates last. An `it` label opens on a present-tense third-person verb (`returns`, `throws`), never `should`. The subject variable is its class's last word, lowercased (`service`, `guard`); a use case's is `useCase`.
 - Reused data is a `const` in the `describe`; a variant is a spread (`{ ...user, status }`), and so is a fixture the subject mutates (`{ ...baseUser }`). A first-party fixture is complete, never cast; a date is a fixed ISO-8601 UTC literal.
 - Logic (a builder, a deferred, a transaction body) is an exported helper taking no function parameter: async `create<Subject>` through `Test.createTestingModule` (`createInitialized<Subject>` also runs `onModuleInit`), sync `build<Thing>`, `expect<Outcome>`, `stub<Scenario>`, a reader or extractor a plain verb (`readEnvExample`, `subscribeNext`); a doubles bag is `I<Subject>Doubles` (`test.unit.aws.helper.ts`).
@@ -38,6 +38,6 @@ Under `test/`, a spec with a subject file is that file's name plus `.spec.ts`. E
 - The unit project runs each spec file in its own module registry on the default pool with a fixed worker count (`vitest.config.ts`); never `isolate: false`, another pool, or more workers.
 - A `vi.mock('<pkg>')` replaces a third-party or network boundary only; one identical in three or more specs, none needing the real module, moves to a `test/unit/test.unit.setup.ts` added to the unit `setupFiles`. Imports are static; `vi.resetModules()` with a dynamic import serves only a case that needs a fresh module (a per-case `vi.doMock`).
 - `beforeAll` holds immutable setup (`vi.useFakeTimers()`); `afterAll` undoes `beforeAll`; no empty hook.
-- Matchers name the thing (`toHaveBeenCalledWith`, `expect.objectContaining`); a built argument is captured through `mockImplementation`; a thrown `AppBaseException` through `rejects.toMatchObject` on `module` and `statusCode`. A private is called by index access and never stubbed. Cover every branch.
+- A partial argument match is `expect.objectContaining`; a built argument is captured through `mockImplementation`; a thrown `AppBaseException` through `rejects.toMatchObject` on `module` and `statusCode`. A private is called by index access and never stubbed. Cover every branch.
 - What each layer's spec asserts: `test-doubles.md`.
 - On the coverage path the spec follows `src/`: no production change beyond the compile-blocking typo `.claude/agents/tester.md` allows; pin the spec to current behaviour and record the defect with file and line. Never delete, `.skip`, or weaken a failing spec, lower the threshold, extend the exclude list, or add `/* v8 ignore */`. An elaborate mock is a design defect to report; `new Date()` is not.

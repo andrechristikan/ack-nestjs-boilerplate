@@ -43,7 +43,7 @@ A value has one layer:
 - The factory, not module scope, reads `process.env` and parses no schema: required `process.env.X!`, boolean `process.env.X === 'true'`, number `Number(process.env.X!)`, enum narrowed by `as`, list `process.env.X!.split(',')` trimmed and filtered of empty entries (`(process.env.X ?? '')` for an optional one), optional `process.env.X === '' ? null : (process.env.X ?? null)` at each read, no helper.
 - A `process.env` read through `Reflect.get(process, 'env')` outside `src/configs/`, `src/bootstrap.ts`, and `src/instrument.ts` is a defect.
 - `src/main.ts` and `src/migration.ts` hold three statements: the static `import '@instrument'`, a dynamic `import('@bootstrap')`, and the bootstrap call with `.catch(bootstrapFailed)`. No command carries `--import`, and neither entry imports anything else statically.
-- `src/instrument.ts` loads `dotenv/config` and calls the `app`, `logger`, and `sentry` config functions on unvalidated env before Nest; everything else reads `ConfigService` (`injectable.md`, Config).
+- `src/instrument.ts` loads `dotenv/config` and calls the `app`, `logger`, and `sentry` config functions on unvalidated env before Nest.
 - A duration key is named for its consumer's unit (`InMs`, `InSeconds`, `InDays`) and built from `ms('<string>')`, divided inside the config file (`ms('7d') / 1000`); no raw number, no call-site arithmetic. A duration computed at request time has no key. A size key is `InBytes` from `bytes('<string>')`.
 - A URL built in config with `{placeholder}` segments is a `*Pattern` key: an emitted URL is full with its own host key, a path a fragment.
 - `request.throttle.default.limit` stays above `request.throttle.user.limit`, or the per-IP default fires first.

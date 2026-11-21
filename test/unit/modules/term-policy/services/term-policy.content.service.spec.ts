@@ -37,6 +37,7 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -72,6 +73,7 @@ describe('TermPolicyContentService', () => {
     const termPolicyRepository: MockProxy<TermPolicyRepository> =
         mock<TermPolicyRepository>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -184,7 +186,7 @@ describe('TermPolicyContentService', () => {
         fileService.isContentOfExtension.mockResolvedValue(true);
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         termPolicyQueue.deleteContentEffect.mockReturnValue(deleteEffect);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
 
@@ -197,6 +199,7 @@ describe('TermPolicyContentService', () => {
                 },
                 { provide: AwsS3Service, useValue: awsS3Service },
                 TermPolicyUtil,
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: TermPolicyQueue, useValue: termPolicyQueue },
@@ -422,7 +425,7 @@ describe('TermPolicyContentService', () => {
                 FileSniffSizeInBytes,
                 { access: EnumAwsS3Accessibility.private }
             );
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 termPolicyRepository.updateContentInTx
             ).not.toHaveBeenCalled();
@@ -671,7 +674,7 @@ describe('TermPolicyContentService', () => {
                 }
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
@@ -695,7 +698,7 @@ describe('TermPolicyContentService', () => {
                     clientVersion: 'test',
                 }
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 service.updateContentByAdmin(
@@ -905,7 +908,7 @@ describe('TermPolicyContentService', () => {
                 FileSniffSizeInBytes,
                 { access: EnumAwsS3Accessibility.private }
             );
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(termPolicyRepository.addContentInTx).not.toHaveBeenCalled();
         });
 
@@ -1088,7 +1091,7 @@ describe('TermPolicyContentService', () => {
                 emptyDraftTermPolicy
             );
             awsS3Service.mapPresign.mockReturnValue({ ...existingContent });
-            outboxService.withTransaction.mockRejectedValue(
+            databaseService.withTransaction.mockRejectedValue(
                 new Prisma.PrismaClientKnownRequestError('conflict', {
                     code: DatabaseWriteConflictCode,
                     clientVersion: 'test',
@@ -1359,7 +1362,7 @@ describe('TermPolicyContentService', () => {
 
         it('throws TermPolicyStatusInvalidException on a write conflict of the guarded write', async () => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            outboxService.withTransaction.mockRejectedValue(
+            databaseService.withTransaction.mockRejectedValue(
                 new Prisma.PrismaClientKnownRequestError('conflict', {
                     code: DatabaseWriteConflictCode,
                     clientVersion: 'test',

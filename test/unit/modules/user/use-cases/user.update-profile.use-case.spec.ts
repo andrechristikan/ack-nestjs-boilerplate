@@ -11,6 +11,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
@@ -29,6 +30,7 @@ describe('UserUpdateProfileUseCase', () => {
     const countryService: MockProxy<CountryService> = mock<CountryService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx = mock<IDatabaseTransactionClient>();
     const requestContext = buildRequestContext();
@@ -43,7 +45,7 @@ describe('UserUpdateProfileUseCase', () => {
 
     beforeEach(async () => {
         activityLogQueue.recordEffect.mockReturnValue(entry);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
 
@@ -53,6 +55,7 @@ describe('UserUpdateProfileUseCase', () => {
                 { provide: UserProfileService, useValue: userProfileService },
                 { provide: CountryService, useValue: countryService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -92,7 +95,7 @@ describe('UserUpdateProfileUseCase', () => {
                 { action: EnumActivityLogAction.userUpdateProfile }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
         it('opens no transaction when the country is missing', async () => {
@@ -104,7 +107,7 @@ describe('UserUpdateProfileUseCase', () => {
                 useCase.execute(requestContext, apiKeyContext, authContext, dto)
             ).rejects.toBeInstanceOf(CountryNotFoundException);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 

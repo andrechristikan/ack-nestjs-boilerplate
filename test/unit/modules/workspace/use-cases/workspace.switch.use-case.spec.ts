@@ -10,6 +10,7 @@ import type {
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -34,6 +35,7 @@ describe('WorkspaceSwitchUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx = mock<IDatabaseTransactionClient>();
     const entry = buildActivityLogCreateManyEffect('entry');
@@ -55,7 +57,7 @@ describe('WorkspaceSwitchUseCase', () => {
 
     beforeEach(async () => {
         activityLogQueue.recordEffect.mockReturnValue(entry);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
 
@@ -68,6 +70,7 @@ describe('WorkspaceSwitchUseCase', () => {
                 },
                 { provide: UserService, useValue: userService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -148,7 +151,7 @@ describe('WorkspaceSwitchUseCase', () => {
                     body
                 )
             ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('opens no transaction when the caller is no member', async () => {
@@ -164,7 +167,7 @@ describe('WorkspaceSwitchUseCase', () => {
                     body
                 )
             ).rejects.toBeInstanceOf(WorkspaceMemberForbiddenException);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
     });
 });

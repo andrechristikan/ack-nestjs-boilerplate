@@ -20,6 +20,7 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
@@ -51,6 +52,7 @@ describe('DeviceService', () => {
         mock<DeviceOwnershipRepository>();
     const deviceRepository: MockProxy<DeviceRepository> =
         mock<DeviceRepository>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -131,6 +133,7 @@ describe('DeviceService', () => {
                     useValue: deviceOwnershipRepository,
                 },
                 { provide: DeviceRepository, useValue: deviceRepository },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 ...TestUnitKitProviders,
@@ -620,7 +623,7 @@ describe('DeviceService', () => {
 
         it('throws DeviceNotFoundException when the guarded refresh matches no live ownership, writing no device row', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue(null);
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
@@ -646,7 +649,7 @@ describe('DeviceService', () => {
         it('adds the userDeviceRefresh entry from the passed context on the same tx after the writes', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             activityLogQueue.recordEffect.mockReturnValue(entry);
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
@@ -670,7 +673,7 @@ describe('DeviceService', () => {
 
         it('adds no entry when the guarded refresh matches no live ownership', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue(null);
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
@@ -688,7 +691,7 @@ describe('DeviceService', () => {
 
         it('refreshes the ownership token and the device on success', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
@@ -723,7 +726,7 @@ describe('DeviceService', () => {
 
         it('clears the refreshed token from every other user ownership row in the same transaction', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
@@ -745,7 +748,7 @@ describe('DeviceService', () => {
 
         it('clears no other row when the refresh carries no token', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
@@ -764,7 +767,7 @@ describe('DeviceService', () => {
 
         it('resolves the notification provider from the platform and the token', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
@@ -791,7 +794,7 @@ describe('DeviceService', () => {
 
         it('writes a null name, a null token, and a null provider as given when the refresh clears them', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
 
@@ -829,7 +832,7 @@ describe('DeviceService', () => {
 
         it('rethrows an AppBaseException raised inside the transaction unchanged', async () => {
             const notFound = new DeviceNotFoundException();
-            outboxService.withTransaction.mockRejectedValue(notFound);
+            databaseService.withTransaction.mockRejectedValue(notFound);
 
             await expect(
                 service.refresh(
@@ -850,7 +853,7 @@ describe('DeviceService', () => {
                     clientVersion: 'test',
                 }
             );
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 service.refresh(
@@ -869,7 +872,7 @@ describe('DeviceService', () => {
 
         it('wraps a non-application error raised inside the transaction', async () => {
             const cause = new Error('database exploded');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 service.refresh(

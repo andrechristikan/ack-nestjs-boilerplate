@@ -18,6 +18,7 @@ import {
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
@@ -53,6 +54,7 @@ export class WorkspaceMemberService {
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceService: WorkspaceService,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly featureFlagService: FeatureFlagService,
@@ -116,7 +118,7 @@ export class WorkspaceMemberService {
             );
 
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const ownedCount = await this.workspaceService.countOwnedInTx(
                     tx,
                     targetMember.userId
@@ -457,7 +459,7 @@ export class WorkspaceMemberService {
         this.assertPeerActionAllowed(actorMember, targetMember);
 
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const updated =
                     await this.workspaceMemberRepository.updateRoleInTx(
                         tx,

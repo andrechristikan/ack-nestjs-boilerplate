@@ -16,6 +16,7 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
@@ -43,6 +44,7 @@ export class ProjectMemberService {
         private readonly projectMemberRepository: ProjectMemberRepository,
         private readonly projectRepository: ProjectRepository,
         private readonly projectUtil: ProjectUtil,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseUtil: DatabaseUtil
@@ -171,7 +173,7 @@ export class ProjectMemberService {
         }
 
         try {
-            return await this.outboxService.withTransaction(async tx => {
+            return await this.databaseService.withTransaction(async tx => {
                 const member = await this.projectMemberRepository.createInTx(
                     tx,
                     project.id,
@@ -252,7 +254,7 @@ export class ProjectMemberService {
         this.assertPeerAllowed(actor, targetMember.role, newRole);
 
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const updated =
                     await this.projectMemberRepository.updateRoleInTx(
                         tx,
@@ -335,7 +337,7 @@ export class ProjectMemberService {
         this.assertPeerAllowed(actor, targetMember.role);
 
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const removed =
                     await this.projectMemberRepository.removeMemberInTx(
                         tx,
@@ -400,7 +402,7 @@ export class ProjectMemberService {
         member: ProjectMember
     ): Promise<void> {
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const removed =
                     await this.projectMemberRepository.removeByIdInTx(
                         tx,

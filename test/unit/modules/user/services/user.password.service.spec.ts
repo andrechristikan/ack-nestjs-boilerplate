@@ -45,6 +45,7 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import {
     EnumNotificationKind,
@@ -63,6 +64,7 @@ describe('UserPasswordService', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const userService: MockProxy<UserService> = mock<UserService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
@@ -133,6 +135,7 @@ describe('UserPasswordService', () => {
                 HelperStringService,
                 HelperDateService,
                 { provide: UserService, useValue: userService },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 DatabaseUtil,
@@ -286,7 +289,7 @@ describe('UserPasswordService', () => {
 
         beforeEach(() => {
             stubPasswordMetadataNumbers(featureFlagService, 5, 15);
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
         });
@@ -362,7 +365,7 @@ describe('UserPasswordService', () => {
                         baseUser
                     )
                 ).rejects.toBe(failure);
-                expect(outboxService.withTransaction).not.toHaveBeenCalled();
+                expect(databaseService.withTransaction).not.toHaveBeenCalled();
                 expect(
                     userRepository.incrementPasswordAttemptInTx
                 ).not.toHaveBeenCalled();
@@ -381,7 +384,7 @@ describe('UserPasswordService', () => {
                     baseUser
                 )
             ).resolves.toBe(false);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userRepository.incrementPasswordAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-hollow', 5, lockedUntil);
@@ -441,7 +444,7 @@ describe('UserPasswordService', () => {
 
         it('throws the max-attempt exception with no row on a write conflict', async () => {
             const conflict = buildPrismaKnownRequestError('P2034');
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 service.countFailedPasswordAttempt(
@@ -458,7 +461,7 @@ describe('UserPasswordService', () => {
 
         it('rethrows an AppBaseException unchanged', async () => {
             const failure = new DatabaseUnavailableException();
-            outboxService.withTransaction.mockRejectedValue(failure);
+            databaseService.withTransaction.mockRejectedValue(failure);
 
             await expect(
                 service.countFailedPasswordAttempt(
@@ -471,7 +474,7 @@ describe('UserPasswordService', () => {
 
         it('wraps any other error in AppUnknownException', async () => {
             const cause = new Error('database exploded');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 service.countFailedPasswordAttempt(
@@ -602,7 +605,7 @@ describe('UserPasswordService', () => {
         const forgotEntry = buildActivityLogCreateManyEffect('activityLog');
 
         beforeEach(() => {
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
             notificationQueue.notify.mockReturnValue(forgotEffect);

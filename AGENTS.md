@@ -51,7 +51,7 @@ Feature modules share one shape: `Controller → Use case → Service → Reposi
 - In a feature module only the use case opens a transaction, one per flow or per chunk of a paging job; services and repositories join it through `*InTx` methods (`.claude/rules/transaction.md`).
 - A side effect, a notification included, is an outbox row written in the transaction of the action that causes it. The owning module's queue class is its side-effect entry: it builds the effect, and any module's service or use case injects it; the row is enqueued through it after the commit (`.claude/rules/effects.md`).
 
-Only a repository queries `databaseService.client`, health indicators excepted. `src/migration/` seeds write through `DatabaseService` directly (`.claude/rules/seeding.md`). `src/app/app.module.ts` registers `APP_FILTER` providers general → http → validation → validation-import; NestJS runs them reversed, most specific first.
+`src/migration/` seeds write through `DatabaseService` directly (`.claude/rules/seeding.md`). `src/app/app.module.ts` registers `APP_FILTER` providers general → http → validation → validation-import; NestJS runs them reversed, most specific first.
 
 ## Discipline
 

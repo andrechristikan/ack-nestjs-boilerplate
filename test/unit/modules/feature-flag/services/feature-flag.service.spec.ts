@@ -40,6 +40,7 @@ import type {
     IFeatureFlagUpdateStatus,
 } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 
 describe('FeatureFlagService', () => {
@@ -51,6 +52,7 @@ describe('FeatureFlagService', () => {
         });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const cacheQueue: MockProxy<CacheQueue> = mock<CacheQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
@@ -85,7 +87,7 @@ describe('FeatureFlagService', () => {
     beforeEach(async () => {
         featureFlagCache.buildFeatureFlagKeys.mockReturnValue(keys);
         cacheQueue.invalidateEffect.mockReturnValue(cacheEffect);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         const module: TestingModule = await Test.createTestingModule({
@@ -103,6 +105,7 @@ describe('FeatureFlagService', () => {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -769,7 +772,7 @@ describe('FeatureFlagService', () => {
             expect(
                 featureFlagRepository.updateMetadataInTx
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws FeatureFlagInvalidMetadataException when the metadata shape changed', async () => {
@@ -788,7 +791,7 @@ describe('FeatureFlagService', () => {
             expect(
                 featureFlagRepository.updateMetadataInTx
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws FeatureFlagInvalidMetadataException when the stored metadata is null', async () => {
@@ -806,7 +809,7 @@ describe('FeatureFlagService', () => {
             expect(
                 featureFlagRepository.updateMetadataInTx
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('updates the metadata and adds the cache invalidation effect on the same tx', async () => {

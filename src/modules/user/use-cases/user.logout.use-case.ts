@@ -1,6 +1,7 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -25,6 +26,7 @@ export class UserLogoutUseCase implements IAppUseCase<
         private readonly deviceService: DeviceService,
         private readonly sessionService: SessionService,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -39,7 +41,7 @@ export class UserLogoutUseCase implements IAppUseCase<
         const { sessionId, deviceOwnershipId } = authContext;
         const now = this.helperDateService.create();
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.sessionService.revokeInTx(
                     tx,
                     userId,

@@ -36,6 +36,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IUserDeletePhotoEffect } from '@modules/user/interfaces/user.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserQueue } from '@modules/user/queues/user.queue';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
@@ -62,6 +63,7 @@ describe('UserProfileService', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const fileService: MockProxy<FileService> = mock<FileService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -181,6 +183,7 @@ describe('UserProfileService', () => {
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: FileService, useValue: fileService },
                 DatabaseUtil,
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: UserQueue, useValue: userQueue },
@@ -323,7 +326,7 @@ describe('UserProfileService', () => {
         const head = Buffer.from('persimmon-head');
 
         beforeEach(() => {
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
             awsS3Service.getItemBytes.mockResolvedValue(head);
@@ -353,12 +356,15 @@ describe('UserProfileService', () => {
                 profile.id,
                 aws
             );
-            expect(outboxService.add).toHaveBeenCalledWith(deletePhotoEffect);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                deletePhotoEffect
+            );
             expect(userRepository.findOneById).not.toHaveBeenCalled();
             expect(
                 userRepository.updatePhotoProfileInTx
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('reads the head with the key, the configured sniff size, and the public access', async () => {
@@ -376,7 +382,10 @@ describe('UserProfileService', () => {
                 FileSniffSizeInBytes,
                 { access: EnumAwsS3Accessibility.public }
             );
-            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalledWith(
+                tx,
+                deletePhotoEffect
+            );
         });
 
         it('throws AwsS3NotConfiguredException when the head read returns null', async () => {
@@ -413,7 +422,7 @@ describe('UserProfileService', () => {
             expect(awsS3Service.checkItem).toHaveBeenCalledWith(aws.key, {
                 access: EnumAwsS3Accessibility.public,
             });
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userRepository.updatePhotoProfileInTx).toHaveBeenCalledWith(
                 tx,
                 profile.id,
@@ -492,7 +501,7 @@ describe('UserProfileService', () => {
                 { key: aws.key }
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userRepository.updatePhotoProfileInTx).toHaveBeenCalledWith(
                 tx,
                 profile.id,
@@ -696,7 +705,7 @@ describe('UserProfileService', () => {
         };
 
         beforeEach(() => {
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
         });
@@ -725,7 +734,7 @@ describe('UserProfileService', () => {
                 },
                 { access: EnumAwsS3Accessibility.public }
             );
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userRepository.updatePhotoProfileInTx).toHaveBeenCalledWith(
                 tx,
                 profile.id,
@@ -767,7 +776,7 @@ describe('UserProfileService', () => {
                 file
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userRepository.updatePhotoProfileInTx).toHaveBeenCalledWith(
                 tx,
                 profile.id,
@@ -981,7 +990,7 @@ describe('UserProfileService', () => {
         };
 
         beforeEach(() => {
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
         });

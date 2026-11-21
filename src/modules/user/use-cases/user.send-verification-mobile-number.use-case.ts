@@ -1,3 +1,4 @@
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -19,6 +20,7 @@ export class UserSendVerificationMobileNumberUseCase implements IAppUseCase<
         private readonly userMobileNumberService: UserMobileNumberService,
         private readonly userVerificationService: UserVerificationService,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService
     ) {}
 
@@ -45,7 +47,7 @@ export class UserSendVerificationMobileNumberUseCase implements IAppUseCase<
         }
 
         const to = this.userMobileNumberService.toDialableNumber(mobileNumber);
-        await this.outboxService.withTransaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.userVerificationService.sendMobileInTx(
                 tx,
                 userId,

@@ -4,7 +4,7 @@ Invariants: `.claude/rules/queue.md`, `.claude/rules/outbox.md`, `.claude/rules/
 
 ## New queue
 
-1. Name it: add a camelCase member to `Enum<Module>Queue` in `src/modules/<module>/enums/<module>.enum.ts` (`EnumWorkspaceQueue`); its value is the Redis queue name.
+1. Name it: add a member to `Enum<Module>Queue` in `src/modules/<module>/enums/<module>.enum.ts` (`EnumWorkspaceQueue`); its value is the Redis queue name.
 2. Config: add `<name>BackoffDelayInMs` to `IConfigQueue` `job` and its value (`src/configs/queue.config.ts`). `attempts`, `keepLogs`, and the removal ages are shared.
 3. Factory: `src/modules/<module>/factories/<module>[.<concern>].queue.factory.ts`, class `<Module>[<Concern>]QueueFactory`, `implements RegisterQueueOptionsFactory` (`src/modules/workspace/factories/workspace.queue.factory.ts`; `.claude/rules/queue.md`, Where things live).
 4. Register in the feature's `<module>.module.ts`: `.claude/rules/queue.md`, Where things live (`src/modules/workspace/workspace.module.ts`).

@@ -1,6 +1,7 @@
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { ITermPolicyPublishQueueResponse } from '@modules/term-policy/interfaces/term-policy.interface';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -26,6 +27,7 @@ export class TermPolicyProcessPublishUseCase implements IAppUseCase<
         private readonly notificationService: NotificationService,
         private readonly notificationEmailQueue: NotificationEmailQueue,
         private readonly userService: UserService,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService,
         private readonly messageService: MessageService
@@ -80,7 +82,7 @@ export class TermPolicyProcessPublishUseCase implements IAppUseCase<
             recipients
         );
 
-        await this.outboxService.withTransaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.notificationService.createManyInTx(
                 tx,
                 EnumNotificationKind.publishTermPolicy,

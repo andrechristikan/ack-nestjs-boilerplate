@@ -15,6 +15,7 @@ import {
     EnumRoleType,
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
@@ -50,6 +51,7 @@ describe('MfaResetByAdminUseCase', () => {
         mock<NotificationService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
@@ -112,7 +114,7 @@ describe('MfaResetByAdminUseCase', () => {
                     ? adminEntry
                     : targetEntry
         );
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         notificationService.getSnapshot.mockResolvedValue(snapshot);
@@ -130,6 +132,7 @@ describe('MfaResetByAdminUseCase', () => {
                     useValue: notificationService,
                 },
                 { provide: NotificationQueue, useValue: notificationQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -164,7 +167,7 @@ describe('MfaResetByAdminUseCase', () => {
 
         it('gates the rank, resets and revokes on one transaction, and adds both entries and the notification on it', async () => {
             const calls: string[] = [];
-            outboxService.withTransaction.mockImplementation(async fn => {
+            databaseService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -286,7 +289,7 @@ describe('MfaResetByAdminUseCase', () => {
 
                 return snapshot;
             });
-            outboxService.withTransaction.mockImplementation(
+            databaseService.withTransaction.mockImplementation(
                 async fn => fn(tx) as never
             );
             mfaService.resetByAdminInTx.mockImplementation(async () => {
@@ -348,7 +351,7 @@ describe('MfaResetByAdminUseCase', () => {
                 )
             ).rejects.toThrow('rank');
             expect(userService.assertUnblocked).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('revokes nothing and adds no effect when the snapshot read rejects', async () => {
@@ -388,12 +391,12 @@ describe('MfaResetByAdminUseCase', () => {
             expect(userService.assertUnblocked).toHaveBeenCalledBefore(
                 mfaService.assertHasFactor
             );
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('adds nothing when the transaction fails', async () => {
             const cause = new Error('database exploded');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(

@@ -6,6 +6,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
 import type { Prisma } from '@generated/prisma-client/client';
 import { createDatabaseService } from '@test/unit/helpers/test.unit.database.helper';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 
 describe('DatabaseService', () => {
     const client: MockProxy<IDatabaseClient> = mock<IDatabaseClient>();
@@ -181,6 +182,117 @@ describe('DatabaseService', () => {
                 expect.any(Function),
                 options
             );
+        });
+    });
+
+    describe('afterCommit', () => {
+        it('awaits the callbacks registered on the tx in registration order after $transaction resolves and returns the result after the last', async () => {
+            const tx: MockProxy<IDatabaseClient> = mock<IDatabaseClient>();
+            const committed = buildDeferred<void>();
+            const firstDone = buildDeferred<void>();
+            client.$transaction.mockImplementationOnce(async (fn: unknown) => {
+                const result = await (
+                    fn as (tx: IDatabaseClient) => Promise<unknown>
+                )(tx);
+                await committed.promise;
+
+                return result;
+            });
+            const first = vi.fn().mockReturnValue(firstDone.promise);
+            const second = vi.fn().mockResolvedValue(undefined);
+
+            const body = vi
+                .fn()
+                .mockImplementation(async (innerTx: IDatabaseClient) => {
+                    service.afterCommit(innerTx, first);
+                    service.afterCommit(innerTx, second);
+
+                    return 'result';
+                });
+
+            const pending = service.withTransaction(body);
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(first).not.toHaveBeenCalled();
+
+            committed.resolve();
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(first).toHaveBeenCalledTimes(1);
+
+            expect(second).not.toHaveBeenCalled();
+
+            firstDone.resolve();
+            const result = await pending;
+
+            expect(second).toHaveBeenCalledTimes(1);
+            expect(first).toHaveBeenCalledBefore(second);
+            expect(result).toBe('result');
+        });
+
+        it('runs no callback and rethrows when $transaction rejects', async () => {
+            const error = new Error('rolled back');
+            client.$transaction.mockImplementationOnce(async (fn: unknown) => {
+                await (fn as (tx: IDatabaseClient) => Promise<unknown>)(
+                    mock<IDatabaseClient>()
+                );
+
+                throw error;
+            });
+            const callback = vi.fn().mockResolvedValue(undefined);
+
+            const body = vi
+                .fn()
+                .mockImplementation(async (tx: IDatabaseClient) => {
+                    service.afterCommit(tx, callback);
+                });
+
+            await expect(service.withTransaction(body)).rejects.toBe(error);
+            expect(callback).not.toHaveBeenCalled();
+        });
+
+        it('runs no callback registered on another transaction tx', async () => {
+            const txA: MockProxy<IDatabaseClient> = mock<IDatabaseClient>();
+            const txB: MockProxy<IDatabaseClient> = mock<IDatabaseClient>();
+            const heldOpen = buildDeferred<void>();
+            client.$transaction
+                .mockImplementationOnce(async (fn: unknown) =>
+                    (fn as (tx: IDatabaseClient) => Promise<unknown>)(txA)
+                )
+                .mockImplementationOnce(async (fn: unknown) => {
+                    const result = await (
+                        fn as (tx: IDatabaseClient) => Promise<unknown>
+                    )(txB);
+                    await heldOpen.promise;
+
+                    return result;
+                });
+            const callbackA = vi.fn().mockResolvedValue(undefined);
+            const callbackB = vi.fn().mockResolvedValue(undefined);
+
+            const bodyA = vi
+                .fn()
+                .mockImplementation(async (tx: IDatabaseClient) => {
+                    service.afterCommit(tx, callbackA);
+                });
+            const bodyB = vi
+                .fn()
+                .mockImplementation(async (tx: IDatabaseClient) => {
+                    service.afterCommit(tx, callbackB);
+                });
+
+            const first = service.withTransaction(bodyA);
+            const second = service.withTransaction(bodyB);
+            await first;
+
+            expect(callbackA).toHaveBeenCalledTimes(1);
+            expect(callbackB).not.toHaveBeenCalled();
+
+            heldOpen.resolve();
+            await second;
+
+            expect(callbackB).toHaveBeenCalledTimes(1);
+            expect(callbackA).toHaveBeenCalledTimes(1);
         });
     });
 

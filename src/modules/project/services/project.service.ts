@@ -14,6 +14,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectSlugAlreadyExistsException } from '@modules/project/exceptions/project.slug-already-exists.exception';
@@ -40,6 +41,7 @@ export class ProjectService {
         private readonly projectRepository: ProjectRepository,
         private readonly projectUtil: ProjectUtil,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly helperStringService: HelperStringService,
@@ -109,7 +111,7 @@ export class ProjectService {
 
         for (const slug of slugCandidates) {
             try {
-                return await this.outboxService.withTransaction(async tx => {
+                return await this.databaseService.withTransaction(async tx => {
                     const project = await this.projectRepository.createInTx(
                         tx,
                         workspaceId,
@@ -158,7 +160,7 @@ export class ProjectService {
         project: Project,
         update: IProjectUpdate
     ): Promise<Project> {
-        return this.outboxService.withTransaction(async tx => {
+        return this.databaseService.withTransaction(async tx => {
             const updated = await this.projectRepository.updateDetailsInTx(
                 tx,
                 project.id,
@@ -196,7 +198,7 @@ export class ProjectService {
         }
 
         try {
-            return await this.outboxService.withTransaction(async tx => {
+            return await this.databaseService.withTransaction(async tx => {
                 const updated = await this.projectRepository.updateSlugInTx(
                     tx,
                     project.id,

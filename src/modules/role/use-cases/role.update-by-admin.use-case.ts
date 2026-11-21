@@ -6,6 +6,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
@@ -35,6 +36,7 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
         private readonly roleService: RoleService,
         private readonly roleUtil: RoleUtil,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -49,7 +51,7 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
         body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
         try {
-            const updated = await this.outboxService.withTransaction(
+            const updated = await this.databaseService.withTransaction(
                 async tx => {
                     const role = await this.roleService.updateByAdminInTx(
                         tx,

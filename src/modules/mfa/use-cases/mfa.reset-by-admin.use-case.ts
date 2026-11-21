@@ -1,3 +1,4 @@
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -38,6 +39,7 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
         private readonly notificationQueue: NotificationQueue,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly userUtil: UserUtil,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -62,7 +64,7 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
         await this.mfaService.assertHasFactor(userId);
 
         const now = this.helperDateService.create();
-        await this.outboxService.withTransaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             const [snapshot] = await Promise.all([
                 this.notificationService.getSnapshot(target),
                 this.mfaService.resetByAdminInTx(tx, userId),

@@ -10,6 +10,7 @@ import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queu
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
@@ -39,6 +40,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly userUtil: UserUtil,
         private readonly deviceUtil: DeviceUtil,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -62,7 +64,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
             this.mfaService.isEnabled(user.id),
         ]);
         if (!isMfaEnabled) {
-            const { tokens } = await this.outboxService.withTransaction(
+            const { tokens } = await this.databaseService.withTransaction(
                 async tx => {
                     await this.userPasswordService.resetPasswordAttemptInTx(
                         tx,
@@ -90,7 +92,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
             };
         }
 
-        const mfa = await this.outboxService.withTransaction(async tx => {
+        const mfa = await this.databaseService.withTransaction(async tx => {
             await this.userPasswordService.resetPasswordAttemptInTx(
                 tx,
                 user.id
@@ -125,7 +127,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
             return;
         }
 
-        await this.outboxService.withTransaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.userPasswordService.resetPasswordAttemptInTx(
                 tx,
                 user.id
@@ -184,7 +186,9 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
                     createdBy: user.id,
                 }
             );
-            await this.outboxService.add(failedEntry);
+            await this.databaseService.withTransaction(async tx =>
+                this.outboxService.addInTx(tx, failedEntry)
+            );
             this.userPasswordService.assertPasswordNotLocked(isLocked);
         }
         this.userAuthService.assertCredentialMatched(isMatch);

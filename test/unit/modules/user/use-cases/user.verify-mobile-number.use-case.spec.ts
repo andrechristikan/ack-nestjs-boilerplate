@@ -10,6 +10,7 @@ import type { Verification } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -47,6 +48,7 @@ describe('UserVerifyMobileNumberUseCase', () => {
         mock<NotificationQueue>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: UserVerifyMobileNumberUseCase;
@@ -99,7 +101,7 @@ describe('UserVerifyMobileNumberUseCase', () => {
     const dto = { otp: '482913' };
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         activityLogQueue.recordEffect.mockReturnValue(entry);
@@ -125,6 +127,7 @@ describe('UserVerifyMobileNumberUseCase', () => {
                 },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
                 {
@@ -149,7 +152,7 @@ describe('UserVerifyMobileNumberUseCase', () => {
             expect(
                 userVerificationService.getOneActiveByMobileOtp
             ).toHaveBeenCalledWith('user-swift', 'mobile-swift', '482913');
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userVerificationService.markMobileUsedInTx
             ).toHaveBeenCalledWith(tx, 'verification-swift', 'user-swift');
@@ -231,7 +234,7 @@ describe('UserVerifyMobileNumberUseCase', () => {
                     dto
                 )
             ).rejects.toBeInstanceOf(UserTokenInvalidException);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('passes on the UserTokenInvalidException of a lost row guard and adds nothing', async () => {

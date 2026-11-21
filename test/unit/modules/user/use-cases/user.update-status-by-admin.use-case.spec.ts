@@ -10,6 +10,7 @@ import {
 } from '@generated/prisma-client/client';
 import { UserService } from '@modules/user/services/user.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -39,6 +40,7 @@ import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.help
 describe('UserUpdateStatusByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
@@ -60,7 +62,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.setSystemTime(now);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
 
@@ -69,6 +71,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 UserUpdateStatusByAdminUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: SessionService, useValue: sessionService },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 HelperDateService,
                 { provide: RoleService, useValue: roleService },
@@ -126,7 +129,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
 
         it('gates the rank, writes the status and the revoke on one transaction and adds the revoke-all entries before the status entries on it', async () => {
             const calls: string[] = [];
-            outboxService.withTransaction.mockImplementation(async fn => {
+            databaseService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -394,7 +397,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
 
         it('adds nothing and wraps the failure when the transaction fails', async () => {
             const cause = new Error('database exploded');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(
@@ -413,7 +416,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
 
         it('rethrows the status exception of the guarded write unchanged', async () => {
             const failure = new UserStatusInvalidException();
-            outboxService.withTransaction.mockRejectedValue(failure);
+            databaseService.withTransaction.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -431,7 +434,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
 
         it('answers UserStatusInvalidException when the guarded write conflicts', async () => {
             const conflict = buildPrismaKnownRequestError('P2034');
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -469,7 +472,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 )
             ).rejects.toThrow('rank');
             expect(userService.assertUnblocked).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
     });
 });

@@ -15,6 +15,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
@@ -56,6 +57,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: UserLoginVerifyMfaUseCase;
@@ -128,7 +130,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
     beforeEach(async () => {
         vi.setSystemTime(now);
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         userAuthService.createTokenAndSessionInTx.mockResolvedValue(session);
@@ -140,6 +142,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 { provide: MfaChallengeService, useValue: mfaChallengeService },
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 HelperDateService,
                 DatabaseUtil,
@@ -358,7 +361,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 statusCode: EnumMfaStatusCodeError.methodRequired,
             });
             expect(mfaService.countFailedAttempt).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('issues nothing and opens no transaction when the check fails', async () => {
@@ -371,7 +374,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
 
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
@@ -392,7 +395,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
 
         it('throws MfaChallengeInvalidException on a write conflict', async () => {
             const conflict = buildPrismaKnownRequestError('P2034');
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
@@ -405,7 +408,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {
             const cause = new Error('boom');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)

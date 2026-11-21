@@ -6,6 +6,7 @@ import { DeviceService } from '@modules/device/services/device.service';
 import type { INotificationNotifyPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
@@ -23,6 +24,7 @@ export class NotificationProcessUseCase implements IAppUseCase<
         private readonly deviceService: DeviceService,
         private readonly notificationService: NotificationService,
         private readonly notificationUtil: NotificationUtil,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly messageService: MessageService
@@ -97,7 +99,7 @@ export class NotificationProcessUseCase implements IAppUseCase<
             });
         }
 
-        await this.outboxService.withTransaction(async tx =>
+        await this.databaseService.withTransaction(async tx =>
             this.notificationService.createInTx(
                 tx,
                 notificationId,

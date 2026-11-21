@@ -11,6 +11,7 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import {
     EnumActivityLogProcess,
@@ -56,6 +57,7 @@ describe('PolicyUpdateByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
@@ -117,7 +119,7 @@ describe('PolicyUpdateByAdminUseCase', () => {
         activityLogQueue.recordEffect.mockReturnValue(effect);
         roleService.invalidateEffect.mockReturnValue(roleInvalidateEffect);
         roleService.getByIdInTx.mockResolvedValue(targetRole);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
 
@@ -133,6 +135,7 @@ describe('PolicyUpdateByAdminUseCase', () => {
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -164,7 +167,7 @@ describe('PolicyUpdateByAdminUseCase', () => {
                 'role-1',
                 { roleId: actor.roleId, roleType: actor.role.type }
             );
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('writes nothing when the role is user-type', async () => {

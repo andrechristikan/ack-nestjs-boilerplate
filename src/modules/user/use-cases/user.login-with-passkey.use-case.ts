@@ -4,7 +4,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { OutboxService } from '@common/outbox/services/outbox.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -35,7 +35,7 @@ export class UserLoginWithPasskeyUseCase implements IAppUseCase<
         private readonly mfaPasskeyService: MfaPasskeyService,
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly deviceUtil: DeviceUtil,
-        private readonly outboxService: OutboxService,
+        private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
@@ -79,7 +79,7 @@ export class UserLoginWithPasskeyUseCase implements IAppUseCase<
         const deviceIdentity = this.deviceUtil.toIdentity(device);
         const loginAt = this.helperDateService.create();
         try {
-            const { tokens } = await this.outboxService.withTransaction(
+            const { tokens } = await this.databaseService.withTransaction(
                 async tx => {
                     await this.mfaChallengeService.consumeInTx(
                         tx,

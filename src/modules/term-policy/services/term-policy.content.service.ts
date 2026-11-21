@@ -14,6 +14,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentKeyInvalidException } from '@modules/term-policy/exceptions/term-policy.content-key-invalid.exception';
@@ -46,6 +47,7 @@ export class TermPolicyContentService {
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly termPolicyQueue: TermPolicyQueue,
@@ -207,7 +209,7 @@ export class TermPolicyContentService {
                 language,
                 ...presign,
             };
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const updated =
                     await this.termPolicyRepository.updateContentInTx(
                         tx,
@@ -304,7 +306,7 @@ export class TermPolicyContentService {
                 language,
                 ...presign,
             };
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const added = await this.termPolicyRepository.addContentInTx(
                     tx,
                     termPolicyId,
@@ -366,7 +368,7 @@ export class TermPolicyContentService {
         }
 
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const removed =
                     await this.termPolicyRepository.removeContentInTx(
                         tx,

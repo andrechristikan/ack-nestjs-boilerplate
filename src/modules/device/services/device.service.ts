@@ -27,6 +27,7 @@ import type {
 } from '@modules/device/interfaces/device.interface';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -45,6 +46,7 @@ export class DeviceService {
         private readonly deviceRepository: DeviceRepository,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue
     ) {
@@ -311,7 +313,7 @@ export class DeviceService {
         const now = this.helperDateService.create();
 
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const deviceId =
                     await this.deviceOwnershipRepository.refreshInTx(
                         tx,

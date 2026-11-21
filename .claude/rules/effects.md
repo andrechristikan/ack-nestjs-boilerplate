@@ -12,7 +12,6 @@ paths:
 A request's side effect (notification, activity entry, session cache purge, cache invalidation, S3 object delete) is an `Outbox` row written in its write's transaction and dispatched to its BullMQ queue after the commit. The job carries `{ outboxId }` only; the row keeps the payload, `status` (`EnumOutboxStatus`), `attempts`, and `lastError`, and is never deleted. BullMQ through the outbox is the one async mechanism: no `@nestjs/event-emitter`, no `@nestjs/cqrs`. A recurring job a queue class schedules is the one job with no row: a clock triggers it, not a write; a side effect of a write that job makes is an outbox row like any other. Dispatch and processing: `outbox.md`. Notifications: `notify.md`. Activity entries: `activity-entry.md`.
 
 - An exception the request throws stays its answer.
-- A route whose only work is a side effect (the term-policy resend) adds it through `OutboxService.add` or `addMany`: a failed insert answers as `database.md` maps it.
 
 ## Effects
 
@@ -22,10 +21,10 @@ A request's side effect (notification, activity entry, session cache purge, cach
 
 ## Writing
 
-- A transaction whose statements add a row opens through `OutboxService.withTransaction(fn, options?)`. It opens `DatabaseService.withTransaction`, collects every id added on that `tx`, and dispatches them after the commit. The row follows the transaction of the action that causes it; the enqueue comes last, after the commit, through the queue class that owns the row's queue (`outbox.md`, Dispatch). Who opens it: `transaction.md`, Transactions.
-- Inside it, `OutboxService.addInTx(tx, effect)` and `addManyInTx(tx, effects)` write the rows and return their ids. An effect whose key already has a row, read on `tx` first, inserts nothing and returns that row's id; the unique index answers a race, and the loser's whole transaction aborts, business write included. A service `*InTx` method adds its own rows to the `tx` it joined and returns nothing for them. `addInTx` on a `tx` that `OutboxService.withTransaction` did not open throws.
+- A row joins the use case's `DatabaseService.withTransaction` (`transaction.md`, Transactions); `OutboxService` opens no transaction. `OutboxService.addInTx(tx, effect)` and `addManyInTx(tx, effects)` write the rows on that `tx` and return their ids. An effect whose key already has a row, read on `tx` first, inserts nothing and returns that row's id; the unique index answers a race, and the loser's whole transaction aborts, business write included.
+- `addManyInTx`, which `addInTx` goes through, registers one `DatabaseService.afterCommit` callback per `tx` (`database.md`), dispatching the ids added on it: the enqueue comes last, after the commit, through the queue class that owns the row's queue (`outbox.md`, Dispatch). A service `*InTx` method adds its own rows to the `tx` it joined and returns no outbox id.
 - A statement whose effect must not be lost shares one transaction with its row, a single statement included. A statement followed by an add outside its transaction is the defect.
-- `OutboxService.add(effect)` and `addMany(effects)` insert and dispatch at once, only for an effect with no business write.
+- An effect with no business write (the term-policy resend, an action with no write recording its entry before it throws) is added the same way: its use case opens `DatabaseService.withTransaction` and calls `addInTx` or `addManyInTx`; a failed insert answers as `database.md` maps it.
 
 ## Payloads
 
@@ -37,5 +36,5 @@ Whoever builds a payload (an `<action>Effect` method, `NotificationQueue.notify`
 
 ## Cache invalidation
 
-- Every read-through cache is cache-aside: a write that changes or deletes a cached row never sets its keys. Its use case opens `OutboxService.withTransaction` over the `*InTx` write, which adds `CacheQueue.invalidateEffect(keys)`, the `invalidate` job on the kit `cache` queue (priority high, no business key); the next read after the job misses and `readThrough` sets the key (`ApiKeyService`). A create adds none.
+- Every read-through cache is cache-aside: a write that changes or deletes a cached row never sets its keys. Its use case opens `DatabaseService.withTransaction` over the `*InTx` write, which adds `CacheQueue.invalidateEffect(keys)`, the `invalidate` job on the kit `cache` queue (priority high, no business key); the next read after the job misses and `readThrough` sets the key (`ApiKeyService`). A create adds none.
 - `CacheService.invalidate` is called by `CacheProcessor` and `SessionService.isLoginActive` and `deleteLogins` only.

@@ -15,6 +15,7 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
 import { UserReauthenticationOtpInvalidException } from '@modules/user/exceptions/user.reauthentication-otp-invalid.exception';
@@ -44,6 +45,7 @@ export class UserVerificationService {
     constructor(
         private readonly userVerificationRepository: UserVerificationRepository,
         private readonly userRepository: UserRepository,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly notificationQueue: NotificationQueue,
@@ -148,7 +150,7 @@ export class UserVerificationService {
     ): Promise<void> {
         try {
             const verifiedAt = this.helperDateService.create();
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const isMarkedUsed =
                     await this.userVerificationRepository.markUsedInTx(
                         tx,
@@ -256,7 +258,7 @@ export class UserVerificationService {
         userId: string,
         email: string
     ): Promise<void> {
-        await this.outboxService.withTransaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.sendEmailInTx(tx, userId, email);
             const entry = this.activityLogQueue.recordEffect(
                 requestContext,

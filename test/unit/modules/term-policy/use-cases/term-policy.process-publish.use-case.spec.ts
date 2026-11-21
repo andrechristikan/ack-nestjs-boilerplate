@@ -13,6 +13,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { UserService } from '@modules/user/services/user.service';
@@ -38,6 +39,7 @@ describe('TermPolicyProcessPublishUseCase', () => {
         mock<NotificationService>();
     const notificationEmailQueue: MockProxy<NotificationEmailQueue> =
         mock<NotificationEmailQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const tx = {} as IDatabaseTransactionClient;
@@ -45,7 +47,7 @@ describe('TermPolicyProcessPublishUseCase', () => {
 
     beforeEach(async () => {
         messageService.setMessage.mockImplementation((path: string) => path);
-        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
         const module = await Test.createTestingModule({
             providers: [
                 { provide: MessageService, useValue: messageService },
@@ -59,6 +61,7 @@ describe('TermPolicyProcessPublishUseCase', () => {
                     provide: NotificationEmailQueue,
                     useValue: notificationEmailQueue,
                 },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: UserService, useValue: userService },
                 ...TestUnitKitProviders,
@@ -161,7 +164,7 @@ describe('TermPolicyProcessPublishUseCase', () => {
             expect(
                 termPolicyRecipientService.sendPendingBatches
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
             expect(result).toEqual({
                 message: 'termPolicy.queue.publish',
                 candidateCounts: 4,
@@ -252,7 +255,7 @@ describe('TermPolicyProcessPublishUseCase', () => {
             expect(
                 termPolicyRecipientService.sendPendingBatches
             ).toHaveBeenCalledWith('admin-id', data, page, pending, [u4]);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(result).toMatchObject({
                 candidateCounts: 1,
                 createdCounts: 0,
@@ -332,7 +335,7 @@ describe('TermPolicyProcessPublishUseCase', () => {
             expect(
                 userService.getListActiveRecipientCursor
             ).toHaveBeenNthCalledWith(2, 'cursor-after-u3', 3, cutoff);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'termPolicy.queue.publish',
                 candidateCounts: 4,
@@ -365,7 +368,7 @@ describe('TermPolicyProcessPublishUseCase', () => {
             const result = await useCase.execute(payload);
 
             expect(termPolicyRecipientService.getPage).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'termPolicy.queue.publish',
                 candidateCounts: 0,

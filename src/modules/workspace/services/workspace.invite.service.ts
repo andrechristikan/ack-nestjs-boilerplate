@@ -28,6 +28,7 @@ import { NotificationEmailQueue } from '@modules/notification/queues/notificatio
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteNoncePattern } from '@modules/workspace/constants/workspace.constant';
@@ -77,6 +78,7 @@ export class WorkspaceInviteService {
         private readonly featureFlagService: FeatureFlagService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly userUtil: UserUtil,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
@@ -434,7 +436,7 @@ export class WorkspaceInviteService {
             const tokenData = this.createInviteTokenData(expiresInDays);
 
             try {
-                const invite = await this.outboxService.withTransaction(
+                const invite = await this.databaseService.withTransaction(
                     async tx => {
                         const created =
                             await this.workspaceInviteRepository.createPendingInTx(
@@ -570,7 +572,7 @@ export class WorkspaceInviteService {
             const tokenData = this.createInviteTokenData(expiresInDays);
 
             try {
-                const invite = await this.outboxService.withTransaction(
+                const invite = await this.databaseService.withTransaction(
                     async tx => {
                         const rotated =
                             await this.workspaceInviteRepository.rotateForResendInTx(
@@ -646,7 +648,7 @@ export class WorkspaceInviteService {
         inviteeUserId: string | null
     ): Promise<void> {
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 const revoked = await this.workspaceInviteRepository.revokeInTx(
                     tx,
                     workspaceInviteId

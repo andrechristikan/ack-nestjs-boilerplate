@@ -24,6 +24,7 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -56,6 +57,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
     const userService: MockProxy<UserService> = mock<UserService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const firstEntry = buildActivityLogCreateManyEffect('first-entry');
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
@@ -102,7 +104,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
         vi.setSystemTime(now);
-        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -124,6 +126,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                     useValue: projectMemberService,
                 },
                 { provide: UserService, useValue: userService },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -210,7 +213,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
             expect(
                 workspaceInviteService.assertInviteeNotMember
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 workspaceInviteService.acceptPendingInTx
             ).toHaveBeenCalledWith(tx, 'invite-1', 'user-2', now);
@@ -338,7 +341,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                     body
                 )
             ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
@@ -356,7 +359,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                     body
                 )
             ).rejects.toBeInstanceOf(WorkspaceInviteInvalidException);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 

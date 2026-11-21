@@ -36,6 +36,7 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
@@ -79,6 +80,7 @@ describe('UserProcessImportByAdminUseCase', () => {
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const userRegistrationService: MockProxy<UserRegistrationService> =
         mock<UserRegistrationService>();
@@ -223,7 +225,7 @@ describe('UserProcessImportByAdminUseCase', () => {
                 ? resultEffect
                 : welcomeEffect
         );
-        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
         roleService.getByName.mockResolvedValue(role);
         countryService.getIdByAlpha2Code.mockResolvedValue('country-bramble');
         userImportService.prepareImportByAdmin.mockResolvedValue({
@@ -241,6 +243,7 @@ describe('UserProcessImportByAdminUseCase', () => {
                 UserProcessImportByAdminUseCase,
                 { provide: UserImportService, useValue: userImportService },
                 { provide: WorkspaceService, useValue: workspaceService },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
                 WorkspaceUtil,
@@ -286,8 +289,8 @@ describe('UserProcessImportByAdminUseCase', () => {
                 role,
                 'country-bramble'
             );
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(outboxService.withTransaction).toHaveBeenCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 30000 }
             );
@@ -316,7 +319,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             expect(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             ).toHaveBeenCalledBefore(outboxService.addManyInTx);
-            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('records the created count on the outbox row inside the transaction that creates the users', async () => {
@@ -349,9 +352,9 @@ describe('UserProcessImportByAdminUseCase', () => {
             expect(
                 userImportService.prepareImportByAdmin
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.updateDataInTx).not.toHaveBeenCalled();
-            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
             expect(notificationQueue.notify).not.toHaveBeenCalled();
         });
@@ -435,7 +438,7 @@ describe('UserProcessImportByAdminUseCase', () => {
         });
 
         it('adds the result effect alone with one username reason and resolves when a username collides', async () => {
-            outboxService.withTransaction.mockRejectedValue(
+            databaseService.withTransaction.mockRejectedValueOnce(
                 buildPrismaKnownRequestError('P2002', 'username')
             );
 
@@ -461,13 +464,17 @@ describe('UserProcessImportByAdminUseCase', () => {
                     reasons: ['user.error.usernameExist'],
                 }
             );
-            expect(outboxService.add).toHaveBeenCalledTimes(1);
-            expect(outboxService.add).toHaveBeenCalledWith(resultEffect);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                resultEffect
+            );
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('adds the result effect alone with one email reason and resolves when an email collides', async () => {
-            outboxService.withTransaction.mockRejectedValue(
+            databaseService.withTransaction.mockRejectedValueOnce(
                 buildPrismaKnownRequestError('P2002', 'email')
             );
 
@@ -487,12 +494,16 @@ describe('UserProcessImportByAdminUseCase', () => {
                     reasons: ['user.error.emailExist'],
                 })
             );
-            expect(outboxService.add).toHaveBeenCalledWith(resultEffect);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                resultEffect
+            );
         });
 
         it('retries with the next slug attempt after a slug collision', async () => {
             const collision = buildPrismaKnownRequestError('P2002', 'slug');
-            outboxService.withTransaction
+            databaseService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(async fn => fn(tx));
 
@@ -500,15 +511,15 @@ describe('UserProcessImportByAdminUseCase', () => {
                 useCase.execute('outbox-bramble', payload)
             ).resolves.toMatchObject({ created: 1, failed: 0 });
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
             expect(
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenLastCalledWith(tx, [{ ...owned, slug: 'w-bramble-b' }]);
-            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('throws DatabaseUniqueValueGenerationFailedException after the last slug attempt and adds no result', async () => {
-            outboxService.withTransaction.mockRejectedValue(
+            databaseService.withTransaction.mockRejectedValue(
                 buildPrismaKnownRequestError('P2002', 'slug')
             );
 
@@ -517,13 +528,13 @@ describe('UserProcessImportByAdminUseCase', () => {
             ).rejects.toBeInstanceOf(
                 DatabaseUniqueValueGenerationFailedException
             );
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
-            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('throws a QueueException wrapping an unmapped error and adds no result', async () => {
             const unexpected = new Error('unexpected');
-            outboxService.withTransaction.mockRejectedValue(unexpected);
+            databaseService.withTransaction.mockRejectedValue(unexpected);
 
             await expect(
                 useCase.execute('outbox-bramble', payload)
@@ -533,17 +544,17 @@ describe('UserProcessImportByAdminUseCase', () => {
                 isFatal: true,
                 rawError: unexpected,
             });
-            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('rethrows a mapped exception that is not a collision and adds no result', async () => {
             const notCollision = new WorkspaceNotFoundException();
-            outboxService.withTransaction.mockRejectedValue(notCollision);
+            databaseService.withTransaction.mockRejectedValue(notCollision);
 
             await expect(
                 useCase.execute('outbox-bramble', payload)
             ).rejects.toBe(notCollision);
-            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 });

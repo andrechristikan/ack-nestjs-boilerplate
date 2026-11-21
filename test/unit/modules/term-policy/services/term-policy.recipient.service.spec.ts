@@ -16,6 +16,7 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { INotificationEmailPublishTermPolicyEffect } from '@modules/notification/interfaces/notification.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
@@ -26,6 +27,7 @@ import { TermPolicyRecipientService } from '@modules/term-policy/services/term-p
 describe('TermPolicyRecipientService', () => {
     const termPolicyRecipientRepository: MockProxy<TermPolicyRecipientRepository> =
         mock<TermPolicyRecipientRepository>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const notificationEmailQueue: MockProxy<NotificationEmailQueue> =
         mock<NotificationEmailQueue>();
@@ -62,6 +64,7 @@ describe('TermPolicyRecipientService', () => {
     });
 
     beforeEach(async () => {
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
         notificationEmailQueue.emailPublishTermPolicyEffect.mockImplementation(
             (effectData, batchId, proceedBy, recipients) => ({
                 ...batchEffect,
@@ -80,6 +83,7 @@ describe('TermPolicyRecipientService', () => {
                     provide: TermPolicyRecipientRepository,
                     useValue: termPolicyRecipientRepository,
                 },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -364,8 +368,9 @@ describe('TermPolicyRecipientService', () => {
                     username: 'name-u4',
                 },
             ]);
-            expect(outboxService.addMany).toHaveBeenCalledTimes(1);
-            expect(outboxService.addMany).toHaveBeenCalledWith([
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 expect.objectContaining({ idempotencyKey: 'key-B1-1' }),
                 expect.objectContaining({ idempotencyKey: 'key-B2-2' }),
             ]);
@@ -411,7 +416,8 @@ describe('TermPolicyRecipientService', () => {
             expect(
                 notificationEmailQueue.emailPublishTermPolicyEffect
             ).toHaveBeenCalledWith(data, 'B', 'admin-id', []);
-            expect(outboxService.addMany).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
             expect(batches).toBe(1);
         });
 
@@ -424,7 +430,8 @@ describe('TermPolicyRecipientService', () => {
                 []
             );
 
-            expect(outboxService.addMany).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
             expect(batches).toBe(0);
         });
     });

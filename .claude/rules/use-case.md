@@ -18,7 +18,7 @@ Its place in the layer chain and what it injects: `layering.md`, Roles.
     1. a cross-module gate (`RoleService.assertActorOutranks`);
     2. every check a read answers (`transaction.md`, Transactions);
     3. the transaction it opens: each service's `*InTx` write, the side effects and activity entries added inside it (`effects.md`).
-- A use case taking the request takes its controller's contexts first, in the `http.md` order, and passes each service and effect builder `requestContext`, `apiKeyContext`, and `authContext` whole, `recordEffect` also `workspaceContext` (the actor: `service.md`, Shape). A job use case passes on what its payload carries.
+- A use case taking the request takes its controller's contexts in the `http.md` order, and passes each service and effect builder `requestContext`, `apiKeyContext`, and `authContext` whole, `recordEffect` also `workspaceContext` (the actor: `service.md`, Shape). A job use case passes on what its payload carries.
 - A row a guard loaded (the user, its role, the API key, the workspace and the caller's member, the project and the caller's project member) comes from its context, is the fail-fast read, and is never read again by the use case or a service; a write on its state still carries its guard (`transaction.md`, Queries).
 - Originates only these (a rethrow or wrap originates nothing: `exceptions.md`, The hierarchy); `UserSignUpUseCase` (`src/modules/user/use-cases/user.sign-up.use-case.ts`) shows the second and third:
     - a mapped write conflict: `DatabaseWriteConflictCode` through `DatabaseUtil.toException` to the guard's own exception (`transaction.md`, Transactions);

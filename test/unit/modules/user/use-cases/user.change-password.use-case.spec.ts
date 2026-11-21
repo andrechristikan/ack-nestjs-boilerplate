@@ -20,6 +20,7 @@ import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
@@ -87,6 +88,7 @@ describe('UserChangePasswordUseCase', () => {
         mock<AuthPasswordService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let helperHashService: HelperHashService;
@@ -163,7 +165,7 @@ describe('UserChangePasswordUseCase', () => {
 
     beforeEach(async () => {
         activityLogQueue.recordEffect.mockReturnValue(changeEntry);
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         notificationQueue.notify.mockReturnValue(notifyEffect);
@@ -194,6 +196,7 @@ describe('UserChangePasswordUseCase', () => {
                     }),
                 },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
             ],
@@ -274,13 +277,13 @@ describe('UserChangePasswordUseCase', () => {
             );
             expect(argon2Hash).toHaveBeenCalledWith('new-password');
             expect(argon2Hash).toHaveBeenCalledBefore(
-                outboxService.withTransaction
+                databaseService.withTransaction
             );
         });
 
         it('completes the re-authentication first, then writes the change, its entry, and the notification on one transaction', async () => {
             const calls: string[] = [];
-            outboxService.withTransaction.mockImplementation(async fn => {
+            databaseService.withTransaction.mockImplementation(async fn => {
                 calls.push('begin');
                 const value = await fn(tx);
                 calls.push('commit');
@@ -444,7 +447,7 @@ describe('UserChangePasswordUseCase', () => {
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
             expect(authPasswordService.assertAllowed).not.toHaveBeenCalled();
             expect(argon2Hash).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('writes nothing when the MFA budget is spent', async () => {
@@ -461,7 +464,7 @@ describe('UserChangePasswordUseCase', () => {
                 )
             ).rejects.toBe(limit);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('refuses a disallowed new password before it hashes', async () => {
@@ -479,7 +482,7 @@ describe('UserChangePasswordUseCase', () => {
             ).rejects.toBe(refused);
 
             expect(argon2Hash).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('opens no transaction when the new password repeats an old one', async () => {
@@ -496,7 +499,7 @@ describe('UserChangePasswordUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('adds no effect and no write when the completion refuses the proof', async () => {
@@ -522,7 +525,7 @@ describe('UserChangePasswordUseCase', () => {
         it('answers MfaInvalidException when a verified MFA user loses a write conflict', async () => {
             const conflict = buildPrismaKnownRequestError('P2034');
             userAuthService.assertReauthentication.mockResolvedValue(withMfa);
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(
@@ -540,7 +543,7 @@ describe('UserChangePasswordUseCase', () => {
         });
 
         it('wraps a write conflict in AppUnknownException when no MFA proof was checked', async () => {
-            outboxService.withTransaction.mockRejectedValue(
+            databaseService.withTransaction.mockRejectedValue(
                 buildPrismaKnownRequestError('P2034')
             );
 
@@ -557,7 +560,7 @@ describe('UserChangePasswordUseCase', () => {
 
         it('wraps an unknown transaction failure in AppUnknownException', async () => {
             const cause = new Error('boom');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(

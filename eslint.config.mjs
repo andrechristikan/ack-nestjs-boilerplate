@@ -163,6 +163,19 @@ const databaseClientRestriction = {
         'Only a repository, a seed, or a health indicator queries databaseService.client; a service or use case calls withTransaction and a repository.',
 };
 
+const transactionCallRestriction = {
+    selector: "CallExpression[callee.property.name='$transaction']",
+    message:
+        'Every transaction opens through DatabaseService.withTransaction (transaction.md, Transactions).',
+};
+
+const injectQueueRestriction = {
+    selector:
+        "Decorator[expression.callee.name='Inject'][expression.arguments.0.type='MemberExpression'][expression.arguments.0.object.name=/^Enum[A-Za-z]+Queue$/]",
+    message:
+        'A queue class is injected by its class; no @Inject(<queue enum>) is written (queue.md, Where things live).',
+};
+
 const commentRules = {
     'no-warning-comments': [
         'error',
@@ -273,6 +286,8 @@ const codeStyleRules = {
         'error',
         ...codeStyleRestrictedSyntax,
         databaseClientRestriction,
+        transactionCallRestriction,
+        injectQueueRestriction,
     ],
     '@typescript-eslint/member-ordering': [
         'error',
@@ -651,7 +666,23 @@ export default [
             'src/common/database/**/*.ts',
         ],
         rules: {
-            'no-restricted-syntax': ['error', ...codeStyleRestrictedSyntax],
+            'no-restricted-syntax': [
+                'error',
+                ...codeStyleRestrictedSyntax,
+                transactionCallRestriction,
+                injectQueueRestriction,
+            ],
+        },
+    },
+    {
+        name: 'ts/database-service',
+        files: ['src/common/database/services/database.service.ts'],
+        rules: {
+            'no-restricted-syntax': [
+                'error',
+                ...codeStyleRestrictedSyntax,
+                injectQueueRestriction,
+            ],
         },
     },
     {
@@ -764,7 +795,7 @@ export default [
                 {
                     object: 'vi',
                     property: 'clearAllMocks',
-                    message: 'vi.resetAllMocks() in beforeEach.',
+                    message: 'The unit project resets and restores every mock; a spec calls no vi.clearAllMocks(), vi.resetAllMocks(), or vi.restoreAllMocks()',
                 },
             ],
             '@typescript-eslint/ban-ts-comment': [

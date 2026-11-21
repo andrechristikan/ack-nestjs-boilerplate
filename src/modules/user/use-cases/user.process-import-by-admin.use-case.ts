@@ -12,6 +12,7 @@ import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
@@ -50,6 +51,7 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         private readonly userRegistrationService: UserRegistrationService,
         private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
         private readonly workspaceUtil: WorkspaceUtil,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
@@ -77,7 +79,7 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
-                return await this.outboxService.withTransaction(
+                return await this.databaseService.withTransaction(
                     async tx => {
                         const users =
                             await this.userRegistrationService.createInTx(
@@ -234,7 +236,9 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
                 reasons: [reason],
             }
         );
-        await this.outboxService.add(result);
+        await this.databaseService.withTransaction(async tx =>
+            this.outboxService.addInTx(tx, result)
+        );
 
         return { message, created: 0, failed: rows.length };
     }

@@ -8,6 +8,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
@@ -105,6 +106,7 @@ describe('UserSignUpUseCase', () => {
     const countryService: MockProxy<CountryService> = mock<CountryService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     let useCase: UserSignUpUseCase;
     let databaseUtil: DatabaseUtil;
@@ -284,7 +286,7 @@ describe('UserSignUpUseCase', () => {
     };
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         activityLogQueue.recordEffect.mockReturnValue(activityEntry);
@@ -330,6 +332,7 @@ describe('UserSignUpUseCase', () => {
                 HelperStringService,
                 HelperDateService,
                 HelperHashService,
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
                 {
@@ -398,8 +401,8 @@ describe('UserSignUpUseCase', () => {
                 signUpInput,
                 { roleId: 'role-bramble', workspaceContext: personalContext }
             );
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(outboxService.withTransaction).toHaveBeenCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 5000 }
             );
@@ -449,7 +452,7 @@ describe('UserSignUpUseCase', () => {
             expect(
                 userRegistrationService.prepareSignUp
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('adds the effects after the last write and before the commit returns', async () => {
@@ -552,7 +555,7 @@ describe('UserSignUpUseCase', () => {
                 statusCode: EnumCountryStatusCodeError.notFound,
             });
             expect(userService.assertEmailAvailable).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('answers the email gate before the username gate and opens no transaction', async () => {
@@ -569,7 +572,7 @@ describe('UserSignUpUseCase', () => {
             });
             expect(userService.assertEmailAvailable).toHaveBeenCalledWith(true);
             expect(userService.assertUsernameAvailable).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('opens no transaction when the username gate rejects', async () => {
@@ -586,12 +589,12 @@ describe('UserSignUpUseCase', () => {
             expect(userService.assertUsernameAvailable).toHaveBeenCalledWith(
                 clearUsername
             );
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('adds no entry or effect outside the transaction when the commit throws', async () => {
             const failure = new UserEmailExistException();
-            outboxService.withTransaction.mockRejectedValue(failure);
+            databaseService.withTransaction.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
@@ -653,8 +656,8 @@ describe('UserSignUpUseCase', () => {
             expect(projectMemberService.createInTx).toHaveBeenCalledBefore(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             );
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(outboxService.withTransaction).toHaveBeenCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 5000 }
             );
@@ -662,7 +665,7 @@ describe('UserSignUpUseCase', () => {
 
         it("runs createInTx on each attempt's tx after a slug collision", async () => {
             const retryTx = {} as IDatabaseTransactionClient;
-            outboxService.withTransaction
+            databaseService.withTransaction
                 .mockImplementationOnce(async fn => {
                     await fn(tx);
                     throw buildPrismaKnownRequestError('P2002', 'slug');
@@ -762,7 +765,7 @@ describe('UserSignUpUseCase', () => {
 
         it('retries with the next slug candidate after a slug collision and commits', async () => {
             const collision = buildPrismaKnownRequestError('P2002', 'slug');
-            outboxService.withTransaction
+            databaseService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(async fn => fn(tx) as never);
 
@@ -775,7 +778,7 @@ describe('UserSignUpUseCase', () => {
                 )
             ).resolves.toBeUndefined();
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
             expect(
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenLastCalledWith(tx, [
@@ -789,7 +792,7 @@ describe('UserSignUpUseCase', () => {
         });
 
         it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
-            outboxService.withTransaction.mockRejectedValue(
+            databaseService.withTransaction.mockRejectedValue(
                 buildPrismaKnownRequestError('P2002', 'slug')
             );
 
@@ -805,12 +808,12 @@ describe('UserSignUpUseCase', () => {
                 statusCode:
                     EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
             });
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });
 
         it('throws the exception the create util maps a non-slug collision to', async () => {
             const otherError = buildPrismaKnownRequestError('P2002', 'email');
-            outboxService.withTransaction.mockRejectedValue(otherError);
+            databaseService.withTransaction.mockRejectedValue(otherError);
 
             await expect(
                 useCase['createSignUpUser'](
@@ -827,7 +830,7 @@ describe('UserSignUpUseCase', () => {
 
         it('wraps a non-collision error the create util leaves unmapped in the unknown exception', async () => {
             const otherError = new Error('unexpected');
-            outboxService.withTransaction.mockRejectedValue(otherError);
+            databaseService.withTransaction.mockRejectedValue(otherError);
 
             await expect(
                 useCase['createSignUpUser'](

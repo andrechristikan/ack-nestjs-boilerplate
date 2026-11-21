@@ -14,6 +14,7 @@ import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import type { UserLoginVerifyMfaRequestDto } from '@modules/user/dtos/request/user.login-verify-mfa.request.dto';
@@ -31,6 +32,7 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
         private readonly mfaService: MfaService,
         private readonly mfaChallengeService: MfaChallengeService,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService,
         private readonly databaseUtil: DatabaseUtil
@@ -65,7 +67,7 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
         );
         const loginAt = this.helperDateService.create();
         try {
-            const { tokens } = await this.outboxService.withTransaction(
+            const { tokens } = await this.databaseService.withTransaction(
                 async tx => {
                     await this.mfaChallengeService.consumeInTx(
                         tx,

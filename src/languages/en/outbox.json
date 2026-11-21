@@ -1,7 +1,4 @@
 {
-    "error": {
-        "transactionMissing": "The request could not be processed. Please try again later."
-    },
     "queue": {
         "sweep": "Dispatched {count} pending or reconciled outbox rows.",
         "error": {

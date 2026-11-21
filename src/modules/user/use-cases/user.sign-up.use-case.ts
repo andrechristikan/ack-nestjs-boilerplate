@@ -10,6 +10,7 @@ import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
@@ -60,6 +61,7 @@ export class UserSignUpUseCase implements IAppUseCase<
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly workspaceUtil: WorkspaceUtil,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
@@ -85,7 +87,7 @@ export class UserSignUpUseCase implements IAppUseCase<
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
-                await this.outboxService.withTransaction(
+                await this.databaseService.withTransaction(
                     async tx => {
                         await this.termPolicyAcceptanceService.assertRequiredPublishedInTx(
                             tx,

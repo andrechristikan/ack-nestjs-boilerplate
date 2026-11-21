@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -40,6 +41,7 @@ describe('UserLogoutUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     let useCase: UserLogoutUseCase;
 
@@ -99,7 +101,7 @@ describe('UserLogoutUseCase', () => {
     });
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         vi.setSystemTime(now);
@@ -113,6 +115,7 @@ describe('UserLogoutUseCase', () => {
                 { provide: DeviceService, useValue: deviceService },
                 { provide: SessionService, useValue: sessionService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
                 {
@@ -128,7 +131,7 @@ describe('UserLogoutUseCase', () => {
     describe('execute', () => {
         it('revokes the session, clears the device notification, and adds the logout entry on one transaction', async () => {
             const callOrder: string[] = [];
-            outboxService.withTransaction.mockImplementation(async fn => {
+            databaseService.withTransaction.mockImplementation(async fn => {
                 const result = await fn(tx);
                 callOrder.push('committed');
 
@@ -181,7 +184,7 @@ describe('UserLogoutUseCase', () => {
 
         it('rethrows the not-found of the guarded revoke without clearing the device or adding the entry', async () => {
             const failure = new SessionNotFoundException();
-            outboxService.withTransaction.mockImplementation(async fn =>
+            databaseService.withTransaction.mockImplementation(async fn =>
                 fn(tx)
             );
             sessionService.revokeInTx.mockRejectedValue(failure);
@@ -195,7 +198,7 @@ describe('UserLogoutUseCase', () => {
 
         it('answers SessionNotFoundException on a write conflict with one run and no entry', async () => {
             const conflict = buildPrismaKnownRequestError('P2034');
-            outboxService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, authContext)
@@ -204,13 +207,13 @@ describe('UserLogoutUseCase', () => {
                 statusCode: EnumSessionStatusCodeError.notFound,
             });
 
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('wraps any other failure raised while logging out in the unknown exception without an entry', async () => {
             const failure = new Error('boom');
-            outboxService.withTransaction.mockRejectedValue(failure);
+            databaseService.withTransaction.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, authContext)

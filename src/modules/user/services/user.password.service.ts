@@ -38,6 +38,7 @@ import { UserService } from '@modules/user/services/user.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Duration } from 'luxon';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -61,6 +62,7 @@ export class UserPasswordService {
         private readonly helperStringService: HelperStringService,
         private readonly helperDateService: HelperDateService,
         private readonly userService: UserService,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly notificationQueue: NotificationQueue,
         private readonly databaseUtil: DatabaseUtil,
@@ -207,7 +209,7 @@ export class UserPasswordService {
         const lockedUntilIso = this.helperDateService.formatToIso(lockedUntil);
 
         try {
-            return await this.outboxService.withTransaction(async tx => {
+            return await this.databaseService.withTransaction(async tx => {
                 const isLocked =
                     await this.userRepository.incrementPasswordAttemptInTx(
                         tx,
@@ -303,7 +305,7 @@ export class UserPasswordService {
     ): Promise<void> {
         const expiredAt = this.helperDateService.formatToIso(forgot.expiredAt);
 
-        await this.outboxService.withTransaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.userForgotPasswordRepository.createReplacingUnusedInTx(
                 tx,
                 userId,

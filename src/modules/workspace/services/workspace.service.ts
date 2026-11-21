@@ -17,6 +17,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
@@ -51,6 +52,7 @@ export class WorkspaceService {
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly featureFlagService: FeatureFlagService,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseUtil: DatabaseUtil,
@@ -172,7 +174,7 @@ export class WorkspaceService {
             const workspaceId = this.databaseUtil.createId();
 
             try {
-                return await this.outboxService.withTransaction(async tx => {
+                return await this.databaseService.withTransaction(async tx => {
                     const ownedCount = await this.countOwnedInTx(tx, userId);
                     if (ownedCount >= maxWorkspacesPerUser) {
                         throw new WorkspaceCapReachedException();
@@ -227,7 +229,7 @@ export class WorkspaceService {
         workspaceId: string,
         update: IWorkspaceUpdate
     ): Promise<Workspace> {
-        return this.outboxService.withTransaction(async tx => {
+        return this.databaseService.withTransaction(async tx => {
             const workspace = await this.workspaceRepository.updateDetailsInTx(
                 tx,
                 workspaceId,
@@ -259,7 +261,7 @@ export class WorkspaceService {
         workspaceId: string,
         isPublic: boolean
     ): Promise<Workspace> {
-        return this.outboxService.withTransaction(async tx => {
+        return this.databaseService.withTransaction(async tx => {
             const workspace = await this.workspaceRepository.updateIsPublicInTx(
                 tx,
                 workspaceId,
@@ -297,7 +299,7 @@ export class WorkspaceService {
         }
 
         try {
-            return await this.outboxService.withTransaction(async tx => {
+            return await this.databaseService.withTransaction(async tx => {
                 const workspace = await this.workspaceRepository.updateSlugInTx(
                     tx,
                     workspaceId,

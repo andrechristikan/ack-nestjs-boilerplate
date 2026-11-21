@@ -1,9 +1,11 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IUserImportByAdminEffect } from '@modules/user/interfaces/user.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
@@ -33,7 +35,9 @@ describe('UserImportByAdminUseCase', () => {
         mock<ActivityLogQueue>();
     const userImportService: MockProxy<UserImportService> =
         mock<UserImportService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const tx = mock<IDatabaseTransactionClient>();
     let useCase: UserImportByAdminUseCase;
 
     const requestContext = buildRequestContext();
@@ -66,7 +70,8 @@ describe('UserImportByAdminUseCase', () => {
     };
 
     beforeEach(async () => {
-        outboxService.add.mockResolvedValue('outbox-bramble');
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
+        outboxService.addInTx.mockResolvedValue('outbox-bramble');
         activityLogQueue.toPayload.mockReturnValue(
             importEffect.data.activityLog
         );
@@ -78,6 +83,7 @@ describe('UserImportByAdminUseCase', () => {
                 { provide: UserQueue, useValue: userQueue },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: UserImportService, useValue: userImportService },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -132,7 +138,11 @@ describe('UserImportByAdminUseCase', () => {
                 imported,
                 importEffect.data.activityLog
             );
-            expect(outboxService.add).toHaveBeenCalledWith(importEffect);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                importEffect
+            );
         });
 
         it('runs the email, username, and row checks in order before adding the effect', async () => {
@@ -160,7 +170,7 @@ describe('UserImportByAdminUseCase', () => {
             ).toHaveBeenCalledBefore(userImportService.assertImportByAdminRows);
             expect(
                 userImportService.assertImportByAdminRows
-            ).toHaveBeenCalledBefore(outboxService.add);
+            ).toHaveBeenCalledBefore(databaseService.withTransaction);
         });
 
         it('throws the email error and adds no effect when an email exists', async () => {
@@ -185,7 +195,8 @@ describe('UserImportByAdminUseCase', () => {
             expect(
                 userImportService.assertImportByAdminRows
             ).not.toHaveBeenCalled();
-            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('throws the username error and adds no effect when a row check fails', async () => {
@@ -204,7 +215,8 @@ describe('UserImportByAdminUseCase', () => {
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.importUsernameExist,
             });
-            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(userQueue.importByAdminEffect).not.toHaveBeenCalled();
         });
 
@@ -224,7 +236,8 @@ describe('UserImportByAdminUseCase', () => {
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.usernameContainBadWord,
             });
-            expect(outboxService.add).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 });

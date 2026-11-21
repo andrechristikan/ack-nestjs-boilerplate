@@ -19,6 +19,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -72,6 +73,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: MfaRegisterPasskeyUseCase;
@@ -120,7 +122,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
     };
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         userAuthService.assertReauthentication.mockResolvedValue(passwordOnly);
@@ -140,6 +142,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 { provide: MfaChallengeService, useValue: mfaChallengeService },
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -175,7 +178,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
             expect(
                 mfaChallengeService.getWebAuthnChallengeForUser
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('asserts the re-authentication, then reads the registration challenge', async () => {
@@ -384,7 +387,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(mfaPasskeyService.registerInTx).not.toHaveBeenCalled();
         });
 
@@ -404,7 +407,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('reads no challenge when the proof fails', async () => {
@@ -453,7 +456,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
                     passkey: null,
                 },
             });
-            outboxService.withTransaction.mockRejectedValue(
+            databaseService.withTransaction.mockRejectedValue(
                 new Prisma.PrismaClientKnownRequestError('conflict', {
                     code: DatabaseWriteConflictCode,
                     clientVersion: 'test',
@@ -472,7 +475,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
         });
 
         it('answers MfaChallengeInvalidException on a write conflict with no MFA proof', async () => {
-            outboxService.withTransaction.mockRejectedValue(
+            databaseService.withTransaction.mockRejectedValue(
                 new Prisma.PrismaClientKnownRequestError('conflict', {
                     code: DatabaseWriteConflictCode,
                     clientVersion: 'test',
@@ -492,7 +495,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
 
         it('wraps any other transaction failure in the unknown exception', async () => {
             const cause = new Error('boom');
-            outboxService.withTransaction.mockRejectedValue(cause);
+            databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(

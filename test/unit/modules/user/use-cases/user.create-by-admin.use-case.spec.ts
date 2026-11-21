@@ -48,6 +48,7 @@ import { WorkspaceService } from '@modules/workspace/services/workspace.service'
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
@@ -78,6 +79,7 @@ describe('UserCreateByAdminUseCase', () => {
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
     const tx = {} as IDatabaseTransactionClient;
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const userRegistrationService: MockProxy<UserRegistrationService> =
         mock<UserRegistrationService>();
@@ -199,7 +201,7 @@ describe('UserCreateByAdminUseCase', () => {
             stageInput,
         ]);
         notificationQueue.notify.mockReturnValue(welcomeEffect);
-        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
         userRegistrationService.createInTx.mockResolvedValue([committedUser]);
         roleService.getByName.mockResolvedValue(role);
         countryService.getOne.mockResolvedValue(country);
@@ -209,6 +211,7 @@ describe('UserCreateByAdminUseCase', () => {
                 UserCreateByAdminUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: WorkspaceService, useValue: workspaceService },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
                 WorkspaceUtil,
@@ -296,8 +299,8 @@ describe('UserCreateByAdminUseCase', () => {
                 'admin-bramble',
                 role
             );
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(outboxService.withTransaction).toHaveBeenCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 5000 }
             );
@@ -472,7 +475,7 @@ describe('UserCreateByAdminUseCase', () => {
             );
 
             expect(users).toEqual([committedUser]);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
                 tx,
                 [input]
@@ -509,7 +512,7 @@ describe('UserCreateByAdminUseCase', () => {
                 7000
             );
 
-            expect(outboxService.withTransaction).toHaveBeenCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenCalledWith(
                 expect.any(Function),
                 { timeout: 7000 }
             );
@@ -517,7 +520,7 @@ describe('UserCreateByAdminUseCase', () => {
 
         it('retries with the next attempt after a slug collision', async () => {
             const collision = buildPrismaKnownRequestError('P2002', 'slug');
-            outboxService.withTransaction
+            databaseService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(async fn => fn(tx));
 
@@ -530,7 +533,7 @@ describe('UserCreateByAdminUseCase', () => {
             );
 
             expect(users).toEqual([committedUser]);
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
             expect(
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenLastCalledWith(tx, [{ ...owned, slug: 'w-bramble-b' }]);
@@ -538,7 +541,7 @@ describe('UserCreateByAdminUseCase', () => {
 
         it('throws the mapped AppBaseException of mapCreateCollision', async () => {
             const otherError = buildPrismaKnownRequestError('P2002', 'email');
-            outboxService.withTransaction.mockRejectedValue(otherError);
+            databaseService.withTransaction.mockRejectedValue(otherError);
 
             await expect(
                 useCase['createAdminUsers'](
@@ -556,7 +559,7 @@ describe('UserCreateByAdminUseCase', () => {
 
         it('wraps an unmapped error in AppUnknownException', async () => {
             const otherError = new Error('unexpected');
-            outboxService.withTransaction.mockRejectedValue(otherError);
+            databaseService.withTransaction.mockRejectedValue(otherError);
 
             await expect(
                 useCase['createAdminUsers'](
@@ -573,7 +576,7 @@ describe('UserCreateByAdminUseCase', () => {
         });
 
         it('throws DatabaseUniqueValueGenerationFailedException after the last attempt', async () => {
-            outboxService.withTransaction.mockRejectedValue(
+            databaseService.withTransaction.mockRejectedValue(
                 buildPrismaKnownRequestError('P2002', 'slug')
             );
 
@@ -588,7 +591,7 @@ describe('UserCreateByAdminUseCase', () => {
             ).rejects.toBeInstanceOf(
                 DatabaseUniqueValueGenerationFailedException
             );
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });
     });
 });

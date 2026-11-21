@@ -11,6 +11,7 @@ import type { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api
 import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -26,6 +27,7 @@ export class ApiKeyResetByAdminUseCase implements IAppUseCase<
         private readonly apiKeyService: ApiKeyService,
         private readonly apiKeyUtil: ApiKeyUtil,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -38,8 +40,8 @@ export class ApiKeyResetByAdminUseCase implements IAppUseCase<
         id: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
         try {
-            const { apiKey, secret } = await this.outboxService.withTransaction(
-                async tx => {
+            const { apiKey, secret } =
+                await this.databaseService.withTransaction(async tx => {
                     const reset = await this.apiKeyService.resetByAdminInTx(
                         tx,
                         id
@@ -63,8 +65,7 @@ export class ApiKeyResetByAdminUseCase implements IAppUseCase<
                     await this.outboxService.addInTx(tx, effect);
 
                     return reset;
-                }
-            );
+                });
             const created = this.apiKeyUtil.mapCreate(apiKey, secret);
 
             return { data: created };

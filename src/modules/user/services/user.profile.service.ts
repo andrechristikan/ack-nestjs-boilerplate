@@ -38,6 +38,7 @@ import { UserQueue } from '@modules/user/queues/user.queue';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -55,6 +56,7 @@ export class UserProfileService {
         private readonly awsS3Service: AwsS3Service,
         private readonly fileService: FileService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly userQueue: UserQueue,
@@ -109,7 +111,7 @@ export class UserProfileService {
         photo: IAwsS3
     ): Promise<void> {
         const userId = authContext.userId;
-        await this.outboxService.withTransaction(async tx => {
+        await this.databaseService.withTransaction(async tx => {
             await this.userRepository.updatePhotoProfileInTx(tx, userId, photo);
             await this.deletePreviousPhotoInTx(
                 tx,
@@ -265,7 +267,9 @@ export class UserProfileService {
             );
             if (!isContentValid) {
                 const effect = this.userQueue.deletePhotoEffect(userId, aws);
-                await this.outboxService.add(effect);
+                await this.databaseService.withTransaction(async tx =>
+                    this.outboxService.addInTx(tx, effect)
+                );
 
                 throw new UserPhotoContentInvalidException();
             }
@@ -383,7 +387,7 @@ export class UserProfileService {
         this.userService.assertUsernameAvailable(check);
 
         try {
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.userRepository.claimUsernameInTx(
                     tx,
                     authContext.userId,

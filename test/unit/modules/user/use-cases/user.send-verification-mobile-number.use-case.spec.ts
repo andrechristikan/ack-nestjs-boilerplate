@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { UserMobileNumberAlreadyVerifiedException } from '@modules/user/exceptions/user.mobile-number-already-verified.exception';
@@ -26,6 +27,7 @@ describe('UserSendVerificationMobileNumberUseCase', () => {
         mock<UserVerificationService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: UserSendVerificationMobileNumberUseCase;
@@ -43,7 +45,7 @@ describe('UserSendVerificationMobileNumberUseCase', () => {
     };
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         activityLogQueue.recordEffect.mockReturnValue(entry);
@@ -67,6 +69,7 @@ describe('UserSendVerificationMobileNumberUseCase', () => {
                     useValue: userVerificationService,
                 },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -88,7 +91,7 @@ describe('UserSendVerificationMobileNumberUseCase', () => {
             expect(
                 userVerificationService.isMobileResendable
             ).toHaveBeenCalledWith('user-swift', 'mobile-swift');
-            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userVerificationService.sendMobileInTx).toHaveBeenCalledWith(
                 tx,
                 'user-swift',
@@ -119,7 +122,7 @@ describe('UserSendVerificationMobileNumberUseCase', () => {
             );
 
             expect(result).toEqual({});
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userVerificationService.sendMobileInTx
             ).not.toHaveBeenCalled();
@@ -142,7 +145,7 @@ describe('UserSendVerificationMobileNumberUseCase', () => {
             expect(
                 userVerificationService.isMobileResendable
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws UserMobileNumberAlreadyVerifiedException for a verified number and writes nothing', async () => {
@@ -158,7 +161,7 @@ describe('UserSendVerificationMobileNumberUseCase', () => {
                     'mobile-swift'
                 )
             ).rejects.toBeInstanceOf(UserMobileNumberAlreadyVerifiedException);
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
     });
 });

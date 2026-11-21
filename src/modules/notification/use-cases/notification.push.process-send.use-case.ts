@@ -13,6 +13,7 @@ import { NotificationPushDeliveryService } from '@modules/notification/services/
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 
@@ -27,6 +28,7 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
         private readonly notificationService: NotificationService,
         private readonly notificationPushQueue: NotificationPushQueue,
         private readonly notificationUtil: NotificationUtil,
+        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly messageService: MessageService
     ) {}
@@ -122,7 +124,7 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
                 userId,
                 tokens
             );
-            await this.outboxService.withTransaction(async tx => {
+            await this.databaseService.withTransaction(async tx => {
                 await this.notificationPushDeliveryService.stampSentInTx(
                     tx,
                     notificationId,

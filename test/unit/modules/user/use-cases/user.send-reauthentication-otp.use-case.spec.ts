@@ -7,6 +7,7 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { UserReauthenticationOtpNotAllowedException } from '@modules/user/exceptions/user.reauthentication-otp-not-allowed.exception';
@@ -29,6 +30,7 @@ describe('UserSendReauthenticationOtpUseCase', () => {
         mock<UserVerificationService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
     let useCase: UserSendReauthenticationOtpUseCase;
@@ -43,7 +45,7 @@ describe('UserSendReauthenticationOtpUseCase', () => {
     const dto = { action: EnumUserReauthenticationAction.mobileNumberDelete };
 
     beforeEach(async () => {
-        outboxService.withTransaction.mockImplementation(
+        databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         activityLogQueue.recordEffect.mockReturnValue(entry);
@@ -57,6 +59,7 @@ describe('UserSendReauthenticationOtpUseCase', () => {
                     useValue: userVerificationService,
                 },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -87,7 +90,7 @@ describe('UserSendReauthenticationOtpUseCase', () => {
             expect(
                 userVerificationService.assertReauthenticationResendable
             ).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userVerificationService.sendReauthenticationInTx
             ).not.toHaveBeenCalled();
@@ -116,7 +119,7 @@ describe('UserSendReauthenticationOtpUseCase', () => {
                 'user-swift',
                 EnumUserReauthenticationAction.mobileNumberDelete
             );
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userVerificationService.sendReauthenticationInTx
             ).not.toHaveBeenCalled();
@@ -147,7 +150,7 @@ describe('UserSendReauthenticationOtpUseCase', () => {
 
             expect(
                 userVerificationService.assertReauthenticationResendable
-            ).toHaveBeenCalledBefore(outboxService.withTransaction);
+            ).toHaveBeenCalledBefore(databaseService.withTransaction);
             expect(
                 userVerificationService.sendReauthenticationInTx
             ).toHaveBeenCalledWith(

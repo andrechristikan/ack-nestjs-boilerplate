@@ -32,6 +32,7 @@ import type {
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { NotificationProcessUseCase } from '@modules/notification/use-cases/notification.process.use-case';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
@@ -43,6 +44,7 @@ describe('NotificationProcessUseCase', () => {
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
@@ -130,7 +132,7 @@ describe('NotificationProcessUseCase', () => {
 
     beforeEach(async () => {
         messageService.setMessage.mockImplementation((path: string) => path);
-        outboxService.withTransaction.mockImplementation(async fn => fn(tx));
+        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
         const module = await Test.createTestingModule({
             providers: [
                 NotificationProcessUseCase,
@@ -142,6 +144,7 @@ describe('NotificationProcessUseCase', () => {
                 { provide: DeviceService, useValue: deviceService },
                 { provide: NotificationService, useValue: notificationService },
                 NotificationUtil,
+                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: MessageService, useValue: messageService },
                 ...TestUnitKitProviders,
@@ -419,7 +422,7 @@ describe('NotificationProcessUseCase', () => {
             const result = await useCase.execute('outbox-id', data);
 
             expect(outboxService.updateData).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'notification.queue.error.noRecipient',
             });
@@ -452,7 +455,7 @@ describe('NotificationProcessUseCase', () => {
                 notificationService.toRecipientRecord
             ).not.toHaveBeenCalled();
             expect(outboxService.updateData).not.toHaveBeenCalled();
-            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'notification.queue.error.noChannel',
             });
