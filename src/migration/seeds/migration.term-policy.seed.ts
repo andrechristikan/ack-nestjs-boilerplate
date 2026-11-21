@@ -166,12 +166,13 @@ export class MigrationTermPolicySeed
                     },
                     select: { type: true, version: true },
                 });
+            const existingKeys = new Set(
+                existing.map(row => `${row.type}:${row.version}`)
+            );
             const missing = this.termPolicies.filter(
                 termPolicy =>
-                    !existing.some(
-                        row =>
-                            row.type === termPolicy.type &&
-                            row.version === termPolicy.version
+                    !existingKeys.has(
+                        `${termPolicy.type}:${termPolicy.version}`
                     )
             );
 

@@ -5,13 +5,13 @@ export const DatabaseClient = Symbol('DatabaseClient');
 export const DatabaseQueryTargetRegex = /^db\.(\w+)\.(\w+)\(/;
 
 /** @public */
-export const DatabaseUnavailableCodes: readonly string[] = [
+export const DatabaseUnavailableCodes: ReadonlySet<string> = new Set([
     'P1001',
     'P1002',
     'P1008',
     'P1017',
     'P2024',
-];
+]);
 
 /** @public */
 export const DatabaseRawQueryFailedCode = 'P2010';

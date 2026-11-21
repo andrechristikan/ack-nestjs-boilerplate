@@ -40,6 +40,13 @@ Contexts run in the `http.md` order.
 - A log context line is a literal English sentence (`this.logger.error(error, 'Queue job failed')`, `injectable.md`, Logger). Queue text that leaves through `IQueueResponse`, `QueueException`, or a side-effect description is i18n (`queue.md`, Messages).
 - A regex holds the allowed characters and format, never the length of the whole value: that length is `.min()`, `.max()`, or `.length()` on the schema, or a `length` comparison against a constant where no schema reads the value (`RequestIdMaxLength`). A quantifier on part of a value (an email TLD, an ARN account id) is format.
 
+## Collections
+
+- A list searched by a key inside a loop is a `Map` (a value read) or a `Set` (a presence read) built once before the loop (`new Map(roles.map(role => [role.name, role.id]))`); a `find` or `some` over the array on every iteration is the defect. A compound key is one string (`${type}:${version}`).
+- A constant list read only for membership is a `ReadonlySet` checked with `has` (`AppRefusalLogStatuses`). It stays an array where its order or an index is read, where it is joined or iterated, or where zod, Prisma, or a third party takes it.
+- A config list stays an array in its `IConfig*` interface; the class that checks membership reads it once into a `private readonly` constructor field typed `ReadonlySet<T>`, named as `injectable.md`, Config, gives.
+- A lookup built at runtime from a list or rows is a `Map`; an open map stays `Record<string, T>` (Utility types).
+
 ## Dates
 
 - A date stored or passed inside the system (a Prisma column, a Redis value, a job or outbox payload, `Notification.metadata`, a response body) is a `Date` or an ISO 8601 string (`HelperDateService.formatToIso`; a pipeline `$date`, a cursor token, and a cache key token use `toISOString`, UTC).

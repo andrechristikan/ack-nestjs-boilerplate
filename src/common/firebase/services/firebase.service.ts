@@ -59,17 +59,17 @@ export class FirebaseService implements OnModuleInit {
     }
 
     private isInvalidTokenError(error: { code?: string } | null): boolean {
-        return FirebaseInvalidTokenCodes.includes(error?.code ?? '');
+        return FirebaseInvalidTokenCodes.has(error?.code ?? '');
     }
 
     private isCredentialError(error: { code?: string } | null): boolean {
-        return FirebaseCredentialErrorCodes.includes(error?.code ?? '');
+        return FirebaseCredentialErrorCodes.has(error?.code ?? '');
     }
 
     private isRetryableTokenError(error: { code?: string } | null): boolean {
         const code = error?.code ?? null;
 
-        return code === null || FirebaseRetryableTokenCodes.includes(code);
+        return code === null || FirebaseRetryableTokenCodes.has(code);
     }
 
     private buildMessageContent(payload: IFirebasePushPayload): {

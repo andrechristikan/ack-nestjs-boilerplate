@@ -79,24 +79,32 @@ export class UserImportService {
         data: IUserImport[],
         { existing, badWords }: IUserImportUsernameChecks
     ): void {
-        const emails = data.map(item => item.email);
-        const duplicateEmails = emails.filter(
-            (email, index) => emails.indexOf(email) !== index
-        );
-        const usernames = data.map(item => item.username);
-        const duplicateUsernames = usernames.filter(
-            (username, index) => usernames.indexOf(username) !== index
-        );
+        const emails = new Set<string>();
+        const duplicateEmails = new Set<string>();
+        const usernames = new Set<string>();
+        const duplicateUsernames = new Set<string>();
+        for (const { email, username } of data) {
+            if (emails.has(email)) {
+                duplicateEmails.add(email);
+            }
 
-        if (duplicateEmails.length > 0) {
+            if (usernames.has(username)) {
+                duplicateUsernames.add(username);
+            }
+
+            emails.add(email);
+            usernames.add(username);
+        }
+
+        if (duplicateEmails.size > 0) {
             throw new UserImportEmailExistException(
-                [...new Set(duplicateEmails)].join(', ')
+                [...duplicateEmails].join(', ')
             );
         } else if (existing.length > 0) {
             throw new UserImportUsernameExistException(existing.join(', '));
-        } else if (duplicateUsernames.length > 0) {
+        } else if (duplicateUsernames.size > 0) {
             throw new UserImportUsernameExistException(
-                [...new Set(duplicateUsernames)].join(', ')
+                [...duplicateUsernames].join(', ')
             );
         } else if (badWords.some(containsBadWord => containsBadWord)) {
             throw new UserUsernameContainBadWordException();

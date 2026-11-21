@@ -16,7 +16,7 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 @Injectable()
 export class MessageService {
     private readonly defaultLanguage: EnumMessageLanguage;
-    private readonly availableLanguages: EnumMessageLanguage[];
+    private readonly availableLanguages: ReadonlySet<string>;
 
     constructor(
         private readonly i18n: I18nService,
@@ -25,9 +25,10 @@ export class MessageService {
         this.defaultLanguage = this.configService.get<EnumMessageLanguage>(
             'message.defaultLanguage'
         )!;
-        this.availableLanguages = this.configService.get<EnumMessageLanguage[]>(
+        const availableLanguages = this.configService.get<string[]>(
             'message.availableLanguages'
         )!;
+        this.availableLanguages = new Set(availableLanguages);
     }
 
     private resolveIssueKey(issue: StandardSchemaV1.Issue): string {
@@ -85,11 +86,9 @@ export class MessageService {
     }
 
     filterLanguage(customLanguage: string): string {
-        const language = this.availableLanguages.find(
-            e => e === customLanguage
-        );
+        const isAvailable = this.availableLanguages.has(customLanguage);
 
-        return language ?? this.defaultLanguage;
+        return isAvailable ? customLanguage : this.defaultLanguage;
     }
 
     setMessage(path: string, options?: IMessageSetOptions): string {

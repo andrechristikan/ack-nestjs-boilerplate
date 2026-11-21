@@ -1,14 +1,16 @@
 /** @public */
-export const FirebaseInvalidTokenCodes = [
+export const FirebaseInvalidTokenCodes: ReadonlySet<string> = new Set([
     'messaging/invalid-registration-token',
     'messaging/registration-token-not-registered',
-];
+]);
 
 /** @public */
-export const FirebaseCredentialErrorCodes = ['messaging/mismatched-credential'];
+export const FirebaseCredentialErrorCodes: ReadonlySet<string> = new Set([
+    'messaging/mismatched-credential',
+]);
 
 /** @public */
-export const FirebaseRetryableTokenCodes = [
+export const FirebaseRetryableTokenCodes: ReadonlySet<string> = new Set([
     'messaging/server-unavailable',
     'messaging/internal-error',
     'messaging/message-rate-exceeded',
@@ -16,7 +18,7 @@ export const FirebaseRetryableTokenCodes = [
     'messaging/unknown-error',
     'app/network-error',
     'app/network-timeout',
-];
+]);
 
 /** @public */
 export const FirebaseMaxSendPushBatchSize = 500;

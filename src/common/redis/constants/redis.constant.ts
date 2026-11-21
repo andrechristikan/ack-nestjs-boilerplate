@@ -8,24 +8,24 @@ export const RedisQueueClient = Symbol('RedisQueueClient');
 export const RedisQueueWorkerClient = Symbol('RedisQueueWorkerClient');
 
 /** @public */
-export const RedisConnectionErrorMessages = [
+export const RedisConnectionErrorMessages: ReadonlySet<string> = new Set([
     "Stream isn't writeable and enableOfflineQueue options is false",
     'Command timed out',
     'Connection is closed.',
-];
+]);
 
 /** @public */
-export const RedisConnectionErrorNames = [
+export const RedisConnectionErrorNames: ReadonlySet<string> = new Set([
     'MaxRetriesPerRequestError',
     'AbortError',
-];
+]);
 
 /** @public */
-export const RedisConnectionErrorCodes = [
+export const RedisConnectionErrorCodes: ReadonlySet<string> = new Set([
     'ECONNREFUSED',
     'ETIMEDOUT',
     'ECONNRESET',
     'EPIPE',
     'ENOTFOUND',
     'EHOSTUNREACH',
-];
+]);

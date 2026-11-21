@@ -64,13 +64,16 @@ export class NotificationUtil {
             return channels;
         }
 
+        const configurableChannels = new Set<EnumNotificationChannel>(
+            configurable.channels
+        );
         const disabled = new Set(
             settings
                 .filter(
                     setting =>
                         setting.type === type &&
                         !setting.isActive &&
-                        configurable.channels.includes(setting.channel)
+                        configurableChannels.has(setting.channel)
                 )
                 .map(setting => setting.channel)
         );
@@ -97,16 +100,21 @@ export class NotificationUtil {
     ): INotificationSealedRecord {
         const { secrets } = NotificationKindContract[kind];
         const opened: INotificationSealedRecord = {};
-        const sealedFields = secrets.map(field => this.toSealedField(field));
+        const openFieldBySealedField = new Map<string, string>();
+        for (const openField of secrets) {
+            const sealedField = this.toSealedField(openField);
+            openFieldBySealedField.set(sealedField, openField);
+        }
+
         for (const [field, value] of Object.entries(sealed)) {
-            const index = sealedFields.indexOf(field);
-            if (index === -1) {
+            const openField = openFieldBySealedField.get(field) ?? null;
+            if (openField === null) {
                 opened[field] = value;
 
                 continue;
             }
 
-            opened[secrets[index]!] = this.decryptPayload(
+            opened[openField] = this.decryptPayload(
                 String(value),
                 encryptionContext
             );
@@ -181,8 +189,9 @@ export class NotificationUtil {
         encryptionContext: string
     ): INotificationSealedRecord {
         const sealed: INotificationSealedRecord = {};
+        const secretFields = new Set(secrets);
         for (const [field, value] of Object.entries(context)) {
-            const isSecret = secrets.includes(field);
+            const isSecret = secretFields.has(field);
             if (!isSecret) {
                 sealed[field] = value;
 

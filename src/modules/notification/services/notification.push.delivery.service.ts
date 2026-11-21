@@ -44,8 +44,10 @@ export class NotificationPushDeliveryService {
         pairs: INotificationPushTokenPair[],
         tokens: string[]
     ): string[] {
+        const wanted = new Set(tokens);
+
         return pairs
-            .filter(pair => tokens.includes(pair.token))
+            .filter(pair => wanted.has(pair.token))
             .map(pair => pair.encrypted);
     }
 

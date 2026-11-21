@@ -38,11 +38,9 @@ export const PaginationCursorFingerprintLength = 16;
 export const PaginationCursorFormatRegex = /^[A-Za-z0-9_.-]+$/;
 
 /** @public */
-export const PaginationFingerprintExcludedFields: readonly string[] = [
-    'cursor',
-    'perPage',
-    'orderBy',
-];
+export const PaginationFingerprintExcludedFields: ReadonlySet<string> = new Set(
+    ['cursor', 'perPage', 'orderBy']
+);
 
 /** @public */
 export const PaginationFilterValueSeparator = ',';

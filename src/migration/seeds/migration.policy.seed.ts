@@ -64,9 +64,10 @@ export class MigrationPolicySeed
             return;
         }
 
+        const roleIdByName = new Map(roles.map(role => [role.name, role.id]));
         const rows = this.rolePolicies.flatMap(rolePolicy =>
             rolePolicy.policies.map(policy => ({
-                roleId: roles.find(role => role.name === rolePolicy.role)!.id,
+                roleId: roleIdByName.get(rolePolicy.role)!,
                 subject: policy.subject,
                 action: policy.action,
             }))

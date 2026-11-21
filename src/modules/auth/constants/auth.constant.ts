@@ -31,7 +31,7 @@ export const AuthJwtRefreshContextStoreKey = 'AuthJwtRefreshContextStoreKey';
 export const AuthSocialContextStoreKey = 'AuthSocialContextStoreKey';
 
 /** @public */
-export const AuthProviderNetworkErrorCodes: readonly string[] = [
+export const AuthProviderNetworkErrorCodes: ReadonlySet<string> = new Set([
     'ECONNREFUSED',
     'ECONNRESET',
     'ENOTFOUND',
@@ -39,7 +39,7 @@ export const AuthProviderNetworkErrorCodes: readonly string[] = [
     'EAI_AGAIN',
     'EHOSTUNREACH',
     'ENETUNREACH',
-];
+]);
 
 /** @public */
 export const AuthJwksErrorName = 'JwksError';

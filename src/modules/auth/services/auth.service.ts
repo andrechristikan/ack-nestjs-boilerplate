@@ -59,7 +59,7 @@ export class AuthService {
         const isNetworkError =
             'code' in error &&
             typeof error.code === 'string' &&
-            AuthProviderNetworkErrorCodes.includes(error.code);
+            AuthProviderNetworkErrorCodes.has(error.code);
         if (
             isFlagged ||
             isJwksError ||

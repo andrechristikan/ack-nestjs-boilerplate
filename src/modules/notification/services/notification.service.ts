@@ -78,12 +78,14 @@ export class NotificationService {
     private listConfigurableSettings(
         settings: NotificationUserSetting[]
     ): NotificationUserSetting[] {
-        return settings.filter(setting =>
-            NotificationSettingContract.some(
-                contract =>
-                    contract.type === setting.type &&
-                    contract.channels.includes(setting.channel)
+        const configurable = new Set(
+            NotificationSettingContract.flatMap(contract =>
+                contract.channels.map(channel => `${contract.type}:${channel}`)
             )
+        );
+
+        return settings.filter(setting =>
+            configurable.has(`${setting.type}:${setting.channel}`)
         );
     }
 

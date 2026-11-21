@@ -42,6 +42,7 @@ export class NotificationRepository implements INotificationRepository {
             pendingChannels,
             deliveredChannels,
         } = NotificationKindContract[kind];
+        const selected = new Set(channels);
 
         return {
             id,
@@ -57,7 +58,7 @@ export class NotificationRepository implements INotificationRepository {
                 createMany: {
                     data: [
                         ...pendingChannels
-                            .filter(channel => channels.includes(channel))
+                            .filter(channel => selected.has(channel))
                             .map(channel => ({
                                 channel,
                                 processedAt: null,
@@ -65,7 +66,7 @@ export class NotificationRepository implements INotificationRepository {
                                 createdBy,
                             })),
                         ...deliveredChannels
-                            .filter(channel => channels.includes(channel))
+                            .filter(channel => selected.has(channel))
                             .map(channel => ({
                                 channel,
                                 processedAt: today,

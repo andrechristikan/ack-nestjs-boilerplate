@@ -195,11 +195,11 @@ export class CacheService {
         }
 
         return (
-            RedisConnectionErrorMessages.includes(error.message) ||
-            RedisConnectionErrorNames.includes(error.name) ||
+            RedisConnectionErrorMessages.has(error.message) ||
+            RedisConnectionErrorNames.has(error.name) ||
             ('code' in error &&
                 typeof error.code === 'string' &&
-                RedisConnectionErrorCodes.includes(error.code))
+                RedisConnectionErrorCodes.has(error.code))
         );
     }
 

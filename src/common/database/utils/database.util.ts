@@ -122,7 +122,7 @@ export class DatabaseUtil {
             return new DatabaseTransactionExpiredException();
         }
 
-        if (DatabaseUnavailableCodes.includes(error.code)) {
+        if (DatabaseUnavailableCodes.has(error.code)) {
             return new DatabaseUnavailableException();
         }
 

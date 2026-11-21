@@ -220,8 +220,11 @@ export class AnalyticAuthService {
                         startDate,
                         endDate
                     );
+                const countByAction = new Map(
+                    rows.map(row => [row.action, row.count])
+                );
                 const countOf = (action: EnumActivityLogAction): number =>
-                    rows.find(row => row.action === action)?.count ?? 0;
+                    countByAction.get(action) ?? 0;
 
                 return {
                     failed: countOf(EnumActivityLogAction.userLoginFailed),

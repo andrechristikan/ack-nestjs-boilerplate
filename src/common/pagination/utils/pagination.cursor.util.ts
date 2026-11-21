@@ -199,10 +199,7 @@ export class PaginationCursorUtil {
         for (const [key, value] of Object.entries(dto)) {
             const trimmed = typeof value === 'string' ? value.trim() : value;
             const isFilled = this.isFilled(trimmed);
-            if (
-                isFilled &&
-                !PaginationFingerprintExcludedFields.includes(key)
-            ) {
+            if (isFilled && !PaginationFingerprintExcludedFields.has(key)) {
                 filters[key] = trimmed;
             }
         }

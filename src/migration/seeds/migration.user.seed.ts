@@ -128,6 +128,10 @@ export class MigrationUserSeed
         }
 
         const existingEmails = new Set(existingUsers.map(user => user.email));
+        const roleIdByName = new Map(roles.map(role => [role.name, role.id]));
+        const countryIdByCode = new Map(
+            countries.map(country => [country.alpha2Code, country.id])
+        );
 
         try {
             const today = this.helperDateService.create();
@@ -189,10 +193,8 @@ export class MigrationUserSeed
                     user,
                     email,
                     userId,
-                    countryId: countries.find(
-                        country => country.alpha2Code === user.country
-                    )!.id,
-                    roleId: roles.find(role => role.name === user.role)!.id,
+                    countryId: countryIdByCode.get(user.country)!,
+                    roleId: roleIdByName.get(user.role)!,
                     password,
                     generatedPassword:
                         user.password === null ? plainPasswords[index]! : null,

@@ -11,10 +11,9 @@ export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
 export const ProjectContextStoreKey = 'ProjectContextStoreKey';
 
 /** @public */
-export const ProjectBypassRoles: EnumWorkspaceMemberRole[] = [
-    EnumWorkspaceMemberRole.owner,
-    EnumWorkspaceMemberRole.admin,
-];
+export const ProjectBypassRoles: ReadonlySet<EnumWorkspaceMemberRole> = new Set(
+    [EnumWorkspaceMemberRole.owner, EnumWorkspaceMemberRole.admin]
+);
 
 /** @public */
 export const ProjectProtectedDocErrors: IDocResponseEntry[] = [

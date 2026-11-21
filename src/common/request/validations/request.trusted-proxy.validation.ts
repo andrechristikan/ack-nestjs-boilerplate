@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
-const RequestTrustedProxyPresets: ReadonlyArray<string> = [
+const RequestTrustedProxyPresets: ReadonlySet<string> = new Set([
     'loopback',
     'linklocal',
     'uniquelocal',
-];
+]);
 
 const RequestTrustedProxyAddressSchemas = [
     z.ipv4(),
@@ -22,7 +22,7 @@ export const RequestTrustedProxySchema = z
                 const network = entry.trim();
 
                 return (
-                    RequestTrustedProxyPresets.includes(network) ||
+                    RequestTrustedProxyPresets.has(network) ||
                     RequestTrustedProxyAddressSchemas.some(
                         schema => schema.safeParse(network).success
                     )

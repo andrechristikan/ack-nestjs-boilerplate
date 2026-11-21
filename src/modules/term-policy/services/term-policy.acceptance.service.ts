@@ -79,9 +79,8 @@ export class TermPolicyAcceptanceService {
                 tx,
                 required
             );
-        const allPublished = required.every(type =>
-            refs.some(ref => ref.type === type)
-        );
+        const published = new Set(refs.map(ref => ref.type));
+        const allPublished = required.every(type => published.has(type));
         if (!allPublished) {
             throw new TermPolicyRequiredNotPublishedException();
         }
@@ -111,15 +110,19 @@ export class TermPolicyAcceptanceService {
                 tx,
                 types
             );
-        const rows = entries.flatMap(({ userId, types: accepted, createdBy }) =>
-            refs
-                .filter(ref => accepted.includes(ref.type))
-                .map(ref => ({
-                    userId,
-                    termPolicyId: ref.id,
-                    createdBy,
-                    acceptedAt,
-                }))
+        const rows = entries.flatMap(
+            ({ userId, types: acceptedTypes, createdBy }) => {
+                const accepted = new Set(acceptedTypes);
+
+                return refs
+                    .filter(ref => accepted.has(ref.type))
+                    .map(ref => ({
+                        userId,
+                        termPolicyId: ref.id,
+                        createdBy,
+                        acceptedAt,
+                    }));
+            }
         );
 
         await this.termPolicyRepository.acceptManyInTx(tx, rows);

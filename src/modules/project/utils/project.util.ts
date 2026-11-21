@@ -6,7 +6,7 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class ProjectUtil {
     hasWorkspaceBypass(workspaceMember: WorkspaceMember): boolean {
-        return ProjectBypassRoles.includes(workspaceMember.role);
+        return ProjectBypassRoles.has(workspaceMember.role);
     }
 
     mapMemberActor(workspaceMember: WorkspaceMember): IProjectMemberActor {
