@@ -1,6 +1,7 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -9,10 +10,6 @@ import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
-import { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -22,6 +19,7 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumActivityLogAction,
+    EnumMfaChallengePurpose,
     EnumMfaPasskeyDeviceType,
 } from '@generated/prisma-client/client';
 import type { Mfa } from '@generated/prisma-client/client';
@@ -35,8 +33,14 @@ import {
     stubMfaMetadataNumbers,
 } from '@test/unit/helpers/test.unit.mfa.helper';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import type {
+    IMfaAttemptFailure,
+    IMfaCheck,
+} from '@modules/mfa/interfaces/mfa.interface';
+import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
+import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import {
     EnumFeatureFlagKey,
@@ -46,6 +50,7 @@ import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.
 import { MfaMethodUnavailableException } from '@modules/mfa/exceptions/mfa.method-unavailable.exception';
 import { MfaRepository } from '@modules/mfa/repositories/mfa.repository';
 import { MfaService } from '@modules/mfa/services/mfa.service';
+import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
 import {
@@ -66,6 +71,8 @@ describe('MfaService', () => {
     const mfaTotpService: MockProxy<MfaTotpService> = mock<MfaTotpService>();
     const mfaPasskeyService: MockProxy<MfaPasskeyService> =
         mock<MfaPasskeyService>();
+    const mfaChallengeService: MockProxy<MfaChallengeService> =
+        mock<MfaChallengeService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
     const notificationQueue: MockProxy<NotificationQueue> =
@@ -146,6 +153,21 @@ describe('MfaService', () => {
         backupCode: ' backup-one ',
         passkeyResponse: null,
     };
+    const totpFailure: IMfaAttemptFailure = {
+        method: EnumMfaMethod.totp,
+        maxAttempts: 5,
+        lockedUntil,
+    };
+    const passkeyFailure: IMfaAttemptFailure = {
+        method: EnumMfaMethod.passkey,
+        maxAttempts: 5,
+        lockedUntil,
+    };
+    const backupCodeFailure: IMfaAttemptFailure = {
+        method: EnumMfaMethod.backupCode,
+        maxAttempts: 5,
+        lockedUntil,
+    };
     const passkeyInput = {
         method: EnumMfaMethod.passkey,
         code: null,
@@ -174,6 +196,7 @@ describe('MfaService', () => {
                 { provide: MfaRepository, useValue: mfaRepository },
                 { provide: MfaTotpService, useValue: mfaTotpService },
                 { provide: MfaPasskeyService, useValue: mfaPasskeyService },
+                { provide: MfaChallengeService, useValue: mfaChallengeService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: DatabaseService, useValue: databaseService },
@@ -231,7 +254,10 @@ describe('MfaService', () => {
 
             await expect(
                 service.assertEnrolmentAllowed(EnumMfaMethod.totp)
-            ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
+            ).rejects.toMatchObject({
+                module: 'featureFlag',
+                statusCode: EnumFeatureFlagStatusCodeError.disabled,
+            });
         });
     });
 
@@ -259,13 +285,7 @@ describe('MfaService', () => {
                 );
 
                 await expect(
-                    service.check(
-                        requestContext,
-                        apiKeyContext,
-                        'user-quartz',
-                        input,
-                        'challenge-quartz'
-                    )
+                    service.check('user-quartz', input, 'challenge-quartz')
                 ).rejects.toMatchObject({
                     module: 'mfa',
 
@@ -282,13 +302,7 @@ describe('MfaService', () => {
             featureFlagService.isMetadataAllowed.mockResolvedValue(false);
 
             await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    backupInput,
-                    null
-                )
+                service.check('user-quartz', backupInput, null)
             ).rejects.toMatchObject({
                 module: 'mfa',
 
@@ -298,51 +312,70 @@ describe('MfaService', () => {
             expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
         });
 
-        it('counts one failure on the Mfa row and throws MfaInvalidException for a wrong totp code', async () => {
+        it('answers the failure with the flag budget and writes nothing for a wrong totp code', async () => {
             mfaTotpService.checkCode.mockResolvedValue(null);
 
             await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    totpInput,
-                    null
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-                statusCode: EnumMfaStatusCodeError.invalid,
-            });
+                service.check('user-quartz', totpInput, null)
+            ).resolves.toEqual({ check: null, failure: totpFailure });
             expect(mfaTotpService.checkCode).toHaveBeenCalledWith(
                 'user-quartz',
                 ' 123456 '
             );
-            expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledTimes(1);
-            expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledWith(
-                tx,
-                'user-quartz',
-                5,
-                lockedUntil,
-                'user-quartz'
+            expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.mfa,
+                EnumFeatureFlagMetadataKey.mfaMaxAttempts
             );
+            expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.mfa,
+                EnumFeatureFlagMetadataKey.mfaLockDurationInMinutes
+            );
+            expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
+
+        it.each([
+            EnumFeatureFlagMetadataKey.mfaMaxAttempts,
+            EnumFeatureFlagMetadataKey.mfaLockDurationInMinutes,
+        ])(
+            'propagates FeatureFlagNotConfiguredException from the %s read on a mismatch',
+            async failing => {
+                const failure = new FeatureFlagNotConfiguredException(
+                    EnumFeatureFlagKey.mfa,
+                    failing
+                );
+                mfaTotpService.checkCode.mockResolvedValue(null);
+                featureFlagService.getMetadataNumber.mockImplementation(
+                    async (_key, metadataKey) => {
+                        if (metadataKey === failing) {
+                            throw failure;
+                        }
+
+                        return 5;
+                    }
+                );
+
+                await expect(
+                    service.check('user-quartz', totpInput, null)
+                ).rejects.toBe(failure);
+            }
+        );
 
         it('answers the step of a correct totp code and counts nothing', async () => {
             mfaTotpService.checkCode.mockResolvedValue(58123456);
 
             await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    totpInput,
-                    null
-                )
+                service.check('user-quartz', totpInput, null)
             ).resolves.toEqual({
-                method: EnumMfaMethod.totp,
-                totpStep: 58123456,
-                backupCodeHash: null,
-                passkey: null,
+                check: {
+                    method: EnumMfaMethod.totp,
+                    totpStep: 58123456,
+                    backupCodeHash: null,
+                    passkey: null,
+                },
+                failure: null,
             });
             expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
         });
@@ -350,8 +383,6 @@ describe('MfaService', () => {
         it('throws MfaMethodRequiredException uncounted for a null method', async () => {
             await expect(
                 service.check(
-                    requestContext,
-                    apiKeyContext,
                     'user-quartz',
                     {
                         method: null,
@@ -376,13 +407,7 @@ describe('MfaService', () => {
             });
 
             await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    totpInput,
-                    null
-                )
+                service.check('user-quartz', totpInput, null)
             ).rejects.toMatchObject({
                 module: 'mfa',
 
@@ -391,46 +416,21 @@ describe('MfaService', () => {
             expect(mfaTotpService.checkCode).not.toHaveBeenCalled();
         });
 
-        it('throws MfaAttemptMaxException when the failure reached the budget', async () => {
-            mfaTotpService.checkCode.mockResolvedValue(null);
-            mfaRepository.incrementAttemptInTx.mockResolvedValue(true);
-            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
-            notificationQueue.notify.mockReturnValue(notifyEffect);
-            messageService.setMessage.mockReturnValue('Label');
-
-            await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    totpInput,
-                    null
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-
-                statusCode: EnumMfaStatusCodeError.attemptMax,
-            });
-        });
-
         it('verifies a backup code against the stored hashes and answers the matched hash', async () => {
             vi.spyOn(helperHashService, 'argon2Compare').mockImplementation(
                 async (_value, hash) => hash === 'hash-two'
             );
 
             await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    backupInput,
-                    null
-                )
+                service.check('user-quartz', backupInput, null)
             ).resolves.toEqual({
-                method: EnumMfaMethod.backupCode,
-                totpStep: null,
-                backupCodeHash: 'hash-two',
-                passkey: null,
+                check: {
+                    method: EnumMfaMethod.backupCode,
+                    totpStep: null,
+                    backupCodeHash: 'hash-two',
+                    passkey: null,
+                },
+                failure: null,
             });
             expect(helperHashService.argon2Compare).toHaveBeenCalledWith(
                 'backup-one',
@@ -438,55 +438,43 @@ describe('MfaService', () => {
             );
         });
 
-        it('compares the stored hashes one at a time and stops at the first match', async () => {
+        it('compares every stored hash and answers the first matching hash in stored order', async () => {
             vi.spyOn(helperHashService, 'argon2Compare').mockResolvedValue(
                 true
             );
 
             await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    backupInput,
-                    null
-                )
-            ).resolves.toMatchObject({ backupCodeHash: 'hash-one' });
-            expect(helperHashService.argon2Compare).toHaveBeenCalledTimes(1);
+                service.check('user-quartz', backupInput, null)
+            ).resolves.toMatchObject({
+                check: { backupCodeHash: 'hash-one' },
+            });
+            expect(helperHashService.argon2Compare).toHaveBeenCalledTimes(2);
             expect(helperHashService.argon2Compare).toHaveBeenCalledWith(
                 'backup-one',
                 'hash-one'
             );
+            expect(helperHashService.argon2Compare).toHaveBeenCalledWith(
+                'backup-one',
+                'hash-two'
+            );
         });
 
-        it('counts a wrong backup code and throws MfaInvalidException', async () => {
+        it('answers the failure for a wrong backup code and writes nothing', async () => {
             vi.spyOn(helperHashService, 'argon2Compare').mockResolvedValue(
                 false
             );
 
             await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    backupInput,
-                    null
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-
-                statusCode: EnumMfaStatusCodeError.invalid,
-            });
+                service.check('user-quartz', backupInput, null)
+            ).resolves.toEqual({ check: null, failure: backupCodeFailure });
             expect(helperHashService.argon2Compare).toHaveBeenCalledTimes(2);
-            expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledTimes(1);
+            expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
         });
 
-        it('counts a blank backup code without comparing', async () => {
+        it('answers the failure for a blank backup code without comparing', async () => {
             const compare = vi.spyOn(helperHashService, 'argon2Compare');
             await expect(
                 service.check(
-                    requestContext,
-                    apiKeyContext,
                     'user-quartz',
                     {
                         ...backupInput,
@@ -494,13 +482,9 @@ describe('MfaService', () => {
                     },
                     null
                 )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-
-                statusCode: EnumMfaStatusCodeError.invalid,
-            });
+            ).resolves.toEqual({ check: null, failure: backupCodeFailure });
             expect(compare).not.toHaveBeenCalled();
-            expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledTimes(1);
+            expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
         });
 
         it('throws MfaMethodUnavailableException uncounted for a backup code with no codes left', async () => {
@@ -510,13 +494,7 @@ describe('MfaService', () => {
             });
 
             await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    backupInput,
-                    null
-                )
+                service.check('user-quartz', backupInput, null)
             ).rejects.toMatchObject({
                 module: 'mfa',
 
@@ -529,13 +507,7 @@ describe('MfaService', () => {
             mfaRepository.findOneByUserId.mockResolvedValue(null);
 
             await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    backupInput,
-                    null
-                )
+                service.check('user-quartz', backupInput, null)
             ).rejects.toMatchObject({
                 module: 'mfa',
 
@@ -551,34 +523,19 @@ describe('MfaService', () => {
             featureFlagService.isMetadataAllowed.mockResolvedValue(true);
         });
 
-        it('counts one failure on the Mfa row and throws MfaPasskeyInvalidException for a library verification failure', async () => {
+        it('answers the passkey failure and writes nothing for a library verification failure', async () => {
             mfaPasskeyService.checkAssertion.mockResolvedValue(null);
 
             await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    passkeyInput,
-                    'challenge-quartz'
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-                statusCode: EnumMfaStatusCodeError.passkeyInvalid,
-            });
+                service.check('user-quartz', passkeyInput, 'challenge-quartz')
+            ).resolves.toEqual({ check: null, failure: passkeyFailure });
             expect(mfaPasskeyService.checkAssertion).toHaveBeenCalledWith(
                 'user-quartz',
                 passkeyResponse,
                 'challenge-quartz'
             );
-            expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledTimes(1);
-            expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledWith(
-                tx,
-                'user-quartz',
-                5,
-                lockedUntil,
-                'user-quartz'
-            );
+            expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('answers the passkey id and counter of a valid assertion and counts nothing', async () => {
@@ -588,42 +545,17 @@ describe('MfaService', () => {
             });
 
             await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    passkeyInput,
-                    'challenge-quartz'
-                )
+                service.check('user-quartz', passkeyInput, 'challenge-quartz')
             ).resolves.toEqual({
-                method: EnumMfaMethod.passkey,
-                totpStep: null,
-                backupCodeHash: null,
-                passkey: { id: 'passkey-one', counter: 8 },
+                check: {
+                    method: EnumMfaMethod.passkey,
+                    totpStep: null,
+                    backupCodeHash: null,
+                    passkey: { id: 'passkey-one', counter: 8 },
+                },
+                failure: null,
             });
             expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws MfaAttemptMaxException when the passkey failure reached the budget', async () => {
-            mfaPasskeyService.checkAssertion.mockResolvedValue(null);
-            mfaRepository.incrementAttemptInTx.mockResolvedValue(true);
-            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
-            notificationQueue.notify.mockReturnValue(notifyEffect);
-            messageService.setMessage.mockReturnValue('Label');
-
-            await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    passkeyInput,
-                    'challenge-quartz'
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-
-                statusCode: EnumMfaStatusCodeError.attemptMax,
-            });
         });
 
         it('throws MfaMethodUnavailableException uncounted for a user with no passkey', async () => {
@@ -632,13 +564,7 @@ describe('MfaService', () => {
             );
 
             await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    passkeyInput,
-                    'challenge-quartz'
-                )
+                service.check('user-quartz', passkeyInput, 'challenge-quartz')
             ).rejects.toMatchObject({
                 module: 'mfa',
 
@@ -647,74 +573,17 @@ describe('MfaService', () => {
             expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
         });
 
-        it('counts a null challenge as a mismatch', async () => {
+        it('answers the failure for a null challenge', async () => {
             mfaPasskeyService.checkAssertion.mockResolvedValue(null);
 
             await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    passkeyInput,
-                    null
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-
-                statusCode: EnumMfaStatusCodeError.passkeyInvalid,
-            });
+                service.check('user-quartz', passkeyInput, null)
+            ).resolves.toEqual({ check: null, failure: passkeyFailure });
             expect(mfaPasskeyService.checkAssertion).toHaveBeenCalledWith(
                 'user-quartz',
                 passkeyResponse,
                 null
             );
-        });
-
-        it('locks at the fifth failure across four wrong totp codes and one wrong passkey', async () => {
-            let attempt = 0;
-            mfaRepository.incrementAttemptInTx.mockImplementation(
-                async (_tx, _userId, maxAttempt) => {
-                    attempt += 1;
-
-                    return attempt >= maxAttempt;
-                }
-            );
-            mfaTotpService.checkCode.mockResolvedValue(null);
-            mfaPasskeyService.checkAssertion.mockResolvedValue(null);
-            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
-            notificationQueue.notify.mockReturnValue(notifyEffect);
-            messageService.setMessage.mockReturnValue('Label');
-
-            for (let i = 0; i < 4; i += 1) {
-                await expect(
-                    service.check(
-                        requestContext,
-                        apiKeyContext,
-                        'user-quartz',
-                        totpInput,
-                        null
-                    )
-                ).rejects.toMatchObject({
-                    module: 'mfa',
-
-                    statusCode: EnumMfaStatusCodeError.invalid,
-                });
-            }
-
-            await expect(
-                service.check(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    passkeyInput,
-                    'challenge-quartz'
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-
-                statusCode: EnumMfaStatusCodeError.attemptMax,
-            });
-            expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledTimes(5);
         });
     });
 
@@ -733,17 +602,18 @@ describe('MfaService', () => {
 
             await expect(
                 service.checkPasskeyLogin(
-                    requestContext,
-                    apiKeyContext,
                     'user-quartz',
                     passkeyResponse,
                     'challenge-quartz'
                 )
             ).resolves.toEqual({
-                method: EnumMfaMethod.passkey,
-                totpStep: null,
-                backupCodeHash: null,
-                passkey: { id: 'passkey-one', counter: 8 },
+                check: {
+                    method: EnumMfaMethod.passkey,
+                    totpStep: null,
+                    backupCodeHash: null,
+                    passkey: { id: 'passkey-one', counter: 8 },
+                },
+                failure: null,
             });
             expect(mfaPasskeyService.checkAssertion).toHaveBeenCalledWith(
                 'user-quartz',
@@ -761,8 +631,6 @@ describe('MfaService', () => {
 
             await expect(
                 service.checkPasskeyLogin(
-                    requestContext,
-                    apiKeyContext,
                     'user-quartz',
                     passkeyResponse,
                     'challenge-quartz'
@@ -775,23 +643,17 @@ describe('MfaService', () => {
             expect(mfaPasskeyService.checkAssertion).not.toHaveBeenCalled();
         });
 
-        it('counts one failure and throws MfaPasskeyInvalidException on a mismatch', async () => {
+        it('answers the passkey failure and writes nothing on a mismatch', async () => {
             mfaPasskeyService.checkAssertion.mockResolvedValue(null);
 
             await expect(
                 service.checkPasskeyLogin(
-                    requestContext,
-                    apiKeyContext,
                     'user-quartz',
                     passkeyResponse,
                     'challenge-quartz'
                 )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-
-                statusCode: EnumMfaStatusCodeError.passkeyInvalid,
-            });
-            expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledTimes(1);
+            ).resolves.toEqual({ check: null, failure: passkeyFailure });
+            expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
             expect(featureFlagService.isMetadataAllowed).not.toHaveBeenCalled();
         });
     });
@@ -802,59 +664,40 @@ describe('MfaService', () => {
             mfaRepository.incrementAttemptInTx.mockResolvedValue(false);
         });
 
-        it('answers the step of a correct setup code', async () => {
-            mfaTotpService.checkSetupCode.mockResolvedValue(7);
+        it('answers the step and the pending secret of a correct setup code', async () => {
+            mfaTotpService.checkSetupCode.mockResolvedValue({
+                totpStep: 7,
+                pendingSecret: 'encrypted-pending',
+            });
 
             await expect(
-                service.checkTotpSetupCode(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    '123456'
-                )
-            ).resolves.toBe(7);
+                service.checkTotpSetupCode('user-quartz', '123456')
+            ).resolves.toEqual({
+                totpStep: 7,
+                pendingSecret: 'encrypted-pending',
+                failure: null,
+            });
             expect(mfaTotpService.checkSetupCode).toHaveBeenCalledWith(
                 'user-quartz',
                 '123456'
             );
         });
 
-        it('counts a wrong setup code and throws MfaInvalidException', async () => {
-            mfaTotpService.checkSetupCode.mockResolvedValue(null);
+        it('answers the failure with no pending secret and writes nothing for a wrong setup code', async () => {
+            mfaTotpService.checkSetupCode.mockResolvedValue({
+                totpStep: null,
+                pendingSecret: 'encrypted-pending',
+            });
 
             await expect(
-                service.checkTotpSetupCode(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    '000000'
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-
-                statusCode: EnumMfaStatusCodeError.invalid,
+                service.checkTotpSetupCode('user-quartz', '000000')
+            ).resolves.toEqual({
+                totpStep: null,
+                pendingSecret: null,
+                failure: totpFailure,
             });
-            expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledTimes(1);
-        });
-
-        it('throws MfaAttemptMaxException when the failure locked', async () => {
-            mfaTotpService.checkSetupCode.mockResolvedValue(null);
-            mfaRepository.incrementAttemptInTx.mockResolvedValue(true);
-            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
-            notificationQueue.notify.mockReturnValue(notifyEffect);
-
-            await expect(
-                service.checkTotpSetupCode(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    '000000'
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-
-                statusCode: EnumMfaStatusCodeError.attemptMax,
-            });
+            expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('throws MfaAttemptMaxException during a lock before reading the code', async () => {
@@ -864,12 +707,7 @@ describe('MfaService', () => {
             });
 
             await expect(
-                service.checkTotpSetupCode(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz',
-                    '123456'
-                )
+                service.checkTotpSetupCode('user-quartz', '123456')
             ).rejects.toMatchObject({
                 module: 'mfa',
 
@@ -923,101 +761,42 @@ describe('MfaService', () => {
         });
     });
 
-    describe('countFailedAttempt', () => {
-        it.each([
-            { maxAttempts: 3, minutes: 5, end: '2026-03-01T00:05:00.000Z' },
-            { maxAttempts: 8, minutes: 30, end: '2026-03-01T00:30:00.000Z' },
-        ])(
-            'passes $maxAttempts attempts and a $minutes minute lock from the mfa flag to the counter',
-            async ({ maxAttempts, minutes, end }) => {
-                stubMfaMetadataNumbers(
-                    featureFlagService,
-                    maxAttempts,
-                    minutes
-                );
-                mfaRepository.incrementAttemptInTx.mockResolvedValue(false);
-                activityLogQueue.recordEffect.mockReturnValue(entryEffect);
+    describe('countFailedAttemptInTx', () => {
+        it('increments the counter on the given tx with the failure budget and lock end', async () => {
+            mfaRepository.incrementAttemptInTx.mockResolvedValue(false);
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
-                await service.countFailedAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz'
-                );
+            await service.countFailedAttemptInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                'user-quartz',
+                { ...totpFailure, maxAttempts: 8, lockedUntil: now }
+            );
 
-                expect(
-                    featureFlagService.getMetadataNumber
-                ).toHaveBeenCalledWith(
-                    EnumFeatureFlagKey.mfa,
-                    EnumFeatureFlagMetadataKey.mfaMaxAttempts
-                );
-                expect(
-                    featureFlagService.getMetadataNumber
-                ).toHaveBeenCalledWith(
-                    EnumFeatureFlagKey.mfa,
-                    EnumFeatureFlagMetadataKey.mfaLockDurationInMinutes
-                );
-                expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledWith(
-                    tx,
-                    'user-quartz',
-                    maxAttempts,
-                    new Date(end),
-                    'user-quartz'
-                );
-            }
-        );
+            expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz',
+                8,
+                now,
+                'user-quartz'
+            );
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
 
-        it.each([
-            EnumFeatureFlagMetadataKey.mfaMaxAttempts,
-            EnumFeatureFlagMetadataKey.mfaLockDurationInMinutes,
-        ])(
-            'propagates FeatureFlagNotConfiguredException from the %s read and writes nothing',
-            async failing => {
-                const failure = new FeatureFlagNotConfiguredException(
-                    EnumFeatureFlagKey.mfa,
-                    failing
-                );
-                featureFlagService.getMetadataNumber.mockImplementation(
-                    async (_key, metadataKey) => {
-                        if (metadataKey === failing) {
-                            throw failure;
-                        }
-
-                        return 5;
-                    }
-                );
-
-                await expect(
-                    service.countFailedAttempt(
-                        requestContext,
-                        apiKeyContext,
-                        'user-quartz'
-                    )
-                ).rejects.toBe(failure);
-                expect(databaseService.withTransaction).not.toHaveBeenCalled();
-                expect(
-                    mfaRepository.incrementAttemptInTx
-                ).not.toHaveBeenCalled();
-            }
-        );
-
-        it('adds the userVerifyMfaFailed entry on its transaction below the budget', async () => {
+        it('adds the userMfaVerificationFailed entry on the given tx below the budget', async () => {
             mfaRepository.incrementAttemptInTx.mockResolvedValue(false);
             activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
             await expect(
-                service.countFailedAttempt(
+                service.countFailedAttemptInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
-                    'user-quartz'
+                    'user-quartz',
+                    totpFailure
                 )
             ).resolves.toBe(false);
-            expect(mfaRepository.incrementAttemptInTx).toHaveBeenCalledWith(
-                tx,
-                'user-quartz',
-                5,
-                lockedUntil,
-                'user-quartz'
-            );
             expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
@@ -1025,7 +804,7 @@ describe('MfaService', () => {
                 null,
                 null,
                 {
-                    action: EnumActivityLogAction.userVerifyMfaFailed,
+                    action: EnumActivityLogAction.userMfaVerificationFailed,
                     userId: 'user-quartz',
                     createdBy: 'user-quartz',
                 }
@@ -1035,7 +814,7 @@ describe('MfaService', () => {
             expect(notificationQueue.notify).not.toHaveBeenCalled();
         });
 
-        it('adds the failed entry, the reach-max entry and the mfa loginLocked effect when the failure locked', async () => {
+        it('adds the failed entry, the reach-max entry and the mfa loginLocked effect on the given tx when the failure locked', async () => {
             const reachMaxEffect = { ...entryEffect, idempotencyKey: 'reach' };
             mfaRepository.incrementAttemptInTx.mockResolvedValue(true);
             activityLogQueue.recordEffect
@@ -1045,10 +824,12 @@ describe('MfaService', () => {
             messageService.setMessage.mockReturnValue('Label');
 
             await expect(
-                service.countFailedAttempt(
+                service.countFailedAttemptInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
-                    'user-quartz'
+                    'user-quartz',
+                    totpFailure
                 )
             ).resolves.toBe(true);
             expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
@@ -1058,7 +839,7 @@ describe('MfaService', () => {
                 null,
                 null,
                 {
-                    action: EnumActivityLogAction.userVerifyMfaFailed,
+                    action: EnumActivityLogAction.userMfaVerificationFailed,
                     userId: 'user-quartz',
                     createdBy: 'user-quartz',
                 }
@@ -1070,7 +851,7 @@ describe('MfaService', () => {
                 null,
                 null,
                 {
-                    action: EnumActivityLogAction.userReachMaxMfaAttempt,
+                    action: EnumActivityLogAction.userMaxMfaAttemptReached,
                     userId: 'user-quartz',
                     createdBy: 'user-quartz',
                 }
@@ -1095,55 +876,44 @@ describe('MfaService', () => {
             ]);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
+    });
 
-        it('throws MfaAttemptMaxException on a write conflict', async () => {
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                { code: DatabaseWriteConflictCode, clientVersion: 'test' }
+    describe('throwFailedAttempt', () => {
+        it('throws MfaAttemptMaxException when the failure locked', () => {
+            expect(() =>
+                service.throwFailedAttempt(passkeyFailure, true)
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'mfa',
+                    statusCode: EnumMfaStatusCodeError.attemptMax,
+                })
             );
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                service.countFailedAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz'
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-
-                statusCode: EnumMfaStatusCodeError.attemptMax,
-            });
         });
 
-        it('rethrows an AppBaseException unchanged', async () => {
-            const failure = new DatabaseUnavailableException();
-            databaseService.withTransaction.mockRejectedValue(failure);
-
-            await expect(
-                service.countFailedAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz'
-                )
-            ).rejects.toBe(failure);
+        it('throws MfaPasskeyInvalidException for a passkey below the budget', () => {
+            expect(() =>
+                service.throwFailedAttempt(passkeyFailure, false)
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'mfa',
+                    statusCode: EnumMfaStatusCodeError.passkeyInvalid,
+                })
+            );
         });
 
-        it('wraps any other error in AppUnknownException', async () => {
-            const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
-
-            await expect(
-                service.countFailedAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    'user-quartz'
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
-        });
+        it.each([totpFailure, backupCodeFailure])(
+            'throws MfaInvalidException for a $method code below the budget',
+            failure => {
+                expect(() =>
+                    service.throwFailedAttempt(failure, false)
+                ).toThrow(
+                    expect.objectContaining({
+                        module: 'mfa',
+                        statusCode: EnumMfaStatusCodeError.invalid,
+                    })
+                );
+            }
+        );
     });
 
     describe('completeInTx', () => {
@@ -1312,6 +1082,62 @@ describe('MfaService', () => {
 
                 statusCode: EnumMfaStatusCodeError.invalid,
             });
+        });
+    });
+
+    describe('completeChallengeInTx', () => {
+        const check: IMfaCheck = {
+            method: EnumMfaMethod.totp,
+            totpStep: 9,
+            backupCodeHash: null,
+            passkey: null,
+        };
+
+        it('claims the challenge on the given tx, then completes the check on it', async () => {
+            await service.completeChallengeInTx(
+                tx,
+                'user-quartz',
+                'token-quartz',
+                EnumMfaChallengePurpose.login,
+                check
+            );
+
+            expect(mfaChallengeService.consumeInTx).toHaveBeenCalledWith(
+                tx,
+                'token-quartz',
+                EnumMfaChallengePurpose.login,
+                'user-quartz'
+            );
+            expect(mfaRepository.resetAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz',
+                'user-quartz'
+            );
+            expect(mfaTotpService.markUsedInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz',
+                9
+            );
+            expect(mfaChallengeService.consumeInTx).toHaveBeenCalledBefore(
+                mfaRepository.resetAttemptInTx
+            );
+        });
+
+        it('completes nothing when the challenge claim is lost', async () => {
+            const failure = new MfaChallengeInvalidException();
+            mfaChallengeService.consumeInTx.mockRejectedValue(failure);
+
+            await expect(
+                service.completeChallengeInTx(
+                    tx,
+                    'user-quartz',
+                    'token-quartz',
+                    EnumMfaChallengePurpose.login,
+                    check
+                )
+            ).rejects.toBe(failure);
+
+            expect(mfaRepository.resetAttemptInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -1811,6 +1637,24 @@ describe('MfaService', () => {
 
             expect(mfaRepository.clearBackupCodesInTx).not.toHaveBeenCalled();
         });
+
+        it('reads the passkeys while the TOTP read is pending', async () => {
+            const totp = buildDeferred<boolean>();
+            mfaTotpService.existsConfirmedInTx.mockReturnValue(totp.promise);
+            mfaPasskeyService.existsByUserInTx.mockResolvedValue(true);
+
+            const cleared = service.clearBackupCodesIfNoFactorInTx(
+                tx,
+                'user-quartz'
+            );
+
+            expect(mfaPasskeyService.existsByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz'
+            );
+            totp.resolve(false);
+            await cleared;
+        });
     });
 
     describe('resetByAdminInTx', () => {
@@ -1830,6 +1674,24 @@ describe('MfaService', () => {
                 'user-quartz'
             );
         });
+
+        it('issues the passkey and Mfa row writes while the TOTP delete is pending', async () => {
+            const totp = buildDeferred<void>();
+            mfaTotpService.removeInTx.mockReturnValue(totp.promise);
+
+            const reset = service.resetByAdminInTx(tx, 'user-quartz');
+
+            expect(mfaPasskeyService.deleteByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz'
+            );
+            expect(mfaRepository.resetByAdminInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz'
+            );
+            totp.resolve();
+            await reset;
+        });
     });
 
     describe('deleteByUserInTx', () => {
@@ -1848,6 +1710,24 @@ describe('MfaService', () => {
                 tx,
                 'user-quartz'
             );
+        });
+
+        it('issues the passkey and Mfa row deletes while the TOTP delete is pending', async () => {
+            const totp = buildDeferred<void>();
+            mfaTotpService.removeInTx.mockReturnValue(totp.promise);
+
+            const deleted = service.deleteByUserInTx(tx, 'user-quartz');
+
+            expect(mfaPasskeyService.deleteByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz'
+            );
+            expect(mfaRepository.deleteByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz'
+            );
+            totp.resolve();
+            await deleted;
         });
     });
 

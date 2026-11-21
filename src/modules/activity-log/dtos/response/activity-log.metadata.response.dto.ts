@@ -59,6 +59,10 @@ export const ActivityLogMetadataResponseSchema = z.object({
         description: 'Number of users created by an import',
         example: 10,
     }),
+    count: z.number().optional().meta({
+        description: 'Number of rows an export wrote',
+        example: 10,
+    }),
     apiKeyId: z.string().optional().meta({
         description: 'Identifier of the affected API key',
         example: faker.database.mongodbObjectId(),

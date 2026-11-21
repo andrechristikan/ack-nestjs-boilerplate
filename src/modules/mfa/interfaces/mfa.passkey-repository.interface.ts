@@ -15,14 +15,7 @@ export interface IMfaPasskeyRepository {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<boolean>;
-    countByUserIdInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string
-    ): Promise<number>;
-    existsByCredentialIdInTx(
-        tx: IDatabaseTransactionClient,
-        credentialId: string
-    ): Promise<boolean>;
+    countByUserId(userId: string): Promise<number>;
     createInTx(
         tx: IDatabaseTransactionClient,
         data: IMfaPasskeyCreate

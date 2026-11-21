@@ -10,7 +10,9 @@ import { NotificationEmailQueue } from '@modules/notification/queues/notificatio
 import type {
     ITermPolicyBulkQueuePayload,
     ITermPolicyPublishPayload,
+    ITermPolicyRecipientBatch,
     ITermPolicyRecipientPage,
+    ITermPolicyRecipientPendingRead,
     ITermPolicyRecipientUser,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRecipientService } from '@modules/term-policy/services/term-policy.recipient.service';
@@ -33,14 +35,13 @@ export class TermPolicyProcessPublishUseCase implements IAppUseCase<
         private readonly messageService: MessageService
     ) {}
 
-    private async sendPendingBatches(
-        proceedBy: string,
+    private async readPending(
         data: ITermPolicyPublishPayload,
         page: ITermPolicyRecipientPage,
         createdBefore: Date
-    ): Promise<number> {
+    ): Promise<ITermPolicyRecipientPendingRead | null> {
         if (page.pendingBatchIds.length === 0) {
-            return 0;
+            return null;
         }
 
         const pending = await this.termPolicyRecipientService.getPending(
@@ -55,52 +56,69 @@ export class TermPolicyProcessPublishUseCase implements IAppUseCase<
             );
         }
 
-        return this.termPolicyRecipientService.sendPendingBatches(
-            proceedBy,
-            data,
-            page,
-            pending,
-            offPageUsers
-        );
+        return { pending, offPageUsers };
     }
 
-    private async sendFreshBatch(
+    private async commitPage(
         proceedBy: string,
         data: ITermPolicyPublishPayload,
-        freshUsers: ITermPolicyRecipientUser[]
+        page: ITermPolicyRecipientPage,
+        pendingRead: ITermPolicyRecipientPendingRead | null
     ): Promise<number> {
-        if (freshUsers.length === 0) {
+        const hasFresh = page.freshUsers.length > 0;
+        if (pendingRead === null && !hasFresh) {
             return 0;
         }
 
-        const { batchId, recipients } =
-            this.termPolicyRecipientService.buildBatch(freshUsers);
-        const effect = this.notificationEmailQueue.emailPublishTermPolicyEffect(
-            data,
-            batchId,
-            proceedBy,
-            recipients
-        );
+        let fresh: ITermPolicyRecipientBatch | null = null;
+        if (hasFresh) {
+            fresh = this.termPolicyRecipientService.buildBatch(page.freshUsers);
+        }
 
-        await this.databaseService.withTransaction(async tx => {
-            await this.notificationService.createManyInTx(
-                tx,
-                EnumNotificationKind.publishTermPolicy,
-                { type: data.type, version: data.version },
-                proceedBy,
-                recipients
-            );
-            await this.termPolicyRecipientService.createManyInTx(
-                tx,
-                proceedBy,
-                data.termPolicyId,
-                batchId,
-                recipients
-            );
+        return this.databaseService.withTransaction(async tx => {
+            let pendingBatches = 0;
+            if (pendingRead) {
+                pendingBatches =
+                    await this.termPolicyRecipientService.sendPendingBatchesInTx(
+                        tx,
+                        proceedBy,
+                        data,
+                        page,
+                        pendingRead.pending,
+                        pendingRead.offPageUsers
+                    );
+            }
+            if (!fresh) {
+                return pendingBatches;
+            }
+
+            await Promise.all([
+                this.notificationService.createManyInTx(
+                    tx,
+                    EnumNotificationKind.publishTermPolicy,
+                    { type: data.type, version: data.version },
+                    proceedBy,
+                    fresh.recipients
+                ),
+                this.termPolicyRecipientService.createManyInTx(
+                    tx,
+                    proceedBy,
+                    data.termPolicyId,
+                    fresh.batchId,
+                    fresh.recipients
+                ),
+            ]);
+            const effect =
+                this.notificationEmailQueue.emailPublishTermPolicyEffect(
+                    data,
+                    fresh.batchId,
+                    proceedBy,
+                    fresh.recipients
+                );
             await this.outboxService.addInTx(tx, effect);
-        });
 
-        return 1;
+            return pendingBatches + 1;
+        });
     }
 
     async execute({
@@ -118,7 +136,7 @@ export class TermPolicyProcessPublishUseCase implements IAppUseCase<
         let hasNextPage = true;
 
         while (hasNextPage) {
-            // Sequential by design: bounded chunks, the chunks in turn
+            // Sequential by design: a fan-out over an unbounded collection: bounded chunks in turn, each concurrent
             const { data: pageUsers, ...pageCursor } =
                 await this.userService.getListActiveRecipientCursor(
                     cursor,
@@ -133,12 +151,12 @@ export class TermPolicyProcessPublishUseCase implements IAppUseCase<
                 data.termPolicyId,
                 pageUsers
             );
-            const [pendingBatches, freshBatches] = await Promise.all([
-                this.sendPendingBatches(proceedBy, data, page, createdBefore),
-                this.sendFreshBatch(proceedBy, data, page.freshUsers),
-            ]);
-
-            index += pendingBatches + freshBatches;
+            const pendingRead = await this.readPending(
+                data,
+                page,
+                createdBefore
+            );
+            index += await this.commitPage(proceedBy, data, page, pendingRead);
             candidateCounts += pageUsers.length;
             createdCounts += page.freshUsers.length;
             cursor = pageCursor.cursor ?? null;

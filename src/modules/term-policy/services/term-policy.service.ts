@@ -1,10 +1,9 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
+import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -14,7 +13,7 @@ import { HelperArrayService } from '@common/helper/services/helper.array.service
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { DatabaseService } from '@common/database/services/database.service';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
@@ -30,6 +29,8 @@ import type {
     ITermPolicyContent,
     ITermPolicyContentUpload,
     ITermPolicyCreate,
+    ITermPolicyCreatePrepared,
+    ITermPolicyPublishPrepared,
     ITermPolicyRef,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
@@ -50,10 +51,9 @@ export class TermPolicyService {
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
+        private readonly awsSESService: AwsSESService,
         private readonly termPolicyUtil: TermPolicyUtil,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperArrayService: HelperArrayService,
-        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService,
         private readonly activityLogQueue: ActivityLogQueue,
@@ -85,6 +85,13 @@ export class TermPolicyService {
         }));
     }
 
+    assertEmailDeliverable(): void {
+        const isSesInitialized = this.awsSESService.isInitialized();
+        if (!isSesInitialized) {
+            throw new AwsSesNotConfiguredException();
+        }
+    }
+
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams,
         type?: Record<string, IPaginationIn>,
@@ -107,14 +114,12 @@ export class TermPolicyService {
         );
     }
 
-    async createByAdmin(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
-        termPolicyId: string,
-        { contents, type, version }: ITermPolicyCreate
-    ): Promise<TermPolicy> {
-        // Sequential by design: gate before the work it guards
+    async prepareCreateByAdmin({
+        contents,
+        type,
+        version,
+    }: ITermPolicyCreate): Promise<ITermPolicyCreatePrepared> {
+        // Sequential by design: a cheap check before the expensive or external work it guards
         const isExist = await this.termPolicyRepository.existsByVersionAndType(
             version,
             type
@@ -156,66 +161,60 @@ export class TermPolicyService {
             )
         );
 
-        try {
-            const mappedContents: ITermPolicyContent[] = contents.map(
-                ({ language, key, size }: ITermPolicyContentUpload) => {
-                    const presign = this.awsS3Service.mapPresign(
-                        {
-                            key,
-                            size,
-                        },
-                        {
-                            access: EnumAwsS3Accessibility.private,
-                        }
-                    );
-
-                    return { language, ...presign };
-                }
-            );
-
-            return await this.databaseService.withTransaction(async tx => {
-                const created = await this.termPolicyRepository.createInTx(
-                    tx,
-                    termPolicyId,
-                    type,
-                    version,
-                    mappedContents
-                );
-
-                const timestamp = this.helperDateService.create();
-                const metadata = this.termPolicyUtil.mapActivityLogMetadata(
-                    { id: termPolicyId, type, version },
-                    timestamp
-                );
-                const entry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
+        const mappedContents: ITermPolicyContent[] = contents.map(
+            ({ language, key, size }: ITermPolicyContentUpload) => {
+                const presign = this.awsS3Service.mapPresign(
                     {
-                        action: EnumActivityLogAction.adminTermPolicyCreate,
-                        metadata,
+                        key,
+                        size,
+                    },
+                    {
+                        access: EnumAwsS3Accessibility.private,
                     }
                 );
-                await this.outboxService.addInTx(tx, entry);
 
-                return created;
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
+                return { language, ...presign };
             }
+        );
 
-            const isVersionCollision = this.databaseUtil.isUniqueCollision(
-                err,
-                'version'
-            );
-            if (isVersionCollision) {
-                throw new TermPolicyExistException();
+        return { contents: mappedContents };
+    }
+
+    async createByAdminInTx(
+        tx: IDatabaseTransactionClient,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        termPolicyId: string,
+        { type, version }: ITermPolicyCreate,
+        contents: ITermPolicyContent[]
+    ): Promise<TermPolicy> {
+        const created = await this.termPolicyRepository.createInTx(
+            tx,
+            termPolicyId,
+            type,
+            version,
+            contents
+        );
+
+        const timestamp = this.helperDateService.create();
+        const metadata = this.termPolicyUtil.mapActivityLogMetadata(
+            { id: termPolicyId, type, version },
+            timestamp
+        );
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.adminTermPolicyCreated,
+                metadata,
             }
+        );
+        await this.outboxService.addInTx(tx, entry);
 
-            throw new AppUnknownException(err);
-        }
+        return created;
     }
 
     async deleteContentKeys(keys: string[]): Promise<void> {
@@ -224,86 +223,54 @@ export class TermPolicyService {
         });
     }
 
-    async deleteByAdmin(
+    async deleteByAdminInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
-        termPolicyId: string
-    ): Promise<TermPolicy> {
-        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
-        const termPolicy =
-            await this.termPolicyRepository.findOneById(termPolicyId);
-        if (!termPolicy) {
-            throw new TermPolicyNotFoundException();
-        } else if (termPolicy.status !== EnumTermPolicyStatus.draft) {
+        termPolicy: TermPolicy
+    ): Promise<void> {
+        const isDeleted = await this.termPolicyRepository.deleteDraftInTx(
+            tx,
+            termPolicy.id
+        );
+        if (!isDeleted) {
             throw new TermPolicyStatusInvalidException();
         }
 
-        try {
-            const contentKeys = termPolicy.contents.map(content => content.key);
-            await this.databaseService.withTransaction(async tx => {
-                const isDeleted =
-                    await this.termPolicyRepository.deleteDraftInTx(
-                        tx,
-                        termPolicyId
-                    );
-                if (!isDeleted) {
-                    throw new TermPolicyStatusInvalidException();
-                }
-
-                if (contentKeys.length > 0) {
-                    const effect =
-                        this.termPolicyQueue.deleteContentEffect(contentKeys);
-                    await this.outboxService.addInTx(tx, effect);
-                }
-
-                const timestamp = this.helperDateService.create();
-                const metadata = this.termPolicyUtil.mapActivityLogMetadata(
-                    termPolicy,
-                    timestamp
-                );
-                const entry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.adminTermPolicyDelete,
-                        metadata,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-            });
-
-            return termPolicy;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new TermPolicyStatusInvalidException();
-            }
-
-            throw new AppUnknownException(err);
+        const effects: IOutboxEffect[] = [];
+        const contentKeys = termPolicy.contents.map(content => content.key);
+        if (contentKeys.length > 0) {
+            const deleteEffect =
+                this.termPolicyQueue.deleteContentEffect(contentKeys);
+            effects.push(deleteEffect);
         }
+
+        const timestamp = this.helperDateService.create();
+        const metadata = this.termPolicyUtil.mapActivityLogMetadata(
+            termPolicy,
+            timestamp
+        );
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.adminTermPolicyDeleted,
+                metadata,
+            }
+        );
+        effects.push(entry);
+        await this.outboxService.addManyInTx(tx, effects);
     }
 
-    async publishByAdmin(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
+    async preparePublishByAdmin(
         termPolicyId: string
-    ): Promise<TermPolicy> {
+    ): Promise<ITermPolicyPublishPrepared> {
+        // Sequential by design: a cheap check before the expensive or external work it guards
         const termPolicy =
-            await this.termPolicyRepository.findOneById(termPolicyId);
-        if (!termPolicy) {
-            throw new TermPolicyNotFoundException();
-        }
-        if (termPolicy.status !== EnumTermPolicyStatus.draft) {
-            throw new TermPolicyStatusInvalidException();
-        }
+            await this.termPolicyContentService.getDraftById(termPolicyId);
 
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
         if (contents instanceof TermPolicyContentInvalidException) {
@@ -318,116 +285,99 @@ export class TermPolicyService {
             throw new AwsS3NotConfiguredException();
         }
 
-        try {
-            const destination = this.termPolicyUtil.getContentPublicPath(
+        const hasNewerPublished =
+            await this.termPolicyRepository.existsNewerPublished(
                 termPolicy.type,
                 termPolicy.version
             );
-            const publicKeys = this.mapPublicContentKeys(termPolicy, contents);
-            const publicContents: ITermPolicyContent[] = publicKeys.map(
-                ({ language, key, size }: ITermPolicyContentUpload) => {
-                    const presign = this.awsS3Service.mapPresign(
-                        { key, size },
-                        { access: EnumAwsS3Accessibility.public }
-                    );
+        if (hasNewerPublished) {
+            throw new TermPolicyStatusInvalidException();
+        }
 
-                    return { language, ...presign };
-                }
-            );
-
-            // Sequential by design: write must not run if an earlier step throws
-            await this.awsS3Service.copyItems(contents, destination, {
-                access: EnumAwsS3Accessibility.public,
-            });
-
-            const published =
-                await this.databaseService.withTransaction<TermPolicy>(
-                    async tx => {
-                        const isPublished =
-                            await this.termPolicyRepository.publishInTx(
-                                tx,
-                                termPolicyId,
-                                publicContents
-                            );
-                        if (!isPublished) {
-                            throw new TermPolicyStatusInvalidException();
-                        }
-
-                        const row =
-                            await this.termPolicyRepository.findOneByIdInTx(
-                                tx,
-                                termPolicyId
-                            );
-                        if (!row) {
-                            throw new TermPolicyNotFoundException();
-                        }
-
-                        await this.termPolicyRepository.archivePublishedByTypeInTx(
-                            tx,
-                            row.type,
-                            row.version
-                        );
-                        const hasNewerPublished =
-                            await this.termPolicyRepository.existsNewerPublishedInTx(
-                                tx,
-                                row.type,
-                                row.version
-                            );
-                        if (hasNewerPublished) {
-                            throw new TermPolicyStatusInvalidException();
-                        }
-
-                        const recipientCutoffAt =
-                            this.helperDateService.formatToIso(
-                                row.publishedAt!
-                            );
-                        const publishEffect =
-                            this.termPolicyQueue.publishEffect(
-                                {
-                                    termPolicyId,
-                                    type: row.type,
-                                    version: row.version,
-                                    recipientCutoffAt,
-                                    resendNonce: null,
-                                },
-                                authContext.userId
-                            );
-                        await this.outboxService.addInTx(tx, publishEffect);
-
-                        const metadata =
-                            this.termPolicyUtil.mapActivityLogMetadata(
-                                row,
-                                row.updatedAt
-                            );
-                        const entry = this.activityLogQueue.recordEffect(
-                            requestContext,
-                            apiKeyContext,
-                            authContext,
-                            null,
-                            {
-                                action: EnumActivityLogAction.adminTermPolicyPublish,
-                                metadata,
-                            }
-                        );
-                        await this.outboxService.addInTx(tx, entry);
-
-                        return row;
-                    }
+        const destination = this.termPolicyUtil.getContentPublicPath(
+            termPolicy.type,
+            termPolicy.version
+        );
+        const publicKeys = this.mapPublicContentKeys(termPolicy, contents);
+        const publicContents: ITermPolicyContent[] = publicKeys.map(
+            ({ language, key, size }: ITermPolicyContentUpload) => {
+                const presign = this.awsS3Service.mapPresign(
+                    { key, size },
+                    { access: EnumAwsS3Accessibility.public }
                 );
 
-            return published;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
+                return { language, ...presign };
             }
+        );
 
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new TermPolicyStatusInvalidException();
-            }
+        await this.awsS3Service.copyItems(contents, destination, {
+            access: EnumAwsS3Accessibility.public,
+        });
 
-            throw new AppUnknownException(err);
+        return { termPolicy, publicContents };
+    }
+
+    async publishByAdminInTx(
+        tx: IDatabaseTransactionClient,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        { termPolicy, publicContents }: ITermPolicyPublishPrepared
+    ): Promise<TermPolicy> {
+        const isPublished = await this.termPolicyRepository.publishInTx(
+            tx,
+            termPolicy.id,
+            publicContents
+        );
+        if (!isPublished) {
+            throw new TermPolicyStatusInvalidException();
         }
+
+        const row = await this.termPolicyRepository.findOneByIdInTx(
+            tx,
+            termPolicy.id
+        );
+        if (!row) {
+            throw new TermPolicyNotFoundException();
+        }
+
+        await this.termPolicyRepository.archivePublishedByTypeInTx(
+            tx,
+            row.type,
+            row.version
+        );
+
+        const recipientCutoffAt = this.helperDateService.formatToIso(
+            row.publishedAt!
+        );
+        const publishEffect = this.termPolicyQueue.publishEffect(
+            {
+                termPolicyId: termPolicy.id,
+                type: row.type,
+                version: row.version,
+                recipientCutoffAt,
+                resendNonce: null,
+            },
+            authContext.userId
+        );
+
+        const metadata = this.termPolicyUtil.mapActivityLogMetadata(
+            row,
+            row.updatedAt
+        );
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.adminTermPolicyPublished,
+                metadata,
+            }
+        );
+        await this.outboxService.addManyInTx(tx, [publishEffect, entry]);
+
+        return row;
     }
 
     async getPublishedByAdmin(termPolicyId: string): Promise<TermPolicy> {

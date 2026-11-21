@@ -1,13 +1,26 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
+import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/exceptions/workspace.member-peer-forbidden.exception';
 import type { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceUpdateMemberRoleUseCase } from '@modules/workspace/use-cases/workspace.update-member-role.use-case';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import {
     buildApiKeyContext,
     buildAuthJwtAccessContext,
@@ -22,7 +35,14 @@ import {
 describe('WorkspaceUpdateMemberRoleUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const tx = {} as IDatabaseTransactionClient;
     const member: WorkspaceMember = buildWorkspaceMember('user-1');
+    const targetMember = {
+        ...buildWorkspaceMember('user-2'),
+        id: 'member-2',
+        user: { email: 'user-2@example.com' },
+    };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(
@@ -30,16 +50,28 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const workspaceContext = buildWorkspaceContext(buildWorkspace(), member);
+    const body: WorkspaceMemberUpdateRoleRequestDto = {
+        role: EnumWorkspaceMemberRole.admin,
+    };
 
     let useCase: WorkspaceUpdateMemberRoleUseCase;
 
     beforeEach(async () => {
+        databaseService.withTransaction.mockImplementation(fn => fn(tx));
+        workspaceMemberService.getPeerTarget.mockResolvedValue(targetMember);
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceUpdateMemberRoleUseCase,
                 {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
+                },
+                { provide: DatabaseService, useValue: databaseService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
             ],
         }).compile();
@@ -48,11 +80,7 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
     });
 
     describe('execute', () => {
-        it('updates the role with the context', async () => {
-            const body: WorkspaceMemberUpdateRoleRequestDto = {
-                role: EnumWorkspaceMemberRole.admin,
-            };
-
+        it('reads the updatable member, then updates the role in one transaction', async () => {
             const result = await useCase.execute(
                 requestContext,
                 apiKeyContext,
@@ -63,21 +91,28 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
             );
 
             expect(result).toEqual({});
+            expect(workspaceMemberService.getPeerTarget).toHaveBeenCalledWith(
+                'workspace-1',
+                member,
+                'member-2'
+            );
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
-                workspaceMemberService.updateMemberRole
+                workspaceMemberService.updateMemberRoleInTx
             ).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'workspace-1',
                 member,
-                'member-2',
+                targetMember,
                 EnumWorkspaceMemberRole.admin
             );
         });
 
-        it('rejects with the update failure', async () => {
-            workspaceMemberService.updateMemberRole.mockRejectedValue(
+        it('throws the member refusal and opens no transaction', async () => {
+            workspaceMemberService.getPeerTarget.mockRejectedValue(
                 new WorkspaceMemberNotFoundException()
             );
 
@@ -88,11 +123,73 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
                     authContext,
                     workspaceContext,
                     'member-2',
-                    {
-                        role: EnumWorkspaceMemberRole.admin,
-                    }
+                    body
                 )
-            ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
+            });
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('rethrows an AppBaseException from the write as is', async () => {
+            const typed = new WorkspaceMemberPeerForbiddenException();
+            workspaceMemberService.updateMemberRoleInTx.mockRejectedValue(
+                typed
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    'member-2',
+                    body
+                )
+            ).rejects.toBe(typed);
+        });
+
+        it('maps a write conflict to WorkspaceMemberPeerForbiddenException', async () => {
+            workspaceMemberService.updateMemberRoleInTx.mockRejectedValue(
+                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    'member-2',
+                    body
+                )
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberPeerForbiddenException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
+            });
+        });
+
+        it('wraps any other transaction error in AppUnknownException', async () => {
+            const otherError = new Error('boom');
+            workspaceMemberService.updateMemberRoleInTx.mockRejectedValue(
+                otherError
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    'member-2',
+                    body
+                )
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
+            });
         });
     });
 });

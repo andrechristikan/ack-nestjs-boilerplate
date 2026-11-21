@@ -1,11 +1,23 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
+import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import type { Project } from '@generated/prisma-client/client';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectCreateUseCase } from '@modules/project/use-cases/project.create.use-case';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import {
     buildUser,
     buildWorkspace,
@@ -19,6 +31,8 @@ import {
 
 describe('ProjectCreateUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const tx = {} as IDatabaseTransactionClient;
 
     let useCase: ProjectCreateUseCase;
 
@@ -48,10 +62,22 @@ describe('ProjectCreateUseCase', () => {
     );
 
     beforeEach(async () => {
+        projectService.drawSlugCandidates.mockReturnValue([
+            'p-abc123',
+            'p-def456',
+        ]);
+        databaseService.withTransaction.mockImplementation(fn => fn(tx));
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectCreateUseCase,
                 { provide: ProjectService, useValue: projectService },
+                { provide: DatabaseService, useValue: databaseService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
@@ -59,12 +85,13 @@ describe('ProjectCreateUseCase', () => {
     });
 
     describe('execute', () => {
-        it('creates the project with the actor and the context and wraps it in the response envelope', async () => {
-            const body: ProjectCreateRequestDto = {
-                name: 'Website Revamp',
-                description: 'Marketing site redesign',
-            };
-            projectService.createProject.mockResolvedValue(project);
+        const body: ProjectCreateRequestDto = {
+            name: 'Website Revamp',
+            description: 'Marketing site redesign',
+        };
+
+        it('creates the project on the first slug candidate in one transaction and wraps it in the response envelope', async () => {
+            projectService.createProjectInTx.mockResolvedValue(project);
 
             const result = await useCase.execute(
                 requestContext,
@@ -75,7 +102,9 @@ describe('ProjectCreateUseCase', () => {
             );
 
             expect(result).toEqual({ data: project });
-            expect(projectService.createProject).toHaveBeenCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(projectService.createProjectInTx).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -83,13 +112,69 @@ describe('ProjectCreateUseCase', () => {
                 {
                     name: 'Website Revamp',
                     description: 'Marketing site redesign',
-                }
+                },
+                'p-abc123'
             );
         });
 
-        it('rejects with the domain failure', async () => {
-            const body: ProjectCreateRequestDto = { name: 'Website Revamp' };
-            projectService.createProject.mockRejectedValue(new Error('boom'));
+        it('passes null for an omitted description', async () => {
+            projectService.createProjectInTx.mockResolvedValue(project);
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                { name: 'Website Revamp' }
+            );
+
+            expect(projectService.createProjectInTx).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                '507f1f77bcf86cd799439012',
+                { name: 'Website Revamp', description: null },
+                'p-abc123'
+            );
+        });
+
+        it('opens a second transaction with the next slug candidate after a slug collision and returns its project', async () => {
+            projectService.createProjectInTx
+                .mockRejectedValueOnce(
+                    buildPrismaKnownRequestError('P2002', 'slug')
+                )
+                .mockResolvedValueOnce(project);
+
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                body
+            );
+
+            expect(result).toEqual({ data: project });
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
+            expect(projectService.createProjectInTx).toHaveBeenNthCalledWith(
+                2,
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                '507f1f77bcf86cd799439012',
+                {
+                    name: 'Website Revamp',
+                    description: 'Marketing site redesign',
+                },
+                'p-def456'
+            );
+        });
+
+        it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
+            projectService.createProjectInTx.mockRejectedValue(
+                buildPrismaKnownRequestError('P2002', 'slug')
+            );
 
             await expect(
                 useCase.execute(
@@ -99,28 +184,48 @@ describe('ProjectCreateUseCase', () => {
                     workspaceContext,
                     body
                 )
-            ).rejects.toThrow('boom');
+            ).rejects.toMatchObject({
+                statusCode:
+                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
+                constructor: DatabaseUniqueValueGenerationFailedException,
+                module: 'database',
+            });
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });
 
-        it('passes null for an omitted description', async () => {
-            const body: ProjectCreateRequestDto = { name: 'Website Revamp' };
-            projectService.createProject.mockResolvedValue(project);
+        it('rethrows an AppBaseException without retrying', async () => {
+            const typed = new DatabaseUniqueValueGenerationFailedException();
+            projectService.createProjectInTx.mockRejectedValue(typed);
 
-            await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                workspaceContext,
-                body
-            );
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    body
+                )
+            ).rejects.toBe(typed);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+        });
 
-            expect(projectService.createProject).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                '507f1f77bcf86cd799439012',
-                { name: 'Website Revamp', description: null }
-            );
+        it('wraps a non-collision failure in AppUnknownException without retrying', async () => {
+            const otherError = new Error('unexpected');
+            projectService.createProjectInTx.mockRejectedValue(otherError);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    body
+                )
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
+            });
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
     });
 });

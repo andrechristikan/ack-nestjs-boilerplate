@@ -85,7 +85,7 @@ describe('MfaUpdatePasskeyUseCase', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userUpdateMfaPasskey }
+                { action: EnumActivityLogAction.userMfaPasskeyUpdated }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });

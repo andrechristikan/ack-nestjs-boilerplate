@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import type { IMfaAttemptFailure } from '@modules/mfa/interfaces/mfa.interface';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -165,7 +166,48 @@ describe('UserLoginVerifyMfaUseCase', () => {
         beforeEach(() => {
             mfaChallengeService.getLogin.mockResolvedValue(challenge);
             userAuthService.getOneForMfaLogin.mockResolvedValue(baseUser);
-            mfaService.check.mockResolvedValue(checked);
+            mfaService.check.mockResolvedValue({
+                check: checked,
+                failure: null,
+            });
+        });
+
+        it('commits the failed count in a transaction of its own, then throws, and claims and writes nothing on a mismatch', async () => {
+            const refusal = new Error('refused');
+            const failure: IMfaAttemptFailure = {
+                method: EnumMfaMethod.totp,
+                maxAttempts: 5,
+                lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
+            };
+            mfaService.check.mockResolvedValue({ check: null, failure });
+            mfaService.countFailedAttemptInTx.mockResolvedValue(false);
+            mfaService.throwFailedAttempt.mockImplementation(() => {
+                throw refusal;
+            });
+
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                'user-bramble',
+                failure
+            );
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledBefore(
+                mfaService.throwFailedAttempt
+            );
+            expect(mfaService.throwFailedAttempt).toHaveBeenCalledWith(
+                failure,
+                false
+            );
+            expect(mfaService.completeChallengeInTx).not.toHaveBeenCalled();
+            expect(
+                userAuthService.createTokenAndSessionInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('reads the login challenge, checks the user and the code before the transaction, then claims, completes, records the entry, and issues the session on one tx', async () => {
@@ -173,13 +215,10 @@ describe('UserLoginVerifyMfaUseCase', () => {
             mfaService.check.mockImplementation(async () => {
                 callOrder.push('check');
 
-                return checked;
+                return { check: checked, failure: null };
             });
-            mfaChallengeService.consumeInTx.mockImplementation(async () => {
-                callOrder.push('consumeInTx');
-            });
-            mfaService.completeInTx.mockImplementation(async () => {
-                callOrder.push('completeInTx');
+            mfaService.completeChallengeInTx.mockImplementation(async () => {
+                callOrder.push('completeChallengeInTx');
             });
             outboxService.addInTx.mockImplementation(async () => {
                 callOrder.push('addInTx');
@@ -205,8 +244,6 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 'user-bramble'
             );
             expect(mfaService.check).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
                 'user-bramble',
                 {
                     code: '123456',
@@ -216,15 +253,11 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 },
                 null
             );
-            expect(mfaChallengeService.consumeInTx).toHaveBeenCalledWith(
-                tx,
-                'challenge-token',
-                EnumMfaChallengePurpose.login,
-                'user-bramble'
-            );
-            expect(mfaService.completeInTx).toHaveBeenCalledWith(
+            expect(mfaService.completeChallengeInTx).toHaveBeenCalledWith(
                 tx,
                 'user-bramble',
+                'challenge-token',
+                EnumMfaChallengePurpose.login,
                 checked
             );
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
@@ -233,7 +266,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 null,
                 null,
                 {
-                    action: EnumActivityLogAction.userVerifyMfa,
+                    action: EnumActivityLogAction.userMfaVerified,
                     userId: 'user-bramble',
                     createdBy: 'user-bramble',
                 }
@@ -252,8 +285,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
             );
             expect(callOrder).toEqual([
                 'check',
-                'consumeInTx',
-                'completeInTx',
+                'completeChallengeInTx',
                 'addInTx',
                 'createTokenAndSessionInTx',
             ]);
@@ -267,8 +299,6 @@ describe('UserLoginVerifyMfaUseCase', () => {
             });
 
             expect(mfaService.check).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
                 'user-bramble',
                 {
                     code: null,
@@ -280,7 +310,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
             );
         });
 
-        it('checks a passkey response against the WebAuthn challenge of the login challenge, then creates the session and records userVerifyMfa', async () => {
+        it('checks a passkey response against the WebAuthn challenge of the login challenge, then creates the session and records userMfaVerified', async () => {
             const passkeyChecked: IMfaCheck = {
                 method: EnumMfaMethod.passkey,
                 totpStep: null,
@@ -291,7 +321,10 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 ...challenge,
                 webAuthnChallenge: 'challenge-webauthn',
             });
-            mfaService.check.mockResolvedValue(passkeyChecked);
+            mfaService.check.mockResolvedValue({
+                check: passkeyChecked,
+                failure: null,
+            });
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, {
@@ -302,8 +335,6 @@ describe('UserLoginVerifyMfaUseCase', () => {
             ).resolves.toEqual({ data: tokens });
 
             expect(mfaService.check).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
                 'user-bramble',
                 {
                     code: null,
@@ -313,9 +344,11 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 },
                 'challenge-webauthn'
             );
-            expect(mfaService.completeInTx).toHaveBeenCalledWith(
+            expect(mfaService.completeChallengeInTx).toHaveBeenCalledWith(
                 tx,
                 'user-bramble',
+                'challenge-token',
+                EnumMfaChallengePurpose.login,
                 passkeyChecked
             );
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
@@ -324,7 +357,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 null,
                 null,
                 {
-                    action: EnumActivityLogAction.userVerifyMfa,
+                    action: EnumActivityLogAction.userMfaVerified,
                     userId: 'user-bramble',
                     createdBy: 'user-bramble',
                 }
@@ -360,7 +393,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
 
                 statusCode: EnumMfaStatusCodeError.methodRequired,
             });
-            expect(mfaService.countFailedAttempt).not.toHaveBeenCalled();
+            expect(mfaService.countFailedAttemptInTx).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
@@ -382,12 +415,11 @@ describe('UserLoginVerifyMfaUseCase', () => {
 
         it('creates no session when the challenge claim is lost', async () => {
             const failure = new MfaChallengeInvalidException();
-            mfaChallengeService.consumeInTx.mockRejectedValue(failure);
+            mfaService.completeChallengeInTx.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toBe(failure);
-            expect(mfaService.completeInTx).not.toHaveBeenCalled();
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();

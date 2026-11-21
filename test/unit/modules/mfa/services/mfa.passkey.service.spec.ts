@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
@@ -16,7 +17,10 @@ import type {
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumMfaPasskeyDeviceType } from '@generated/prisma-client/client';
 import type { MfaPasskey } from '@generated/prisma-client/client';
-import type { IMfaPasskey } from '@modules/mfa/interfaces/mfa.interface';
+import type {
+    IMfaPasskey,
+    IMfaPasskeyRegistration,
+} from '@modules/mfa/interfaces/mfa.interface';
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 import {
     EnumFeatureFlagKey,
@@ -595,27 +599,7 @@ describe('MfaPasskeyService', () => {
         });
     });
 
-    describe('getMaxPerUser', () => {
-        it.each([3, 25])(
-            'returns %i from the passkeyMaxPerUser metadata of the mfa flag',
-            async maxPerUser => {
-                featureFlagService.getMetadataNumber.mockResolvedValue(
-                    maxPerUser
-                );
-
-                await expect(service.getMaxPerUser()).resolves.toBe(maxPerUser);
-                expect(
-                    featureFlagService.getMetadataNumber
-                ).toHaveBeenCalledWith(
-                    EnumFeatureFlagKey.mfa,
-                    EnumFeatureFlagMetadataKey.passkeyMaxPerUser
-                );
-            }
-        );
-    });
-
-    describe('registerInTx', () => {
-        const tx = {} as IDatabaseTransactionClient;
+    describe('assertRegistrable', () => {
         const response = {
             id: 'credential-new',
             rawId: 'credential-new',
@@ -627,21 +611,11 @@ describe('MfaPasskeyService', () => {
             type: 'public-key',
         } satisfies RegistrationResponseJSON;
         const publicKey = new Uint8Array([100, 101, 102, 251]);
-        const created: IMfaPasskey = {
-            id: 'passkey-new',
-            name: 'iPhone',
-            deviceType: EnumMfaPasskeyDeviceType.multiDevice,
-            backedUp: true,
-            createdAt: new Date('2026-03-01T00:00:00.000Z'),
-            lastUsedAt: null,
-        };
 
         beforeEach(() => {
-            mfaPasskeyRepository.countByUserIdInTx.mockResolvedValue(2);
-            mfaPasskeyRepository.existsByCredentialIdInTx.mockResolvedValue(
-                false
-            );
-            mfaPasskeyRepository.createInTx.mockResolvedValue(created);
+            featureFlagService.getMetadataNumber.mockResolvedValue(10);
+            mfaPasskeyRepository.countByUserId.mockResolvedValue(2);
+            mfaPasskeyRepository.findOneByCredentialId.mockResolvedValue(null);
             vi.mocked(verifyRegistrationResponse).mockResolvedValue({
                 verified: true,
                 registrationInfo: {
@@ -658,13 +632,10 @@ describe('MfaPasskeyService', () => {
         });
 
         it('verifies the attestation against the stored challenge, the response origin, and the relying party id', async () => {
-            await service.registerInTx(
-                tx,
+            await service.assertRegistrable(
                 'user-quartz',
-                'iPhone',
                 response,
-                'challenge-stored',
-                10
+                'challenge-stored'
             );
 
             expect(verifyRegistrationResponse).toHaveBeenCalledWith({
@@ -682,10 +653,8 @@ describe('MfaPasskeyService', () => {
         ])(
             'passes the response origin of %s to the library',
             async (_label, origin) => {
-                await service.registerInTx(
-                    tx,
+                await service.assertRegistrable(
                     'user-quartz',
-                    'iPhone',
                     {
                         ...response,
                         response: {
@@ -693,8 +662,7 @@ describe('MfaPasskeyService', () => {
                             clientDataJSON: buildClientDataJson(origin),
                         },
                     },
-                    'challenge-stored',
-                    10
+                    'challenge-stored'
                 );
 
                 expect(verifyRegistrationResponse).toHaveBeenCalledWith(
@@ -721,16 +689,13 @@ describe('MfaPasskeyService', () => {
             'throws MfaPasskeyInvalidException without calling the library for %s',
             async (_label, clientDataJSON) => {
                 await expect(
-                    service.registerInTx(
-                        tx,
+                    service.assertRegistrable(
                         'user-quartz',
-                        'iPhone',
                         {
                             ...response,
                             response: { ...response.response, clientDataJSON },
                         },
-                        'challenge-stored',
-                        10
+                        'challenge-stored'
                     )
                 ).rejects.toMatchObject({
                     module: 'mfa',
@@ -738,7 +703,6 @@ describe('MfaPasskeyService', () => {
                 });
 
                 expect(verifyRegistrationResponse).not.toHaveBeenCalled();
-                expect(mfaPasskeyRepository.createInTx).not.toHaveBeenCalled();
             }
         );
 
@@ -775,10 +739,8 @@ describe('MfaPasskeyService', () => {
             ])(
                 'passes the response origin of %s to the library',
                 async (_label, origin) => {
-                    await service.registerInTx(
-                        tx,
+                    await service.assertRegistrable(
                         'user-quartz',
-                        'iPhone',
                         {
                             ...response,
                             response: {
@@ -786,8 +748,7 @@ describe('MfaPasskeyService', () => {
                                 clientDataJSON: buildClientDataJson(origin),
                             },
                         },
-                        'challenge-stored',
-                        10
+                        'challenge-stored'
                     );
 
                     expect(verifyRegistrationResponse).toHaveBeenCalledWith(
@@ -806,10 +767,8 @@ describe('MfaPasskeyService', () => {
                 'throws MfaPasskeyInvalidException without calling the library for %s',
                 async (_label, clientDataJSON) => {
                     await expect(
-                        service.registerInTx(
-                            tx,
+                        service.assertRegistrable(
                             'user-quartz',
-                            'iPhone',
                             {
                                 ...response,
                                 response: {
@@ -817,8 +776,7 @@ describe('MfaPasskeyService', () => {
                                     clientDataJSON,
                                 },
                             },
-                            'challenge-stored',
-                            10
+                            'challenge-stored'
                         )
                     ).rejects.toMatchObject({
                         module: 'mfa',
@@ -830,38 +788,36 @@ describe('MfaPasskeyService', () => {
             );
         });
 
-        it('stores the credential id, the base64url public key, the counter, the transports, the device type, the backed-up flag, and the name, and answers the created passkey', async () => {
+        it('answers the credential id, the base64url public key, the counter, the transports, the device type, and the backed-up flag of the verified registration', async () => {
             await expect(
-                service.registerInTx(
-                    tx,
+                service.assertRegistrable(
                     'user-quartz',
-                    'iPhone',
                     response,
-                    'challenge-stored',
-                    10
+                    'challenge-stored'
                 )
-            ).resolves.toBe(created);
-
-            expect(mfaPasskeyRepository.countByUserIdInTx).toHaveBeenCalledWith(
-                tx,
-                'user-quartz'
-            );
-            expect(
-                mfaPasskeyRepository.existsByCredentialIdInTx
-            ).toHaveBeenCalledWith(tx, 'credential-new');
-            expect(mfaPasskeyRepository.createInTx).toHaveBeenCalledWith(tx, {
-                userId: 'user-quartz',
+            ).resolves.toEqual({
                 credentialId: 'credential-new',
                 publicKey: 'ZGVm-w',
                 counter: 7,
                 transports: ['internal', 'hybrid'],
                 deviceType: EnumMfaPasskeyDeviceType.multiDevice,
                 backedUp: true,
-                name: 'iPhone',
             });
+
+            expect(mfaPasskeyRepository.countByUserId).toHaveBeenCalledTimes(1);
+            expect(mfaPasskeyRepository.countByUserId).toHaveBeenCalledWith(
+                'user-quartz'
+            );
+            expect(
+                mfaPasskeyRepository.findOneByCredentialId
+            ).toHaveBeenCalledWith('credential-new');
+            expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.mfa,
+                EnumFeatureFlagMetadataKey.passkeyMaxPerUser
+            );
         });
 
-        it('stores no transports when the library reports none', async () => {
+        it('answers no transports when the library reports none', async () => {
             vi.mocked(verifyRegistrationResponse).mockResolvedValue({
                 verified: true,
                 registrationInfo: {
@@ -875,83 +831,100 @@ describe('MfaPasskeyService', () => {
                 },
             } as Awaited<ReturnType<typeof verifyRegistrationResponse>>);
 
-            await service.registerInTx(
-                tx,
-                'user-quartz',
-                'Key',
-                response,
-                'challenge-stored',
-                10
-            );
-
-            expect(mfaPasskeyRepository.createInTx).toHaveBeenCalledWith(
-                tx,
-                expect.objectContaining({
-                    transports: [],
-                    deviceType: EnumMfaPasskeyDeviceType.singleDevice,
-                    backedUp: false,
-                    counter: 0,
-                })
-            );
-        });
-
-        it('allows the passkey one below the maxPerUser argument and calls no feature flag read', async () => {
-            mfaPasskeyRepository.countByUserIdInTx.mockResolvedValue(9);
-
             await expect(
-                service.registerInTx(
-                    tx,
+                service.assertRegistrable(
                     'user-quartz',
-                    'iPhone',
                     response,
-                    'challenge-stored',
-                    10
+                    'challenge-stored'
                 )
-            ).resolves.toBe(created);
-            expect(featureFlagService.getMetadataNumber).not.toHaveBeenCalled();
+            ).resolves.toMatchObject({
+                transports: [],
+                deviceType: EnumMfaPasskeyDeviceType.singleDevice,
+                backedUp: false,
+                counter: 0,
+            });
         });
 
-        it('throws MfaPasskeyLimitException when the count equals the maxPerUser argument, verifying nothing', async () => {
-            mfaPasskeyRepository.countByUserIdInTx.mockResolvedValue(10);
+        it('allows the passkey one below the passkeyMaxPerUser metadata', async () => {
+            mfaPasskeyRepository.countByUserId.mockResolvedValue(9);
 
             await expect(
-                service.registerInTx(
-                    tx,
+                service.assertRegistrable(
                     'user-quartz',
-                    'iPhone',
                     response,
-                    'challenge-stored',
-                    10
+                    'challenge-stored'
+                )
+            ).resolves.toMatchObject({ credentialId: 'credential-new' });
+        });
+
+        it('reads the cap, the count, and the attestation together', async () => {
+            const cap = buildDeferred<number>();
+            featureFlagService.getMetadataNumber.mockReturnValue(cap.promise);
+            mfaPasskeyRepository.countByUserId.mockImplementation(async () => {
+                cap.resolve(10);
+                return 2;
+            });
+
+            await expect(
+                service.assertRegistrable(
+                    'user-quartz',
+                    response,
+                    'challenge-stored'
+                )
+            ).resolves.toMatchObject({ credentialId: 'credential-new' });
+        });
+
+        it('throws MfaPasskeyLimitException when the count equals the passkeyMaxPerUser metadata, reading no credential', async () => {
+            mfaPasskeyRepository.countByUserId.mockResolvedValue(10);
+
+            await expect(
+                service.assertRegistrable(
+                    'user-quartz',
+                    response,
+                    'challenge-stored'
                 )
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.passkeyLimit,
             });
 
-            expect(verifyRegistrationResponse).not.toHaveBeenCalled();
-            expect(mfaPasskeyRepository.createInTx).not.toHaveBeenCalled();
+            expect(
+                mfaPasskeyRepository.findOneByCredentialId
+            ).not.toHaveBeenCalled();
         });
 
-        it('throws MfaPasskeyInvalidException when the library does not verify the attestation', async () => {
+        it('passes on the failure of the passkeyMaxPerUser read', async () => {
+            const failure = new Error('flag unavailable');
+            featureFlagService.getMetadataNumber.mockRejectedValue(failure);
+
+            await expect(
+                service.assertRegistrable(
+                    'user-quartz',
+                    response,
+                    'challenge-stored'
+                )
+            ).rejects.toBe(failure);
+        });
+
+        it('throws MfaPasskeyInvalidException when the library does not verify the attestation, reading no credential', async () => {
             vi.mocked(verifyRegistrationResponse).mockResolvedValue({
                 verified: false,
             });
 
             await expect(
-                service.registerInTx(
-                    tx,
+                service.assertRegistrable(
                     'user-quartz',
-                    'iPhone',
                     response,
-                    'challenge-stored',
-                    10
+                    'challenge-stored'
                 )
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.passkeyInvalid,
             });
 
-            expect(mfaPasskeyRepository.createInTx).not.toHaveBeenCalled();
+            expect(
+                mfaPasskeyRepository.findOneByCredentialId
+            ).not.toHaveBeenCalled();
         });
 
         it('throws MfaPasskeyInvalidException when the library throws', async () => {
@@ -960,42 +933,70 @@ describe('MfaPasskeyService', () => {
             );
 
             await expect(
-                service.registerInTx(
-                    tx,
+                service.assertRegistrable(
                     'user-quartz',
-                    'iPhone',
                     response,
-                    'challenge-stored',
-                    10
+                    'challenge-stored'
                 )
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.passkeyInvalid,
             });
-
-            expect(mfaPasskeyRepository.createInTx).not.toHaveBeenCalled();
         });
 
         it('throws MfaPasskeyAlreadyRegisteredException for a known credential id', async () => {
-            mfaPasskeyRepository.existsByCredentialIdInTx.mockResolvedValue(
-                true
+            mfaPasskeyRepository.findOneByCredentialId.mockResolvedValue(
+                stored
             );
 
             await expect(
-                service.registerInTx(
-                    tx,
+                service.assertRegistrable(
                     'user-quartz',
-                    'iPhone',
                     response,
-                    'challenge-stored',
-                    10
+                    'challenge-stored'
                 )
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.passkeyAlreadyRegistered,
             });
+        });
+    });
 
-            expect(mfaPasskeyRepository.createInTx).not.toHaveBeenCalled();
+    describe('registerInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
+        const created: IMfaPasskey = {
+            id: 'passkey-new',
+            name: 'iPhone',
+            deviceType: EnumMfaPasskeyDeviceType.multiDevice,
+            backedUp: true,
+            createdAt: new Date('2026-03-01T00:00:00.000Z'),
+            lastUsedAt: null,
+        };
+        const registration: IMfaPasskeyRegistration = {
+            credentialId: 'credential-new',
+            publicKey: 'ZGVm-w',
+            counter: 7,
+            transports: ['internal', 'hybrid'],
+            deviceType: EnumMfaPasskeyDeviceType.multiDevice,
+            backedUp: true,
+        };
+
+        it('stores the verified registration and the name for the user on the given tx, reading nothing, and answers the created passkey', async () => {
+            mfaPasskeyRepository.createInTx.mockResolvedValue(created);
+
+            await expect(
+                service.registerInTx(tx, 'user-quartz', 'iPhone', registration)
+            ).resolves.toBe(created);
+
+            expect(mfaPasskeyRepository.createInTx).toHaveBeenCalledWith(tx, {
+                userId: 'user-quartz',
+                name: 'iPhone',
+                ...registration,
+            });
+            expect(mfaPasskeyRepository.countByUserId).not.toHaveBeenCalled();
+            expect(
+                mfaPasskeyRepository.findOneByCredentialId
+            ).not.toHaveBeenCalled();
         });
     });
 

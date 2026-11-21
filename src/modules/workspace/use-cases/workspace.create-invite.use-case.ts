@@ -1,3 +1,9 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -5,12 +11,14 @@ import type { Project, WorkspaceInvite } from '@generated/prisma-client/client';
 import { ProjectService } from '@modules/project/services/project.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
+import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import type {
     IWorkspaceContext,
     IWorkspaceInviteCreate,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -28,12 +36,21 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
     ],
     IResponseReturn<WorkspaceInvite>
 > {
+    private readonly referenceMaxAttempts: number;
+
     constructor(
         private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly projectService: ProjectService,
         private readonly userService: UserService,
-        private readonly userUtil: UserUtil
-    ) {}
+        private readonly userUtil: UserUtil,
+        private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.referenceMaxAttempts = this.configService.get<number>(
+            'workspace.invite.referenceMaxAttempts'
+        )!;
+    }
 
     async execute(
         requestContext: IRequestContext,
@@ -49,6 +66,8 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
             expiryDuration,
         }: WorkspaceInviteCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceInvite>> {
+        this.workspaceInviteService.assertEmailDeliverable();
+
         const create: IWorkspaceInviteCreate = {
             email,
             workspaceRole,
@@ -56,9 +75,6 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
             projectRole: projectRole ?? null,
             expiryDuration: expiryDuration ?? null,
         };
-        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
-        await this.workspaceInviteService.assertProjectRolePaired(create);
-
         let projectLookup: Promise<Project | null> | null = null;
         if (create.projectId !== null) {
             projectLookup = this.projectService.getActiveByIdAndWorkspace(
@@ -67,9 +83,14 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
             );
         }
 
-        const [project, existingUser] = await Promise.all([
+        const [project, existingUser, prepared] = await Promise.all([
             projectLookup,
             this.userService.getOneActiveByEmail(create.email),
+            this.workspaceInviteService.prepareInvite(
+                workspaceContext.workspace.id,
+                create
+            ),
+            this.workspaceInviteService.assertProjectRolePaired(create),
         ]);
         this.workspaceInviteService.assertCreatable(create, project);
         if (existingUser) {
@@ -80,19 +101,66 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
         }
 
         const inviterName = this.userUtil.getDisplayName(userContext.user);
-        const { invite } = await this.workspaceInviteService.createInvite(
-            requestContext,
-            apiKeyContext,
-            authContext,
-            workspaceContext.workspace.id,
-            create,
-            {
-                workspaceName: workspaceContext.workspace.name,
-                inviterName,
-                inviteeUserId: existingUser?.id ?? null,
-            }
-        );
+        const notice = {
+            workspaceName: workspaceContext.workspace.name,
+            inviterName,
+            inviteeUserId: existingUser?.id ?? null,
+        };
 
-        return { data: invite };
+        for (let attempt = 0; attempt < this.referenceMaxAttempts; attempt++) {
+            const tokenData = this.workspaceInviteService.createInviteTokenData(
+                prepared.expiresInDays
+            );
+
+            try {
+                const invite = await this.databaseService.withTransaction(
+                    async tx =>
+                        this.workspaceInviteService.createInviteInTx(
+                            tx,
+                            requestContext,
+                            apiKeyContext,
+                            authContext,
+                            workspaceContext.workspace.id,
+                            create,
+                            prepared,
+                            tokenData,
+                            notice
+                        )
+                );
+
+                return { data: invite };
+            } catch (err: unknown) {
+                const isDuplicate = this.databaseUtil.isUniqueCollision(
+                    err,
+                    'nonce'
+                );
+                if (isDuplicate) {
+                    throw new WorkspaceInviteDuplicateException();
+                }
+
+                const isTokenCollision = this.databaseUtil.isUniqueCollision(
+                    err,
+                    'token'
+                );
+                const isReferenceCollision =
+                    this.databaseUtil.isUniqueCollision(err, 'reference');
+                if (isTokenCollision || isReferenceCollision) {
+                    continue;
+                }
+
+                if (err instanceof AppBaseException) {
+                    throw err;
+                }
+
+                const mapped = this.databaseUtil.toException(err);
+                if (mapped instanceof DatabaseWriteConflictException) {
+                    throw new WorkspaceInviteDuplicateException();
+                }
+
+                throw new AppUnknownException(err);
+            }
+        }
+
+        throw new DatabaseUniqueValueGenerationFailedException();
     }
 }

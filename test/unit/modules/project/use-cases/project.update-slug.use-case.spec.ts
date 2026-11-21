@@ -1,11 +1,23 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Project } from '@generated/prisma-client/client';
 import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
+import { ProjectSlugInvalidException } from '@modules/project/exceptions/project.slug-invalid.exception';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectUpdateSlugUseCase } from '@modules/project/use-cases/project.update-slug.use-case';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import {
     buildUser,
     buildRequestContext,
@@ -17,6 +29,9 @@ import {
 
 describe('ProjectUpdateSlugUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
+
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const tx = {} as IDatabaseTransactionClient;
 
     let useCase: ProjectUpdateSlugUseCase;
 
@@ -43,10 +58,18 @@ describe('ProjectUpdateSlugUseCase', () => {
     const projectContext = buildProjectContext(project, null);
 
     beforeEach(async () => {
+        databaseService.withTransaction.mockImplementation(fn => fn(tx));
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectUpdateSlugUseCase,
                 { provide: ProjectService, useValue: projectService },
+                { provide: DatabaseService, useValue: databaseService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
@@ -54,10 +77,11 @@ describe('ProjectUpdateSlugUseCase', () => {
     });
 
     describe('execute', () => {
-        it('updates the slug with the actor and the context and wraps it in the response envelope', async () => {
-            const body: ProjectUpdateSlugRequestDto = { slug: 'p-new-slug' };
+        const body: ProjectUpdateSlugRequestDto = { slug: 'p-new-slug' };
+
+        it('asserts the slug, updates it in one transaction, and wraps the project in the response envelope', async () => {
             const updated = { ...project, slug: 'p-new-slug' };
-            projectService.updateProjectSlug.mockResolvedValue(updated);
+            projectService.updateProjectSlugInTx.mockResolvedValue(updated);
 
             const result = await useCase.execute(
                 requestContext,
@@ -68,7 +92,12 @@ describe('ProjectUpdateSlugUseCase', () => {
             );
 
             expect(result).toEqual({ data: updated });
-            expect(projectService.updateProjectSlug).toHaveBeenCalledWith(
+            expect(projectService.assertSlugAllowed).toHaveBeenCalledWith(
+                'p-new-slug'
+            );
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(projectService.updateProjectSlugInTx).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -77,9 +106,29 @@ describe('ProjectUpdateSlugUseCase', () => {
             );
         });
 
-        it('rejects with the domain failure', async () => {
-            projectService.updateProjectSlug.mockRejectedValue(
-                new Error('boom')
+        it('throws ProjectSlugInvalidException and opens no transaction when the slug is not allowed', async () => {
+            projectService.assertSlugAllowed.mockImplementation(() => {
+                throw new ProjectSlugInvalidException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    projectContext,
+                    body
+                )
+            ).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.slugInvalid,
+            });
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('maps a unique collision on slug to ProjectSlugAlreadyExistsException', async () => {
+            projectService.updateProjectSlugInTx.mockRejectedValue(
+                buildPrismaKnownRequestError('P2002', 'slug')
             );
 
             await expect(
@@ -88,9 +137,45 @@ describe('ProjectUpdateSlugUseCase', () => {
                     apiKeyContext,
                     authContext,
                     projectContext,
-                    { slug: 'p-new-slug' }
+                    body
                 )
-            ).rejects.toThrow('boom');
+            ).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.slugAlreadyExists,
+            });
+        });
+
+        it('rethrows an AppBaseException as is', async () => {
+            const typed = new ProjectSlugInvalidException();
+            projectService.updateProjectSlugInTx.mockRejectedValue(typed);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    projectContext,
+                    body
+                )
+            ).rejects.toBe(typed);
+        });
+
+        it('wraps any other error in AppUnknownException', async () => {
+            const otherError = new Error('unexpected');
+            projectService.updateProjectSlugInTx.mockRejectedValue(otherError);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    projectContext,
+                    body
+                )
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
+            });
         });
     });
 });

@@ -116,6 +116,12 @@ export interface INotificationUserImportResultContext extends INotificationRefer
     reasons: string[];
 }
 
+export interface INotificationUserExportResultContext extends INotificationReferenceContext {
+    link: string;
+    count: number;
+    expiredAt: string;
+}
+
 export interface INotificationWorkspaceInviteFields {
     workspaceId: string;
     workspaceName: string;
@@ -173,6 +179,7 @@ export interface INotificationContextMap {
     [EnumNotificationKind.publishTermPolicy]: INotificationTermPolicyContext;
     [EnumNotificationKind.userAcceptTermPolicy]: INotificationTermPolicyContext;
     [EnumNotificationKind.userImportResult]: INotificationUserImportResultContext;
+    [EnumNotificationKind.userExportResult]: INotificationUserExportResultContext;
     [EnumNotificationKind.workspaceInvite]: INotificationWorkspaceInviteContext;
     [EnumNotificationKind.workspaceJoinRequest]: INotificationWorkspaceJoinRequestContext;
     [EnumNotificationKind.workspaceJoinAccepted]: INotificationWorkspaceJoinAcceptedContext;

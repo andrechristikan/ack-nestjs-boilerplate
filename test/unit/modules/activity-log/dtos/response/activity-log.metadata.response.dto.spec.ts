@@ -34,6 +34,12 @@ describe('ActivityLogMetadataResponseSchema', () => {
         expect(result).toEqual(row);
     });
 
+    it('keeps the count an export entry stores', () => {
+        const result = ActivityLogMetadataResponseSchema.parse({ count: 3 });
+
+        expect(result).toEqual({ count: 3 });
+    });
+
     it('parses an empty row', () => {
         const result = ActivityLogMetadataResponseSchema.parse({});
 

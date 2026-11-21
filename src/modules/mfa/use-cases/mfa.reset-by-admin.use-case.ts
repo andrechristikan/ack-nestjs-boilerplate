@@ -53,28 +53,29 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         this.userService.assertNotSelf(userId, authContext.userId);
 
-        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
-        const target = await this.userService.getOneWithRole(userId);
+        const [target] = await Promise.all([
+            this.userService.getOneWithRole(userId),
+            this.mfaService.assertHasFactor(userId),
+        ]);
         this.roleService.assertActorOutranks(
             userContext.user.role.type,
             target.role.type
         );
         this.userService.assertUnblocked(target);
 
-        await this.mfaService.assertHasFactor(userId);
+        const snapshot = await this.notificationService.getSnapshot(target);
 
         const now = this.helperDateService.create();
         await this.databaseService.withTransaction(async tx => {
-            const [snapshot] = await Promise.all([
-                this.notificationService.getSnapshot(target),
+            await Promise.all([
                 this.mfaService.resetByAdminInTx(tx, userId),
+                this.sessionService.revokeActiveByUserInTx(
+                    tx,
+                    userId,
+                    authContext.userId,
+                    now
+                ),
             ]);
-            await this.sessionService.revokeActiveByUserInTx(
-                tx,
-                userId,
-                authContext.userId,
-                now
-            );
             const effect = this.notificationQueue.notify(
                 EnumNotificationKind.resetMfaByAdmin,
                 { userId, proceedBy: authContext.userId, snapshot }
@@ -91,7 +92,7 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminUserResetMfa,
+                    action: EnumActivityLogAction.adminUserMfaReset,
                     metadata: actorMetadata,
                 }
             );
@@ -101,7 +102,7 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userResetMfaByAdmin,
+                    action: EnumActivityLogAction.userMfaResetByAdmin,
                     userId,
                     createdBy: authContext.userId,
                     metadata: targetMetadata,

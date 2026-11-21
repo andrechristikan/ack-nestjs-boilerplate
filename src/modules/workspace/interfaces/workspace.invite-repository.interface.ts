@@ -15,7 +15,8 @@ export interface IWorkspaceInviteRepository {
     expireStalePending(): Promise<number>;
     revokePendingByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string
+        workspaceId: string,
+        updatedBy: string
     ): Promise<void>;
     revokePendingByEmailInTx(
         tx: IDatabaseTransactionClient,
@@ -24,7 +25,8 @@ export interface IWorkspaceInviteRepository {
     ): Promise<void>;
     revokeAllPendingByEmailInTx(
         tx: IDatabaseTransactionClient,
-        email: string
+        email: string,
+        updatedBy: string
     ): Promise<void>;
     clearProjectInTx(
         tx: IDatabaseTransactionClient,

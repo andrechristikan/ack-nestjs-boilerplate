@@ -23,6 +23,7 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { ApiKeyStartAtNotFutureException } from '@modules/api-key/exceptions/api-key.start-at-not-future.exception';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyCreateByAdminUseCase } from '@modules/api-key/use-cases/api-key.create-by-admin.use-case';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
@@ -124,6 +125,38 @@ describe('ApiKeyCreateByAdminUseCase', () => {
             });
         });
 
+        it('throws ApiKeyStartAtNotFutureException from assertStartAtFuture and opens no transaction', async () => {
+            const failure = new ApiKeyStartAtNotFutureException();
+            const startAt = new Date('2025-01-01T00:00:00.000Z');
+            apiKeyService.assertStartAtFuture.mockImplementation(() => {
+                throw failure;
+            });
+
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, authContext, {
+                    ...body,
+                    startAt,
+                })
+            ).rejects.toBe(failure);
+            expect(apiKeyService.assertStartAtFuture).toHaveBeenCalledWith(
+                startAt
+            );
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('passes a null start date to assertStartAtFuture when the request omits it', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                body
+            );
+
+            expect(apiKeyService.assertStartAtFuture).toHaveBeenCalledWith(
+                null
+            );
+        });
+
         it('creates the api key on the outbox transaction and shapes the secret-bearing response', async () => {
             const result = await useCase.execute(
                 requestContext,
@@ -159,7 +192,7 @@ describe('ApiKeyCreateByAdminUseCase', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminApiKeyCreate,
+                    action: EnumActivityLogAction.adminApiKeyCreated,
                     metadata,
                 }
             );

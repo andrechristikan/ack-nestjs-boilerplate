@@ -4,6 +4,8 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Project } from '@generated/prisma-client/client';
 import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectUpdateUseCase } from '@modules/project/use-cases/project.update.use-case';
 import {
@@ -17,6 +19,9 @@ import {
 
 describe('ProjectUpdateUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
+
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const tx = {} as IDatabaseTransactionClient;
 
     let useCase: ProjectUpdateUseCase;
 
@@ -43,10 +48,13 @@ describe('ProjectUpdateUseCase', () => {
     const projectContext = buildProjectContext(project, null);
 
     beforeEach(async () => {
+        databaseService.withTransaction.mockImplementation(fn => fn(tx));
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectUpdateUseCase,
                 { provide: ProjectService, useValue: projectService },
+                { provide: DatabaseService, useValue: databaseService },
             ],
         }).compile();
 
@@ -64,7 +72,7 @@ describe('ProjectUpdateUseCase', () => {
                 name: 'New Name',
                 description: 'New description',
             };
-            projectService.updateProject.mockResolvedValue(updated);
+            projectService.updateProjectInTx.mockResolvedValue(updated);
 
             const result = await useCase.execute(
                 requestContext,
@@ -75,7 +83,8 @@ describe('ProjectUpdateUseCase', () => {
             );
 
             expect(result).toEqual({ data: updated });
-            expect(projectService.updateProject).toHaveBeenCalledWith(
+            expect(projectService.updateProjectInTx).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -92,7 +101,7 @@ describe('ProjectUpdateUseCase', () => {
                 name: 'New Name',
                 description: null,
             };
-            projectService.updateProject.mockResolvedValue(project);
+            projectService.updateProjectInTx.mockResolvedValue(project);
 
             await useCase.execute(
                 requestContext,
@@ -102,7 +111,8 @@ describe('ProjectUpdateUseCase', () => {
                 body
             );
 
-            expect(projectService.updateProject).toHaveBeenCalledWith(
+            expect(projectService.updateProjectInTx).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -112,7 +122,9 @@ describe('ProjectUpdateUseCase', () => {
         });
 
         it('rejects with the domain failure', async () => {
-            projectService.updateProject.mockRejectedValue(new Error('boom'));
+            projectService.updateProjectInTx.mockRejectedValue(
+                new Error('boom')
+            );
 
             await expect(
                 useCase.execute(

@@ -36,7 +36,7 @@ export class UserUpdateProfileUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         { countryId, gender, name }: UserUpdateProfileRequestDto
     ): Promise<IResponseReturn<void>> {
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: a write after its checks
         await this.countryService.getOne(countryId);
 
         await this.databaseService.withTransaction(async tx => {
@@ -55,7 +55,7 @@ export class UserUpdateProfileUseCase implements IAppUseCase<
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userUpdateProfile,
+                    action: EnumActivityLogAction.userProfileUpdated,
                 }
             );
             await this.outboxService.addInTx(tx, entry);

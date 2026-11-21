@@ -1,5 +1,10 @@
 import type { Project, ProjectMember } from '@generated/prisma-client/client';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import type { IRequestStorePatch } from '@common/request/interfaces/request.interface';
+import type {
+    EnumProjectProcess,
+    EnumProjectQueue,
+} from '@modules/project/enums/project.enum';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 
 export interface IProjectContext {
@@ -30,4 +35,16 @@ export interface IProjectCreate {
 export interface IProjectUpdate {
     name: string;
     description: string | null;
+}
+
+export interface IProjectSoftDeleteByWorkspacePayload {
+    workspaceId: string;
+    deletedAt: string;
+    deletedBy: string;
+}
+
+export interface IProjectSoftDeleteByWorkspaceEffect extends IOutboxEffect {
+    queue: EnumProjectQueue.project;
+    name: EnumProjectProcess.softDeleteByWorkspace;
+    data: IProjectSoftDeleteByWorkspacePayload;
 }

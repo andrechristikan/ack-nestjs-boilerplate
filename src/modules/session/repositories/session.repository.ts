@@ -127,6 +127,26 @@ export class SessionRepository implements ISessionRepository {
         });
     }
 
+    async existsLiveByJtiDigest(
+        sessionId: string,
+        jtiDigest: string,
+        idleSince: Date
+    ): Promise<boolean> {
+        const now = this.helperDateService.create();
+        const session = await this.databaseService.client.session.findFirst({
+            where: {
+                id: sessionId,
+                jtiDigest,
+                isRevoked: false,
+                expiredAt: { gte: now },
+                lastActiveAt: { gte: idleSince },
+            },
+            select: { id: true },
+        });
+
+        return session !== null;
+    }
+
     async updateJtiInTx(
         tx: IDatabaseTransactionClient,
         sessionId: string,

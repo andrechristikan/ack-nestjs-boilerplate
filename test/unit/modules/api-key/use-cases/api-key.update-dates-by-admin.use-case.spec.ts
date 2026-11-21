@@ -21,6 +21,9 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
+import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
+import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
+import { ApiKeyEndAtNotFutureException } from '@modules/api-key/exceptions/api-key.end-at-not-future.exception';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyUpdateDatesByAdminUseCase } from '@modules/api-key/use-cases/api-key.update-dates-by-admin.use-case';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
@@ -107,6 +110,68 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
         const endAt = new Date('2026-03-01T00:00:00.000Z');
         const updated: ApiKey = { ...apiKey, startAt, endAt };
 
+        beforeEach(() => {
+            apiKeyService.getOneById.mockResolvedValue(apiKey);
+        });
+
+        it('throws ApiKeyEndAtNotFutureException from assertEndAtFuture before any read and opens no transaction', async () => {
+            const failure = new ApiKeyEndAtNotFutureException();
+            apiKeyService.assertEndAtFuture.mockImplementation(() => {
+                throw failure;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id,
+                    { startAt, endAt }
+                )
+            ).rejects.toBe(failure);
+            expect(apiKeyService.assertEndAtFuture).toHaveBeenCalledWith(
+                startAt,
+                endAt
+            );
+            expect(apiKeyService.getOneById).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('throws ApiKeyNotFoundException from getOneById and opens no transaction', async () => {
+            const failure = new ApiKeyNotFoundException();
+            apiKeyService.getOneById.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id,
+                    { startAt, endAt }
+                )
+            ).rejects.toBe(failure);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('throws ApiKeyInactiveException from assertActive and opens no transaction', async () => {
+            const failure = new ApiKeyInactiveException();
+            apiKeyService.assertActive.mockImplementation(() => {
+                throw failure;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id,
+                    { startAt, endAt }
+                )
+            ).rejects.toBe(failure);
+            expect(apiKeyService.assertActive).toHaveBeenCalledWith(apiKey);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
         it('updates the date window on the outbox transaction and wraps the result', async () => {
             apiKeyService.updateDatesByAdminInTx.mockResolvedValue(updated);
 
@@ -122,9 +187,10 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
             );
 
             expect(result).toEqual({ data: updated });
+            expect(apiKeyService.getOneById).toHaveBeenCalledWith(apiKey.id);
             expect(apiKeyService.updateDatesByAdminInTx).toHaveBeenCalledWith(
                 tx,
-                apiKey.id,
+                apiKey,
                 startAt,
                 endAt
             );
@@ -147,7 +213,7 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminApiKeyUpdateDate,
+                    action: EnumActivityLogAction.adminApiKeyDatesUpdated,
                     metadata,
                 }
             );
@@ -186,7 +252,10 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
                     apiKey.id,
                     { startAt, endAt }
                 )
-            ).rejects.toBeInstanceOf(ApiKeyInactiveException);
+            ).rejects.toMatchObject({
+                module: 'apiKey',
+                statusCode: EnumApiKeyStatusCodeError.inactive,
+            });
         });
 
         it('wraps any other error in AppUnknownException', async () => {

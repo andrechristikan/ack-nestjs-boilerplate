@@ -8,8 +8,6 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -27,25 +25,25 @@ import {
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { stubPasswordMetadataNumbers } from '@test/unit/helpers/test.unit.feature-flag.helper';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type {
     IUser,
     IUserForgotPassword,
     IUserForgotPasswordCreate,
+    IUserPasswordAttemptLimit,
 } from '@modules/user/interfaces/user.interface';
 import { UserForgotPasswordRepository } from '@modules/user/repositories/user.forgot-password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import {
     EnumNotificationKind,
@@ -56,7 +54,6 @@ import {
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserPasswordService', () => {
     const userForgotPasswordRepository: MockProxy<UserForgotPasswordRepository> =
@@ -64,7 +61,6 @@ describe('UserPasswordService', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
@@ -135,10 +131,8 @@ describe('UserPasswordService', () => {
                 HelperStringService,
                 HelperDateService,
                 { provide: UserService, useValue: userService },
-                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: NotificationQueue, useValue: notificationQueue },
-                DatabaseUtil,
                 AuthPasswordUtil,
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 {
@@ -257,8 +251,74 @@ describe('UserPasswordService', () => {
         });
     });
 
-    describe('countFailedPasswordAttempt', () => {
-        const lockedUntil = new Date('2026-03-01T00:15:00.000Z');
+    describe('getPasswordAttemptLimit', () => {
+        beforeEach(() => {
+            stubPasswordMetadataNumbers(featureFlagService, 5, 15);
+        });
+
+        it.each([
+            { maxAttempts: 3, minutes: 5, end: '2026-03-01T00:05:00.000Z' },
+            { maxAttempts: 8, minutes: 30, end: '2026-03-01T00:30:00.000Z' },
+        ])(
+            'reads $maxAttempts attempts and a $minutes minute lock from the loginWithCredential flag',
+            async ({ maxAttempts, minutes, end }) => {
+                stubPasswordMetadataNumbers(
+                    featureFlagService,
+                    maxAttempts,
+                    minutes
+                );
+
+                await expect(
+                    service.getPasswordAttemptLimit()
+                ).resolves.toEqual({ maxAttempts, lockedUntil: new Date(end) });
+
+                expect(
+                    featureFlagService.getMetadataNumber
+                ).toHaveBeenCalledWith(
+                    EnumFeatureFlagKey.loginWithCredential,
+                    EnumFeatureFlagMetadataKey.passwordMaxAttempts
+                );
+                expect(
+                    featureFlagService.getMetadataNumber
+                ).toHaveBeenCalledWith(
+                    EnumFeatureFlagKey.loginWithCredential,
+                    EnumFeatureFlagMetadataKey.passwordLockDurationInMinutes
+                );
+            }
+        );
+
+        it.each([
+            EnumFeatureFlagMetadataKey.passwordMaxAttempts,
+            EnumFeatureFlagMetadataKey.passwordLockDurationInMinutes,
+        ])(
+            'propagates FeatureFlagNotConfiguredException from the %s read',
+            async failing => {
+                const failure = new FeatureFlagNotConfiguredException(
+                    EnumFeatureFlagKey.loginWithCredential,
+                    failing
+                );
+                featureFlagService.getMetadataNumber.mockImplementation(
+                    async (_key, metadataKey) => {
+                        if (metadataKey === failing) {
+                            throw failure;
+                        }
+
+                        return 5;
+                    }
+                );
+
+                await expect(service.getPasswordAttemptLimit()).rejects.toBe(
+                    failure
+                );
+            }
+        );
+    });
+
+    describe('countFailedPasswordAttemptInTx', () => {
+        const limit: IUserPasswordAttemptLimit = {
+            maxAttempts: 5,
+            lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
+        };
         const entryEffect: IActivityLogCreateManyEffect = {
             queue: EnumActivityLogQueue.activityLog,
             name: EnumActivityLogProcess.createMany,
@@ -287,129 +347,49 @@ describe('UserPasswordService', () => {
             idempotencyKey: null,
         };
 
-        beforeEach(() => {
-            stubPasswordMetadataNumbers(featureFlagService, 5, 15);
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
-        });
-
-        it.each([
-            { maxAttempts: 3, minutes: 5, end: '2026-03-01T00:05:00.000Z' },
-            { maxAttempts: 8, minutes: 30, end: '2026-03-01T00:30:00.000Z' },
-        ])(
-            'passes $maxAttempts attempts and a $minutes minute lock from the loginWithCredential flag to the counter',
-            async ({ maxAttempts, minutes, end }) => {
-                stubPasswordMetadataNumbers(
-                    featureFlagService,
-                    maxAttempts,
-                    minutes
-                );
-                userRepository.incrementPasswordAttemptInTx.mockResolvedValue(
-                    false
-                );
-
-                await service.countFailedPasswordAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    baseUser
-                );
-
-                expect(
-                    featureFlagService.getMetadataNumber
-                ).toHaveBeenCalledWith(
-                    EnumFeatureFlagKey.loginWithCredential,
-                    EnumFeatureFlagMetadataKey.passwordMaxAttempts
-                );
-                expect(
-                    featureFlagService.getMetadataNumber
-                ).toHaveBeenCalledWith(
-                    EnumFeatureFlagKey.loginWithCredential,
-                    EnumFeatureFlagMetadataKey.passwordLockDurationInMinutes
-                );
-                expect(
-                    userRepository.incrementPasswordAttemptInTx
-                ).toHaveBeenCalledWith(
-                    tx,
-                    'user-hollow',
-                    maxAttempts,
-                    new Date(end)
-                );
-            }
-        );
-
-        it.each([
-            EnumFeatureFlagMetadataKey.passwordMaxAttempts,
-            EnumFeatureFlagMetadataKey.passwordLockDurationInMinutes,
-        ])(
-            'propagates FeatureFlagNotConfiguredException from the %s read and writes nothing',
-            async failing => {
-                const failure = new FeatureFlagNotConfiguredException(
-                    EnumFeatureFlagKey.loginWithCredential,
-                    failing
-                );
-                featureFlagService.getMetadataNumber.mockImplementation(
-                    async (_key, metadataKey) => {
-                        if (metadataKey === failing) {
-                            throw failure;
-                        }
-
-                        return 5;
-                    }
-                );
-
-                await expect(
-                    service.countFailedPasswordAttempt(
-                        requestContext,
-                        apiKeyContext,
-                        baseUser
-                    )
-                ).rejects.toBe(failure);
-                expect(databaseService.withTransaction).not.toHaveBeenCalled();
-                expect(
-                    userRepository.incrementPasswordAttemptInTx
-                ).not.toHaveBeenCalled();
-            }
-        );
-
-        it('counts the failure on the outbox tx and adds no row below the budget', async () => {
+        it('counts the failure on the given tx and adds no row below the budget', async () => {
             userRepository.incrementPasswordAttemptInTx.mockResolvedValue(
                 false
             );
 
             await expect(
-                service.countFailedPasswordAttempt(
+                service.countFailedPasswordAttemptInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
-                    baseUser
+                    'user-hollow',
+                    limit
                 )
             ).resolves.toBe(false);
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userRepository.incrementPasswordAttemptInTx
-            ).toHaveBeenCalledWith(tx, 'user-hollow', 5, lockedUntil);
+            ).toHaveBeenCalledWith(
+                tx,
+                'user-hollow',
+                5,
+                new Date('2026-03-01T00:15:00.000Z')
+            );
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
             expect(activityLogQueue.recordEffect).not.toHaveBeenCalled();
             expect(notificationQueue.notify).not.toHaveBeenCalled();
         });
 
-        it('adds the reach-max entry and the loginLocked effect on the counting tx when the failure locked, and no lockout effect', async () => {
+        it('adds the reach-max entry and the loginLocked effect on the given tx when the failure locked', async () => {
             userRepository.incrementPasswordAttemptInTx.mockResolvedValue(true);
             activityLogQueue.recordEffect.mockReturnValue(entryEffect);
             notificationQueue.notify.mockReturnValue(notifyEffect);
             messageService.setMessage.mockReturnValue('Label');
 
             await expect(
-                service.countFailedPasswordAttempt(
+                service.countFailedPasswordAttemptInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
-                    baseUser
+                    'user-hollow',
+                    limit
                 )
             ).resolves.toBe(true);
-            expect(
-                userRepository.incrementPasswordAttemptInTx
-            ).toHaveBeenCalledWith(tx, 'user-hollow', 5, lockedUntil);
             expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
@@ -417,7 +397,7 @@ describe('UserPasswordService', () => {
                 null,
                 null,
                 {
-                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    action: EnumActivityLogAction.userMaxPasswordAttemptReached,
                     userId: 'user-hollow',
                     createdBy: 'user-hollow',
                 }
@@ -442,50 +422,22 @@ describe('UserPasswordService', () => {
             ]);
         });
 
-        it('throws the max-attempt exception with no row on a write conflict', async () => {
-            const conflict = buildPrismaKnownRequestError('P2034');
-            databaseService.withTransaction.mockRejectedValue(conflict);
+        it('propagates the failure of the counting statement unchanged', async () => {
+            const failure = new Error('statement failed');
+            userRepository.incrementPasswordAttemptInTx.mockRejectedValue(
+                failure
+            );
 
             await expect(
-                service.countFailedPasswordAttempt(
+                service.countFailedPasswordAttemptInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
-                    baseUser
-                )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-            });
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('rethrows an AppBaseException unchanged', async () => {
-            const failure = new DatabaseUnavailableException();
-            databaseService.withTransaction.mockRejectedValue(failure);
-
-            await expect(
-                service.countFailedPasswordAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    baseUser
+                    'user-hollow',
+                    limit
                 )
             ).rejects.toBe(failure);
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
-            const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
-
-            await expect(
-                service.countFailedPasswordAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    baseUser
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -504,23 +456,24 @@ describe('UserPasswordService', () => {
                 .mockReturnValueOnce('hollow');
         });
 
-        it('validates changePassword.forgotAllowed before the read', async () => {
-            userRepository.findOneActiveByEmail.mockResolvedValue(null);
-
-            await service.prepareForgotPassword('hollow@example.com');
-
-            expect(
-                featureFlagService.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.changePassword,
-                EnumFeatureFlagMetadataKey.forgotAllowed
+        it('reads the active user while the changePassword.forgotAllowed gate is still pending', async () => {
+            const gate = buildDeferred<void>();
+            featureFlagService.validateFeatureFlagMetadata.mockReturnValue(
+                gate.promise
             );
-            expect(
-                featureFlagService.validateFeatureFlagMetadata
-            ).toHaveBeenCalledBefore(userRepository.findOneActiveByEmail);
+
+            const running = service.prepareForgotPassword('hollow@example.com');
+
+            expect(userRepository.findOneActiveByEmail).toHaveBeenCalledWith(
+                'hollow@example.com'
+            );
+
+            gate.resolve();
+            await running;
         });
 
-        it('throws the flag exception and reads nothing when the gate rejects', async () => {
+        it('throws the flag exception when the gate rejects', async () => {
+            userRepository.findOneActiveByEmail.mockResolvedValue(null);
             featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
                 new Error('flag')
             );
@@ -528,8 +481,6 @@ describe('UserPasswordService', () => {
             await expect(
                 service.prepareForgotPassword('hollow@example.com')
             ).rejects.toThrow('flag');
-
-            expect(userRepository.findOneActiveByEmail).not.toHaveBeenCalled();
         });
 
         it('returns the active user and a fresh reset payload when there is no previous request', async () => {
@@ -583,7 +534,7 @@ describe('UserPasswordService', () => {
         });
     });
 
-    describe('createForgotPassword', () => {
+    describe('createForgotPasswordInTx', () => {
         const forgotEffect: INotificationNotifyEffect = {
             queue: EnumNotificationQueue.notification,
             name: EnumNotificationProcess.notify,
@@ -605,15 +556,13 @@ describe('UserPasswordService', () => {
         const forgotEntry = buildActivityLogCreateManyEffect('activityLog');
 
         beforeEach(() => {
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
             notificationQueue.notify.mockReturnValue(forgotEffect);
             activityLogQueue.recordEffect.mockReturnValue(forgotEntry);
         });
 
-        it('replaces the unused requests and adds the forgotPassword effect and entry on one transaction', async () => {
-            await service.createForgotPassword(
+        it('replaces the unused requests and adds the forgotPassword effect and entry on the given tx', async () => {
+            await service.createForgotPasswordInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 'user-hollow',
@@ -646,7 +595,7 @@ describe('UserPasswordService', () => {
                 null,
                 null,
                 {
-                    action: EnumActivityLogAction.userForgotPassword,
+                    action: EnumActivityLogAction.userPasswordResetRequested,
                     userId: 'user-hollow',
                     createdBy: 'user-hollow',
                 }
@@ -667,7 +616,8 @@ describe('UserPasswordService', () => {
             );
 
             await expect(
-                service.createForgotPassword(
+                service.createForgotPasswordInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     'user-hollow',
@@ -686,27 +636,29 @@ describe('UserPasswordService', () => {
             user: baseUser,
         } as IUserForgotPassword;
 
-        it('validates changePassword.forgotAllowed before the read', async () => {
+        it('reads the active reset while the changePassword.forgotAllowed gate is still pending', async () => {
+            const gate = buildDeferred<void>();
             userForgotPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
                 reset
             );
-
-            await service.getOneActiveReset('raw-token');
-
-            expect(
-                featureFlagService.validateFeatureFlagMetadata
-            ).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.changePassword,
-                EnumFeatureFlagMetadataKey.forgotAllowed
+            featureFlagService.validateFeatureFlagMetadata.mockReturnValue(
+                gate.promise
             );
+
+            const running = service.getOneActiveReset('raw-token');
+
             expect(
-                featureFlagService.validateFeatureFlagMetadata
-            ).toHaveBeenCalledBefore(
                 userForgotPasswordRepository.findOneActiveByForgotPasswordToken
-            );
+            ).toHaveBeenCalled();
+
+            gate.resolve();
+            await running;
         });
 
-        it('throws the flag exception and reads nothing when the gate rejects', async () => {
+        it('throws the flag exception when the gate rejects', async () => {
+            userForgotPasswordRepository.findOneActiveByForgotPasswordToken.mockResolvedValue(
+                reset
+            );
             featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
                 new Error('flag')
             );
@@ -714,10 +666,6 @@ describe('UserPasswordService', () => {
             await expect(
                 service.getOneActiveReset('raw-token')
             ).rejects.toThrow('flag');
-
-            expect(
-                userForgotPasswordRepository.findOneActiveByForgotPasswordToken
-            ).not.toHaveBeenCalled();
         });
 
         it('hashes the token and returns the active request', async () => {

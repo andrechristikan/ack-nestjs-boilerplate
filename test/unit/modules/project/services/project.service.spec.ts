@@ -11,9 +11,6 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumActivityLogAction,
@@ -21,11 +18,9 @@ import {
 } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
-import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import type {
     IProjectCreate,
     IProjectUpdate,
@@ -33,7 +28,6 @@ import type {
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -46,12 +40,10 @@ import {
     buildUserContext,
     buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 
 describe('ProjectService', () => {
     const projectRepository: MockProxy<ProjectRepository> =
         mock<ProjectRepository>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -71,6 +63,7 @@ describe('ProjectService', () => {
         'project.slugPrefix': 'p-',
         'project.slugMaxLength': 30,
         'project.slugMaxAttempts': 5,
+        'project.delete.chunkSize': 50,
     };
 
     const baseProject: Project = {
@@ -93,7 +86,6 @@ describe('ProjectService', () => {
 
     beforeEach(async () => {
         activityLogQueue.recordEffect.mockReturnValue(entry);
-        databaseService.withTransaction.mockImplementation(fn => fn(tx));
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -101,7 +93,6 @@ describe('ProjectService', () => {
                 { provide: ProjectRepository, useValue: projectRepository },
                 ...TestUnitKitProviders,
                 ProjectUtil,
-                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 {
@@ -209,28 +200,23 @@ describe('ProjectService', () => {
         });
     });
 
-    describe('createProject', () => {
+    describe('createProjectInTx', () => {
         const create: IProjectCreate = {
             name: 'Website Revamp',
             description: null,
         };
 
-        beforeEach(() => {
-            vi.spyOn(
-                helperStringService,
-                'generateSlugCandidates'
-            ).mockReturnValue(['p-abc123', 'p-def456']);
-        });
-
-        it('creates the project on the first slug candidate and adds the creator entry on the same tx', async () => {
+        it('creates the project with the given slug and adds the creator entry on the given tx', async () => {
             projectRepository.createInTx.mockResolvedValue(baseProject);
 
-            const result = await service.createProject(
+            const result = await service.createProjectInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 '507f1f77bcf86cd799439012',
-                create
+                create,
+                'p-abc123'
             );
 
             expect(result).toBe(baseProject);
@@ -254,92 +240,10 @@ describe('ProjectService', () => {
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
-
-        it('retries with the next slug candidate after a slug collision', async () => {
-            const collision = buildPrismaKnownRequestError('P2002', 'slug');
-            databaseService.withTransaction
-                .mockRejectedValueOnce(collision)
-                .mockImplementationOnce(fn => fn(tx));
-            projectRepository.createInTx.mockResolvedValue(baseProject);
-
-            const result = await service.createProject(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                '507f1f77bcf86cd799439012',
-                create
-            );
-
-            expect(result).toBe(baseProject);
-            expect(projectRepository.createInTx).toHaveBeenCalledWith(
-                tx,
-                '507f1f77bcf86cd799439012',
-                create,
-                'p-def456'
-            );
-        });
-
-        it('wraps a non-collision failure in AppUnknownException without retrying', async () => {
-            const otherError = new Error('unexpected');
-            databaseService.withTransaction.mockRejectedValue(otherError);
-
-            await expect(
-                service.createProject(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    '507f1f77bcf86cd799439012',
-                    create
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: otherError,
-            });
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-        });
-
-        it('rethrows an AppBaseException without retrying', async () => {
-            const typed = new DatabaseUniqueValueGenerationFailedException();
-            databaseService.withTransaction.mockRejectedValue(typed);
-
-            await expect(
-                service.createProject(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    '507f1f77bcf86cd799439012',
-                    create
-                )
-            ).rejects.toBeInstanceOf(AppBaseException);
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-        });
-
-        it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
-            databaseService.withTransaction.mockRejectedValue(
-                buildPrismaKnownRequestError('P2002', 'slug')
-            );
-
-            await expect(
-                service.createProject(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    '507f1f77bcf86cd799439012',
-                    create
-                )
-            ).rejects.toMatchObject({
-                statusCode:
-                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
-
-                constructor: DatabaseUniqueValueGenerationFailedException,
-                module: 'database',
-            });
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
-        });
     });
 
-    describe('updateProject', () => {
-        it('updates the details and adds the entry on the same tx', async () => {
+    describe('updateProjectInTx', () => {
+        it('updates the details and adds the entry on the given tx', async () => {
             const project = baseProject;
             const updated = { ...baseProject, name: 'New Name' };
             projectRepository.updateDetailsInTx.mockResolvedValue(updated);
@@ -348,7 +252,8 @@ describe('ProjectService', () => {
                 description: null,
             };
 
-            const result = await service.updateProject(
+            const result = await service.updateProjectInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -378,101 +283,36 @@ describe('ProjectService', () => {
         });
     });
 
-    describe('updateProjectSlug', () => {
-        it('throws ProjectSlugInvalidException when the slug has an upper-case letter', async () => {
-            await expect(
-                service.updateProjectSlug(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    baseProject,
-                    'Acme'
-                )
-            ).rejects.toMatchObject({
+    describe('assertSlugAllowed', () => {
+        it('throws ProjectSlugInvalidException when the slug is not allowed', () => {
+            let captured: unknown;
+            try {
+                service.assertSlugAllowed('invalid slug!');
+            } catch (error) {
+                captured = error;
+            }
+
+            expect(captured).toMatchObject({
                 module: 'project',
                 statusCode: EnumProjectStatusCodeError.slugInvalid,
             });
-            expect(projectRepository.updateSlugInTx).not.toHaveBeenCalled();
         });
 
-        it('throws ProjectSlugInvalidException when the slug is not allowed', async () => {
-            const project = baseProject;
-
-            await expect(
-                service.updateProjectSlug(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    project,
-                    'invalid slug!'
-                )
-            ).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.slugInvalid,
-            });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        it('does not throw for a slug within length and matching the pattern', () => {
+            expect(() =>
+                service.assertSlugAllowed('p-valid-slug')
+            ).not.toThrow();
         });
+    });
 
-        it('throws ProjectSlugAlreadyExistsException when the write collides on the slug index', async () => {
-            const project = baseProject;
-            const collision = buildPrismaKnownRequestError('P2002', 'slug');
-            projectRepository.updateSlugInTx.mockRejectedValue(collision);
-
-            await expect(
-                service.updateProjectSlug(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    project,
-                    'p-taken'
-                )
-            ).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.slugAlreadyExists,
-            });
-        });
-
-        it('rethrows an AppBaseException thrown inside the transaction as is', async () => {
-            const project = baseProject;
-            const thrown = new ProjectNotFoundException();
-            projectRepository.updateSlugInTx.mockRejectedValue(thrown);
-
-            await expect(
-                service.updateProjectSlug(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    project,
-                    'p-new-slug'
-                )
-            ).rejects.toBe(thrown);
-        });
-
-        it('wraps a non-collision write error in AppUnknownException', async () => {
-            const project = baseProject;
-            const otherError = new Error('unexpected');
-            projectRepository.updateSlugInTx.mockRejectedValue(otherError);
-
-            await expect(
-                service.updateProjectSlug(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    project,
-                    'p-new-slug'
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: otherError,
-            });
-        });
-
-        it('updates the slug when it is allowed and adds the entry on the same tx', async () => {
+    describe('updateProjectSlugInTx', () => {
+        it('updates the slug and adds the entry on the given tx', async () => {
             const project = baseProject;
             const updated = { ...baseProject, slug: 'p-new-slug' };
             projectRepository.updateSlugInTx.mockResolvedValue(updated);
 
-            const result = await service.updateProjectSlug(
+            const result = await service.updateProjectSlugInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -544,26 +384,25 @@ describe('ProjectService', () => {
         });
     });
 
-    describe('softDeleteByWorkspaceInTx', () => {
-        it('delegates to the repository with the given transaction', async () => {
-            const tx: MockProxy<IDatabaseTransactionClient> =
-                mock<IDatabaseTransactionClient>();
+    describe('softDeleteChunkByWorkspace', () => {
+        it('passes the delete chunk size to the repository and returns the count it read', async () => {
             const deletedAt = new Date('2026-02-01T00:00:00.000Z');
+            projectRepository.softDeleteChunkByWorkspace.mockResolvedValue(7);
 
-            await service.softDeleteByWorkspaceInTx(
-                tx,
+            const result = await service.softDeleteChunkByWorkspace(
                 '507f1f77bcf86cd799439012',
                 deletedAt,
                 '507f1f77bcf86cd799439015'
             );
 
+            expect(result).toBe(7);
             expect(
-                projectRepository.softDeleteByWorkspaceInTx
+                projectRepository.softDeleteChunkByWorkspace
             ).toHaveBeenCalledWith(
-                tx,
                 '507f1f77bcf86cd799439012',
                 deletedAt,
-                '507f1f77bcf86cd799439015'
+                '507f1f77bcf86cd799439015',
+                50
             );
         });
     });
@@ -640,7 +479,7 @@ describe('ProjectService', () => {
                 .spyOn(helperStringService, 'generateSlugCandidates')
                 .mockReturnValue(candidates);
 
-            const result = service['drawSlugCandidates']();
+            const result = service.drawSlugCandidates();
 
             expect(result).toBe(candidates);
             expect(generateSlugCandidates).toHaveBeenCalledWith('p-', 30, 5);

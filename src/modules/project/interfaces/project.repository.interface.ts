@@ -54,10 +54,10 @@ export interface IProjectRepository {
         deletedAt: Date,
         deletedBy: string
     ): Promise<boolean>;
-    softDeleteByWorkspaceInTx(
-        tx: IDatabaseTransactionClient,
+    softDeleteChunkByWorkspace(
         workspaceId: string,
         deletedAt: Date,
-        deletedBy: string
-    ): Promise<void>;
+        deletedBy: string,
+        take: number
+    ): Promise<number>;
 }

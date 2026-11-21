@@ -19,8 +19,8 @@ Who opens a transaction, guarded statements, and retries: `transaction.md`.
 
 - A result is fetched by one statement, never by a first query whose rows drive a second: ids then details, a query per row, a little data first and an aggregate after. A parent and its children are one builder call: `include`, a nested `select`, or a relation filter on the model holding the selective predicate.
 - A repository outside `src/modules/analytic/` uses the Prisma builder; where no single builder call fetches the result, it runs one `aggregateRaw` pipeline, as an analytic repository does (`analytic.md`, One statement): an id enters through `DatabaseUtil.toObjectId` and a `Date` through `DatabaseUtil.toDate`, a list cuts its page inside the pipeline, and `<Module><Computation>PipelineSchema` (`<module>.constant.ts`) parses the result into its `I*` shape, a parse failure throwing `AppUnknownException`. No `findRaw`, `$queryRaw`, or `$executeRaw`. `$runCommandRaw({ ping: 1 })` belongs to `DatabaseService` and the database health indicator.
-- Reads of different subjects stay separate statements, concurrent off a `tx` (`concurrency.md`). A write issues the statements its flow needs; a read that checks its row first, and ids it reads for its `updateMany`, are part of the write.
-- A row a guard loaded is never read again: `use-case.md`, Shape.
+- Reads of different subjects stay separate statements, concurrent where independent (`concurrency.md`). A write issues the statements its flow needs; a read that checks its row first, and ids it reads for its `updateMany`, are part of the write.
+- A row a guard loaded is never read again: `guards.md`, Contexts.
 - An update writes every field as given: `null-safety.md`, Update and create.
 
 ## Schema

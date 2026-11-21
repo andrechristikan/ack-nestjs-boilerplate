@@ -30,25 +30,12 @@ export interface IWorkspaceMemberRepository {
     findByIdAndWorkspace(
         workspaceMemberId: string,
         workspaceId: string
-    ): Promise<WorkspaceMember | null>;
-    findByIdAndWorkspaceInTx(
-        tx: IDatabaseTransactionClient,
-        workspaceMemberId: string,
-        workspaceId: string
     ): Promise<IWorkspaceMemberWithEmail | null>;
     findWorkspaceIdsByUser(
         userId: string,
         role: EnumWorkspaceMemberRole | null
     ): Promise<string[]>;
-    findWorkspaceIdsByUserInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        role: EnumWorkspaceMemberRole | null
-    ): Promise<string[]>;
-    countOwnedActiveByUserInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string
-    ): Promise<number>;
+    countOwnedActiveByUser(userId: string): Promise<number>;
     findWithPaginationOffset(
         workspaceId: string,
         { where, ...others }: IPaginationQueryOffsetParams,

@@ -32,6 +32,8 @@ import {
     EnumTermPolicyProcess,
     EnumTermPolicyQueue,
 } from '@modules/term-policy/enums/term-policy.enum';
+import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -147,6 +149,29 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
     });
 
     describe('execute', () => {
+        it('answers AwsSesNotConfiguredException before any read, write, or transaction when SES is unset', async () => {
+            termPolicyService.assertEmailDeliverable.mockImplementation(() => {
+                throw new AwsSesNotConfiguredException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'term-policy-1'
+                )
+            ).rejects.toMatchObject({
+                module: 'aws',
+                statusCode: EnumAwsStatusCodeError.sesNotConfigured,
+            });
+            expect(
+                termPolicyService.getPublishedByAdmin
+            ).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+        });
+
         it('adds the resend row and the activity entry in one addMany for a published policy', async () => {
             termPolicyService.getPublishedByAdmin.mockResolvedValue(
                 publishedTermPolicy
@@ -175,7 +200,7 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminTermPolicyResendEmail,
+                    action: EnumActivityLogAction.adminTermPolicyEmailResent,
                     metadata,
                 }
             );
@@ -185,6 +210,23 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                 resendEffect,
                 entryEffect,
             ]);
+        });
+
+        it('builds the activity entry inside the transaction, after the resend effect', async () => {
+            termPolicyService.getPublishedByAdmin.mockResolvedValue(
+                publishedTermPolicy
+            );
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'term-policy-1'
+            );
+
+            expect(databaseService.withTransaction).toHaveBeenCalledBefore(
+                activityLogQueue.recordEffect
+            );
         });
 
         it('lets a failed insert propagate unchanged', async () => {

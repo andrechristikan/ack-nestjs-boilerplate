@@ -1,3 +1,5 @@
+import { setImmediate } from 'node:timers/promises';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -26,17 +28,14 @@ import { FileSniffSizeInBytes } from '@common/file/constants/file.constant';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import type { IFile } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
-import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type { IUserProfile } from '@modules/user/interfaces/user.interface';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IUserDeletePhotoEffect } from '@modules/user/interfaces/user.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserQueue } from '@modules/user/queues/user.queue';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
@@ -48,22 +47,15 @@ import {
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserService } from '@modules/user/services/user.service';
-import { FileExtensionInvalidException } from '@common/file/exceptions/file.extension-invalid.exception';
-import { UserUsernameNotAllowedException } from '@modules/user/exceptions/user.username-not-allowed.exception';
-import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
-import type { IUserCheckUsername } from '@modules/user/interfaces/user.interface';
+import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('UserProfileService', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
-    const userService: MockProxy<UserService> = mock<UserService>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const fileService: MockProxy<FileService> = mock<FileService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -173,17 +165,13 @@ describe('UserProfileService', () => {
     beforeEach(async () => {
         activityLogQueue.recordEffect.mockReturnValue(entry);
         userQueue.deletePhotoEffect.mockReturnValue(deletePhotoEffect);
-        userRepository.findOneById.mockResolvedValue(profile);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserProfileService,
                 { provide: UserRepository, useValue: userRepository },
-                { provide: UserService, useValue: userService },
                 { provide: AwsS3Service, useValue: awsS3Service },
                 { provide: FileService, useValue: fileService },
-                DatabaseUtil,
-                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: UserQueue, useValue: userQueue },
@@ -194,23 +182,6 @@ describe('UserProfileService', () => {
             ],
         }).compile();
         service = module.get(UserProfileService);
-    });
-
-    describe('getProfile', () => {
-        it('returns the active profile', async () => {
-            userRepository.findOneActiveProfileById.mockResolvedValue(profile);
-
-            await expect(service.getProfile(profile.id)).resolves.toBe(profile);
-        });
-
-        it('throws UserNotFoundException when the profile is missing', async () => {
-            userRepository.findOneActiveProfileById.mockResolvedValue(null);
-
-            await expect(service.getProfile('missing')).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-            });
-        });
     });
 
     describe('updateProfileInTx', () => {
@@ -311,7 +282,7 @@ describe('UserProfileService', () => {
         });
     });
 
-    describe('updatePhotoProfile', () => {
+    describe('checkPhotoProfile', () => {
         const aws: IAwsS3 = {
             bucket: 'bucket',
             key: 'photo-profile/user-persimmon/random.png',
@@ -326,65 +297,36 @@ describe('UserProfileService', () => {
         const head = Buffer.from('persimmon-head');
 
         beforeEach(() => {
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
             awsS3Service.getItemBytes.mockResolvedValue(head);
             fileService.isContentOfExtension.mockResolvedValue(true);
         });
 
-        it('adds the delete effect then throws UserPhotoContentInvalidException when the head is not the extension, touching no user row', async () => {
+        it('returns an invalid check without writing when the head is not the extension', async () => {
             awsS3Service.checkItem.mockResolvedValue(aws);
             fileService.isContentOfExtension.mockResolvedValue(false);
 
-            const call = service.updatePhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                { key: aws.key }
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.photoContentInvalid,
+            await expect(
+                service.checkPhotoProfile(authContext, { key: aws.key })
+            ).resolves.toEqual({
+                isContentValid: false,
+                photo: aws,
             });
             expect(fileService.isContentOfExtension).toHaveBeenCalledWith(
                 head,
                 aws.extension
             );
-            expect(userQueue.deletePhotoEffect).toHaveBeenCalledWith(
-                profile.id,
-                aws
-            );
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                deletePhotoEffect
-            );
-            expect(userRepository.findOneById).not.toHaveBeenCalled();
-            expect(
-                userRepository.updatePhotoProfileInTx
-            ).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('reads the head with the key, the configured sniff size, and the public access', async () => {
             awsS3Service.checkItem.mockResolvedValue(aws);
 
-            await service.updatePhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                { key: aws.key }
-            );
+            await service.checkPhotoProfile(authContext, { key: aws.key });
 
             expect(awsS3Service.getItemBytes).toHaveBeenCalledWith(
                 aws.key,
                 FileSniffSizeInBytes,
                 { access: EnumAwsS3Accessibility.public }
-            );
-            expect(outboxService.addInTx).not.toHaveBeenCalledWith(
-                tx,
-                deletePhotoEffect
             );
         });
 
@@ -392,50 +334,25 @@ describe('UserProfileService', () => {
             awsS3Service.checkItem.mockResolvedValue(aws);
             awsS3Service.getItemBytes.mockResolvedValue(null);
 
-            const call = service.updatePhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                { key: aws.key }
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                service.checkPhotoProfile(authContext, { key: aws.key })
+            ).rejects.toMatchObject({
                 module: 'aws',
-
                 statusCode: EnumAwsStatusCodeError.s3NotConfigured,
             });
-            expect(
-                userRepository.updatePhotoProfileInTx
-            ).not.toHaveBeenCalled();
         });
 
-        it('heads the uploaded object and stores the headed item', async () => {
+        it('heads the uploaded object, returns the headed item, and never reads the user', async () => {
             awsS3Service.checkItem.mockResolvedValue(aws);
 
-            await service.updatePhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                { key: aws.key }
-            );
-
+            await expect(
+                service.checkPhotoProfile(authContext, { key: aws.key })
+            ).resolves.toEqual({ isContentValid: true, photo: aws });
             expect(awsS3Service.checkItem).toHaveBeenCalledWith(aws.key, {
                 access: EnumAwsS3Accessibility.public,
             });
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(userRepository.updatePhotoProfileInTx).toHaveBeenCalledWith(
-                tx,
-                profile.id,
-                aws
-            );
-            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null,
-                { action: EnumActivityLogAction.userUpdatePhotoProfile }
-            );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
+            expect(userRepository.findOneById).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('caps the size of the headed object, not a client size', async () => {
@@ -444,64 +361,182 @@ describe('UserProfileService', () => {
                 size: photoMaxSizeInBytes + 1,
             });
 
-            const call = service.updatePhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                {
-                    key: aws.key,
-                }
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                service.checkPhotoProfile(authContext, { key: aws.key })
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.photoSizeExceeded,
             });
-            expect(
-                userRepository.updatePhotoProfileInTx
-            ).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('throws UserPhotoKeyInvalidException and writes nothing when the object was never uploaded', async () => {
+        it('reads the head bytes while the object check is still pending', async () => {
+            const itemCheck = buildDeferred<IAwsS3>();
+            awsS3Service.checkItem.mockReturnValue(itemCheck.promise);
+
+            const running = service.checkPhotoProfile(authContext, {
+                key: aws.key,
+            });
+
+            expect(awsS3Service.getItemBytes).toHaveBeenCalledWith(
+                aws.key,
+                FileSniffSizeInBytes,
+                { access: EnumAwsS3Accessibility.public }
+            );
+
+            itemCheck.resolve(aws);
+            await running;
+        });
+
+        it('throws UserPhotoKeyInvalidException when the object was never uploaded', async () => {
             awsS3Service.checkItem.mockRejectedValue(
                 new NotFound({ message: 'missing', $metadata: {} })
             );
 
-            const call = service.updatePhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                {
-                    key: aws.key,
-                }
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                service.checkPhotoProfile(authContext, { key: aws.key })
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.photoKeyInvalid,
             });
-            expect(
-                userRepository.updatePhotoProfileInTx
-            ).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('writes the photo and adds the previous photo delete row on one outbox tx when a different photo exists', async () => {
-            awsS3Service.checkItem.mockResolvedValue(aws);
-            userRepository.findOneById.mockResolvedValue({
-                ...profile,
-                photo: previousPhoto,
-            });
+        it.each([
+            'photo-profile/user-other/random.png',
+            'photo-profile/user-persimmon-sibling/random.png',
+            'term-policies/privacy/1/en.pdf',
+        ])(
+            'throws UserPhotoKeyInvalidException and heads nothing when the key %s is outside the user photo path',
+            async foreignKey => {
+                await expect(
+                    service.checkPhotoProfile(authContext, {
+                        key: foreignKey,
+                    })
+                ).rejects.toMatchObject({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.photoKeyInvalid,
+                });
+                expect(awsS3Service.checkItem).not.toHaveBeenCalled();
+            }
+        );
 
-            await service.updatePhotoProfile(
+        it('throws AwsS3NotConfiguredException when S3 is not initialized', async () => {
+            awsS3Service.checkItem.mockResolvedValue(null);
+
+            await expect(
+                service.checkPhotoProfile(authContext, { key: aws.key })
+            ).rejects.toMatchObject({
+                module: 'aws',
+                statusCode: EnumAwsStatusCodeError.s3NotConfigured,
+            });
+        });
+
+        it('rethrows an AppBaseException raised while checking', async () => {
+            const error = new UserNotFoundException();
+            awsS3Service.checkItem.mockRejectedValue(error);
+
+            await expect(
+                service.checkPhotoProfile(authContext, { key: aws.key })
+            ).rejects.toBe(error);
+        });
+
+        it('wraps an unknown error raised while checking', async () => {
+            const error = new Error('boom');
+            awsS3Service.checkItem.mockRejectedValue(error);
+
+            await expect(
+                service.checkPhotoProfile(authContext, { key: aws.key })
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: error,
+            });
+        });
+    });
+
+    describe('assertPhotoContentValid', () => {
+        const aws: IAwsS3 = {
+            bucket: 'bucket',
+            key: 'photo-profile/user-persimmon/random.png',
+            cdnUrl: null,
+            completedUrl: 'https://cdn.example.com/random.png',
+            mime: 'image/png',
+            extension: 'png',
+            access: EnumAwsS3Accessibility.public,
+            size: 2048,
+        };
+
+        it('throws UserPhotoContentInvalidException for invalid content', () => {
+            expect(() =>
+                service.assertPhotoContentValid({
+                    isContentValid: false,
+                    photo: aws,
+                })
+            ).toThrowError(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.photoContentInvalid,
+                })
+            );
+        });
+
+        it('returns for valid content', () => {
+            expect(() =>
+                service.assertPhotoContentValid({
+                    isContentValid: true,
+                    photo: aws,
+                })
+            ).not.toThrow();
+        });
+    });
+
+    describe('deleteRejectedPhotoInTx', () => {
+        it('adds the delete effect of the rejected photo on the given tx', async () => {
+            const aws: IAwsS3 = {
+                bucket: 'bucket',
+                key: 'photo-profile/user-persimmon/random.png',
+                cdnUrl: null,
+                completedUrl: 'https://cdn.example.com/random.png',
+                mime: 'image/png',
+                extension: 'png',
+                access: EnumAwsS3Accessibility.public,
+                size: 2048,
+            };
+
+            await service.deleteRejectedPhotoInTx(tx, profile.id, aws);
+
+            expect(userQueue.deletePhotoEffect).toHaveBeenCalledWith(
+                profile.id,
+                aws
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                deletePhotoEffect
+            );
+        });
+    });
+
+    describe('replacePhotoProfileInTx', () => {
+        const aws: IAwsS3 = {
+            bucket: 'bucket',
+            key: 'photo-profile/user-persimmon/random.png',
+            cdnUrl: null,
+            completedUrl: 'https://cdn.example.com/random.png',
+            mime: 'image/png',
+            extension: 'png',
+            access: EnumAwsS3Accessibility.public,
+            size: 2048,
+        };
+
+        it('writes the photo and adds the previous photo delete row and the entry on the given tx when a different photo exists', async () => {
+            await service.replacePhotoProfileInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                { key: aws.key }
+                previousPhoto,
+                aws
             );
 
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userRepository.updatePhotoProfileInTx).toHaveBeenCalledWith(
                 tx,
                 profile.id,
@@ -518,47 +553,56 @@ describe('UserProfileService', () => {
             expect(outboxService.addInTx).toHaveBeenCalledAfter(
                 userRepository.updatePhotoProfileInTx
             );
-        });
-
-        it.each([
-            'photo-profile/user-other/random.png',
-            'photo-profile/user-persimmon-sibling/random.png',
-            'term-policies/privacy/1/en.pdf',
-        ])(
-            'throws UserPhotoKeyInvalidException and heads nothing when the key %s is outside the user photo path',
-            async foreignKey => {
-                const call = service.updatePhotoProfile(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    {
-                        key: foreignKey,
-                    }
-                );
-
-                await expect(call).rejects.toMatchObject({
-                    module: 'user',
-                    statusCode: EnumUserStatusCodeError.photoKeyInvalid,
-                });
-                expect(awsS3Service.checkItem).not.toHaveBeenCalled();
-                expect(
-                    userRepository.updatePhotoProfileInTx
-                ).not.toHaveBeenCalled();
-                expect(outboxService.addInTx).not.toHaveBeenCalled();
-            }
-        );
-
-        it('adds no row when the user has no previous photo', async () => {
-            awsS3Service.checkItem.mockResolvedValue(aws);
-
-            await service.updatePhotoProfile(
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
                 authContext,
-                { key: aws.key }
+                null,
+                { action: EnumActivityLogAction.userPhotoProfileUpdated }
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
+        });
+
+        it('adds the previous photo delete row while the photo write is pending and adds no entry when it fails', async () => {
+            const written = buildDeferred<never>();
+            const failure = new Error('write failed');
+            userRepository.updatePhotoProfileInTx.mockReturnValue(
+                written.promise
+            );
+
+            const running = service.replacePhotoProfileInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                previousPhoto,
+                aws
+            );
+            await setImmediate();
+
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                deletePhotoEffect
+            );
+
+            written.reject(failure);
+
+            await expect(running).rejects.toBe(failure);
+            expect(outboxService.addInTx).not.toHaveBeenCalledWith(tx, entry);
+        });
+
+        it('adds only the entry when the user has no previous photo', async () => {
+            await service.replacePhotoProfileInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                aws
             );
 
             expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
 
         it.each([
@@ -566,128 +610,36 @@ describe('UserProfileService', () => {
             'photo-profile/user-persimmon-sibling/previous.png',
             'term-policies/privacy/1/en.pdf',
         ])(
-            'adds no row when the previous photo key %s sits outside the user prefix',
+            'adds no delete row when the previous photo key %s sits outside the user prefix',
             async foreignKey => {
-                awsS3Service.checkItem.mockResolvedValue(aws);
-                userRepository.findOneById.mockResolvedValue({
-                    ...profile,
-                    photo: { ...previousPhoto, key: foreignKey },
-                });
-
-                await service.updatePhotoProfile(
+                await service.replacePhotoProfileInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    { key: aws.key }
+                    { ...previousPhoto, key: foreignKey },
+                    aws
                 );
 
                 expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
             }
         );
 
-        it('adds no row when the previous photo has the same key', async () => {
-            awsS3Service.checkItem.mockResolvedValue(aws);
-            userRepository.findOneById.mockResolvedValue({
-                ...profile,
-                photo: { ...previousPhoto, key: aws.key },
-            });
-
-            await service.updatePhotoProfile(
+        it('adds no delete row when the previous photo has the same key', async () => {
+            await service.replacePhotoProfileInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                { key: aws.key }
+                { ...previousPhoto, key: aws.key },
+                aws
             );
 
             expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
         });
-
-        it('adds no row and writes nothing when the user is missing', async () => {
-            awsS3Service.checkItem.mockResolvedValue(aws);
-            userRepository.findOneById.mockResolvedValue(null);
-
-            const rejection = service.updatePhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                {
-                    key: aws.key,
-                }
-            );
-
-            await expect(rejection).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-            });
-            expect(
-                userRepository.updatePhotoProfileInTx
-            ).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws AwsS3NotConfiguredException when S3 is not initialized', async () => {
-            awsS3Service.checkItem.mockResolvedValue(null);
-
-            const call = service.updatePhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                {
-                    key: aws.key,
-                }
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'aws',
-                statusCode: EnumAwsStatusCodeError.s3NotConfigured,
-            });
-            expect(
-                userRepository.updatePhotoProfileInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('rethrows an AppBaseException raised while updating', async () => {
-            const error = new UserNotFoundException();
-            awsS3Service.checkItem.mockRejectedValue(error);
-
-            const call = service.updatePhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                {
-                    key: aws.key,
-                }
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised while updating', async () => {
-            const error = new Error('boom');
-            awsS3Service.checkItem.mockRejectedValue(error);
-
-            const call = service.updatePhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                {
-                    key: aws.key,
-                }
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: error,
-            });
-        });
     });
 
-    describe('uploadPhotoProfile', () => {
+    describe('prepareUploadPhotoProfile', () => {
         const file = {
             originalname: 'photo.png',
             size: 2048,
@@ -704,211 +656,52 @@ describe('UserProfileService', () => {
             size: 2048,
         };
 
-        beforeEach(() => {
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
-        });
-
-        it('uploads the file', async () => {
+        it('uploads the file and returns the photo without reading the user', async () => {
             fileService.extractExtensionFromFilename.mockReturnValue(
                 EnumFileExtensionImage.png
             );
-            fileService.createRandomFilename.mockReturnValue(
-                'photo-profile/user-persimmon/random.png'
-            );
+            fileService.createRandomFilename.mockReturnValue(aws.key);
             awsS3Service.putItem.mockResolvedValue(aws);
 
-            await service.uploadPhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                file
-            );
-
+            await expect(
+                service.prepareUploadPhotoProfile(authContext, file)
+            ).resolves.toEqual(aws);
             expect(awsS3Service.putItem).toHaveBeenCalledWith(
                 {
-                    key: 'photo-profile/user-persimmon/random.png',
+                    key: aws.key,
                     size: file.size,
                     file: file.buffer,
                 },
                 { access: EnumAwsS3Accessibility.public }
             );
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(userRepository.updatePhotoProfileInTx).toHaveBeenCalledWith(
-                tx,
-                profile.id,
-                aws
-            );
+            expect(userRepository.findOneById).not.toHaveBeenCalled();
         });
 
         it('throws FileExtensionInvalidException for an extension outside the image list', async () => {
             fileService.extractExtensionFromFilename.mockReturnValue('exe');
 
-            const call = service.uploadPhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                file
-            );
-
-            await expect(call).rejects.toBeInstanceOf(
-                FileExtensionInvalidException
-            );
+            await expect(
+                service.prepareUploadPhotoProfile(authContext, file)
+            ).rejects.toMatchObject({
+                module: 'file',
+                statusCode: EnumFileStatusCodeError.extensionInvalid,
+            });
             expect(awsS3Service.putItem).not.toHaveBeenCalled();
-        });
-
-        it('writes the photo and adds the previous photo delete row on one outbox tx when a different photo exists', async () => {
-            fileService.extractExtensionFromFilename.mockReturnValue(
-                EnumFileExtensionImage.png
-            );
-            fileService.createRandomFilename.mockReturnValue(aws.key);
-            awsS3Service.putItem.mockResolvedValue(aws);
-            userRepository.findOneById.mockResolvedValue({
-                ...profile,
-                photo: previousPhoto,
-            });
-
-            await service.uploadPhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                file
-            );
-
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(userRepository.updatePhotoProfileInTx).toHaveBeenCalledWith(
-                tx,
-                profile.id,
-                aws
-            );
-            expect(userQueue.deletePhotoEffect).toHaveBeenCalledWith(
-                profile.id,
-                previousPhoto
-            );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                deletePhotoEffect
-            );
-            expect(outboxService.addInTx).toHaveBeenCalledAfter(
-                userRepository.updatePhotoProfileInTx
-            );
-        });
-
-        it('adds no row when the user has no previous photo', async () => {
-            fileService.extractExtensionFromFilename.mockReturnValue(
-                EnumFileExtensionImage.png
-            );
-            fileService.createRandomFilename.mockReturnValue(aws.key);
-            awsS3Service.putItem.mockResolvedValue(aws);
-
-            await service.uploadPhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                file
-            );
-
-            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
-        });
-
-        it.each([
-            'photo-profile/user-other/previous.png',
-            'photo-profile/user-persimmon-sibling/previous.png',
-            'term-policies/privacy/1/en.pdf',
-        ])(
-            'adds no row when the previous photo key %s sits outside the user prefix',
-            async foreignKey => {
-                fileService.extractExtensionFromFilename.mockReturnValue(
-                    EnumFileExtensionImage.png
-                );
-                fileService.createRandomFilename.mockReturnValue(aws.key);
-                awsS3Service.putItem.mockResolvedValue(aws);
-                userRepository.findOneById.mockResolvedValue({
-                    ...profile,
-                    photo: { ...previousPhoto, key: foreignKey },
-                });
-
-                await service.uploadPhotoProfile(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    file
-                );
-
-                expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
-            }
-        );
-
-        it('adds no row when the previous photo has the same key', async () => {
-            fileService.extractExtensionFromFilename.mockReturnValue(
-                EnumFileExtensionImage.png
-            );
-            fileService.createRandomFilename.mockReturnValue(aws.key);
-            awsS3Service.putItem.mockResolvedValue(aws);
-            userRepository.findOneById.mockResolvedValue({
-                ...profile,
-                photo: { ...previousPhoto, key: aws.key },
-            });
-
-            await service.uploadPhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                file
-            );
-
-            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
-        });
-
-        it('adds no row and writes nothing when the user is missing', async () => {
-            fileService.extractExtensionFromFilename.mockReturnValue(
-                EnumFileExtensionImage.png
-            );
-            fileService.createRandomFilename.mockReturnValue(aws.key);
-            awsS3Service.putItem.mockResolvedValue(aws);
-            userRepository.findOneById.mockResolvedValue(null);
-
-            const rejection = service.uploadPhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                file
-            );
-
-            await expect(rejection).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-            });
-            expect(
-                userRepository.updatePhotoProfileInTx
-            ).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('throws AwsS3NotConfiguredException when S3 answers null', async () => {
             fileService.extractExtensionFromFilename.mockReturnValue(
                 EnumFileExtensionImage.png
             );
-            fileService.createRandomFilename.mockReturnValue(
-                'photo-profile/user-persimmon/random.png'
-            );
+            fileService.createRandomFilename.mockReturnValue(aws.key);
             awsS3Service.putItem.mockResolvedValue(null);
 
-            const call = service.uploadPhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                file
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                service.prepareUploadPhotoProfile(authContext, file)
+            ).rejects.toMatchObject({
                 module: 'aws',
                 statusCode: EnumAwsStatusCodeError.s3NotConfigured,
             });
-            expect(
-                userRepository.updatePhotoProfileInTx
-            ).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException raised during upload', async () => {
@@ -917,18 +710,9 @@ describe('UserProfileService', () => {
                 throw error;
             });
 
-            const call = service.uploadPhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                file
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-            });
-            await expect(call).rejects.toBe(error);
+            await expect(
+                service.prepareUploadPhotoProfile(authContext, file)
+            ).rejects.toBe(error);
         });
 
         it('wraps an unknown error raised during upload', async () => {
@@ -937,14 +721,9 @@ describe('UserProfileService', () => {
                 throw error;
             });
 
-            const call = service.uploadPhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                file
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                service.prepareUploadPhotoProfile(authContext, file)
+            ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
                 rawError: error,
@@ -957,59 +736,28 @@ describe('UserProfileService', () => {
                 size: photoMaxSizeInBytes + 1,
             } as IFile;
 
-            const call = service.uploadPhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                oversizedFile
-            );
-
-            await expect(call).rejects.toMatchObject({
+            await expect(
+                service.prepareUploadPhotoProfile(authContext, oversizedFile)
+            ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.photoSizeExceeded,
             });
             expect(awsS3Service.putItem).not.toHaveBeenCalled();
-            expect(
-                userRepository.updatePhotoProfileInTx
-            ).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 
-    describe('claimUsername', () => {
+    describe('claimUsernameInTx', () => {
         const username: Lowercase<string> = 'persimmon';
-        const available: IUserCheckUsername = {
-            pattern: false,
-            badWord: false,
-            exist: false,
-        };
-        const taken: IUserCheckUsername = {
-            pattern: true,
-            badWord: true,
-            exist: true,
-        };
 
-        beforeEach(() => {
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
-        });
-
-        it('claims the username', async () => {
-            userService.checkUsername.mockResolvedValue(available);
-
-            await service.claimUsername(
+        it('claims the username and adds the entry on the given tx', async () => {
+            await service.claimUsernameInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 username
             );
 
-            expect(userService.checkUsername).toHaveBeenCalledWith(username);
-            expect(userService.assertUsernameAvailable).toHaveBeenCalledWith(
-                available
-            );
-            expect(userRepository.existsByUsername).not.toHaveBeenCalled();
             expect(userRepository.claimUsernameInTx).toHaveBeenCalledWith(
                 tx,
                 profile.id,
@@ -1020,122 +768,12 @@ describe('UserProfileService', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userClaimUsername }
+                { action: EnumActivityLogAction.userUsernameClaimed }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
-        });
-
-        it('throws UserUsernameNotAllowedException when the pattern rejects it', async () => {
-            userService.checkUsername.mockResolvedValue(taken);
-            userService.assertUsernameAvailable.mockImplementation(() => {
-                throw new UserUsernameNotAllowedException();
-            });
-
-            const call = service.claimUsername(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'bad name'
+            expect(outboxService.addInTx).toHaveBeenCalledAfter(
+                userRepository.claimUsernameInTx
             );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameNotAllowed,
-            });
-        });
-
-        it('throws UserUsernameContainBadWordException when the word is blocked', async () => {
-            userService.checkUsername.mockResolvedValue(taken);
-            userService.assertUsernameAvailable.mockImplementation(() => {
-                throw new UserUsernameContainBadWordException();
-            });
-
-            const call = service.claimUsername(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'damn'
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameContainBadWord,
-            });
-        });
-
-        it('throws UserUsernameExistException when the username is taken', async () => {
-            userService.checkUsername.mockResolvedValue(taken);
-            userService.assertUsernameAvailable.mockImplementation(() => {
-                throw new UserUsernameExistException();
-            });
-
-            const call = service.claimUsername(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                username
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameExist,
-            });
-        });
-
-        it('maps a username unique collision to UserUsernameExistException', async () => {
-            userService.checkUsername.mockResolvedValue(available);
-            const collision = buildPrismaKnownRequestError('P2002', 'username');
-            userRepository.claimUsernameInTx.mockRejectedValue(collision);
-
-            const call = service.claimUsername(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                username
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameExist,
-            });
-        });
-
-        it('rethrows an AppBaseException raised while claiming', async () => {
-            userService.checkUsername.mockResolvedValue(available);
-            const error = new UserUsernameExistException();
-            userRepository.claimUsernameInTx.mockRejectedValue(error);
-
-            const call = service.claimUsername(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                username
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameExist,
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised while claiming', async () => {
-            userService.checkUsername.mockResolvedValue(available);
-            const error = new Error('boom');
-            userRepository.claimUsernameInTx.mockRejectedValue(error);
-
-            const call = service.claimUsername(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                username
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: error,
-            });
         });
     });
 

@@ -42,6 +42,9 @@ export interface ITermPolicyRepository {
         types: EnumTermPolicyType[],
         userId: string
     ): Promise<ITermPolicyRefAcceptance[]>;
+    findLatestPublishedByTypes(
+        types: EnumTermPolicyType[]
+    ): Promise<ITermPolicyRef[]>;
     findLatestPublishedByTypesInTx(
         tx: IDatabaseTransactionClient,
         types: EnumTermPolicyType[]
@@ -105,8 +108,7 @@ export interface ITermPolicyRepository {
         type: EnumTermPolicyType,
         belowVersion: number
     ): Promise<number>;
-    existsNewerPublishedInTx(
-        tx: IDatabaseTransactionClient,
+    existsNewerPublished(
         type: EnumTermPolicyType,
         version: number
     ): Promise<boolean>;

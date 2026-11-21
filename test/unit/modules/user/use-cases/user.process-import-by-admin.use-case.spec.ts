@@ -1,3 +1,5 @@
+import { setImmediate } from 'node:timers/promises';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
@@ -6,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
+import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
@@ -336,6 +338,30 @@ describe('UserProcessImportByAdminUseCase', () => {
             );
         });
 
+        it('records the created count while the effects are still being added', async () => {
+            const added = buildDeferred<string[]>();
+            outboxService.addManyInTx.mockReturnValue(added.promise);
+
+            const running = useCase.execute('outbox-bramble', payload);
+            await setImmediate();
+
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.updateDataInTx).toHaveBeenCalledWith(
+                tx,
+                'outbox-bramble',
+                { created: 1 }
+            );
+
+            added.resolve(['outbox-id']);
+
+            await expect(running).resolves.toMatchObject({ created: 1 });
+            expect(outboxService.updateDataInTx).toHaveBeenCalledWith(
+                tx,
+                'outbox-bramble',
+                { created: 1 }
+            );
+        });
+
         it('returns the recorded result and touches no service when the payload already holds the created count', async () => {
             const response = await useCase.execute('outbox-bramble', {
                 ...payload,
@@ -525,9 +551,11 @@ describe('UserProcessImportByAdminUseCase', () => {
 
             await expect(
                 useCase.execute('outbox-bramble', payload)
-            ).rejects.toBeInstanceOf(
-                DatabaseUniqueValueGenerationFailedException
-            );
+            ).rejects.toMatchObject({
+                module: 'database',
+                statusCode:
+                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
+            });
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });

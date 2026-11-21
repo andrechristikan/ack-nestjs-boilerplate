@@ -179,30 +179,36 @@ export class ProjectRepository implements IProjectRepository {
         return count > 0;
     }
 
-    async softDeleteByWorkspaceInTx(
-        tx: IDatabaseTransactionClient,
+    async softDeleteChunkByWorkspace(
         workspaceId: string,
         deletedAt: Date,
-        deletedBy: string
-    ): Promise<void> {
-        const projects = await tx.project.findMany({
+        deletedBy: string,
+        take: number
+    ): Promise<number> {
+        const client = this.databaseService.client;
+        const projects = await client.project.findMany({
             where: {
                 workspaceId,
                 deletedAt: null,
             },
             select: { id: true },
+            take,
         });
 
         const deletedSlugPattern = this.deletedSlugPattern;
-        for (const { id } of projects) {
-            await tx.project.updateMany({
-                where: { id, deletedAt: null },
-                data: {
-                    slug: deletedSlugPattern.replace('{id}', () => id),
-                    deletedAt,
-                    deletedBy,
-                },
-            });
-        }
+        await Promise.all(
+            projects.map(({ id }) =>
+                client.project.updateMany({
+                    where: { id, deletedAt: null },
+                    data: {
+                        slug: deletedSlugPattern.replace('{id}', () => id),
+                        deletedAt,
+                        deletedBy,
+                    },
+                })
+            )
+        );
+
+        return projects.length;
     }
 }

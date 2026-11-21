@@ -4,7 +4,6 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
@@ -35,6 +34,8 @@ import {
     buildWorkspaceContext,
     buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 describe('WorkspaceLeaveUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
@@ -99,6 +100,26 @@ describe('WorkspaceLeaveUseCase', () => {
     });
 
     describe('execute', () => {
+        it('throws WorkspaceLastOwnerException from the leavable check and opens no transaction', async () => {
+            const refusal = new WorkspaceLastOwnerException();
+            workspaceMemberService.assertLeavable.mockImplementation(() => {
+                throw refusal;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext
+                )
+            ).rejects.toBe(refusal);
+            expect(workspaceMemberService.assertLeavable).toHaveBeenCalledWith(
+                member
+            );
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
         it('leaves and cascades on one transaction and adds the left entry on it', async () => {
             const callOrder: string[] = [];
             workspaceMemberService.leaveWorkspaceInTx.mockImplementation(
@@ -174,9 +195,67 @@ describe('WorkspaceLeaveUseCase', () => {
             ]);
         });
 
-        it('runs no cascade and adds no entry when leaving rejects', async () => {
+        it('awaits the guarded leave alone, then starts the project member removal, the join request cancel, and the last workspace clear together', async () => {
+            const events: string[] = [];
+            workspaceMemberService.leaveWorkspaceInTx.mockImplementation(
+                async () => {
+                    events.push('start:leave');
+                    await Promise.resolve();
+                    events.push('end:leave');
+                }
+            );
+            projectMemberService.removeByWorkspaceAndUserInTx.mockImplementation(
+                async () => {
+                    events.push('start:projectMembers');
+                    await Promise.resolve();
+                    events.push('end:projectMembers');
+
+                    return 2;
+                }
+            );
+            workspaceJoinRequestService.cancelPendingByUserInTx.mockImplementation(
+                async () => {
+                    events.push('start:joinRequests');
+                    await Promise.resolve();
+                    events.push('end:joinRequests');
+
+                    return 1;
+                }
+            );
+            userService.clearLastWorkspaceInTx.mockImplementation(async () => {
+                events.push('start:lastWorkspace');
+                await Promise.resolve();
+                events.push('end:lastWorkspace');
+            });
+            outboxService.addInTx.mockImplementation(async () => {
+                events.push('addEntry');
+
+                return 'outbox-1';
+            });
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext
+            );
+
+            expect(events).toEqual([
+                'start:leave',
+                'end:leave',
+                'start:projectMembers',
+                'start:joinRequests',
+                'start:lastWorkspace',
+                'end:projectMembers',
+                'end:joinRequests',
+                'end:lastWorkspace',
+                'addEntry',
+            ]);
+        });
+
+        it('runs no cascade and adds no entry when the guarded leave misses', async () => {
             workspaceMemberService.leaveWorkspaceInTx.mockRejectedValue(
-                new WorkspaceLastOwnerException()
+                new WorkspaceMemberNotFoundException()
             );
 
             await expect(
@@ -186,7 +265,10 @@ describe('WorkspaceLeaveUseCase', () => {
                     authContext,
                     workspaceContext
                 )
-            ).rejects.toBeInstanceOf(WorkspaceLastOwnerException);
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
+            });
             expect(
                 projectMemberService.removeByWorkspaceAndUserInTx
             ).not.toHaveBeenCalled();
@@ -212,7 +294,10 @@ describe('WorkspaceLeaveUseCase', () => {
                     authContext,
                     workspaceContext
                 )
-            ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
+            });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
@@ -228,7 +313,10 @@ describe('WorkspaceLeaveUseCase', () => {
                     authContext,
                     workspaceContext
                 )
-            ).rejects.toBeInstanceOf(AppUnknownException);
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+            });
         });
     });
 });

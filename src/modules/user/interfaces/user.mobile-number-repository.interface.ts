@@ -10,6 +10,7 @@ export interface IUserMobileNumberRepository {
         userId: string,
         mobileNumberId: string
     ): Promise<IUserMobileNumberSummary | null>;
+    findManyByUser(userId: string): Promise<IUserMobileNumber[]>;
     existsMobileNumber(
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,

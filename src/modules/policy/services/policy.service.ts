@@ -1,7 +1,4 @@
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { PolicyExistException } from '@modules/policy/exceptions/policy.exist.exception';
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyRoleTypeInvalidException } from '@modules/policy/exceptions/policy.role-type-invalid.exception';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
@@ -18,8 +15,7 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 export class PolicyService {
     constructor(
         private readonly policyAbilityFactory: PolicyAbilityFactory,
-        private readonly policyRepository: PolicyRepository,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly policyRepository: PolicyRepository
     ) {}
 
     validatePolicyGuard(
@@ -56,19 +52,7 @@ export class PolicyService {
         roleId: string,
         data: PolicyRequestDto
     ): Promise<Policy> {
-        try {
-            return await this.policyRepository.createInTx(tx, roleId, data);
-        } catch (err: unknown) {
-            const isSubjectCollision = this.databaseUtil.isUniqueCollision(
-                err,
-                'subject'
-            );
-            if (isSubjectCollision) {
-                throw new PolicyExistException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return this.policyRepository.createInTx(tx, roleId, data);
     }
 
     async updateByAdminInTx(
@@ -90,14 +74,8 @@ export class PolicyService {
         return updated;
     }
 
-    async deleteByAdminInTx(
-        tx: IDatabaseTransactionClient,
-        roleId: string,
-        id: string
-    ): Promise<Policy> {
-        // Sequential by design: gate before the work it guards
-        const policy = await this.policyRepository.findOneByRoleIdAndIdInTx(
-            tx,
+    async getOneByRoleAndId(roleId: string, id: string): Promise<Policy> {
+        const policy = await this.policyRepository.findOneByRoleIdAndId(
             roleId,
             id
         );
@@ -105,7 +83,18 @@ export class PolicyService {
             throw new PolicyNotFoundException();
         }
 
-        const deleted = await this.policyRepository.deleteInTx(tx, roleId, id);
+        return policy;
+    }
+
+    async deleteByAdminInTx(
+        tx: IDatabaseTransactionClient,
+        policy: Policy
+    ): Promise<Policy> {
+        const deleted = await this.policyRepository.deleteInTx(
+            tx,
+            policy.roleId,
+            policy.id
+        );
         if (!deleted) {
             throw new PolicyNotFoundException();
         }

@@ -78,8 +78,13 @@ export const DocGlobalErrors: IDocResponseEntry[] = [
         messagePath: 'redis.error.unavailable',
     },
     {
-        httpStatus: HttpStatus.NOT_FOUND,
+        httpStatus: HttpStatus.NOT_IMPLEMENTED,
         statusCode: EnumAwsStatusCodeError.s3NotConfigured,
         messagePath: 'aws.error.s3NotConfigured',
+    },
+    {
+        httpStatus: HttpStatus.NOT_IMPLEMENTED,
+        statusCode: EnumAwsStatusCodeError.sesNotConfigured,
+        messagePath: 'aws.error.sesNotConfigured',
     },
 ];

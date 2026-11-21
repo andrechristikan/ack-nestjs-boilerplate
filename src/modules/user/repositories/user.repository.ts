@@ -52,6 +52,19 @@ export class UserRepository implements IUserRepository {
         private readonly helperDateService: HelperDateService
     ) {}
 
+    private buildExportWhere(
+        status: EnumUserStatus[],
+        roleId: string | null,
+        countryId: string | null
+    ): Prisma.UserWhereInput {
+        return {
+            status: { in: status },
+            ...(roleId !== null && { roleId }),
+            ...(countryId !== null && { countryId }),
+            deletedAt: null,
+        };
+    }
+
     private buildUserCreateData(
         input: IUserCreateWithWorkspaceInput
     ): Prisma.UserUncheckedCreateInput {
@@ -177,21 +190,6 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async findOneActiveProfileById(id: string): Promise<IUserProfile | null> {
-        return this.databaseService.client.user.findUnique({
-            where: { id, deletedAt: null, status: EnumUserStatus.active },
-            include: {
-                ...UserWithRoleInclude,
-                country: true,
-                mobileNumbers: {
-                    include: {
-                        country: true,
-                    },
-                },
-            },
-        });
-    }
-
     async findOneWithRoleById(id: string): Promise<IUser | null> {
         return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null },
@@ -227,21 +225,28 @@ export class UserRepository implements IUserRepository {
     }
 
     async findExport(
-        status: Record<string, IPaginationIn> | null,
-        roleId: Record<string, IPaginationEqual> | null,
-        countryId: Record<string, IPaginationEqual> | null,
+        status: EnumUserStatus[],
+        roleId: string | null,
+        countryId: string | null,
         take: number
     ): Promise<IUser[]> {
+        const where = this.buildExportWhere(status, roleId, countryId);
+
         return this.databaseService.client.user.findMany({
-            where: {
-                ...status,
-                ...countryId,
-                ...roleId,
-                deletedAt: null,
-            },
+            where,
             include: UserWithRoleInclude,
             take,
         });
+    }
+
+    async countExport(
+        status: EnumUserStatus[],
+        roleId: string | null,
+        countryId: string | null
+    ): Promise<number> {
+        const where = this.buildExportWhere(status, roleId, countryId);
+
+        return this.databaseService.client.user.count({ where });
     }
 
     async existsByEmail(email: string): Promise<boolean> {
@@ -346,6 +351,8 @@ export class UserRepository implements IUserRepository {
                 email,
                 username,
                 deletedAt,
+                deletedBy: userId,
+                updatedBy: userId,
                 status: EnumUserStatus.inactive,
                 password: null,
                 passwordCreated: null,

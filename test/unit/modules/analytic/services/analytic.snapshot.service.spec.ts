@@ -16,7 +16,7 @@ import type {
 import { AnalyticCountRanges } from '@modules/analytic/constants/analytic.constant';
 import { AnalyticSnapshotRepository } from '@modules/analytic/repositories/analytic.snapshot.repository';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -278,7 +278,10 @@ describe('AnalyticSnapshotService', () => {
 
             await expect(
                 service.replace(signal, buildSnapshotResult(1))
-            ).rejects.toBeInstanceOf(AppUnknownException);
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+            });
             expect(
                 analyticSnapshotRepository.deleteItemsOfRun
             ).not.toHaveBeenCalled();

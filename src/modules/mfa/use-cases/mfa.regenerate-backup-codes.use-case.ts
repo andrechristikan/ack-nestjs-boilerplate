@@ -58,13 +58,10 @@ export class MfaRegenerateBackupCodesUseCase implements IAppUseCase<
         }: MfaBackupCodeRegenerateRequestDto
     ): Promise<IResponseReturn<MfaBackupCodesResponseDto>> {
         const { user } = userContext;
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: a credential proof, awaited alone
         await this.mfaService.assertEnabled(authContext.userId);
-        const check = await this.userAuthService.assertReauthentication(
-            requestContext,
-            apiKeyContext,
-            user,
-            {
+        const { check, failure } =
+            await this.userAuthService.checkReauthentication(user, {
                 action: EnumUserReauthenticationAction.mfaBackupCodeRegenerate,
                 password: password ?? null,
                 method: method ?? null,
@@ -73,8 +70,24 @@ export class MfaRegenerateBackupCodesUseCase implements IAppUseCase<
                 passkeyChallengeToken: passkeyChallengeToken ?? null,
                 passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
-            }
-        );
+            });
+        if (failure !== null) {
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.userAuthService.countFailedReauthenticationInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        failure
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(
+                failure,
+                isLocked
+            );
+        }
 
         try {
             const backupCodes = await this.databaseService.withTransaction(
@@ -98,7 +111,7 @@ export class MfaRegenerateBackupCodesUseCase implements IAppUseCase<
                         authContext,
                         null,
                         {
-                            action: EnumActivityLogAction.userRegenerateMfaBackupCodes,
+                            action: EnumActivityLogAction.userMfaBackupCodesRegenerated,
                         }
                     );
                     await this.outboxService.addInTx(tx, entry);

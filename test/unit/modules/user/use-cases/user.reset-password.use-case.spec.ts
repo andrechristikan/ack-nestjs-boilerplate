@@ -1,4 +1,6 @@
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IMfaAttemptFailure } from '@modules/mfa/interfaces/mfa.interface';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.exception';
 import { Test } from '@nestjs/testing';
@@ -175,7 +177,7 @@ describe('UserResetPasswordUseCase', () => {
                 _workspaceContext,
                 input
             ) =>
-                input.action === EnumActivityLogAction.userVerifyMfa
+                input.action === EnumActivityLogAction.userMfaVerified
                     ? verifyEntry
                     : resetEntry
         );
@@ -334,7 +336,7 @@ describe('UserResetPasswordUseCase', () => {
                 null,
                 null,
                 {
-                    action: EnumActivityLogAction.userResetPassword,
+                    action: EnumActivityLogAction.userPasswordReset,
                     userId: 'user-linden',
                     createdBy: 'user-linden',
                 }
@@ -384,11 +386,11 @@ describe('UserResetPasswordUseCase', () => {
             );
             expect(mfaService.completeInTx).not.toHaveBeenCalled();
             expect(calls).toEqual([
-                'begin',
                 'snapshot',
+                'begin',
+                'markResetUsed',
                 'updatePassword',
                 'createHistory',
-                'markResetUsed',
                 'markUnusedResetsUsed',
                 'revokeSessions',
                 'addEffects',
@@ -396,35 +398,72 @@ describe('UserResetPasswordUseCase', () => {
             ]);
         });
 
-        it('starts the snapshot read while the first statement is pending and reads it before the revoke', async () => {
-            let snapshotStarted = false;
-            let startedWhenFirstSettles = false;
-            notificationService.getSnapshot.mockImplementation(async () => {
-                snapshotStarted = true;
-
-                return snapshot;
-            });
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
+        it('marks the reset used alone, then starts the history, the unused-reset mark, and the session revoke while the password update is pending', async () => {
+            const marked = buildDeferred<void>();
+            const update = buildDeferred<User>();
+            userPasswordService.markResetUsedInTx.mockReturnValue(
+                marked.promise
             );
-            userService.updatePasswordInTx.mockImplementation(async () => {
-                await Promise.resolve();
-                startedWhenFirstSettles = snapshotStarted;
+            userService.updatePasswordInTx.mockReturnValue(update.promise);
 
-                return updatedRow;
-            });
+            const running = useCase.execute(requestContext, apiKeyContext, dto);
+            await vi.advanceTimersByTimeAsync(0);
 
+            expect(userService.updatePasswordInTx).not.toHaveBeenCalled();
+            expect(passwordHistoryService.createInTx).not.toHaveBeenCalled();
+            expect(
+                userPasswordService.markUnusedResetsUsedInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                sessionService.revokeActiveByUserInTx
+            ).not.toHaveBeenCalled();
+
+            marked.resolve();
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(passwordHistoryService.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                'hashed',
+                EnumPasswordHistoryType.forgot,
+                password.passwordPeriodExpired,
+                password.passwordCreated,
+                'user-linden'
+            );
+            expect(
+                userPasswordService.markUnusedResetsUsedInTx
+            ).toHaveBeenCalledWith(tx, 'user-linden', 'user-linden');
+            expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                'user-linden',
+                password.passwordCreated
+            );
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+
+            update.resolve(updatedRow);
+            await running;
+
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                resetEntry,
+                notifyEffect,
+            ]);
+        });
+
+        it('reads the snapshot before it opens the transaction', async () => {
             await useCase.execute(requestContext, apiKeyContext, dto);
 
-            expect(startedWhenFirstSettles).toBe(true);
             expect(notificationService.getSnapshot).toHaveBeenCalledBefore(
-                sessionService.revokeActiveByUserInTx
+                databaseService.withTransaction
             );
         });
 
         it('checks the MFA proof of the reset user, completes it on the transaction, and adds the verify entry', async () => {
             mfaService.isEnabled.mockResolvedValue(true);
-            mfaService.check.mockResolvedValue(mfaChecked);
+            mfaService.check.mockResolvedValue({
+                check: mfaChecked,
+                failure: null,
+            });
 
             await useCase.execute(requestContext, apiKeyContext, {
                 ...dto,
@@ -433,8 +472,6 @@ describe('UserResetPasswordUseCase', () => {
             });
 
             expect(mfaService.check).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
                 'user-linden',
                 {
                     method: EnumMfaMethod.totp,
@@ -458,7 +495,7 @@ describe('UserResetPasswordUseCase', () => {
                 null,
                 null,
                 {
-                    action: EnumActivityLogAction.userVerifyMfa,
+                    action: EnumActivityLogAction.userMfaVerified,
                     userId: 'user-linden',
                     createdBy: 'user-linden',
                 }
@@ -500,7 +537,10 @@ describe('UserResetPasswordUseCase', () => {
                 mfaChallengeService.getWebAuthnChallengeForUser.mockResolvedValue(
                     'webauthn-challenge'
                 );
-                mfaService.check.mockResolvedValue(passkeyChecked);
+                mfaService.check.mockResolvedValue({
+                    check: passkeyChecked,
+                    failure: null,
+                });
             });
 
             it('checks the assertion against the resetPassword challenge, claims it and completes the check on the transaction before the password write', async () => {
@@ -518,8 +558,6 @@ describe('UserResetPasswordUseCase', () => {
                     'user-linden'
                 );
                 expect(mfaService.check).toHaveBeenCalledWith(
-                    requestContext,
-                    apiKeyContext,
                     'user-linden',
                     {
                         method: EnumMfaMethod.passkey,
@@ -529,23 +567,18 @@ describe('UserResetPasswordUseCase', () => {
                     },
                     'webauthn-challenge'
                 );
-                expect(mfaChallengeService.consumeInTx).toHaveBeenCalledWith(
-                    tx,
-                    'challenge-token',
-                    EnumMfaChallengePurpose.resetPassword,
-                    'user-linden'
-                );
-                expect(mfaService.completeInTx).toHaveBeenCalledWith(
+                expect(mfaService.completeChallengeInTx).toHaveBeenCalledWith(
                     tx,
                     'user-linden',
+                    'challenge-token',
+                    EnumMfaChallengePurpose.resetPassword,
                     passkeyChecked
                 );
-                expect(mfaChallengeService.consumeInTx).toHaveBeenCalledBefore(
-                    mfaService.completeInTx
-                );
-                expect(mfaService.completeInTx).toHaveBeenCalledBefore(
+                expect(mfaService.completeChallengeInTx).toHaveBeenCalledBefore(
                     userService.updatePasswordInTx
                 );
+                expect(mfaService.completeInTx).not.toHaveBeenCalled();
+                expect(mfaChallengeService.consumeInTx).not.toHaveBeenCalled();
             });
 
             it('throws MfaChallengeInvalidException and checks nothing when the challenge service rejects the token', async () => {
@@ -555,7 +588,10 @@ describe('UserResetPasswordUseCase', () => {
 
                 await expect(
                     useCase.execute(requestContext, apiKeyContext, passkeyDto)
-                ).rejects.toBeInstanceOf(MfaChallengeInvalidException);
+                ).rejects.toMatchObject({
+                    module: 'mfa',
+                    statusCode: EnumMfaStatusCodeError.challengeInvalid,
+                });
 
                 expect(
                     mfaChallengeService.getWebAuthnChallengeForUser
@@ -568,16 +604,43 @@ describe('UserResetPasswordUseCase', () => {
                 expect(databaseService.withTransaction).not.toHaveBeenCalled();
             });
 
-            it('rethrows the failure the check counts and writes and claims nothing on a wrong passkey', async () => {
-                const mismatch = new MfaInvalidException();
-                mfaService.check.mockRejectedValue(mismatch);
+            it('commits the failed count in a transaction of its own, then throws, and writes and claims nothing on a wrong passkey', async () => {
+                const refusal = new MfaInvalidException();
+                const failure: IMfaAttemptFailure = {
+                    method: EnumMfaMethod.passkey,
+                    maxAttempts: 5,
+                    lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
+                };
+                mfaService.check.mockResolvedValue({ check: null, failure });
+                mfaService.countFailedAttemptInTx.mockResolvedValue(false);
+                mfaService.throwFailedAttempt.mockImplementation(() => {
+                    throw refusal;
+                });
 
                 await expect(
                     useCase.execute(requestContext, apiKeyContext, passkeyDto)
-                ).rejects.toBe(mismatch);
+                ).rejects.toBe(refusal);
 
-                expect(databaseService.withTransaction).not.toHaveBeenCalled();
-                expect(mfaChallengeService.consumeInTx).not.toHaveBeenCalled();
+                expect(databaseService.withTransaction).toHaveBeenCalledTimes(
+                    1
+                );
+                expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledWith(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    'user-linden',
+                    failure
+                );
+                expect(
+                    mfaService.countFailedAttemptInTx
+                ).toHaveBeenCalledBefore(mfaService.throwFailedAttempt);
+                expect(mfaService.throwFailedAttempt).toHaveBeenCalledWith(
+                    failure,
+                    false
+                );
+                expect(mfaService.completeChallengeInTx).not.toHaveBeenCalled();
+                expect(mfaService.completeInTx).not.toHaveBeenCalled();
+                expect(userService.updatePasswordInTx).not.toHaveBeenCalled();
             });
 
             it('sends no WebAuthn challenge to the check and claims nothing when the token is missing', async () => {
@@ -587,14 +650,15 @@ describe('UserResetPasswordUseCase', () => {
 
                 await expect(
                     useCase.execute(requestContext, apiKeyContext, withoutToken)
-                ).rejects.toBeInstanceOf(MfaInvalidException);
+                ).rejects.toMatchObject({
+                    module: 'mfa',
+                    statusCode: EnumMfaStatusCodeError.invalid,
+                });
 
                 expect(
                     mfaChallengeService.getWebAuthnChallengeForUser
                 ).not.toHaveBeenCalled();
                 expect(mfaService.check).toHaveBeenCalledWith(
-                    requestContext,
-                    apiKeyContext,
                     'user-linden',
                     expect.objectContaining({ method: EnumMfaMethod.passkey }),
                     null
@@ -602,7 +666,10 @@ describe('UserResetPasswordUseCase', () => {
             });
 
             it('reads and claims no challenge for a TOTP proof', async () => {
-                mfaService.check.mockResolvedValue(mfaChecked);
+                mfaService.check.mockResolvedValue({
+                    check: mfaChecked,
+                    failure: null,
+                });
 
                 await useCase.execute(requestContext, apiKeyContext, {
                     ...passkeyDto,
@@ -613,10 +680,13 @@ describe('UserResetPasswordUseCase', () => {
                 expect(
                     mfaChallengeService.getWebAuthnChallengeForUser
                 ).not.toHaveBeenCalled();
-                expect(mfaChallengeService.consumeInTx).not.toHaveBeenCalled();
+                expect(mfaService.completeChallengeInTx).not.toHaveBeenCalled();
+                expect(mfaService.completeInTx).toHaveBeenCalledWith(
+                    tx,
+                    'user-linden',
+                    mfaChecked
+                );
                 expect(mfaService.check).toHaveBeenCalledWith(
-                    requestContext,
-                    apiKeyContext,
                     'user-linden',
                     expect.objectContaining({ method: EnumMfaMethod.totp }),
                     null
@@ -636,7 +706,8 @@ describe('UserResetPasswordUseCase', () => {
                     mfaChallengeService.getWebAuthnChallengeForUser
                 ).not.toHaveBeenCalled();
                 expect(mfaService.check).not.toHaveBeenCalled();
-                expect(mfaChallengeService.consumeInTx).not.toHaveBeenCalled();
+                expect(mfaService.completeChallengeInTx).not.toHaveBeenCalled();
+                expect(mfaService.completeInTx).not.toHaveBeenCalled();
             });
         });
 
@@ -688,6 +759,26 @@ describe('UserResetPasswordUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
+        it('calls the history and allowed-password checks while the MFA lookup is still pending', async () => {
+            const mfaLookup = buildDeferred<boolean>();
+            mfaService.isEnabled.mockReturnValue(mfaLookup.promise);
+
+            const running = useCase.execute(requestContext, apiKeyContext, dto);
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(passwordHistoryService.assertNew).toHaveBeenCalledWith(
+                'user-linden',
+                'new-password'
+            );
+            expect(authPasswordService.assertAllowed).toHaveBeenCalledWith(
+                'new-password',
+                ['ACK Boilerplate', 'linden', 'lindenFrost', 'Linden Frost']
+            );
+
+            mfaLookup.resolve(false);
+            await running;
+        });
+
         it('writes nothing when the history check rejects', async () => {
             const failure = new Error('must new');
             passwordHistoryService.assertNew.mockRejectedValue(failure);
@@ -704,9 +795,8 @@ describe('UserResetPasswordUseCase', () => {
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
-            ).rejects.toMatchObject({
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 sessionService.revokeActiveByUserInTx
             ).not.toHaveBeenCalled();

@@ -10,6 +10,7 @@ import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { IUserForgotPassword } from '@modules/user/interfaces/user.interface';
 import { UserResetPasswordGenerateMfaUseCase } from '@modules/user/use-cases/user.reset-password-generate-mfa.use-case';
@@ -153,7 +154,10 @@ describe('UserResetPasswordGenerateMfaUseCase', () => {
 
             await expect(
                 useCase.execute({ token: 'raw-token' })
-            ).rejects.toBeInstanceOf(UserTokenInvalidException);
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+            });
 
             expect(mfaService.getLoginMethods).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();

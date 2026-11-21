@@ -67,7 +67,6 @@ import type {
     INotificationSealedData,
     INotificationSnapshot,
 } from '@modules/notification/interfaces/notification.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -76,7 +75,6 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('NotificationService', () => {
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -148,7 +146,6 @@ describe('NotificationService', () => {
                         ...configValues,
                     }),
                 },
-                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 {
@@ -791,7 +788,7 @@ describe('NotificationService', () => {
         });
     });
 
-    describe('updateUserSetting', () => {
+    describe('updateUserSettingInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
         const requestContext: IRequestContext = {
             requestLog: {
@@ -820,9 +817,6 @@ describe('NotificationService', () => {
 
         beforeEach(() => {
             activityLogQueue.recordEffect.mockReturnValue(entryEffect);
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
         });
 
         const data = {
@@ -831,55 +825,13 @@ describe('NotificationService', () => {
             isActive: false,
         };
 
-        it('throws NotificationInvalidTypeException before writing when the type is not configurable', async () => {
-            await expect(
-                service.updateUserSetting(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    {
-                        ...data,
-                        type: EnumNotificationType.securityAlert,
-                    }
-                )
-            ).rejects.toMatchObject({
-                constructor: NotificationInvalidTypeException,
-                module: 'notification',
-                statusCode: EnumNotificationStatusCodeError.invalidType,
-            });
-            expect(
-                notificationUserSettingRepository.updateUserSettingInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('throws NotificationInvalidChannelException before writing when the channel is not allowed for the type', async () => {
-            await expect(
-                service.updateUserSetting(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    {
-                        ...data,
-                        type: EnumNotificationType.marketing,
-                        channel: EnumNotificationChannel.inApp,
-                    }
-                )
-            ).rejects.toMatchObject({
-                constructor: NotificationInvalidChannelException,
-                module: 'notification',
-                statusCode: EnumNotificationStatusCodeError.invalidChannel,
-            });
-            expect(
-                notificationUserSettingRepository.updateUserSettingInTx
-            ).not.toHaveBeenCalled();
-        });
-
         it('writes the setting', async () => {
             notificationUserSettingRepository.updateUserSettingInTx.mockResolvedValue(
                 true
             );
 
-            await service.updateUserSetting(
+            await service.updateUserSettingInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -891,12 +843,13 @@ describe('NotificationService', () => {
             ).toHaveBeenCalledWith(tx, 'user-id', data);
         });
 
-        it('adds the userUpdateNotificationSetting entry from the passed context on the same tx after the write', async () => {
+        it('adds the userNotificationSettingUpdated entry from the passed context on the same tx after the write', async () => {
             notificationUserSettingRepository.updateUserSettingInTx.mockResolvedValue(
                 true
             );
 
-            await service.updateUserSetting(
+            await service.updateUserSettingInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -909,7 +862,7 @@ describe('NotificationService', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userUpdateNotificationSetting,
+                    action: EnumActivityLogAction.userNotificationSettingUpdated,
                     metadata: {
                         channel: data.channel,
                         type: data.type,
@@ -926,13 +879,17 @@ describe('NotificationService', () => {
             );
 
             await expect(
-                service.updateUserSetting(
+                service.updateUserSettingInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
                     data
                 )
-            ).rejects.toBeInstanceOf(NotificationSettingInvalidException);
+            ).rejects.toMatchObject({
+                module: 'notification',
+                statusCode: EnumNotificationStatusCodeError.settingInvalid,
+            });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
@@ -942,7 +899,8 @@ describe('NotificationService', () => {
             );
 
             await expect(
-                service.updateUserSetting(
+                service.updateUserSettingInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,

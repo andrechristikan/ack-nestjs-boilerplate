@@ -65,6 +65,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
             target.role.type
         );
         this.userService.assertUnblocked(target);
+        this.userService.assertStatusChangeable(target, status);
 
         const now = this.helperDateService.create();
         const revokesSessions = this.userService.revokesSessionsOn(status);
@@ -105,7 +106,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                             authContext,
                             null,
                             {
-                                action: EnumActivityLogAction.adminSessionRevokeAll,
+                                action: EnumActivityLogAction.adminAllSessionsRevoked,
                                 metadata: revokeAllActorMetadata,
                             }
                         );
@@ -116,7 +117,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                             authContext,
                             null,
                             {
-                                action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                                action: EnumActivityLogAction.userAllSessionsRevokedByAdmin,
                                 userId,
                                 createdBy: authContext.userId,
                                 metadata: revokeAllTargetMetadata,
@@ -138,7 +139,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                     authContext,
                     null,
                     {
-                        action: EnumActivityLogAction.adminUserUpdateStatus,
+                        action: EnumActivityLogAction.adminUserStatusUpdated,
                         metadata: actorMetadata,
                     }
                 );

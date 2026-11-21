@@ -1,6 +1,7 @@
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { ConfigService } from '@nestjs/config';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
@@ -34,6 +35,7 @@ import { UserService } from '@modules/user/services/user.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { MfaNotEnabledException } from '@modules/mfa/exceptions/mfa.not-enabled.exception';
+import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaResetByAdminUseCase } from '@modules/mfa/use-cases/mfa.reset-by-admin.use-case';
 import {
@@ -110,7 +112,7 @@ describe('MfaResetByAdminUseCase', () => {
                 _workspaceContext,
                 input
             ) =>
-                input.action === EnumActivityLogAction.adminUserResetMfa
+                input.action === EnumActivityLogAction.adminUserMfaReset
                     ? adminEntry
                     : targetEntry
         );
@@ -232,8 +234,8 @@ describe('MfaResetByAdminUseCase', () => {
                 now
             );
             expect(calls).toEqual([
-                'begin',
                 'snapshot',
+                'begin',
                 'resetInTx',
                 'revokeSessions',
                 'addEffects',
@@ -250,7 +252,7 @@ describe('MfaResetByAdminUseCase', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminUserResetMfa,
+                    action: EnumActivityLogAction.adminUserMfaReset,
                     metadata: {
                         targetUserId: 'user-marten',
                         targetUsername: 'martenCole',
@@ -265,7 +267,7 @@ describe('MfaResetByAdminUseCase', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userResetMfaByAdmin,
+                    action: EnumActivityLogAction.userMfaResetByAdmin,
                     userId: 'user-marten',
                     createdBy: 'admin-marten',
                     metadata: {
@@ -281,22 +283,39 @@ describe('MfaResetByAdminUseCase', () => {
             ]);
         });
 
-        it('starts the snapshot read while the first statement is pending and reads it before the revoke', async () => {
-            let snapshotStarted = false;
-            let startedWhenFirstSettles = false;
-            notificationService.getSnapshot.mockImplementation(async () => {
-                snapshotStarted = true;
+        it('revokes the sessions while the factor reset is still pending', async () => {
+            const reset = buildDeferred<void>();
+            mfaService.resetByAdminInTx.mockReturnValue(reset.promise);
+            sessionService.revokeActiveByUserInTx.mockResolvedValue(revoked);
 
-                return snapshot;
-            });
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
+            const running = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'user-marten'
             );
-            mfaService.resetByAdminInTx.mockImplementation(async () => {
-                await Promise.resolve();
-                startedWhenFirstSettles = snapshotStarted;
-            });
+            await vi.advanceTimersByTimeAsync(0);
 
+            expect(mfaService.resetByAdminInTx).toHaveBeenCalledWith(
+                tx,
+                'user-marten'
+            );
+            expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-marten',
+                authContext.userId,
+                expect.any(Date)
+            );
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+
+            reset.resolve();
+            await running;
+
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+        });
+
+        it('reads the snapshot before the transaction opens and hands it to the notification effect', async () => {
             await useCase.execute(
                 requestContext,
                 apiKeyContext,
@@ -305,9 +324,12 @@ describe('MfaResetByAdminUseCase', () => {
                 'user-marten'
             );
 
-            expect(startedWhenFirstSettles).toBe(true);
             expect(notificationService.getSnapshot).toHaveBeenCalledBefore(
-                sessionService.revokeActiveByUserInTx
+                databaseService.withTransaction
+            );
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.resetMfaByAdmin,
+                expect.objectContaining({ snapshot })
             );
         });
 
@@ -368,6 +390,7 @@ describe('MfaResetByAdminUseCase', () => {
                     'user-marten'
                 )
             ).rejects.toThrow('read');
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 sessionService.revokeActiveByUserInTx
             ).not.toHaveBeenCalled();
@@ -387,11 +410,29 @@ describe('MfaResetByAdminUseCase', () => {
                     userContext,
                     'user-marten'
                 )
-            ).rejects.toBeInstanceOf(MfaNotEnabledException);
-            expect(userService.assertUnblocked).toHaveBeenCalledBefore(
-                mfaService.assertHasFactor
-            );
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.notEnabled,
+            });
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('reads the target and asserts the stored factor together', async () => {
+            const target = buildDeferred<IUser>();
+            userService.getOneWithRole.mockReturnValue(target.promise);
+            mfaService.assertHasFactor.mockImplementation(async () => {
+                target.resolve(user);
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'user-marten'
+                )
+            ).resolves.toEqual({});
         });
 
         it('adds nothing when the transaction fails', async () => {

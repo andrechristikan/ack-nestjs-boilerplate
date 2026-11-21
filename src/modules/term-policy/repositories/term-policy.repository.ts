@@ -144,6 +144,21 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         return this.pickLatestPerType(rows);
     }
 
+    async findLatestPublishedByTypes(
+        types: EnumTermPolicyType[]
+    ): Promise<ITermPolicyRef[]> {
+        const rows = await this.databaseService.client.termPolicy.findMany({
+            where: {
+                type: { in: types },
+                status: EnumTermPolicyStatus.published,
+            },
+            orderBy: { version: Prisma.SortOrder.desc },
+            select: TermPolicyRefSelect,
+        });
+
+        return this.pickLatestPerType(rows);
+    }
+
     async findLatestPublishedByTypesInTx(
         tx: IDatabaseTransactionClient,
         types: EnumTermPolicyType[]
@@ -378,12 +393,11 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         return count;
     }
 
-    async existsNewerPublishedInTx(
-        tx: IDatabaseTransactionClient,
+    async existsNewerPublished(
         type: EnumTermPolicyType,
         version: number
     ): Promise<boolean> {
-        const count = await tx.termPolicy.count({
+        const count = await this.databaseService.client.termPolicy.count({
             where: {
                 type,
                 status: EnumTermPolicyStatus.published,

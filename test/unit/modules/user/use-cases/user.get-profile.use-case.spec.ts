@@ -9,18 +9,16 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { UserProfileService } from '@modules/user/services/user.profile.service';
+import { CountryService } from '@modules/country/services/country.service';
+import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import type { IUserProfile } from '@modules/user/interfaces/user.interface';
 import { UserGetProfileUseCase } from '@modules/user/use-cases/user.get-profile.use-case';
-import {
-    buildUser,
-    buildUserContext,
-    buildAuthJwtAccessContext,
-} from '@test/unit/helpers/test.unit.request.helper';
+import { buildUserContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserGetProfileUseCase', () => {
-    const userProfileService: MockProxy<UserProfileService> =
-        mock<UserProfileService>();
+    const countryService: MockProxy<CountryService> = mock<CountryService>();
+    const userMobileNumberService: MockProxy<UserMobileNumberService> =
+        mock<UserMobileNumberService>();
 
     let useCase: UserGetProfileUseCase;
 
@@ -88,23 +86,39 @@ describe('UserGetProfileUseCase', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserGetProfileUseCase,
-                { provide: UserProfileService, useValue: userProfileService },
+                { provide: CountryService, useValue: countryService },
+                {
+                    provide: UserMobileNumberService,
+                    useValue: userMobileNumberService,
+                },
             ],
         }).compile();
         useCase = module.get(UserGetProfileUseCase);
     });
 
     describe('execute', () => {
-        const userContext = buildUserContext(
-            buildUser('user-sable', 'sable@example.com')
-        );
-        const authContext = buildAuthJwtAccessContext(userContext.user.id);
-        it('wraps the profile in a response envelope', async () => {
-            userProfileService.getProfile.mockResolvedValue(profile);
+        const { country, mobileNumbers, ...user } = profile;
+        const userContext = buildUserContext({
+            ...user,
+            role: profile.role,
+        });
 
-            await expect(useCase.execute(authContext)).resolves.toEqual({
-                data: profile,
+        it('returns the context user with the country and the mobile numbers read together', async () => {
+            countryService.getOne.mockResolvedValue(country);
+            userMobileNumberService.getListByUser.mockResolvedValue(
+                mobileNumbers
+            );
+
+            await expect(useCase.execute(userContext)).resolves.toEqual({
+                data: { ...userContext.user, country, mobileNumbers },
             });
+
+            expect(countryService.getOne).toHaveBeenCalledWith(
+                userContext.user.countryId
+            );
+            expect(userMobileNumberService.getListByUser).toHaveBeenCalledWith(
+                userContext.user.id
+            );
         });
     });
 });

@@ -13,6 +13,8 @@ export enum EnumUserSignUpWorkspaceContextType {
 export enum EnumUserProcess {
     deletePhoto = 'deletePhoto',
     importByAdmin = 'importByAdmin',
+    exportByAdmin = 'exportByAdmin',
+    deleteSelf = 'deleteSelf',
     purgeExpired = 'purgeExpired',
 }
 

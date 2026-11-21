@@ -1,8 +1,27 @@
+import { ConfigService } from '@nestjs/config';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import { EnumProjectMemberRole } from '@generated/prisma-client/client';
+import type {
+    Project,
+    ProjectMember,
+    WorkspaceMember,
+} from '@generated/prisma-client/client';
+import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
+import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import type { IProjectMemberActor } from '@modules/project/interfaces/project.interface';
 import { ProjectUtil } from '@modules/project/utils/project.util';
@@ -22,6 +41,9 @@ import {
 describe('ProjectRemoveMemberUseCase', () => {
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
+
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const tx = {} as IDatabaseTransactionClient;
 
     let useCase: ProjectRemoveMemberUseCase;
 
@@ -61,6 +83,8 @@ describe('ProjectRemoveMemberUseCase', () => {
     const projectContext = buildProjectContext(project, null);
 
     beforeEach(async () => {
+        databaseService.withTransaction.mockImplementation(fn => fn(tx));
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectRemoveMemberUseCase,
@@ -69,6 +93,12 @@ describe('ProjectRemoveMemberUseCase', () => {
                     useValue: projectMemberService,
                 },
                 ProjectUtil,
+                { provide: DatabaseService, useValue: databaseService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
@@ -76,42 +106,94 @@ describe('ProjectRemoveMemberUseCase', () => {
     });
 
     describe('execute', () => {
-        it('maps the actor and delegates the removal with the context', async () => {
-            const result = await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                workspaceContext,
-                projectContext,
-                '507f1f77bcf86cd799439021'
+        const targetMemberId = '507f1f77bcf86cd799439021';
+        const targetMember: ProjectMember = {
+            id: targetMemberId,
+            projectId: project.id,
+            userId: '507f1f77bcf86cd799439022',
+            role: EnumProjectMemberRole.member,
+            joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdBy: null,
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+            updatedBy: null,
+        };
+
+        const args = [
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
+            projectContext,
+            targetMemberId,
+        ] as const;
+
+        it('reads the removable member, then removes it in one transaction on one tx', async () => {
+            projectMemberService.getRemovableMember.mockResolvedValue(
+                targetMember
             );
 
+            const result = await useCase.execute(...args);
+
             expect(result).toEqual({});
-            expect(projectMemberService.removeMember).toHaveBeenCalledWith(
+            expect(
+                projectMemberService.getRemovableMember
+            ).toHaveBeenCalledWith(project, actor, targetMemberId);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(projectMemberService.removeMemberInTx).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 project,
                 actor,
-                '507f1f77bcf86cd799439021'
+                targetMember
             );
         });
 
-        it('rejects with the domain failure', async () => {
-            projectMemberService.removeMember.mockRejectedValue(
-                new Error('boom')
+        it('rethrows the check exception and opens no transaction', async () => {
+            const failure = new ProjectMemberNotFoundException();
+            projectMemberService.getRemovableMember.mockRejectedValue(failure);
+
+            await expect(useCase.execute(...args)).rejects.toBe(failure);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict to ProjectMemberPeerForbiddenException', async () => {
+            projectMemberService.getRemovableMember.mockResolvedValue(
+                targetMember
+            );
+            projectMemberService.removeMemberInTx.mockRejectedValue(
+                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
             );
 
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    projectContext,
-                    '507f1f77bcf86cd799439021'
-                )
-            ).rejects.toThrow('boom');
+            await expect(useCase.execute(...args)).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
+            });
+        });
+
+        it('rethrows an AppBaseException from the transaction as is', async () => {
+            const failure = new ProjectMemberPeerForbiddenException();
+            projectMemberService.getRemovableMember.mockResolvedValue(
+                targetMember
+            );
+            projectMemberService.removeMemberInTx.mockRejectedValue(failure);
+
+            await expect(useCase.execute(...args)).rejects.toBe(failure);
+        });
+
+        it('wraps any other error in AppUnknownException', async () => {
+            const otherError = new Error('boom');
+            projectMemberService.getRemovableMember.mockResolvedValue(
+                targetMember
+            );
+            projectMemberService.removeMemberInTx.mockRejectedValue(otherError);
+
+            await expect(useCase.execute(...args)).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
+            });
         });
     });
 });

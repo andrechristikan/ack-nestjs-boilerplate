@@ -1,40 +1,26 @@
-import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumActivityLogAction,
     EnumRoleType,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { UserService } from '@modules/user/services/user.service';
-import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import {
-    EnumActivityLogProcess,
-    EnumActivityLogQueue,
-} from '@modules/activity-log/enums/activity-log.enum';
+import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
-import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
-import { MfaService } from '@modules/mfa/services/mfa.service';
-import { UserSocialService } from '@modules/user/services/user.social.service';
-import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
-import { ProjectService } from '@modules/project/services/project.service';
-import { ProjectMemberService } from '@modules/project/services/project.member.service';
+import { UserQueue } from '@modules/user/queues/user.queue';
+import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
+import type { IUserDeleteSelfEffect } from '@modules/user/interfaces/user.interface';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
-import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
-import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
-import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceOwnerTransferRequiredException } from '@modules/workspace/exceptions/workspace.owner-transfer-required.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
@@ -47,7 +33,6 @@ import type {
     IUserReauthenticationCheck,
 } from '@modules/user/interfaces/user.interface';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
-import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { UserDeleteSelfUseCase } from '@modules/user/use-cases/user.delete-self.use-case';
 import {
     buildApiKeyContext,
@@ -56,6 +41,7 @@ import {
     buildUser,
     buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 const passkeyResponse = {
@@ -72,56 +58,25 @@ const passkeyResponse = {
 
 describe('UserDeleteSelfUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
-    const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
-    const userProfileService: MockProxy<UserProfileService> =
-        mock<UserProfileService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
-    const userMobileNumberService: MockProxy<UserMobileNumberService> =
-        mock<UserMobileNumberService>();
-    const mfaService: MockProxy<MfaService> = mock<MfaService>();
-    const userSocialService: MockProxy<UserSocialService> =
-        mock<UserSocialService>();
-    const passwordHistoryService: MockProxy<PasswordHistoryService> =
-        mock<PasswordHistoryService>();
+    const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
-    const workspaceMemberService: MockProxy<WorkspaceMemberService> =
-        mock<WorkspaceMemberService>();
-    const workspaceInviteService: MockProxy<WorkspaceInviteService> =
-        mock<WorkspaceInviteService>();
-    const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
-        mock<WorkspaceJoinRequestService>();
-    const projectService: MockProxy<ProjectService> = mock<ProjectService>();
-    const projectMemberService: MockProxy<ProjectMemberService> =
-        mock<ProjectMemberService>();
 
     let useCase: UserDeleteSelfUseCase;
 
     const tx = {} as IDatabaseTransactionClient;
-    const now = new Date('2026-03-05T00:00:00.000Z');
-    const configValues: Record<string, unknown> = {
-        'user.deleteSelf.timeoutInMs': 30000,
-    };
     const baseUser: IUser = buildUser('user-cinder', 'cinder@example.com');
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext(baseUser.id);
     const userContext = buildUserContext(baseUser);
 
-    beforeAll(() => {
-        vi.useFakeTimers();
-    });
-
-    afterAll(() => {
-        vi.useRealTimers();
-    });
-
     beforeEach(async () => {
-        vi.setSystemTime(now);
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -130,46 +85,14 @@ describe('UserDeleteSelfUseCase', () => {
             providers: [
                 UserDeleteSelfUseCase,
                 { provide: UserService, useValue: userService },
-                { provide: SessionService, useValue: sessionService },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
-                HelperDateService,
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
-                { provide: UserProfileService, useValue: userProfileService },
                 { provide: UserAuthService, useValue: userAuthService },
-                {
-                    provide: UserMobileNumberService,
-                    useValue: userMobileNumberService,
-                },
-                { provide: MfaService, useValue: mfaService },
-                { provide: UserSocialService, useValue: userSocialService },
-                {
-                    provide: PasswordHistoryService,
-                    useValue: passwordHistoryService,
-                },
+                { provide: UserQueue, useValue: userQueue },
                 { provide: WorkspaceService, useValue: workspaceService },
-                {
-                    provide: WorkspaceMemberService,
-                    useValue: workspaceMemberService,
-                },
-                {
-                    provide: WorkspaceInviteService,
-                    useValue: workspaceInviteService,
-                },
-                {
-                    provide: WorkspaceJoinRequestService,
-                    useValue: workspaceJoinRequestService,
-                },
-                { provide: ProjectService, useValue: projectService },
-                {
-                    provide: ProjectMemberService,
-                    useValue: projectMemberService,
-                },
                 DatabaseUtil,
-                {
-                    provide: ConfigService,
-                    useValue: buildConfigService(configValues),
-                },
+                { provide: ConfigService, useValue: buildConfigService({}) },
             ],
         }).compile();
         useCase = module.get(UserDeleteSelfUseCase);
@@ -178,15 +101,24 @@ describe('UserDeleteSelfUseCase', () => {
     describe('execute', () => {
         const dto: UserDeleteSelfRequestDto = { password: 'plain-password' };
 
-        const entryEffect: IActivityLogCreateManyEffect = {
-            queue: EnumActivityLogQueue.activityLog,
-            name: EnumActivityLogProcess.createMany,
-            data: { rows: [] },
-            priority: EnumQueuePriority.low,
-            idempotencyKey: null,
+        const activityLog: IActivityLogActorPayload = {
+            apiKeyId: 'api-key-one',
+            actorUserId: 'user-cinder',
+            workspaceId: null,
+            requestLog: requestContext.requestLog,
         };
 
-        const revoked: ISessionRef[] = [{ id: 'session-one' }];
+        const deleteSelfEffect: IUserDeleteSelfEffect = {
+            queue: EnumUserQueue.user,
+            name: EnumUserProcess.deleteSelf,
+            data: {
+                userId: 'user-cinder',
+                ownedWorkspaceIds: ['workspace-one'],
+                activityLog,
+            },
+            priority: EnumQueuePriority.high,
+            idempotencyKey: null,
+        };
 
         const check: IUserReauthenticationCheck = {
             isPasswordChecked: true,
@@ -195,25 +127,155 @@ describe('UserDeleteSelfUseCase', () => {
             passkeyChallengeToken: null,
         };
 
-        const photo = {
-            bucket: 'bucket',
-            key: 'photo-profile/user-cinder/current.png',
-            cdnUrl: null,
-            completedUrl: 'https://cdn.example.com/current.png',
-            mime: 'image/png',
-            extension: 'png',
-            access: 'public',
-        } as const;
-
         beforeEach(() => {
-            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
-            userAuthService.assertReauthentication.mockResolvedValue(check);
-            workspaceService.assertOwnedHasNoOtherMembersInTx.mockResolvedValue(
-                []
+            activityLogQueue.toPayload.mockReturnValue(activityLog);
+            userQueue.deleteSelfEffect.mockReturnValue(deleteSelfEffect);
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check,
+                failure: null,
+            });
+            workspaceService.getOwnedForSelfDelete.mockResolvedValue([
+                'workspace-one',
+            ]);
+        });
+
+        it('completes the re-authentication then adds exactly one deleteSelf effect on its transaction and writes nothing else', async () => {
+            const calls: string[] = [];
+            userAuthService.completeReauthenticationInTx.mockImplementation(
+                async () => {
+                    calls.push('complete');
+                }
             );
-            workspaceService.softDeleteOwnedByUserInTx.mockResolvedValue([]);
-            userService.deleteSelfInTx.mockResolvedValue();
-            sessionService.revokeAllByUserInTx.mockResolvedValue(revoked);
+            outboxService.addInTx.mockImplementation(async () => {
+                calls.push('addEffect');
+
+                return 'outbox-id';
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).resolves.toEqual({});
+
+            expect(calls).toEqual(['complete', 'addEffect']);
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                check
+            );
+            expect(activityLogQueue.toPayload).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null
+            );
+            expect(userQueue.deleteSelfEffect).toHaveBeenCalledWith(
+                'user-cinder',
+                ['workspace-one'],
+                activityLog
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(
+                tx,
+                deleteSelfEffect
+            );
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+            expect(userService.deleteSelfInTx).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+        });
+
+        it('opens the transaction with no options', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                dto
+            );
+
+            expect(databaseService.withTransaction).toHaveBeenCalledWith(
+                expect.any(Function)
+            );
+        });
+
+        it('reads the actor id from the auth context', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                { ...authContext, userId: 'actor-other' },
+                userContext,
+                dto
+            );
+
+            expect(workspaceService.getOwnedForSelfDelete).toHaveBeenCalledWith(
+                'actor-other'
+            );
+            expect(userQueue.deleteSelfEffect).toHaveBeenCalledWith(
+                'actor-other',
+                ['workspace-one'],
+                activityLog
+            );
+        });
+
+        it('commits the failed count in a transaction of its own, then throws, and adds no effect', async () => {
+            const refusal = new Error('refused');
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: null,
+                failure: TestUnitReauthenticationPasswordFailure,
+            });
+            userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
+                true
+            );
+            userAuthService.throwFailedReauthentication.mockImplementation(
+                () => {
+                    throw refusal;
+                }
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                TestUnitReauthenticationPasswordFailure
+            );
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledBefore(
+                userAuthService.throwFailedReauthentication
+            );
+            expect(
+                userAuthService.throwFailedReauthentication
+            ).toHaveBeenCalledWith(
+                TestUnitReauthenticationPasswordFailure,
+                true
+            );
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('throws UserDeleteSelfForbiddenException for a superAdmin before the password check', async () => {
@@ -240,320 +302,15 @@ describe('UserDeleteSelfUseCase', () => {
                 superAdmin
             );
             expect(
-                userAuthService.assertReauthentication
+                userAuthService.checkReauthentication
             ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('verifies the password, then cascades the owned workspaces and every membership and adds the entries on one transaction', async () => {
-            const calls: string[] = [];
-            databaseService.withTransaction.mockImplementation(async fn => {
-                calls.push('begin');
-                const value = await fn(tx);
-                calls.push('commit');
-
-                return value as never;
-            });
-            userAuthService.assertReauthentication.mockImplementation(
-                async () => {
-                    calls.push('verifyPassword');
-
-                    return check;
-                }
-            );
-            outboxService.addManyInTx.mockImplementation(async () => {
-                calls.push('addEntries');
-
-                return ['outbox-id'];
-            });
-            userAuthService.completeReauthenticationInTx.mockImplementation(
-                async () => {
-                    calls.push('resetPasswordAttempt');
-                }
-            );
-            workspaceService.assertOwnedHasNoOtherMembersInTx.mockImplementation(
-                async () => {
-                    calls.push('assertNoOtherMembers');
-
-                    return ['workspace-one', 'workspace-two'];
-                }
-            );
-            workspaceService.softDeleteOwnedByUserInTx.mockImplementationOnce(
-                async () => {
-                    calls.push('softDeleteWorkspaces');
-
-                    return ['workspace-one', 'workspace-two'];
-                }
-            );
-            projectService.softDeleteByWorkspaceInTx.mockImplementation(
-                async (_tx, workspaceId) => {
-                    calls.push(`projects:${workspaceId}`);
-                }
-            );
-            workspaceInviteService.revokePendingByWorkspaceInTx.mockImplementation(
-                async (_tx, workspaceId) => {
-                    calls.push(`invites:${workspaceId}`);
-                }
-            );
-            workspaceJoinRequestService.cancelPendingByWorkspaceInTx.mockImplementation(
-                async (_tx, workspaceId) => {
-                    calls.push(`joinRequests:${workspaceId}`);
-                }
-            );
-            workspaceJoinRequestService.cancelPendingByRequesterInTx.mockImplementation(
-                async () => {
-                    calls.push('cancelOwnJoinRequests');
-                }
-            );
-            workspaceInviteService.revokeAllPendingByEmailInTx.mockImplementation(
-                async () => {
-                    calls.push('revokeOwnInvites');
-                }
-            );
-            workspaceMemberService.removeByUserInTx.mockImplementation(
-                async () => {
-                    calls.push('removeMemberships');
-
-                    return 2;
-                }
-            );
-            projectMemberService.removeByUserInTx.mockImplementation(
-                async () => {
-                    calls.push('removeProjectMemberships');
-
-                    return 1;
-                }
-            );
-            userMobileNumberService.removeByUserInTx.mockImplementation(
-                async () => {
-                    calls.push('removeMobileNumbers');
-                }
-            );
-            userSocialService.removeByUserInTx.mockImplementation(async () => {
-                calls.push('removeSocials');
-
-                return 1;
-            });
-            mfaService.deleteByUserInTx.mockImplementation(async () => {
-                calls.push('deleteMfa');
-            });
-            sessionService.revokeAllByUserInTx.mockImplementation(async () => {
-                calls.push('revokeSessions');
-
-                return revoked;
-            });
-            userService.deleteSelfInTx.mockImplementation(async () => {
-                calls.push('deleteUser');
-            });
-            userProfileService.deleteOwnedPhotoInTx.mockImplementation(
-                async () => {
-                    calls.push('deletePhotoRow');
-                }
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    dto
-                )
-            ).resolves.toEqual({});
-
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                baseUser,
-                {
-                    action: EnumUserReauthenticationAction.deleteSelf,
-                    password: 'plain-password',
-                    method: null,
-                    code: null,
-                    backupCode: null,
-                    passkeyChallengeToken: null,
-                    passkeyResponse: null,
-                    otp: null,
-                }
-            );
-            expect(
-                workspaceService.softDeleteOwnedByUserInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                ['workspace-one', 'workspace-two'],
-                'user-cinder',
-                now
-            );
-            expect(
-                projectService.softDeleteByWorkspaceInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-one', now, 'user-cinder');
-            expect(
-                projectService.softDeleteByWorkspaceInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-two', now, 'user-cinder');
-            expect(
-                workspaceMemberService.removeByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-cinder');
-            expect(projectMemberService.removeByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cinder'
-            );
-            expect(
-                userMobileNumberService.removeByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-cinder');
-            expect(userSocialService.removeByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cinder'
-            );
-            expect(mfaService.deleteByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cinder'
-            );
-            expect(sessionService.revokeAllByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cinder',
-                'user-cinder',
-                now
-            );
-            expect(
-                workspaceInviteService.revokeAllPendingByEmailInTx
-            ).toHaveBeenCalledWith(tx, 'cinder@example.com');
-            expect(userService.deleteSelfInTx).toHaveBeenCalledWith(
-                tx,
-                baseUser,
-                now
-            );
-            expect(calls).toEqual([
-                'verifyPassword',
-                'begin',
-                'resetPasswordAttempt',
-                'assertNoOtherMembers',
-                'softDeleteWorkspaces',
-                'projects:workspace-one',
-                'invites:workspace-one',
-                'joinRequests:workspace-one',
-                'projects:workspace-two',
-                'invites:workspace-two',
-                'joinRequests:workspace-two',
-                'cancelOwnJoinRequests',
-                'revokeOwnInvites',
-                'removeMemberships',
-                'removeProjectMemberships',
-                'removeMobileNumbers',
-                'removeSocials',
-                'deleteMfa',
-                'revokeSessions',
-                'deleteUser',
-                'deletePhotoRow',
-                'addEntries',
-                'commit',
-            ]);
-            expect(
-                userProfileService.deleteOwnedPhotoInTx
-            ).toHaveBeenCalledWith(tx, 'user-cinder', null);
-            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
-                1,
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null,
-                {
-                    action: EnumActivityLogAction.userRevokeAllSessions,
-                    userId: 'user-cinder',
-                    createdBy: 'user-cinder',
-                }
-            );
-            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
-                2,
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null,
-                { action: EnumActivityLogAction.userDeleteSelf }
-            );
-            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                entryEffect,
-                entryEffect,
-                entryEffect,
-                entryEffect,
-            ]);
-        });
-
-        it('completes the re-authentication first on the flow transaction', async () => {
-            await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                userContext,
-                dto
-            );
-
-            expect(
-                userAuthService.completeReauthenticationInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                requestContext,
-                apiKeyContext,
-                authContext,
-                check
-            );
-            expect(
-                userAuthService.completeReauthenticationInTx
-            ).toHaveBeenCalledBefore(
-                workspaceService.assertOwnedHasNoOtherMembersInTx
-            );
-        });
-
-        it('completes nothing outside the transaction when the main step fails after a correct proof', async () => {
-            databaseService.withTransaction.mockRejectedValue(
-                buildPrismaKnownRequestError('P2034')
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    dto
-                )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-            });
-
-            expect(
-                userAuthService.completeReauthenticationInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('reads the actor id from the context actorUserId', async () => {
-            await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                { ...authContext, userId: 'actor-other' },
-                userContext,
-                dto
-            );
-
-            expect(
-                workspaceService.assertOwnedHasNoOtherMembersInTx
-            ).toHaveBeenCalledWith(tx, 'actor-other');
-            expect(
-                workspaceMemberService.removeByUserInTx
-            ).toHaveBeenCalledWith(tx, 'actor-other');
-            expect(sessionService.revokeAllByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'actor-other',
-                'actor-other',
-                now
-            );
-        });
-
-        it('throws WorkspaceOwnerTransferRequiredException and writes nothing when an owned workspace has another member', async () => {
+        it('throws WorkspaceOwnerTransferRequiredException and opens no transaction when an owned workspace has another member', async () => {
             const failure = new WorkspaceOwnerTransferRequiredException();
-            workspaceService.assertOwnedHasNoOtherMembersInTx.mockRejectedValue(
-                failure
-            );
+            workspaceService.getOwnedForSelfDelete.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -565,175 +322,8 @@ describe('UserDeleteSelfUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(
-                workspaceService.softDeleteOwnedByUserInTx
-            ).not.toHaveBeenCalled();
-            expect(userService.deleteSelfInTx).not.toHaveBeenCalled();
-            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-        });
-
-        it('cascades a workspace with no other member', async () => {
-            workspaceService.softDeleteOwnedByUserInTx.mockResolvedValue([
-                'workspace-one',
-            ]);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    dto
-                )
-            ).resolves.toEqual({});
-
-            expect(
-                workspaceService.assertOwnedHasNoOtherMembersInTx
-            ).toHaveBeenCalledWith(tx, 'user-cinder');
-            expect(
-                projectService.softDeleteByWorkspaceInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-one', now, 'user-cinder');
-            expect(
-                workspaceInviteService.revokePendingByWorkspaceInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-one');
-            expect(
-                workspaceJoinRequestService.cancelPendingByWorkspaceInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-one');
-        });
-
-        it("cancels the user's own pending join requests on the same tx", async () => {
-            await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                userContext,
-                dto
-            );
-
-            expect(
-                workspaceJoinRequestService.cancelPendingByRequesterInTx
-            ).toHaveBeenCalledWith(tx, 'user-cinder');
-        });
-
-        it("revokes the pending invites to the user's email on the same tx before the soft delete", async () => {
-            await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                userContext,
-                dto
-            );
-
-            expect(
-                workspaceInviteService.revokeAllPendingByEmailInTx
-            ).toHaveBeenCalledWith(tx, 'cinder@example.com');
-            expect(
-                workspaceInviteService.revokeAllPendingByEmailInTx
-            ).toHaveBeenCalledBefore(userService.deleteSelfInTx);
-        });
-
-        it('opens the transaction with user.deleteSelf.timeoutInMs', async () => {
-            await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                userContext,
-                dto
-            );
-
-            expect(databaseService.withTransaction).toHaveBeenCalledWith(
-                expect.any(Function),
-                { timeout: 30000 }
-            );
-        });
-
-        it('answers UserNotFoundException on a write conflict', async () => {
-            const conflict = buildPrismaKnownRequestError('P2034');
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    dto
-                )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-            });
-        });
-
-        it('adds one workspaceDeleted entry per deleted workspace after the user entries on the same tx', async () => {
-            workspaceService.softDeleteOwnedByUserInTx.mockResolvedValueOnce([
-                'workspace-one',
-                'workspace-two',
-            ]);
-
-            await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                userContext,
-                dto
-            );
-
-            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null,
-                {
-                    action: EnumActivityLogAction.workspaceDeleted,
-                    userId: 'user-cinder',
-                    createdBy: 'user-cinder',
-                    workspaceId: 'workspace-one',
-                }
-            );
-            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null,
-                {
-                    action: EnumActivityLogAction.workspaceDeleted,
-                    userId: 'user-cinder',
-                    createdBy: 'user-cinder',
-                    workspaceId: 'workspace-two',
-                }
-            );
-            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(4);
-            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
-            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                entryEffect,
-                entryEffect,
-                entryEffect,
-                entryEffect,
-            ]);
-        });
-
-        it('cascades no workspace when the user owns none', async () => {
-            await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                userContext,
-                dto
-            );
-
-            expect(
-                projectService.softDeleteByWorkspaceInTx
-            ).not.toHaveBeenCalled();
-            expect(
-                workspaceInviteService.revokePendingByWorkspaceInTx
-            ).not.toHaveBeenCalled();
-            expect(
-                workspaceJoinRequestService.cancelPendingByWorkspaceInTx
-            ).not.toHaveBeenCalled();
-            expect(
-                workspaceMemberService.removeByUserInTx
-            ).toHaveBeenCalledTimes(1);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('passes the MFA and email-code fields of the request on', async () => {
@@ -753,9 +343,7 @@ describe('UserDeleteSelfUseCase', () => {
                 }
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 baseUser,
                 {
                     action: EnumUserReauthenticationAction.deleteSelf,
@@ -781,17 +369,15 @@ describe('UserDeleteSelfUseCase', () => {
                 )
             ).resolves.toEqual({});
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 baseUser,
                 expect.objectContaining({ password: null })
             );
-            expect(userService.deleteSelfInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
         });
 
-        it('throws UserPasswordNotMatchException and deletes nothing when the password is absent', async () => {
-            userAuthService.assertReauthentication.mockRejectedValue(
+        it('throws UserPasswordNotMatchException and queues nothing when the password is absent', async () => {
+            userAuthService.checkReauthentication.mockRejectedValue(
                 new UserPasswordNotMatchException()
             );
 
@@ -809,12 +395,12 @@ describe('UserDeleteSelfUseCase', () => {
             });
 
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(userService.deleteSelfInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('rejects an expired password after a match', async () => {
             const failure = new UserPasswordExpiredException();
-            userAuthService.assertReauthentication.mockRejectedValue(failure);
+            userAuthService.checkReauthentication.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -827,38 +413,64 @@ describe('UserDeleteSelfUseCase', () => {
             ).rejects.toBe(failure);
 
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(userService.deleteSelfInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('deletes the password history on the same tx', async () => {
-            await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                userContext,
-                dto
+        it('completes nothing outside the transaction when the main step fails after a correct proof', async () => {
+            databaseService.withTransaction.mockRejectedValue(
+                buildPrismaKnownRequestError('P2034')
             );
 
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+            });
+
             expect(
-                passwordHistoryService.removeByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-cinder');
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
         });
 
-        it('hands the photo held before the write to the profile domain on the same tx', async () => {
-            const photoUser: IUser = { ...baseUser, photo };
-            userService.deleteSelfInTx.mockResolvedValue();
-
-            await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                buildUserContext(photoUser),
-                dto
+        it('answers UserNotFoundException on a write conflict', async () => {
+            databaseService.withTransaction.mockRejectedValue(
+                buildPrismaKnownRequestError('P2034')
             );
 
-            expect(
-                userProfileService.deleteOwnedPhotoInTx
-            ).toHaveBeenCalledWith(tx, 'user-cinder', photo);
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+            });
+        });
+
+        it('rethrows a typed exception the transaction throws unchanged', async () => {
+            const failure = new UserDeleteSelfForbiddenException();
+            databaseService.withTransaction.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toBe(failure);
         });
 
         it('wraps an unknown error in AppUnknownException', async () => {
@@ -877,9 +489,6 @@ describe('UserDeleteSelfUseCase', () => {
                 constructor: AppUnknownException,
                 rawError: cause,
             });
-            expect(
-                userProfileService.deleteOwnedPhotoInTx
-            ).not.toHaveBeenCalled();
         });
     });
 });

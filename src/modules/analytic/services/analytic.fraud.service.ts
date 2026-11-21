@@ -558,19 +558,18 @@ export class AnalyticFraudService {
     }
 
     async riskScore(userId: string): Promise<IAnalyticFraudRiskScoreUser> {
-        // Sequential by design: gate before the work it guards
-        const exists =
-            await this.analyticFraudRepository.existsUserById(userId);
+        const [{ item, computedAt }, exists] = await Promise.all([
+            this.analyticSnapshotService.getOneByKey(
+                EnumAnalyticSnapshotSignal.riskScore,
+                userId,
+                AnalyticRiskScoreSnapshotDataSchema
+            ),
+            this.analyticFraudRepository.existsUserById(userId),
+        ]);
         if (!exists) {
             throw new UserNotFoundException();
         }
 
-        const { item, computedAt } =
-            await this.analyticSnapshotService.getOneByKey(
-                EnumAnalyticSnapshotSignal.riskScore,
-                userId,
-                AnalyticRiskScoreSnapshotDataSchema
-            );
         if (item !== null) {
             return { ...item, computedAt };
         }

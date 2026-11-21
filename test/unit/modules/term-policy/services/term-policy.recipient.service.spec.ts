@@ -16,7 +16,6 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { INotificationEmailPublishTermPolicyEffect } from '@modules/notification/interfaces/notification.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
@@ -27,7 +26,6 @@ import { TermPolicyRecipientService } from '@modules/term-policy/services/term-p
 describe('TermPolicyRecipientService', () => {
     const termPolicyRecipientRepository: MockProxy<TermPolicyRecipientRepository> =
         mock<TermPolicyRecipientRepository>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const notificationEmailQueue: MockProxy<NotificationEmailQueue> =
         mock<NotificationEmailQueue>();
@@ -64,7 +62,6 @@ describe('TermPolicyRecipientService', () => {
     });
 
     beforeEach(async () => {
-        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
         notificationEmailQueue.emailPublishTermPolicyEffect.mockImplementation(
             (effectData, batchId, proceedBy, recipients) => ({
                 ...batchEffect,
@@ -83,7 +80,6 @@ describe('TermPolicyRecipientService', () => {
                     provide: TermPolicyRecipientRepository,
                     useValue: termPolicyRecipientRepository,
                 },
-                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
@@ -321,9 +317,10 @@ describe('TermPolicyRecipientService', () => {
         });
     });
 
-    describe('sendPendingBatches', () => {
+    describe('sendPendingBatchesInTx', () => {
         it('re-adds each pending batch in one add with recipients from its markers, the page users, and the off-page users', async () => {
-            const batches = await service.sendPendingBatches(
+            const batches = await service.sendPendingBatchesInTx(
+                tx,
                 'admin-id',
                 data,
                 {
@@ -368,7 +365,6 @@ describe('TermPolicyRecipientService', () => {
                     username: 'name-u4',
                 },
             ]);
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 expect.objectContaining({ idempotencyKey: 'key-B1-1' }),
@@ -378,7 +374,8 @@ describe('TermPolicyRecipientService', () => {
         });
 
         it('omits a pending marker whose user no longer resolves, adding the batch with the rest', async () => {
-            await service.sendPendingBatches(
+            await service.sendPendingBatchesInTx(
+                tx,
                 'admin-id',
                 data,
                 { users: [u1], freshUsers: [], pendingBatchIds: ['B'] },
@@ -400,7 +397,8 @@ describe('TermPolicyRecipientService', () => {
         });
 
         it('adds a pending batch with no recipients when none of its markers resolves a user', async () => {
-            const batches = await service.sendPendingBatches(
+            const batches = await service.sendPendingBatchesInTx(
+                tx,
                 'admin-id',
                 data,
                 { users: [u1], freshUsers: [], pendingBatchIds: ['B'] },
@@ -416,13 +414,13 @@ describe('TermPolicyRecipientService', () => {
             expect(
                 notificationEmailQueue.emailPublishTermPolicyEffect
             ).toHaveBeenCalledWith(data, 'B', 'admin-id', []);
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
             expect(batches).toBe(1);
         });
 
         it('returns 0 and adds nothing for a page with no pending batch', async () => {
-            const batches = await service.sendPendingBatches(
+            const batches = await service.sendPendingBatchesInTx(
+                tx,
                 'admin-id',
                 data,
                 { ...emptyPage, users: [u1, u2] },
@@ -430,7 +428,6 @@ describe('TermPolicyRecipientService', () => {
                 []
             );
 
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
             expect(batches).toBe(0);
         });

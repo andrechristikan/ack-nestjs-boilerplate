@@ -19,6 +19,7 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
+import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyUpdateByAdminUseCase } from '@modules/api-key/use-cases/api-key.update-by-admin.use-case';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
@@ -103,6 +104,45 @@ describe('ApiKeyUpdateByAdminUseCase', () => {
     describe('execute', () => {
         const updated: ApiKey = { ...apiKey, name: 'Renamed' };
 
+        beforeEach(() => {
+            apiKeyService.getOneById.mockResolvedValue(apiKey);
+        });
+
+        it('throws ApiKeyNotFoundException from getOneById and opens no transaction', async () => {
+            const failure = new ApiKeyNotFoundException();
+            apiKeyService.getOneById.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id,
+                    { name: 'Renamed' }
+                )
+            ).rejects.toBe(failure);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('throws ApiKeyInactiveException from assertActive and opens no transaction', async () => {
+            const failure = new ApiKeyInactiveException();
+            apiKeyService.assertActive.mockImplementation(() => {
+                throw failure;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id,
+                    { name: 'Renamed' }
+                )
+            ).rejects.toBe(failure);
+            expect(apiKeyService.assertActive).toHaveBeenCalledWith(apiKey);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
         it('renames the key on the outbox transaction and wraps the result', async () => {
             apiKeyService.updateByAdminInTx.mockResolvedValue(updated);
 
@@ -117,9 +157,10 @@ describe('ApiKeyUpdateByAdminUseCase', () => {
             );
 
             expect(result).toEqual({ data: updated });
+            expect(apiKeyService.getOneById).toHaveBeenCalledWith(apiKey.id);
             expect(apiKeyService.updateByAdminInTx).toHaveBeenCalledWith(
                 tx,
-                apiKey.id,
+                apiKey,
                 'Renamed'
             );
         });
@@ -141,7 +182,7 @@ describe('ApiKeyUpdateByAdminUseCase', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminApiKeyUpdate,
+                    action: EnumActivityLogAction.adminApiKeyUpdated,
                     metadata: { ...metadata, apiKeyName: 'Renamed' },
                 }
             );

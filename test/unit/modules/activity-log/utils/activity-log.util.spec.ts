@@ -42,13 +42,13 @@ describe('ActivityLogUtil', () => {
             const metadata = { targetUserId: 'user-1' };
 
             const result = util.getDescription(
-                EnumActivityLogAction.userLoginCredential,
+                EnumActivityLogAction.userLoggedInWithCredential,
                 metadata
             );
 
             expect(result).toBe('User logged in');
             expect(messageService.setMessage).toHaveBeenCalledWith(
-                `activityLog.${EnumActivityLogAction.userLoginCredential}`,
+                `activityLog.${EnumActivityLogAction.userLoggedInWithCredential}`,
                 { properties: metadata }
             );
         });
@@ -57,13 +57,13 @@ describe('ActivityLogUtil', () => {
             messageService.setMessage.mockReturnValue('User logged out');
 
             const result = util.getDescription(
-                EnumActivityLogAction.userLogout,
+                EnumActivityLogAction.userLoggedOut,
                 null
             );
 
             expect(result).toBe('User logged out');
             expect(messageService.setMessage).toHaveBeenCalledWith(
-                `activityLog.${EnumActivityLogAction.userLogout}`,
+                `activityLog.${EnumActivityLogAction.userLoggedOut}`,
                 {}
             );
         });
@@ -97,14 +97,14 @@ describe('ActivityLogUtil', () => {
             const result = util.buildCreateManyUserData(
                 'user-1',
                 'workspace-1',
-                EnumActivityLogAction.userLoginCredential,
+                EnumActivityLogAction.userLoggedInWithCredential,
                 requestLog,
                 metadata
             );
 
             expect(result).toEqual({
                 workspaceId: 'workspace-1',
-                action: EnumActivityLogAction.userLoginCredential,
+                action: EnumActivityLogAction.userLoggedInWithCredential,
                 description: 'User logged in',
                 ipAddress: '127.0.0.1',
                 userAgent,
@@ -133,14 +133,14 @@ describe('ActivityLogUtil', () => {
             const result = util.buildCreateManyUserData(
                 'user-1',
                 null,
-                EnumActivityLogAction.userLogout,
+                EnumActivityLogAction.userLoggedOut,
                 requestLog,
                 null
             );
 
             expect(result).toEqual({
                 workspaceId: null,
-                action: EnumActivityLogAction.userLogout,
+                action: EnumActivityLogAction.userLoggedOut,
                 description: 'User logged out',
                 ipAddress: null,
                 userAgent,

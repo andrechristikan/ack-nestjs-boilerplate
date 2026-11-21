@@ -6,6 +6,11 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumRoleType } from '@generated/prisma-client/client';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
 import {
@@ -19,6 +24,7 @@ import { RoleService } from '@modules/role/services/role.service';
 import { UserService } from '@modules/user/services/user.service';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import type { IRole } from '@modules/role/interfaces/role.interface';
+import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type { ISession } from '@modules/session/interfaces/session.interface';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -28,6 +34,8 @@ describe('SessionRevokeByAdminUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const userService: MockProxy<UserService> = mock<UserService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const tx = {} as IDatabaseTransactionClient;
     const revokedAt = new Date('2026-01-05T00:00:00.000Z');
     const userRole: IRole = {
         id: 'role-user',
@@ -110,12 +118,17 @@ describe('SessionRevokeByAdminUseCase', () => {
     });
 
     beforeEach(async () => {
+        databaseService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 SessionRevokeByAdminUseCase,
                 { provide: SessionService, useValue: sessionService },
                 { provide: RoleService, useValue: roleService },
                 { provide: UserService, useValue: userService },
+                { provide: DatabaseService, useValue: databaseService },
+                DatabaseUtil,
                 HelperDateService,
                 {
                     provide: ConfigService,
@@ -129,7 +142,7 @@ describe('SessionRevokeByAdminUseCase', () => {
     describe('execute', () => {
         it('checks rank, then revokes as the admin passing the request context', async () => {
             userService.getRoleById.mockResolvedValue(userRole);
-            sessionService.revokeByAdmin.mockResolvedValue(session);
+            sessionService.revokeByAdminInTx.mockResolvedValue(session);
 
             const result = await useCase.execute(
                 requestContext,
@@ -146,7 +159,8 @@ describe('SessionRevokeByAdminUseCase', () => {
                 EnumRoleType.admin,
                 EnumRoleType.user
             );
-            expect(sessionService.revokeByAdmin).toHaveBeenCalledWith(
+            expect(sessionService.revokeByAdminInTx).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -173,13 +187,14 @@ describe('SessionRevokeByAdminUseCase', () => {
             );
 
             await expect(rejection).rejects.toBe(rankForbidden);
-            expect(sessionService.revokeByAdmin).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(sessionService.revokeByAdminInTx).not.toHaveBeenCalled();
         });
 
         it('rethrows the domain exception', async () => {
             userService.getRoleById.mockResolvedValue(userRole);
             const failure = new SessionNotFoundException();
-            sessionService.revokeByAdmin.mockRejectedValue(failure);
+            sessionService.revokeByAdminInTx.mockRejectedValue(failure);
 
             const rejection = useCase.execute(
                 requestContext,
@@ -191,6 +206,49 @@ describe('SessionRevokeByAdminUseCase', () => {
             );
 
             await expect(rejection).rejects.toBe(failure);
+        });
+
+        it('answers SessionNotFoundException on a write conflict', async () => {
+            userService.getRoleById.mockResolvedValue(userRole);
+            databaseService.withTransaction.mockRejectedValue(
+                buildPrismaKnownRequestError('P2034')
+            );
+
+            const rejection = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'user-1',
+                'session-1'
+            );
+
+            await expect(rejection).rejects.toMatchObject({
+                constructor: SessionNotFoundException,
+                module: 'session',
+                statusCode: EnumSessionStatusCodeError.notFound,
+            });
+        });
+
+        it('wraps any other failure in the unknown exception', async () => {
+            userService.getRoleById.mockResolvedValue(userRole);
+            const failure = new Error('database exploded');
+            databaseService.withTransaction.mockRejectedValue(failure);
+
+            const rejection = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'user-1',
+                'session-1'
+            );
+
+            await expect(rejection).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: failure,
+            });
         });
     });
 });

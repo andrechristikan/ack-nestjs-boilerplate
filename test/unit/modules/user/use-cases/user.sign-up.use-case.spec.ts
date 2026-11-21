@@ -1,5 +1,7 @@
+import { setImmediate } from 'node:timers/promises';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -10,6 +12,7 @@ import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.sta
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     EnumActivityLogAction,
@@ -50,6 +53,8 @@ import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-
 import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRequiredNotPublishedException } from '@modules/term-policy/exceptions/term-policy.required-not-published.exception';
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
+import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
 import { UserService } from '@modules/user/services/user.service';
 import type { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
@@ -463,7 +468,7 @@ describe('UserSignUpUseCase', () => {
             ).toHaveBeenCalledBefore(outboxService.addManyInTx);
         });
 
-        it('forwards the name and reads the invite before the role when a token is present', async () => {
+        it('forwards the name and the invite token when a token is present', async () => {
             workspaceInviteService.getSignUpInvite.mockResolvedValue(invite);
 
             await useCase.execute(requestContext, apiKeyContext, {
@@ -486,7 +491,7 @@ describe('UserSignUpUseCase', () => {
             );
         });
 
-        it('throws the disabled exception before any read when invitations are closed', async () => {
+        it('throws the disabled exception when invitations are closed', async () => {
             workspaceInviteService.getSignUpInvite.mockRejectedValue(
                 new FeatureFlagDisabledException()
             );
@@ -500,10 +505,9 @@ describe('UserSignUpUseCase', () => {
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
             });
-            expect(roleService.getByName).not.toHaveBeenCalled();
         });
 
-        it('throws the invite exception before the role read when the invite does not resolve', async () => {
+        it('throws the invite exception when the invite does not resolve', async () => {
             workspaceInviteService.getSignUpInvite.mockRejectedValue(
                 new WorkspaceInviteInvalidException()
             );
@@ -517,7 +521,49 @@ describe('UserSignUpUseCase', () => {
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
             });
+        });
+
+        it('calls the role, email, username, country, password, and term policy checks while the invite read is still pending', async () => {
+            const inviteRead = buildDeferred<null>();
+            workspaceInviteService.getSignUpInvite.mockReturnValue(
+                inviteRead.promise
+            );
+
+            const running = useCase.execute(requestContext, apiKeyContext, dto);
+
+            expect(roleService.getByName).toHaveBeenCalledWith('user');
+            expect(userService.existsByEmail).toHaveBeenCalledWith(
+                'bramble@example.com'
+            );
+            expect(userService.checkUsername).toHaveBeenCalledWith(
+                'bramble2fox'
+            );
+            expect(countryService.getOne).toHaveBeenCalledWith(
+                'country-bramble'
+            );
+            expect(authPasswordService.assertAllowed).toHaveBeenCalled();
+            expect(
+                termPolicyAcceptanceService.assertRequiredPublished
+            ).toHaveBeenCalled();
+
+            inviteRead.resolve(null);
+            await running;
+        });
+
+        it('answers AwsSesNotConfiguredException before any read when SES is unset', async () => {
+            userService.assertEmailDeliverable.mockImplementation(() => {
+                throw new AwsSesNotConfiguredException();
+            });
+
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
+                module: 'aws',
+                statusCode: EnumAwsStatusCodeError.sesNotConfigured,
+            });
             expect(roleService.getByName).not.toHaveBeenCalled();
+            expect(userService.existsByEmail).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('answers the role gate before the email and username gates', async () => {
@@ -592,6 +638,27 @@ describe('UserSignUpUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
+        it('asserts the required term policies are published before it prepares the user and opens no transaction when one is not', async () => {
+            const failure = new TermPolicyRequiredNotPublishedException();
+            termPolicyAcceptanceService.assertRequiredPublished.mockRejectedValue(
+                failure
+            );
+
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toBe(failure);
+            expect(
+                termPolicyAcceptanceService.assertRequiredPublished
+            ).toHaveBeenCalledWith([
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
+            ]);
+            expect(
+                userRegistrationService.prepareSignUp
+            ).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
         it('adds no entry or effect outside the transaction when the commit throws', async () => {
             const failure = new UserEmailExistException();
             databaseService.withTransaction.mockRejectedValue(failure);
@@ -614,12 +681,6 @@ describe('UserSignUpUseCase', () => {
                 )
             ).resolves.toBeUndefined();
 
-            expect(
-                termPolicyAcceptanceService.assertRequiredPublishedInTx
-            ).toHaveBeenCalledWith(tx, [
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
-            ]);
             expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
                 tx,
                 [inviteInput]
@@ -641,9 +702,6 @@ describe('UserSignUpUseCase', () => {
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             ).toHaveBeenCalledWith(tx, [acceptanceEntry]);
 
-            expect(
-                termPolicyAcceptanceService.assertRequiredPublishedInTx
-            ).toHaveBeenCalledBefore(userRegistrationService.createInTx);
             expect(userRegistrationService.createInTx).toHaveBeenCalledBefore(
                 workspaceService.createOwnedForUsersInTx
             );
@@ -653,7 +711,9 @@ describe('UserSignUpUseCase', () => {
             expect(
                 workspaceInviteService.acceptOnSignUpInTx
             ).toHaveBeenCalledBefore(projectMemberService.createInTx);
-            expect(projectMemberService.createInTx).toHaveBeenCalledBefore(
+            expect(
+                workspaceInviteService.acceptOnSignUpInTx
+            ).toHaveBeenCalledBefore(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             );
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
@@ -691,7 +751,7 @@ describe('UserSignUpUseCase', () => {
             );
         });
 
-        it('asserts the published term policy before createInTx and accepts it last', async () => {
+        it('accepts the published term policy after the owned workspace is created', async () => {
             await useCase['createSignUpUser'](
                 requestContext,
                 apiKeyContext,
@@ -700,13 +760,45 @@ describe('UserSignUpUseCase', () => {
             );
 
             expect(
-                termPolicyAcceptanceService.assertRequiredPublishedInTx
-            ).toHaveBeenCalledBefore(userRegistrationService.createInTx);
-            expect(
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenCalledBefore(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             );
+        });
+
+        it('accepts the term policy alone, then creates the project membership, and adds no effect when it fails', async () => {
+            const acceptance = buildDeferred<void>();
+            const membership = buildDeferred<never>();
+            termPolicyAcceptanceService.acceptPublishedManyInTx.mockReturnValue(
+                acceptance.promise
+            );
+            projectMemberService.createInTx.mockReturnValue(membership.promise);
+
+            const running = useCase['createSignUpUser'](
+                requestContext,
+                apiKeyContext,
+                inviteInput,
+                emailVerification
+            );
+            await setImmediate();
+
+            expect(
+                termPolicyAcceptanceService.acceptPublishedManyInTx
+            ).toHaveBeenCalledWith(tx, [acceptanceEntry]);
+            expect(projectMemberService.createInTx).not.toHaveBeenCalled();
+
+            acceptance.resolve();
+            await setImmediate();
+
+            expect(projectMemberService.createInTx).toHaveBeenCalledTimes(1);
+
+            membership.reject(new Error('membership failed'));
+
+            await expect(running).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+            });
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('creates the project membership only when the invite carries a project and role', async () => {
@@ -741,26 +833,6 @@ describe('UserSignUpUseCase', () => {
             expect(
                 workspaceInviteService.acceptOnSignUpInTx
             ).not.toHaveBeenCalled();
-            expect(
-                termPolicyAcceptanceService.assertRequiredPublishedInTx
-            ).toHaveBeenCalledTimes(1);
-        });
-
-        it('inserts nothing when a required term policy is not published', async () => {
-            const failure = new TermPolicyRequiredNotPublishedException();
-            termPolicyAcceptanceService.assertRequiredPublishedInTx.mockRejectedValue(
-                failure
-            );
-
-            await expect(
-                useCase['createSignUpUser'](
-                    requestContext,
-                    apiKeyContext,
-                    input,
-                    emailVerification
-                )
-            ).rejects.toBe(failure);
-            expect(userRegistrationService.createInTx).not.toHaveBeenCalled();
         });
 
         it('retries with the next slug candidate after a slug collision and commits', async () => {
@@ -825,6 +897,44 @@ describe('UserSignUpUseCase', () => {
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.emailExist,
+            });
+        });
+
+        it('maps a write conflict on the invite path to WorkspaceInviteAlreadyProcessedException', async () => {
+            databaseService.withTransaction.mockRejectedValue(
+                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
+            );
+
+            await expect(
+                useCase['createSignUpUser'](
+                    requestContext,
+                    apiKeyContext,
+                    inviteInput,
+                    emailVerification
+                )
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
+            });
+        });
+
+        it('wraps a write conflict on the personal path in the unknown exception', async () => {
+            const conflict = buildPrismaKnownRequestError(
+                DatabaseWriteConflictCode
+            );
+            databaseService.withTransaction.mockRejectedValue(conflict);
+
+            await expect(
+                useCase['createSignUpUser'](
+                    requestContext,
+                    apiKeyContext,
+                    input,
+                    emailVerification
+                )
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: conflict,
             });
         });
 

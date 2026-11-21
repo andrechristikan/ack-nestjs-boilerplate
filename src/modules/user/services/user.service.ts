@@ -1,4 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
+import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
@@ -77,6 +79,7 @@ export class UserService {
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly roleService: RoleService,
+        private readonly awsSESService: AwsSESService,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperStringService: HelperStringService,
@@ -90,7 +93,7 @@ export class UserService {
         )!;
     }
 
-    private createDeletedIdentity({ id }: IUser): IUserDeletedIdentity {
+    private createDeletedIdentity(id: string): IUserDeletedIdentity {
         const deletedEmail = this.helperStringService.fillPattern(
             this.deleteSelfEmailPattern,
             { id }
@@ -112,6 +115,13 @@ export class UserService {
 
     private gatesPasswordExpiryOn(loginWith: EnumUserLoginWith): boolean {
         return loginWith === EnumUserLoginWith.credential;
+    }
+
+    assertEmailDeliverable(): void {
+        const isSesInitialized = this.awsSESService.isInitialized();
+        if (!isSesInitialized) {
+            throw new AwsSesNotConfiguredException();
+        }
     }
 
     async validateUserGuard(
@@ -174,23 +184,28 @@ export class UserService {
         inputs: IUserCreateWithWorkspaceInput[]
     ): Promise<IUser[]> {
         const users = await this.userRepository.createManyInTx(tx, inputs);
-        const rows: IUser[] = [];
-
-        for (const [index, input] of inputs.entries()) {
-            if (input.verification) {
-                await this.userVerificationService.createInTx(
-                    tx,
-                    input.userId,
-                    input.verification,
-                    input.createdBy
-                );
+        const writes = inputs.flatMap(input => {
+            const mfa = this.mfaService.createInTx(
+                tx,
+                input.userId,
+                input.createdBy
+            );
+            if (!input.verification) {
+                return [mfa];
             }
 
-            await this.mfaService.createInTx(tx, input.userId, input.createdBy);
-            rows.push(users[index]!);
-        }
+            const verification = this.userVerificationService.createInTx(
+                tx,
+                input.userId,
+                input.verification,
+                input.createdBy
+            );
 
-        return rows;
+            return [verification, mfa];
+        });
+        await Promise.all(writes);
+
+        return users;
     }
 
     async setLastWorkspaceInTx(
@@ -394,6 +409,15 @@ export class UserService {
         }
     }
 
+    assertStatusChangeable(
+        { status: currentStatus }: IUser,
+        status: EnumUserStatus
+    ): void {
+        if (currentStatus === status) {
+            throw new UserStatusInvalidException();
+        }
+    }
+
     /** Writes the status guarded on the target's current one; activating a user resets its password and MFA attempt counters and clears both locks. */
     async updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
@@ -405,10 +429,6 @@ export class UserService {
         }: IUser,
         status: EnumUserStatus
     ): Promise<User> {
-        if (currentStatus === status) {
-            throw new UserStatusInvalidException();
-        }
-
         const row = await this.userRepository.updateStatusByAdminInTx(
             tx,
             id,
@@ -459,17 +479,22 @@ export class UserService {
 
     async deleteSelfInTx(
         tx: IDatabaseTransactionClient,
-        user: IUser,
+        userId: string,
         deletedAt: Date
     ): Promise<void> {
-        const identity = this.createDeletedIdentity(user);
+        const identity = this.createDeletedIdentity(userId);
 
         await this.userRepository.deleteSelfInTx(
             tx,
-            user.id,
+            userId,
             identity,
             deletedAt
         );
+    }
+
+    /** Returns the live row of any status, or `null` when the user is deleted or missing. */
+    async getOneLive(userId: string): Promise<User | null> {
+        return this.userRepository.findOneById(userId);
     }
 
     revokesSessionsOn(status: EnumUserStatus): boolean {
@@ -480,7 +505,7 @@ export class UserService {
         status: EnumUserStatus
     ): EnumActivityLogAction {
         return status === EnumUserStatus.blocked
-            ? EnumActivityLogAction.userBlocked
-            : EnumActivityLogAction.userUpdateStatus;
+            ? EnumActivityLogAction.userBlockedByAdmin
+            : EnumActivityLogAction.userStatusUpdated;
     }
 }

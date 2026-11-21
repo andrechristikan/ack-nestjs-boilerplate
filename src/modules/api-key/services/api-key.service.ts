@@ -112,33 +112,6 @@ export class ApiKeyService {
         return this.helperHashService.sha256Compare(expectedHash, apiKey.hash);
     }
 
-    private getValidApiKey(
-        apiKey: IApiKey | null,
-        includeActive: boolean = false
-    ): IApiKey {
-        if (!apiKey) {
-            throw new ApiKeyNotFoundException();
-        }
-
-        if (includeActive) {
-            const isActive = this.isActive(apiKey);
-            if (!isActive) {
-                throw new ApiKeyInactiveException();
-            }
-        }
-
-        return apiKey;
-    }
-
-    private validateStartAtIsFuture(startAt: Date): void {
-        const now = this.helperDateService.create();
-        if (startAt <= now) {
-            throw new ApiKeyStartAtNotFutureException();
-        }
-
-        return;
-    }
-
     private async addInvalidateEffectInTx(
         tx: IDatabaseTransactionClient,
         key: string
@@ -160,15 +133,60 @@ export class ApiKeyService {
         );
     }
 
+    async getOneById(id: string): Promise<IApiKey> {
+        const apiKey = await this.apiKeyRepository.findOneById(id);
+        if (!apiKey) {
+            throw new ApiKeyNotFoundException();
+        }
+
+        return apiKey;
+    }
+
+    assertActive(apiKey: IApiKey): void {
+        const isActive = this.isActive(apiKey);
+        if (!isActive) {
+            throw new ApiKeyInactiveException();
+        }
+    }
+
+    assertNotExpired(apiKey: IApiKey): void {
+        const now = this.helperDateService.create();
+        const isExpired = this.isExpired(apiKey.endAt, now);
+        if (isExpired) {
+            throw new ApiKeyExpiredException();
+        }
+    }
+
+    assertStartAtFuture(startAt: Date | null): void {
+        if (startAt === null) {
+            return;
+        }
+
+        const now = this.helperDateService.create();
+        if (startAt <= now) {
+            throw new ApiKeyStartAtNotFutureException();
+        }
+    }
+
+    assertEndAtFuture(startAt: Date | null, endAt: Date | null): void {
+        if (startAt === null || endAt === null) {
+            return;
+        }
+
+        const endAtDay = this.helperDateService.create(endAt, {
+            dayOf: EnumHelperDateDayOf.end,
+        });
+        const now = this.helperDateService.create();
+        if (endAtDay <= now) {
+            throw new ApiKeyEndAtNotFutureException();
+        }
+    }
+
     async createByAdminInTx(
         tx: IDatabaseTransactionClient,
         apiKeyId: string,
         { startAt, endAt, ...others }: IApiKeyCreate
     ): Promise<IApiKeyWithSecret> {
-        if (startAt) {
-            this.validateStartAtIsFuture(startAt);
-        }
-
         const { key, secret, hash } = this.generateCredential();
         let dateWindow: { startAt: Date | null; endAt: Date | null } = {
             startAt: null,
@@ -199,23 +217,12 @@ export class ApiKeyService {
 
     async updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
-        id: string,
+        apiKey: IApiKey,
         isActive: boolean
     ): Promise<IApiKey> {
-        const today = this.helperDateService.create();
-        const apiKey = await this.apiKeyRepository.findOneByIdInTx(tx, id);
-        if (!apiKey) {
-            throw new ApiKeyNotFoundException();
-        }
-
-        const isExpired = this.isExpired(apiKey.endAt, today);
-        if (isExpired) {
-            throw new ApiKeyExpiredException();
-        }
-
         const updated = await this.apiKeyRepository.updateStatusInTx(
             tx,
-            id,
+            apiKey.id,
             apiKey.isActive,
             isActive
         );
@@ -230,16 +237,12 @@ export class ApiKeyService {
 
     async updateByAdminInTx(
         tx: IDatabaseTransactionClient,
-        id: string,
+        apiKey: IApiKey,
         name: string
     ): Promise<IApiKey> {
-        // Sequential by design: gate before the work it guards
-        const found = await this.apiKeyRepository.findOneByIdInTx(tx, id);
-        const apiKey = this.getValidApiKey(found, true);
-
         const updated = await this.apiKeyRepository.updateNameInTx(
             tx,
-            id,
+            apiKey.id,
             name
         );
         await this.addInvalidateEffectInTx(tx, apiKey.key);
@@ -249,7 +252,7 @@ export class ApiKeyService {
 
     async updateDatesByAdminInTx(
         tx: IDatabaseTransactionClient,
-        id: string,
+        apiKey: IApiKey,
         startAt: Date | null,
         endAt: Date | null
     ): Promise<IApiKey> {
@@ -262,19 +265,11 @@ export class ApiKeyService {
             newEndAt = this.helperDateService.create(endAt, {
                 dayOf: EnumHelperDateDayOf.end,
             });
-            const now = this.helperDateService.create();
-            if (newEndAt <= now) {
-                throw new ApiKeyEndAtNotFutureException();
-            }
         }
-
-        // Sequential by design: gate before the work it guards
-        const found = await this.apiKeyRepository.findOneByIdInTx(tx, id);
-        const apiKey = this.getValidApiKey(found, true);
 
         const updated = await this.apiKeyRepository.updateDatesInTx(
             tx,
-            id,
+            apiKey.id,
             newStartAt,
             newEndAt
         );
@@ -289,11 +284,8 @@ export class ApiKeyService {
 
     async resetByAdminInTx(
         tx: IDatabaseTransactionClient,
-        id: string
+        apiKey: IApiKey
     ): Promise<IApiKeyWithSecret> {
-        const found = await this.apiKeyRepository.findOneByIdInTx(tx, id);
-        const apiKey = this.getValidApiKey(found, true);
-
         const secret: string = this.createSecret();
         const hash: string = this.apiKeyCredentialUtil.createHash(
             apiKey.key,
@@ -301,7 +293,7 @@ export class ApiKeyService {
         );
         const updated = await this.apiKeyRepository.updateHashInTx(
             tx,
-            id,
+            apiKey.id,
             hash
         );
         if (!updated) {
@@ -315,15 +307,9 @@ export class ApiKeyService {
 
     async deleteByAdminInTx(
         tx: IDatabaseTransactionClient,
-        id: string
+        apiKey: IApiKey
     ): Promise<IApiKey> {
-        // Sequential by design: gate before the work it guards
-        const apiKey = await this.apiKeyRepository.findOneByIdInTx(tx, id);
-        if (!apiKey) {
-            throw new ApiKeyNotFoundException();
-        }
-
-        const deleted = await this.apiKeyRepository.deleteInTx(tx, id);
+        const deleted = await this.apiKeyRepository.deleteInTx(tx, apiKey.id);
         if (!deleted) {
             throw new ApiKeyNotFoundException();
         }

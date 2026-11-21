@@ -33,7 +33,12 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { RoleImmutableException } from '@modules/role/exceptions/role.immutable.exception';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
+import { RoleSelfForbiddenException } from '@modules/role/exceptions/role.self-forbidden.exception';
 import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
+import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -134,6 +139,33 @@ describe('RoleDeleteByAdminUseCase', () => {
     });
 
     describe('execute', () => {
+        beforeEach(() => {
+            roleService.getDeletableByActor.mockResolvedValue(role);
+        });
+
+        it.each([
+            ['RoleNotFoundException', new RoleNotFoundException()],
+            ['RoleSelfForbiddenException', new RoleSelfForbiddenException()],
+            ['RoleRankForbiddenException', new RoleRankForbiddenException()],
+            ['RoleImmutableException', new RoleImmutableException()],
+        ])(
+            'throws %s from getDeletableByActor and opens no transaction',
+            async (_name, failure) => {
+                roleService.getDeletableByActor.mockRejectedValue(failure);
+
+                await expect(
+                    useCase.execute(
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        userContext,
+                        role.id
+                    )
+                ).rejects.toBe(failure);
+                expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            }
+        );
+
         it('deletes the role on the outbox transaction and returns an empty envelope', async () => {
             roleService.deleteByAdminInTx.mockResolvedValue(role);
 
@@ -146,10 +178,13 @@ describe('RoleDeleteByAdminUseCase', () => {
             );
 
             expect(result).toEqual({});
+            expect(roleService.getDeletableByActor).toHaveBeenCalledWith(
+                actor,
+                role.id
+            );
             expect(roleService.deleteByAdminInTx).toHaveBeenCalledWith(
                 tx,
-                role.id,
-                actor
+                role
             );
         });
 
@@ -169,7 +204,7 @@ describe('RoleDeleteByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.adminRoleDelete, metadata }
+                { action: EnumActivityLogAction.adminRoleDeleted, metadata }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
@@ -208,7 +243,10 @@ describe('RoleDeleteByAdminUseCase', () => {
                     userContext,
                     role.id
                 )
-            ).rejects.toBeInstanceOf(RoleUsedException);
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.used,
+            });
         });
 
         it('wraps any other error in AppUnknownException', async () => {

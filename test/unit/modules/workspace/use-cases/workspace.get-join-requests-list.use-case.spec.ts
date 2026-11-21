@@ -23,12 +23,14 @@ import {
     buildWorkspaceMember,
     buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
 import { EnumWorkspaceJoinRequestOrderBy } from '@modules/workspace/enums/workspace.enum';
+import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 
 describe('WorkspaceGetJoinRequestsListUseCase', () => {
     const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
@@ -67,18 +69,41 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
     });
 
     describe('execute', () => {
-        it('runs the join-request gate first and stops when it rejects', async () => {
+        it('rejects with the gate failure', async () => {
             workspaceJoinRequestService.assertJoinRequestAllowed.mockRejectedValue(
                 new FeatureFlagDisabledException()
             );
 
             await expect(
                 useCase.execute(workspaceContext, {})
-            ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
-            expect(requestStoreService.merge).not.toHaveBeenCalled();
+            ).rejects.toMatchObject({
+                module: 'featureFlag',
+                statusCode: EnumFeatureFlagStatusCodeError.disabled,
+            });
+        });
+
+        it('starts the list read while the join-request gate is still pending', async () => {
+            const gate = buildDeferred<void>();
+            const page: IResponsePaginationReturn<WorkspaceJoinRequest> = {
+                type: EnumPaginationType.cursor,
+                perPage: 20,
+                hasNext: false,
+                data: [],
+            };
+            workspaceJoinRequestService.assertJoinRequestAllowed.mockReturnValue(
+                gate.promise
+            );
+            workspaceJoinRequestService.getJoinRequestsList.mockResolvedValue(
+                page
+            );
+
+            const pending = useCase.execute(workspaceContext, {});
+
             expect(
                 workspaceJoinRequestService.getJoinRequestsList
-            ).not.toHaveBeenCalled();
+            ).toHaveBeenCalledTimes(1);
+            gate.resolve();
+            await pending;
         });
 
         it('parses the cursor query, merges the status filter, and returns the page', async () => {

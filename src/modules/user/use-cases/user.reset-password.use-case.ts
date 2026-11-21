@@ -73,10 +73,18 @@ export class UserResetPasswordUseCase implements IAppUseCase<
         }: UserForgotPasswordResetRequestDto
     ): Promise<IResponseReturn<void>> {
         const reset = await this.userPasswordService.getOneActiveReset(token);
-        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
-        await this.passwordHistoryService.assertNew(reset.userId, newPassword);
-
-        const isMfaEnabled = await this.mfaService.isEnabled(reset.userId);
+        const contextWords = this.authPasswordUtil.createContextWords(
+            this.appName,
+            reset.user.email,
+            reset.user.username,
+            reset.user.name
+        );
+        // Sequential by design: a credential proof, awaited alone; a statement whose failure is the answer, awaited before an unrelated write
+        const [isMfaEnabled] = await Promise.all([
+            this.mfaService.isEnabled(reset.userId),
+            this.passwordHistoryService.assertNew(reset.userId, newPassword),
+            this.authPasswordService.assertAllowed(newPassword, contextWords),
+        ]);
         let mfaCheck: IMfaCheck | null = null;
         let claimedChallengeToken: string | null = null;
         if (isMfaEnabled) {
@@ -93,9 +101,7 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                         reset.userId
                     );
             }
-            mfaCheck = await this.mfaService.check(
-                requestContext,
-                apiKeyContext,
+            const { check, failure } = await this.mfaService.check(
                 reset.userId,
                 {
                     code: code ?? null,
@@ -105,69 +111,78 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                 },
                 webAuthnChallenge
             );
+            if (failure !== null) {
+                const isLocked = await this.databaseService.withTransaction(
+                    async tx =>
+                        this.mfaService.countFailedAttemptInTx(
+                            tx,
+                            requestContext,
+                            apiKeyContext,
+                            reset.userId,
+                            failure
+                        )
+                );
+
+                return this.mfaService.throwFailedAttempt(failure, isLocked);
+            }
+            mfaCheck = check;
         }
-        const contextWords = this.authPasswordUtil.createContextWords(
-            this.appName,
-            reset.user.email,
-            reset.user.username,
-            reset.user.name
-        );
-        await this.authPasswordService.assertAllowed(newPassword, contextWords);
-        const password =
-            await this.authPasswordUtil.createPassword(newPassword);
+        const [password, snapshot] = await Promise.all([
+            this.authPasswordUtil.createPassword(newPassword),
+            this.notificationService.getSnapshot(reset.user),
+        ]);
 
         try {
             await this.databaseService.withTransaction(async tx => {
-                if (claimedChallengeToken !== null) {
-                    await this.mfaChallengeService.consumeInTx(
+                if (claimedChallengeToken !== null && mfaCheck !== null) {
+                    await this.mfaService.completeChallengeInTx(
                         tx,
+                        reset.userId,
                         claimedChallengeToken,
                         EnumMfaChallengePurpose.resetPassword,
-                        reset.userId
+                        mfaCheck
                     );
-                }
-                if (mfaCheck !== null) {
+                } else if (mfaCheck !== null) {
                     await this.mfaService.completeInTx(
                         tx,
                         reset.userId,
                         mfaCheck
                     );
                 }
-                const [snapshot] = await Promise.all([
-                    this.notificationService.getSnapshot(reset.user),
-                    this.userService.updatePasswordInTx(
-                        tx,
-                        reset.userId,
-                        password,
-                        reset.userId
-                    ),
-                ]);
-                await this.passwordHistoryService.createInTx(
-                    tx,
-                    reset.userId,
-                    password.passwordHash,
-                    EnumPasswordHistoryType.forgot,
-                    password.passwordPeriodExpired,
-                    password.passwordCreated,
-                    reset.userId
-                );
                 await this.userPasswordService.markResetUsedInTx(
                     tx,
                     reset.id,
                     password.passwordCreated,
                     reset.userId
                 );
-                await this.userPasswordService.markUnusedResetsUsedInTx(
-                    tx,
-                    reset.userId,
-                    reset.userId
-                );
-                await this.sessionService.revokeActiveByUserInTx(
-                    tx,
-                    reset.userId,
-                    reset.userId,
-                    password.passwordCreated
-                );
+                await Promise.all([
+                    this.userService.updatePasswordInTx(
+                        tx,
+                        reset.userId,
+                        password,
+                        reset.userId
+                    ),
+                    this.passwordHistoryService.createInTx(
+                        tx,
+                        reset.userId,
+                        password.passwordHash,
+                        EnumPasswordHistoryType.forgot,
+                        password.passwordPeriodExpired,
+                        password.passwordCreated,
+                        reset.userId
+                    ),
+                    this.userPasswordService.markUnusedResetsUsedInTx(
+                        tx,
+                        reset.userId,
+                        reset.userId
+                    ),
+                    this.sessionService.revokeActiveByUserInTx(
+                        tx,
+                        reset.userId,
+                        reset.userId,
+                        password.passwordCreated
+                    ),
+                ]);
                 const entries = [
                     this.activityLogQueue.recordEffect(
                         requestContext,
@@ -175,7 +190,7 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                         null,
                         null,
                         {
-                            action: EnumActivityLogAction.userResetPassword,
+                            action: EnumActivityLogAction.userPasswordReset,
                             userId: reset.userId,
                             createdBy: reset.userId,
                         }
@@ -188,7 +203,7 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                         null,
                         null,
                         {
-                            action: EnumActivityLogAction.userVerifyMfa,
+                            action: EnumActivityLogAction.userMfaVerified,
                             userId: reset.userId,
                             createdBy: reset.userId,
                         }

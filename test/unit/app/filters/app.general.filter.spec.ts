@@ -10,6 +10,8 @@ import { Prisma } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AppGeneralFilter } from '@app/filters/app.general.filter';
+import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
@@ -256,6 +258,52 @@ describe('AppGeneralFilter', () => {
                 metadata,
             });
             expect(sentryService.captureException).not.toHaveBeenCalled();
+        });
+
+        it('logs and reports the first 501 exception of its class in a window', async () => {
+            const exception = new AwsS3NotConfiguredException();
+            cacheService.isFirstInWindow.mockReturnValue(true);
+            const error = vi.spyOn(Logger.prototype, 'error');
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(cacheService.isFirstInWindow).toHaveBeenCalledWith(
+                AwsS3NotConfiguredException.name
+            );
+            expect(error).toHaveBeenCalledTimes(1);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                exception
+            );
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.NOT_IMPLEMENTED
+            );
+            expect(response.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    statusCode: EnumAwsStatusCodeError.s3NotConfigured,
+                })
+            );
+        });
+
+        it('answers 501 without a log or a report for a 501 exception inside the window', async () => {
+            const exception = new AwsS3NotConfiguredException();
+            cacheService.isFirstInWindow.mockReturnValue(false);
+            const error = vi.spyOn(Logger.prototype, 'error');
+
+            await filter.catch(exception, argumentsHost);
+
+            expect(cacheService.isFirstInWindow).toHaveBeenCalledWith(
+                AwsS3NotConfiguredException.name
+            );
+            expect(error).not.toHaveBeenCalled();
+            expect(sentryService.captureException).not.toHaveBeenCalled();
+            expect(response.status).toHaveBeenCalledWith(
+                HttpStatus.NOT_IMPLEMENTED
+            );
+            expect(response.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    statusCode: EnumAwsStatusCodeError.s3NotConfigured,
+                })
+            );
         });
 
         it('logs and reports a P2010 server selection timeout first in the database window', async () => {

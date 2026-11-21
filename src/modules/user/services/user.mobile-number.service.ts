@@ -39,6 +39,10 @@ export class UserMobileNumberService {
         return phoneCodes.includes(phoneCode);
     }
 
+    async getListByUser(userId: string): Promise<IUserMobileNumber[]> {
+        return this.userMobileNumberRepository.findManyByUser(userId);
+    }
+
     async existsMobileNumber(
         userId: string,
         input: IUserMobileNumberInput,
@@ -51,17 +55,12 @@ export class UserMobileNumberService {
         );
     }
 
-    /** Adds the mobile number, touches the user, and adds the entry on the caller's transaction; an invalid phone code or a duplicate throws before any write. */
-    async addMobileNumberInTx(
-        tx: IDatabaseTransactionClient,
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
-        { number, countryId, phoneCode }: IUserMobileNumberInput,
+    /** Throws UserMobileNumberInvalidException when the phone code is outside the country's list, then UserMobileNumberExistException when the number is a duplicate. */
+    assertMobileNumberAllowed(
         countryPhoneCodes: string[],
+        phoneCode: string,
         isDuplicate: boolean
-    ): Promise<IUserMobileNumber> {
-        const userId = authContext.userId;
+    ): void {
         const checkValidMobileNumber = this.checkMobileNumber(
             countryPhoneCodes,
             phoneCode
@@ -73,7 +72,17 @@ export class UserMobileNumberService {
         if (isDuplicate) {
             throw new UserMobileNumberExistException();
         }
+    }
 
+    /** Adds the mobile number, touches the user, and adds the entry on the caller's transaction. */
+    async addMobileNumberInTx(
+        tx: IDatabaseTransactionClient,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        { number, countryId, phoneCode }: IUserMobileNumberInput
+    ): Promise<IUserMobileNumber> {
+        const userId = authContext.userId;
         const mobileNumber = await this.userMobileNumberRepository.addInTx(
             tx,
             userId,
@@ -91,7 +100,7 @@ export class UserMobileNumberService {
             authContext,
             null,
             {
-                action: EnumActivityLogAction.userAddMobileNumber,
+                action: EnumActivityLogAction.userMobileNumberAdded,
             }
         );
         await this.outboxService.addInTx(tx, entry);
@@ -153,34 +162,21 @@ export class UserMobileNumberService {
         return `+${phoneCode}${number}`;
     }
 
-    /** Updates the mobile number, touches the user, and adds the entry on the caller's transaction; a changed number or phone code clears the verification; a duplicate or an invalid phone code throws before any write. */
+    /** Updates the mobile number, touches the user, and adds the entry on the caller's transaction; a changed number or phone code clears the verification. */
     async updateMobileNumberInTx(
         tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         current: IUserMobileNumberSummary,
-        { number, countryId, phoneCode }: IUserMobileNumberInput,
-        countryPhoneCodes: string[],
-        isDuplicate: boolean
+        { number, countryId, phoneCode }: IUserMobileNumberInput
     ): Promise<IUserMobileNumber> {
         const userId = authContext.userId;
-        if (isDuplicate) {
-            throw new UserMobileNumberExistException();
-        }
-
-        const checkValidMobileNumber = this.checkMobileNumber(
-            countryPhoneCodes,
-            phoneCode
-        );
-        if (!checkValidMobileNumber) {
-            throw new UserMobileNumberInvalidException();
-        }
-
         const isChanged =
             current.number !== number || current.phoneCode !== phoneCode;
         const isVerified = isChanged ? false : current.isVerified;
 
+        // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
         const mobileNumber = await this.userMobileNumberRepository.updateInTx(
             tx,
             userId,
@@ -196,13 +192,18 @@ export class UserMobileNumberService {
             throw new UserMobileNumberNotFoundException();
         }
 
-        await this.userService.touchUpdatedByInTx(tx, userId);
+        let expiring = Promise.resolve();
         if (isChanged) {
-            await this.userVerificationService.expireActiveByMobileNumberInTx(
-                tx,
-                current.id
-            );
+            expiring =
+                this.userVerificationService.expireActiveByMobileNumberInTx(
+                    tx,
+                    current.id
+                );
         }
+        await Promise.all([
+            this.userService.touchUpdatedByInTx(tx, userId),
+            expiring,
+        ]);
 
         const entry = this.activityLogQueue.recordEffect(
             requestContext,
@@ -210,7 +211,7 @@ export class UserMobileNumberService {
             authContext,
             null,
             {
-                action: EnumActivityLogAction.userUpdateMobileNumber,
+                action: EnumActivityLogAction.userMobileNumberUpdated,
             }
         );
         await this.outboxService.addInTx(tx, entry);
@@ -227,6 +228,7 @@ export class UserMobileNumberService {
         mobileNumberId: string
     ): Promise<IUserMobileNumber> {
         const userId = authContext.userId;
+        // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
         const mobileNumber = await this.userMobileNumberRepository.deleteInTx(
             tx,
             userId,
@@ -236,11 +238,13 @@ export class UserMobileNumberService {
             throw new UserMobileNumberNotFoundException();
         }
 
-        await this.userService.touchUpdatedByInTx(tx, userId);
-        await this.userVerificationService.expireActiveByMobileNumberInTx(
-            tx,
-            mobileNumberId
-        );
+        await Promise.all([
+            this.userService.touchUpdatedByInTx(tx, userId),
+            this.userVerificationService.expireActiveByMobileNumberInTx(
+                tx,
+                mobileNumberId
+            ),
+        ]);
 
         const entry = this.activityLogQueue.recordEffect(
             requestContext,
@@ -248,7 +252,7 @@ export class UserMobileNumberService {
             authContext,
             null,
             {
-                action: EnumActivityLogAction.userDeleteMobileNumber,
+                action: EnumActivityLogAction.userMobileNumberDeleted,
             }
         );
         await this.outboxService.addInTx(tx, entry);

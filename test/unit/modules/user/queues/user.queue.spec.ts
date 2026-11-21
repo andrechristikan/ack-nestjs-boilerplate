@@ -8,7 +8,10 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserQueue } from '@modules/user/queues/user.queue';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
+import {
+    EnumAwsS3Accessibility,
+    EnumUserStatus,
+} from '@generated/prisma-client/client';
 import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
@@ -111,6 +114,67 @@ describe('UserQueue', () => {
                 name: EnumUserProcess.importByAdmin,
                 data: { rows, activityLog, created: null },
                 priority: EnumQueuePriority.medium,
+                idempotencyKey: null,
+            });
+        });
+    });
+
+    describe('exportByAdminEffect', () => {
+        it('returns the medium-priority exportByAdmin effect holding the filters and the activity payload given, exported null, no business key', () => {
+            const activityLog: IActivityLogActorPayload = {
+                actorUserId: 'admin-bramble',
+                workspaceId: null,
+                apiKeyId: 'api-key-1',
+                requestLog: buildRequestContext().requestLog,
+            };
+
+            const effect = queue.exportByAdminEffect(
+                [EnumUserStatus.active],
+                'role-bramble',
+                null,
+                activityLog
+            );
+
+            expect(effect).toEqual({
+                queue: EnumUserQueue.user,
+                name: EnumUserProcess.exportByAdmin,
+                data: {
+                    status: [EnumUserStatus.active],
+                    roleId: 'role-bramble',
+                    countryId: null,
+                    activityLog,
+                    exported: null,
+                },
+                priority: EnumQueuePriority.medium,
+                idempotencyKey: null,
+            });
+        });
+    });
+
+    describe('deleteSelfEffect', () => {
+        it('returns the high-priority deleteSelf effect holding the user id, the owned workspace ids, and the activity payload only, no business key', () => {
+            const activityLog: IActivityLogActorPayload = {
+                actorUserId: 'user-bramble',
+                workspaceId: null,
+                apiKeyId: 'api-key-1',
+                requestLog: buildRequestContext().requestLog,
+            };
+
+            const effect = queue.deleteSelfEffect(
+                'user-bramble',
+                ['workspace-one', 'workspace-two'],
+                activityLog
+            );
+
+            expect(effect).toEqual({
+                queue: EnumUserQueue.user,
+                name: EnumUserProcess.deleteSelf,
+                data: {
+                    userId: 'user-bramble',
+                    ownedWorkspaceIds: ['workspace-one', 'workspace-two'],
+                    activityLog,
+                },
+                priority: EnumQueuePriority.high,
                 idempotencyKey: null,
             });
         });

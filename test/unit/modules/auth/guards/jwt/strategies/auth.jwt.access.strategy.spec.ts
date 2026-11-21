@@ -8,6 +8,7 @@ import { AuthJwtAccessStrategy } from '@modules/auth/guards/jwt/strategies/auth.
 import { AuthService } from '@modules/auth/services/auth.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
+import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import {
@@ -153,9 +154,10 @@ describe('AuthJwtAccessStrategy', () => {
                 throw new SessionRevokedException();
             });
 
-            await expect(strategy.validate(payload)).rejects.toBeInstanceOf(
-                SessionRevokedException
-            );
+            await expect(strategy.validate(payload)).rejects.toMatchObject({
+                module: 'session',
+                statusCode: EnumSessionStatusCodeError.revoked,
+            });
             expect(authService.validateJwtAccessSession).toHaveBeenCalledWith(
                 identified,
                 false

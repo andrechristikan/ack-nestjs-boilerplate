@@ -17,6 +17,9 @@ import type {
     IUserImport,
     IUserImportUsernameChecks,
 } from '@modules/user/interfaces/user.interface';
+import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
+import { UserService } from '@modules/user/services/user.service';
 import { UserImportService } from '@modules/user/services/user.import.service';
 import { UserQueue } from '@modules/user/queues/user.queue';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
@@ -35,6 +38,7 @@ describe('UserImportByAdminUseCase', () => {
         mock<ActivityLogQueue>();
     const userImportService: MockProxy<UserImportService> =
         mock<UserImportService>();
+    const userService: MockProxy<UserService> = mock<UserService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx = mock<IDatabaseTransactionClient>();
@@ -82,6 +86,7 @@ describe('UserImportByAdminUseCase', () => {
                 UserImportByAdminUseCase,
                 { provide: UserQueue, useValue: userQueue },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: UserService, useValue: userService },
                 { provide: UserImportService, useValue: userImportService },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
@@ -108,6 +113,27 @@ describe('UserImportByAdminUseCase', () => {
             existing: [],
             badWords: [false],
         };
+
+        it('answers AwsSesNotConfiguredException before any read when SES is unset', async () => {
+            userService.assertEmailDeliverable.mockImplementation(() => {
+                throw new AwsSesNotConfiguredException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    rows
+                )
+            ).rejects.toMatchObject({
+                module: 'aws',
+                statusCode: EnumAwsStatusCodeError.sesNotConfigured,
+            });
+            expect(userImportService.getExistingEmails).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
 
         beforeEach(() => {
             userImportService.getExistingEmails.mockResolvedValue([]);

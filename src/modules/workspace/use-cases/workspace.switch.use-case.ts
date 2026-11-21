@@ -37,7 +37,7 @@ export class WorkspaceSwitchUseCase implements IAppUseCase<
         { workspaceId }: WorkspaceSwitchRequestDto
     ): Promise<IResponseReturn<void>> {
         const userId = authContext.userId;
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: a write after its checks
         await this.workspaceMemberService.validateWorkspaceGuard(
             workspaceId,
             userId,

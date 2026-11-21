@@ -1,3 +1,4 @@
+import { AwsModule } from '@common/aws/aws.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { EnumWorkspaceQueue } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceQueueFactory } from '@modules/workspace/factories/workspace.queue.factory';
@@ -46,6 +47,7 @@ import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
     ],
     imports: [
         ActivityLogModule,
+        AwsModule,
         NotificationModule,
         UserModule,
         BullModule.registerQueueAsync({

@@ -13,6 +13,7 @@ import { MfaTotpSecretUnavailableException } from '@modules/mfa/exceptions/mfa.t
 import { MfaTotpSetupRequiredException } from '@modules/mfa/exceptions/mfa.totp-setup-required.exception';
 import type {
     IMfaTotpSetup,
+    IMfaTotpSetupCheck,
     IMfaTotpStatus,
 } from '@modules/mfa/interfaces/mfa.interface';
 import { MfaTotpRepository } from '@modules/mfa/repositories/mfa.totp.repository';
@@ -167,20 +168,20 @@ export class MfaTotpService {
         await this.mfaTotpRepository.deleteInTx(tx, userId);
     }
 
-    /** Stores a new pending secret on the caller's transaction and answers it with its otpauth URL; a confirmed TOTP throws MfaTotpAlreadyEnabledException. */
+    /** Reads the TOTP row on the client; a confirmed TOTP throws MfaTotpAlreadyEnabledException. */
+    async assertSetupAllowed(userId: string): Promise<void> {
+        const totp = await this.mfaTotpRepository.findOneByUserId(userId);
+        if (totp?.secret) {
+            throw new MfaTotpAlreadyEnabledException();
+        }
+    }
+
+    /** Stores a new pending secret on the caller's transaction and answers it with its otpauth URL; the statement matches only a row with no confirmed secret, so a confirmed one collides on the user id. */
     async setupInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         email: string
     ): Promise<IMfaTotpSetup> {
-        const totp = await this.mfaTotpRepository.findOneByUserIdInTx(
-            tx,
-            userId
-        );
-        if (totp?.secret) {
-            throw new MfaTotpAlreadyEnabledException();
-        }
-
         const secret = generateSecret({ length: this.secretLength });
         const encryptedSecret = this.encryptSecret(secret, userId);
         const otpauthUrl = this.createKeyUri(email, secret);
@@ -209,8 +210,11 @@ export class MfaTotpService {
         return this.verifyCode(secret, normalizedCode);
     }
 
-    /** Answers the TOTP step of a code against the pending secret, null for a wrong code; counts nothing. */
-    async checkSetupCode(userId: string, code: string): Promise<number | null> {
+    /** Answers the TOTP step of a code against the pending secret, null for a wrong code, with the encrypted pending secret as stored; counts nothing. */
+    async checkSetupCode(
+        userId: string,
+        code: string
+    ): Promise<IMfaTotpSetupCheck> {
         const totp = await this.mfaTotpRepository.findOneByUserId(userId);
         if (!totp?.pendingSecret) {
             if (totp?.secret) {
@@ -222,7 +226,9 @@ export class MfaTotpService {
 
         const secret = this.readSecret(totp.pendingSecret, userId);
 
-        return this.verifyCode(secret, code.trim());
+        const totpStep = this.verifyCode(secret, code.trim());
+
+        return { totpStep, pendingSecret: totp.pendingSecret };
     }
 
     /** Accepts a TOTP step once; a replayed step throws MfaInvalidException. */
@@ -244,25 +250,18 @@ export class MfaTotpService {
         }
     }
 
-    /** Moves the pending secret into the confirmed one and stamps the step; a pending secret that no longer exists throws MfaTotpSetupRequiredException. */
+    /** Moves the given pending secret into the confirmed one and stamps the step; a pending secret that no longer matches throws MfaTotpSetupRequiredException. */
     async enableInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
+        pendingSecret: string,
         step: number
     ): Promise<void> {
-        const totp = await this.mfaTotpRepository.findOneByUserIdInTx(
-            tx,
-            userId
-        );
-        if (!totp?.pendingSecret) {
-            throw new MfaTotpSetupRequiredException();
-        }
-
         const now = this.helperDateService.create();
         const isEnabled = await this.mfaTotpRepository.enableInTx(
             tx,
             userId,
-            totp.pendingSecret,
+            pendingSecret,
             step,
             now
         );

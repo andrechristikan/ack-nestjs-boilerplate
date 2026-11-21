@@ -21,11 +21,12 @@ Rule: `security.md`, Cryptography.
 - bcrypt: it truncates at 72 bytes and is not memory-hard.
 - An argon2 package: the pinned Node ships argon2, so a native dependency adds nothing.
 
-### argon2id hashes run concurrently
+### argon2id hashes and compares over several hashes run concurrently
 
-Rule: `concurrency.md`.
+Rule: `concurrency.md`, Together and alone.
 
 - One hash at a time: each call draws its own salt, so concurrent hashes stay unique, and the libuv threadpool already bounds how many run at once.
+- One compare at a time, stopping at the first match: the early stop saves work only on a match (a reused password, a backup code), while the common case, a password not in the history, runs every compare in turn.
 
 ### A password the user sets never expires
 
@@ -96,6 +97,13 @@ Rule: `credential-policy.md`, Re-authentication.
 - A passkey standing for the code only: a passkey with user verification proves possession and the user at once, so a password beside it adds nothing.
 - Burning the email code on a wrong attempt: no other one-time code in the project burns, and the strict route throttle already bounds guessing.
 
+### A failed re-authentication password records `userReauthenticationFailed`
+
+Rule: `credential-policy.md`, Re-authentication.
+
+- Reusing `userLoginFailed`: the name is wrong for an action that is no login, and the analytic failed-login card would count it.
+- No entry below the lock threshold: a failed authentication attempt would leave no record, where ASVS 16.3.1 asks for one.
+
 ### TOTP enable proves an enrolled factor when no password was checked
 
 Rule: `credential-policy.md`, Re-authentication.
@@ -127,6 +135,12 @@ Rule: `login.md`.
 Rule: `login.md`.
 
 - Keeping the hash on the soft-deleted row: nothing reads it, and it outlives the account.
+
+### Self-delete validates in the request and a job deletes
+
+Rule: `login.md`.
+
+- The account scrubbed and its sessions revoked in the request, the rest in a job: the scrub and the job are two transactions, so a failed job leaves the account half deleted (scrubbed and signed out while its workspaces and memberships stay live). One transaction in the job deletes everything or nothing.
 
 ### Self-delete is refused while the user owns a workspace with other members
 

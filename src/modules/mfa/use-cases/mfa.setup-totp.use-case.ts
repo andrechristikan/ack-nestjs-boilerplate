@@ -12,6 +12,7 @@ import {
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
+import { MfaTotpAlreadyEnabledException } from '@modules/mfa/exceptions/mfa.totp-already-enabled.exception';
 import type { IMfaTotpSetup } from '@modules/mfa/interfaces/mfa.interface';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaService } from '@modules/mfa/services/mfa.service';
@@ -61,13 +62,13 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
         }: MfaTotpSetupRequestDto
     ): Promise<IResponseReturn<IMfaTotpSetup>> {
         const { user } = userContext;
-        // Sequential by design: gates before the work they guard
-        await this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.totp);
-        const check = await this.userAuthService.assertReauthentication(
-            requestContext,
-            apiKeyContext,
-            user,
-            {
+        await Promise.all([
+            this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.totp),
+            this.mfaTotpService.assertSetupAllowed(authContext.userId),
+        ]);
+        // Sequential by design: a credential proof, awaited alone
+        const { check, failure } =
+            await this.userAuthService.checkReauthentication(user, {
                 action: EnumUserReauthenticationAction.mfaTotpSetup,
                 password: password ?? null,
                 method: method ?? null,
@@ -76,8 +77,24 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
                 passkeyChallengeToken: passkeyChallengeToken ?? null,
                 passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
-            }
-        );
+            });
+        if (failure !== null) {
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.userAuthService.countFailedReauthenticationInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        failure
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(
+                failure,
+                isLocked
+            );
+        }
 
         try {
             const setup = await this.databaseService.withTransaction(
@@ -100,7 +117,7 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
                         authContext,
                         null,
                         {
-                            action: EnumActivityLogAction.userSetupMfaTotp,
+                            action: EnumActivityLogAction.userMfaTotpSetUp,
                             userId: authContext.userId,
                             createdBy: authContext.userId,
                         }
@@ -115,6 +132,14 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            }
+
+            const isUserCollision = this.databaseUtil.isUniqueCollision(
+                err,
+                'userId'
+            );
+            if (isUserCollision) {
+                throw new MfaTotpAlreadyEnabledException();
             }
 
             const mapped = this.databaseUtil.toException(err);

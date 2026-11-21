@@ -1,4 +1,4 @@
-import { Catch, Logger } from '@nestjs/common';
+import { Catch, HttpStatus, Logger } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
 import { AppRefusalLogStatuses } from '@app/constants/app.constant';
@@ -85,6 +85,15 @@ export class AppGeneralFilter implements ExceptionFilter {
 
         if (resolved instanceof DatabaseUnavailableException) {
             const isFirst = this.databaseService.isFirstUnavailableInWindow();
+            if (!isFirst) {
+                return;
+            }
+        }
+
+        if (resolved.httpStatus === HttpStatus.NOT_IMPLEMENTED) {
+            const isFirst = this.cacheService.isFirstInWindow(
+                resolved.constructor.name
+            );
             if (!isFirst) {
                 return;
             }

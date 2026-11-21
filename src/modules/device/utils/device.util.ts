@@ -17,6 +17,10 @@ export class DeviceUtil {
         };
     }
 
+    isOwnedByOther(userId: string, actorUserId: string): boolean {
+        return userId !== actorUserId;
+    }
+
     mapActivityLogMetadata(
         deviceOwnership: IDeviceOwnership,
         sessionCount: number

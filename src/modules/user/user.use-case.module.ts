@@ -1,3 +1,4 @@
+import { AwsModule } from '@common/aws/aws.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { CountryModule } from '@modules/country/country.module';
 import { DeviceModule } from '@modules/device/device.module';
@@ -43,6 +44,8 @@ import { UserSendReauthenticationOtpUseCase } from '@modules/user/use-cases/user
 import { UserSendVerificationMobileNumberUseCase } from '@modules/user/use-cases/user.send-verification-mobile-number.use-case';
 import { UserVerifyMobileNumberUseCase } from '@modules/user/use-cases/user.verify-mobile-number.use-case';
 import { UserProcessDeletePhotoUseCase } from '@modules/user/use-cases/user.process-delete-photo.use-case';
+import { UserProcessDeleteSelfUseCase } from '@modules/user/use-cases/user.process-delete-self.use-case';
+import { UserProcessExportByAdminUseCase } from '@modules/user/use-cases/user.process-export-by-admin.use-case';
 import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.process-import-by-admin.use-case';
 import { UserProcessPurgeExpiredUseCase } from '@modules/user/use-cases/user.process-purge-expired.use-case';
 import { WorkspaceModule } from '@modules/workspace/workspace.module';
@@ -89,6 +92,8 @@ import { Module } from '@nestjs/common';
         UserVerifyMobileNumberUseCase,
         UserProcessDeletePhotoUseCase,
         UserProcessImportByAdminUseCase,
+        UserProcessExportByAdminUseCase,
+        UserProcessDeleteSelfUseCase,
         UserProcessPurgeExpiredUseCase,
     ],
     exports: [
@@ -130,10 +135,13 @@ import { Module } from '@nestjs/common';
         UserVerifyMobileNumberUseCase,
         UserProcessDeletePhotoUseCase,
         UserProcessImportByAdminUseCase,
+        UserProcessExportByAdminUseCase,
+        UserProcessDeleteSelfUseCase,
         UserProcessPurgeExpiredUseCase,
     ],
     imports: [
         ActivityLogModule,
+        AwsModule,
         CountryModule,
         DeviceModule,
         MfaModule,

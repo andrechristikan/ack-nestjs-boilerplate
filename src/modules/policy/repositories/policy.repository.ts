@@ -19,16 +19,6 @@ export class PolicyRepository implements IPolicyRepository {
         });
     }
 
-    async findOneByRoleIdAndIdInTx(
-        tx: IDatabaseTransactionClient,
-        roleId: string,
-        id: string
-    ): Promise<Policy | null> {
-        return tx.policy.findFirst({
-            where: { id, roleId },
-        });
-    }
-
     async createInTx(
         tx: IDatabaseTransactionClient,
         roleId: string,
@@ -53,7 +43,9 @@ export class PolicyRepository implements IPolicyRepository {
             return null;
         }
 
-        return this.findOneByRoleIdAndIdInTx(tx, roleId, id);
+        return tx.policy.findFirst({
+            where: { id, roleId },
+        });
     }
 
     async deleteInTx(

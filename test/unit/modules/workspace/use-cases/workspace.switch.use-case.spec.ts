@@ -28,6 +28,7 @@ import {
     buildWorkspace,
     buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 describe('WorkspaceSwitchUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
@@ -150,7 +151,10 @@ describe('WorkspaceSwitchUseCase', () => {
                     authContext,
                     body
                 )
-            ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.notFound,
+            });
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
@@ -166,7 +170,10 @@ describe('WorkspaceSwitchUseCase', () => {
                     authContext,
                     body
                 )
-            ).rejects.toBeInstanceOf(WorkspaceMemberForbiddenException);
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
+            });
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
     });

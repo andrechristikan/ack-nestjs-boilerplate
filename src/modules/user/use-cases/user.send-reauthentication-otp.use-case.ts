@@ -6,6 +6,7 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { UserReauthenticationSendRequestDto } from '@modules/user/dtos/request/user.reauthentication-send.request.dto';
 import type { IUserContext } from '@modules/user/interfaces/user.interface';
+import { UserService } from '@modules/user/services/user.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { Injectable } from '@nestjs/common';
@@ -25,6 +26,7 @@ export class UserSendReauthenticationOtpUseCase implements IAppUseCase<
     IResponseReturn<void>
 > {
     constructor(
+        private readonly userService: UserService,
         private readonly userAuthService: UserAuthService,
         private readonly userVerificationService: UserVerificationService,
         private readonly activityLogQueue: ActivityLogQueue,
@@ -39,12 +41,16 @@ export class UserSendReauthenticationOtpUseCase implements IAppUseCase<
         { user }: IUserContext,
         { action }: UserReauthenticationSendRequestDto
     ): Promise<IResponseReturn<void>> {
-        // Sequential by design: gates before the write they guard
-        await this.userAuthService.assertReauthenticationOtpAllowed(user);
-        await this.userVerificationService.assertReauthenticationResendable(
-            user.id,
-            action
-        );
+        this.userService.assertEmailDeliverable();
+
+        // Sequential by design: a write after its checks
+        await Promise.all([
+            this.userAuthService.assertReauthenticationOtpAllowed(user),
+            this.userVerificationService.assertReauthenticationResendable(
+                user.id,
+                action
+            ),
+        ]);
 
         await this.databaseService.withTransaction(async tx => {
             await this.userVerificationService.sendReauthenticationInTx(
@@ -59,7 +65,7 @@ export class UserSendReauthenticationOtpUseCase implements IAppUseCase<
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userSendReauthenticationOtp,
+                    action: EnumActivityLogAction.userReauthenticationOtpSent,
                 }
             );
             await this.outboxService.addInTx(tx, entry);

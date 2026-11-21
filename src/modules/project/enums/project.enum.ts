@@ -1,4 +1,14 @@
 /** @public */
+export enum EnumProjectQueue {
+    project = 'project',
+}
+
+/** @public */
+export enum EnumProjectProcess {
+    softDeleteByWorkspace = 'softDeleteByWorkspace',
+}
+
+/** @public */
 export enum EnumProjectOrderBy {
     latest = 'latest',
     name = 'name',

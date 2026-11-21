@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
@@ -94,7 +95,10 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userAuthService.assertReauthentication.mockResolvedValue(check);
+        userAuthService.checkReauthentication.mockResolvedValue({
+            check,
+            failure: null,
+        });
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -122,6 +126,57 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
             code: '654321',
         };
 
+        it('commits the failed count in a transaction of its own, then throws, and leaves the work undone', async () => {
+            const refusal = new Error('refused');
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: null,
+                failure: TestUnitReauthenticationPasswordFailure,
+            });
+            userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
+                true
+            );
+            userAuthService.throwFailedReauthentication.mockImplementation(
+                () => {
+                    throw refusal;
+                }
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                TestUnitReauthenticationPasswordFailure
+            );
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledBefore(
+                userAuthService.throwFailedReauthentication
+            );
+            expect(
+                userAuthService.throwFailedReauthentication
+            ).toHaveBeenCalledWith(
+                TestUnitReauthenticationPasswordFailure,
+                true
+            );
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+        });
+
         it('asserts the re-authentication before the transaction, then completes and regenerates on one tx', async () => {
             mfaService.regenerateBackupCodesInTx.mockResolvedValue([
                 'CODE000001',
@@ -143,9 +198,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
             expect(mfaService.assertEnabled).toHaveBeenCalledWith(
                 'user-marten'
             );
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.mfaBackupCodeRegenerate,
@@ -159,7 +212,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                 }
             );
             expect(
-                userAuthService.assertReauthentication
+                userAuthService.checkReauthentication
             ).toHaveBeenCalledBefore(databaseService.withTransaction);
             expect(
                 userAuthService.completeReauthenticationInTx
@@ -182,7 +235,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userRegenerateMfaBackupCodes }
+                { action: EnumActivityLogAction.userMfaBackupCodesRegenerated }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
@@ -201,9 +254,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                 }
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.mfaBackupCodeRegenerate,
@@ -231,9 +282,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                 }
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.mfaBackupCodeRegenerate,
@@ -257,9 +306,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                 {}
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.mfaBackupCodeRegenerate,
@@ -289,13 +336,13 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
             ).rejects.toBe(failure);
 
             expect(
-                userAuthService.assertReauthentication
+                userAuthService.checkReauthentication
             ).not.toHaveBeenCalled();
         });
 
         it('opens no transaction when the proof fails', async () => {
             const limit = new MfaAttemptMaxException();
-            userAuthService.assertReauthentication.mockRejectedValue(limit);
+            userAuthService.checkReauthentication.mockRejectedValue(limit);
 
             await expect(
                 useCase.execute(

@@ -68,7 +68,7 @@ export class UserCreateUtil {
 
         if (logsVerificationEmailRequest) {
             activities.push({
-                action: EnumActivityLogAction.userSendVerificationEmail,
+                action: EnumActivityLogAction.userVerificationEmailSent,
                 userId,
                 workspaceId: null,
                 createdBy,

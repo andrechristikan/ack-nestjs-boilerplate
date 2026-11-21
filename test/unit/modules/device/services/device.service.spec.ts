@@ -2,6 +2,7 @@ import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfa
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -9,9 +10,6 @@ import {
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -20,7 +18,6 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
@@ -29,7 +26,6 @@ import {
     EnumActivityLogAction,
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { Device, DeviceOwnership } from '@generated/prisma-client/client';
 import { DeviceService } from '@modules/device/services/device.service';
@@ -52,7 +48,6 @@ describe('DeviceService', () => {
         mock<DeviceOwnershipRepository>();
     const deviceRepository: MockProxy<DeviceRepository> =
         mock<DeviceRepository>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -133,7 +128,6 @@ describe('DeviceService', () => {
                     useValue: deviceOwnershipRepository,
                 },
                 { provide: DeviceRepository, useValue: deviceRepository },
-                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 ...TestUnitKitProviders,
@@ -349,7 +343,7 @@ describe('DeviceService', () => {
             );
         });
 
-        it('clears the pushed token from every other user ownership row after writing it', async () => {
+        it('clears the pushed token from every other user ownership row', async () => {
             deviceRepository.upsertByFingerprintInTx.mockResolvedValue(device);
             deviceOwnershipRepository.upsertActiveInTx.mockResolvedValue({
                 deviceOwnership,
@@ -361,10 +355,44 @@ describe('DeviceService', () => {
             expect(
                 deviceOwnershipRepository.clearTokenFromOtherUsersInTx
             ).toHaveBeenCalledWith(tx, 'token-1', 'user-1');
+        });
+
+        it('clears the pushed token from other users while the device upsert is still pending', async () => {
+            const upsert = buildDeferred<Device>();
+            deviceRepository.upsertByFingerprintInTx.mockReturnValue(
+                upsert.promise
+            );
+            deviceOwnershipRepository.upsertActiveInTx.mockResolvedValue({
+                deviceOwnership,
+                isNewOwnership: false,
+            });
+
+            const pending = service.upsertForLoginInTx(
+                tx,
+                'user-1',
+                identity,
+                now
+            );
+
+            expect(
+                deviceOwnershipRepository.clearTokenFromOtherUsersInTx
+            ).toHaveBeenCalledWith(tx, 'token-1', 'user-1');
             expect(
                 deviceOwnershipRepository.upsertActiveInTx
-            ).toHaveBeenCalledBefore(
-                deviceOwnershipRepository.clearTokenFromOtherUsersInTx
+            ).not.toHaveBeenCalled();
+
+            upsert.resolve(device);
+            await pending;
+
+            expect(
+                deviceOwnershipRepository.upsertActiveInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                device.id,
+                'user-1',
+                'token-1',
+                EnumDeviceNotificationProvider.apns,
+                now
             );
         });
 
@@ -589,7 +617,7 @@ describe('DeviceService', () => {
         });
     });
 
-    describe('refresh', () => {
+    describe('refreshInTx', () => {
         const requestContext: IRequestContext = {
             requestLog: {
                 userAgent: {
@@ -623,12 +651,10 @@ describe('DeviceService', () => {
 
         it('throws DeviceNotFoundException when the guarded refresh matches no live ownership, writing no device row', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue(null);
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
 
             await expect(
-                service.refresh(
+                service.refreshInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -646,14 +672,12 @@ describe('DeviceService', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('adds the userDeviceRefresh entry from the passed context on the same tx after the writes', async () => {
+        it('adds the userDeviceRefreshed entry from the passed context on the same tx after the writes', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
             activityLogQueue.recordEffect.mockReturnValue(entry);
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
 
-            await service.refresh(
+            await service.refreshInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -666,41 +690,40 @@ describe('DeviceService', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userDeviceRefresh }
+                { action: EnumActivityLogAction.userDeviceRefreshed }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
 
         it('adds no entry when the guarded refresh matches no live ownership', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue(null);
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
 
             await expect(
-                service.refresh(
+                service.refreshInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
                     'device-ownership-1',
                     data
                 )
-            ).rejects.toBeInstanceOf(DeviceNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'device',
+                statusCode: EnumDeviceStatusCodeError.notFound,
+            });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('refreshes the ownership token and the device on success', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
 
             const refreshed: IDeviceRefresh = {
                 ...data,
                 notificationToken: 'token-9',
             };
 
-            await service.refresh(
+            await service.refreshInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -726,11 +749,9 @@ describe('DeviceService', () => {
 
         it('clears the refreshed token from every other user ownership row in the same transaction', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
 
-            await service.refresh(
+            await service.refreshInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -746,13 +767,42 @@ describe('DeviceService', () => {
             ).toHaveBeenCalledWith(tx, 'token-9', 'user-1');
         });
 
+        it('clears the refreshed token from other users while the device refresh is still pending', async () => {
+            const started = buildDeferred<void>();
+            const release = buildDeferred<void>();
+            deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
+            deviceRepository.refreshInTx.mockImplementation(() => {
+                started.resolve();
+
+                return release.promise;
+            });
+
+            const pending = service.refreshInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'device-ownership-1',
+                { ...data, notificationToken: 'token-9' }
+            );
+            await started.promise;
+
+            expect(
+                deviceOwnershipRepository.clearTokenFromOtherUsersInTx
+            ).toHaveBeenCalledWith(tx, 'token-9', 'user-1');
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+
+            release.resolve();
+            await pending;
+
+            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
+        });
+
         it('clears no other row when the refresh carries no token', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
 
-            await service.refresh(
+            await service.refreshInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -767,11 +817,9 @@ describe('DeviceService', () => {
 
         it('resolves the notification provider from the platform and the token', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
 
-            await service.refresh(
+            await service.refreshInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -794,11 +842,9 @@ describe('DeviceService', () => {
 
         it('writes a null name, a null token, and a null provider as given when the refresh clears them', async () => {
             deviceOwnershipRepository.refreshInTx.mockResolvedValue('device-1');
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
 
-            await service.refresh(
+            await service.refreshInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -828,66 +874,6 @@ describe('DeviceService', () => {
                 },
                 now
             );
-        });
-
-        it('rethrows an AppBaseException raised inside the transaction unchanged', async () => {
-            const notFound = new DeviceNotFoundException();
-            databaseService.withTransaction.mockRejectedValue(notFound);
-
-            await expect(
-                service.refresh(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'device-ownership-1',
-                    data
-                )
-            ).rejects.toBe(notFound);
-        });
-
-        it('answers DeviceNotFoundException on a write conflict', async () => {
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                }
-            );
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                service.refresh(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'device-ownership-1',
-                    data
-                )
-            ).rejects.toMatchObject({
-                constructor: DeviceNotFoundException,
-                module: 'device',
-                statusCode: EnumDeviceStatusCodeError.notFound,
-            });
-        });
-
-        it('wraps a non-application error raised inside the transaction', async () => {
-            const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
-
-            await expect(
-                service.refresh(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'device-ownership-1',
-                    data
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: cause,
-            });
         });
     });
 

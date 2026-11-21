@@ -25,14 +25,14 @@ export class MfaGeneratePasskeyRegistrationUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         { user }: IUserContext
     ): Promise<IResponseReturn<MfaPasskeyRegistrationGenerateResponseDto>> {
-        // Sequential by design: gate before the work it guards
-        await this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.passkey);
-        const passkeyOptions =
-            await this.mfaPasskeyService.getRegistrationOptions(
+        const [passkeyOptions] = await Promise.all([
+            this.mfaPasskeyService.getRegistrationOptions(
                 authContext.userId,
                 user.email,
                 user.username
-            );
+            ),
+            this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.passkey),
+        ]);
 
         const { challengeToken, expiresInMs } =
             await this.mfaChallengeService.create({

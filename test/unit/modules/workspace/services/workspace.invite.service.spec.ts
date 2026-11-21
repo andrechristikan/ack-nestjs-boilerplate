@@ -8,8 +8,8 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
+import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
@@ -46,7 +46,6 @@ import {
     EnumNotificationProcess,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
@@ -55,7 +54,6 @@ import { WorkspaceInviteService } from '@modules/workspace/services/workspace.in
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
-import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspaceInviteNotFoundException } from '@modules/workspace/exceptions/workspace.invite-not-found.exception';
@@ -65,6 +63,7 @@ import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/except
 import type {
     IWorkspaceInviteCreate,
     IWorkspaceInviteNotice,
+    IWorkspaceInvitePrepared,
     IWorkspaceInvitePreview,
     IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
@@ -84,6 +83,7 @@ import {
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
 import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 
 describe('WorkspaceInviteService', () => {
@@ -100,13 +100,12 @@ describe('WorkspaceInviteService', () => {
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
     let databaseUtil: DatabaseUtil;
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+    const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     let helperStringService: HelperStringService;
 
     const configValues: Record<string, unknown> = {
-        'workspace.invite.referenceMaxAttempts': 5,
         'frontend.baseUrl': 'https://app.example.com',
         'workspace.invite.tokenLength': 40,
         'workspace.invite.referencePrefix': 'WIN',
@@ -126,8 +125,6 @@ describe('WorkspaceInviteService', () => {
         '34d328009b123fbbb0dc93f18b3e6de1ecf7b1a5783c33dff7ffe1926f09e943';
     const tokenValueHash =
         'e6c02a5742ea9d4de588eb9b9de7bed43dc17011552186bed3e98b2c5958ff4a';
-    const tokenValue2Hash =
-        '27de0bcb9ae8da628866bc759a010083566f4551d945a716bf268a3273574e6e';
 
     const baseInvite: WorkspaceInvite = {
         id: 'invite-1',
@@ -247,7 +244,6 @@ describe('WorkspaceInviteService', () => {
 
     beforeEach(async () => {
         featureFlagService.getMetadataNumber.mockResolvedValue(7);
-        databaseService.withTransaction.mockImplementation(async fn => fn(tx));
         activityLogQueue.recordEffect
             .mockReturnValueOnce(actorEntry)
             .mockReturnValueOnce(inviteeEntry);
@@ -272,8 +268,8 @@ describe('WorkspaceInviteService', () => {
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 ...TestUnitKitProviders,
                 UserUtil,
-                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
+                { provide: AwsSESService, useValue: awsSESService },
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
@@ -293,8 +289,49 @@ describe('WorkspaceInviteService', () => {
         vi.useRealTimers();
     });
 
+    describe('assertEmailDeliverable', () => {
+        it('throws AwsSesNotConfiguredException when SES is not initialized', () => {
+            awsSESService.isInitialized.mockReturnValue(false);
+
+            expect(() => service.assertEmailDeliverable()).toThrow(
+                AwsSesNotConfiguredException
+            );
+        });
+
+        it('returns when SES is initialized', () => {
+            awsSESService.isInitialized.mockReturnValue(true);
+
+            expect(() => service.assertEmailDeliverable()).not.toThrow();
+        });
+    });
+
     describe('validateInviteToken', () => {
-        it('throws FeatureFlagDisabledException and reads no invite when workspace invitations are off', async () => {
+        it('starts the invite read while the invitation gate is still pending', async () => {
+            const gate = buildDeferred<void>();
+            featureFlagService.validateFeatureFlagMetadata.mockReturnValue(
+                gate.promise
+            );
+            workspaceInviteRepository.findPendingByHashedToken.mockResolvedValue(
+                previewInvite
+            );
+
+            const pending = service.validateInviteToken('raw-token');
+            expect(
+                workspaceInviteRepository.findPendingByHashedToken
+            ).toHaveBeenCalledWith(rawTokenHash);
+            expect(
+                featureFlagService.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            );
+
+            gate.resolve();
+
+            await expect(pending).resolves.toBe(previewInvite);
+        });
+
+        it('throws FeatureFlagDisabledException when workspace invitations are off', async () => {
             featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
                 new FeatureFlagDisabledException()
             );
@@ -313,9 +350,6 @@ describe('WorkspaceInviteService', () => {
                 EnumFeatureFlagKey.workspace,
                 EnumFeatureFlagMetadataKey.invitationAllowed
             );
-            expect(
-                workspaceInviteRepository.findPendingByHashedToken
-            ).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceInviteInvalidException when no pending invite matches the token', async () => {
@@ -376,7 +410,7 @@ describe('WorkspaceInviteService', () => {
     });
 
     describe('validateInviteForEmail', () => {
-        it('throws FeatureFlagDisabledException and reads no invite when workspace invitations are off', async () => {
+        it('throws FeatureFlagDisabledException when workspace invitations are off', async () => {
             featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
                 new FeatureFlagDisabledException()
             );
@@ -395,9 +429,6 @@ describe('WorkspaceInviteService', () => {
                 EnumFeatureFlagKey.workspace,
                 EnumFeatureFlagMetadataKey.invitationAllowed
             );
-            expect(
-                workspaceInviteRepository.findPendingByHashedToken
-            ).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceInviteInvalidException when no pending invite matches the token', async () => {
@@ -526,11 +557,15 @@ describe('WorkspaceInviteService', () => {
         it('revokes the pending invites of the workspace on the given transaction', async () => {
             const tx = {} as IDatabaseTransactionClient;
 
-            await service.revokePendingByWorkspaceInTx(tx, 'workspace-1');
+            await service.revokePendingByWorkspaceInTx(
+                tx,
+                'workspace-1',
+                'user-1'
+            );
 
             expect(
                 workspaceInviteRepository.revokePendingByWorkspaceInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1');
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
         });
     });
 
@@ -556,12 +591,13 @@ describe('WorkspaceInviteService', () => {
 
             await service.revokeAllPendingByEmailInTx(
                 tx,
-                'invitee@example.com'
+                'invitee@example.com',
+                'user-1'
             );
 
             expect(
                 workspaceInviteRepository.revokeAllPendingByEmailInTx
-            ).toHaveBeenCalledWith(tx, 'invitee@example.com');
+            ).toHaveBeenCalledWith(tx, 'invitee@example.com', 'user-1');
         });
     });
 
@@ -590,7 +626,32 @@ describe('WorkspaceInviteService', () => {
             data: [],
         };
 
-        it('throws FeatureFlagDisabledException and reads no page when workspace invitations are off', async () => {
+        it('starts the page read while the invitation gate is still pending', async () => {
+            const gate = buildDeferred<void>();
+            featureFlagService.validateFeatureFlagMetadata.mockReturnValue(
+                gate.promise
+            );
+            workspaceInviteRepository.findWithPaginationCursor.mockResolvedValue(
+                page
+            );
+
+            const pending = service.getInvitesList('workspace-1', pagination);
+            expect(
+                workspaceInviteRepository.findWithPaginationCursor
+            ).toHaveBeenCalledWith('workspace-1', pagination, null);
+            expect(
+                featureFlagService.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            );
+
+            gate.resolve();
+
+            await expect(pending).resolves.toBe(page);
+        });
+
+        it('throws FeatureFlagDisabledException when workspace invitations are off', async () => {
             featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
                 new FeatureFlagDisabledException()
             );
@@ -609,9 +670,6 @@ describe('WorkspaceInviteService', () => {
                 EnumFeatureFlagKey.workspace,
                 EnumFeatureFlagMetadataKey.invitationAllowed
             );
-            expect(
-                workspaceInviteRepository.findWithPaginationCursor
-            ).not.toHaveBeenCalled();
         });
 
         it('gates on the invitation flag and delegates to the repository with a null status filter', async () => {
@@ -758,42 +816,104 @@ describe('WorkspaceInviteService', () => {
         });
     });
 
-    describe('createInvite', () => {
-        const nonceCollision = buildPrismaKnownRequestError('P2002', 'nonce');
-        const tokenCollision = buildPrismaKnownRequestError('P2002', 'token');
-        const referenceCollision = buildPrismaKnownRequestError(
-            'P2002',
-            'reference'
-        );
-        const createdAt = new Date('2026-01-01T00:00:00.000Z');
-        const issuedTokenData: IWorkspaceInviteTokenData = {
-            ...tokenData,
-            expiredAt: new Date('2026-01-08T00:00:00.000Z'),
-        };
-        const retriedTokenData: IWorkspaceInviteTokenData = {
-            ...issuedTokenData,
-            token: 'token-value-2',
-            hashedToken: tokenValue2Hash,
-            reference: 'WIN-def456',
-            claimLink:
-                'https://app.example.com/workspace/invites?inviteToken=token-value-2',
-            signUpLink: 'https://app.example.com/sign-up/token-value-2',
-        };
-
-        beforeEach(() => {
-            vi.spyOn(databaseUtil, 'createId').mockReturnValue('invite-new');
-            vi.spyOn(helperStringService, 'random').mockImplementation(
-                length => (length === 40 ? 'token-value' : 'abc123')
-            );
-            vi.setSystemTime(createdAt);
+    describe('resolveExpiresInDays', () => {
+        it('returns the requested lifetime and reads no flag', async () => {
+            await expect(service.resolveExpiresInDays(14)).resolves.toBe(14);
+            expect(featureFlagService.getMetadataNumber).not.toHaveBeenCalled();
         });
 
-        it('draws the token data and creates the pending invite with the hashed nonce of workspace and email', async () => {
+        it('reads inviteExpiresInDays when the request sends no lifetime', async () => {
+            featureFlagService.getMetadataNumber.mockResolvedValue(9);
+
+            await expect(service.resolveExpiresInDays(null)).resolves.toBe(9);
+            expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.inviteExpiresInDays
+            );
+        });
+
+        it('propagates FeatureFlagNotConfiguredException from the read', async () => {
+            const notConfigured = new FeatureFlagNotConfiguredException(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.inviteExpiresInDays
+            );
+            featureFlagService.getMetadataNumber.mockRejectedValue(
+                notConfigured
+            );
+
+            await expect(service.resolveExpiresInDays(null)).rejects.toBe(
+                notConfigured
+            );
+        });
+    });
+
+    describe('prepareInvite', () => {
+        beforeEach(() => {
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue('invite-new');
+        });
+
+        it('returns the new invite id, the hashed nonce of workspace and email, and the requested lifetime', async () => {
+            await expect(
+                service.prepareInvite('workspace-1', {
+                    ...baseCreate,
+                    expiryDuration: 14,
+                })
+            ).resolves.toEqual({
+                workspaceInviteId: 'invite-new',
+                nonce: pendingNonce,
+                expiresInDays: 14,
+            });
+            expect(featureFlagService.getMetadataNumber).not.toHaveBeenCalled();
+        });
+
+        it('returns inviteExpiresInDays when the request sends no lifetime', async () => {
+            featureFlagService.getMetadataNumber.mockResolvedValue(9);
+
+            const result = await service.prepareInvite(
+                'workspace-1',
+                baseCreate
+            );
+
+            expect(result.expiresInDays).toBe(9);
+            expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.inviteExpiresInDays
+            );
+        });
+
+        it('propagates FeatureFlagNotConfiguredException from the read', async () => {
+            const notConfigured = new FeatureFlagNotConfiguredException(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.inviteExpiresInDays
+            );
+            featureFlagService.getMetadataNumber.mockRejectedValue(
+                notConfigured
+            );
+
+            await expect(
+                service.prepareInvite('workspace-1', baseCreate)
+            ).rejects.toBe(notConfigured);
+        });
+    });
+
+    describe('createInviteInTx', () => {
+        const prepared: IWorkspaceInvitePrepared = {
+            workspaceInviteId: 'invite-new',
+            nonce: pendingNonce,
+            expiresInDays: 14,
+        };
+        const issuedTokenData: IWorkspaceInviteTokenData = {
+            ...tokenData,
+            expiredAt: new Date('2026-01-15T00:00:00.000Z'),
+        };
+
+        it('creates the pending invite on the tx given with the prepared id and nonce and the drawn token data', async () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
                 baseInvite
             );
 
-            const result = await service.createInvite(
+            const result = await service.createInviteInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -802,18 +922,13 @@ describe('WorkspaceInviteService', () => {
                     ...baseCreate,
                     projectId: 'project-1',
                     projectRole: EnumProjectMemberRole.member,
-                    expiryDuration: 14,
                 },
+                prepared,
+                issuedTokenData,
                 unregisteredNotice
             );
 
-            expect(result).toEqual({
-                invite: baseInvite,
-                tokenData: {
-                    ...tokenData,
-                    expiredAt: new Date('2026-01-15T00:00:00.000Z'),
-                },
-            });
+            expect(result).toBe(baseInvite);
             expect(
                 workspaceInviteRepository.createPendingInTx
             ).toHaveBeenCalledWith(tx, {
@@ -831,89 +946,21 @@ describe('WorkspaceInviteService', () => {
             });
         });
 
-        it('expires the invite after inviteExpiresInDays when the request sends no lifetime', async () => {
-            workspaceInviteRepository.createPendingInTx.mockResolvedValue(
-                baseInvite
-            );
-            featureFlagService.getMetadataNumber.mockResolvedValue(9);
-
-            await service.createInvite(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'workspace-1',
-                baseCreate,
-                unregisteredNotice
-            );
-
-            expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.workspace,
-                EnumFeatureFlagMetadataKey.inviteExpiresInDays
-            );
-            expect(
-                workspaceInviteRepository.createPendingInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                expect.objectContaining({
-                    expiredAt: new Date('2026-01-10T00:00:00.000Z'),
-                })
-            );
-        });
-
-        it('does not read the flag when the request sends a lifetime', async () => {
-            workspaceInviteRepository.createPendingInTx.mockResolvedValue(
-                baseInvite
-            );
-
-            await service.createInvite(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'workspace-1',
-                { ...baseCreate, expiryDuration: 14 },
-                unregisteredNotice
-            );
-
-            expect(featureFlagService.getMetadataNumber).not.toHaveBeenCalled();
-        });
-
-        it('propagates FeatureFlagNotConfiguredException from the read and opens no transaction', async () => {
-            const notConfigured = new FeatureFlagNotConfiguredException(
-                EnumFeatureFlagKey.workspace,
-                EnumFeatureFlagMetadataKey.inviteExpiresInDays
-            );
-            featureFlagService.getMetadataNumber.mockRejectedValue(
-                notConfigured
-            );
-
-            await expect(
-                service.createInvite(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    baseCreate,
-                    unregisteredNotice
-                )
-            ).rejects.toBe(notConfigured);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(
-                workspaceInviteRepository.createPendingInTx
-            ).not.toHaveBeenCalled();
-        });
-
         it('adds the notify effect for an invitee with an account on the invite tx', async () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
                 baseInvite
             );
             notificationQueue.notify.mockReturnValue(notifyEffect);
 
-            await service.createInvite(
+            await service.createInviteInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'workspace-1',
                 baseCreate,
+                prepared,
+                issuedTokenData,
                 registeredNotice
             );
 
@@ -931,10 +978,12 @@ describe('WorkspaceInviteService', () => {
                     inviteAcceptLink: tokenData.claimLink,
                 }
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                notifyEffect
-            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                notifyEffect,
+                actorEntry,
+                inviteeEntry,
+            ]);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(
                 notificationEmailQueue.notifyUnregisteredInvite
             ).not.toHaveBeenCalled();
@@ -948,12 +997,15 @@ describe('WorkspaceInviteService', () => {
                 unregisteredEffect
             );
 
-            await service.createInvite(
+            await service.createInviteInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'workspace-1',
                 baseCreate,
+                prepared,
+                issuedTokenData,
                 unregisteredNotice
             );
 
@@ -968,25 +1020,29 @@ describe('WorkspaceInviteService', () => {
                 expiredAt: expiredAtIso,
                 inviteAcceptLink: tokenData.signUpLink,
             });
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                unregisteredEffect
-            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                unregisteredEffect,
+                actorEntry,
+            ]);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(notificationQueue.notify).not.toHaveBeenCalled();
         });
 
-        it('adds the creator entry and the invitee entry beside the notify effect on the invite tx for an invitee with an account', async () => {
+        it('adds the creator entry and the invitee entry after the write on the invite tx for an invitee with an account', async () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
                 baseInvite
             );
             notificationQueue.notify.mockReturnValue(notifyEffect);
 
-            await service.createInvite(
+            await service.createInviteInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'workspace-1',
                 baseCreate,
+                prepared,
+                issuedTokenData,
                 registeredNotice
             );
 
@@ -1021,14 +1077,14 @@ describe('WorkspaceInviteService', () => {
                     metadata: { actorUserId: 'user-1' },
                 }
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                notifyEffect
-            );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                notifyEffect,
                 actorEntry,
                 inviteeEntry,
             ]);
+            expect(
+                workspaceInviteRepository.createPendingInTx
+            ).toHaveBeenCalledBefore(activityLogQueue.recordEffect);
         });
 
         it('adds only the creator entry on the invite tx for an invitee with no account', async () => {
@@ -1039,12 +1095,15 @@ describe('WorkspaceInviteService', () => {
                 unregisteredEffect
             );
 
-            await service.createInvite(
+            await service.createInviteInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'workspace-1',
                 baseCreate,
+                prepared,
+                issuedTokenData,
                 unregisteredNotice
             );
 
@@ -1063,6 +1122,7 @@ describe('WorkspaceInviteService', () => {
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                unregisteredEffect,
                 actorEntry,
             ]);
         });
@@ -1073,200 +1133,76 @@ describe('WorkspaceInviteService', () => {
             );
             notificationQueue.notify.mockReturnValue(notifyEffect);
 
-            await service.createInvite(
+            await service.createInviteInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContextOfUser2,
                 'workspace-1',
                 baseCreate,
+                prepared,
+                issuedTokenData,
                 registeredNotice
             );
 
             expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                notifyEffect,
                 actorEntry,
             ]);
         });
 
-        it('throws WorkspaceInviteDuplicateException when the nonce collides', async () => {
+        it('lets a write failure reach the caller and adds no effect', async () => {
+            const collision = buildPrismaKnownRequestError('P2002', 'nonce');
             workspaceInviteRepository.createPendingInTx.mockRejectedValue(
-                nonceCollision
+                collision
             );
 
             await expect(
-                service.createInvite(
+                service.createInviteInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
                     'workspace-1',
                     baseCreate,
+                    prepared,
+                    issuedTokenData,
                     unregisteredNotice
                 )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteDuplicateException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteDuplicate,
-            });
-            expect(
-                workspaceInviteRepository.createPendingInTx
-            ).toHaveBeenCalledTimes(1);
-        });
-
-        it('draws a fresh token and retries when the token collides, returning the stored token data', async () => {
-            vi.spyOn(helperStringService, 'random')
-                .mockReturnValueOnce('token-value')
-                .mockReturnValueOnce('abc123')
-                .mockReturnValueOnce('token-value-2')
-                .mockReturnValueOnce('def456');
-            workspaceInviteRepository.createPendingInTx
-                .mockRejectedValueOnce(tokenCollision)
-                .mockResolvedValueOnce(baseInvite);
-
-            const result = await service.createInvite(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'workspace-1',
-                baseCreate,
-                unregisteredNotice
-            );
-
-            expect(result).toEqual({
-                invite: baseInvite,
-                tokenData: retriedTokenData,
-            });
-            expect(
-                workspaceInviteRepository.createPendingInTx
-            ).toHaveBeenNthCalledWith(
-                2,
-                tx,
-                expect.objectContaining({
-                    hashedToken: tokenValue2Hash,
-                    reference: 'WIN-def456',
-                })
-            );
-        });
-
-        it('draws a fresh reference and retries when the reference collides', async () => {
-            vi.spyOn(helperStringService, 'random')
-                .mockReturnValueOnce('token-value')
-                .mockReturnValueOnce('abc123')
-                .mockReturnValueOnce('token-value-2')
-                .mockReturnValueOnce('def456');
-            workspaceInviteRepository.createPendingInTx
-                .mockRejectedValueOnce(referenceCollision)
-                .mockResolvedValueOnce(baseInvite);
-
-            const result = await service.createInvite(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'workspace-1',
-                baseCreate,
-                unregisteredNotice
-            );
-
-            expect(result.tokenData).toEqual(retriedTokenData);
-            expect(
-                workspaceInviteRepository.createPendingInTx
-            ).toHaveBeenCalledTimes(2);
-        });
-
-        it('throws DatabaseUniqueValueGenerationFailedException once the attempt budget is spent', async () => {
-            workspaceInviteRepository.createPendingInTx.mockRejectedValue(
-                tokenCollision
-            );
-
-            await expect(
-                service.createInvite(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    baseCreate,
-                    unregisteredNotice
-                )
-            ).rejects.toBeInstanceOf(
-                DatabaseUniqueValueGenerationFailedException
-            );
-            expect(
-                workspaceInviteRepository.createPendingInTx
-            ).toHaveBeenCalledTimes(5);
-        });
-
-        it('rethrows an application exception unchanged', async () => {
-            const failure = new WorkspaceInviteInvalidException();
-            workspaceInviteRepository.createPendingInTx.mockRejectedValue(
-                failure
-            );
-
-            await expect(
-                service.createInvite(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    baseCreate,
-                    unregisteredNotice
-                )
-            ).rejects.toBe(failure);
-        });
-
-        it('throws WorkspaceInviteDuplicateException on a write conflict without retrying', async () => {
-            const conflict = buildPrismaKnownRequestError(
-                DatabaseWriteConflictCode
-            );
-            workspaceInviteRepository.createPendingInTx.mockRejectedValue(
-                conflict
-            );
-
-            await expect(
-                service.createInvite(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    baseCreate,
-                    unregisteredNotice
-                )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-
-                constructor: WorkspaceInviteDuplicateException,
-                statusCode: EnumWorkspaceStatusCodeError.inviteDuplicate,
-            });
-            expect(
-                workspaceInviteRepository.createPendingInTx
-            ).toHaveBeenCalledTimes(1);
-        });
-
-        it('wraps another failure in AppUnknownException without retrying', async () => {
-            const cause = new Error('db-down');
-            workspaceInviteRepository.createPendingInTx.mockRejectedValue(
-                cause
-            );
-
-            await expect(
-                service.createInvite(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    baseCreate,
-                    unregisteredNotice
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
-            expect(
-                workspaceInviteRepository.createPendingInTx
-            ).toHaveBeenCalledTimes(1);
+            ).rejects.toBe(collision);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 
     describe('getPendingById', () => {
-        it('throws FeatureFlagDisabledException and reads no invite when workspace invitations are off', async () => {
+        it('starts the invite read while the invitation gate is still pending', async () => {
+            const gate = buildDeferred<void>();
+            featureFlagService.validateFeatureFlagMetadata.mockReturnValue(
+                gate.promise
+            );
+            workspaceInviteRepository.findByIdAndWorkspace.mockResolvedValue(
+                baseInvite
+            );
+
+            const pending = service.getPendingById('invite-1', 'workspace-1');
+            expect(
+                workspaceInviteRepository.findByIdAndWorkspace
+            ).toHaveBeenCalledWith('invite-1', 'workspace-1');
+            expect(
+                featureFlagService.validateFeatureFlagMetadata
+            ).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            );
+
+            gate.resolve();
+
+            await expect(pending).resolves.toBe(baseInvite);
+        });
+
+        it('throws FeatureFlagDisabledException when workspace invitations are off', async () => {
             featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
                 new FeatureFlagDisabledException()
             );
@@ -1285,9 +1221,6 @@ describe('WorkspaceInviteService', () => {
                 EnumFeatureFlagKey.workspace,
                 EnumFeatureFlagMetadataKey.invitationAllowed
             );
-            expect(
-                workspaceInviteRepository.findByIdAndWorkspace
-            ).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceInviteNotFoundException when the invite does not exist', async () => {
@@ -1387,46 +1320,33 @@ describe('WorkspaceInviteService', () => {
         });
     });
 
-    describe('resendInvite', () => {
+    describe('resendInviteInTx', () => {
         const resentAt = new Date('2026-01-15T00:00:00.000Z');
-        const resentExpiredAt = new Date('2026-01-22T00:00:00.000Z');
-        const retriedTokenData: IWorkspaceInviteTokenData = {
+        const rotatedTokenData: IWorkspaceInviteTokenData = {
             ...tokenData,
-            expiredAt: resentExpiredAt,
-            token: 'token-value-2',
-            hashedToken: tokenValue2Hash,
-            reference: 'WIN-def456',
-            claimLink:
-                'https://app.example.com/workspace/invites?inviteToken=token-value-2',
-            signUpLink: 'https://app.example.com/sign-up/token-value-2',
+            expiredAt: new Date('2026-01-29T00:00:00.000Z'),
         };
 
         beforeEach(() => {
-            vi.spyOn(helperStringService, 'random').mockImplementation(
-                length => (length === 40 ? 'token-value' : 'abc123')
-            );
             vi.setSystemTime(resentAt);
         });
 
-        it('draws the token data, rotates the token, and returns the rotated invite with the stored token data', async () => {
+        it('rotates the token on the tx given with the drawn token data and the resend time and returns the rotated invite', async () => {
             workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
                 baseInvite
             );
 
-            const result = await service.resendInvite(
+            const result = await service.resendInviteInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'invite-1',
-                14,
+                rotatedTokenData,
                 unregisteredNotice
             );
 
-            const rotatedExpiredAt = new Date('2026-01-29T00:00:00.000Z');
-            expect(result).toEqual({
-                invite: baseInvite,
-                tokenData: { ...tokenData, expiredAt: rotatedExpiredAt },
-            });
+            expect(result).toBe(baseInvite);
             expect(
                 workspaceInviteRepository.rotateForResendInTx
             ).toHaveBeenCalledWith(
@@ -1434,82 +1354,9 @@ describe('WorkspaceInviteService', () => {
                 'invite-1',
                 tokenValueHash,
                 'WIN-abc123',
-                rotatedExpiredAt,
+                new Date('2026-01-29T00:00:00.000Z'),
                 resentAt
             );
-        });
-
-        it('expires the invite after inviteExpiresInDays when the request sends no lifetime', async () => {
-            workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
-                baseInvite
-            );
-            featureFlagService.getMetadataNumber.mockResolvedValue(9);
-
-            await service.resendInvite(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'invite-1',
-                null,
-                unregisteredNotice
-            );
-
-            expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.workspace,
-                EnumFeatureFlagMetadataKey.inviteExpiresInDays
-            );
-            expect(
-                workspaceInviteRepository.rotateForResendInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                'invite-1',
-                tokenValueHash,
-                'WIN-abc123',
-                new Date('2026-01-24T00:00:00.000Z'),
-                resentAt
-            );
-        });
-
-        it('does not read the flag when the request sends a lifetime', async () => {
-            workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
-                baseInvite
-            );
-
-            await service.resendInvite(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'invite-1',
-                14,
-                unregisteredNotice
-            );
-
-            expect(featureFlagService.getMetadataNumber).not.toHaveBeenCalled();
-        });
-
-        it('propagates FeatureFlagNotConfiguredException from the read and opens no transaction', async () => {
-            const notConfigured = new FeatureFlagNotConfiguredException(
-                EnumFeatureFlagKey.workspace,
-                EnumFeatureFlagMetadataKey.inviteExpiresInDays
-            );
-            featureFlagService.getMetadataNumber.mockRejectedValue(
-                notConfigured
-            );
-
-            await expect(
-                service.resendInvite(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'invite-1',
-                    null,
-                    unregisteredNotice
-                )
-            ).rejects.toBe(notConfigured);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(
-                workspaceInviteRepository.rotateForResendInTx
-            ).not.toHaveBeenCalled();
         });
 
         it('adds the invite effect on the rotation tx', async () => {
@@ -1518,12 +1365,13 @@ describe('WorkspaceInviteService', () => {
             );
             notificationQueue.notify.mockReturnValue(notifyEffect);
 
-            await service.resendInvite(
+            await service.resendInviteInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'invite-1',
-                null,
+                rotatedTokenData,
                 registeredNotice
             );
 
@@ -1536,24 +1384,27 @@ describe('WorkspaceInviteService', () => {
                     inviteAcceptLink: tokenData.claimLink,
                 })
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                notifyEffect
-            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                notifyEffect,
+                actorEntry,
+                inviteeEntry,
+            ]);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('adds the sender entry and the invitee entry on the rotation tx for an invitee with an account', async () => {
+        it('adds the sender entry and the invitee entry after the rotation on the tx for an invitee with an account', async () => {
             workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
                 baseInvite
             );
             notificationQueue.notify.mockReturnValue(notifyEffect);
 
-            await service.resendInvite(
+            await service.resendInviteInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'invite-1',
-                null,
+                rotatedTokenData,
                 registeredNotice
             );
 
@@ -1589,9 +1440,13 @@ describe('WorkspaceInviteService', () => {
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                notifyEffect,
                 actorEntry,
                 inviteeEntry,
             ]);
+            expect(
+                workspaceInviteRepository.rotateForResendInTx
+            ).toHaveBeenCalledBefore(activityLogQueue.recordEffect);
         });
 
         it('adds only the sender entry for an invitee with no account', async () => {
@@ -1602,33 +1457,36 @@ describe('WorkspaceInviteService', () => {
                 unregisteredEffect
             );
 
-            await service.resendInvite(
+            await service.resendInviteInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'invite-1',
-                null,
+                rotatedTokenData,
                 unregisteredNotice
             );
 
             expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                unregisteredEffect,
                 actorEntry,
             ]);
         });
 
-        it('throws WorkspaceInviteAlreadyProcessedException when the guarded rotation misses', async () => {
+        it('throws WorkspaceInviteAlreadyProcessedException and adds no effect when the guarded rotation misses', async () => {
             workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
                 null
             );
 
             await expect(
-                service.resendInvite(
+                service.resendInviteInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
                     'invite-1',
-                    null,
+                    rotatedTokenData,
                     unregisteredNotice
                 )
             ).rejects.toMatchObject({
@@ -1636,119 +1494,36 @@ describe('WorkspaceInviteService', () => {
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
             });
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('draws a fresh token and retries when the token or reference collides, returning the stored token data', async () => {
+        it('lets a write failure reach the caller', async () => {
             const collision = buildPrismaKnownRequestError('P2002', 'token');
-            vi.spyOn(helperStringService, 'random')
-                .mockReturnValueOnce('token-value')
-                .mockReturnValueOnce('abc123')
-                .mockReturnValueOnce('token-value-2')
-                .mockReturnValueOnce('def456');
-            workspaceInviteRepository.rotateForResendInTx
-                .mockRejectedValueOnce(collision)
-                .mockResolvedValueOnce(baseInvite);
-
-            const result = await service.resendInvite(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'invite-1',
-                null,
-                unregisteredNotice
-            );
-
-            expect(result).toEqual({
-                invite: baseInvite,
-                tokenData: retriedTokenData,
-            });
-            expect(
-                workspaceInviteRepository.rotateForResendInTx
-            ).toHaveBeenNthCalledWith(
-                2,
-                tx,
-                'invite-1',
-                tokenValue2Hash,
-                'WIN-def456',
-                resentExpiredAt,
-                resentAt
-            );
-        });
-
-        it('throws DatabaseUniqueValueGenerationFailedException once the attempt budget is spent', async () => {
             workspaceInviteRepository.rotateForResendInTx.mockRejectedValue(
-                buildPrismaKnownRequestError('P2002', 'reference')
+                collision
             );
 
             await expect(
-                service.resendInvite(
+                service.resendInviteInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
                     'invite-1',
-                    null,
+                    rotatedTokenData,
                     unregisteredNotice
                 )
-            ).rejects.toBeInstanceOf(
-                DatabaseUniqueValueGenerationFailedException
-            );
-            expect(
-                workspaceInviteRepository.rotateForResendInTx
-            ).toHaveBeenCalledTimes(5);
-        });
-
-        it('maps a write conflict on the rotation to WorkspaceInviteAlreadyProcessedException', async () => {
-            const conflict = buildPrismaKnownRequestError(
-                DatabaseWriteConflictCode
-            );
-            workspaceInviteRepository.rotateForResendInTx.mockRejectedValue(
-                conflict
-            );
-
-            await expect(
-                service.resendInvite(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'invite-1',
-                    null,
-                    unregisteredNotice
-                )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-
-                constructor: WorkspaceInviteAlreadyProcessedException,
-            });
-        });
-
-        it('wraps another rotation failure in AppUnknownException', async () => {
-            const cause = new Error('db-down');
-            workspaceInviteRepository.rotateForResendInTx.mockRejectedValue(
-                cause
-            );
-
-            await expect(
-                service.resendInvite(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'invite-1',
-                    null,
-                    unregisteredNotice
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(collision);
         });
     });
 
-    describe('revokeInvite', () => {
-        it('revokes the invite and adds the revoker entry and the invitee entry on one tx', async () => {
+    describe('revokeInviteInTx', () => {
+        it('revokes the invite and adds the revoker entry and the invitee entry after the write on one tx', async () => {
             workspaceInviteRepository.revokeInTx.mockResolvedValue(true);
 
-            await service.revokeInvite(
+            await service.revokeInviteInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -1796,12 +1571,16 @@ describe('WorkspaceInviteService', () => {
                 actorEntry,
                 inviteeEntry,
             ]);
+            expect(workspaceInviteRepository.revokeInTx).toHaveBeenCalledBefore(
+                activityLogQueue.recordEffect
+            );
         });
 
         it('adds only the revoker entry for an invitee with no account', async () => {
             workspaceInviteRepository.revokeInTx.mockResolvedValue(true);
 
-            await service.revokeInvite(
+            await service.revokeInviteInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -1833,7 +1612,8 @@ describe('WorkspaceInviteService', () => {
             workspaceInviteRepository.revokeInTx.mockResolvedValue(false);
 
             await expect(
-                service.revokeInvite(
+                service.revokeInviteInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
@@ -1847,40 +1627,6 @@ describe('WorkspaceInviteService', () => {
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
             });
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-        });
-
-        it('maps a write conflict to WorkspaceInviteAlreadyProcessedException', async () => {
-            const conflict = buildPrismaKnownRequestError(
-                DatabaseWriteConflictCode
-            );
-            workspaceInviteRepository.revokeInTx.mockRejectedValue(conflict);
-
-            await expect(
-                service.revokeInvite(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'invite-1',
-                    'workspace-1',
-                    null
-                )
-            ).rejects.toBeInstanceOf(WorkspaceInviteAlreadyProcessedException);
-        });
-
-        it('wraps an unknown failure in AppUnknownException', async () => {
-            const failure = new Error('boom');
-            workspaceInviteRepository.revokeInTx.mockRejectedValue(failure);
-
-            await expect(
-                service.revokeInvite(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'invite-1',
-                    'workspace-1',
-                    null
-                )
-            ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });
 
@@ -1919,7 +1665,7 @@ describe('WorkspaceInviteService', () => {
             });
         });
 
-        it('maps a write conflict on the accept to WorkspaceInviteAlreadyProcessedException', async () => {
+        it('rejects with the raw write conflict the accept rejects with', async () => {
             const conflict = buildPrismaKnownRequestError(
                 DatabaseWriteConflictCode
             );
@@ -1927,24 +1673,7 @@ describe('WorkspaceInviteService', () => {
 
             await expect(
                 service.acceptPendingInTx(tx, 'invite-1', 'user-2', acceptedAt)
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-
-                constructor: WorkspaceInviteAlreadyProcessedException,
-            });
-        });
-
-        it('wraps another accept failure in AppUnknownException', async () => {
-            const cause = new Error('db-down');
-            workspaceInviteRepository.acceptInTx.mockRejectedValue(cause);
-
-            await expect(
-                service.acceptPendingInTx(tx, 'invite-1', 'user-2', acceptedAt)
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(conflict);
         });
     });
 
@@ -2034,7 +1763,7 @@ describe('WorkspaceInviteService', () => {
         });
 
         it('builds token data expiring after the given days', () => {
-            const result = service['createInviteTokenData'](7);
+            const result = service.createInviteTokenData(7);
 
             expect(result).toEqual({
                 token: 'token-value',

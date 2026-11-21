@@ -1,8 +1,4 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationEqual,
@@ -22,10 +18,8 @@ import type {
     IAuthJwtAccessContext,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
-import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type { IDeviceRemoveResult } from '@modules/device/interfaces/device.interface';
 import { DeviceService } from '@modules/device/services/device.service';
-import { DeviceUtil } from '@modules/device/utils/device.util';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type {
@@ -47,7 +41,7 @@ import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
 import { CacheService } from '@common/cache/services/cache.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { DatabaseService } from '@common/database/services/database.service';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
@@ -64,9 +58,6 @@ export class SessionService {
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
         private readonly deviceService: DeviceService,
-        private readonly deviceUtil: DeviceUtil,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly sessionQueue: SessionQueue,
@@ -280,6 +271,22 @@ export class SessionService {
         return tokens;
     }
 
+    /** Answers whether the session row is unrevoked, inside its expiry and idle bounds, and holds the digest of the jti. */
+    async existsLiveByJti(sessionId: string, jti: string): Promise<boolean> {
+        const jtiDigest = this.helperHashService.sha256Hash(jti);
+        const now = this.helperDateService.create();
+        const idleSince = this.helperDateService.backward(
+            now,
+            Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
+        );
+
+        return this.sessionRepository.existsLiveByJtiDigest(
+            sessionId,
+            jtiDigest,
+            idleSince
+        );
+    }
+
     async updateJtiInTx(
         tx: IDatabaseTransactionClient,
         sessionId: string,
@@ -387,25 +394,22 @@ export class SessionService {
         );
     }
 
-    /** Revokes the user's active sessions with their cache purge row, then every device ownership, on the caller's transaction; returns the revoked session refs. */
+    /** Revokes the user's active sessions with their cache purge row and every device ownership together, on the caller's transaction; returns the revoked session refs. */
     async revokeAllByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISessionRef[]> {
-        const sessions = await this.revokeActiveByUserInTx(
-            tx,
-            userId,
-            revokedBy,
-            revokedAt
-        );
-        await this.deviceService.revokeAllByUserInTx(
-            tx,
-            userId,
-            revokedBy,
-            revokedAt
-        );
+        const [sessions] = await Promise.all([
+            this.revokeActiveByUserInTx(tx, userId, revokedBy, revokedAt),
+            this.deviceService.revokeAllByUserInTx(
+                tx,
+                userId,
+                revokedBy,
+                revokedAt
+            ),
+        ]);
 
         return sessions;
     }
@@ -492,8 +496,9 @@ export class SessionService {
         return { deviceOwnership, revokedSessions };
     }
 
-    /** Revokes the session as an admin with its cache purge row and activity entries in one transaction; a write conflict throws SessionNotFoundException. */
-    async revokeByAdmin(
+    /** Revokes the session as an admin on the caller's transaction, adds its cache purge row and activity entries, and returns it; no match throws SessionNotFoundException. */
+    async revokeByAdminInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
@@ -502,75 +507,57 @@ export class SessionService {
         revokedAt: Date
     ): Promise<ISession> {
         const revokedBy = authContext.userId;
-        try {
-            return await this.databaseService.withTransaction(async tx => {
-                const session = await this.sessionRepository.revokeByAdminInTx(
-                    tx,
-                    userId,
-                    sessionId,
-                    revokedBy,
-                    revokedAt
-                );
-                if (session === null) {
-                    throw new SessionNotFoundException();
-                }
-
-                const effect = this.sessionQueue.purgeLoginsEffect(userId, [
-                    { id: sessionId },
-                ]);
-                await this.outboxService.addInTx(tx, effect);
-
-                const actorMetadata = this.mapActivityLogActorMetadata(
-                    session,
-                    revokedAt
-                );
-                const actorEntry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.adminSessionRevoke,
-                        metadata: actorMetadata,
-                    }
-                );
-                await this.outboxService.addInTx(tx, actorEntry);
-
-                if (userId !== revokedBy) {
-                    const targetMetadata = this.mapActivityLogTargetMetadata(
-                        session,
-                        revokedBy,
-                        revokedAt
-                    );
-                    const targetEntry = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.userRevokeSessionByAdmin,
-                            userId,
-                            createdBy: revokedBy,
-                            metadata: targetMetadata,
-                        }
-                    );
-                    await this.outboxService.addInTx(tx, targetEntry);
-                }
-
-                return session;
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new SessionNotFoundException();
-            }
-
-            throw new AppUnknownException(err);
+        const session = await this.sessionRepository.revokeByAdminInTx(
+            tx,
+            userId,
+            sessionId,
+            revokedBy,
+            revokedAt
+        );
+        if (session === null) {
+            throw new SessionNotFoundException();
         }
+
+        const actorMetadata = this.mapActivityLogActorMetadata(
+            session,
+            revokedAt
+        );
+        const effects: IOutboxEffect[] = [
+            this.sessionQueue.purgeLoginsEffect(userId, [{ id: sessionId }]),
+            this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.adminSessionRevoked,
+                    metadata: actorMetadata,
+                }
+            ),
+        ];
+        if (userId !== revokedBy) {
+            const targetMetadata = this.mapActivityLogTargetMetadata(
+                session,
+                revokedBy,
+                revokedAt
+            );
+            const targetEntry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.userSessionRevokedByAdmin,
+                    userId,
+                    createdBy: revokedBy,
+                    metadata: targetMetadata,
+                }
+            );
+            effects.push(targetEntry);
+        }
+        await this.outboxService.addManyInTx(tx, effects);
+
+        return session;
     }
 
     assertNotSelf(userId: string, revokedBy: string): void {
@@ -579,8 +566,9 @@ export class SessionService {
         }
     }
 
-    /** Revokes every active session of the user with one cache purge row and the activity entries in one transaction; none revoked or a write conflict throws SessionNotFoundException. */
-    async revokeAllByAdmin(
+    /** Revokes every active session of the user as an admin on the caller's transaction, adds their cache purge row and the activity entries, and returns the revoked refs; none revoked throws SessionNotFoundException. */
+    async revokeAllByAdminInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
@@ -588,143 +576,50 @@ export class SessionService {
         revokedAt: Date
     ): Promise<ISessionRef[]> {
         const revokedBy = authContext.userId;
-        try {
-            return await this.databaseService.withTransaction(async tx => {
-                const sessions = await this.revokeActiveByUserInTx(
-                    tx,
-                    userId,
-                    revokedBy,
-                    revokedAt
-                );
-                if (sessions.length === 0) {
-                    throw new SessionNotFoundException();
-                }
-
-                const actorMetadata =
-                    this.sessionUtil.mapActivityLogRevokeAllActorMetadata(
-                        userId,
-                        sessions.length
-                    );
-                const actorEntry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.adminSessionRevokeAll,
-                        metadata: actorMetadata,
-                    }
-                );
-                const targetMetadata =
-                    this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
-                        revokedBy,
-                        sessions.length
-                    );
-                const targetEntry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
-                        userId,
-                        createdBy: revokedBy,
-                        metadata: targetMetadata,
-                    }
-                );
-                await this.outboxService.addManyInTx(tx, [
-                    actorEntry,
-                    targetEntry,
-                ]);
-
-                return sessions;
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new SessionNotFoundException();
-            }
-
-            throw new AppUnknownException(err);
+        const sessions = await this.revokeActiveByUserInTx(
+            tx,
+            userId,
+            revokedBy,
+            revokedAt
+        );
+        if (sessions.length === 0) {
+            throw new SessionNotFoundException();
         }
-    }
 
-    /** Revokes the live sessions of a device ownership with their cache purge row and removes the ownership as an admin, adding the activity entries, in one transaction; a write conflict throws DeviceNotFoundException. */
-    async removeDeviceOwnershipByAdmin(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
-        userId: string,
-        deviceOwnershipId: string
-    ): Promise<void> {
-        const removedBy = authContext.userId;
-        const now = this.helperDateService.create();
-
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                const { deviceOwnership, revokedSessions } =
-                    await this.removeDeviceOwnershipInTx(
-                        tx,
-                        userId,
-                        deviceOwnershipId,
-                        removedBy,
-                        now
-                    );
-
-                const actorMetadata =
-                    this.deviceUtil.mapActivityLogActorMetadata(
-                        deviceOwnership,
-                        revokedSessions.length
-                    );
-                const actorEntry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.adminDeviceRemove,
-                        metadata: actorMetadata,
-                    }
-                );
-                await this.outboxService.addInTx(tx, actorEntry);
-
-                if (userId !== removedBy) {
-                    const targetMetadata =
-                        this.deviceUtil.mapActivityLogTargetMetadata(
-                            deviceOwnership,
-                            removedBy,
-                            revokedSessions.length
-                        );
-                    const targetEntry = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.userRemoveDeviceByAdmin,
-                            userId,
-                            createdBy: removedBy,
-                            metadata: targetMetadata,
-                        }
-                    );
-                    await this.outboxService.addInTx(tx, targetEntry);
-                }
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
+        const actorMetadata =
+            this.sessionUtil.mapActivityLogRevokeAllActorMetadata(
+                userId,
+                sessions.length
+            );
+        const actorEntry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.adminAllSessionsRevoked,
+                metadata: actorMetadata,
             }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new DeviceNotFoundException();
+        );
+        const targetMetadata =
+            this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
+                revokedBy,
+                sessions.length
+            );
+        const targetEntry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.userAllSessionsRevokedByAdmin,
+                userId,
+                createdBy: revokedBy,
+                metadata: targetMetadata,
             }
+        );
+        await this.outboxService.addManyInTx(tx, [actorEntry, targetEntry]);
 
-            throw new AppUnknownException(err);
-        }
+        return sessions;
     }
 }

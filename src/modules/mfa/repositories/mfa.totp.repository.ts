@@ -14,13 +14,6 @@ export class MfaTotpRepository implements IMfaTotpRepository {
         });
     }
 
-    async findOneByUserIdInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string
-    ): Promise<MfaTotp | null> {
-        return tx.mfaTotp.findUnique({ where: { userId } });
-    }
-
     async existsConfirmed(userId: string): Promise<boolean> {
         const count = await this.databaseService.client.mfaTotp.count({
             where: { userId, secret: { not: null } },
@@ -46,7 +39,7 @@ export class MfaTotpRepository implements IMfaTotpRepository {
         pendingSecretEncrypted: string
     ): Promise<void> {
         await tx.mfaTotp.upsert({
-            where: { userId },
+            where: { userId, secret: null },
             create: {
                 userId,
                 secret: null,

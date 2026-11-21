@@ -1,17 +1,15 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { MessageService } from '@common/message/services/message.service';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { Mfa } from '@generated/prisma-client/client';
+import type {
+    EnumMfaChallengePurpose,
+    Mfa,
+} from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
@@ -22,10 +20,13 @@ import { MfaMethodUnavailableException } from '@modules/mfa/exceptions/mfa.metho
 import { MfaNotEnabledException } from '@modules/mfa/exceptions/mfa.not-enabled.exception';
 import { MfaPasskeyInvalidException } from '@modules/mfa/exceptions/mfa.passkey-invalid.exception';
 import type {
+    IMfaAttemptFailure,
     IMfaBackupCodes,
     IMfaCheck,
+    IMfaCheckResult,
     IMfaPasskeyCredential,
     IMfaStatus,
+    IMfaTotpSetupCheckResult,
     IMfaVerifyInput,
 } from '@modules/mfa/interfaces/mfa.interface';
 import {
@@ -34,6 +35,7 @@ import {
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { MfaRepository } from '@modules/mfa/repositories/mfa.repository';
+import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
 import {
@@ -55,11 +57,10 @@ export class MfaService {
         private readonly mfaRepository: MfaRepository,
         private readonly mfaTotpService: MfaTotpService,
         private readonly mfaPasskeyService: MfaPasskeyService,
+        private readonly mfaChallengeService: MfaChallengeService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly notificationQueue: NotificationQueue,
-        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly messageService: MessageService,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
@@ -90,18 +91,13 @@ export class MfaService {
         backupCodes: string[],
         input: string
     ): Promise<string | null> {
-        // Sequential by design: an argon2id compare over several hashes, stopping at the first match
-        for (const hash of backupCodes) {
-            const isMatch = await this.helperHashService.argon2Compare(
-                input,
-                hash
-            );
-            if (isMatch) {
-                return hash;
-            }
-        }
+        const matches = await Promise.all(
+            backupCodes.map(hash =>
+                this.helperHashService.argon2Compare(input, hash)
+            )
+        );
 
-        return null;
+        return backupCodes.find((_hash, index) => matches[index]) ?? null;
     }
 
     private assertNotLocked(mfa: Mfa | null): void {
@@ -112,26 +108,26 @@ export class MfaService {
         }
     }
 
-    private async throwFailedAttempt(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        userId: string,
+    private async createFailure(
         method: EnumMfaMethod
-    ): Promise<never> {
-        const isLocked = await this.countFailedAttempt(
-            requestContext,
-            apiKeyContext,
-            userId
+    ): Promise<IMfaAttemptFailure> {
+        const [maxAttempts, lockDurationInMinutes] = await Promise.all([
+            this.featureFlagService.getMetadataNumber(
+                EnumFeatureFlagKey.mfa,
+                EnumFeatureFlagMetadataKey.mfaMaxAttempts
+            ),
+            this.featureFlagService.getMetadataNumber(
+                EnumFeatureFlagKey.mfa,
+                EnumFeatureFlagMetadataKey.mfaLockDurationInMinutes
+            ),
+        ]);
+        const now = this.helperDateService.create();
+        const lockedUntil = this.helperDateService.forward(
+            now,
+            Duration.fromObject({ minutes: lockDurationInMinutes })
         );
-        if (isLocked) {
-            throw new MfaAttemptMaxException();
-        }
 
-        if (method === EnumMfaMethod.passkey) {
-            throw new MfaPasskeyInvalidException();
-        }
-
-        throw new MfaInvalidException();
+        return { method, maxAttempts, lockedUntil };
     }
 
     private async checkBackupCode(
@@ -186,14 +182,12 @@ export class MfaService {
     }
 
     private async checkProof(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
         userId: string,
         method: EnumMfaMethod,
         { code, backupCode, passkeyResponse }: IMfaVerifyInput,
         webAuthnChallenge: string | null
-    ): Promise<IMfaCheck> {
-        // Sequential by design: gate before the work it guards
+    ): Promise<IMfaCheckResult> {
+        // Sequential by design: a credential proof, awaited alone
         const mfa = await this.mfaRepository.findOneByUserId(userId);
         this.assertNotLocked(mfa);
 
@@ -229,15 +223,12 @@ export class MfaService {
         }
 
         if (checked === null) {
-            return this.throwFailedAttempt(
-                requestContext,
-                apiKeyContext,
-                userId,
-                method
-            );
+            const failure = await this.createFailure(method);
+
+            return { check: null, failure };
         }
 
-        return checked;
+        return { check: checked, failure: null };
     }
 
     async assertEnrolmentAllowed(
@@ -372,114 +363,99 @@ export class MfaService {
         this.assertNotLocked(mfa);
     }
 
-    /** Counts one failed attempt in its own transaction and adds the userVerifyMfaFailed entry in it; true when it reached the budget, which locks MFA for the lock duration and adds the reach-max entry and the loginLocked effect beside it; a write conflict throws MfaAttemptMaxException. */
-    async countFailedAttempt(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        userId: string
-    ): Promise<boolean> {
-        const [maxAttempts, lockDurationInMinutes] = await Promise.all([
-            this.featureFlagService.getMetadataNumber(
-                EnumFeatureFlagKey.mfa,
-                EnumFeatureFlagMetadataKey.mfaMaxAttempts
-            ),
-            this.featureFlagService.getMetadataNumber(
-                EnumFeatureFlagKey.mfa,
-                EnumFeatureFlagMetadataKey.mfaLockDurationInMinutes
-            ),
-        ]);
-        const now = this.helperDateService.create();
-        const lockedUntil = this.helperDateService.forward(
-            now,
-            Duration.fromObject({ minutes: lockDurationInMinutes })
-        );
-        const lockedUntilIso = this.helperDateService.formatToIso(lockedUntil);
-
-        try {
-            return await this.databaseService.withTransaction(async tx => {
-                const isLocked = await this.mfaRepository.incrementAttemptInTx(
-                    tx,
-                    userId,
-                    maxAttempts,
-                    lockedUntil,
-                    userId
-                );
-                const failedEntry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    null,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userVerifyMfaFailed,
-                        userId,
-                        createdBy: userId,
-                    }
-                );
-                if (!isLocked) {
-                    await this.outboxService.addInTx(tx, failedEntry);
-
-                    return false;
-                }
-
-                const reachMaxEntry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    null,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userReachMaxMfaAttempt,
-                        userId,
-                        createdBy: userId,
-                    }
-                );
-                const methodLabel = this.messageService.setMessage(
-                    'notification.loginLockedMethod.mfa'
-                );
-                const effect = this.notificationQueue.notify(
-                    EnumNotificationKind.loginLocked,
-                    {
-                        userId,
-                        proceedBy: userId,
-                        method: EnumNotificationLoginLockedMethod.mfa,
-                        methodLabel,
-                        lockedUntil: lockedUntilIso,
-                    }
-                );
-                await this.outboxService.addManyInTx(tx, [
-                    failedEntry,
-                    reachMaxEntry,
-                    effect,
-                ]);
-
-                return true;
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new MfaAttemptMaxException();
-            }
-
-            throw new AppUnknownException(err);
-        }
-    }
-
-    /** Checks the method's proof and writes nothing on a match; a missing method, a method the mfa flag does not allow or the user has not enrolled, and a backup code with no effective factor or no code left throw uncounted, a lock throws MfaAttemptMaxException, and a mismatch counts one failure and throws MfaAttemptMaxException when it locked, else MfaPasskeyInvalidException for a passkey and MfaInvalidException for a code. */
-    async check(
+    /** Counts one failed attempt on the caller's transaction and adds the userMfaVerificationFailed entry on it; true when it reached the budget, which locks MFA until the failure's end and adds the reach-max entry and the loginLocked effect beside it. */
+    async countFailedAttemptInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         userId: string,
+        { maxAttempts, lockedUntil }: IMfaAttemptFailure
+    ): Promise<boolean> {
+        const isLocked = await this.mfaRepository.incrementAttemptInTx(
+            tx,
+            userId,
+            maxAttempts,
+            lockedUntil,
+            userId
+        );
+        const failedEntry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            null,
+            null,
+            {
+                action: EnumActivityLogAction.userMfaVerificationFailed,
+                userId,
+                createdBy: userId,
+            }
+        );
+        if (!isLocked) {
+            await this.outboxService.addInTx(tx, failedEntry);
+
+            return false;
+        }
+
+        const reachMaxEntry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            null,
+            null,
+            {
+                action: EnumActivityLogAction.userMaxMfaAttemptReached,
+                userId,
+                createdBy: userId,
+            }
+        );
+        const methodLabel = this.messageService.setMessage(
+            'notification.loginLockedMethod.mfa'
+        );
+        const lockedUntilIso = this.helperDateService.formatToIso(lockedUntil);
+        const effect = this.notificationQueue.notify(
+            EnumNotificationKind.loginLocked,
+            {
+                userId,
+                proceedBy: userId,
+                method: EnumNotificationLoginLockedMethod.mfa,
+                methodLabel,
+                lockedUntil: lockedUntilIso,
+            }
+        );
+        await this.outboxService.addManyInTx(tx, [
+            failedEntry,
+            reachMaxEntry,
+            effect,
+        ]);
+
+        return true;
+    }
+
+    /** Throws MfaAttemptMaxException when the counted failure locked MFA, else MfaPasskeyInvalidException for a passkey and MfaInvalidException for a code. */
+    throwFailedAttempt(
+        { method }: IMfaAttemptFailure,
+        isLocked: boolean
+    ): never {
+        if (isLocked) {
+            throw new MfaAttemptMaxException();
+        }
+
+        if (method === EnumMfaMethod.passkey) {
+            throw new MfaPasskeyInvalidException();
+        }
+
+        throw new MfaInvalidException();
+    }
+
+    /** Checks the method's proof and writes nothing; a mismatch answers the failure with the flag budget and the lock end, while a missing method, a method the mfa flag does not allow or the user has not enrolled, and a backup code with no effective factor or no code left throw uncounted, and a lock throws MfaAttemptMaxException. */
+    async check(
+        userId: string,
         input: IMfaVerifyInput,
         webAuthnChallenge: string | null
-    ): Promise<IMfaCheck> {
+    ): Promise<IMfaCheckResult> {
         if (input.method === null) {
             throw new MfaMethodRequiredException();
         }
 
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: a credential proof, awaited alone
         let isAllowed: boolean;
         if (input.method === EnumMfaMethod.backupCode) {
             isAllowed = await this.isEnabled(userId);
@@ -494,27 +470,16 @@ export class MfaService {
             throw new MfaMethodUnavailableException();
         }
 
-        return this.checkProof(
-            requestContext,
-            apiKeyContext,
-            userId,
-            input.method,
-            input,
-            webAuthnChallenge
-        );
+        return this.checkProof(userId, input.method, input, webAuthnChallenge);
     }
 
-    /** Checks a passkey assertion for the passkey sign-in without reading the mfa flag; the lock and the failed-attempt count are those of check. */
+    /** Checks a passkey assertion for the passkey sign-in without reading the mfa flag; the lock and the failure answer are those of check. */
     async checkPasskeyLogin(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
         userId: string,
         passkeyResponse: AuthenticationResponseJSON,
         webAuthnChallenge: string | null
-    ): Promise<IMfaCheck> {
+    ): Promise<IMfaCheckResult> {
         return this.checkProof(
-            requestContext,
-            apiKeyContext,
             userId,
             EnumMfaMethod.passkey,
             {
@@ -527,27 +492,23 @@ export class MfaService {
         );
     }
 
-    /** Answers the TOTP step of a setup code against the pending secret; a mismatch counts one failure and throws as check does. */
+    /** Answers the TOTP step and the encrypted pending secret of a setup code that matches it; a mismatch answers the failure and no secret. A lock throws MfaAttemptMaxException. */
     async checkTotpSetupCode(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
         userId: string,
         code: string
-    ): Promise<number> {
-        // Sequential by design: gate before the work it guards
+    ): Promise<IMfaTotpSetupCheckResult> {
+        // Sequential by design: a credential proof, awaited alone
         await this.assertAttemptAvailable(userId);
 
-        const totpStep = await this.mfaTotpService.checkSetupCode(userId, code);
+        const { totpStep, pendingSecret } =
+            await this.mfaTotpService.checkSetupCode(userId, code);
         if (totpStep === null) {
-            return this.throwFailedAttempt(
-                requestContext,
-                apiKeyContext,
-                userId,
-                EnumMfaMethod.totp
-            );
+            const failure = await this.createFailure(EnumMfaMethod.totp);
+
+            return { totpStep: null, pendingSecret: null, failure };
         }
 
-        return totpStep;
+        return { totpStep, pendingSecret, failure: null };
     }
 
     /** Resets the counter and the lock, then stamps the used passkey, accepts the checked TOTP step once, or removes the used backup code by its matched hash from the row read in the transaction, guarded on that row's codes; an absent hash or a guard miss throws MfaInvalidException. */
@@ -604,6 +565,23 @@ export class MfaService {
         }
     }
 
+    /** Claims the live challenge of the token and purpose, then completes the check, both on the given tx. */
+    async completeChallengeInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        challengeToken: string,
+        purpose: EnumMfaChallengePurpose,
+        check: IMfaCheck
+    ): Promise<void> {
+        await this.mfaChallengeService.consumeInTx(
+            tx,
+            challengeToken,
+            purpose,
+            userId
+        );
+        await this.completeInTx(tx, userId, check);
+    }
+
     /** Writes fresh backup codes and answers the plain ones when the row holds none; null when it holds codes. */
     async createBackupCodesInTx(
         tx: IDatabaseTransactionClient,
@@ -647,14 +625,10 @@ export class MfaService {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<void> {
-        const hasTotp = await this.mfaTotpService.existsConfirmedInTx(
-            tx,
-            userId
-        );
-        const hasPasskey = await this.mfaPasskeyService.existsByUserInTx(
-            tx,
-            userId
-        );
+        const [hasTotp, hasPasskey] = await Promise.all([
+            this.mfaTotpService.existsConfirmedInTx(tx, userId),
+            this.mfaPasskeyService.existsByUserInTx(tx, userId),
+        ]);
         if (!hasTotp && !hasPasskey) {
             await this.mfaRepository.clearBackupCodesInTx(tx, userId);
         }
@@ -664,17 +638,21 @@ export class MfaService {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<void> {
-        await this.mfaTotpService.removeInTx(tx, userId);
-        await this.mfaPasskeyService.deleteByUserInTx(tx, userId);
-        await this.mfaRepository.resetByAdminInTx(tx, userId);
+        await Promise.all([
+            this.mfaTotpService.removeInTx(tx, userId),
+            this.mfaPasskeyService.deleteByUserInTx(tx, userId),
+            this.mfaRepository.resetByAdminInTx(tx, userId),
+        ]);
     }
 
     async deleteByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<void> {
-        await this.mfaTotpService.removeInTx(tx, userId);
-        await this.mfaPasskeyService.deleteByUserInTx(tx, userId);
-        await this.mfaRepository.deleteByUserInTx(tx, userId);
+        await Promise.all([
+            this.mfaTotpService.removeInTx(tx, userId),
+            this.mfaPasskeyService.deleteByUserInTx(tx, userId),
+            this.mfaRepository.deleteByUserInTx(tx, userId),
+        ]);
     }
 }

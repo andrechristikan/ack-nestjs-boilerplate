@@ -48,18 +48,19 @@ export class PolicyDeleteByAdminUseCase implements IAppUseCase<
         roleId: string,
         id: string
     ): Promise<IResponseReturn<void>> {
-        // Sequential by design: gate before the work it guards
-        await this.roleService.assertWritableByActor(roleId, {
-            roleId: userContext.user.roleId,
-            roleType: userContext.user.role.type,
-        });
+        const [policy] = await Promise.all([
+            this.policyService.getOneByRoleAndId(roleId, id),
+            this.roleService.getWritableByActor(roleId, {
+                roleId: userContext.user.roleId,
+                roleType: userContext.user.role.type,
+            }),
+        ]);
 
         try {
             await this.databaseService.withTransaction(async tx => {
                 const deleted = await this.policyService.deleteByAdminInTx(
                     tx,
-                    roleId,
-                    id
+                    policy
                 );
 
                 const metadata =
@@ -70,13 +71,14 @@ export class PolicyDeleteByAdminUseCase implements IAppUseCase<
                     authContext,
                     null,
                     {
-                        action: EnumActivityLogAction.adminPolicyDelete,
+                        action: EnumActivityLogAction.adminPolicyDeleted,
                         metadata,
                     }
                 );
-                await this.outboxService.addInTx(tx, effect);
-                const roleEffect = this.roleService.invalidateEffect(roleId);
-                await this.outboxService.addInTx(tx, roleEffect);
+                await this.outboxService.addManyInTx(tx, [
+                    effect,
+                    this.roleService.invalidateEffect(roleId),
+                ]);
             });
 
             return {};

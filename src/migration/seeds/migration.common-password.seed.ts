@@ -51,7 +51,7 @@ export class MigrationCommonPasswordSeed
         this.logger.log(`Found ${values.length} Common Passwords to seed.`);
 
         try {
-            // Sequential by design: fan-out over an unbounded collection
+            // Sequential by design: a fan-out over an unbounded collection: bounded chunks in turn, each concurrent
             for (const batch of batches) {
                 await this.databaseService.withTransaction(
                     async tx => {

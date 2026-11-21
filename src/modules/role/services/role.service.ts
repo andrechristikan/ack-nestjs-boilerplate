@@ -1,8 +1,6 @@
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { CacheQueue } from '@common/cache/queues/cache.queue';
 import { CacheService } from '@common/cache/services/cache.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type {
@@ -18,7 +16,6 @@ import {
     RoleRank,
     RoleWithPoliciesCacheSchema,
 } from '@modules/role/constants/role.constant';
-import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
 import { RoleHasPoliciesException } from '@modules/role/exceptions/role.has-policies.exception';
 import { RoleImmutableException } from '@modules/role/exceptions/role.immutable.exception';
@@ -45,8 +42,7 @@ export class RoleService {
         private readonly roleCache: RoleCache,
         private readonly cacheService: CacheService,
         private readonly cacheQueue: CacheQueue,
-        private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly outboxService: OutboxService
     ) {}
 
     private outranks(
@@ -83,11 +79,11 @@ export class RoleService {
         );
     }
 
-    /** Gates a write on a role: it exists, the actor does not hold it, and the actor outranks it. */
-    async assertWritableByActor(
+    /** Reads the role a write targets and returns it: it exists, the actor does not hold it, and the actor outranks it. */
+    async getWritableByActor(
         roleId: string,
         actor: IRoleActor
-    ): Promise<void> {
+    ): Promise<IRole> {
         const role = await this.roleRepository.findOneById(roleId);
         if (!role) {
             throw new RoleNotFoundException();
@@ -95,22 +91,66 @@ export class RoleService {
 
         this.assertNotSelf(actor.roleId, role.id);
         this.assertActorOutranks(actor.roleType, role.type);
+
+        return role;
     }
 
-    async getById(roleId: string): Promise<IRole> {
-        const role = await this.roleRepository.findOneById(roleId);
+    /** Reads the role with its policy count and returns it when the actor may apply the update to it. */
+    async getUpdatableByActor(
+        actor: IRoleActor,
+        roleId: string,
+        update: IRoleUpdate
+    ): Promise<IRoleWithPolicyCount> {
+        const role =
+            await this.roleRepository.findOneWithPolicyCountById(roleId);
         if (!role) {
             throw new RoleNotFoundException();
+        }
+
+        this.assertNotSelf(actor.roleId, role.id);
+        this.assertActorOutranks(actor.roleType, role.type);
+        this.assertActorOutranks(actor.roleType, update.type);
+
+        const changesImmutableType = this.changesImmutableType(
+            role,
+            update.type
+        );
+        if (changesImmutableType) {
+            throw new RoleImmutableException();
+        }
+
+        const dropsToUser =
+            update.type === EnumRoleType.user &&
+            role.type !== EnumRoleType.user;
+        if (dropsToUser && role._count.policies > 0) {
+            throw new RoleHasPoliciesException();
         }
 
         return role;
     }
 
-    async getByIdInTx(
-        tx: IDatabaseTransactionClient,
+    /** Reads the role and returns it when the actor may delete it. */
+    async getDeletableByActor(
+        actor: IRoleActor,
         roleId: string
     ): Promise<IRole> {
-        const role = await this.roleRepository.findOneByIdInTx(tx, roleId);
+        const role = await this.roleRepository.findOneById(roleId);
+        if (!role) {
+            throw new RoleNotFoundException();
+        }
+
+        this.assertNotSelf(actor.roleId, role.id);
+        this.assertActorOutranks(actor.roleType, role.type);
+
+        if (role.isImmutable) {
+            throw new RoleImmutableException();
+        }
+
+        return role;
+    }
+
+    async getById(roleId: string): Promise<IRole> {
+        const role = await this.roleRepository.findOneById(roleId);
         if (!role) {
             throw new RoleNotFoundException();
         }
@@ -182,58 +222,19 @@ export class RoleService {
     async createByAdminInTx(
         tx: IDatabaseTransactionClient,
         roleId: string,
-        data: IRoleCreate,
-        actor: IRoleActor
+        data: IRoleCreate
     ): Promise<IRoleWithPolicies> {
-        this.assertActorOutranks(actor.roleType, data.type);
-
-        try {
-            return await this.roleRepository.createInTx(tx, roleId, data);
-        } catch (err: unknown) {
-            const isNameCollision = this.databaseUtil.isUniqueCollision(
-                err,
-                'name'
-            );
-            if (isNameCollision) {
-                throw new RoleExistException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return this.roleRepository.createInTx(tx, roleId, data);
     }
 
     async updateByAdminInTx(
         tx: IDatabaseTransactionClient,
-        id: string,
-        data: IRoleUpdate,
-        actor: IRoleActor
+        role: IRoleWithPolicyCount,
+        data: IRoleUpdate
     ): Promise<IRoleWithPolicies> {
-        const role = await this.roleRepository.findOneWithPolicyCountByIdInTx(
-            tx,
-            id
-        );
-        if (!role) {
-            throw new RoleNotFoundException();
-        }
-
-        this.assertNotSelf(actor.roleId, role.id);
-        this.assertActorOutranks(actor.roleType, role.type);
-        this.assertActorOutranks(actor.roleType, data.type);
-
-        const changesImmutableType = this.changesImmutableType(role, data.type);
-        if (changesImmutableType) {
-            throw new RoleImmutableException();
-        }
-
-        const dropsToUser =
-            data.type === EnumRoleType.user && role.type !== EnumRoleType.user;
-        if (dropsToUser && role._count.policies > 0) {
-            throw new RoleHasPoliciesException();
-        }
-
         const updated = await this.roleRepository.updateInTx(
             tx,
-            id,
+            role.id,
             role.type,
             data
         );
@@ -241,7 +242,7 @@ export class RoleService {
             throw new RoleNotFoundException();
         }
 
-        const effect = this.invalidateEffect(id);
+        const effect = this.invalidateEffect(role.id);
         await this.outboxService.addInTx(tx, effect);
 
         return updated;
@@ -249,28 +250,14 @@ export class RoleService {
 
     async deleteByAdminInTx(
         tx: IDatabaseTransactionClient,
-        id: string,
-        actor: IRoleActor
+        role: IRole
     ): Promise<IRole> {
-        // Sequential by design: gate before the work it guards
-        const role = await this.roleRepository.findOneByIdInTx(tx, id);
-        if (!role) {
-            throw new RoleNotFoundException();
-        }
-
-        this.assertNotSelf(actor.roleId, role.id);
-        this.assertActorOutranks(actor.roleType, role.type);
-
-        if (role.isImmutable) {
-            throw new RoleImmutableException();
-        }
-
-        const deleted = await this.roleRepository.deleteUnusedInTx(tx, id);
+        const deleted = await this.roleRepository.deleteUnusedInTx(tx, role.id);
         if (!deleted) {
             throw new RoleUsedException();
         }
 
-        const effect = this.invalidateEffect(id);
+        const effect = this.invalidateEffect(role.id);
         await this.outboxService.addInTx(tx, effect);
 
         return role;

@@ -2,7 +2,6 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseUniqueConstraintCode } from '@common/database/constants/database.constant';
@@ -165,7 +164,7 @@ describe('PolicyService', () => {
             action: [EnumPolicyAction.manage],
         };
 
-        it('throws PolicyExistException when the create collides on the subject index, with no read before the write', async () => {
+        it('lets the repository rejection through unmapped', async () => {
             const collision = new Prisma.PrismaClientKnownRequestError(
                 'subject collision',
                 {
@@ -176,24 +175,9 @@ describe('PolicyService', () => {
             );
             policyRepository.createInTx.mockRejectedValue(collision);
 
-            const promise = service.createByAdminInTx(tx, 'role-1', body);
-
-            await expect(promise).rejects.toMatchObject({
-                module: 'policy',
-                statusCode: EnumPolicyStatusCodeError.exist,
-            });
-        });
-
-        it('wraps a non-collision create error in AppUnknownException', async () => {
-            const otherError = new Error('unexpected');
-            policyRepository.createInTx.mockRejectedValue(otherError);
-
             await expect(
                 service.createByAdminInTx(tx, 'role-1', body)
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: otherError,
-            });
+            ).rejects.toBe(collision);
         });
 
         it('creates the policy for the role', async () => {
@@ -237,7 +221,7 @@ describe('PolicyService', () => {
             );
         });
 
-        it('updates the policy with no gate read', async () => {
+        it('updates the policy', async () => {
             policyRepository.updateInTx.mockResolvedValue(policy);
 
             const result = await service.updateByAdminInTx(
@@ -254,35 +238,44 @@ describe('PolicyService', () => {
                 'policy-1',
                 body
             );
-            expect(
-                policyRepository.findOneByRoleIdAndIdInTx
-            ).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('getOneByRoleAndId', () => {
+        it('returns the row read on the client', async () => {
+            policyRepository.findOneByRoleIdAndId.mockResolvedValue(policy);
+
+            const result = await service.getOneByRoleAndId(
+                'role-1',
+                'policy-1'
+            );
+
+            expect(result).toBe(policy);
+            expect(policyRepository.findOneByRoleIdAndId).toHaveBeenCalledWith(
+                'role-1',
+                'policy-1'
+            );
+        });
+
+        it('throws PolicyNotFoundException when the row is absent', async () => {
+            policyRepository.findOneByRoleIdAndId.mockResolvedValue(null);
+
+            await expect(
+                service.getOneByRoleAndId('role-1', 'policy-1')
+            ).rejects.toMatchObject({
+                module: 'policy',
+                statusCode: EnumPolicyStatusCodeError.notFound,
+            });
         });
     });
 
     describe('deleteByAdminInTx', () => {
-        it('throws PolicyNotFoundException when the row is absent', async () => {
-            policyRepository.findOneByRoleIdAndIdInTx.mockResolvedValue(null);
-
-            const promise = service.deleteByAdminInTx(tx, 'role-1', 'policy-1');
-
-            await expect(promise).rejects.toMatchObject({
-                module: 'policy',
-                statusCode: EnumPolicyStatusCodeError.notFound,
-            });
-            expect(
-                policyRepository.findOneByRoleIdAndIdInTx
-            ).toHaveBeenCalledWith(tx, 'role-1', 'policy-1');
-            expect(policyRepository.deleteInTx).not.toHaveBeenCalled();
-        });
-
         it('throws PolicyNotFoundException when the statement misses', async () => {
-            policyRepository.findOneByRoleIdAndIdInTx.mockResolvedValue(policy);
             policyRepository.deleteInTx.mockResolvedValue(false);
 
-            const promise = service.deleteByAdminInTx(tx, 'role-1', 'policy-1');
-
-            await expect(promise).rejects.toMatchObject({
+            await expect(
+                service.deleteByAdminInTx(tx, policy)
+            ).rejects.toMatchObject({
                 module: 'policy',
                 statusCode: EnumPolicyStatusCodeError.notFound,
             });
@@ -293,15 +286,10 @@ describe('PolicyService', () => {
             );
         });
 
-        it('deletes the policy and returns the row it read', async () => {
-            policyRepository.findOneByRoleIdAndIdInTx.mockResolvedValue(policy);
+        it('deletes the policy and returns the row it was given', async () => {
             policyRepository.deleteInTx.mockResolvedValue(true);
 
-            const result = await service.deleteByAdminInTx(
-                tx,
-                'role-1',
-                'policy-1'
-            );
+            const result = await service.deleteByAdminInTx(tx, policy);
 
             expect(result).toBe(policy);
             expect(policyRepository.deleteInTx).toHaveBeenCalledWith(

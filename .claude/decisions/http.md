@@ -146,12 +146,26 @@ Rule: `file.md`, S3 presign.
 
 - A multipart upload through the API, then a server-side put: the bytes would cross the API, holding its memory and request time for every upload.
 
-### Admin import is a job, export is not
+### Admin import and export are jobs
 
-Rule: `login.md`.
+Rule: `login.md`; `file.md`, CSV and PDF export.
 
 - Synchronous import: hashing up to fifty passwords and one bulk transaction would hold the request open.
-- Asynchronous export: the response is the file.
+- A synchronous export answering the file: the response being the file saves a download step, but the read and the CSV hold the request open, which caps an export at 500 rows.
+
+### Export files live in one temporary folder that a bucket lifecycle rule expires
+
+Rule: `file.md`, CSV and PDF export.
+
+- A delete job per file: one lifecycle rule on the folder removes every module's export files with no job.
+- A general export module: one export exists, and the kit promotes a concept with three callers (`layering.md`, Levels).
+
+### An export download link is a presigned URL sent by email, valid for 24 hours
+
+Rule: `file.md`, S3 presign.
+
+- A short-lived link: it is dead before the email is opened.
+- A status route answering the link: the email already delivers the link, so the status route only adds a route the client polls.
 
 ### S3 without bucket versioning
 

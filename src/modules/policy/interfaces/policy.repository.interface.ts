@@ -5,11 +5,6 @@ import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy
 
 export interface IPolicyRepository {
     findOneByRoleIdAndId(roleId: string, id: string): Promise<Policy | null>;
-    findOneByRoleIdAndIdInTx(
-        tx: IDatabaseTransactionClient,
-        roleId: string,
-        id: string
-    ): Promise<Policy | null>;
     createInTx(
         tx: IDatabaseTransactionClient,
         roleId: string,

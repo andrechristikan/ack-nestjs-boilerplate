@@ -63,13 +63,10 @@ export class MfaDisableTotpUseCase implements IAppUseCase<
         }: MfaTotpDisableRequestDto
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: a credential proof, awaited alone
         await this.mfaTotpService.assertConfirmed(authContext.userId);
-        const check = await this.userAuthService.assertReauthentication(
-            requestContext,
-            apiKeyContext,
-            user,
-            {
+        const { check, failure } =
+            await this.userAuthService.checkReauthentication(user, {
                 action: EnumUserReauthenticationAction.mfaTotpDisable,
                 password: password ?? null,
                 method: method ?? null,
@@ -78,8 +75,24 @@ export class MfaDisableTotpUseCase implements IAppUseCase<
                 passkeyChallengeToken: passkeyChallengeToken ?? null,
                 passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
-            }
-        );
+            });
+        if (failure !== null) {
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.userAuthService.countFailedReauthenticationInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        failure
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(
+                failure,
+                isLocked
+            );
+        }
 
         const now = this.helperDateService.create();
         try {
@@ -109,7 +122,7 @@ export class MfaDisableTotpUseCase implements IAppUseCase<
                     authContext,
                     null,
                     {
-                        action: EnumActivityLogAction.userDisableMfaTotp,
+                        action: EnumActivityLogAction.userMfaTotpDisabled,
                     }
                 );
                 await this.outboxService.addInTx(tx, entry);

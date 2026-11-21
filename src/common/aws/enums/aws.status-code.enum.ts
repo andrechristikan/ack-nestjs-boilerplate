@@ -7,4 +7,5 @@ export enum EnumAwsStatusCodeError {
     s3IterationLimitExceeded = 51404,
     sesTemplateBodyRequired = 51405,
     s3NotConfigured = 51406,
+    sesNotConfigured = 51407,
 }

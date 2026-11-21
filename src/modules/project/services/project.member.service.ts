@@ -1,8 +1,4 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -16,11 +12,9 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
-import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { ProjectMemberForbiddenException } from '@modules/project/exceptions/project.member-forbidden.exception';
 import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
 import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
@@ -44,10 +38,8 @@ export class ProjectMemberService {
         private readonly projectMemberRepository: ProjectMemberRepository,
         private readonly projectRepository: ProjectRepository,
         private readonly projectUtil: ProjectUtil,
-        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly activityLogQueue: ActivityLogQueue,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly activityLogQueue: ActivityLogQueue
     ) {}
 
     assertPeerAllowed(
@@ -156,92 +148,27 @@ export class ProjectMemberService {
         return this.projectMemberRepository.removeByUserInTx(tx, userId);
     }
 
-    /** Creates the member and adds the actor's and the assignee's activity entries in one transaction, dispatched after the commit. */
-    async assignMember(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
+    assertAssignable(
         project: Project,
         actor: IProjectMemberActor,
         targetMember: WorkspaceMember | null,
         role: EnumProjectMemberRole
-    ): Promise<IProjectMember> {
+    ): WorkspaceMember {
         this.assertPeerAllowed(actor, role);
 
         if (!targetMember || targetMember.workspaceId !== project.workspaceId) {
             throw new WorkspaceMemberNotFoundException();
         }
 
-        try {
-            return await this.databaseService.withTransaction(async tx => {
-                const member = await this.projectMemberRepository.createInTx(
-                    tx,
-                    project.id,
-                    targetMember.userId,
-                    role,
-                    actor.userId
-                );
-                const actorEntry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.projectMemberAssigned,
-                        userId: actor.userId,
-                        createdBy: actor.userId,
-                        workspaceId: project.workspaceId,
-                        metadata: { targetUserId: targetMember.userId },
-                    }
-                );
-                const entries = [actorEntry];
-                if (targetMember.userId !== actor.userId) {
-                    const assigneeEntry = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.projectMemberAssignedByAdmin,
-                            userId: targetMember.userId,
-                            createdBy: actor.userId,
-                            workspaceId: project.workspaceId,
-                            metadata: { actorUserId: actor.userId },
-                        }
-                    );
-                    entries.push(assigneeEntry);
-                }
-                await this.outboxService.addManyInTx(tx, entries);
-
-                return member;
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const isAlreadyAssigned = this.databaseUtil.isUniqueCollision(
-                err,
-                'userId'
-            );
-            if (isAlreadyAssigned) {
-                throw new ProjectMemberAlreadyAssignedException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return targetMember;
     }
 
-    /** Swaps the role guarded by the role read and adds the actor's and the target's activity entries in one transaction, dispatched after the commit. */
-    async updateMemberRole(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
+    async getRoleUpdatableMember(
         project: Project,
         actor: IProjectMemberActor,
         targetMemberId: string,
         newRole: EnumProjectMemberRole
-    ): Promise<void> {
+    ): Promise<ProjectMember> {
         const targetMember =
             await this.projectMemberRepository.findByIdAndProject(
                 targetMemberId,
@@ -253,74 +180,14 @@ export class ProjectMemberService {
 
         this.assertPeerAllowed(actor, targetMember.role, newRole);
 
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                const updated =
-                    await this.projectMemberRepository.updateRoleInTx(
-                        tx,
-                        targetMember.id,
-                        targetMember.role,
-                        newRole
-                    );
-                if (!updated) {
-                    throw new ProjectMemberPeerForbiddenException();
-                }
-
-                const actorEntry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.projectMemberRoleUpdated,
-                        userId: actor.userId,
-                        createdBy: actor.userId,
-                        workspaceId: project.workspaceId,
-                        metadata: { targetUserId: targetMember.userId },
-                    }
-                );
-                const entries = [actorEntry];
-                if (targetMember.userId !== actor.userId) {
-                    const targetEntry = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
-                            userId: targetMember.userId,
-                            createdBy: actor.userId,
-                            workspaceId: project.workspaceId,
-                            metadata: { actorUserId: actor.userId },
-                        }
-                    );
-                    entries.push(targetEntry);
-                }
-                await this.outboxService.addManyInTx(tx, entries);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new ProjectMemberPeerForbiddenException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return targetMember;
     }
 
-    /** Removes the member guarded by the role read and adds the actor's and the target's activity entries in one transaction, dispatched after the commit. */
-    async removeMember(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
+    async getRemovableMember(
         project: Project,
         actor: IProjectMemberActor,
         targetMemberId: string
-    ): Promise<void> {
+    ): Promise<ProjectMember> {
         const targetMember =
             await this.projectMemberRepository.findByIdAndProject(
                 targetMemberId,
@@ -336,107 +203,189 @@ export class ProjectMemberService {
 
         this.assertPeerAllowed(actor, targetMember.role);
 
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                const removed =
-                    await this.projectMemberRepository.removeMemberInTx(
-                        tx,
-                        targetMember.id,
-                        targetMember.role
-                    );
-                if (!removed) {
-                    throw new ProjectMemberPeerForbiddenException();
-                }
-
-                const actorEntry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.projectMemberRemoved,
-                        userId: actor.userId,
-                        createdBy: actor.userId,
-                        workspaceId: project.workspaceId,
-                        metadata: { targetUserId: targetMember.userId },
-                    }
-                );
-                const targetEntry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.projectMemberRemovedByAdmin,
-                        userId: targetMember.userId,
-                        createdBy: actor.userId,
-                        workspaceId: project.workspaceId,
-                        metadata: { actorUserId: actor.userId },
-                    }
-                );
-                await this.outboxService.addManyInTx(tx, [
-                    actorEntry,
-                    targetEntry,
-                ]);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new ProjectMemberPeerForbiddenException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return targetMember;
     }
 
-    /** Removes the member row and adds the member's activity entry in one transaction, dispatched after the commit. */
-    async leaveProject(
+    async assignMemberInTx(
+        tx: IDatabaseTransactionClient,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        project: Project,
+        actor: IProjectMemberActor,
+        targetMember: WorkspaceMember,
+        role: EnumProjectMemberRole
+    ): Promise<IProjectMember> {
+        const member = await this.projectMemberRepository.createInTx(
+            tx,
+            project.id,
+            targetMember.userId,
+            role,
+            actor.userId
+        );
+        const actorEntry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.projectMemberAssigned,
+                userId: actor.userId,
+                createdBy: actor.userId,
+                workspaceId: project.workspaceId,
+                metadata: { targetUserId: targetMember.userId },
+            }
+        );
+        const entries = [actorEntry];
+        if (targetMember.userId !== actor.userId) {
+            const assigneeEntry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.projectMemberAssignedByAdmin,
+                    userId: targetMember.userId,
+                    createdBy: actor.userId,
+                    workspaceId: project.workspaceId,
+                    metadata: { actorUserId: actor.userId },
+                }
+            );
+            entries.push(assigneeEntry);
+        }
+        await this.outboxService.addManyInTx(tx, entries);
+
+        return member;
+    }
+
+    async updateMemberRoleInTx(
+        tx: IDatabaseTransactionClient,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        project: Project,
+        actor: IProjectMemberActor,
+        targetMember: ProjectMember,
+        newRole: EnumProjectMemberRole
+    ): Promise<void> {
+        const updated = await this.projectMemberRepository.updateRoleInTx(
+            tx,
+            targetMember.id,
+            targetMember.role,
+            newRole
+        );
+        if (!updated) {
+            throw new ProjectMemberPeerForbiddenException();
+        }
+
+        const actorEntry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.projectMemberRoleUpdated,
+                userId: actor.userId,
+                createdBy: actor.userId,
+                workspaceId: project.workspaceId,
+                metadata: { targetUserId: targetMember.userId },
+            }
+        );
+        const entries = [actorEntry];
+        if (targetMember.userId !== actor.userId) {
+            const targetEntry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
+                    userId: targetMember.userId,
+                    createdBy: actor.userId,
+                    workspaceId: project.workspaceId,
+                    metadata: { actorUserId: actor.userId },
+                }
+            );
+            entries.push(targetEntry);
+        }
+        await this.outboxService.addManyInTx(tx, entries);
+    }
+
+    async removeMemberInTx(
+        tx: IDatabaseTransactionClient,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        project: Project,
+        actor: IProjectMemberActor,
+        targetMember: ProjectMember
+    ): Promise<void> {
+        const removed = await this.projectMemberRepository.removeMemberInTx(
+            tx,
+            targetMember.id,
+            targetMember.role
+        );
+        if (!removed) {
+            throw new ProjectMemberPeerForbiddenException();
+        }
+
+        const actorEntry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.projectMemberRemoved,
+                userId: actor.userId,
+                createdBy: actor.userId,
+                workspaceId: project.workspaceId,
+                metadata: { targetUserId: targetMember.userId },
+            }
+        );
+        const targetEntry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.projectMemberRemovedByAdmin,
+                userId: targetMember.userId,
+                createdBy: actor.userId,
+                workspaceId: project.workspaceId,
+                metadata: { actorUserId: actor.userId },
+            }
+        );
+        await this.outboxService.addManyInTx(tx, [actorEntry, targetEntry]);
+    }
+
+    async leaveProjectInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         project: Project,
         member: ProjectMember
     ): Promise<void> {
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                const removed =
-                    await this.projectMemberRepository.removeByIdInTx(
-                        tx,
-                        member.id
-                    );
-                if (!removed) {
-                    throw new ProjectMemberNotFoundException();
-                }
-
-                const entry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.projectMemberLeft,
-                        userId: member.userId,
-                        createdBy: member.userId,
-                        workspaceId: project.workspaceId,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new ProjectMemberNotFoundException();
-            }
-
-            throw new AppUnknownException(err);
+        const removed = await this.projectMemberRepository.removeByIdInTx(
+            tx,
+            member.id
+        );
+        if (!removed) {
+            throw new ProjectMemberNotFoundException();
         }
+
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.projectMemberLeft,
+                userId: member.userId,
+                createdBy: member.userId,
+                workspaceId: project.workspaceId,
+            }
+        );
+        await this.outboxService.addInTx(tx, entry);
     }
 }

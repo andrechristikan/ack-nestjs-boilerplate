@@ -107,8 +107,10 @@ export class UserRegistrationService {
         const userIds = this.buildUserIds(inputs);
 
         const created = await this.userService.createManyInTx(tx, inputs);
-        await this.passwordHistoryService.createManyInTx(tx, passwordHistories);
-        await this.notificationService.createDefaultsManyInTx(tx, userIds);
+        await Promise.all([
+            this.passwordHistoryService.createManyInTx(tx, passwordHistories),
+            this.notificationService.createDefaultsManyInTx(tx, userIds),
+        ]);
 
         return created;
     }
@@ -243,7 +245,7 @@ export class UserRegistrationService {
 
         return [
             {
-                action: EnumActivityLogAction.adminUserCreate,
+                action: EnumActivityLogAction.adminUserCreated,
                 metadata: {
                     targetUserId: user.id,
                     targetUsername: user.username,

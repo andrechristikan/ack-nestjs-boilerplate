@@ -7,7 +7,7 @@ export class AwsS3NotConfiguredException extends AppBaseException {
     readonly module = 'aws';
     readonly statusCode = EnumAwsStatusCodeError.s3NotConfigured;
     readonly statusCodeKey = EnumAwsStatusCodeError[this.statusCode];
-    readonly httpStatus = HttpStatus.NOT_FOUND;
+    readonly httpStatus = HttpStatus.NOT_IMPLEMENTED;
 
     constructor() {
         super('aws.error.s3NotConfigured');

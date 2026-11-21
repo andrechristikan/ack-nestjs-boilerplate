@@ -41,12 +41,14 @@ export class ApiKeyDeleteByAdminUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         id: string
     ): Promise<IResponseReturn<IApiKey>> {
+        const row = await this.apiKeyService.getOneById(id);
+
         try {
             const updated = await this.databaseService.withTransaction(
                 async tx => {
                     const apiKey = await this.apiKeyService.deleteByAdminInTx(
                         tx,
-                        id
+                        row
                     );
 
                     const timestamp = this.helperDateService.create();
@@ -60,7 +62,7 @@ export class ApiKeyDeleteByAdminUseCase implements IAppUseCase<
                         authContext,
                         null,
                         {
-                            action: EnumActivityLogAction.adminApiKeyDelete,
+                            action: EnumActivityLogAction.adminApiKeyDeleted,
                             metadata,
                         }
                     );

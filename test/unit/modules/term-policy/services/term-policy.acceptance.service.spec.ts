@@ -10,12 +10,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
-    DatabaseUniqueConstraintCode,
-    DatabaseWriteConflictCode,
-} from '@common/database/constants/database.constant';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
@@ -27,7 +22,6 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import {
     EnumActivityLogAction,
     EnumTermPolicyType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import {
     EnumNotificationKind,
@@ -35,10 +29,8 @@ import {
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
-import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import type {
@@ -54,7 +46,6 @@ import {
 describe('TermPolicyAcceptanceService', () => {
     const termPolicyRepository: MockProxy<TermPolicyRepository> =
         mock<TermPolicyRepository>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
@@ -128,7 +119,6 @@ describe('TermPolicyAcceptanceService', () => {
                     provide: TermPolicyRepository,
                     useValue: termPolicyRepository,
                 },
-                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: NotificationQueue, useValue: notificationQueue },
                 ...TestUnitKitProviders,
@@ -270,8 +260,8 @@ describe('TermPolicyAcceptanceService', () => {
         });
     });
 
-    describe('assertRequiredPublishedInTx', () => {
-        it('returns the latest published policy of every required type', async () => {
+    describe('assertRequiredPublished', () => {
+        it('returns the latest published policy of every required type read on the client', async () => {
             const refs: ITermPolicyRef[] = [
                 {
                     id: 'terms-1',
@@ -284,36 +274,34 @@ describe('TermPolicyAcceptanceService', () => {
                     version: 1,
                 },
             ];
-            termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
+            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue(
                 refs
             );
 
-            const result = await service.assertRequiredPublishedInTx(tx, [
+            const result = await service.assertRequiredPublished([
                 EnumTermPolicyType.termsOfService,
                 EnumTermPolicyType.privacy,
             ]);
 
             expect(result).toBe(refs);
             expect(
-                termPolicyRepository.findLatestPublishedByTypesInTx
-            ).toHaveBeenCalledWith(tx, [
+                termPolicyRepository.findLatestPublishedByTypes
+            ).toHaveBeenCalledWith([
                 EnumTermPolicyType.termsOfService,
                 EnumTermPolicyType.privacy,
             ]);
         });
 
         it('throws TermPolicyRequiredNotPublishedException when privacy has no published row', async () => {
-            termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
-                [
-                    {
-                        id: 'terms-1',
-                        type: EnumTermPolicyType.termsOfService,
-                        version: 1,
-                    },
-                ]
-            );
+            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue([
+                {
+                    id: 'terms-1',
+                    type: EnumTermPolicyType.termsOfService,
+                    version: 1,
+                },
+            ]);
 
-            const promise = service.assertRequiredPublishedInTx(tx, [
+            const promise = service.assertRequiredPublished([
                 EnumTermPolicyType.termsOfService,
                 EnumTermPolicyType.privacy,
             ]);
@@ -321,6 +309,44 @@ describe('TermPolicyAcceptanceService', () => {
             await expect(promise).rejects.toMatchObject({
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.requiredNotPublished,
+            });
+        });
+    });
+
+    describe('getLatestPublishedByType', () => {
+        const latest: ITermPolicyRef = {
+            id: 'term-policy-1',
+            type: EnumTermPolicyType.privacy,
+            version: 1,
+        };
+
+        it('returns the latest published policy of the type read on the client', async () => {
+            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue([
+                latest,
+            ]);
+
+            const result = await service.getLatestPublishedByType(
+                EnumTermPolicyType.privacy
+            );
+
+            expect(result).toBe(latest);
+            expect(
+                termPolicyRepository.findLatestPublishedByTypes
+            ).toHaveBeenCalledWith([EnumTermPolicyType.privacy]);
+        });
+
+        it('throws TermPolicyNotFoundException when no policy of the type is published', async () => {
+            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue(
+                []
+            );
+
+            const promise = service.getLatestPublishedByType(
+                EnumTermPolicyType.privacy
+            );
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.notFound,
             });
         });
     });
@@ -459,105 +485,29 @@ describe('TermPolicyAcceptanceService', () => {
         });
     });
 
-    describe('userAccept', () => {
+    describe('userAcceptInTx', () => {
         const latest: ITermPolicyRef = {
             id: 'term-policy-1',
             type: EnumTermPolicyType.privacy,
             version: 1,
         };
 
-        it('throws TermPolicyNotFoundException when the transaction finds no published policy of the type', async () => {
-            termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
-                []
-            );
-            databaseService.withTransaction.mockImplementation(async fn =>
-                fn(tx)
-            );
-
-            const promise = service.userAccept(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                EnumTermPolicyType.privacy
-            );
-
-            await expect(promise).rejects.toMatchObject({
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.notFound,
-            });
-            expect(termPolicyRepository.acceptInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws TermPolicyAlreadyAcceptedException when the acceptance insert collides on the unique index', async () => {
-            const collision = new Prisma.PrismaClientKnownRequestError(
-                'unique',
-                {
-                    code: DatabaseUniqueConstraintCode,
-                    clientVersion: 'test',
-                    meta: { target: ['termPolicyId'] },
-                }
-            );
-            databaseService.withTransaction.mockRejectedValue(collision);
-
-            const promise = service.userAccept(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                EnumTermPolicyType.privacy
-            );
-
-            await expect(promise).rejects.toMatchObject({
-                constructor: TermPolicyAlreadyAcceptedException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.alreadyAccepted,
-            });
-        });
-
-        it('throws TermPolicyAlreadyAcceptedException when the transaction hits a write conflict', async () => {
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                { code: DatabaseWriteConflictCode, clientVersion: 'test' }
-            );
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            const promise = service.userAccept(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                EnumTermPolicyType.privacy
-            );
-
-            await expect(promise).rejects.toMatchObject({
-                module: 'termPolicy',
-
-                constructor: TermPolicyAlreadyAcceptedException,
-                statusCode: EnumTermPolicyStatusCodeError.alreadyAccepted,
-            });
-        });
-
-        it('accepts the latest published policy re-read inside the transaction and adds the notification row on the same tx', async () => {
+        it('accepts the policy for the actor and adds the notification row on the same tx after the write', async () => {
             const effect: INotificationNotifyEffect = {
                 ...notifyEffect,
                 idempotencyKey: 'effect-key',
             };
-            termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
-                [latest]
-            );
             notificationQueue.notify.mockReturnValue(effect);
-            databaseService.withTransaction.mockImplementation(async fn =>
-                fn(tx)
-            );
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
-            await service.userAccept(
+            await service.userAcceptInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                EnumTermPolicyType.privacy
+                latest
             );
 
-            expect(
-                termPolicyRepository.findLatestPublishedByTypesInTx
-            ).toHaveBeenCalledWith(tx, [EnumTermPolicyType.privacy]);
             expect(termPolicyRepository.acceptInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
@@ -575,27 +525,27 @@ describe('TermPolicyAcceptanceService', () => {
                     version: 1,
                 }
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
-            expect(outboxService.addInTx).toHaveBeenCalledAfter(
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                effect,
+                entryEffect,
+            ]);
+            expect(outboxService.addManyInTx).toHaveBeenCalledAfter(
                 termPolicyRepository.acceptInTx
             );
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('adds the userAcceptTermPolicy entry from the passed context on the same tx', async () => {
-            termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
-                [latest]
-            );
+        it('adds the userTermPolicyAccepted entry from the passed context on the same tx', async () => {
             notificationQueue.notify.mockReturnValue(notifyEffect);
             activityLogQueue.recordEffect.mockReturnValue(entryEffect);
-            databaseService.withTransaction.mockImplementation(async fn =>
-                fn(tx)
-            );
 
-            await service.userAccept(
+            await service.userAcceptInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                EnumTermPolicyType.privacy
+                latest
             );
 
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
@@ -603,27 +553,28 @@ describe('TermPolicyAcceptanceService', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userAcceptTermPolicy }
+                { action: EnumActivityLogAction.userTermPolicyAccepted }
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                notifyEffect,
+                entryEffect,
+            ]);
         });
 
-        it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
-            const rawError = new Error('write failed');
-            databaseService.withTransaction.mockRejectedValue(rawError);
+        it('adds no row when the acceptance insert rejects', async () => {
+            const failure = new Error('write failed');
+            termPolicyRepository.acceptInTx.mockRejectedValue(failure);
 
-            const promise = service.userAccept(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                EnumTermPolicyType.privacy
-            );
-
-            await expect(promise).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError,
-            });
+            await expect(
+                service.userAcceptInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    latest
+                )
+            ).rejects.toBe(failure);
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 });

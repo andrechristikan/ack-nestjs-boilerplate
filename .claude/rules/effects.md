@@ -32,7 +32,7 @@ Whoever builds a payload (an `<action>Effect` method, `NotificationQueue.notify`
 
 - BullMQ ignores a fixed-`jobId` enqueue while a job holding that id exists, until retention ages it out; a `jobId` never guards a race (`discipline.md`, Normal use).
 - No producer reads, retries, or removes a job; the outbox sweep reads one through `QueueBase.getJobState` alone; no caller branches on an `enqueue` result.
-- A fan-out from one request is one `addManyInTx` or one bulk job.
+- A fan-out from one request is one `addManyInTx` or one bulk job, and the effects one method adds on its `tx` are one `addManyInTx`.
 
 ## Cache invalidation
 

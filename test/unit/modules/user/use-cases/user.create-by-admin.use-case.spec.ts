@@ -1,3 +1,4 @@
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
@@ -33,6 +34,8 @@ import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.e
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import type { IRole } from '@modules/role/interfaces/role.interface';
+import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
 import { UserService } from '@modules/user/services/user.service';
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
@@ -46,7 +49,7 @@ import type {
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
+import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -271,6 +274,28 @@ describe('UserCreateByAdminUseCase', () => {
             ]);
         });
 
+        it('answers AwsSesNotConfiguredException before any read when SES is unset', async () => {
+            userService.assertEmailDeliverable.mockImplementation(() => {
+                throw new AwsSesNotConfiguredException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toMatchObject({
+                module: 'aws',
+                statusCode: EnumAwsStatusCodeError.sesNotConfigured,
+            });
+            expect(roleService.getById).not.toHaveBeenCalled();
+            expect(userService.existsByEmail).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
         it('commits once without the policy assertion, and adds the entries and the welcome effect with the generated password on the same tx', async () => {
             await expect(
                 useCase.execute(
@@ -359,7 +384,7 @@ describe('UserCreateByAdminUseCase', () => {
             );
         });
 
-        it('throws RoleNotFoundException before the rank and identity gates when the role is missing', async () => {
+        it('throws RoleNotFoundException and asserts no rank when the role is missing', async () => {
             roleService.getById.mockRejectedValue(new RoleNotFoundException());
 
             await expect(
@@ -375,12 +400,31 @@ describe('UserCreateByAdminUseCase', () => {
                 statusCode: EnumRoleStatusCodeError.notFound,
             });
             expect(roleService.assertActorOutranks).not.toHaveBeenCalled();
-            expect(countryService.getOne).not.toHaveBeenCalled();
-            expect(userService.existsByEmail).not.toHaveBeenCalled();
-            expect(userService.checkUsername).not.toHaveBeenCalled();
         });
 
-        it('throws the rank exception before any country or identity read', async () => {
+        it('calls the email, username, and country checks while the role read is still pending', async () => {
+            const roleRead = buildDeferred<IRole>();
+            roleService.getById.mockReturnValue(roleRead.promise);
+
+            const running = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                dto
+            );
+
+            expect(userService.existsByEmail).toHaveBeenCalledWith(dto.email);
+            expect(userService.checkUsername).toHaveBeenCalledWith(
+                dto.username
+            );
+            expect(countryService.getOne).toHaveBeenCalledWith(dto.countryId);
+
+            roleRead.resolve(role);
+            await running;
+        });
+
+        it('throws the rank exception and prepares nothing', async () => {
             roleService.assertActorOutranks.mockImplementation(() => {
                 throw new RoleRankForbiddenException();
             });
@@ -401,9 +445,6 @@ describe('UserCreateByAdminUseCase', () => {
                 EnumRoleType.admin,
                 EnumRoleType.user
             );
-            expect(countryService.getOne).not.toHaveBeenCalled();
-            expect(userService.existsByEmail).not.toHaveBeenCalled();
-            expect(userService.checkUsername).not.toHaveBeenCalled();
             expect(userService.prepareCreateByAdmin).not.toHaveBeenCalled();
         });
 
@@ -588,9 +629,11 @@ describe('UserCreateByAdminUseCase', () => {
                     [welcomeEffect],
                     5000
                 )
-            ).rejects.toBeInstanceOf(
-                DatabaseUniqueValueGenerationFailedException
-            );
+            ).rejects.toMatchObject({
+                module: 'database',
+                statusCode:
+                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
+            });
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });
     });

@@ -1,8 +1,4 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MessageService } from '@common/message/services/message.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -29,6 +25,7 @@ import type {
     IUserForgotPassword,
     IUserForgotPasswordCreate,
     IUserForgotPasswordPrepared,
+    IUserPasswordAttemptLimit,
     IUserPasswordSet,
     IUserPasswordTemporary,
 } from '@modules/user/interfaces/user.interface';
@@ -38,7 +35,6 @@ import { UserService } from '@modules/user/services/user.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Duration } from 'luxon';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -62,10 +58,8 @@ export class UserPasswordService {
         private readonly helperStringService: HelperStringService,
         private readonly helperDateService: HelperDateService,
         private readonly userService: UserService,
-        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly notificationQueue: NotificationQueue,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly featureFlagService: FeatureFlagService,
         private readonly activityLogQueue: ActivityLogQueue,
@@ -185,12 +179,8 @@ export class UserPasswordService {
         await this.userService.resetPasswordAttemptInTx(tx, userId);
     }
 
-    /** Counts one failed password attempt in its own transaction; true when it reached the budget, which locks sign-in for the lock duration and adds the reach-max entry and the loginLocked effect in that transaction; a write conflict throws UserPasswordAttemptMaxException. */
-    async countFailedPasswordAttempt(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        { id: userId }: IUser
-    ): Promise<boolean> {
+    /** Reads the password attempt budget and the lock duration from the loginWithCredential flag and answers the budget with the instant a lock reached now would end. */
+    async getPasswordAttemptLimit(): Promise<IUserPasswordAttemptLimit> {
         const [maxAttempts, lockDurationInMinutes] = await Promise.all([
             this.featureFlagService.getMetadataNumber(
                 EnumFeatureFlagKey.loginWithCredential,
@@ -206,72 +196,68 @@ export class UserPasswordService {
             now,
             Duration.fromObject({ minutes: lockDurationInMinutes })
         );
-        const lockedUntilIso = this.helperDateService.formatToIso(lockedUntil);
 
-        try {
-            return await this.databaseService.withTransaction(async tx => {
-                const isLocked =
-                    await this.userRepository.incrementPasswordAttemptInTx(
-                        tx,
-                        userId,
-                        maxAttempts,
-                        lockedUntil
-                    );
-                if (isLocked) {
-                    const entry = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        null,
-                        null,
-                        {
-                            action: EnumActivityLogAction.userReachMaxPasswordAttempt,
-                            userId,
-                            createdBy: userId,
-                        }
-                    );
-                    const methodLabel = this.messageService.setMessage(
-                        'notification.loginLockedMethod.password'
-                    );
-                    const effect = this.notificationQueue.notify(
-                        EnumNotificationKind.loginLocked,
-                        {
-                            userId,
-                            proceedBy: userId,
-                            method: EnumNotificationLoginLockedMethod.password,
-                            methodLabel,
-                            lockedUntil: lockedUntilIso,
-                        }
-                    );
-                    await this.outboxService.addManyInTx(tx, [entry, effect]);
-                }
-
-                return isLocked;
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new UserPasswordAttemptMaxException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return { maxAttempts, lockedUntil };
     }
 
-    /** Gates on `changePassword.forgotAllowed`, then resolves the active user of an email with a reset payload; null when no active user holds the email or the last request is inside the resend window. */
+    /** Counts one failed password attempt on the caller's transaction; true when it reached the budget, which locks sign-in until the limit's end and adds the reach-max entry and the loginLocked effect on that transaction. */
+    async countFailedPasswordAttemptInTx(
+        tx: IDatabaseTransactionClient,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        userId: string,
+        { maxAttempts, lockedUntil }: IUserPasswordAttemptLimit
+    ): Promise<boolean> {
+        const isLocked = await this.userRepository.incrementPasswordAttemptInTx(
+            tx,
+            userId,
+            maxAttempts,
+            lockedUntil
+        );
+        if (isLocked) {
+            const entry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
+                {
+                    action: EnumActivityLogAction.userMaxPasswordAttemptReached,
+                    userId,
+                    createdBy: userId,
+                }
+            );
+            const methodLabel = this.messageService.setMessage(
+                'notification.loginLockedMethod.password'
+            );
+            const lockedUntilIso =
+                this.helperDateService.formatToIso(lockedUntil);
+            const effect = this.notificationQueue.notify(
+                EnumNotificationKind.loginLocked,
+                {
+                    userId,
+                    proceedBy: userId,
+                    method: EnumNotificationLoginLockedMethod.password,
+                    methodLabel,
+                    lockedUntil: lockedUntilIso,
+                }
+            );
+            await this.outboxService.addManyInTx(tx, [entry, effect]);
+        }
+
+        return isLocked;
+    }
+
+    /** Gates on `changePassword.forgotAllowed` and resolves the active user of an email with a reset payload; null when no active user holds the email or the last request is inside the resend window. */
     async prepareForgotPassword(
         email: string
     ): Promise<IUserForgotPasswordPrepared | null> {
-        // Sequential by design: gate before the work it guards
-        await this.featureFlagService.validateFeatureFlagMetadata(
-            EnumFeatureFlagKey.changePassword,
-            EnumFeatureFlagMetadataKey.forgotAllowed
-        );
-
-        const user = await this.userRepository.findOneActiveByEmail(email);
+        const [user] = await Promise.all([
+            this.userRepository.findOneActiveByEmail(email),
+            this.featureFlagService.validateFeatureFlagMetadata(
+                EnumFeatureFlagKey.changePassword,
+                EnumFeatureFlagMetadataKey.forgotAllowed
+            ),
+        ]);
         if (!user) {
             return null;
         }
@@ -295,8 +281,9 @@ export class UserPasswordService {
         return { user, forgot };
     }
 
-    /** Replaces the user's unused requests with the new one and adds the forgotPassword effect and the activity entry in the same transaction, dispatched after the commit. */
-    async createForgotPassword(
+    /** Replaces the user's unused requests with the new one and adds the forgotPassword effect and the activity entry on the caller's transaction. */
+    async createForgotPasswordInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         userId: string,
@@ -305,52 +292,49 @@ export class UserPasswordService {
     ): Promise<void> {
         const expiredAt = this.helperDateService.formatToIso(forgot.expiredAt);
 
-        await this.databaseService.withTransaction(async tx => {
-            await this.userForgotPasswordRepository.createReplacingUnusedInTx(
-                tx,
+        await this.userForgotPasswordRepository.createReplacingUnusedInTx(
+            tx,
+            userId,
+            email,
+            forgot
+        );
+        const effect = this.notificationQueue.notify(
+            EnumNotificationKind.forgotPassword,
+            {
                 userId,
-                email,
-                forgot
-            );
-            const effect = this.notificationQueue.notify(
-                EnumNotificationKind.forgotPassword,
-                {
-                    userId,
-                    proceedBy: userId,
-                    link: forgot.link,
-                    reference: forgot.reference,
-                    expiredAt,
-                    expiredInMinutes: forgot.expiredInMinutes,
-                }
-            );
-            const entry = this.activityLogQueue.recordEffect(
-                requestContext,
-                apiKeyContext,
-                null,
-                null,
-                {
-                    action: EnumActivityLogAction.userForgotPassword,
-                    userId,
-                    createdBy: userId,
-                }
-            );
-            await this.outboxService.addManyInTx(tx, [entry, effect]);
-        });
+                proceedBy: userId,
+                link: forgot.link,
+                reference: forgot.reference,
+                expiredAt,
+                expiredInMinutes: forgot.expiredInMinutes,
+            }
+        );
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            null,
+            null,
+            {
+                action: EnumActivityLogAction.userPasswordResetRequested,
+                userId,
+                createdBy: userId,
+            }
+        );
+        await this.outboxService.addManyInTx(tx, [entry, effect]);
     }
 
-    /** Gates on `changePassword.forgotAllowed`, then reads the active reset of a token. */
+    /** Gates on `changePassword.forgotAllowed` and reads the active reset of a token. */
     async getOneActiveReset(token: string): Promise<IUserForgotPassword> {
-        // Sequential by design: gate before the work it guards
-        await this.featureFlagService.validateFeatureFlagMetadata(
-            EnumFeatureFlagKey.changePassword,
-            EnumFeatureFlagMetadataKey.forgotAllowed
-        );
-
         const hashedToken = this.helperHashService.sha256Hash(token);
-        const reset =
-            await this.userForgotPasswordRepository.findOneActiveByForgotPasswordToken(
+        const [reset] = await Promise.all([
+            this.userForgotPasswordRepository.findOneActiveByForgotPasswordToken(
                 hashedToken
-            );
+            ),
+            this.featureFlagService.validateFeatureFlagMetadata(
+                EnumFeatureFlagKey.changePassword,
+                EnumFeatureFlagMetadataKey.forgotAllowed
+            ),
+        ]);
         if (!reset) {
             throw new UserTokenInvalidException();
         }

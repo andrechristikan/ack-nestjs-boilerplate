@@ -40,6 +40,25 @@ export interface ITermPolicyCreate {
     contents: ITermPolicyContentUpload[];
 }
 
+export interface ITermPolicyCreatePrepared {
+    contents: ITermPolicyContent[];
+}
+
+export interface ITermPolicyPublishPrepared {
+    termPolicy: TermPolicy;
+    publicContents: ITermPolicyContent[];
+}
+
+export interface ITermPolicyContentPrepared<
+    TExisting extends ITermPolicyContent | null = ITermPolicyContent | null,
+    TMapped extends ITermPolicyContent | null = ITermPolicyContent | null,
+> {
+    termPolicy: TermPolicy;
+    contents: ITermPolicyContent[];
+    existingContent: TExisting;
+    mappedContent: TMapped;
+}
+
 export interface ITermPolicyContentPresign {
     type: EnumTermPolicyType;
     version: number;
@@ -129,6 +148,11 @@ export interface ITermPolicyRecipientPage {
 export interface ITermPolicyRecipientPending {
     sendableMarkers: ITermPolicyRecipientState[];
     offPageUserIds: string[];
+}
+
+export interface ITermPolicyRecipientPendingRead {
+    pending: ITermPolicyRecipientPending;
+    offPageUsers: ITermPolicyRecipientUser[];
 }
 
 export interface ITermPolicyRecipientBatch {

@@ -40,7 +40,6 @@ import type {
     IFeatureFlagUpdateStatus,
 } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 
 describe('FeatureFlagService', () => {
@@ -52,7 +51,6 @@ describe('FeatureFlagService', () => {
         });
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const cacheQueue: MockProxy<CacheQueue> = mock<CacheQueue>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
@@ -87,9 +85,6 @@ describe('FeatureFlagService', () => {
     beforeEach(async () => {
         featureFlagCache.buildFeatureFlagKeys.mockReturnValue(keys);
         cacheQueue.invalidateEffect.mockReturnValue(cacheEffect);
-        databaseService.withTransaction.mockImplementation(
-            async fn => fn(tx) as never
-        );
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 FeatureFlagService,
@@ -105,7 +100,6 @@ describe('FeatureFlagService', () => {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
-                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
@@ -426,7 +420,10 @@ describe('FeatureFlagService', () => {
 
                 await expect(
                     service.getMetadataNumber(key, metadataKey)
-                ).rejects.toBeInstanceOf(FeatureFlagNotConfiguredException);
+                ).rejects.toMatchObject({
+                    module: 'featureFlag',
+                    statusCode: EnumFeatureFlagStatusCodeError.notConfigured,
+                });
             }
         });
     });
@@ -699,7 +696,69 @@ describe('FeatureFlagService', () => {
         });
     });
 
-    describe('updateStatusByAdmin', () => {
+    describe('getOneById', () => {
+        it('returns the flag row', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(baseFlag);
+
+            const result = await service.getOneById(baseFlag.id);
+
+            expect(result).toBe(baseFlag);
+            expect(featureFlagRepository.findOneById).toHaveBeenCalledWith(
+                baseFlag.id
+            );
+        });
+
+        it('throws FeatureFlagNotFoundException when no row exists', async () => {
+            featureFlagRepository.findOneById.mockResolvedValue(null);
+
+            await expect(service.getOneById(baseFlag.id)).rejects.toMatchObject(
+                {
+                    module: 'featureFlag',
+                    statusCode: EnumFeatureFlagStatusCodeError.notFound,
+                }
+            );
+        });
+    });
+
+    describe('assertMetadataValid', () => {
+        const metadataUpdate: IFeatureFlagUpdateMetadata = {
+            metadata: { enabled: true },
+        };
+
+        it('throws FeatureFlagInvalidMetadataException when the metadata shape changed', () => {
+            const stored = { ...baseFlag, metadata: { label: 'a' } };
+
+            expect(() =>
+                service.assertMetadataValid(stored, metadataUpdate)
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'featureFlag',
+                    statusCode: EnumFeatureFlagStatusCodeError.invalidMetadata,
+                })
+            );
+        });
+
+        it('throws FeatureFlagInvalidMetadataException when the stored metadata is null', () => {
+            expect(() =>
+                service.assertMetadataValid(baseFlag, metadataUpdate)
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'featureFlag',
+                    statusCode: EnumFeatureFlagStatusCodeError.invalidMetadata,
+                })
+            );
+        });
+
+        it('returns when the metadata keeps its shape', () => {
+            const stored = { ...baseFlag, metadata: { enabled: false } };
+
+            expect(() =>
+                service.assertMetadataValid(stored, metadataUpdate)
+            ).not.toThrow();
+        });
+    });
+
+    describe('updateStatusByAdminInTx', () => {
         const statusUpdate: IFeatureFlagUpdateStatus = {
             isEnable: false,
             rolloutPercent: 0,
@@ -710,7 +769,8 @@ describe('FeatureFlagService', () => {
             featureFlagRepository.updateStatusInTx.mockResolvedValue(null);
 
             await expect(
-                service.updateStatusByAdmin(
+                service.updateStatusByAdminInTx(
+                    tx,
                     '507f1f77bcf86cd799439011',
                     statusUpdate
                 )
@@ -731,7 +791,8 @@ describe('FeatureFlagService', () => {
             const updated = { ...baseFlag, isEnable: false };
             featureFlagRepository.updateStatusInTx.mockResolvedValue(updated);
 
-            const result = await service.updateStatusByAdmin(
+            const result = await service.updateStatusByAdminInTx(
+                tx,
                 '507f1f77bcf86cd799439011',
                 statusUpdate
             );
@@ -752,73 +813,17 @@ describe('FeatureFlagService', () => {
         });
     });
 
-    describe('updateMetadataByAdmin', () => {
+    describe('updateMetadataByAdminInTx', () => {
         const metadataUpdate: IFeatureFlagUpdateMetadata = {
             metadata: { enabled: true },
         };
 
-        it('throws the notFound feature flag error when the flag does not exist', async () => {
-            featureFlagRepository.findOneById.mockResolvedValue(null);
-
-            await expect(
-                service.updateMetadataByAdmin(
-                    '507f1f77bcf86cd799439011',
-                    metadataUpdate
-                )
-            ).rejects.toMatchObject({
-                module: 'featureFlag',
-                statusCode: EnumFeatureFlagStatusCodeError.notFound,
-            });
-            expect(
-                featureFlagRepository.updateMetadataInTx
-            ).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-
-        it('throws FeatureFlagInvalidMetadataException when the metadata shape changed', async () => {
-            const stored = { ...baseFlag, metadata: { label: 'a' } };
-            featureFlagRepository.findOneById.mockResolvedValue(stored);
-
-            await expect(
-                service.updateMetadataByAdmin(
-                    '507f1f77bcf86cd799439011',
-                    metadataUpdate
-                )
-            ).rejects.toMatchObject({
-                module: 'featureFlag',
-                statusCode: EnumFeatureFlagStatusCodeError.invalidMetadata,
-            });
-            expect(
-                featureFlagRepository.updateMetadataInTx
-            ).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-
-        it('throws FeatureFlagInvalidMetadataException when the stored metadata is null', async () => {
-            featureFlagRepository.findOneById.mockResolvedValue(baseFlag);
-
-            await expect(
-                service.updateMetadataByAdmin(
-                    '507f1f77bcf86cd799439011',
-                    metadataUpdate
-                )
-            ).rejects.toMatchObject({
-                module: 'featureFlag',
-                statusCode: EnumFeatureFlagStatusCodeError.invalidMetadata,
-            });
-            expect(
-                featureFlagRepository.updateMetadataInTx
-            ).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-
         it('updates the metadata and adds the cache invalidation effect on the same tx', async () => {
-            const stored = { ...baseFlag, metadata: { enabled: false } };
             const updated = { ...baseFlag, metadata: { enabled: true } };
-            featureFlagRepository.findOneById.mockResolvedValue(stored);
             featureFlagRepository.updateMetadataInTx.mockResolvedValue(updated);
 
-            const result = await service.updateMetadataByAdmin(
+            const result = await service.updateMetadataByAdminInTx(
+                tx,
                 '507f1f77bcf86cd799439011',
                 metadataUpdate
             );

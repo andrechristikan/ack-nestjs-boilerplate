@@ -39,12 +39,15 @@ export class ApiKeyResetByAdminUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         id: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
+        const row = await this.apiKeyService.getOneById(id);
+        this.apiKeyService.assertActive(row);
+
         try {
             const { apiKey, secret } =
                 await this.databaseService.withTransaction(async tx => {
                     const reset = await this.apiKeyService.resetByAdminInTx(
                         tx,
-                        id
+                        row
                     );
 
                     const timestamp = this.helperDateService.create();

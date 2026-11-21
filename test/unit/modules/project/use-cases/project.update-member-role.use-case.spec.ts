@@ -1,10 +1,28 @@
+import { ConfigService } from '@nestjs/config';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import type {
+    Project,
+    ProjectMember,
+    WorkspaceMember,
+} from '@generated/prisma-client/client';
 import type { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
+import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
+import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import type { IProjectMemberActor } from '@modules/project/interfaces/project.interface';
 import { ProjectUtil } from '@modules/project/utils/project.util';
@@ -24,6 +42,9 @@ import {
 describe('ProjectUpdateMemberRoleUseCase', () => {
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
+
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const tx = {} as IDatabaseTransactionClient;
 
     let useCase: ProjectUpdateMemberRoleUseCase;
 
@@ -63,6 +84,8 @@ describe('ProjectUpdateMemberRoleUseCase', () => {
     const projectContext = buildProjectContext(project, null);
 
     beforeEach(async () => {
+        databaseService.withTransaction.mockImplementation(fn => fn(tx));
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectUpdateMemberRoleUseCase,
@@ -71,6 +94,12 @@ describe('ProjectUpdateMemberRoleUseCase', () => {
                     useValue: projectMemberService,
                 },
                 ProjectUtil,
+                { provide: DatabaseService, useValue: databaseService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
 
@@ -78,51 +107,107 @@ describe('ProjectUpdateMemberRoleUseCase', () => {
     });
 
     describe('execute', () => {
-        it('maps the actor and delegates the role update with the context', async () => {
-            const body: ProjectMemberUpdateRoleRequestDto = {
-                role: EnumProjectMemberRole.admin,
-            };
+        const targetMemberId = '507f1f77bcf86cd799439021';
+        const body: ProjectMemberUpdateRoleRequestDto = {
+            role: EnumProjectMemberRole.admin,
+        };
+        const targetMember: ProjectMember = {
+            id: targetMemberId,
+            projectId: project.id,
+            userId: '507f1f77bcf86cd799439022',
+            role: EnumProjectMemberRole.member,
+            joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdBy: null,
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+            updatedBy: null,
+        };
 
-            const result = await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                workspaceContext,
-                projectContext,
-                '507f1f77bcf86cd799439021',
-                body
+        const args = [
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
+            projectContext,
+            targetMemberId,
+            body,
+        ] as const;
+
+        it('reads the role-updatable member, then updates the role in one transaction on one tx', async () => {
+            projectMemberService.getRoleUpdatableMember.mockResolvedValue(
+                targetMember
             );
 
+            const result = await useCase.execute(...args);
+
             expect(result).toEqual({});
-            expect(projectMemberService.updateMemberRole).toHaveBeenCalledWith(
+            expect(
+                projectMemberService.getRoleUpdatableMember
+            ).toHaveBeenCalledWith(project, actor, targetMemberId, body.role);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                projectMemberService.updateMemberRoleInTx
+            ).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 project,
                 actor,
-                '507f1f77bcf86cd799439021',
+                targetMember,
                 body.role
             );
         });
 
-        it('rejects with the domain failure', async () => {
-            projectMemberService.updateMemberRole.mockRejectedValue(
-                new Error('boom')
+        it('rethrows the check exception and opens no transaction', async () => {
+            const failure = new ProjectMemberNotFoundException();
+            projectMemberService.getRoleUpdatableMember.mockRejectedValue(
+                failure
             );
 
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    projectContext,
-                    '507f1f77bcf86cd799439021',
-                    {
-                        role: EnumProjectMemberRole.admin,
-                    }
-                )
-            ).rejects.toThrow('boom');
+            await expect(useCase.execute(...args)).rejects.toBe(failure);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict to ProjectMemberPeerForbiddenException', async () => {
+            projectMemberService.getRoleUpdatableMember.mockResolvedValue(
+                targetMember
+            );
+            projectMemberService.updateMemberRoleInTx.mockRejectedValue(
+                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
+            );
+
+            await expect(useCase.execute(...args)).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
+            });
+        });
+
+        it('rethrows an AppBaseException from the transaction as is', async () => {
+            const failure = new ProjectMemberPeerForbiddenException();
+            projectMemberService.getRoleUpdatableMember.mockResolvedValue(
+                targetMember
+            );
+            projectMemberService.updateMemberRoleInTx.mockRejectedValue(
+                failure
+            );
+
+            await expect(useCase.execute(...args)).rejects.toBe(failure);
+        });
+
+        it('wraps any other error in AppUnknownException', async () => {
+            const otherError = new Error('boom');
+            projectMemberService.getRoleUpdatableMember.mockResolvedValue(
+                targetMember
+            );
+            projectMemberService.updateMemberRoleInTx.mockRejectedValue(
+                otherError
+            );
+
+            await expect(useCase.execute(...args)).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
+            });
         });
     });
 });

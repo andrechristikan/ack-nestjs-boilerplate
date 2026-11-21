@@ -2,7 +2,6 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { CacheQueue } from '@common/cache/queues/cache.queue';
 import { CacheService } from '@common/cache/services/cache.service';
 import {
@@ -268,31 +267,6 @@ describe('RoleService', () => {
         });
     });
 
-    describe('getByIdInTx', () => {
-        it('returns the role read on the tx', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(role);
-
-            const result = await service.getByIdInTx(tx, role.id);
-
-            expect(result).toBe(role);
-            expect(roleRepository.findOneByIdInTx).toHaveBeenCalledWith(
-                tx,
-                role.id
-            );
-        });
-
-        it('throws RoleNotFoundException when the role does not exist', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(null);
-
-            await expect(
-                service.getByIdInTx(tx, 'missing')
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.notFound,
-            });
-        });
-    });
-
     describe('getByName', () => {
         it('returns the role the repository reads', async () => {
             roleRepository.findOneByName.mockResolvedValue(role);
@@ -410,7 +384,20 @@ describe('RoleService', () => {
             type: EnumRoleType.admin,
         };
 
-        it('throws RoleExistException when the create collides on the name index, with no read before the write', async () => {
+        it('creates the role under the given id', async () => {
+            roleRepository.createInTx.mockResolvedValue(roleWithPolicies);
+
+            const result = await service.createByAdminInTx(tx, role.id, create);
+
+            expect(result).toBe(roleWithPolicies);
+            expect(roleRepository.createInTx).toHaveBeenCalledWith(
+                tx,
+                role.id,
+                create
+            );
+        });
+
+        it('lets the repository rejection through unmapped', async () => {
             const collision = new Prisma.PrismaClientKnownRequestError(
                 'name collision',
                 {
@@ -422,73 +409,208 @@ describe('RoleService', () => {
             roleRepository.createInTx.mockRejectedValue(collision);
 
             await expect(
-                service.createByAdminInTx(tx, role.id, create, superAdminActor)
+                service.createByAdminInTx(tx, role.id, create)
+            ).rejects.toBe(collision);
+        });
+    });
+
+    describe('getUpdatableByActor', () => {
+        const update: IRoleUpdate = {
+            description: null,
+            type: EnumRoleType.user,
+        };
+
+        it('reads the role with its policy count on the client and returns it', async () => {
+            const found = { ...role, _count: { policies: 0 } };
+            roleRepository.findOneWithPolicyCountById.mockResolvedValue(found);
+
+            const result = await service.getUpdatableByActor(
+                superAdminActor,
+                role.id,
+                update
+            );
+
+            expect(result).toBe(found);
+            expect(
+                roleRepository.findOneWithPolicyCountById
+            ).toHaveBeenCalledWith(role.id);
+        });
+
+        it('throws RoleHasPoliciesException when the type changes to user while the role holds a policy', async () => {
+            roleRepository.findOneWithPolicyCountById.mockResolvedValue({
+                ...role,
+                _count: { policies: 2 },
+            });
+
+            await expect(
+                service.getUpdatableByActor(superAdminActor, role.id, update)
             ).rejects.toMatchObject({
                 module: 'role',
-                statusCode: EnumRoleStatusCodeError.exist,
+                statusCode: EnumRoleStatusCodeError.hasPolicies,
             });
         });
 
-        it('wraps a non-collision create error in AppUnknownException', async () => {
-            const otherError = new Error('unexpected');
-            roleRepository.createInTx.mockRejectedValue(otherError);
+        it('returns a user role that holds policies when the type stays user', async () => {
+            const found = {
+                ...role,
+                type: EnumRoleType.user,
+                _count: { policies: 1 },
+            };
+            roleRepository.findOneWithPolicyCountById.mockResolvedValue(found);
+
+            const result = await service.getUpdatableByActor(
+                superAdminActor,
+                role.id,
+                update
+            );
+
+            expect(result).toBe(found);
+        });
+
+        it('answers the immutable refusal whatever the policy count', async () => {
+            roleRepository.findOneWithPolicyCountById.mockResolvedValue({
+                ...immutableRole,
+                _count: { policies: 3 },
+            });
 
             await expect(
-                service.createByAdminInTx(tx, role.id, create, superAdminActor)
+                service.getUpdatableByActor(
+                    superAdminActor,
+                    immutableRole.id,
+                    update
+                )
             ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: otherError,
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.immutable,
             });
         });
 
-        it('throws RoleRankForbiddenException when an admin creates an admin-type role', async () => {
+        it('throws RoleNotFoundException when the role does not exist', async () => {
+            roleRepository.findOneWithPolicyCountById.mockResolvedValue(null);
+
             await expect(
-                service.createByAdminInTx(tx, role.id, create, adminActor)
+                service.getUpdatableByActor(adminActor, 'missing', update)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.notFound,
+            });
+        });
+
+        it('throws RoleSelfForbiddenException when the actor updates the role they hold', async () => {
+            roleRepository.findOneWithPolicyCountById.mockResolvedValue({
+                ...role,
+                _count: { policies: 0 },
+            });
+
+            await expect(
+                service.getUpdatableByActor(
+                    { roleId: role.id, roleType: EnumRoleType.admin },
+                    role.id,
+                    update
+                )
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.selfForbidden,
+            });
+        });
+
+        it('throws RoleRankForbiddenException when an admin updates a superAdmin role', async () => {
+            roleRepository.findOneWithPolicyCountById.mockResolvedValue({
+                ...superAdminRole,
+                _count: { policies: 0 },
+            });
+
+            await expect(
+                service.getUpdatableByActor(
+                    adminActor,
+                    superAdminRole.id,
+                    update
+                )
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.rankForbidden,
             });
-            expect(roleRepository.createInTx).not.toHaveBeenCalled();
         });
 
-        it('creates a user-type role for an admin actor', async () => {
-            const userCreate: IRoleCreate = {
-                ...create,
+        it('throws RoleRankForbiddenException when an admin updates an admin role', async () => {
+            roleRepository.findOneWithPolicyCountById.mockResolvedValue({
+                ...role,
+                _count: { policies: 0 },
+            });
+
+            await expect(
+                service.getUpdatableByActor(adminActor, role.id, update)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+            });
+        });
+
+        it('throws RoleRankForbiddenException when an admin raises a user role to admin', async () => {
+            roleRepository.findOneWithPolicyCountById.mockResolvedValue({
+                ...role,
                 type: EnumRoleType.user,
-            };
-            roleRepository.createInTx.mockResolvedValue(roleWithPolicies);
+                _count: { policies: 0 },
+            });
 
-            const result = await service.createByAdminInTx(
-                tx,
-                role.id,
-                userCreate,
-                adminActor
-            );
-
-            expect(result).toBe(roleWithPolicies);
-            expect(roleRepository.createInTx).toHaveBeenCalledWith(
-                tx,
-                role.id,
-                userCreate
-            );
+            await expect(
+                service.getUpdatableByActor(adminActor, role.id, {
+                    description: null,
+                    type: EnumRoleType.admin,
+                })
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+            });
         });
 
-        it('creates the role under the given id', async () => {
-            roleRepository.createInTx.mockResolvedValue(roleWithPolicies);
+        it('throws RoleImmutableException when the type of an immutable role changes', async () => {
+            roleRepository.findOneWithPolicyCountById.mockResolvedValue({
+                ...immutableRole,
+                _count: { policies: 0 },
+            });
 
-            const result = await service.createByAdminInTx(
-                tx,
-                role.id,
-                create,
-                superAdminActor
+            await expect(
+                service.getUpdatableByActor(
+                    superAdminActor,
+                    immutableRole.id,
+                    update
+                )
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.immutable,
+            });
+        });
+
+        it('returns an immutable role when the type stays', async () => {
+            const found = { ...immutableRole, _count: { policies: 0 } };
+            roleRepository.findOneWithPolicyCountById.mockResolvedValue(found);
+
+            const result = await service.getUpdatableByActor(
+                superAdminActor,
+                immutableRole.id,
+                { description: 'Team lead role', type: immutableRole.type }
             );
 
-            expect(result).toBe(roleWithPolicies);
-            expect(roleRepository.createInTx).toHaveBeenCalledWith(
-                tx,
-                role.id,
-                create
-            );
+            expect(result).toBe(found);
+        });
+
+        it('answers the rank exception ahead of the immutable refusal', async () => {
+            roleRepository.findOneWithPolicyCountById.mockResolvedValue({
+                ...immutableRole,
+                _count: { policies: 0 },
+            });
+
+            await expect(
+                service.getUpdatableByActor(
+                    adminActor,
+                    immutableRole.id,
+                    update
+                )
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+            });
         });
     });
 
@@ -497,288 +619,12 @@ describe('RoleService', () => {
             description: null,
             type: EnumRoleType.user,
         };
+        const target = { ...role, _count: { policies: 0 } };
 
-        it('reads the role through the policy-count read on the tx', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...role,
-                _count: { policies: 0 },
-            });
+        it('updates the role the read returned and adds the invalidation effect', async () => {
             roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
 
-            await service.updateByAdminInTx(
-                tx,
-                role.id,
-                update,
-                superAdminActor
-            );
-
-            expect(
-                roleRepository.findOneWithPolicyCountByIdInTx
-            ).toHaveBeenCalledWith(tx, role.id);
-        });
-
-        it('throws RoleHasPoliciesException when the type changes to user while the role holds a policy', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...role,
-                _count: { policies: 2 },
-            });
-
-            await expect(
-                service.updateByAdminInTx(tx, role.id, update, superAdminActor)
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.hasPolicies,
-            });
-            expect(roleRepository.updateInTx).not.toHaveBeenCalled();
-        });
-
-        it('updates to user when the role holds no policy', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...role,
-                _count: { policies: 0 },
-            });
-            roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
-
-            const result = await service.updateByAdminInTx(
-                tx,
-                role.id,
-                update,
-                superAdminActor
-            );
-
-            expect(result).toBe(roleWithPolicies);
-        });
-
-        it('updates a user role that holds policies when the type stays user', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...role,
-                type: EnumRoleType.user,
-                _count: { policies: 1 },
-            });
-            roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
-
-            await service.updateByAdminInTx(
-                tx,
-                role.id,
-                update,
-                superAdminActor
-            );
-
-            expect(roleRepository.updateInTx).toHaveBeenCalled();
-        });
-
-        it('answers the immutable refusal whatever the policy count', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...immutableRole,
-                _count: { policies: 3 },
-            });
-
-            await expect(
-                service.updateByAdminInTx(
-                    tx,
-                    immutableRole.id,
-                    update,
-                    superAdminActor
-                )
-            ).rejects.toMatchObject({
-                module: 'role',
-
-                statusCode: EnumRoleStatusCodeError.immutable,
-            });
-            expect(roleRepository.updateInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws RoleNotFoundException when the role does not exist', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue(
-                null
-            );
-
-            await expect(
-                service.updateByAdminInTx(tx, 'missing', update, adminActor)
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.notFound,
-            });
-        });
-
-        it('throws RoleSelfForbiddenException when the actor updates the role they hold', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...role,
-                _count: { policies: 0 },
-            });
-
-            await expect(
-                service.updateByAdminInTx(tx, role.id, update, {
-                    roleId: role.id,
-                    roleType: EnumRoleType.admin,
-                })
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.selfForbidden,
-            });
-            expect(roleRepository.updateInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws RoleRankForbiddenException when an admin updates a superAdmin role', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...superAdminRole,
-                _count: { policies: 0 },
-            });
-
-            await expect(
-                service.updateByAdminInTx(
-                    tx,
-                    superAdminRole.id,
-                    update,
-                    adminActor
-                )
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.rankForbidden,
-            });
-            expect(roleRepository.updateInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws RoleRankForbiddenException when an admin updates an admin role', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...role,
-                _count: { policies: 0 },
-            });
-
-            await expect(
-                service.updateByAdminInTx(tx, role.id, update, adminActor)
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.rankForbidden,
-            });
-            expect(roleRepository.updateInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws RoleRankForbiddenException when an admin raises a user role to admin', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...role,
-                type: EnumRoleType.user,
-                _count: { policies: 0 },
-            });
-
-            await expect(
-                service.updateByAdminInTx(
-                    tx,
-                    role.id,
-                    { description: null, type: EnumRoleType.admin },
-                    adminActor
-                )
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.rankForbidden,
-            });
-            expect(roleRepository.updateInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws RoleImmutableException when the type of an immutable role changes', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...immutableRole,
-                _count: { policies: 0 },
-            });
-
-            await expect(
-                service.updateByAdminInTx(
-                    tx,
-                    immutableRole.id,
-                    update,
-                    superAdminActor
-                )
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.immutable,
-            });
-            expect(roleRepository.updateInTx).not.toHaveBeenCalled();
-        });
-
-        it('writes the description of an immutable role when the type stays', async () => {
-            const sameType: IRoleUpdate = {
-                description: 'Team lead role',
-                type: immutableRole.type,
-            };
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...immutableRole,
-                _count: { policies: 0 },
-            });
-            roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
-
-            const result = await service.updateByAdminInTx(
-                tx,
-                immutableRole.id,
-                sameType,
-                superAdminActor
-            );
-
-            expect(result).toBe(roleWithPolicies);
-            expect(roleRepository.updateInTx).toHaveBeenCalledWith(
-                tx,
-                immutableRole.id,
-                immutableRole.type,
-                sameType
-            );
-        });
-
-        it('answers the rank exception ahead of the immutable refusal', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...immutableRole,
-                _count: { policies: 0 },
-            });
-
-            await expect(
-                service.updateByAdminInTx(
-                    tx,
-                    immutableRole.id,
-                    update,
-                    adminActor
-                )
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.rankForbidden,
-            });
-            expect(roleRepository.updateInTx).not.toHaveBeenCalled();
-        });
-
-        it('updates a user role for an admin actor', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...role,
-                type: EnumRoleType.user,
-                _count: { policies: 0 },
-            });
-            roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
-
-            const result = await service.updateByAdminInTx(
-                tx,
-                role.id,
-                update,
-                adminActor
-            );
-
-            expect(result).toBe(roleWithPolicies);
-            expect(roleRepository.updateInTx).toHaveBeenCalledWith(
-                tx,
-                role.id,
-                EnumRoleType.user,
-                update
-            );
-        });
-
-        it('updates the role and returns it', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...role,
-                _count: { policies: 0 },
-            });
-            roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
-
-            const result = await service.updateByAdminInTx(
-                tx,
-                role.id,
-                update,
-                superAdminActor
-            );
+            const result = await service.updateByAdminInTx(tx, target, update);
 
             expect(result).toBe(roleWithPolicies);
             expect(roleRepository.updateInTx).toHaveBeenCalledWith(
@@ -793,19 +639,17 @@ describe('RoleService', () => {
         });
 
         it("passes the read's type to the guarded write", async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
+            const userTarget = {
                 ...role,
                 type: EnumRoleType.user,
                 _count: { policies: 0 },
-            });
+            };
             roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
 
-            await service.updateByAdminInTx(
-                tx,
-                role.id,
-                { description: null, type: EnumRoleType.admin },
-                superAdminActor
-            );
+            await service.updateByAdminInTx(tx, userTarget, {
+                description: null,
+                type: EnumRoleType.admin,
+            });
 
             expect(roleRepository.updateInTx).toHaveBeenCalledWith(
                 tx,
@@ -816,98 +660,84 @@ describe('RoleService', () => {
         });
 
         it('throws RoleNotFoundException when the guarded write misses', async () => {
-            roleRepository.findOneWithPolicyCountByIdInTx.mockResolvedValue({
-                ...role,
-                _count: { policies: 0 },
-            });
             roleRepository.updateInTx.mockResolvedValue(null);
 
             await expect(
-                service.updateByAdminInTx(tx, role.id, update, superAdminActor)
+                service.updateByAdminInTx(tx, target, update)
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
+            });
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('getDeletableByActor', () => {
+        it('returns the role read on the client', async () => {
+            roleRepository.findOneById.mockResolvedValue(role);
+
+            const result = await service.getDeletableByActor(
+                superAdminActor,
+                role.id
+            );
+
+            expect(result).toBe(role);
+            expect(roleRepository.findOneById).toHaveBeenCalledWith(role.id);
+        });
+
+        it('throws RoleNotFoundException when the role does not exist', async () => {
+            roleRepository.findOneById.mockResolvedValue(null);
+
+            await expect(
+                service.getDeletableByActor(adminActor, 'missing')
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.notFound,
+            });
+        });
+
+        it('throws RoleSelfForbiddenException when the actor deletes the role they hold', async () => {
+            roleRepository.findOneById.mockResolvedValue(role);
+
+            await expect(
+                service.getDeletableByActor(
+                    { roleId: role.id, roleType: EnumRoleType.superAdmin },
+                    role.id
+                )
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.selfForbidden,
+            });
+        });
+
+        it('throws RoleRankForbiddenException when an admin deletes a superAdmin role', async () => {
+            roleRepository.findOneById.mockResolvedValue(superAdminRole);
+
+            await expect(
+                service.getDeletableByActor(adminActor, superAdminRole.id)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.rankForbidden,
+            });
+        });
+
+        it('throws RoleImmutableException for an immutable role', async () => {
+            roleRepository.findOneById.mockResolvedValue(immutableRole);
+
+            await expect(
+                service.getDeletableByActor(superAdminActor, immutableRole.id)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.immutable,
             });
         });
     });
 
     describe('deleteByAdminInTx', () => {
-        it('throws RoleNotFoundException when the role does not exist', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(null);
-
-            await expect(
-                service.deleteByAdminInTx(tx, 'missing', adminActor)
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.notFound,
-            });
-            expect(roleRepository.deleteUnusedInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws RoleUsedException when the guarded delete matches no unused role', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(role);
-            roleRepository.deleteUnusedInTx.mockResolvedValue(false);
-
-            await expect(
-                service.deleteByAdminInTx(tx, role.id, superAdminActor)
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.used,
-            });
-            expect(roleRepository.deleteUnusedInTx).toHaveBeenCalledWith(
-                tx,
-                role.id
-            );
-        });
-
-        it('throws RoleSelfForbiddenException when the actor deletes the role they hold', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(role);
-
-            await expect(
-                service.deleteByAdminInTx(tx, role.id, {
-                    roleId: role.id,
-                    roleType: EnumRoleType.superAdmin,
-                })
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.selfForbidden,
-            });
-            expect(roleRepository.deleteUnusedInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws RoleRankForbiddenException when an admin deletes a superAdmin role', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(superAdminRole);
-
-            await expect(
-                service.deleteByAdminInTx(tx, superAdminRole.id, adminActor)
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.rankForbidden,
-            });
-            expect(roleRepository.deleteUnusedInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws RoleImmutableException for an immutable role', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(immutableRole);
-
-            await expect(
-                service.deleteByAdminInTx(tx, immutableRole.id, superAdminActor)
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.immutable,
-            });
-            expect(roleRepository.deleteUnusedInTx).not.toHaveBeenCalled();
-        });
-
-        it('deletes the unused role in one guarded statement and returns the role it read', async () => {
-            roleRepository.findOneByIdInTx.mockResolvedValue(role);
+        it('deletes the unused role in one guarded statement and returns the role it was given', async () => {
             roleRepository.deleteUnusedInTx.mockResolvedValue(true);
 
-            const result = await service.deleteByAdminInTx(
-                tx,
-                role.id,
-                superAdminActor
-            );
+            const result = await service.deleteByAdminInTx(tx, role);
 
             expect(result).toBe(role);
             expect(roleRepository.deleteUnusedInTx).toHaveBeenCalledWith(
@@ -918,14 +748,26 @@ describe('RoleService', () => {
             expect(cacheQueue.invalidateEffect).toHaveBeenCalledWith(roleKeys);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
         });
+
+        it('throws RoleUsedException when the guarded delete matches no unused role', async () => {
+            roleRepository.deleteUnusedInTx.mockResolvedValue(false);
+
+            await expect(
+                service.deleteByAdminInTx(tx, role)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.used,
+            });
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
     });
 
-    describe('assertWritableByActor', () => {
+    describe('getWritableByActor', () => {
         it('throws RoleNotFoundException when the role does not exist', async () => {
             roleRepository.findOneById.mockResolvedValue(null);
 
             await expect(
-                service.assertWritableByActor('missing', adminActor)
+                service.getWritableByActor('missing', adminActor)
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
@@ -936,7 +778,7 @@ describe('RoleService', () => {
             roleRepository.findOneById.mockResolvedValue(role);
 
             await expect(
-                service.assertWritableByActor(role.id, {
+                service.getWritableByActor(role.id, {
                     roleId: role.id,
                     roleType: EnumRoleType.admin,
                 })
@@ -950,19 +792,22 @@ describe('RoleService', () => {
             roleRepository.findOneById.mockResolvedValue(superAdminRole);
 
             await expect(
-                service.assertWritableByActor(superAdminRole.id, adminActor)
+                service.getWritableByActor(superAdminRole.id, adminActor)
             ).rejects.toMatchObject({
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.rankForbidden,
             });
         });
 
-        it('resolves when the actor outranks a role it does not hold', async () => {
+        it('returns the role when the actor outranks a role it does not hold', async () => {
             roleRepository.findOneById.mockResolvedValue(role);
 
-            await expect(
-                service.assertWritableByActor(role.id, superAdminActor)
-            ).resolves.toBeUndefined();
+            const result = await service.getWritableByActor(
+                role.id,
+                superAdminActor
+            );
+
+            expect(result).toBe(role);
         });
     });
 

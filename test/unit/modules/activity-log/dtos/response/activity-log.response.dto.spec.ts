@@ -28,7 +28,7 @@ describe('ActivityLogResponseSchema', () => {
             username: 'jane',
             photo: null,
         },
-        action: EnumActivityLogAction.userLoginCredential,
+        action: EnumActivityLogAction.userLoggedInWithCredential,
         description: 'User login with credential',
         ipAddress: '127.0.0.1',
         userAgent,

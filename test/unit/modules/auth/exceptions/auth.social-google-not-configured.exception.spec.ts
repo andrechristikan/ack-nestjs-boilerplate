@@ -16,7 +16,7 @@ describe('AuthSocialGoogleNotConfiguredException', () => {
                     EnumAuthStatusCodeError[
                         EnumAuthStatusCodeError.socialGoogleNotConfigured
                     ],
-                httpStatus: HttpStatus.NOT_FOUND,
+                httpStatus: HttpStatus.NOT_IMPLEMENTED,
                 messagePath: 'auth.error.socialGoogleNotConfigured',
             });
         });

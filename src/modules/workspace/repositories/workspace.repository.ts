@@ -253,19 +253,20 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         return count > 0;
     }
 
-    async existsOwnedWithOtherMembersInTx(
-        tx: IDatabaseTransactionClient,
+    async existsOwnedWithOtherMembers(
         workspaceIds: string[],
         userId: string
     ): Promise<boolean> {
-        const workspace = await tx.workspace.findFirst({
-            where: {
-                id: { in: workspaceIds },
-                deletedAt: null,
-                members: { some: { userId: { not: userId } } },
-            },
-            select: { id: true },
-        });
+        const workspace = await this.databaseService.client.workspace.findFirst(
+            {
+                where: {
+                    id: { in: workspaceIds },
+                    deletedAt: null,
+                    members: { some: { userId: { not: userId } } },
+                },
+                select: { id: true },
+            }
+        );
 
         return workspace !== null;
     }
@@ -287,16 +288,22 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         const liveWorkspaceIds = workspaces.map(({ id }) => id);
 
         const deletedSlugPattern = this.deletedSlugPattern;
-        for (const workspaceId of liveWorkspaceIds) {
-            await tx.workspace.updateMany({
-                where: { id: workspaceId, deletedAt: null },
-                data: {
-                    slug: deletedSlugPattern.replace('{id}', () => workspaceId),
-                    deletedAt,
-                    deletedBy: userId,
-                },
-            });
-        }
+        await Promise.all(
+            liveWorkspaceIds.map(workspaceId =>
+                tx.workspace.updateMany({
+                    where: { id: workspaceId, deletedAt: null },
+                    data: {
+                        slug: deletedSlugPattern.replace(
+                            '{id}',
+                            () => workspaceId
+                        ),
+                        deletedAt,
+                        deletedBy: userId,
+                        updatedBy: userId,
+                    },
+                })
+            )
+        );
 
         return liveWorkspaceIds;
     }

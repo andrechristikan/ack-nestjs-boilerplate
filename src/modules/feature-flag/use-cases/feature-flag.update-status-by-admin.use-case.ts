@@ -1,3 +1,4 @@
+import { DatabaseService } from '@common/database/services/database.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
@@ -10,17 +11,22 @@ export class FeatureFlagUpdateStatusByAdminUseCase implements IAppUseCase<
     [string, FeatureFlagUpdateStatusRequestDto],
     IResponseReturn<FeatureFlag>
 > {
-    constructor(private readonly featureFlagService: FeatureFlagService) {}
+    constructor(
+        private readonly featureFlagService: FeatureFlagService,
+        private readonly databaseService: DatabaseService
+    ) {}
 
     async execute(
         id: string,
         body: FeatureFlagUpdateStatusRequestDto
     ): Promise<IResponseReturn<FeatureFlag>> {
-        const updated = await this.featureFlagService.updateStatusByAdmin(id, {
-            isEnable: body.isEnable,
-            rolloutPercent: body.rolloutPercent,
-            targetUserIds: body.targetUserIds,
-        });
+        const updated = await this.databaseService.withTransaction(tx =>
+            this.featureFlagService.updateStatusByAdminInTx(tx, id, {
+                isEnable: body.isEnable,
+                rolloutPercent: body.rolloutPercent,
+                targetUserIds: body.targetUserIds,
+            })
+        );
 
         return {
             data: updated,

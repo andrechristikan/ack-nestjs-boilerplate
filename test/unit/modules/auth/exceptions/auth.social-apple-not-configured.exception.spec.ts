@@ -16,7 +16,7 @@ describe('AuthSocialAppleNotConfiguredException', () => {
                     EnumAuthStatusCodeError[
                         EnumAuthStatusCodeError.socialAppleNotConfigured
                     ],
-                httpStatus: HttpStatus.NOT_FOUND,
+                httpStatus: HttpStatus.NOT_IMPLEMENTED,
                 messagePath: 'auth.error.socialAppleNotConfigured',
             });
         });

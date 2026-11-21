@@ -1,3 +1,4 @@
+import { DatabaseService } from '@common/database/services/database.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { Workspace } from '@generated/prisma-client/client';
@@ -20,7 +21,10 @@ export class WorkspaceUpdateUseCase implements IAppUseCase<
     ],
     IResponseReturn<Workspace>
 > {
-    constructor(private readonly workspaceService: WorkspaceService) {}
+    constructor(
+        private readonly workspaceService: WorkspaceService,
+        private readonly databaseService: DatabaseService
+    ) {}
 
     async execute(
         requestContext: IRequestContext,
@@ -29,12 +33,15 @@ export class WorkspaceUpdateUseCase implements IAppUseCase<
         workspaceContext: IWorkspaceContext,
         { name, description }: WorkspaceUpdateRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        const workspace = await this.workspaceService.updateWorkspace(
-            requestContext,
-            apiKeyContext,
-            authContext,
-            workspaceContext.workspace.id,
-            { name, description }
+        const workspace = await this.databaseService.withTransaction(async tx =>
+            this.workspaceService.updateWorkspaceInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext.workspace.id,
+                { name, description }
+            )
         );
 
         return { data: workspace };

@@ -52,7 +52,7 @@ export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
     }),
     action: z.enum(EnumActivityLogAction).meta({
         description: 'Action recorded in the activity log',
-        example: EnumActivityLogAction.userLoginCredential,
+        example: EnumActivityLogAction.userLoggedInWithCredential,
     }),
     description: z.string().meta({
         description: 'Description of the activity log',

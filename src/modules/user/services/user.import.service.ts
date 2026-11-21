@@ -1,14 +1,15 @@
+import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
+import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { FileExceedMaxDataExportException } from '@common/file/exceptions/file.exceed-max-data-export.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import type {
-    IPaginationEqual,
-    IPaginationIn,
-} from '@common/pagination/interfaces/pagination.interface';
+import type { IPaginationIn } from '@common/pagination/interfaces/pagination.interface';
 import {
     EnumActivityLogAction,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
 } from '@generated/prisma-client/client';
+import type { EnumUserStatus } from '@generated/prisma-client/client';
+import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
 import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
@@ -25,6 +26,7 @@ import type {
     IUserImportUsernameChecks,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
+import { UserService } from '@modules/user/services/user.service';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
@@ -42,6 +44,8 @@ export class UserImportService {
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly authPasswordUtil: AuthPasswordUtil,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly awsS3Service: AwsS3Service,
+        private readonly userService: UserService,
         private readonly configService: ConfigService
     ) {
         this.maxDataExport =
@@ -171,22 +175,55 @@ export class UserImportService {
     }
 
     async exportByAdmin(
-        status: Record<string, IPaginationIn> | null,
-        roleId: Record<string, IPaginationEqual> | null,
-        countryId: Record<string, IPaginationEqual> | null
+        status: EnumUserStatus[],
+        roleId: string | null,
+        countryId: string | null
     ): Promise<IUser[]> {
-        const users = await this.userRepository.findExport(
+        return this.userRepository.findExport(
             status,
             roleId,
             countryId,
-            this.maxDataExport + 1
+            this.maxDataExport
         );
+    }
 
-        if (users.length > this.maxDataExport) {
-            throw new FileExceedMaxDataExportException();
+    assertExportByAdminDeliverable(): void {
+        const isS3Initialized = this.awsS3Service.isInitialized();
+        if (!isS3Initialized) {
+            throw new AwsS3NotConfiguredException();
         }
 
-        return users;
+        this.userService.assertEmailDeliverable();
+    }
+
+    async assertExportByAdminWithinCap(
+        status: EnumUserStatus[],
+        roleId: string | null,
+        countryId: string | null
+    ): Promise<void> {
+        const count = await this.userRepository.countExport(
+            status,
+            roleId,
+            countryId
+        );
+
+        if (count > this.maxDataExport) {
+            throw new FileExceedMaxDataExportException();
+        }
+    }
+
+    resolveExportByAdminStatus(
+        status: Record<string, IPaginationIn> | null
+    ): EnumUserStatus[] {
+        if (status === null) {
+            return UserDefaultStatus;
+        }
+
+        const selected = new Set<string>(
+            Object.values(status).flatMap(filter => filter.in)
+        );
+
+        return UserDefaultStatus.filter(value => selected.has(value));
     }
 
     buildImportByAdminStages(
@@ -201,7 +238,7 @@ export class UserImportService {
 
         return [
             {
-                action: EnumActivityLogAction.adminUserImport,
+                action: EnumActivityLogAction.adminUserImported,
                 metadata: { userCount: users.length },
             },
             ...stages,

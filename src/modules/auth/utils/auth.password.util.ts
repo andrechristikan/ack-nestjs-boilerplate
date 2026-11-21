@@ -100,18 +100,13 @@ export class AuthPasswordUtil {
         histories: PasswordHistory[],
         password: string
     ): Promise<PasswordHistory | null> {
-        // Sequential by design: an argon2id compare over several hashes, stopping at the first match.
-        for (const history of histories) {
-            const matched = await this.helperHashService.argon2Compare(
-                password,
-                history.password
-            );
-            if (matched) {
-                return history;
-            }
-        }
+        const matches = await Promise.all(
+            histories.map(history =>
+                this.helperHashService.argon2Compare(password, history.password)
+            )
+        );
 
-        return null;
+        return histories.find((_history, index) => matches[index]) ?? null;
     }
 
     createContextWords(

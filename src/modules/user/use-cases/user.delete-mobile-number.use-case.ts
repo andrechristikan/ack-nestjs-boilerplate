@@ -55,12 +55,9 @@ export class UserDeleteMobileNumberUseCase implements IAppUseCase<
         }: UserDeleteMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
         const { user } = userContext;
-        // Sequential by design: gate before the work it guards
-        const check = await this.userAuthService.assertReauthentication(
-            requestContext,
-            apiKeyContext,
-            user,
-            {
+        // Sequential by design: a credential proof, awaited alone
+        const { check, failure } =
+            await this.userAuthService.checkReauthentication(user, {
                 action: EnumUserReauthenticationAction.mobileNumberDelete,
                 password: password ?? null,
                 method: method ?? null,
@@ -69,8 +66,25 @@ export class UserDeleteMobileNumberUseCase implements IAppUseCase<
                 passkeyChallengeToken: passkeyChallengeToken ?? null,
                 passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
-            }
-        );
+            });
+        if (failure !== null) {
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.userAuthService.countFailedReauthenticationInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        failure
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(
+                failure,
+                isLocked
+            );
+        }
+
         await this.userMobileNumberService.getOneMobileNumber(
             authContext.userId,
             mobileNumberId

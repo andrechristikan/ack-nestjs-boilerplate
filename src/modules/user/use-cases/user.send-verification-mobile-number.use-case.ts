@@ -31,17 +31,16 @@ export class UserSendVerificationMobileNumberUseCase implements IAppUseCase<
         mobileNumberId: string
     ): Promise<IResponseReturn<void>> {
         const { userId } = authContext;
-        // Sequential by design: gates before the write they guard
-        const mobileNumber =
-            await this.userMobileNumberService.getOneUnverifiedMobileNumber(
+        const [mobileNumber, isResendable] = await Promise.all([
+            this.userMobileNumberService.getOneUnverifiedMobileNumber(
                 userId,
                 mobileNumberId
-            );
-        const isResendable =
-            await this.userVerificationService.isMobileResendable(
+            ),
+            this.userVerificationService.isMobileResendable(
                 userId,
                 mobileNumberId
-            );
+            ),
+        ]);
         if (!isResendable) {
             return {};
         }
@@ -60,7 +59,7 @@ export class UserSendVerificationMobileNumberUseCase implements IAppUseCase<
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userSendVerificationMobileNumber,
+                    action: EnumActivityLogAction.userVerificationMobileNumberSent,
                 }
             );
             await this.outboxService.addInTx(tx, entry);

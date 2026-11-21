@@ -52,35 +52,38 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         const workspaceId = workspaceContext.workspace.id;
         const actorMember = workspaceContext.workspaceMember;
+        const removed = await this.workspaceMemberService.getPeerTarget(
+            workspaceId,
+            actorMember,
+            targetMemberId
+        );
+
         try {
             await this.databaseService.withTransaction(async tx => {
-                const removed =
-                    await this.workspaceMemberService.removeMemberInTx(
+                // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
+                await this.workspaceMemberService.removeMemberInTx(tx, removed);
+                await Promise.all([
+                    this.projectMemberService.removeByWorkspaceAndUserInTx(
                         tx,
                         workspaceId,
-                        actorMember,
-                        targetMemberId
-                    );
-                await this.projectMemberService.removeByWorkspaceAndUserInTx(
-                    tx,
-                    workspaceId,
-                    removed.userId
-                );
-                await this.workspaceInviteService.revokePendingByEmailInTx(
-                    tx,
-                    workspaceId,
-                    removed.user.email
-                );
-                await this.workspaceJoinRequestService.cancelPendingByUserInTx(
-                    tx,
-                    workspaceId,
-                    removed.userId
-                );
-                await this.userService.clearLastWorkspaceInTx(
-                    tx,
-                    removed.userId,
-                    workspaceId
-                );
+                        removed.userId
+                    ),
+                    this.workspaceInviteService.revokePendingByEmailInTx(
+                        tx,
+                        workspaceId,
+                        removed.user.email
+                    ),
+                    this.workspaceJoinRequestService.cancelPendingByUserInTx(
+                        tx,
+                        workspaceId,
+                        removed.userId
+                    ),
+                    this.userService.clearLastWorkspaceInTx(
+                        tx,
+                        removed.userId,
+                        workspaceId
+                    ),
+                ]);
                 const actorEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,

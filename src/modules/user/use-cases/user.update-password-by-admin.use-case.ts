@@ -56,9 +56,11 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
         userContext: IUserContext,
         userId: string
     ): Promise<IResponseReturn<void>> {
+        this.userService.assertEmailDeliverable();
+
         this.userService.assertNotSelf(userId, authContext.userId);
 
-        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
+        // Sequential by design: a cheap check before the expensive or external work it guards
         const target = await this.userService.getOneWithRole(userId);
         this.roleService.assertActorOutranks(
             userContext.user.role.type,
@@ -66,8 +68,10 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
         );
         this.userService.assertUnblocked(target);
 
-        const { password, passwordString } =
-            await this.userPasswordService.createTemporaryPassword();
+        const [{ password, passwordString }, snapshot] = await Promise.all([
+            this.userPasswordService.createTemporaryPassword(),
+            this.notificationService.getSnapshot(target),
+        ]);
         const passwordCreatedAt = this.helperDateService.formatToIso(
             password.passwordCreated
         );
@@ -76,35 +80,34 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
         );
 
         await this.databaseService.withTransaction(async tx => {
-            const [updated, snapshot] = await Promise.all([
+            const [updated] = await Promise.all([
                 this.userService.updatePasswordInTx(
                     tx,
                     userId,
                     password,
                     authContext.userId
                 ),
-                this.notificationService.getSnapshot(target),
+                this.passwordHistoryService.createInTx(
+                    tx,
+                    userId,
+                    password.passwordHash,
+                    EnumPasswordHistoryType.admin,
+                    password.passwordPeriodExpired,
+                    password.passwordCreated,
+                    authContext.userId
+                ),
+                this.userPasswordService.markUnusedResetsUsedInTx(
+                    tx,
+                    userId,
+                    authContext.userId
+                ),
+                this.sessionService.revokeActiveByUserInTx(
+                    tx,
+                    userId,
+                    authContext.userId,
+                    password.passwordCreated
+                ),
             ]);
-            await this.passwordHistoryService.createInTx(
-                tx,
-                userId,
-                password.passwordHash,
-                EnumPasswordHistoryType.admin,
-                password.passwordPeriodExpired,
-                password.passwordCreated,
-                authContext.userId
-            );
-            await this.userPasswordService.markUnusedResetsUsedInTx(
-                tx,
-                userId,
-                authContext.userId
-            );
-            await this.sessionService.revokeActiveByUserInTx(
-                tx,
-                userId,
-                authContext.userId,
-                password.passwordCreated
-            );
             const effect = this.notificationQueue.notify(
                 EnumNotificationKind.temporaryPasswordByAdmin,
                 {
@@ -128,7 +131,7 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminUserUpdatePassword,
+                    action: EnumActivityLogAction.adminUserPasswordUpdated,
                     metadata: actorMetadata,
                 }
             );
@@ -138,7 +141,7 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userUpdatePasswordByAdmin,
+                    action: EnumActivityLogAction.userPasswordUpdatedByAdmin,
                     userId,
                     createdBy: authContext.userId,
                     metadata: targetMetadata,

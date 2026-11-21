@@ -7,7 +7,7 @@ export class AuthSocialGoogleNotConfiguredException extends AppBaseException {
     readonly module = 'auth';
     readonly statusCode = EnumAuthStatusCodeError.socialGoogleNotConfigured;
     readonly statusCodeKey = EnumAuthStatusCodeError[this.statusCode];
-    readonly httpStatus = HttpStatus.NOT_FOUND;
+    readonly httpStatus = HttpStatus.NOT_IMPLEMENTED;
 
     constructor() {
         super('auth.error.socialGoogleNotConfigured');

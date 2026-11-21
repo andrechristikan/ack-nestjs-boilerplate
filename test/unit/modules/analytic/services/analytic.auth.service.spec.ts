@@ -176,10 +176,16 @@ describe('AnalyticAuthService', () => {
     describe('authLoginMethod', () => {
         it('maps the login-method groups into buckets and passes null dates through', async () => {
             const rows = [
-                { action: EnumActivityLogAction.userLoginCredential, count: 7 },
+                {
+                    action: EnumActivityLogAction.userLoggedInWithCredential,
+                    count: 7,
+                },
             ];
             const buckets = [
-                { key: EnumActivityLogAction.userLoginCredential, count: 7 },
+                {
+                    key: EnumActivityLogAction.userLoggedInWithCredential,
+                    count: 7,
+                },
             ];
             analyticAuthRepository.groupActivityByAction.mockResolvedValue(
                 rows
@@ -216,11 +222,11 @@ describe('AnalyticAuthService', () => {
             analyticAuthRepository.groupActivityByAction.mockResolvedValue([
                 { action: EnumActivityLogAction.userLoginFailed, count: 6 },
                 {
-                    action: EnumActivityLogAction.userReachMaxPasswordAttempt,
+                    action: EnumActivityLogAction.userMaxPasswordAttemptReached,
                     count: 2,
                 },
                 {
-                    action: EnumActivityLogAction.userReachMaxMfaAttempt,
+                    action: EnumActivityLogAction.userMaxMfaAttemptReached,
                     count: 1,
                 },
             ]);
@@ -236,8 +242,8 @@ describe('AnalyticAuthService', () => {
             ).toHaveBeenCalledWith(
                 [
                     EnumActivityLogAction.userLoginFailed,
-                    EnumActivityLogAction.userReachMaxPasswordAttempt,
-                    EnumActivityLogAction.userReachMaxMfaAttempt,
+                    EnumActivityLogAction.userMaxPasswordAttemptReached,
+                    EnumActivityLogAction.userMaxMfaAttemptReached,
                 ],
                 startDate,
                 endDate

@@ -103,6 +103,11 @@ describe('NotificationTemplateService', () => {
             subject: 'User Import Result',
         },
         {
+            name: EnumNotificationKind.userExportResult,
+            file: 'notification.user-export-result.template.hbs',
+            subject: 'User Export Result',
+        },
+        {
             name: EnumNotificationKind.workspaceInvite,
             file: 'notification.workspace-invite.template.hbs',
             subject: 'Workspace Invitation',

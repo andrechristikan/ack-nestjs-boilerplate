@@ -5,6 +5,15 @@ import {
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
 import { ConfigService } from '@nestjs/config';
+import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -29,12 +38,14 @@ import { ProjectService } from '@modules/project/services/project.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
 import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/exceptions/workspace.invite-role-required.exception';
 import { WorkspaceInviteProjectMismatchException } from '@modules/workspace/exceptions/workspace.invite-project-mismatch.exception';
 import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
 import type {
     IWorkspaceInviteNotice,
+    IWorkspaceInvitePrepared,
     IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
@@ -131,6 +142,13 @@ describe('WorkspaceCreateInviteUseCase', () => {
             'https://app.example.com/workspace/invites?inviteToken=token-value',
         signUpLink: 'https://app.example.com/sign-up/token-value',
     };
+    const prepared: IWorkspaceInvitePrepared = {
+        workspaceInviteId: 'invite-new',
+        nonce: 'nonce-hash',
+        expiresInDays: 7,
+    };
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const tx = {} as IDatabaseTransactionClient;
     const notice: IWorkspaceInviteNotice = {
         workspaceName: 'Acme',
         inviterName: 'Jane Doe',
@@ -159,6 +177,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 },
                 { provide: ProjectService, useValue: projectService },
                 { provide: UserService, useValue: userService },
+                { provide: DatabaseService, useValue: databaseService },
                 UserUtil,
                 ...TestUnitKitProviders,
                 {
@@ -166,6 +185,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     useValue: buildConfigService({
                         ...TestUnitKitConfigValues,
                         'message.availableLanguages': ['en'],
+                        'workspace.invite.referenceMaxAttempts': 3,
                     }),
                 },
             ],
@@ -181,10 +201,44 @@ describe('WorkspaceCreateInviteUseCase', () => {
         };
         beforeEach(() => {
             userService.getOneActiveByEmail.mockResolvedValue(null);
-            workspaceInviteService.createInvite.mockResolvedValue({
-                invite,
-                tokenData,
+            databaseService.withTransaction.mockImplementation(fn => fn(tx));
+            workspaceInviteService.prepareInvite.mockResolvedValue(prepared);
+            workspaceInviteService.createInviteTokenData.mockReturnValue(
+                tokenData
+            );
+            workspaceInviteService.createInviteInTx.mockResolvedValue(invite);
+        });
+
+        it('answers AwsSesNotConfiguredException before any read, write, or transaction when SES is unset', async () => {
+            workspaceInviteService.assertEmailDeliverable.mockImplementation(
+                () => {
+                    throw new AwsSesNotConfiguredException();
+                }
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    workspaceContext,
+                    {
+                        ...body,
+                        projectId: 'project-1',
+                        projectRole: EnumProjectMemberRole.member,
+                    } as WorkspaceInviteCreateRequestDto
+                )
+            ).rejects.toMatchObject({
+                module: 'aws',
+                statusCode: EnumAwsStatusCodeError.sesNotConfigured,
             });
+            expect(
+                projectService.getActiveByIdAndWorkspace
+            ).not.toHaveBeenCalled();
+            expect(userService.getOneActiveByEmail).not.toHaveBeenCalled();
+            expect(workspaceInviteService.prepareInvite).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('checks, then writes with the notice and the context for an invitee with no account', async () => {
@@ -202,11 +256,13 @@ describe('WorkspaceCreateInviteUseCase', () => {
             workspaceInviteService.assertCreatable.mockImplementation(() => {
                 callOrder.push('assertCreatable');
             });
-            workspaceInviteService.createInvite.mockImplementation(async () => {
-                callOrder.push('create');
+            workspaceInviteService.createInviteInTx.mockImplementation(
+                async () => {
+                    callOrder.push('create');
 
-                return { invite, tokenData };
-            });
+                    return invite;
+                }
+            );
 
             const result = await useCase.execute(
                 requestContext,
@@ -218,11 +274,12 @@ describe('WorkspaceCreateInviteUseCase', () => {
             );
 
             expect(result).toEqual({ data: invite });
-            expect(callOrder[0]).toBe('paired');
-            expect(callOrder.indexOf('assertCreatable')).toBeGreaterThan(
-                callOrder.indexOf('lookup')
-            );
-            expect(callOrder.at(-1)).toBe('create');
+            expect(callOrder).toEqual([
+                'lookup',
+                'paired',
+                'assertCreatable',
+                'create',
+            ]);
             expect(
                 projectService.getActiveByIdAndWorkspace
             ).not.toHaveBeenCalled();
@@ -242,7 +299,24 @@ describe('WorkspaceCreateInviteUseCase', () => {
             expect(
                 workspaceInviteService.assertInviteeNotMember
             ).not.toHaveBeenCalled();
-            expect(workspaceInviteService.createInvite).toHaveBeenCalledWith(
+            expect(workspaceInviteService.prepareInvite).toHaveBeenCalledWith(
+                'workspace-1',
+                {
+                    email: 'invitee@example.com',
+                    workspaceRole: EnumWorkspaceMemberRole.member,
+                    projectId: null,
+                    projectRole: null,
+                    expiryDuration: null,
+                }
+            );
+            expect(
+                workspaceInviteService.createInviteTokenData
+            ).toHaveBeenCalledWith(7);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                workspaceInviteService.createInviteInTx
+            ).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -254,6 +328,8 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     projectRole: null,
                     expiryDuration: null,
                 },
+                prepared,
+                tokenData,
                 notice
             );
         });
@@ -268,12 +344,17 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 body
             );
 
-            expect(workspaceInviteService.createInvite).toHaveBeenCalledWith(
+            expect(
+                workspaceInviteService.createInviteInTx
+            ).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'workspace-1',
                 expect.objectContaining({ email: 'invitee@example.com' }),
+                prepared,
+                tokenData,
                 expect.objectContaining({ inviterName: 'Jane Doe' })
             );
             expect(userService.getOneActiveByEmail).toHaveBeenCalledOnce();
@@ -291,12 +372,17 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 body
             );
 
-            expect(workspaceInviteService.createInvite).toHaveBeenCalledWith(
+            expect(
+                workspaceInviteService.createInviteInTx
+            ).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'workspace-1',
                 expect.objectContaining({ email: 'invitee@example.com' }),
+                prepared,
+                tokenData,
                 { ...notice, inviteeUserId: 'user-2' }
             );
         });
@@ -329,17 +415,60 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 }),
                 project
             );
-            expect(workspaceInviteService.createInvite).toHaveBeenCalledWith(
+            expect(
+                workspaceInviteService.createInviteInTx
+            ).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'workspace-1',
                 expect.objectContaining({ expiryDuration: 14 }),
+                prepared,
+                tokenData,
                 notice
             );
         });
 
-        it('reads the project and the invitee together after the pairing gate', async () => {
+        it('starts the project read, the invitee lookup, and the preparation while the pairing gate is still pending', async () => {
+            const gate = buildDeferred<void>();
+            workspaceInviteService.assertProjectRolePaired.mockReturnValue(
+                gate.promise
+            );
+            projectService.getActiveByIdAndWorkspace.mockResolvedValue(project);
+            const withProject = {
+                ...body,
+                projectId: 'project-1',
+                projectRole: EnumProjectMemberRole.member,
+            } as WorkspaceInviteCreateRequestDto;
+
+            const pending = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                workspaceContext,
+                withProject
+            );
+            expect(
+                projectService.getActiveByIdAndWorkspace
+            ).toHaveBeenCalledWith('project-1', 'workspace-1');
+            expect(userService.getOneActiveByEmail).toHaveBeenCalledWith(
+                'invitee@example.com'
+            );
+            expect(workspaceInviteService.prepareInvite).toHaveBeenCalledWith(
+                'workspace-1',
+                expect.objectContaining({ projectId: 'project-1' })
+            );
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+
+            gate.resolve();
+
+            await expect(pending).resolves.toEqual({ data: invite });
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+        });
+
+        it('reads the project and the invitee together', async () => {
             const deferredProject = buildDeferred<Project | null>();
             projectService.getActiveByIdAndWorkspace.mockReturnValue(
                 deferredProject.promise
@@ -369,7 +498,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
             );
         });
 
-        it('runs no query when the project pairing gate rejects', async () => {
+        it('writes nothing when the project pairing gate rejects', async () => {
             workspaceInviteService.assertProjectRolePaired.mockRejectedValue(
                 new WorkspaceInviteRoleRequiredException()
             );
@@ -383,11 +512,14 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     workspaceContext,
                     body
                 )
-            ).rejects.toBeInstanceOf(WorkspaceInviteRoleRequiredException);
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.inviteRoleRequired,
+            });
             expect(
-                projectService.getActiveByIdAndWorkspace
+                workspaceInviteService.assertCreatable
             ).not.toHaveBeenCalled();
-            expect(userService.getOneActiveByEmail).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('writes nothing when the creation check rejects', async () => {
@@ -404,8 +536,11 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     workspaceContext,
                     body
                 )
-            ).rejects.toBeInstanceOf(WorkspaceInviteProjectMismatchException);
-            expect(workspaceInviteService.createInvite).not.toHaveBeenCalled();
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.inviteProjectMismatch,
+            });
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('checks the existing user is not a member before the write', async () => {
@@ -425,7 +560,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
             ).toHaveBeenCalledWith('workspace-1', 'user-2');
             expect(
                 workspaceInviteService.assertInviteeNotMember
-            ).toHaveBeenCalledBefore(workspaceInviteService.createInvite);
+            ).toHaveBeenCalledBefore(databaseService.withTransaction);
         });
 
         it('throws WorkspaceMemberAlreadyExistsException and writes nothing when the invitee is already a member', async () => {
@@ -443,13 +578,16 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     workspaceContext,
                     body
                 )
-            ).rejects.toBeInstanceOf(WorkspaceMemberAlreadyExistsException);
-            expect(workspaceInviteService.createInvite).not.toHaveBeenCalled();
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberAlreadyExists,
+            });
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('rejects with the write failure', async () => {
-            workspaceInviteService.createInvite.mockRejectedValue(
-                new WorkspaceInviteDuplicateException()
+        it('throws WorkspaceInviteDuplicateException on the first attempt when the nonce collides', async () => {
+            workspaceInviteService.createInviteInTx.mockRejectedValue(
+                buildPrismaKnownRequestError('P2002', 'nonce')
             );
 
             await expect(
@@ -461,7 +599,139 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     workspaceContext,
                     body
                 )
-            ).rejects.toBeInstanceOf(WorkspaceInviteDuplicateException);
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteDuplicateException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.inviteDuplicate,
+            });
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+        });
+
+        it.each(['token', 'reference'])(
+            'draws fresh token data and opens another transaction when the %s collides',
+            async column => {
+                const retried = {
+                    ...tokenData,
+                    hashedToken: 'hashed-token-2',
+                };
+                workspaceInviteService.createInviteTokenData
+                    .mockReturnValueOnce(tokenData)
+                    .mockReturnValueOnce(retried);
+                workspaceInviteService.createInviteInTx
+                    .mockRejectedValueOnce(
+                        buildPrismaKnownRequestError('P2002', column)
+                    )
+                    .mockResolvedValueOnce(invite);
+
+                const result = await useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    workspaceContext,
+                    body
+                );
+
+                expect(result).toEqual({ data: invite });
+                expect(databaseService.withTransaction).toHaveBeenCalledTimes(
+                    2
+                );
+                expect(
+                    workspaceInviteService.createInviteInTx
+                ).toHaveBeenNthCalledWith(
+                    2,
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'workspace-1',
+                    expect.objectContaining({ email: 'invitee@example.com' }),
+                    prepared,
+                    retried,
+                    notice
+                );
+            }
+        );
+
+        it('throws DatabaseUniqueValueGenerationFailedException once the attempt budget is spent', async () => {
+            workspaceInviteService.createInviteInTx.mockRejectedValue(
+                buildPrismaKnownRequestError('P2002', 'token')
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    workspaceContext,
+                    body
+                )
+            ).rejects.toMatchObject({
+                constructor: DatabaseUniqueValueGenerationFailedException,
+                module: 'database',
+                statusCode:
+                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
+            });
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(3);
+        });
+
+        it('rethrows an AppBaseException without retrying', async () => {
+            const failure = new WorkspaceMemberAlreadyExistsException();
+            workspaceInviteService.createInviteInTx.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    workspaceContext,
+                    body
+                )
+            ).rejects.toBe(failure);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+        });
+
+        it('maps a write conflict to WorkspaceInviteDuplicateException without retrying', async () => {
+            workspaceInviteService.createInviteInTx.mockRejectedValue(
+                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    workspaceContext,
+                    body
+                )
+            ).rejects.toMatchObject({
+                constructor: WorkspaceInviteDuplicateException,
+                statusCode: EnumWorkspaceStatusCodeError.inviteDuplicate,
+            });
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+        });
+
+        it('wraps another failure in AppUnknownException without retrying', async () => {
+            const cause = new Error('db-down');
+            workspaceInviteService.createInviteInTx.mockRejectedValue(cause);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    workspaceContext,
+                    body
+                )
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
+            });
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
     });
 });

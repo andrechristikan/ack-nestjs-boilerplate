@@ -59,20 +59,10 @@ export class MfaPasskeyRepository implements IMfaPasskeyRepository {
         return count > 0;
     }
 
-    async countByUserIdInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string
-    ): Promise<number> {
-        return tx.mfaPasskey.count({ where: { userId } });
-    }
-
-    async existsByCredentialIdInTx(
-        tx: IDatabaseTransactionClient,
-        credentialId: string
-    ): Promise<boolean> {
-        const count = await tx.mfaPasskey.count({ where: { credentialId } });
-
-        return count > 0;
+    async countByUserId(userId: string): Promise<number> {
+        return this.databaseService.client.mfaPasskey.count({
+            where: { userId },
+        });
     }
 
     async createInTx(

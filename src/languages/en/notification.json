@@ -53,6 +53,10 @@
             "title": "User import result",
             "body": "Hi {username}, your user import has finished. The result is in your email."
         },
+        "userExportResult": {
+            "title": "User export ready",
+            "body": "Hi {username}, your user export has finished. The download link is in your email."
+        },
         "loginLocked": {
             "title": "Sign-in Locked",
             "body": "Hi {username}, {methodLabel} sign-in to your account is locked until {lockedUntil}."

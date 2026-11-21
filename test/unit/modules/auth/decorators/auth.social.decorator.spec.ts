@@ -64,7 +64,7 @@ describe('auth.social.decorator', () => {
                     messagePath: 'auth.error.socialNonceInvalid',
                 },
                 {
-                    httpStatus: HttpStatus.NOT_FOUND,
+                    httpStatus: HttpStatus.NOT_IMPLEMENTED,
                     statusCode:
                         EnumAuthStatusCodeError.socialGoogleNotConfigured,
                     messagePath: 'auth.error.socialGoogleNotConfigured',
@@ -120,7 +120,7 @@ describe('auth.social.decorator', () => {
                     messagePath: 'auth.error.socialNonceInvalid',
                 },
                 {
-                    httpStatus: HttpStatus.NOT_FOUND,
+                    httpStatus: HttpStatus.NOT_IMPLEMENTED,
                     statusCode:
                         EnumAuthStatusCodeError.socialAppleNotConfigured,
                     messagePath: 'auth.error.socialAppleNotConfigured',

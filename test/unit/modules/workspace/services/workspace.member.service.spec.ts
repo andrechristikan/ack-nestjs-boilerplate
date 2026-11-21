@@ -1,18 +1,10 @@
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
-import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
-import {
-    EnumFeatureFlagKey,
-    EnumFeatureFlagMetadataKey,
-} from '@modules/feature-flag/enums/feature-flag.enum';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
     IPaginationQueryCursorParams,
@@ -29,11 +21,9 @@ import type {
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
 import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions/workspace.member-forbidden.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
@@ -46,7 +36,6 @@ import { WorkspaceTransferTargetInactiveException } from '@modules/workspace/exc
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
-import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import {
     buildApiKeyContext,
     buildAuthJwtAccessContext,
@@ -61,16 +50,12 @@ import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('WorkspaceMemberService', () => {
     const workspaceMemberRepository: MockProxy<WorkspaceMemberRepository> =
         mock<WorkspaceMemberRepository>();
     const workspaceRepository: MockProxy<WorkspaceRepository> =
         mock<WorkspaceRepository>();
-    const workspaceService: MockProxy<WorkspaceService> =
-        mock<WorkspaceService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -82,8 +67,6 @@ describe('WorkspaceMemberService', () => {
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const firstEntry = buildActivityLogCreateManyEffect('first-entry');
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
-    const featureFlagService: MockProxy<FeatureFlagService> =
-        mock<FeatureFlagService>();
     let service: WorkspaceMemberService;
 
     const baseMember: WorkspaceMember = {
@@ -93,7 +76,6 @@ describe('WorkspaceMemberService', () => {
     const workspace: Workspace = buildWorkspace();
 
     beforeEach(async () => {
-        featureFlagService.getMetadataNumber.mockResolvedValue(5);
         activityLogQueue.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
@@ -110,16 +92,13 @@ describe('WorkspaceMemberService', () => {
                     useValue: workspaceMemberRepository,
                 },
                 { provide: WorkspaceRepository, useValue: workspaceRepository },
-                { provide: WorkspaceService, useValue: workspaceService },
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
-                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
-                { provide: FeatureFlagService, useValue: featureFlagService },
             ],
         }).compile();
 
@@ -317,8 +296,7 @@ describe('WorkspaceMemberService', () => {
             );
         });
     });
-    describe('transferOwnership', () => {
-        const tx = {} as IDatabaseTransactionClient;
+    describe('getTransferTarget', () => {
         const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
         const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
         const activeTarget = {
@@ -328,19 +306,15 @@ describe('WorkspaceMemberService', () => {
 
         it('throws WorkspaceSelfTransferException when the target is the actor', async () => {
             await expect(
-                service.transferOwnership(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'user-1'
-                )
+                service.getTransferTarget('workspace-1', actor, 'user-1')
             ).rejects.toMatchObject({
                 constructor: WorkspaceSelfTransferException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.selfTransfer,
             });
+            expect(
+                workspaceMemberRepository.findOneByWorkspaceAndUserWithUser
+            ).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceMemberNotFoundException when the target is not a member', async () => {
@@ -349,20 +323,12 @@ describe('WorkspaceMemberService', () => {
             );
 
             await expect(
-                service.transferOwnership(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'user-2'
-                )
+                service.getTransferTarget('workspace-1', actor, 'user-2')
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
             });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it.each([
@@ -378,193 +344,193 @@ describe('WorkspaceMemberService', () => {
                 },
             },
         ])(
-            'throws WorkspaceTransferTargetInactiveException when the target account $label, reading no flag and opening no transaction',
+            'throws WorkspaceTransferTargetInactiveException when the target account $label',
             async ({ user }) => {
                 workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
                     { ...target, user }
                 );
 
                 await expect(
-                    service.transferOwnership(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        'workspace-1',
-                        actor,
-                        'user-2'
-                    )
+                    service.getTransferTarget('workspace-1', actor, 'user-2')
                 ).rejects.toMatchObject({
                     constructor: WorkspaceTransferTargetInactiveException,
                     module: 'workspace',
                     statusCode:
                         EnumWorkspaceStatusCodeError.transferTargetInactive,
                 });
-                expect(
-                    workspaceMemberRepository.findOneByWorkspaceAndUserWithUser
-                ).toHaveBeenCalledTimes(1);
-                expect(
-                    featureFlagService.getMetadataNumber
-                ).not.toHaveBeenCalled();
-                expect(databaseService.withTransaction).not.toHaveBeenCalled();
             }
         );
 
-        it('throws WorkspaceCapReachedException for a target at the cap', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
-                activeTarget
-            );
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceService.countOwnedInTx.mockResolvedValue(5);
-
-            await expect(
-                service.transferOwnership(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'user-2'
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceCapReachedException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.capReached,
-            });
-            expect(workspaceService.countOwnedInTx).toHaveBeenCalledWith(
-                tx,
-                'user-2'
-            );
-            expect(
-                workspaceMemberRepository.promoteToOwnerInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('refuses a transfer to a user owning 2 workspaces when the flag caps at 2', async () => {
-            featureFlagService.getMetadataNumber.mockResolvedValue(2);
-            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
-                activeTarget
-            );
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceService.countOwnedInTx.mockResolvedValue(2);
-
-            await expect(
-                service.transferOwnership(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'user-2'
-                )
-            ).rejects.toBeInstanceOf(WorkspaceCapReachedException);
-            expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.workspace,
-                EnumFeatureFlagMetadataKey.maxWorkspacesPerUser
-            );
-        });
-
-        it('allows a transfer to a user owning 2 workspaces when the flag caps at 3', async () => {
-            featureFlagService.getMetadataNumber.mockResolvedValue(3);
-            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
-                activeTarget
-            );
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceService.countOwnedInTx.mockResolvedValue(2);
-
-            await expect(
-                service.transferOwnership(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'user-2'
-                )
-            ).resolves.toBeUndefined();
-        });
-
-        it('propagates FeatureFlagNotConfiguredException from the read and opens no transaction', async () => {
-            const notConfigured = new FeatureFlagNotConfiguredException(
-                EnumFeatureFlagKey.workspace,
-                EnumFeatureFlagMetadataKey.maxWorkspacesPerUser
-            );
-            featureFlagService.getMetadataNumber.mockRejectedValue(
-                notConfigured
-            );
+        it('returns the active target member read by workspace and user', async () => {
             workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
                 activeTarget
             );
 
             await expect(
-                service.transferOwnership(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'user-2'
-                )
-            ).rejects.toBe(notConfigured);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(
-                workspaceMemberRepository.promoteToOwnerInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('transfers when both statements hit', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
-                activeTarget
-            );
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceService.countOwnedInTx.mockResolvedValue(4);
-
-            await expect(
-                service.transferOwnership(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'user-2'
-                )
-            ).resolves.toBeUndefined();
-
+                service.getTransferTarget('workspace-1', actor, 'user-2')
+            ).resolves.toBe(activeTarget);
             expect(
                 workspaceMemberRepository.findOneByWorkspaceAndUserWithUser
             ).toHaveBeenCalledWith('workspace-1', 'user-2');
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(workspaceService.countOwnedInTx).toHaveBeenCalledWith(
-                tx,
-                'user-2'
+        });
+    });
+
+    describe('getTransferByAdmin', () => {
+        const activeUser = { status: EnumUserStatus.active, deletedAt: null };
+        const owner = {
+            ...baseMember,
+            id: 'member-1',
+            userId: 'user-1',
+            role: EnumWorkspaceMemberRole.owner,
+            user: activeUser,
+        };
+        const target = {
+            ...baseMember,
+            id: 'member-2',
+            userId: 'user-2',
+            user: activeUser,
+        };
+
+        beforeEach(() => {
+            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
+                { ...workspace, members: [owner, target] }
             );
+        });
+
+        it('throws WorkspaceNotFoundException for a missing or deleted workspace', async () => {
+            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                service.getTransferByAdmin('workspace-1', 'user-2')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceNotFoundException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.notFound,
+            });
+            expect(
+                workspaceRepository.findActiveByIdWithTransferMembers
+            ).toHaveBeenCalledWith('workspace-1', 'user-2');
+        });
+
+        it('throws WorkspaceSelfTransferException when the target is the current owner', async () => {
+            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
+                { ...workspace, members: [owner] }
+            );
+
+            await expect(
+                service.getTransferByAdmin('workspace-1', 'user-1')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceSelfTransferException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.selfTransfer,
+            });
+        });
+
+        it('throws WorkspaceMemberNotFoundException when the workspace has no owner row', async () => {
+            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
+                { ...workspace, members: [target] }
+            );
+
+            await expect(
+                service.getTransferByAdmin('workspace-1', 'user-2')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberNotFoundException,
+                statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
+            });
+        });
+
+        it('throws WorkspaceMemberNotFoundException when the target is not a member', async () => {
+            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
+                { ...workspace, members: [owner] }
+            );
+
+            await expect(
+                service.getTransferByAdmin('workspace-1', 'user-2')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberNotFoundException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
+            });
+        });
+
+        it.each([
+            {
+                label: 'is not active',
+                user: { status: EnumUserStatus.blocked, deletedAt: null },
+            },
+            {
+                label: 'is deleted',
+                user: {
+                    status: EnumUserStatus.active,
+                    deletedAt: new Date('2026-01-02T00:00:00.000Z'),
+                },
+            },
+        ])(
+            'throws WorkspaceTransferTargetInactiveException when the target account $label',
+            async ({ user }) => {
+                workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
+                    { ...workspace, members: [owner, { ...target, user }] }
+                );
+
+                await expect(
+                    service.getTransferByAdmin('workspace-1', 'user-2')
+                ).rejects.toMatchObject({
+                    constructor: WorkspaceTransferTargetInactiveException,
+                    module: 'workspace',
+                    statusCode:
+                        EnumWorkspaceStatusCodeError.transferTargetInactive,
+                });
+            }
+        );
+
+        it('returns the owner member and the target member after one repository read', async () => {
+            await expect(
+                service.getTransferByAdmin('workspace-1', 'user-2')
+            ).resolves.toEqual({ ownerMember: owner, targetMember: target });
+            expect(
+                workspaceRepository.findActiveByIdWithTransferMembers
+            ).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('transferOwnershipInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
+        const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
+        const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
+
+        it('promotes the target and demotes the actor on the tx given, in that order', async () => {
+            await service.transferOwnershipInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'workspace-1',
+                actor,
+                target
+            );
+
             expect(
                 workspaceMemberRepository.promoteToOwnerInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', 'member-1', 'member-2');
             expect(
                 workspaceMemberRepository.demoteOwnerInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', 'member-1');
-            expect(workspaceService.countOwnedInTx).toHaveBeenCalledBefore(
-                workspaceMemberRepository.promoteToOwnerInTx
-            );
             expect(
                 workspaceMemberRepository.promoteToOwnerInTx
             ).toHaveBeenCalledBefore(workspaceMemberRepository.demoteOwnerInTx);
         });
 
         it('adds the owner entry and the new owner entry after the swap on the same tx', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
-                activeTarget
-            );
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceService.countOwnedInTx.mockResolvedValue(0);
-
-            await service.transferOwnership(
+            await service.transferOwnershipInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'workspace-1',
                 actor,
-                'user-2'
+                target
             );
 
             expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
@@ -601,27 +567,23 @@ describe('WorkspaceMemberService', () => {
             ]);
             expect(
                 workspaceMemberRepository.demoteOwnerInTx
-            ).toHaveBeenCalledBefore(outboxService.addManyInTx);
+            ).toHaveBeenCalledBefore(activityLogQueue.recordEffect);
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException when the promote misses', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
-                activeTarget
-            );
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceService.countOwnedInTx.mockResolvedValue(0);
+        it('throws WorkspaceMemberPeerForbiddenException and demotes nothing when the promote misses', async () => {
             workspaceMemberRepository.promoteToOwnerInTx.mockResolvedValue(
                 false
             );
 
             await expect(
-                service.transferOwnership(
+                service.transferOwnershipInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
                     'workspace-1',
                     actor,
-                    'user-2'
+                    target
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
@@ -631,279 +593,61 @@ describe('WorkspaceMemberService', () => {
             expect(
                 workspaceMemberRepository.demoteOwnerInTx
             ).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException when the demote misses', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
-                activeTarget
-            );
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceService.countOwnedInTx.mockResolvedValue(0);
+        it('throws WorkspaceMemberPeerForbiddenException and adds no entry when the demote misses', async () => {
             workspaceMemberRepository.demoteOwnerInTx.mockResolvedValue(false);
 
             await expect(
-                service.transferOwnership(
+                service.transferOwnershipInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
                     'workspace-1',
                     actor,
-                    'user-2'
+                    target
                 )
             ).rejects.toMatchObject({
+                constructor: WorkspaceMemberPeerForbiddenException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-
-                constructor: WorkspaceMemberPeerForbiddenException,
             });
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(databaseService.withTransaction).not.toHaveResolved();
-        });
-
-        it('maps a write conflict in the ownership swap to WorkspaceMemberPeerForbiddenException', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
-                activeTarget
-            );
-            const conflict = buildPrismaKnownRequestError(
-                DatabaseWriteConflictCode
-            );
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                service.transferOwnership(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'user-2'
-                )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-
-                constructor: WorkspaceMemberPeerForbiddenException,
-            });
-        });
-
-        it('wraps any other transaction error in AppUnknownException', async () => {
-            workspaceMemberRepository.findOneByWorkspaceAndUserWithUser.mockResolvedValue(
-                activeTarget
-            );
-            databaseService.withTransaction.mockRejectedValue(
-                new Error('boom')
-            );
-
-            await expect(
-                service.transferOwnership(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'user-2'
-                )
-            ).rejects.toBeInstanceOf(AppUnknownException);
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 
-    describe('transferOwnershipByAdmin', () => {
+    describe('transferOwnershipByAdminInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
         const adminContext = buildAuthJwtAccessContext('admin-1');
-        const activeUser = { status: EnumUserStatus.active, deletedAt: null };
         const owner = {
             ...baseMember,
             id: 'member-1',
             userId: 'user-1',
             role: EnumWorkspaceMemberRole.owner,
-            user: activeUser,
         };
-        const target = {
-            ...baseMember,
-            id: 'member-2',
-            userId: 'user-2',
-            user: activeUser,
-        };
+        const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
         const thirdEntry = buildActivityLogCreateManyEffect('third-entry');
 
         beforeEach(() => {
-            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
-                { ...workspace, members: [owner, target] }
-            );
             activityLogQueue.recordEffect.mockReset();
             activityLogQueue.recordEffect
                 .mockReturnValueOnce(firstEntry)
                 .mockReturnValueOnce(secondEntry)
                 .mockReturnValueOnce(thirdEntry);
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceService.countOwnedInTx.mockResolvedValue(0);
         });
 
-        it('throws WorkspaceNotFoundException for a missing or deleted workspace', async () => {
-            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
-                null
+        it('swaps the owner on the tx given and adds the admin, previous owner, and new owner entries after the swap', async () => {
+            await service.transferOwnershipByAdminInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                adminContext,
+                'workspace-1',
+                { ownerMember: owner, targetMember: target }
             );
 
-            await expect(
-                service.transferOwnershipByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    adminContext,
-                    'workspace-1',
-                    'user-2'
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceNotFoundException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.notFound,
-            });
-            expect(
-                workspaceRepository.findActiveByIdWithTransferMembers
-            ).toHaveBeenCalledWith('workspace-1', 'user-2');
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-
-        it('throws WorkspaceSelfTransferException when the target is the current owner', async () => {
-            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
-                { ...workspace, members: [owner] }
-            );
-
-            await expect(
-                service.transferOwnershipByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    adminContext,
-                    'workspace-1',
-                    'user-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceSelfTransferException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.selfTransfer,
-            });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-
-        it('throws WorkspaceMemberNotFoundException when the workspace has no owner row', async () => {
-            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
-                { ...workspace, members: [target] }
-            );
-
-            await expect(
-                service.transferOwnershipByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    adminContext,
-                    'workspace-1',
-                    'user-2'
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceMemberNotFoundException,
-                statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-            });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-
-        it('throws WorkspaceMemberNotFoundException when the target is not a member', async () => {
-            workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
-                { ...workspace, members: [owner] }
-            );
-
-            await expect(
-                service.transferOwnershipByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    adminContext,
-                    'workspace-1',
-                    'user-2'
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceMemberNotFoundException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-            });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-
-        it.each([
-            {
-                label: 'is not active',
-                user: { status: EnumUserStatus.blocked, deletedAt: null },
-            },
-            {
-                label: 'is deleted',
-                user: {
-                    status: EnumUserStatus.active,
-                    deletedAt: new Date('2026-01-02T00:00:00.000Z'),
-                },
-            },
-        ])(
-            'throws WorkspaceTransferTargetInactiveException when the target account $label, reading no flag and opening no transaction',
-            async ({ user }) => {
-                workspaceRepository.findActiveByIdWithTransferMembers.mockResolvedValue(
-                    { ...workspace, members: [owner, { ...target, user }] }
-                );
-
-                await expect(
-                    service.transferOwnershipByAdmin(
-                        requestContext,
-                        apiKeyContext,
-                        adminContext,
-                        'workspace-1',
-                        'user-2'
-                    )
-                ).rejects.toMatchObject({
-                    constructor: WorkspaceTransferTargetInactiveException,
-                    module: 'workspace',
-                    statusCode:
-                        EnumWorkspaceStatusCodeError.transferTargetInactive,
-                });
-                expect(
-                    featureFlagService.getMetadataNumber
-                ).not.toHaveBeenCalled();
-                expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            }
-        );
-
-        it('throws WorkspaceCapReachedException for a target at the cap', async () => {
-            workspaceService.countOwnedInTx.mockResolvedValue(5);
-
-            await expect(
-                service.transferOwnershipByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    adminContext,
-                    'workspace-1',
-                    'user-2'
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceCapReachedException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.capReached,
-            });
-            expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.workspace,
-                EnumFeatureFlagMetadataKey.maxWorkspacesPerUser
-            );
-            expect(
-                workspaceMemberRepository.promoteToOwnerInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('swaps the owner guarded by the owner row after one repository read and adds the admin, previous owner, and new owner entries on the same tx', async () => {
-            await expect(
-                service.transferOwnershipByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    adminContext,
-                    'workspace-1',
-                    'user-2'
-                )
-            ).resolves.toBeUndefined();
-
-            expect(
-                workspaceRepository.findActiveByIdWithTransferMembers
-            ).toHaveBeenCalledTimes(1);
             expect(
                 workspaceMemberRepository.promoteToOwnerInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', 'member-1', 'member-2');
@@ -917,7 +661,7 @@ describe('WorkspaceMemberService', () => {
                 adminContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminWorkspaceOwnershipTransfer,
+                    action: EnumActivityLogAction.adminWorkspaceOwnershipTransferred,
                     userId: 'admin-1',
                     createdBy: 'admin-1',
                     workspaceId: 'workspace-1',
@@ -964,6 +708,52 @@ describe('WorkspaceMemberService', () => {
                 secondEntry,
                 thirdEntry,
             ]);
+            expect(
+                workspaceMemberRepository.demoteOwnerInTx
+            ).toHaveBeenCalledBefore(activityLogQueue.recordEffect);
+        });
+
+        it('throws WorkspaceMemberPeerForbiddenException when the promote misses', async () => {
+            workspaceMemberRepository.promoteToOwnerInTx.mockResolvedValue(
+                false
+            );
+
+            await expect(
+                service.transferOwnershipByAdminInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    adminContext,
+                    'workspace-1',
+                    { ownerMember: owner, targetMember: target }
+                )
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberPeerForbiddenException,
+                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
+            });
+            expect(
+                workspaceMemberRepository.demoteOwnerInTx
+            ).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+        });
+
+        it('throws WorkspaceMemberPeerForbiddenException when the demote misses', async () => {
+            workspaceMemberRepository.demoteOwnerInTx.mockResolvedValue(false);
+
+            await expect(
+                service.transferOwnershipByAdminInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    adminContext,
+                    'workspace-1',
+                    { ownerMember: owner, targetMember: target }
+                )
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberPeerForbiddenException,
+                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
+            });
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -982,28 +772,34 @@ describe('WorkspaceMemberService', () => {
         });
     });
 
-    describe('leaveWorkspaceInTx', () => {
-        const tx = {} as IDatabaseTransactionClient;
-
-        it('throws WorkspaceLastOwnerException for an owner', async () => {
+    describe('assertLeavable', () => {
+        it('throws WorkspaceLastOwnerException for an owner', () => {
             const owner = {
                 ...baseMember,
                 role: EnumWorkspaceMemberRole.owner,
             };
 
-            await expect(
-                service.leaveWorkspaceInTx(tx, owner)
-            ).rejects.toMatchObject({
-                constructor: WorkspaceLastOwnerException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.lastOwner,
-            });
-            expect(
-                workspaceMemberRepository.removeMemberInTx
-            ).not.toHaveBeenCalled();
+            try {
+                service.assertLeavable(owner);
+                expect.unreachable();
+            } catch (error: unknown) {
+                expect(error).toMatchObject({
+                    constructor: WorkspaceLastOwnerException,
+                    module: 'workspace',
+                    statusCode: EnumWorkspaceStatusCodeError.lastOwner,
+                });
+            }
         });
 
-        it('removes a non-owner on the given transaction', async () => {
+        it('returns for a non-owner', () => {
+            expect(service.assertLeavable(baseMember)).toBeUndefined();
+        });
+    });
+
+    describe('leaveWorkspaceInTx', () => {
+        const tx = {} as IDatabaseTransactionClient;
+
+        it('removes the member on the given transaction guarded by its role', async () => {
             await service.leaveWorkspaceInTx(tx, baseMember);
 
             expect(
@@ -1087,7 +883,80 @@ describe('WorkspaceMemberService', () => {
         });
     });
 
-    describe('updateMemberRole', () => {
+    describe('getPeerTarget', () => {
+        const actor = {
+            ...baseMember,
+            id: 'member-1',
+            userId: 'user-1',
+            role: EnumWorkspaceMemberRole.admin,
+        };
+        const target = {
+            ...baseMember,
+            id: 'member-2',
+            userId: 'user-2',
+            role: EnumWorkspaceMemberRole.member,
+            user: { email: 'user-2@example.com' },
+        };
+
+        it('throws WorkspaceMemberNotFoundException when the target member does not exist', async () => {
+            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                service.getPeerTarget('workspace-1', actor, 'member-2')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberNotFoundException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
+            });
+        });
+
+        it('throws WorkspaceMemberPeerForbiddenException when the actor targets itself', async () => {
+            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue({
+                ...target,
+                userId: 'user-1',
+            });
+
+            await expect(
+                service.getPeerTarget('workspace-1', actor, 'member-2')
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
+                constructor: WorkspaceMemberPeerForbiddenException,
+            });
+        });
+
+        it('throws WorkspaceMemberPeerForbiddenException when an admin acts on an admin', async () => {
+            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue({
+                ...target,
+                role: EnumWorkspaceMemberRole.admin,
+            });
+
+            await expect(
+                service.getPeerTarget('workspace-1', actor, 'member-2')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceMemberPeerForbiddenException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
+            });
+        });
+
+        it('returns the target row with its email read by id and workspace', async () => {
+            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
+                target
+            );
+
+            await expect(
+                service.getPeerTarget('workspace-1', actor, 'member-2')
+            ).resolves.toBe(target);
+            expect(
+                workspaceMemberRepository.findByIdAndWorkspace
+            ).toHaveBeenCalledWith('member-2', 'workspace-1');
+        });
+    });
+
+    describe('updateMemberRoleInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
         const actor = {
             ...baseMember,
@@ -1102,106 +971,18 @@ describe('WorkspaceMemberService', () => {
             role: EnumWorkspaceMemberRole.member,
         };
 
-        beforeEach(() => {
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-        });
-
-        it('throws WorkspaceMemberNotFoundException when the target member does not exist', async () => {
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
-                null
-            );
-
-            await expect(
-                service.updateMemberRole(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'member-2',
-                    EnumWorkspaceMemberRole.admin
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceMemberNotFoundException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-            });
-            expect(
-                workspaceMemberRepository.updateRoleInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('throws WorkspaceMemberPeerForbiddenException when the actor targets itself', async () => {
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue({
-                ...target,
-                userId: 'user-1',
-            });
-
-            await expect(
-                service.updateMemberRole(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'member-2',
-                    EnumWorkspaceMemberRole.admin
-                )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-
-                constructor: WorkspaceMemberPeerForbiddenException,
-            });
-            expect(
-                workspaceMemberRepository.updateRoleInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('throws WorkspaceMemberPeerForbiddenException when an admin acts on an admin', async () => {
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue({
-                ...target,
-                role: EnumWorkspaceMemberRole.admin,
-            });
-
-            await expect(
-                service.updateMemberRole(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'member-2',
-                    EnumWorkspaceMemberRole.admin
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceMemberPeerForbiddenException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-            });
-            expect(
-                workspaceMemberRepository.updateRoleInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('updates the role guarded by the role read and adds both entries on one tx', async () => {
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
-                target
-            );
-
-            await service.updateMemberRole(
+        it('updates the role guarded by the role read and adds both entries after the write on one tx', async () => {
+            await service.updateMemberRoleInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'workspace-1',
                 actor,
-                'member-2',
+                target,
                 EnumWorkspaceMemberRole.admin
             );
 
-            expect(
-                workspaceMemberRepository.findByIdAndWorkspace
-            ).toHaveBeenCalledWith('member-2', 'workspace-1');
             expect(
                 workspaceMemberRepository.updateRoleInTx
             ).toHaveBeenCalledWith(
@@ -1242,91 +1023,36 @@ describe('WorkspaceMemberService', () => {
                 firstEntry,
                 secondEntry,
             ]);
+            expect(
+                workspaceMemberRepository.updateRoleInTx
+            ).toHaveBeenCalledBefore(activityLogQueue.recordEffect);
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException when the target role changed since it was read', async () => {
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
-                target
-            );
+        it('throws WorkspaceMemberPeerForbiddenException and adds no entry when the target role changed since it was read', async () => {
             workspaceMemberRepository.updateRoleInTx.mockResolvedValue(false);
 
             await expect(
-                service.updateMemberRole(
+                service.updateMemberRoleInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
                     'workspace-1',
                     actor,
-                    'member-2',
+                    target,
                     EnumWorkspaceMemberRole.admin
                 )
             ).rejects.toMatchObject({
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
-        });
-
-        it('maps a write conflict on the role swap to WorkspaceMemberPeerForbiddenException', async () => {
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
-                target
-            );
-            const conflict = buildPrismaKnownRequestError(
-                DatabaseWriteConflictCode
-            );
-            workspaceMemberRepository.updateRoleInTx.mockRejectedValue(
-                conflict
-            );
-
-            await expect(
-                service.updateMemberRole(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'member-2',
-                    EnumWorkspaceMemberRole.admin
-                )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-
-                constructor: WorkspaceMemberPeerForbiddenException,
-            });
-        });
-
-        it('wraps any other transaction error in AppUnknownException', async () => {
-            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
-                target
-            );
-            workspaceMemberRepository.updateRoleInTx.mockRejectedValue(
-                new Error('boom')
-            );
-
-            await expect(
-                service.updateMemberRole(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    actor,
-                    'member-2',
-                    EnumWorkspaceMemberRole.admin
-                )
-            ).rejects.toBeInstanceOf(AppUnknownException);
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 
     describe('removeMemberInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
-        const actor = {
-            ...baseMember,
-            id: 'member-1',
-            userId: 'user-1',
-            role: EnumWorkspaceMemberRole.admin,
-        };
         const target = {
             ...baseMember,
             id: 'member-2',
@@ -1335,83 +1061,9 @@ describe('WorkspaceMemberService', () => {
             user: { email: 'user-2@example.com' },
         };
 
-        it('throws WorkspaceMemberNotFoundException when the target member does not exist', async () => {
-            workspaceMemberRepository.findByIdAndWorkspaceInTx.mockResolvedValue(
-                null
-            );
+        it('removes the member row given on the tx guarded by its role and reads nothing', async () => {
+            await service.removeMemberInTx(tx, target);
 
-            await expect(
-                service.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
-            ).rejects.toMatchObject({
-                constructor: WorkspaceMemberNotFoundException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-            });
-            expect(
-                workspaceMemberRepository.removeMemberInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('throws WorkspaceMemberPeerForbiddenException when the target is the actor itself', async () => {
-            workspaceMemberRepository.findByIdAndWorkspaceInTx.mockResolvedValue(
-                {
-                    ...target,
-                    userId: 'user-1',
-                }
-            );
-
-            await expect(
-                service.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-
-                constructor: WorkspaceMemberPeerForbiddenException,
-            });
-            expect(
-                workspaceMemberRepository.removeMemberInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('throws WorkspaceMemberPeerForbiddenException when an admin acts on an admin', async () => {
-            workspaceMemberRepository.findByIdAndWorkspaceInTx.mockResolvedValue(
-                {
-                    ...target,
-                    role: EnumWorkspaceMemberRole.admin,
-                }
-            );
-
-            await expect(
-                service.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
-            ).rejects.toMatchObject({
-                constructor: WorkspaceMemberPeerForbiddenException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-            });
-            expect(
-                workspaceMemberRepository.removeMemberInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('reads the target with its email on the given tx, removes it, and returns the row read', async () => {
-            workspaceMemberRepository.findByIdAndWorkspaceInTx.mockResolvedValue(
-                target
-            );
-
-            const result = await service.removeMemberInTx(
-                tx,
-                'workspace-1',
-                actor,
-                'member-2'
-            );
-
-            expect(result).toBe(target);
-            expect(
-                workspaceMemberRepository.findByIdAndWorkspaceInTx
-            ).toHaveBeenCalledWith(tx, 'member-2', 'workspace-1');
-            expect(
-                workspaceMemberRepository.findByIdAndWorkspace
-            ).not.toHaveBeenCalled();
             expect(
                 workspaceMemberRepository.removeMemberInTx
             ).toHaveBeenCalledWith(
@@ -1419,20 +1071,19 @@ describe('WorkspaceMemberService', () => {
                 'member-2',
                 EnumWorkspaceMemberRole.member
             );
+            expect(
+                workspaceMemberRepository.findByIdAndWorkspace
+            ).not.toHaveBeenCalled();
         });
 
         it('throws WorkspaceMemberPeerForbiddenException when the target role changed since it was read', async () => {
-            workspaceMemberRepository.findByIdAndWorkspaceInTx.mockResolvedValue(
-                target
-            );
             workspaceMemberRepository.removeMemberInTx.mockResolvedValue(false);
 
             await expect(
-                service.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
+                service.removeMemberInTx(tx, target)
             ).rejects.toMatchObject({
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
         });

@@ -34,13 +34,19 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { RoleHasPoliciesException } from '@modules/role/exceptions/role.has-policies.exception';
+import { RoleImmutableException } from '@modules/role/exceptions/role.immutable.exception';
+import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
+import { RoleSelfForbiddenException } from '@modules/role/exceptions/role.self-forbidden.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import type {
     IRoleActor,
     IRoleWithPolicies,
+    IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
 import { RoleUpdateByAdminUseCase } from '@modules/role/use-cases/role.update-by-admin.use-case';
 
@@ -66,6 +72,10 @@ describe('RoleUpdateByAdminUseCase', () => {
         updatedBy: 'user-1',
     };
     const roleWithPolicies: IRoleWithPolicies = { ...role, policies: [] };
+    const roleWithPolicyCount: IRoleWithPolicyCount = {
+        ...role,
+        _count: { policies: 0 },
+    };
     const actorRole: IRoleWithPolicies = {
         ...roleWithPolicies,
         id: 'role-actor',
@@ -140,6 +150,37 @@ describe('RoleUpdateByAdminUseCase', () => {
             type: EnumRoleType.user,
         };
 
+        beforeEach(() => {
+            roleService.getUpdatableByActor.mockResolvedValue(
+                roleWithPolicyCount
+            );
+        });
+
+        it.each([
+            ['RoleNotFoundException', new RoleNotFoundException()],
+            ['RoleSelfForbiddenException', new RoleSelfForbiddenException()],
+            ['RoleRankForbiddenException', new RoleRankForbiddenException()],
+            ['RoleImmutableException', new RoleImmutableException()],
+            ['RoleHasPoliciesException', new RoleHasPoliciesException()],
+        ])(
+            'throws %s from getUpdatableByActor and opens no transaction',
+            async (_name, failure) => {
+                roleService.getUpdatableByActor.mockRejectedValue(failure);
+
+                await expect(
+                    useCase.execute(
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        userContext,
+                        roleWithPolicies.id,
+                        body
+                    )
+                ).rejects.toBe(failure);
+                expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            }
+        );
+
         it('updates the role on the outbox transaction and wraps the result', async () => {
             roleService.updateByAdminInTx.mockResolvedValue(roleWithPolicies);
 
@@ -153,11 +194,15 @@ describe('RoleUpdateByAdminUseCase', () => {
             );
 
             expect(result).toEqual({ data: roleWithPolicies });
+            expect(roleService.getUpdatableByActor).toHaveBeenCalledWith(
+                actor,
+                roleWithPolicies.id,
+                { description: 'Team lead role', type: EnumRoleType.user }
+            );
             expect(roleService.updateByAdminInTx).toHaveBeenCalledWith(
                 tx,
-                roleWithPolicies.id,
-                { description: 'Team lead role', type: EnumRoleType.user },
-                actor
+                roleWithPolicyCount,
+                { description: 'Team lead role', type: EnumRoleType.user }
             );
         });
 
@@ -178,7 +223,7 @@ describe('RoleUpdateByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.adminRoleUpdate, metadata }
+                { action: EnumActivityLogAction.adminRoleUpdated, metadata }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
@@ -200,9 +245,8 @@ describe('RoleUpdateByAdminUseCase', () => {
 
             expect(roleService.updateByAdminInTx).toHaveBeenCalledWith(
                 tx,
-                roleWithPolicies.id,
-                { description: null, type: EnumRoleType.user },
-                actor
+                roleWithPolicyCount,
+                { description: null, type: EnumRoleType.user }
             );
         });
 
@@ -242,7 +286,10 @@ describe('RoleUpdateByAdminUseCase', () => {
                     roleWithPolicies.id,
                     body
                 )
-            ).rejects.toBeInstanceOf(RoleNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.notFound,
+            });
         });
 
         it('wraps any other error in AppUnknownException', async () => {

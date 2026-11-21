@@ -65,11 +65,8 @@ export class MfaDeletePasskeyUseCase implements IAppUseCase<
             otp,
         }: MfaPasskeyDeleteRequestDto
     ): Promise<IResponseReturn<void>> {
-        const check = await this.userAuthService.assertReauthentication(
-            requestContext,
-            apiKeyContext,
-            user,
-            {
+        const { check, failure } =
+            await this.userAuthService.checkReauthentication(user, {
                 action: EnumUserReauthenticationAction.mfaPasskeyDelete,
                 password: password ?? null,
                 method: method ?? null,
@@ -78,8 +75,24 @@ export class MfaDeletePasskeyUseCase implements IAppUseCase<
                 passkeyChallengeToken: passkeyChallengeToken ?? null,
                 passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
-            }
-        );
+            });
+        if (failure !== null) {
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.userAuthService.countFailedReauthenticationInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        failure
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(
+                failure,
+                isLocked
+            );
+        }
 
         const now = this.helperDateService.create();
         try {
@@ -112,7 +125,7 @@ export class MfaDeletePasskeyUseCase implements IAppUseCase<
                     apiKeyContext,
                     authContext,
                     null,
-                    { action: EnumActivityLogAction.userDeleteMfaPasskey }
+                    { action: EnumActivityLogAction.userMfaPasskeyDeleted }
                 );
                 await this.outboxService.addInTx(tx, entry);
             });

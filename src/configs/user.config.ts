@@ -19,6 +19,10 @@ export interface IConfigUser {
         timeoutInMs: number;
         bulkTimeoutInMs: number;
     };
+    export: {
+        pathPattern: string;
+        presignExpiresInSeconds: number;
+    };
     deleteSelf: {
         timeoutInMs: number;
         emailPattern: string;
@@ -34,7 +38,7 @@ export default registerAs('user', (): IConfigUser => ({
     },
     purgeExpiredCron: '0 3 * * *',
     maxDataImport: 50,
-    maxDataExport: 500,
+    maxDataExport: 5000,
     default: {
         role: 'user',
         country: 'ID',
@@ -42,6 +46,10 @@ export default registerAs('user', (): IConfigUser => ({
     create: {
         timeoutInMs: ms('10s'),
         bulkTimeoutInMs: ms('30s'),
+    },
+    export: {
+        pathPattern: '{temporaryPath}/exports/users/{outboxId}.csv',
+        presignExpiresInSeconds: ms('24h') / 1000,
     },
     deleteSelf: {
         timeoutInMs: ms('30s'),

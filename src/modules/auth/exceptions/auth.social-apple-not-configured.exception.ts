@@ -7,7 +7,7 @@ export class AuthSocialAppleNotConfiguredException extends AppBaseException {
     readonly module = 'auth';
     readonly statusCode = EnumAuthStatusCodeError.socialAppleNotConfigured;
     readonly statusCodeKey = EnumAuthStatusCodeError[this.statusCode];
-    readonly httpStatus = HttpStatus.NOT_FOUND;
+    readonly httpStatus = HttpStatus.NOT_IMPLEMENTED;
 
     constructor() {
         super('auth.error.socialAppleNotConfigured');

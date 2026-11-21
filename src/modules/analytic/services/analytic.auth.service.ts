@@ -214,8 +214,8 @@ export class AnalyticAuthService {
                     await this.analyticAuthRepository.groupActivityByAction(
                         [
                             EnumActivityLogAction.userLoginFailed,
-                            EnumActivityLogAction.userReachMaxPasswordAttempt,
-                            EnumActivityLogAction.userReachMaxMfaAttempt,
+                            EnumActivityLogAction.userMaxPasswordAttemptReached,
+                            EnumActivityLogAction.userMaxMfaAttemptReached,
                         ],
                         startDate,
                         endDate
@@ -230,9 +230,9 @@ export class AnalyticAuthService {
                     failed: countOf(EnumActivityLogAction.userLoginFailed),
                     maxAttempt:
                         countOf(
-                            EnumActivityLogAction.userReachMaxPasswordAttempt
+                            EnumActivityLogAction.userMaxPasswordAttemptReached
                         ) +
-                        countOf(EnumActivityLogAction.userReachMaxMfaAttempt),
+                        countOf(EnumActivityLogAction.userMaxMfaAttemptReached),
                 };
             }
         );

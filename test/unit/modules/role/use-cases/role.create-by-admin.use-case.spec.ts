@@ -13,6 +13,7 @@ import {
 import {
     EnumActivityLogAction,
     EnumRoleType,
+    Prisma,
 } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
@@ -32,6 +33,11 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
+import { DatabaseUniqueConstraintCode } from '@common/database/constants/database.constant';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
+import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
+import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -139,6 +145,71 @@ describe('RoleCreateByAdminUseCase', () => {
             type: EnumRoleType.admin,
         };
 
+        it('throws RoleRankForbiddenException from assertActorOutranks and opens no transaction', async () => {
+            const failure = new RoleRankForbiddenException();
+            roleService.assertActorOutranks.mockImplementation(() => {
+                throw failure;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    body
+                )
+            ).rejects.toBe(failure);
+            expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
+                actor.roleType,
+                body.type
+            );
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('maps a unique collision on name to RoleExistException', async () => {
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue(role.id);
+            roleService.createByAdminInTx.mockRejectedValue(
+                new Prisma.PrismaClientKnownRequestError('collision', {
+                    code: DatabaseUniqueConstraintCode,
+                    clientVersion: 'test',
+                    meta: { target: ['name'] },
+                })
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    body
+                )
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.exist,
+            });
+        });
+
+        it('wraps any other error in AppUnknownException', async () => {
+            const cause = new Error('boom');
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue(role.id);
+            roleService.createByAdminInTx.mockRejectedValue(cause);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    body
+                )
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: cause,
+            });
+        });
+
         it('creates the role on the outbox transaction and wraps the result', async () => {
             vi.spyOn(databaseUtil, 'createId').mockReturnValue(role.id);
             roleService.createByAdminInTx.mockResolvedValue(roleWithPolicies);
@@ -159,8 +230,7 @@ describe('RoleCreateByAdminUseCase', () => {
                     name: 'manager',
                     description: null,
                     type: EnumRoleType.admin,
-                },
-                actor
+                }
             );
         });
 
@@ -181,13 +251,13 @@ describe('RoleCreateByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.adminRoleCreate, metadata }
+                { action: EnumActivityLogAction.adminRoleCreated, metadata }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
 
-        it('adds no entry when the write throws', async () => {
-            const failure = new Error('create failed');
+        it('rethrows a typed exception of the write and adds no entry', async () => {
+            const failure = new RoleExistException();
             vi.spyOn(databaseUtil, 'createId').mockReturnValue(role.id);
             roleService.createByAdminInTx.mockRejectedValue(failure);
 

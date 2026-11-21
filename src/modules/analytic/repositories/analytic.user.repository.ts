@@ -134,7 +134,7 @@ export class AnalyticUserRepository implements IAnalyticUserRepository {
                 pipeline: [
                     {
                         $match: {
-                            action: EnumActivityLogAction.userBlocked,
+                            action: EnumActivityLogAction.userBlockedByAdmin,
                             createdAt: { $gte: start, $lt: end },
                         },
                     },

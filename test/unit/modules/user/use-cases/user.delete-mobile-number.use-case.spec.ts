@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -10,6 +11,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
@@ -94,7 +96,10 @@ describe('UserDeleteMobileNumberUseCase', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userAuthService.assertReauthentication.mockResolvedValue(passwordOnly);
+        userAuthService.checkReauthentication.mockResolvedValue({
+            check: passwordOnly,
+            failure: null,
+        });
         userMobileNumberService.getOneMobileNumber.mockResolvedValue(
             mobileNumber
         );
@@ -122,6 +127,58 @@ describe('UserDeleteMobileNumberUseCase', () => {
     });
 
     describe('execute', () => {
+        it('commits the failed count in a transaction of its own, then throws, and leaves the work undone', async () => {
+            const refusal = new Error('refused');
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: null,
+                failure: TestUnitReauthenticationPasswordFailure,
+            });
+            userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
+                true
+            );
+            userAuthService.throwFailedReauthentication.mockImplementation(
+                () => {
+                    throw refusal;
+                }
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    mobileNumber.id,
+                    dto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                TestUnitReauthenticationPasswordFailure
+            );
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledBefore(
+                userAuthService.throwFailedReauthentication
+            );
+            expect(
+                userAuthService.throwFailedReauthentication
+            ).toHaveBeenCalledWith(
+                TestUnitReauthenticationPasswordFailure,
+                true
+            );
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+        });
+
         it('asserts the re-authentication, gates on the row, then deletes on one transaction after completing it', async () => {
             await expect(
                 useCase.execute(
@@ -134,9 +191,7 @@ describe('UserDeleteMobileNumberUseCase', () => {
                 )
             ).resolves.toEqual({ data: mobileNumber });
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.mobileNumberDelete,
@@ -198,9 +253,7 @@ describe('UserDeleteMobileNumberUseCase', () => {
                 }
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.mobileNumberDelete,
@@ -225,9 +278,7 @@ describe('UserDeleteMobileNumberUseCase', () => {
                 {}
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.mobileNumberDelete,
@@ -244,7 +295,7 @@ describe('UserDeleteMobileNumberUseCase', () => {
 
         it('leaves the work undone when the re-authentication fails', async () => {
             const failure = new UserPasswordNotMatchException();
-            userAuthService.assertReauthentication.mockRejectedValue(failure);
+            userAuthService.checkReauthentication.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -296,7 +347,10 @@ describe('UserDeleteMobileNumberUseCase', () => {
                     mobileNumber.id,
                     dto
                 )
-            ).rejects.toBeInstanceOf(UserMobileNumberNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
+            });
         });
 
         it('rethrows an AppBaseException of the transaction as it is', async () => {

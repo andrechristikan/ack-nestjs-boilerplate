@@ -8,6 +8,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
@@ -801,14 +802,36 @@ describe('AnalyticFraudService', () => {
             });
         });
 
-        it('throws UserNotFoundException for a missing user and reads no snapshot', async () => {
+        it('throws UserNotFoundException for a missing user', async () => {
             analyticFraudRepository.existsUserById.mockResolvedValue(false);
+            analyticSnapshotService.getOneByKey.mockResolvedValue({
+                item: null,
+                computedAt,
+            });
 
             await expect(service.riskScore('missing')).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
             });
-            expect(analyticSnapshotService.getOneByKey).not.toHaveBeenCalled();
+        });
+
+        it('reads the snapshot while the user check is still pending', async () => {
+            const exists = buildDeferred<boolean>();
+            analyticFraudRepository.existsUserById.mockReturnValue(
+                exists.promise
+            );
+            analyticSnapshotService.getOneByKey.mockResolvedValue({
+                item: null,
+                computedAt,
+            });
+
+            const pending = service.riskScore('user-1');
+
+            expect(analyticSnapshotService.getOneByKey).toHaveBeenCalledTimes(
+                1
+            );
+            exists.resolve(true);
+            await pending;
         });
     });
 

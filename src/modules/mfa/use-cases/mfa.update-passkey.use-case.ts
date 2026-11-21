@@ -48,7 +48,7 @@ export class MfaUpdatePasskeyUseCase implements IAppUseCase<
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userUpdateMfaPasskey }
+                { action: EnumActivityLogAction.userMfaPasskeyUpdated }
             );
             await this.outboxService.addInTx(tx, entry);
         });

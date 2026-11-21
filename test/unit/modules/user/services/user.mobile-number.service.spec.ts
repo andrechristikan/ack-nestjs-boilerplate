@@ -1,3 +1,5 @@
+import { setImmediate } from 'node:timers/promises';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -108,6 +110,21 @@ describe('UserMobileNumberService', () => {
         service = module.get(UserMobileNumberService);
     });
 
+    describe('getListByUser', () => {
+        it('returns the mobile numbers of the user', async () => {
+            userMobileNumberRepository.findManyByUser.mockResolvedValue([
+                mobileNumber,
+            ]);
+
+            await expect(service.getListByUser('user-marlin')).resolves.toEqual(
+                [mobileNumber]
+            );
+            expect(
+                userMobileNumberRepository.findManyByUser
+            ).toHaveBeenCalledWith('user-marlin');
+        });
+    });
+
     describe('existsMobileNumber', () => {
         const input = {
             number: '5551234',
@@ -142,6 +159,54 @@ describe('UserMobileNumberService', () => {
         });
     });
 
+    describe('assertMobileNumberAllowed', () => {
+        it('passes when the phone code belongs to the country and the number is no duplicate', () => {
+            expect(() =>
+                service.assertMobileNumberAllowed(
+                    country.phoneCode,
+                    '+1',
+                    false
+                )
+            ).not.toThrow();
+        });
+
+        it('throws UserMobileNumberInvalidException when the phone code does not match the country', () => {
+            expect(() =>
+                service.assertMobileNumberAllowed(
+                    country.phoneCode,
+                    '+99',
+                    false
+                )
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.mobileNumberInvalid,
+                })
+            );
+        });
+
+        it('throws UserMobileNumberExistException when the number is a duplicate', () => {
+            expect(() =>
+                service.assertMobileNumberAllowed(country.phoneCode, '+1', true)
+            ).toThrow(UserMobileNumberExistException);
+        });
+
+        it('throws UserMobileNumberInvalidException before the duplicate when both hold', () => {
+            expect(() =>
+                service.assertMobileNumberAllowed(
+                    country.phoneCode,
+                    '+99',
+                    true
+                )
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.mobileNumberInvalid,
+                })
+            );
+        });
+    });
+
     describe('addMobileNumberInTx', () => {
         const input = {
             number: '5551234',
@@ -157,9 +222,7 @@ describe('UserMobileNumberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                input,
-                country.phoneCode,
-                false
+                input
             );
 
             expect(result).toBe(mobileNumber);
@@ -177,44 +240,10 @@ describe('UserMobileNumberService', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userAddMobileNumber }
+                { action: EnumActivityLogAction.userMobileNumberAdded }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-        });
-
-        it('throws UserMobileNumberInvalidException when the phone code does not match the country', async () => {
-            await expect(
-                service.addMobileNumberInTx(
-                    tx,
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    { ...input, phoneCode: '+99' },
-                    country.phoneCode,
-                    false
-                )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberInvalid,
-            });
-            expect(userMobileNumberRepository.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws UserMobileNumberExistException when the mobile number already exists', async () => {
-            await expect(
-                service.addMobileNumberInTx(
-                    tx,
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    input,
-                    country.phoneCode,
-                    true
-                )
-            ).rejects.toBeInstanceOf(UserMobileNumberExistException);
-            expect(userMobileNumberRepository.addInTx).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -263,9 +292,7 @@ describe('UserMobileNumberService', () => {
                 apiKeyContext,
                 authContext,
                 verified,
-                input,
-                country.phoneCode,
-                false
+                input
             );
 
             expect(result).toBe(verified);
@@ -285,7 +312,7 @@ describe('UserMobileNumberService', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userUpdateMobileNumber }
+                { action: EnumActivityLogAction.userMobileNumberUpdated }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
@@ -305,9 +332,7 @@ describe('UserMobileNumberService', () => {
                 apiKeyContext,
                 authContext,
                 { ...mobileNumber, isVerified: true },
-                { ...input, number: '5559999' },
-                country.phoneCode,
-                false
+                { ...input, number: '5559999' }
             );
 
             expect(userMobileNumberRepository.updateInTx).toHaveBeenCalledWith(
@@ -322,6 +347,33 @@ describe('UserMobileNumberService', () => {
             ).toHaveBeenCalledWith(tx, mobileNumber.id);
         });
 
+        it('expires the number active codes while the user touch is pending', async () => {
+            const touched = buildDeferred<void>();
+            userMobileNumberRepository.updateInTx.mockResolvedValue(
+                mobileNumber
+            );
+            userService.touchUpdatedByInTx.mockReturnValue(touched.promise);
+
+            const running = service.updateMobileNumberInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                mobileNumber,
+                { ...input, number: '5559999' }
+            );
+            await setImmediate();
+
+            expect(
+                userVerificationService.expireActiveByMobileNumberInTx
+            ).toHaveBeenCalledWith(tx, mobileNumber.id);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+
+            touched.resolve();
+
+            await expect(running).resolves.toBe(mobileNumber);
+        });
+
         it('expires the number active codes on the same tx when the phone code changes', async () => {
             userMobileNumberRepository.updateInTx.mockResolvedValue(
                 mobileNumber
@@ -333,9 +385,7 @@ describe('UserMobileNumberService', () => {
                 apiKeyContext,
                 authContext,
                 mobileNumber,
-                { ...input, phoneCode: '+99' },
-                ['+99'],
-                false
+                { ...input, phoneCode: '+99' }
             );
 
             expect(
@@ -353,9 +403,7 @@ describe('UserMobileNumberService', () => {
                     apiKeyContext,
                     authContext,
                     mobileNumber,
-                    input,
-                    country.phoneCode,
-                    false
+                    input
                 )
             ).rejects.toMatchObject({
                 module: 'user',
@@ -365,45 +413,6 @@ describe('UserMobileNumberService', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(
                 userVerificationService.expireActiveByMobileNumberInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('throws UserMobileNumberExistException when another row already has the number', async () => {
-            await expect(
-                service.updateMobileNumberInTx(
-                    tx,
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    mobileNumber,
-                    input,
-                    country.phoneCode,
-                    true
-                )
-            ).rejects.toBeInstanceOf(UserMobileNumberExistException);
-            expect(
-                userMobileNumberRepository.updateInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('throws UserMobileNumberInvalidException when the phone code does not match the country', async () => {
-            await expect(
-                service.updateMobileNumberInTx(
-                    tx,
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    mobileNumber,
-                    { ...input, phoneCode: '+99' },
-                    country.phoneCode,
-                    false
-                )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberInvalid,
-            });
-            expect(
-                userMobileNumberRepository.updateInTx
             ).not.toHaveBeenCalled();
         });
     });
@@ -437,13 +446,39 @@ describe('UserMobileNumberService', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userDeleteMobileNumber }
+                { action: EnumActivityLogAction.userMobileNumberDeleted }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userVerificationService.expireActiveByMobileNumberInTx
             ).toHaveBeenCalledWith(tx, mobileNumber.id);
+        });
+
+        it('expires the number active codes while the user touch is pending', async () => {
+            const touched = buildDeferred<void>();
+            userMobileNumberRepository.deleteInTx.mockResolvedValue(
+                mobileNumber
+            );
+            userService.touchUpdatedByInTx.mockReturnValue(touched.promise);
+
+            const running = service.deleteMobileNumberInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                mobileNumber.id
+            );
+            await setImmediate();
+
+            expect(
+                userVerificationService.expireActiveByMobileNumberInTx
+            ).toHaveBeenCalledWith(tx, mobileNumber.id);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+
+            touched.resolve();
+
+            await expect(running).resolves.toBe(mobileNumber);
         });
 
         it('throws UserMobileNumberNotFoundException when the guarded delete misses', async () => {

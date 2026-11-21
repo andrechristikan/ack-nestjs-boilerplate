@@ -4,12 +4,17 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagUpdateStatusByAdminUseCase } from '@modules/feature-flag/use-cases/feature-flag.update-status-by-admin.use-case';
 
 describe('FeatureFlagUpdateStatusByAdminUseCase', () => {
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const tx: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
 
     let useCase: FeatureFlagUpdateStatusByAdminUseCase;
 
@@ -28,10 +33,15 @@ describe('FeatureFlagUpdateStatusByAdminUseCase', () => {
     };
 
     beforeEach(async () => {
+        databaseService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 FeatureFlagUpdateStatusByAdminUseCase,
                 { provide: FeatureFlagService, useValue: featureFlagService },
+                { provide: DatabaseService, useValue: databaseService },
             ],
         }).compile();
 
@@ -39,14 +49,16 @@ describe('FeatureFlagUpdateStatusByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        it('wraps the updated flag in the response envelope', async () => {
+        it('updates the status on the transaction tx and wraps the flag in the envelope', async () => {
             const body: FeatureFlagUpdateStatusRequestDto = {
                 isEnable: false,
                 rolloutPercent: 0,
                 targetUserIds: [],
             };
             const updated = { ...featureFlag, isEnable: false };
-            featureFlagService.updateStatusByAdmin.mockResolvedValue(updated);
+            featureFlagService.updateStatusByAdminInTx.mockResolvedValue(
+                updated
+            );
 
             const result = await useCase.execute(
                 '507f1f77bcf86cd799439011',
@@ -54,10 +66,13 @@ describe('FeatureFlagUpdateStatusByAdminUseCase', () => {
             );
 
             expect(result).toEqual({ data: updated });
-            expect(featureFlagService.updateStatusByAdmin).toHaveBeenCalledWith(
-                '507f1f77bcf86cd799439011',
-                { isEnable: false, rolloutPercent: 0, targetUserIds: [] }
-            );
+            expect(
+                featureFlagService.updateStatusByAdminInTx
+            ).toHaveBeenCalledWith(tx, '507f1f77bcf86cd799439011', {
+                isEnable: false,
+                rolloutPercent: 0,
+                targetUserIds: [],
+            });
         });
     });
 });

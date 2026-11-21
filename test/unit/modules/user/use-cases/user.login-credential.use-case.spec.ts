@@ -1,3 +1,4 @@
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -37,9 +38,13 @@ import type {
     IUser,
     IUserLoginOutcome,
     IUserLoginMfaChallenge,
+    IUserPasswordAttemptLimit,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import type { IMfaPasskeyCredential } from '@modules/mfa/interfaces/mfa.interface';
+import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/server';
+import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -58,6 +63,8 @@ describe('UserLoginCredentialUseCase', () => {
     const userPasswordService: MockProxy<UserPasswordService> =
         mock<UserPasswordService>();
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
+    const mfaPasskeyService: MockProxy<MfaPasskeyService> =
+        mock<MfaPasskeyService>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
@@ -106,11 +113,17 @@ describe('UserLoginCredentialUseCase', () => {
         ...buildUser('user-bramble', 'bramble@example.com'),
         isVerified: true,
     };
+    const passkeyOptions: PublicKeyCredentialRequestOptionsJSON = {
+        challenge: 'challenge-webauthn',
+    };
+    const passkeyCredentials: IMfaPasskeyCredential[] = [
+        { credentialId: 'credential-bramble', transports: ['internal'] },
+    ];
     const mfaChallenge: IUserLoginMfaChallenge = {
         challengeToken: 'challenge-token',
         expiresInMs: 60000,
         methods: [EnumMfaMethod.passkey, EnumMfaMethod.backupCode],
-        passkeyOptions: { challenge: 'challenge-webauthn' },
+        passkeyOptions,
     };
     const session: IUserLoginSession = {
         tokens,
@@ -131,6 +144,8 @@ describe('UserLoginCredentialUseCase', () => {
             async fn => fn(tx) as never
         );
         mfaService.isEnabled.mockResolvedValue(false);
+        mfaPasskeyService.getCredentialsByUser.mockResolvedValue([]);
+        mfaService.getLoginMethods.mockResolvedValue([EnumMfaMethod.totp]);
         userAuthService.createTokenAndSessionInTx.mockResolvedValue(session);
         workspaceMemberService.resolveLastWorkspaceId.mockResolvedValue(null);
 
@@ -150,6 +165,7 @@ describe('UserLoginCredentialUseCase', () => {
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 UserUtil,
                 { provide: MfaService, useValue: mfaService },
+                { provide: MfaPasskeyService, useValue: mfaPasskeyService },
                 DeviceUtil,
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
@@ -179,6 +195,10 @@ describe('UserLoginCredentialUseCase', () => {
             lastWorkspaceChangedAt: new Date('2026-02-01T00:00:00.000Z'),
         };
         const unverifiedUser: IUser = { ...baseUser, isVerified: false };
+        const attemptLimit: IUserPasswordAttemptLimit = {
+            maxAttempts: 5,
+            lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
+        };
         const emailNotVerifiedFields = {
             module: 'user',
             statusCode: EnumUserStatusCodeError.emailNotVerified,
@@ -187,6 +207,9 @@ describe('UserLoginCredentialUseCase', () => {
         beforeEach(() => {
             userAuthService.getOneForCredentialLogin.mockResolvedValue(counted);
             userAuthService.isCredentialMatch.mockResolvedValue(true);
+            userPasswordService.getPasswordAttemptLimit.mockResolvedValue(
+                attemptLimit
+            );
         });
 
         it('logs the user in through the service inside one transaction on a repeat device, resetting the counter on that transaction first', async () => {
@@ -195,6 +218,14 @@ describe('UserLoginCredentialUseCase', () => {
             ).resolves.toEqual({
                 data: tokenOutcome,
             });
+
+            expect(mfaService.getLoginMethods).not.toHaveBeenCalled();
+            expect(
+                mfaPasskeyService.getCredentialsByUser
+            ).not.toHaveBeenCalled();
+            expect(
+                mfaPasskeyService.getAssertionOptions
+            ).not.toHaveBeenCalled();
 
             expect(
                 userAuthService.getOneForCredentialLogin
@@ -210,7 +241,7 @@ describe('UserLoginCredentialUseCase', () => {
                 userAuthService.assertCredentialMatched
             ).toHaveBeenCalledWith(true);
             expect(
-                userPasswordService.countFailedPasswordAttempt
+                userPasswordService.countFailedPasswordAttemptInTx
             ).not.toHaveBeenCalled();
             expect(
                 userPasswordService.resetPasswordAttemptInTx
@@ -281,7 +312,7 @@ describe('UserLoginCredentialUseCase', () => {
         it('counts the mismatch, adds the failed-login entry through OutboxService.addInTx, and answers the credential error below the budget', async () => {
             const failure = new UserCredentialInvalidException();
             userAuthService.isCredentialMatch.mockResolvedValue(false);
-            userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
+            userPasswordService.countFailedPasswordAttemptInTx.mockResolvedValue(
                 false
             );
             userAuthService.assertCredentialMatched.mockImplementation(() => {
@@ -293,8 +324,17 @@ describe('UserLoginCredentialUseCase', () => {
             ).rejects.toBe(failure);
 
             expect(
-                userPasswordService.countFailedPasswordAttempt
-            ).toHaveBeenCalledWith(requestContext, apiKeyContext, baseUser);
+                userPasswordService.getPasswordAttemptLimit
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                userPasswordService.countFailedPasswordAttemptInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                'user-bramble',
+                attemptLimit
+            );
             expect(
                 userPasswordService.assertPasswordNotLocked
             ).toHaveBeenCalledWith(false);
@@ -312,7 +352,7 @@ describe('UserLoginCredentialUseCase', () => {
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
             expect(
-                userPasswordService.countFailedPasswordAttempt
+                userPasswordService.countFailedPasswordAttemptInTx
             ).toHaveBeenCalledBefore(outboxService.addInTx);
             expect(outboxService.addInTx).toHaveBeenCalledBefore(
                 userAuthService.assertCredentialMatched
@@ -328,7 +368,7 @@ describe('UserLoginCredentialUseCase', () => {
         it('adds the failed-login entry and answers the attempt limit when the counted mismatch locked the account', async () => {
             const failure = new UserPasswordAttemptMaxException();
             userAuthService.isCredentialMatch.mockResolvedValue(false);
-            userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
+            userPasswordService.countFailedPasswordAttemptInTx.mockResolvedValue(
                 true
             );
             userPasswordService.assertPasswordNotLocked.mockImplementation(
@@ -371,7 +411,7 @@ describe('UserLoginCredentialUseCase', () => {
 
             expect(userAuthService.isCredentialMatch).not.toHaveBeenCalled();
             expect(
-                userPasswordService.countFailedPasswordAttempt
+                userPasswordService.countFailedPasswordAttemptInTx
             ).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(
@@ -437,7 +477,7 @@ describe('UserLoginCredentialUseCase', () => {
                 null,
                 null,
                 {
-                    action: EnumActivityLogAction.userSendVerificationEmail,
+                    action: EnumActivityLogAction.userVerificationEmailSent,
                     userId: 'user-bramble',
                     createdBy: 'user-bramble',
                 }
@@ -449,8 +489,8 @@ describe('UserLoginCredentialUseCase', () => {
             expect(callOrder).toEqual([
                 'isCredentialMatch',
                 'isEmailResendable',
-                'resetPasswordAttemptInTx',
                 'sendEmailInTx',
+                'resetPasswordAttemptInTx',
                 'addInTx',
                 'assertVerified',
             ]);
@@ -555,7 +595,10 @@ describe('UserLoginCredentialUseCase', () => {
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
-            ).rejects.toBeInstanceOf(UserPasswordExpiredException);
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordExpired,
+            });
 
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
@@ -569,7 +612,7 @@ describe('UserLoginCredentialUseCase', () => {
                 user: unverifiedUser,
             });
             userAuthService.isCredentialMatch.mockResolvedValue(false);
-            userPasswordService.countFailedPasswordAttempt.mockResolvedValue(
+            userPasswordService.countFailedPasswordAttemptInTx.mockResolvedValue(
                 false
             );
             userAuthService.assertCredentialMatched.mockImplementation(() => {
@@ -616,6 +659,78 @@ describe('UserLoginCredentialUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
+        it('creates the challenge while the attempt counter reset is pending, then answers the challenge', async () => {
+            const reset = buildDeferred<void>();
+            mfaService.isEnabled.mockResolvedValue(true);
+            mfaPasskeyService.getCredentialsByUser.mockResolvedValue(
+                passkeyCredentials
+            );
+            mfaService.getLoginMethods.mockResolvedValue(mfaChallenge.methods);
+            mfaPasskeyService.getAssertionOptions.mockResolvedValue(
+                passkeyOptions
+            );
+            userAuthService.getOneForCredentialLogin.mockResolvedValue({
+                ...counted,
+                user: baseUser,
+            });
+            userAuthService.createMfaChallengeInTx.mockResolvedValue(
+                mfaChallenge
+            );
+            userPasswordService.resetPasswordAttemptInTx.mockReturnValue(
+                reset.promise
+            );
+
+            const running = useCase.execute(requestContext, apiKeyContext, dto);
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(userAuthService.createMfaChallengeInTx).toHaveBeenCalledWith(
+                tx,
+                'user-bramble',
+                deviceIdentity,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                mfaChallenge.methods,
+                passkeyOptions
+            );
+
+            reset.resolve();
+
+            await expect(running).resolves.toMatchObject({
+                data: { isMfaRequired: true, mfa: mfaChallenge },
+            });
+        });
+
+        it('resets the attempt counter while the verification email is still being sent, then adds its entry', async () => {
+            const sent = buildDeferred<void>();
+            userAuthService.getOneForCredentialLogin.mockResolvedValue({
+                ...counted,
+                user: unverifiedUser,
+            });
+            userVerificationService.isEmailResendable.mockResolvedValue(true);
+            userVerificationService.sendEmailInTx.mockReturnValue(sent.promise);
+            userAuthService.assertVerified.mockImplementation(() => {
+                throw new UserEmailNotVerifiedException();
+            });
+
+            const running = useCase.execute(requestContext, apiKeyContext, dto);
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(userVerificationService.sendEmailInTx).toHaveBeenCalledWith(
+                tx,
+                'user-bramble',
+                'bramble@example.com'
+            );
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).toHaveBeenCalledWith(tx, 'user-bramble');
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+
+            sent.resolve();
+
+            await expect(running).rejects.toMatchObject(emailNotVerifiedFields);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
+        });
+
         it('answers methods without passkey and null passkeyOptions for a TOTP-only user', async () => {
             const totpChallenge: IUserLoginMfaChallenge = {
                 ...mfaChallenge,
@@ -623,6 +738,8 @@ describe('UserLoginCredentialUseCase', () => {
                 passkeyOptions: null,
             };
             mfaService.isEnabled.mockResolvedValue(true);
+            mfaPasskeyService.getCredentialsByUser.mockResolvedValue([]);
+            mfaService.getLoginMethods.mockResolvedValue(totpChallenge.methods);
             userAuthService.getOneForCredentialLogin.mockResolvedValue({
                 ...counted,
                 user: baseUser,
@@ -636,10 +753,33 @@ describe('UserLoginCredentialUseCase', () => {
             ).resolves.toMatchObject({
                 data: { isMfaRequired: true, mfa: totpChallenge },
             });
+            expect(mfaService.getLoginMethods).toHaveBeenCalledWith(
+                'user-bramble',
+                []
+            );
+            expect(
+                mfaPasskeyService.getAssertionOptions
+            ).not.toHaveBeenCalled();
+            expect(userAuthService.createMfaChallengeInTx).toHaveBeenCalledWith(
+                tx,
+                'user-bramble',
+                deviceIdentity,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                totpChallenge.methods,
+                null
+            );
         });
 
         it('creates a challenge with the passed context and issues nothing for an MFA user', async () => {
             mfaService.isEnabled.mockResolvedValue(true);
+            mfaPasskeyService.getCredentialsByUser.mockResolvedValue(
+                passkeyCredentials
+            );
+            mfaService.getLoginMethods.mockResolvedValue(mfaChallenge.methods);
+            mfaPasskeyService.getAssertionOptions.mockResolvedValue(
+                passkeyOptions
+            );
             userAuthService.getOneForCredentialLogin.mockResolvedValue({
                 ...counted,
                 user: baseUser,
@@ -663,16 +803,34 @@ describe('UserLoginCredentialUseCase', () => {
             expect(
                 userPasswordService.resetPasswordAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-bramble');
-            expect(
-                userPasswordService.resetPasswordAttemptInTx
-            ).toHaveBeenCalledBefore(userAuthService.createMfaChallengeInTx);
+            expect(mfaPasskeyService.getCredentialsByUser).toHaveBeenCalledWith(
+                'user-bramble'
+            );
+            expect(mfaService.getLoginMethods).toHaveBeenCalledWith(
+                'user-bramble',
+                passkeyCredentials
+            );
+            expect(mfaPasskeyService.getAssertionOptions).toHaveBeenCalledWith(
+                passkeyCredentials
+            );
             expect(userAuthService.createMfaChallengeInTx).toHaveBeenCalledWith(
                 tx,
                 'user-bramble',
                 deviceIdentity,
                 EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential
+                EnumUserLoginWith.credential,
+                mfaChallenge.methods,
+                passkeyOptions
             );
+            expect(
+                mfaPasskeyService.getCredentialsByUser
+            ).toHaveBeenCalledBefore(databaseService.withTransaction);
+            expect(mfaService.getLoginMethods).toHaveBeenCalledBefore(
+                databaseService.withTransaction
+            );
+            expect(
+                mfaPasskeyService.getAssertionOptions
+            ).toHaveBeenCalledBefore(databaseService.withTransaction);
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();

@@ -64,11 +64,8 @@ export class ApiKeyRepository implements IApiKeyRepository {
         });
     }
 
-    async findOneByIdInTx(
-        tx: IDatabaseTransactionClient,
-        id: string
-    ): Promise<IApiKey | null> {
-        return tx.apiKey.findUnique({
+    async findOneById(id: string): Promise<IApiKey | null> {
+        return this.databaseService.client.apiKey.findUnique({
             where: {
                 id,
             },
@@ -95,7 +92,12 @@ export class ApiKeyRepository implements IApiKeyRepository {
             return null;
         }
 
-        return this.findOneByIdInTx(tx, id);
+        return tx.apiKey.findUnique({
+            where: {
+                id,
+            },
+            select: ApiKeySelect,
+        });
     }
 
     async updateNameInTx(
@@ -134,7 +136,12 @@ export class ApiKeyRepository implements IApiKeyRepository {
             return null;
         }
 
-        return this.findOneByIdInTx(tx, id);
+        return tx.apiKey.findUnique({
+            where: {
+                id,
+            },
+            select: ApiKeySelect,
+        });
     }
 
     async updateHashInTx(
@@ -155,7 +162,12 @@ export class ApiKeyRepository implements IApiKeyRepository {
             return null;
         }
 
-        return this.findOneByIdInTx(tx, id);
+        return tx.apiKey.findUnique({
+            where: {
+                id,
+            },
+            select: ApiKeySelect,
+        });
     }
 
     async deleteInTx(

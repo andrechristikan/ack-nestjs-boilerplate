@@ -1,4 +1,5 @@
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { Test } from '@nestjs/testing';
@@ -67,10 +68,22 @@ describe('MfaGeneratePasskeyRegistrationUseCase', () => {
             expect(mfaService.assertEnrolmentAllowed).toHaveBeenCalledWith(
                 EnumMfaMethod.passkey
             );
-            expect(
-                mfaPasskeyService.getRegistrationOptions
-            ).not.toHaveBeenCalled();
             expect(mfaChallengeService.create).not.toHaveBeenCalled();
+        });
+
+        it('reads the options and asserts the enrolment gate together', async () => {
+            const gate = buildDeferred<void>();
+            mfaService.assertEnrolmentAllowed.mockReturnValue(gate.promise);
+            mfaPasskeyService.getRegistrationOptions.mockImplementation(
+                async () => {
+                    gate.resolve();
+                    return passkeyOptions;
+                }
+            );
+
+            await expect(
+                useCase.execute(authContext, userContext)
+            ).resolves.toMatchObject({ data: { passkeyOptions } });
         });
 
         it('reads the options for the caller, stores the challenge of the options as a registration challenge without a transaction, and answers the token with the options', async () => {

@@ -118,6 +118,8 @@ export class AwsS3Service implements OnModuleInit {
 
     private readonly presignExpiresInSeconds: number;
     private readonly multipartExpiresInDays: number;
+    private readonly temporaryPath: string;
+    private readonly temporaryExpiresInDays: number;
     private readonly corsMaxAgeLongInSeconds: number;
     private readonly corsMaxAgeShortInSeconds: number;
 
@@ -191,6 +193,12 @@ export class AwsS3Service implements OnModuleInit {
         )!;
         this.multipartExpiresInDays = this.configService.get<number>(
             'aws.s3.multipartExpiresInDays'
+        )!;
+        this.temporaryPath = this.configService.get<string>(
+            'aws.s3.temporaryPath'
+        )!;
+        this.temporaryExpiresInDays = this.configService.get<number>(
+            'aws.s3.temporaryExpiresInDays'
         )!;
         this.corsMaxAgeLongInSeconds = this.configService.get<number>(
             'aws.s3.corsMaxAgeLongInSeconds'
@@ -628,7 +636,7 @@ export class AwsS3Service implements OnModuleInit {
             });
 
             try {
-                // Sequential by design: write must not run if an earlier step throws
+                // Sequential by design: a write after its checks
                 await this.s3Client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
@@ -824,7 +832,7 @@ export class AwsS3Service implements OnModuleInit {
             });
 
             try {
-                // Sequential by design: write must not run if an earlier step throws
+                // Sequential by design: a write after its checks
                 await this.s3Client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
@@ -1055,7 +1063,7 @@ export class AwsS3Service implements OnModuleInit {
             });
 
             try {
-                // Sequential by design: gate before the work it guards
+                // Sequential by design: a write after its checks
                 await this.s3Client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
@@ -1259,6 +1267,16 @@ export class AwsS3Service implements OnModuleInit {
                             },
                             Expiration: {
                                 ExpiredObjectDeleteMarker: true,
+                            },
+                        },
+                        {
+                            ID: 'delete-temporary',
+                            Status: ExpirationStatus.Enabled,
+                            Filter: {
+                                Prefix: `${this.temporaryPath}/`,
+                            },
+                            Expiration: {
+                                Days: this.temporaryExpiresInDays,
                             },
                         },
                     ],

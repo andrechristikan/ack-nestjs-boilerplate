@@ -1,3 +1,4 @@
+import { DatabaseService } from '@common/database/services/database.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
@@ -10,15 +11,21 @@ export class FeatureFlagUpdateMetadataByAdminUseCase implements IAppUseCase<
     [string, FeatureFlagUpdateMetadataRequestDto],
     IResponseReturn<FeatureFlag>
 > {
-    constructor(private readonly featureFlagService: FeatureFlagService) {}
+    constructor(
+        private readonly featureFlagService: FeatureFlagService,
+        private readonly databaseService: DatabaseService
+    ) {}
 
     async execute(
         id: string,
         body: FeatureFlagUpdateMetadataRequestDto
     ): Promise<IResponseReturn<FeatureFlag>> {
-        const updated = await this.featureFlagService.updateMetadataByAdmin(
-            id,
-            body
+        // Sequential by design: a write after its checks
+        const featureFlag = await this.featureFlagService.getOneById(id);
+        this.featureFlagService.assertMetadataValid(featureFlag, body);
+
+        const updated = await this.databaseService.withTransaction(tx =>
+            this.featureFlagService.updateMetadataByAdminInTx(tx, id, body)
         );
 
         return {

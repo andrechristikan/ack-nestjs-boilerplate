@@ -1,3 +1,5 @@
+import { setImmediate } from 'node:timers/promises';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -183,6 +185,24 @@ describe('UserRegistrationService', () => {
             );
         });
 
+        it('starts the notification defaults while the password histories are pending', async () => {
+            const saved = buildDeferred<void>();
+            passwordHistoryService.createManyInTx.mockReturnValue(
+                saved.promise
+            );
+
+            const running = service.createInTx(tx, inputs);
+            await setImmediate();
+
+            expect(
+                notificationService.createDefaultsManyInTx
+            ).toHaveBeenCalledWith(tx, userIds);
+
+            saved.resolve();
+
+            await expect(running).resolves.toBe(created);
+        });
+
         it('returns the created users', async () => {
             const result = await service.createInTx(tx, inputs);
 
@@ -358,13 +378,13 @@ describe('UserRegistrationService', () => {
     });
 
     describe('buildCreateByAdminStages', () => {
-        it('leads with the adminUserCreate row naming the created user, then the admin contract rows', () => {
+        it('leads with the adminUserCreated row naming the created user, then the admin contract rows', () => {
             const input = { ...inputs[0]!, createdBy: 'admin-ochre' };
             const result = service.buildCreateByAdminStages(input, createdUser);
 
             expect(result).toEqual([
                 {
-                    action: EnumActivityLogAction.adminUserCreate,
+                    action: EnumActivityLogAction.adminUserCreated,
                     metadata: {
                         targetUserId: createdUser.id,
                         targetUsername: createdUser.username,

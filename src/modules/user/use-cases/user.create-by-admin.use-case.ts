@@ -154,18 +154,18 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         userContext: IUserContext,
         { countryId, email, name, roleId, username }: UserCreateRequestDto
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        // Sequential by design: gate before the work it guards
-        const role = await this.roleService.getById(roleId);
-        this.roleService.assertActorOutranks(
-            userContext.user.role.type,
-            role.type
-        );
+        this.userService.assertEmailDeliverable();
 
-        const [emailExist, usernameCheck] = await Promise.all([
+        const [role, emailExist, usernameCheck] = await Promise.all([
+            this.roleService.getById(roleId),
             this.userService.existsByEmail(email),
             this.userService.checkUsername(username),
             this.countryService.getOne(countryId),
         ]);
+        this.roleService.assertActorOutranks(
+            userContext.user.role.type,
+            role.type
+        );
         this.userService.assertEmailAvailable(emailExist);
         this.userService.assertUsernameAvailable(usernameCheck);
 

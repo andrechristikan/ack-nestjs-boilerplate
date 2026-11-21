@@ -4,7 +4,7 @@ paths:
     - '**/*list.request.dto.ts'
     - '**/*.list.constant.ts'
     - '**/*list*.use-case.ts'
-    - '**/*export*.use-case.ts'
+    - '**/*.export*.use-case.ts'
     - 'src/modules/analytic/use-cases/**'
     - '**/*.repository.ts'
 ---

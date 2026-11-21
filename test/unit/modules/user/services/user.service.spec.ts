@@ -1,3 +1,4 @@
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -15,6 +16,8 @@ import {
 } from '@generated/prisma-client/client';
 import type { Mfa } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
+import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -61,6 +64,7 @@ describe('UserService', () => {
         mock<UserVerificationService>();
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
+    const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
 
     let service: UserService;
     let databaseUtil: DatabaseUtil;
@@ -137,6 +141,7 @@ describe('UserService', () => {
                     useValue: mfaService,
                 },
                 { provide: RoleService, useValue: roleService },
+                { provide: AwsSESService, useValue: awsSESService },
                 AuthPasswordUtil,
                 DatabaseUtil,
                 HelperDateService,
@@ -153,6 +158,22 @@ describe('UserService', () => {
         databaseUtil = module.get(DatabaseUtil);
         helperStringService = module.get(HelperStringService);
         helperHashService = module.get(HelperHashService);
+    });
+
+    describe('assertEmailDeliverable', () => {
+        it('throws AwsSesNotConfiguredException when SES is not initialized', () => {
+            awsSESService.isInitialized.mockReturnValue(false);
+
+            expect(() => service.assertEmailDeliverable()).toThrow(
+                AwsSesNotConfiguredException
+            );
+        });
+
+        it('returns when SES is initialized', () => {
+            awsSESService.isInitialized.mockReturnValue(true);
+
+            expect(() => service.assertEmailDeliverable()).not.toThrow();
+        });
     });
 
     describe('validateUserGuard', () => {
@@ -531,6 +552,41 @@ describe('UserService', () => {
                 'admin-cobalt'
             );
             expect(result).toEqual([baseUser, marigold]);
+        });
+
+        it('starts the Mfa row of every user while a verification write is pending', async () => {
+            const marigold: IUser = {
+                ...baseUser,
+                id: 'user-marigold',
+            };
+            const pending = buildDeferred<never>();
+            const failure = new Error('verification failed');
+            userRepository.createManyInTx.mockResolvedValue([
+                baseUser,
+                marigold,
+            ]);
+            userVerificationService.createInTx.mockReturnValue(pending.promise);
+
+            const running = service.createManyInTx(tx, [
+                withVerification,
+                withoutVerification,
+            ]);
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(mfaService.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cobalt',
+                'user-cobalt'
+            );
+            expect(mfaService.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-marigold',
+                'admin-cobalt'
+            );
+
+            pending.reject(failure);
+
+            await expect(running).rejects.toBe(failure);
         });
 
         it('issues no statement for an empty list', async () => {
@@ -1016,6 +1072,31 @@ describe('UserService', () => {
         });
     });
 
+    describe('assertStatusChangeable', () => {
+        it('passes when the status differs from the current one', () => {
+            expect(() =>
+                service.assertStatusChangeable(
+                    { ...baseUser, status: EnumUserStatus.active },
+                    EnumUserStatus.inactive
+                )
+            ).not.toThrow();
+        });
+
+        it('throws UserStatusInvalidException when the status is unchanged', () => {
+            expect(() =>
+                service.assertStatusChangeable(
+                    { ...baseUser, status: EnumUserStatus.active },
+                    EnumUserStatus.active
+                )
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.statusInvalid,
+                })
+            );
+        });
+    });
+
     describe('updateStatusByAdminInTx', () => {
         const lockedUntil = new Date('2026-03-01T00:15:00.000Z');
         const target: IUser = {
@@ -1095,22 +1176,6 @@ describe('UserService', () => {
             expect(mfaService.resetAttemptInTx).not.toHaveBeenCalled();
         });
 
-        it('throws UserStatusInvalidException without writing when the status is unchanged', async () => {
-            const call = service.updateStatusByAdminInTx(
-                tx,
-                { ...target, status: EnumUserStatus.active },
-                EnumUserStatus.active
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.statusInvalid,
-            });
-            expect(
-                userRepository.updateStatusByAdminInTx
-            ).not.toHaveBeenCalled();
-        });
-
         it('throws UserStatusInvalidException when the current status no longer holds', async () => {
             userRepository.updateStatusByAdminInTx.mockResolvedValue(null);
 
@@ -1129,7 +1194,7 @@ describe('UserService', () => {
     });
 
     describe('deleteSelfInTx', () => {
-        it('soft-deletes with the deleted identity', async () => {
+        it('soft-deletes with the deleted identity built from the id given', async () => {
             const identity: IUserDeletedIdentity = {
                 email: 'deleted.user-cobalt',
                 username: 'deleted.user-cobalt',
@@ -1137,7 +1202,7 @@ describe('UserService', () => {
             userRepository.deleteSelfInTx.mockResolvedValue();
 
             await expect(
-                service.deleteSelfInTx(tx, baseUser, now)
+                service.deleteSelfInTx(tx, 'user-cobalt', now)
             ).resolves.toBeUndefined();
 
             expect(userRepository.deleteSelfInTx).toHaveBeenCalledWith(
@@ -1149,23 +1214,42 @@ describe('UserService', () => {
         });
     });
 
+    describe('getOneLive', () => {
+        it('returns the live row of any status', async () => {
+            const row = { ...baseUser, status: EnumUserStatus.blocked };
+            userRepository.findOneById.mockResolvedValue(row);
+
+            await expect(service.getOneLive('user-cobalt')).resolves.toBe(row);
+
+            expect(userRepository.findOneById).toHaveBeenCalledWith(
+                'user-cobalt'
+            );
+        });
+
+        it('returns null when the user is deleted or missing', async () => {
+            userRepository.findOneById.mockResolvedValue(null);
+
+            await expect(service.getOneLive('user-cobalt')).resolves.toBeNull();
+        });
+    });
+
     describe('resolveStatusActivityLogAction', () => {
-        it('resolves userBlocked for blocked', () => {
+        it('resolves userBlockedByAdmin for blocked', () => {
             expect(
                 service.resolveStatusActivityLogAction(EnumUserStatus.blocked)
-            ).toBe(EnumActivityLogAction.userBlocked);
+            ).toBe(EnumActivityLogAction.userBlockedByAdmin);
         });
 
-        it('resolves userUpdateStatus for inactive', () => {
+        it('resolves userStatusUpdated for inactive', () => {
             expect(
                 service.resolveStatusActivityLogAction(EnumUserStatus.inactive)
-            ).toBe(EnumActivityLogAction.userUpdateStatus);
+            ).toBe(EnumActivityLogAction.userStatusUpdated);
         });
 
-        it('resolves userUpdateStatus for active', () => {
+        it('resolves userStatusUpdated for active', () => {
             expect(
                 service.resolveStatusActivityLogAction(EnumUserStatus.active)
-            ).toBe(EnumActivityLogAction.userUpdateStatus);
+            ).toBe(EnumActivityLogAction.userStatusUpdated);
         });
     });
 
@@ -1191,7 +1275,7 @@ describe('UserService', () => {
 
     describe('createDeletedIdentity', () => {
         it('fills the configured deleted pattern from the row id alone for both fields', () => {
-            expect(service['createDeletedIdentity'](baseUser)).toEqual({
+            expect(service['createDeletedIdentity'](baseUser.id)).toEqual({
                 email: 'deleted.user-cobalt',
                 username: 'deleted.user-cobalt',
             });

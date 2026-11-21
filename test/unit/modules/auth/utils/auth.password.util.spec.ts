@@ -154,7 +154,7 @@ describe('AuthPasswordUtil', () => {
             expect(result).toBe(match);
         });
 
-        it('stops at the first matching history row', async () => {
+        it('compares every history row and returns the earliest match in the given order', async () => {
             const hash = await helperHashService.argon2Hash('plain-password');
             const first = { ...history, id: 'history-1', password: hash };
             const second = { ...history, id: 'history-2', password: hash };
@@ -167,7 +167,7 @@ describe('AuthPasswordUtil', () => {
             );
 
             expect(result).toBe(first);
-            expect(compare).toHaveBeenCalledTimes(1);
+            expect(compare).toHaveBeenCalledTimes(3);
         });
 
         it('returns null when the password was never used before', async () => {

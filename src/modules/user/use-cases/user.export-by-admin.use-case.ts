@@ -1,82 +1,80 @@
-import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
-import { FileService } from '@common/file/services/file.service';
-import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
-import { RequestStoreService } from '@common/request/services/request.store.service';
-import type { IResponseFileReturn } from '@common/response/interfaces/response.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
 import type { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
+import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserImportService } from '@modules/user/services/user.import.service';
 import { Injectable } from '@nestjs/common';
-import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserExportByAdminUseCase implements IAppUseCase<
-    [UserExportRequestDto],
-    IResponseFileReturn
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        UserExportRequestDto,
+    ],
+    IResponseReturn<UserExportResponseDto>
 > {
     constructor(
+        private readonly userQueue: UserQueue,
+        private readonly activityLogQueue: ActivityLogQueue,
         private readonly userImportService: UserImportService,
-        private readonly fileService: FileService,
         private readonly paginationFilterUtil: PaginationFilterUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly databaseService: DatabaseService,
+        private readonly outboxService: OutboxService
     ) {}
 
-    async execute(query: UserExportRequestDto): Promise<IResponseFileReturn> {
-        const status = this.paginationFilterUtil.inEnum(
+    async execute(
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        query: UserExportRequestDto
+    ): Promise<IResponseReturn<UserExportResponseDto>> {
+        const statusFilter = this.paginationFilterUtil.inEnum(
             Prisma.UserScalarFieldEnum.status,
             query.status,
             UserDefaultStatus
         );
-        const roleId = this.paginationFilterUtil.equalString(
-            Prisma.UserScalarFieldEnum.roleId,
-            query.roleId
+        const status = this.userImportService.resolveExportByAdminStatus(
+            statusFilter?.where ?? null
         );
-        const countryId = this.paginationFilterUtil.equalString(
-            Prisma.UserScalarFieldEnum.countryId,
-            query.countryId
-        );
-        this.requestStoreService.merge(PaginationStoreKey, {
-            filters: {
-                ...(status?.storeFilter ?? {}),
-                ...(roleId?.storeFilter ?? {}),
-                ...(countryId?.storeFilter ?? {}),
-            },
-        });
+        const roleId = query.roleId ?? null;
+        const countryId = query.countryId ?? null;
 
-        const data = await this.userImportService.exportByAdmin(
-            status?.where ?? null,
-            roleId?.where ?? null,
-            countryId?.where ?? null
+        // Sequential by design: cheap check before the work it guards; write after its checks
+        this.userImportService.assertExportByAdminDeliverable();
+        await this.userImportService.assertExportByAdminWithinCap(
+            status,
+            roleId,
+            countryId
         );
 
-        const users: UserExportResponseDto[] = data.map(user => ({
-            id: user.id,
-            createdAt: user.createdAt,
-            createdBy: user.createdBy,
-            updatedAt: user.updatedAt,
-            updatedBy: user.updatedBy,
-            deletedAt: user.deletedAt,
-            deletedBy: user.deletedBy,
-            name: user.name,
-            username: user.username,
-            isVerified: user.isVerified,
-            verifiedAt: user.verifiedAt,
-            email: user.email,
-            roleId: user.roleId,
-            status: user.status,
-            countryId: user.countryId,
-            photo: user.photo?.completedUrl ?? null,
-            role: user.role.name,
-        }));
+        const activityLog = this.activityLogQueue.toPayload(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null
+        );
+        const effect = this.userQueue.exportByAdminEffect(
+            status,
+            roleId,
+            countryId,
+            activityLog
+        );
+        const outboxId = await this.databaseService.withTransaction(async tx =>
+            this.outboxService.addInTx(tx, effect)
+        );
 
-        const csv = this.fileService.writeCsv<UserExportResponseDto>(users);
-
-        return {
-            data: csv,
-            extension: EnumFileExtensionDocument.csv,
-        };
+        return { data: { outboxId } };
     }
 }

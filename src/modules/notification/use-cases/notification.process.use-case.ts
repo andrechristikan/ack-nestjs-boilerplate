@@ -44,7 +44,7 @@ export class NotificationProcessUseCase implements IAppUseCase<
                 snapshot
             );
         } else if (recipient === null) {
-            // Sequential by design: write must not run if an earlier step throws
+            // Sequential by design: a write after its checks
             const [user, settings, tokens] = await Promise.all([
                 this.userService.getOneActive(context.userId),
                 this.notificationService.getListUserSetting(context.userId),

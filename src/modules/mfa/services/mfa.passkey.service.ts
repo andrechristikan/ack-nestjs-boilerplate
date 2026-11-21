@@ -28,6 +28,7 @@ import type {
     IMfaPasskey,
     IMfaPasskeyCheck,
     IMfaPasskeyCredential,
+    IMfaPasskeyRegistration,
 } from '@modules/mfa/interfaces/mfa.interface';
 import { MfaPasskeyRepository } from '@modules/mfa/repositories/mfa.passkey.repository';
 import { Injectable } from '@nestjs/common';
@@ -175,6 +176,13 @@ export class MfaPasskeyService {
         }
     }
 
+    private async getMaxPerUser(): Promise<number> {
+        return this.featureFlagService.getMetadataNumber(
+            EnumFeatureFlagKey.mfa,
+            EnumFeatureFlagMetadataKey.passkeyMaxPerUser
+        );
+    }
+
     async getRegistrationOptions(
         userId: string,
         email: string,
@@ -232,7 +240,7 @@ export class MfaPasskeyService {
         passkeyResponse: AuthenticationResponseJSON | null,
         webAuthnChallenge: string | null
     ): Promise<IMfaPasskeyCheck | null> {
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: a credential proof, awaited alone
         const hasPasskey =
             await this.mfaPasskeyRepository.existsByUserId(userId);
         if (!hasPasskey) {
@@ -282,59 +290,56 @@ export class MfaPasskeyService {
         }
     }
 
-    async getMaxPerUser(): Promise<number> {
-        return this.featureFlagService.getMetadataNumber(
-            EnumFeatureFlagKey.mfa,
-            EnumFeatureFlagMetadataKey.passkeyMaxPerUser
-        );
-    }
-
-    /** Verifies the attestation against the stored challenge and stores the passkey on the given tx; a list holding maxPerUser passkeys, a failed verification, and a known credential id throw. */
-    async registerInTx(
-        tx: IDatabaseTransactionClient,
+    /** Checks a registration before any transaction opens and answers the verified values registerInTx stores; a list holding the passkeyMaxPerUser passkeys, a failed attestation, and a known credential id throw, in that order. */
+    async assertRegistrable(
         userId: string,
-        name: string,
         response: RegistrationResponseJSON,
-        webAuthnChallenge: string,
-        maxPerUser: number
-    ): Promise<IMfaPasskey> {
-        // Sequential by design: gates before the write they guard
-        const count = await this.mfaPasskeyRepository.countByUserIdInTx(
-            tx,
-            userId
-        );
+        webAuthnChallenge: string
+    ): Promise<IMfaPasskeyRegistration> {
+        const [maxPerUser, count, verified] = await Promise.all([
+            this.getMaxPerUser(),
+            this.mfaPasskeyRepository.countByUserId(userId),
+            this.verifyAttestation(response, webAuthnChallenge),
+        ]);
         if (count >= maxPerUser) {
             throw new MfaPasskeyLimitException();
         }
 
-        const verified = await this.verifyAttestation(
-            response,
-            webAuthnChallenge
-        );
         if (!verified.verified) {
             throw new MfaPasskeyInvalidException();
         }
 
         const { credential, credentialDeviceType, credentialBackedUp } =
             verified.registrationInfo;
-        const isRegistered =
-            await this.mfaPasskeyRepository.existsByCredentialIdInTx(
-                tx,
+        const registered =
+            await this.mfaPasskeyRepository.findOneByCredentialId(
                 credential.id
             );
-        if (isRegistered) {
+        if (registered !== null) {
             throw new MfaPasskeyAlreadyRegisteredException();
         }
 
-        return this.mfaPasskeyRepository.createInTx(tx, {
-            userId,
+        return {
             credentialId: credential.id,
             publicKey: Buffer.from(credential.publicKey).toString('base64url'),
             counter: credential.counter,
             transports: credential.transports ?? [],
             deviceType: credentialDeviceType,
             backedUp: credentialBackedUp,
+        };
+    }
+
+    /** Stores the passkey of a verified registration on the given tx. */
+    async registerInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        name: string,
+        registration: IMfaPasskeyRegistration
+    ): Promise<IMfaPasskey> {
+        return this.mfaPasskeyRepository.createInTx(tx, {
+            userId,
             name,
+            ...registration,
         });
     }
 

@@ -6,6 +6,9 @@ export interface IConfigProject {
     slugMaxLength: number;
     slugMaxAttempts: number;
     deletedSlugPattern: string;
+    delete: {
+        chunkSize: number;
+    };
 }
 
 export default registerAs('project', (): IConfigProject => ({
@@ -14,4 +17,7 @@ export default registerAs('project', (): IConfigProject => ({
     slugMaxLength: 30,
     slugMaxAttempts: 5,
     deletedSlugPattern: 'deleted-{id}',
+    delete: {
+        chunkSize: 100,
+    },
 }));

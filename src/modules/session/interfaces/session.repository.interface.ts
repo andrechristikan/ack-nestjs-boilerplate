@@ -40,6 +40,11 @@ export interface ISessionRepository {
         expiredAt: Date,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<Session>;
+    existsLiveByJtiDigest(
+        sessionId: string,
+        jtiDigest: string,
+        idleSince: Date
+    ): Promise<boolean>;
     updateJtiInTx(
         tx: IDatabaseTransactionClient,
         sessionId: string,

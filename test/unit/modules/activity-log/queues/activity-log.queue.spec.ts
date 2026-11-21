@@ -60,7 +60,9 @@ describe('ActivityLogQueue', () => {
         geoLocation: null,
     };
     const targetContract =
-        ActivityLogActionContract[EnumActivityLogAction.userLoginCredential];
+        ActivityLogActionContract[
+            EnumActivityLogAction.userLoggedInWithCredential
+        ];
     const contractInvalid = {
         constructor: ActivityLogContractInvalidException,
         module: 'activityLog',
@@ -164,7 +166,7 @@ describe('ActivityLogQueue', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
-                { action: EnumActivityLogAction.userUpdateProfile }
+                { action: EnumActivityLogAction.userProfileUpdated }
             );
 
             expect(result).toEqual({
@@ -177,7 +179,7 @@ describe('ActivityLogQueue', () => {
                             userId: 'actor-1',
                             createdBy: 'actor-1',
                             workspaceId: null,
-                            action: EnumActivityLogAction.userUpdateProfile,
+                            action: EnumActivityLogAction.userProfileUpdated,
                             description: 'Description',
                             requestLog: requestContext.requestLog,
                             metadata: {},
@@ -201,7 +203,7 @@ describe('ActivityLogQueue', () => {
 
         it('returns the createMany effect holding one row built from the input and the payload', () => {
             const result = queue.recordEffectFromPayload(payload, {
-                action: EnumActivityLogAction.userUpdateProfile,
+                action: EnumActivityLogAction.userProfileUpdated,
                 metadata: {},
             });
 
@@ -215,7 +217,7 @@ describe('ActivityLogQueue', () => {
                             userId: 'actor-1',
                             createdBy: 'actor-1',
                             workspaceId: null,
-                            action: EnumActivityLogAction.userUpdateProfile,
+                            action: EnumActivityLogAction.userProfileUpdated,
                             description: 'Description',
                             requestLog,
                             metadata: {},
@@ -230,7 +232,7 @@ describe('ActivityLogQueue', () => {
 
         it('keeps the input user and createdBy for a target action', () => {
             const result = queue.recordEffectFromPayload(payload, {
-                action: EnumActivityLogAction.userLoginCredential,
+                action: EnumActivityLogAction.userLoggedInWithCredential,
                 userId: 'user-1',
                 createdBy: 'creator-1',
             });
@@ -240,11 +242,11 @@ describe('ActivityLogQueue', () => {
             });
         });
 
-        it('records userVerifyMfaFailed on a public route with the user id and createdBy the contract requires', () => {
+        it('records userMfaVerificationFailed on a public route with the user id and createdBy the contract requires', () => {
             const result = queue.recordEffectFromPayload(
                 { ...payload, actorUserId: null, workspaceId: null },
                 {
-                    action: EnumActivityLogAction.userVerifyMfaFailed,
+                    action: EnumActivityLogAction.userMfaVerificationFailed,
                     userId: 'user-1',
                     createdBy: 'user-1',
                 }
@@ -253,7 +255,7 @@ describe('ActivityLogQueue', () => {
             expect(result.data).toMatchObject({
                 rows: [
                     {
-                        action: EnumActivityLogAction.userVerifyMfaFailed,
+                        action: EnumActivityLogAction.userMfaVerificationFailed,
                         userId: 'user-1',
                         createdBy: 'user-1',
                         workspaceId: null,
@@ -262,12 +264,12 @@ describe('ActivityLogQueue', () => {
             });
         });
 
-        it('throws for userVerifyMfaFailed on a public route when the entry omits the user id and createdBy', () => {
+        it('throws for userMfaVerificationFailed on a public route when the entry omits the user id and createdBy', () => {
             let thrown: unknown;
             try {
                 queue.recordEffectFromPayload(
                     { ...payload, actorUserId: null, workspaceId: null },
-                    { action: EnumActivityLogAction.userVerifyMfaFailed }
+                    { action: EnumActivityLogAction.userMfaVerificationFailed }
                 );
             } catch (error) {
                 thrown = error;
@@ -275,6 +277,42 @@ describe('ActivityLogQueue', () => {
 
             expect(thrown).toMatchObject(contractInvalid);
         });
+
+        it('returns the createMany effect for adminUserExported with a count', () => {
+            const result = queue.recordEffectFromPayload(payload, {
+                action: EnumActivityLogAction.adminUserExported,
+                metadata: { count: 3 },
+            });
+
+            expect(result.data).toMatchObject({
+                rows: [
+                    {
+                        action: EnumActivityLogAction.adminUserExported,
+                        userId: 'actor-1',
+                        createdBy: 'actor-1',
+                        workspaceId: null,
+                        metadata: { count: 3 },
+                    },
+                ],
+            });
+        });
+
+        it.each([{}, { count: -1 }])(
+            'throws for adminUserExported with metadata %j',
+            metadata => {
+                let thrown: unknown;
+                try {
+                    queue.recordEffectFromPayload(payload, {
+                        action: EnumActivityLogAction.adminUserExported,
+                        metadata,
+                    });
+                } catch (error) {
+                    thrown = error;
+                }
+
+                expect(thrown).toMatchObject(contractInvalid);
+            }
+        );
 
         it('throws when the action carries no contract', () => {
             let thrown: unknown;
@@ -293,7 +331,7 @@ describe('ActivityLogQueue', () => {
             let thrown: unknown;
             try {
                 queue.recordEffectFromPayload(payload, {
-                    action: EnumActivityLogAction.userLoginCredential,
+                    action: EnumActivityLogAction.userLoggedInWithCredential,
                     createdBy: 'creator-1',
                 });
             } catch (error) {
@@ -323,7 +361,7 @@ describe('ActivityLogQueue', () => {
             try {
                 queue.recordEffectFromPayload(
                     { ...payload, actorUserId: null },
-                    { action: EnumActivityLogAction.userUpdateProfile }
+                    { action: EnumActivityLogAction.userProfileUpdated }
                 );
             } catch (error) {
                 thrown = error;
@@ -336,7 +374,7 @@ describe('ActivityLogQueue', () => {
             let thrown: unknown;
             try {
                 queue.recordEffectFromPayload(payload, {
-                    action: EnumActivityLogAction.userUpdateProfile,
+                    action: EnumActivityLogAction.userProfileUpdated,
                     metadata: { unexpected: 'value' },
                 });
             } catch (error) {
@@ -350,7 +388,7 @@ describe('ActivityLogQueue', () => {
     describe('getContract', () => {
         it('returns the contract for a known action', () => {
             const result = queue['getContract'](
-                EnumActivityLogAction.userLoginCredential
+                EnumActivityLogAction.userLoggedInWithCredential
             );
 
             expect(result).toBe(targetContract);
@@ -412,7 +450,7 @@ describe('ActivityLogQueue', () => {
             let thrown: unknown;
             try {
                 queue['validateMetadata'](
-                    EnumActivityLogAction.userLoginCredential,
+                    EnumActivityLogAction.userLoggedInWithCredential,
                     { unexpected: 'value' }
                 );
             } catch (error: unknown) {
@@ -721,7 +759,7 @@ describe('ActivityLogQueue', () => {
     describe('buildCreate', () => {
         it('assembles the create row from an activity log input', () => {
             const activityLog: IActivityLogInput<EnumActivityLogAction> = {
-                action: EnumActivityLogAction.userLoginCredential,
+                action: EnumActivityLogAction.userLoggedInWithCredential,
                 metadata: {},
                 userId: 'user-1',
                 createdBy: 'creator-1',
@@ -743,14 +781,14 @@ describe('ActivityLogQueue', () => {
                 userId: 'user-1',
                 createdBy: 'creator-1',
                 workspaceId: null,
-                action: EnumActivityLogAction.userLoginCredential,
+                action: EnumActivityLogAction.userLoggedInWithCredential,
                 description: 'User login with credential',
                 requestLog,
                 metadata: {},
                 createdAt,
             });
             expect(messageService.setMessage).toHaveBeenCalledWith(
-                `activityLog.${EnumActivityLogAction.userLoginCredential}`,
+                `activityLog.${EnumActivityLogAction.userLoggedInWithCredential}`,
                 { properties: {} }
             );
         });

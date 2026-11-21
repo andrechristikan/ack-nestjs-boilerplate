@@ -204,7 +204,7 @@ export class MigrationUserSeed
                         this.activityLogUtil.buildCreateManyUserData(
                             MigrationUserSuperAdminId,
                             null,
-                            EnumActivityLogAction.userVerifiedEmail,
+                            EnumActivityLogAction.userEmailVerified,
                             requestLog,
                             {}
                         ),
@@ -212,7 +212,7 @@ export class MigrationUserSeed
                             this.activityLogUtil.buildCreateManyUserData(
                                 userId,
                                 null,
-                                EnumActivityLogAction.userAcceptTermPolicy,
+                                EnumActivityLogAction.userTermPolicyAccepted,
                                 requestLog,
                                 {}
                             )
@@ -230,7 +230,7 @@ export class MigrationUserSeed
                         this.activityLogUtil.buildCreateManyUserData(
                             MigrationUserSuperAdminId,
                             null,
-                            EnumActivityLogAction.adminUserCreate,
+                            EnumActivityLogAction.adminUserCreated,
                             requestLog,
                             {
                                 targetUserId: row.userId,

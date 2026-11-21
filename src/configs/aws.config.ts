@@ -4,6 +4,8 @@ import ms from 'ms';
 export interface IConfigAws {
     s3: {
         multipartExpiresInDays: number;
+        temporaryPath: string;
+        temporaryExpiresInDays: number;
         presignExpiresInSeconds: number;
         corsMaxAgeLongInSeconds: number;
         corsMaxAgeShortInSeconds: number;
@@ -66,6 +68,8 @@ export default registerAs('aws', (): IConfigAws => {
     return {
         s3: {
             multipartExpiresInDays: ms('3d') / ms('1d'),
+            temporaryPath: 'temporary',
+            temporaryExpiresInDays: ms('1d') / ms('1d'),
             presignExpiresInSeconds: ms('30m') / 1000,
             corsMaxAgeLongInSeconds: ms('1d') / 1000,
             corsMaxAgeShortInSeconds: ms('1h') / 1000,

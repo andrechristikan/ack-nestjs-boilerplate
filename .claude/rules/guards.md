@@ -48,6 +48,21 @@ Nest runs guards bottom-up: the decorator nearest the method executes first, so 
 - A guard checks the context a guard below it wrote before calling the service (`ProjectGuard.canActivate`, `src/modules/project/guards/project.guard.ts`), so a service `validate*Guard` takes a guard-provided subject non-null. A missing context throws that subject's guard-only exception, owned by its module, apart from its service exceptions, and shared by every guard reading it: 401 for identity (`AuthJwtGuardMissingException` for the JWT contexts, `UserGuardMissingException`, `ApiKeyGuardMissingException`), 403 for authorization (`PolicyGuardMissingException`, `WorkspaceGuardMissingException`), never 500. The kit's `RequestThrottleUserGuard` alone answers a missing `RequestActorStoreKey` with `RequestContextMissingException` (500).
 - A guard reading empty metadata fails closed: `PolicyGuard` denies an empty policy list (`PolicyAbilityFactory.handlerPolicies`, `src/modules/policy/factories/policy.factory.ts`).
 
+## Contexts
+
+| Context | Carries | Loaded on the request by |
+| --- | --- | --- |
+| `IRequestContext` | `requestLog`, `language` | `RequestRequestLogMiddleware`, `RequestCustomLanguageMiddleware` |
+| `IApiKeyContext` | `apiKey` | `ApiKeyXApiKeyGuard` |
+| `IAuthJwtAccessContext` | `userId`, `sessionId`, `deviceOwnershipId`, `loginWith` | `AuthJwtAccessGuard` |
+| `IAuthJwtRefreshContext` | the access fields and `token` | `AuthJwtRefreshGuard` |
+| `IAuthSocialContext` | `email`, `emailVerified`, `subject` | `AuthSocialGoogleGuard`, `AuthSocialAppleGuard` |
+| `IUserContext` | `user`, the row with its role | `UserGuard` |
+| `IWorkspaceContext` | `workspaceId`, `workspace`, `workspaceMember` | `WorkspaceGuard` |
+| `IProjectContext` | `project`, `projectMember` | `ProjectGuard` |
+
+A context row is used whole, a route that returns the resource included (the profile), and no use case or service reads it again.
+
 ## Decorators
 
 - A `*Protected` decorator returns `applyDecorators(...)` and checks only its own arguments, when the route is decorated, so a bad route fails the boot: `RoleProtectedEmptyException`, `PolicyProtectedEmptyException`, `PolicyProtectedActionEmptyException`, `FeatureFlagKeyEmptyException`, `FeatureFlagKeyNestedException`, `RequestEnvProtectedEmptyException`. It checks no guard prerequisite and reads no `GUARDS_METADATA`. A raw `(target, propertyKey, descriptor)` body belongs only to a kit helper needing `descriptor.value` (`DocErrors` in `src/common/doc/decorators/doc.decorator.ts`, `Response` in `src/common/response/decorators/response.decorator.ts`).

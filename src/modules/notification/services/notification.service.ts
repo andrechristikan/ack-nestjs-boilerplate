@@ -20,7 +20,6 @@ import { NotificationInvalidChannelException } from '@modules/notification/excep
 import { NotificationInvalidTypeException } from '@modules/notification/exceptions/notification.invalid-type.exception';
 import { NotificationNotFoundException } from '@modules/notification/exceptions/notification.not-found.exception';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
@@ -57,7 +56,6 @@ export class NotificationService {
         private readonly notificationUtil: NotificationUtil,
         private readonly deviceService: DeviceService,
         private readonly messageService: MessageService,
-        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly notificationEmailQueue: NotificationEmailQueue,
@@ -303,7 +301,7 @@ export class NotificationService {
     }
 
     async markAsRead(userId: string, notificationId: string): Promise<void> {
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: a write after its checks
         const notification = await this.notificationRepository.findIsReadById(
             userId,
             notificationId
@@ -334,41 +332,38 @@ export class NotificationService {
         return batchUpdated.count;
     }
 
-    async updateUserSetting(
+    async updateUserSettingInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         data: INotificationUserSettingUpdate
     ): Promise<void> {
-        this.validateUserSetting(data.type, data.channel);
-
-        await this.databaseService.withTransaction(async tx => {
-            const updated =
-                await this.notificationUserSettingRepository.updateUserSettingInTx(
-                    tx,
-                    authContext.userId,
-                    data
-                );
-            if (!updated) {
-                throw new NotificationSettingInvalidException();
-            }
-
-            const entry = this.activityLogQueue.recordEffect(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null,
-                {
-                    action: EnumActivityLogAction.userUpdateNotificationSetting,
-                    metadata: {
-                        channel: data.channel,
-                        type: data.type,
-                        isActive: data.isActive,
-                    },
-                }
+        const updated =
+            await this.notificationUserSettingRepository.updateUserSettingInTx(
+                tx,
+                authContext.userId,
+                data
             );
-            await this.outboxService.addInTx(tx, entry);
-        });
+        if (!updated) {
+            throw new NotificationSettingInvalidException();
+        }
+
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.userNotificationSettingUpdated,
+                metadata: {
+                    channel: data.channel,
+                    type: data.type,
+                    isActive: data.isActive,
+                },
+            }
+        );
+        await this.outboxService.addInTx(tx, entry);
     }
 
     async createDefaultsManyInTx(

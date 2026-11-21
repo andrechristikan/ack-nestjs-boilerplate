@@ -6,6 +6,7 @@
         "s3MaxPartNumberExceeded": "The multipart upload exceeds the maximum number of parts.",
         "s3IterationLimitExceeded": "The storage operation exceeded its iteration limit.",
         "sesTemplateBodyRequired": "An email template needs an HTML or plain-text body.",
-        "s3NotConfigured": "File storage is not configured."
+        "s3NotConfigured": "File storage is not configured.",
+        "sesNotConfigured": "Email delivery is not configured."
     }
 }

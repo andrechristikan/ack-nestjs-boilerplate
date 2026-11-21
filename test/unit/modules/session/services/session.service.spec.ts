@@ -2,6 +2,7 @@ import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfa
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -9,14 +10,10 @@ import {
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
-import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { DeviceService } from '@modules/device/services/device.service';
-import { DeviceUtil } from '@modules/device/utils/device.util';
 import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -33,7 +30,6 @@ import {
     EnumActivityLogAction,
     EnumDevicePlatform,
     EnumRoleType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import {
@@ -55,7 +51,6 @@ import { SessionRepository } from '@modules/session/repositories/session.reposit
 import { SessionService } from '@modules/session/services/session.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { SessionQueue } from '@modules/session/queues/session.queue';
 import type { ISessionPurgeLoginsEffect } from '@modules/session/interfaces/session.interface';
@@ -65,7 +60,6 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { SessionUtil } from '@modules/session/utils/session.util';
-import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
 
 const JtiDigest =
     '5b1288bdb86ccf33cc0158da1a1f405c4095d9c00fe9dadd9c58af82ff2abae5';
@@ -88,7 +82,6 @@ describe('SessionService', () => {
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
@@ -191,8 +184,6 @@ describe('SessionService', () => {
                 { provide: CacheService, useValue: cacheService },
                 ...TestUnitKitProviders,
                 { provide: DeviceService, useValue: deviceService },
-                DeviceUtil,
-                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: SessionQueue, useValue: sessionQueue },
@@ -515,6 +506,27 @@ describe('SessionService', () => {
         });
     });
 
+    describe('existsLiveByJti', () => {
+        it('answers true and passes only the digest and the idle bound to the repository when a live row holds the jti', async () => {
+            sessionRepository.existsLiveByJtiDigest.mockResolvedValue(true);
+
+            await expect(
+                service.existsLiveByJti('session-1', 'old-jti')
+            ).resolves.toBe(true);
+            expect(
+                sessionRepository.existsLiveByJtiDigest
+            ).toHaveBeenCalledWith('session-1', OldJtiDigest, idleSince);
+        });
+
+        it('answers false when no live row holds the jti', async () => {
+            sessionRepository.existsLiveByJtiDigest.mockResolvedValue(false);
+
+            await expect(
+                service.existsLiveByJti('session-1', 'old-jti')
+            ).resolves.toBe(false);
+        });
+    });
+
     describe('updateJtiInTx', () => {
         it('answers true and passes only the digests to the repository when the compare-and-set matches a row', async () => {
             sessionRepository.updateJtiInTx.mockResolvedValue(true);
@@ -685,7 +697,6 @@ describe('SessionService', () => {
                 refs
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('adds no row when no session was revoked', async () => {
@@ -736,7 +747,6 @@ describe('SessionService', () => {
                 refs
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('adds no row when no other session was revoked', async () => {
@@ -758,36 +768,33 @@ describe('SessionService', () => {
     describe('revokeAllByUserInTx', () => {
         const revokedAt = new Date('2026-01-05T00:00:00.000Z');
 
-        it('revokes the active sessions, then every device ownership, on the given tx', async () => {
-            const order: string[] = [];
-            sessionRepository.revokeActiveByUserInTx.mockImplementation(
-                async () => {
-                    order.push('sessions');
-
-                    return [{ id: 'session-1' }];
-                }
+        it('revokes every device ownership on the given tx while the session revoke is still pending', async () => {
+            const sessions = buildDeferred<ISessionRef[]>();
+            sessionRepository.revokeActiveByUserInTx.mockReturnValue(
+                sessions.promise
             );
-            deviceService.revokeAllByUserInTx.mockImplementation(async () => {
-                order.push('devices');
-            });
 
-            await service.revokeAllByUserInTx(
+            const running = service.revokeAllByUserInTx(
                 tx,
                 'user-1',
                 'admin-1',
                 revokedAt
             );
+            await vi.advanceTimersByTimeAsync(0);
 
-            expect(order).toEqual(['sessions', 'devices']);
-            expect(
-                sessionRepository.revokeActiveByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', null, 'admin-1', revokedAt);
             expect(deviceService.revokeAllByUserInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
                 'admin-1',
                 revokedAt
             );
+
+            sessions.resolve([{ id: 'session-1' }]);
+            await running;
+
+            expect(
+                sessionRepository.revokeActiveByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-1', null, 'admin-1', revokedAt);
         });
 
         it('returns the revoked session refs and adds exactly one purge row for the user', async () => {
@@ -931,22 +938,20 @@ describe('SessionService', () => {
         });
     });
 
-    describe('revokeByAdmin', () => {
+    describe('revokeByAdminInTx', () => {
         const revokedAt = new Date('2026-01-05T00:00:00.000Z');
 
         beforeEach(() => {
             activityLogQueue.recordEffect
                 .mockReturnValueOnce(actorEffect)
                 .mockReturnValueOnce(targetEffect);
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
         });
 
-        it('adds the actor and target entries on the same tx after the purge row when the admin targets another user', async () => {
+        it('adds the purge effect and both entries in one addManyInTx call when the admin targets another user', async () => {
             sessionRepository.revokeByAdminInTx.mockResolvedValue(session);
 
-            await service.revokeByAdmin(
+            await service.revokeByAdminInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -962,7 +967,7 @@ describe('SessionService', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminSessionRevoke,
+                    action: EnumActivityLogAction.adminSessionRevoked,
                     metadata: {
                         targetUserId: 'user-1',
                         targetUsername: 'jane',
@@ -978,7 +983,7 @@ describe('SessionService', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userRevokeSessionByAdmin,
+                    action: EnumActivityLogAction.userSessionRevokedByAdmin,
                     userId: 'user-1',
                     createdBy: 'admin-1',
                     metadata: {
@@ -988,16 +993,13 @@ describe('SessionService', () => {
                     },
                 }
             );
-            expect(outboxService.addInTx).toHaveBeenNthCalledWith(
-                2,
-                tx,
-                actorEffect
-            );
-            expect(outboxService.addInTx).toHaveBeenNthCalledWith(
-                3,
-                tx,
-                targetEffect
-            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                purgeEffect,
+                actorEffect,
+                targetEffect,
+            ]);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('adds only the actor entry when the admin revokes their own session', async () => {
@@ -1006,7 +1008,8 @@ describe('SessionService', () => {
                 userId: 'admin-1',
             });
 
-            await service.revokeByAdmin(
+            await service.revokeByAdminInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -1016,13 +1019,18 @@ describe('SessionService', () => {
             );
 
             expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
-            expect(outboxService.addInTx).toHaveBeenCalledTimes(2);
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                purgeEffect,
+                actorEffect,
+            ]);
         });
 
-        it('returns the session the guarded revoke wrote and adds its purge row on one outbox tx', async () => {
+        it('returns the session the guarded revoke wrote and adds its purge row', async () => {
             sessionRepository.revokeByAdminInTx.mockResolvedValue(session);
 
-            const result = await service.revokeByAdmin(
+            const result = await service.revokeByAdminInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -1032,7 +1040,6 @@ describe('SessionService', () => {
             );
 
             expect(result).toBe(session);
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(sessionRepository.revokeByAdminInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
@@ -1044,13 +1051,17 @@ describe('SessionService', () => {
                 'user-1',
                 [{ id: 'session-1' }]
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(
+                tx,
+                expect.arrayContaining([purgeEffect])
+            );
         });
 
         it('throws SessionNotFoundException and adds no row when the guarded revoke matches no active session', async () => {
             sessionRepository.revokeByAdminInTx.mockResolvedValue(null);
 
-            const rejection = service.revokeByAdmin(
+            const rejection = service.revokeByAdminInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -1063,51 +1074,7 @@ describe('SessionService', () => {
                 module: 'session',
                 statusCode: EnumSessionStatusCodeError.notFound,
             });
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws SessionNotFoundException on a write conflict', async () => {
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                }
-            );
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                service.revokeByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'user-1',
-                    'session-1',
-                    revokedAt
-                )
-            ).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.notFound,
-            });
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
-            const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
-
-            await expect(
-                service.revokeByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'user-1',
-                    'session-1',
-                    revokedAt
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -1128,16 +1095,13 @@ describe('SessionService', () => {
         });
     });
 
-    describe('revokeAllByAdmin', () => {
+    describe('revokeAllByAdminInTx', () => {
         const revokedAt = new Date('2026-01-05T00:00:00.000Z');
 
         beforeEach(() => {
             activityLogQueue.recordEffect
                 .mockReturnValueOnce(actorEffect)
                 .mockReturnValueOnce(targetEffect);
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
         });
 
         it('adds the actor and target entries from the revoked count on the same tx after the purge row', async () => {
@@ -1146,7 +1110,8 @@ describe('SessionService', () => {
                 { id: 'session-2' },
             ]);
 
-            await service.revokeAllByAdmin(
+            await service.revokeAllByAdminInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -1161,7 +1126,7 @@ describe('SessionService', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminSessionRevokeAll,
+                    action: EnumActivityLogAction.adminAllSessionsRevoked,
                     metadata: { targetUserId: 'user-1', sessionCount: 2 },
                 }
             );
@@ -1172,7 +1137,7 @@ describe('SessionService', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                    action: EnumActivityLogAction.userAllSessionsRevokedByAdmin,
                     userId: 'user-1',
                     createdBy: 'admin-1',
                     metadata: { actorUserId: 'admin-1', sessionCount: 2 },
@@ -1184,14 +1149,15 @@ describe('SessionService', () => {
             ]);
         });
 
-        it('revokes every active session of the user with one purge row on one outbox tx and returns the revoked refs', async () => {
+        it('revokes every active session of the user with one purge row and returns the revoked refs', async () => {
             const refs: ISessionRef[] = [
                 { id: 'session-1' },
                 { id: 'session-2' },
             ];
             sessionRepository.revokeActiveByUserInTx.mockResolvedValue(refs);
 
-            const result = await service.revokeAllByAdmin(
+            const result = await service.revokeAllByAdminInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -1200,7 +1166,6 @@ describe('SessionService', () => {
             );
 
             expect(result).toBe(refs);
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 sessionRepository.revokeActiveByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-1', null, 'admin-1', revokedAt);
@@ -1215,7 +1180,8 @@ describe('SessionService', () => {
         it('throws SessionNotFoundException and adds no row when no session was revoked', async () => {
             sessionRepository.revokeActiveByUserInTx.mockResolvedValue([]);
 
-            const rejection = service.revokeAllByAdmin(
+            const rejection = service.revokeAllByAdminInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -1228,48 +1194,6 @@ describe('SessionService', () => {
                 statusCode: EnumSessionStatusCodeError.notFound,
             });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws SessionNotFoundException on a write conflict', async () => {
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                }
-            );
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                service.revokeAllByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'user-1',
-                    revokedAt
-                )
-            ).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.notFound,
-            });
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
-            const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
-
-            await expect(
-                service.revokeAllByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'user-1',
-                    revokedAt
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
         });
     });
 
@@ -1359,7 +1283,6 @@ describe('SessionService', () => {
                 now
             );
             expect(calls).toEqual(['revokeSessions', 'removeOwnership']);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
                 'user-1',
                 revokedSessions
@@ -1384,228 +1307,6 @@ describe('SessionService', () => {
             ).resolves.toEqual({ deviceOwnership, revokedSessions: [] });
 
             expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('removeDeviceOwnershipByAdmin', () => {
-        const now = new Date('2026-01-05T00:00:00.000Z');
-        const clock = new Date('2026-01-08T00:00:00.000Z');
-        const revokedSessions: ISessionRef[] = [{ id: 'session-1' }];
-        const deviceOwnership: IDeviceOwnership = {
-            id: 'device-ownership-1',
-            createdAt: now,
-            createdBy: 'user-1',
-            updatedAt: now,
-            updatedBy: 'user-1',
-            deviceId: 'device-1',
-            userId: 'user-1',
-            revokedAt: null,
-            isRevoked: false,
-            revokedById: null,
-            lastActiveAt: now,
-            notificationToken: null,
-            notificationProvider: null,
-            device: {
-                id: 'device-1',
-                createdAt: now,
-                createdBy: 'user-1',
-                updatedAt: now,
-                updatedBy: 'user-1',
-                fingerprint: 'abc123def456ghi789jkl012mno345pq',
-                name: 'iPhone 12',
-                platform: EnumDevicePlatform.ios,
-                lastActiveAt: now,
-            },
-            user: {
-                id: 'user-1',
-                createdAt: now,
-                createdBy: 'user-1',
-                updatedAt: now,
-                updatedBy: 'user-1',
-                deletedAt: null,
-                deletedBy: null,
-                name: 'Jane Doe',
-                username: 'jane',
-                photo: null,
-            },
-            revokedBy: null,
-            _count: { sessions: 2 },
-        };
-
-        const DeviceActorMetadata = {
-            deviceOwnershipId: 'device-ownership-1',
-            deviceId: 'device-1',
-            sessionCount: 1,
-            targetUserId: 'user-1',
-            targetUsername: 'jane',
-            timestamp: now,
-        };
-        const DeviceTargetMetadata = {
-            deviceOwnershipId: 'device-ownership-1',
-            deviceId: 'device-1',
-            sessionCount: 1,
-            actorUserId: 'admin-1',
-            timestamp: now,
-        };
-
-        beforeEach(() => {
-            activityLogQueue.recordEffect
-                .mockReturnValueOnce(actorEffect)
-                .mockReturnValueOnce(targetEffect);
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
-            sessionRepository.revokeByDeviceOwnershipInTx.mockResolvedValue(
-                revokedSessions
-            );
-            deviceService.removeOwnershipInTx.mockResolvedValue(
-                deviceOwnership
-            );
-        });
-
-        it('removes the ownership as the admin with the purge row on one outbox tx', async () => {
-            await service.removeDeviceOwnershipByAdmin(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'user-1',
-                'device-ownership-1'
-            );
-
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(
-                sessionRepository.revokeByDeviceOwnershipInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                'user-1',
-                'device-ownership-1',
-                'admin-1',
-                clock
-            );
-            expect(deviceService.removeOwnershipInTx).toHaveBeenCalledWith(
-                tx,
-                'user-1',
-                'device-ownership-1',
-                'admin-1',
-                clock
-            );
-        });
-
-        it('adds the actor and target entries on the same tx when the admin removes another user device', async () => {
-            await service.removeDeviceOwnershipByAdmin(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'user-1',
-                'device-ownership-1'
-            );
-
-            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
-                1,
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null,
-                {
-                    action: EnumActivityLogAction.adminDeviceRemove,
-                    metadata: DeviceActorMetadata,
-                }
-            );
-            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
-                2,
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null,
-                {
-                    action: EnumActivityLogAction.userRemoveDeviceByAdmin,
-                    userId: 'user-1',
-                    createdBy: 'admin-1',
-                    metadata: DeviceTargetMetadata,
-                }
-            );
-            expect(outboxService.addInTx).toHaveBeenNthCalledWith(
-                2,
-                tx,
-                actorEffect
-            );
-            expect(outboxService.addInTx).toHaveBeenNthCalledWith(
-                3,
-                tx,
-                targetEffect
-            );
-        });
-
-        it('adds only the actor entry when the admin removes their own device', async () => {
-            await service.removeDeviceOwnershipByAdmin(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'admin-1',
-                'device-ownership-1'
-            );
-
-            expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
-            expect(outboxService.addInTx).toHaveBeenCalledTimes(2);
-        });
-
-        it('throws DeviceNotFoundException on a write conflict', async () => {
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                }
-            );
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                service.removeDeviceOwnershipByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'user-1',
-                    'device-ownership-1'
-                )
-            ).rejects.toMatchObject({
-                statusCode: EnumDeviceStatusCodeError.notFound,
-
-                constructor: DeviceNotFoundException,
-                module: 'device',
-            });
-        });
-
-        it('rethrows an AppBaseException unchanged', async () => {
-            const notFound = new DeviceNotFoundException();
-            deviceService.removeOwnershipInTx.mockRejectedValue(notFound);
-
-            await expect(
-                service.removeDeviceOwnershipByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'user-1',
-                    'device-ownership-1'
-                )
-            ).rejects.toBe(notFound);
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
-            const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
-
-            await expect(
-                service.removeDeviceOwnershipByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'user-1',
-                    'device-ownership-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
         });
     });
 

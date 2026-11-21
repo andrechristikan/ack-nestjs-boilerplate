@@ -33,9 +33,6 @@ export class WorkspaceGetJoinRequestsListUseCase implements IAppUseCase<
         workspaceContext: IWorkspaceContext,
         query: WorkspaceJoinRequestListRequestDto
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
-        // Sequential by design: gate before the work it guards
-        await this.workspaceJoinRequestService.assertJoinRequestAllowed();
-
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: WorkspaceJoinRequestUserListCursorScope,
             orderBy: WorkspaceJoinRequestOrderBy,
@@ -54,12 +51,14 @@ export class WorkspaceGetJoinRequestsListUseCase implements IAppUseCase<
             },
         });
 
-        const { data, ...others } =
-            await this.workspaceJoinRequestService.getJoinRequestsList(
+        const [{ data, ...others }] = await Promise.all([
+            this.workspaceJoinRequestService.getJoinRequestsList(
                 workspaceContext.workspace.id,
                 params,
                 status?.where
-            );
+            ),
+            this.workspaceJoinRequestService.assertJoinRequestAllowed(),
+        ]);
 
         return {
             data,

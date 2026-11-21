@@ -1,5 +1,6 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -18,8 +19,11 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
+import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
@@ -38,12 +42,14 @@ import type {
 import type { IUserLoginSignUp } from '@modules/user/interfaces/user.login.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserUtil } from '@modules/user/utils/user.util';
+import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/server';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
@@ -65,6 +71,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         private readonly userAuthService: UserAuthService,
         private readonly userService: UserService,
         private readonly mfaService: MfaService,
+        private readonly mfaPasskeyService: MfaPasskeyService,
         private readonly userSocialService: UserSocialService,
         private readonly userRegistrationService: UserRegistrationService,
         private readonly notificationQueue: NotificationQueue,
@@ -101,20 +108,23 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         loginAt: Date,
         subject: string
     ): Promise<IUserLoginSignUp> {
-        const invite = await this.workspaceInviteService.getSignUpInvite(
-            loginSocial.inviteToken,
-            normalizedEmail
-        );
+        const [invite, role, usernameCheck] = await Promise.all([
+            this.workspaceInviteService.getSignUpInvite(
+                loginSocial.inviteToken,
+                normalizedEmail
+            ),
+            this.roleService.getByName(this.defaultRole),
+            this.userService.checkUsername(loginSocial.username),
+            this.countryService.getOne(loginSocial.countryId),
+            this.termPolicyAcceptanceService.assertRequiredPublished(
+                UserTermPolicyContract.requiredTypes
+            ),
+        ]);
         const workspaceContext =
             this.userCreateUtil.buildSignUpWorkspaceContext(
                 invite,
                 loginSocial.username
             );
-        const [role, usernameCheck] = await Promise.all([
-            this.roleService.getByName(this.defaultRole),
-            this.userService.checkUsername(loginSocial.username),
-            this.countryService.getOne(loginSocial.countryId),
-        ]);
         this.userService.assertUsernameAvailable(usernameCheck);
 
         const input = this.userRegistrationService.buildSocialCreate(
@@ -133,23 +143,11 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             try {
                 return await this.databaseService.withTransaction(
                     async tx => {
-                        await this.termPolicyAcceptanceService.assertRequiredPublishedInTx(
-                            tx,
-                            UserTermPolicyContract.requiredTypes
-                        );
-
                         const created =
                             await this.userRegistrationService.createInTx(
                                 tx,
                                 inputs
                             );
-                        await this.userSocialService.linkInTx(
-                            tx,
-                            input.userId,
-                            loginWith,
-                            subject
-                        );
-
                         const ownedUsers = this.workspaceUtil.buildOwnedUsers(
                             inputs,
                             attempt
@@ -168,24 +166,37 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                                 input.userId,
                                 inputContext
                             );
-                            if (
-                                inputContext.projectId &&
-                                inputContext.projectMemberRole
-                            ) {
-                                await this.projectMemberService.createInTx(
-                                    tx,
-                                    inputContext.projectId,
-                                    input.userId,
-                                    inputContext.projectMemberRole,
-                                    input.userId
-                                );
-                            }
                         }
 
                         await this.termPolicyAcceptanceService.acceptPublishedManyInTx(
                             tx,
                             termPolicyAcceptances
                         );
+                        let membership: Promise<IProjectMember | null> =
+                            Promise.resolve(null);
+                        if (
+                            inputContext.type ===
+                                EnumUserSignUpWorkspaceContextType.invite &&
+                            inputContext.projectId &&
+                            inputContext.projectMemberRole
+                        ) {
+                            membership = this.projectMemberService.createInTx(
+                                tx,
+                                inputContext.projectId,
+                                input.userId,
+                                inputContext.projectMemberRole,
+                                input.userId
+                            );
+                        }
+                        await Promise.all([
+                            this.userSocialService.linkInTx(
+                                tx,
+                                input.userId,
+                                loginWith,
+                                subject
+                            ),
+                            membership,
+                        ]);
 
                         const welcome = this.notificationQueue.notify(
                             EnumNotificationKind.welcomeSocial,
@@ -241,6 +252,15 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                     throw mapped;
                 }
 
+                const exception = this.databaseUtil.toException(error);
+                const isInviteConflict =
+                    inputContext.type ===
+                        EnumUserSignUpWorkspaceContextType.invite &&
+                    exception instanceof DatabaseWriteConflictException;
+                if (isInviteConflict) {
+                    throw new WorkspaceInviteAlreadyProcessedException();
+                }
+
                 throw new AppUnknownException(mapped);
             }
         }
@@ -259,7 +279,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         subject: string | null
     ): Promise<IUserLoginOutcome> {
         const { lastWorkspaceChangedAt } = user;
-        // Sequential by design: write must not run if an earlier step throws
+        // Sequential by design: a write after its checks
         const [lastWorkspaceId, isMfaEnabled] = await Promise.all([
             this.workspaceMemberService.resolveLastWorkspaceId(
                 user.id,
@@ -268,27 +288,44 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             this.mfaService.isEnabled(user.id),
         ]);
         const isUnverified = this.userUtil.isUnverified(user);
+        let methods: EnumMfaMethod[] = [];
+        let passkeyOptions: PublicKeyCredentialRequestOptionsJSON | null = null;
+        if (isMfaEnabled) {
+            const credentials =
+                await this.mfaPasskeyService.getCredentialsByUser(user.id);
+            methods = await this.mfaService.getLoginMethods(
+                user.id,
+                credentials
+            );
+            if (methods.includes(EnumMfaMethod.passkey)) {
+                passkeyOptions =
+                    await this.mfaPasskeyService.getAssertionOptions(
+                        credentials
+                    );
+            }
+        }
 
         return this.databaseService.withTransaction(
             async (tx): Promise<IUserLoginOutcome> => {
+                let verifying = Promise.resolve(user);
+                if (isUnverified) {
+                    verifying = this.userAuthService.verifyEmailBySocialInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        user
+                    );
+                }
+                let linking = Promise.resolve();
                 if (subject !== null) {
-                    await this.userSocialService.linkInTx(
+                    linking = this.userSocialService.linkInTx(
                         tx,
                         user.id,
                         loginWith,
                         subject
                     );
                 }
-                let loginUser = user;
-                if (isUnverified) {
-                    loginUser =
-                        await this.userAuthService.verifyEmailBySocialInTx(
-                            tx,
-                            requestContext,
-                            apiKeyContext,
-                            user
-                        );
-                }
+                const [loginUser] = await Promise.all([verifying, linking]);
                 if (!isMfaEnabled) {
                     const { tokens } =
                         await this.userAuthService.createTokenAndSessionInTx(
@@ -315,7 +352,9 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                     user.id,
                     device,
                     loginFrom,
-                    loginWith
+                    loginWith,
+                    methods,
+                    passkeyOptions
                 );
 
                 return {
@@ -356,7 +395,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             marketing,
         };
         const loginAt = this.helperDateService.create();
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: a write after its checks
         const linkedUserId = await this.userSocialService.getUserIdBySubject(
             loginWith,
             authContext.subject

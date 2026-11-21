@@ -26,12 +26,7 @@ export interface IRoleRepository {
     findOneWithPoliciesById(id: string): Promise<IRoleWithPolicies | null>;
     findOneById(id: string): Promise<IRole | null>;
     findOneByName(name: string): Promise<IRole | null>;
-    findOneByIdInTx(
-        tx: IDatabaseTransactionClient,
-        id: string
-    ): Promise<IRole | null>;
-    findOneWithPolicyCountByIdInTx(
-        tx: IDatabaseTransactionClient,
+    findOneWithPolicyCountById(
         id: string
     ): Promise<IRoleWithPolicyCount | null>;
     createInTx(

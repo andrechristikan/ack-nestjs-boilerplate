@@ -7,6 +7,8 @@ Binds every change in this repository: the session, every agent, every skill. It
 They bind every flow and outrank the smaller diff. The rule named states each in full.
 
 - One flow, one transaction, or one per chunk in a job that pages an unbounded collection, opened by its use case and by nothing below it: every write of a flow or a chunk commits together (`transaction.md`).
+- A transaction is opened only for an action whose writes span more than one table or include an outbox row: an update outside MongoDB that a write causes (a Redis cache entry, a BullMQ job) is an outbox row, so its action opens one; an action that writes one table and no outbox row goes service to repository with no transaction (`transaction.md`).
+- Independent operations run together under `Promise.all` or `Promise.allSettled`: the fail-fast checks before a transaction, each its own `assert*` or `get*` method, and the statements on one `tx` that use no other's result. Awaited alone: a statement whose failure is the answer, a credential proof, and a cheap check before the expensive or external work it guards. One `Promise.all` holds reads only or writes only, and a write follows its checks; a method whose only read on `tx` serves its own write is a write, and one that reads another subject to build its write joins none (`concurrency.md`).
 - Validation fails fast, before the transaction opens, and the write still carries its guard; each failure is a typed exception with its own status code and message (`transaction.md`, `exception-class.md`).
 - A side effect, a notification and an email included, is an outbox row written in the transaction of the action that causes it. Every async process a write causes runs through the outbox, a scheduler being the one job with no row, and the enqueue comes last, after the commit, through the owning module's queue class (`effects.md`).
 - A notification snapshot is read before the transaction opens (`notify.md`).
@@ -15,7 +17,7 @@ They bind every flow and outrank the smaller diff. The rule named states each in
 - Every `@db.ObjectId` field but `id` and the audit fields carries a relation (`repository.md`, Schema).
 - A result is fetched by one statement, never by a first query whose rows drive a second (`repository.md`, Queries).
 - MongoDB is the source of truth and the cache a side resource: every entry has a TTL, and no cache error breaks the flow (`cache.md`).
-- A row a guard loaded is taken from its context, never read again (`use-case.md`, Shape).
+- A row a guard loaded is taken from its context, whole, and never read again: its guard read it on this request, so it is fresh (`guards.md`, Contexts).
 - A status-code block never holds a gap (`exception-class.md`).
 - Behaviour is built test-first (Checks).
 - The code follows the rule (Boilerplate stance).

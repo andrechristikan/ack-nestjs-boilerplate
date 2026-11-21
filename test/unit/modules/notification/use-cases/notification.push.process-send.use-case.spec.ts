@@ -1,4 +1,5 @@
 import type { INotificationPushCleanupTokensEffect } from '@modules/notification/interfaces/notification.interface';
+import { setImmediate } from 'node:timers/promises';
 import { Test } from '@nestjs/testing';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
@@ -28,6 +29,7 @@ import { NotificationPushProcessSendUseCase } from '@modules/notification/use-ca
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 
 describe('NotificationPushProcessSendUseCase', () => {
     const firebaseService: MockProxy<FirebaseService> = mock<FirebaseService>();
@@ -42,6 +44,7 @@ describe('NotificationPushProcessSendUseCase', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     let useCase: NotificationPushProcessSendUseCase;
+    let updatedPatches: object[];
 
     const data: INotificationPushSendPayload = {
         kind: EnumNotificationKind.workspaceInvite,
@@ -80,6 +83,10 @@ describe('NotificationPushProcessSendUseCase', () => {
 
     beforeEach(async () => {
         messageService.setMessage.mockImplementation((path: string) => path);
+        updatedPatches = [];
+        outboxService.updateData.mockImplementation(async (_id, patch) => {
+            updatedPatches.push(structuredClone(patch));
+        });
         firebaseService.isInitialized.mockReturnValue(true);
         databaseService.withTransaction.mockImplementation(async fn => fn(tx));
         const module = await Test.createTestingModule({
@@ -153,6 +160,20 @@ describe('NotificationPushProcessSendUseCase', () => {
             notificationPushQueue.cleanupTokensEffect.mockReturnValue(
                 cleanupEffect
             );
+            const txCalls: string[] = [];
+            notificationPushDeliveryService.stampSentInTx.mockImplementation(
+                async () => {
+                    txCalls.push('stampSent');
+                }
+            );
+            outboxService.addInTx.mockImplementation(async () => {
+                txCalls.push('addEffect');
+
+                return 'outbox-id';
+            });
+            outboxService.updateDataInTx.mockImplementation(async () => {
+                txCalls.push('updateData');
+            });
 
             const result = await useCase.execute('outbox-id', data);
 
@@ -202,16 +223,80 @@ describe('NotificationPushProcessSendUseCase', () => {
                 tx,
                 cleanupEffect
             );
-            expect(outboxService.updateData).toHaveBeenCalledWith('outbox-id', {
-                completedSteps: [
-                    EnumNotificationStep.updateProcessAt,
-                    EnumNotificationStep.sendMulticast,
-                    EnumNotificationStep.updateSentAt,
-                ],
-                encryptedPendingTokens: [],
-                encryptedFailureTokens: ['cipher(token-2)'],
-            });
+            expect(outboxService.updateDataInTx).toHaveBeenCalledWith(
+                tx,
+                'outbox-id',
+                {
+                    completedSteps: [
+                        EnumNotificationStep.updateProcessAt,
+                        EnumNotificationStep.sendMulticast,
+                        EnumNotificationStep.updateSentAt,
+                    ],
+                    encryptedPendingTokens: [],
+                    encryptedFailureTokens: ['cipher(token-2)'],
+                }
+            );
+            expect(txCalls).toEqual(['stampSent', 'addEffect', 'updateData']);
+            expect(updatedPatches).toEqual([
+                {
+                    completedSteps: [
+                        EnumNotificationStep.updateProcessAt,
+                        EnumNotificationStep.sendMulticast,
+                    ],
+                    encryptedPendingTokens: [],
+                    encryptedFailureTokens: ['cipher(token-2)'],
+                },
+            ]);
             expect(result).toEqual({ message: 'notification.queue.push.send' });
+        });
+
+        it('stamps sent alone, then patches the step state and adds the cleanup together', async () => {
+            notificationPushDeliveryService.sendMulticast.mockResolvedValue({
+                encryptedFailureTokens: ['cipher(token-2)'],
+                encryptedPendingTokens: [],
+                failure: null,
+            });
+            notificationService.decryptFailureTokens.mockReturnValue([
+                'token-2',
+            ]);
+            notificationPushQueue.cleanupTokensEffect.mockReturnValue(
+                cleanupEffect
+            );
+            const started: string[] = [];
+            const stamp = buildDeferred<void>();
+            const patch = buildDeferred<void>();
+            const cleanup = buildDeferred<string>();
+            notificationPushDeliveryService.stampSentInTx.mockImplementation(
+                () => {
+                    started.push('stampSent');
+
+                    return stamp.promise;
+                }
+            );
+            outboxService.updateDataInTx.mockImplementation(() => {
+                started.push('updateData');
+
+                return patch.promise;
+            });
+            outboxService.addInTx.mockImplementation(() => {
+                started.push('addEffect');
+
+                return cleanup.promise;
+            });
+
+            const running = useCase.execute('outbox-id', data);
+            await setImmediate();
+
+            expect(started).toEqual(['stampSent']);
+
+            stamp.resolve();
+            await setImmediate();
+
+            expect(started).toEqual(['stampSent', 'addEffect', 'updateData']);
+
+            patch.resolve();
+            cleanup.resolve('cleanup-outbox-id');
+            await running;
         });
 
         it('records the send step before the sent stamp, so a failed stamp does not re-send', async () => {
@@ -230,14 +315,16 @@ describe('NotificationPushProcessSendUseCase', () => {
                 rawError
             );
 
-            expect(outboxService.updateData).toHaveBeenCalledWith('outbox-id', {
-                completedSteps: [
-                    EnumNotificationStep.updateProcessAt,
-                    EnumNotificationStep.sendMulticast,
-                ],
-                encryptedPendingTokens: [],
-                encryptedFailureTokens: ['cipher(token-2)'],
-            });
+            expect(updatedPatches).toEqual([
+                {
+                    completedSteps: [
+                        EnumNotificationStep.updateProcessAt,
+                        EnumNotificationStep.sendMulticast,
+                    ],
+                    encryptedPendingTokens: [],
+                    encryptedFailureTokens: ['cipher(token-2)'],
+                },
+            ]);
         });
 
         it('adds no cleanup row when no token failed', async () => {
@@ -326,7 +413,7 @@ describe('NotificationPushProcessSendUseCase', () => {
             );
         });
 
-        it('skips the send and the sent stamp when both are already recorded, reading no failure tokens', async () => {
+        it('opens no transaction and writes nothing to the outbox row when every step is already recorded', async () => {
             notificationService.decryptFailureTokens.mockReturnValue([]);
 
             await useCase.execute('outbox-id', {
@@ -342,15 +429,8 @@ describe('NotificationPushProcessSendUseCase', () => {
                 notificationPushDeliveryService.sendMulticast
             ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(outboxService.updateData).toHaveBeenCalledWith('outbox-id', {
-                completedSteps: [
-                    EnumNotificationStep.updateProcessAt,
-                    EnumNotificationStep.sendMulticast,
-                    EnumNotificationStep.updateSentAt,
-                ],
-                encryptedPendingTokens: null,
-                encryptedFailureTokens: null,
-            });
+            expect(outboxService.updateData).not.toHaveBeenCalled();
+            expect(outboxService.updateDataInTx).not.toHaveBeenCalled();
         });
 
         it('stamps the sent time with no failed tokens when the send is recorded and none were kept', async () => {

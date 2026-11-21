@@ -1,3 +1,4 @@
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -12,6 +13,10 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { UserReauthenticationOtpNotAllowedException } from '@modules/user/exceptions/user.reauthentication-otp-not-allowed.exception';
 import { UserReauthenticationOtpResendLimitException } from '@modules/user/exceptions/user.reauthentication-otp-resend-limit.exception';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
+import { UserService } from '@modules/user/services/user.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserSendReauthenticationOtpUseCase } from '@modules/user/use-cases/user.send-reauthentication-otp.use-case';
@@ -26,6 +31,7 @@ import {
 
 describe('UserSendReauthenticationOtpUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
+    const userService: MockProxy<UserService> = mock<UserService>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
@@ -53,6 +59,7 @@ describe('UserSendReauthenticationOtpUseCase', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserSendReauthenticationOtpUseCase,
+                { provide: UserService, useValue: userService },
                 { provide: UserAuthService, useValue: userAuthService },
                 {
                     provide: UserVerificationService,
@@ -67,6 +74,32 @@ describe('UserSendReauthenticationOtpUseCase', () => {
     });
 
     describe('execute', () => {
+        it('answers AwsSesNotConfiguredException before any check when SES is unset', async () => {
+            userService.assertEmailDeliverable.mockImplementation(() => {
+                throw new AwsSesNotConfiguredException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toMatchObject({
+                module: 'aws',
+                statusCode: EnumAwsStatusCodeError.sesNotConfigured,
+            });
+            expect(
+                userAuthService.assertReauthenticationOtpAllowed
+            ).not.toHaveBeenCalled();
+            expect(
+                userVerificationService.assertReauthenticationResendable
+            ).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
         it('throws not allowed for an account with a stronger proof and writes nothing', async () => {
             userAuthService.assertReauthenticationOtpAllowed.mockRejectedValue(
                 new UserReauthenticationOtpNotAllowedException()
@@ -80,20 +113,41 @@ describe('UserSendReauthenticationOtpUseCase', () => {
                     userContext,
                     dto
                 )
-            ).rejects.toBeInstanceOf(
-                UserReauthenticationOtpNotAllowedException
-            );
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode:
+                    EnumUserStatusCodeError.reauthenticationOtpNotAllowed,
+            });
 
             expect(
                 userAuthService.assertReauthenticationOtpAllowed
             ).toHaveBeenCalledWith(user);
-            expect(
-                userVerificationService.assertReauthenticationResendable
-            ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userVerificationService.sendReauthenticationInTx
             ).not.toHaveBeenCalled();
+        });
+
+        it('checks the resend limit while the not-allowed gate is still pending', async () => {
+            const gate = buildDeferred<void>();
+            userAuthService.assertReauthenticationOtpAllowed.mockReturnValue(
+                gate.promise
+            );
+
+            const running = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                dto
+            );
+
+            expect(
+                userVerificationService.assertReauthenticationResendable
+            ).toHaveBeenCalledWith('user-swift', dto.action);
+
+            gate.resolve();
+            await running;
         });
 
         it('throws the resend limit inside the window of the action and writes nothing', async () => {
@@ -109,9 +163,11 @@ describe('UserSendReauthenticationOtpUseCase', () => {
                     userContext,
                     dto
                 )
-            ).rejects.toBeInstanceOf(
-                UserReauthenticationOtpResendLimitException
-            );
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode:
+                    EnumUserStatusCodeError.reauthenticationOtpResendLimit,
+            });
 
             expect(
                 userVerificationService.assertReauthenticationResendable
@@ -164,7 +220,7 @@ describe('UserSendReauthenticationOtpUseCase', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userSendReauthenticationOtp }
+                { action: EnumActivityLogAction.userReauthenticationOtpSent }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
             expect(callOrder).toEqual(['send', 'addInTx']);

@@ -24,10 +24,7 @@ export interface IApiKeyRepository {
         key: string,
         hash: string
     ): Promise<IApiKey>;
-    findOneByIdInTx(
-        tx: IDatabaseTransactionClient,
-        id: string
-    ): Promise<IApiKey | null>;
+    findOneById(id: string): Promise<IApiKey | null>;
     updateStatusInTx(
         tx: IDatabaseTransactionClient,
         id: string,

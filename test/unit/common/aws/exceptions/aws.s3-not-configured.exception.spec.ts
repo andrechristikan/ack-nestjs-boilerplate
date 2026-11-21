@@ -16,7 +16,7 @@ describe('AwsS3NotConfiguredException', () => {
                     EnumAwsStatusCodeError[
                         EnumAwsStatusCodeError.s3NotConfigured
                     ],
-                httpStatus: HttpStatus.NOT_FOUND,
+                httpStatus: HttpStatus.NOT_IMPLEMENTED,
                 messagePath: 'aws.error.s3NotConfigured',
             });
         });

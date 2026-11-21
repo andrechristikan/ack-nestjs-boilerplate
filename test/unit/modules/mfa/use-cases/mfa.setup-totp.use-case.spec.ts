@@ -1,4 +1,6 @@
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
+import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
@@ -15,9 +17,13 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import {
+    DatabaseUniqueConstraintCode,
+    DatabaseWriteConflictCode,
+} from '@common/database/constants/database.constant';
 import { Prisma } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -29,6 +35,7 @@ import {
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
+import { MfaTotpAlreadyEnabledException } from '@modules/mfa/exceptions/mfa.totp-already-enabled.exception';
 import type { IMfaTotpSetup } from '@modules/mfa/interfaces/mfa.interface';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
@@ -105,7 +112,10 @@ describe('MfaSetupTotpUseCase', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userAuthService.assertReauthentication.mockResolvedValue(passwordOnly);
+        userAuthService.checkReauthentication.mockResolvedValue({
+            check: passwordOnly,
+            failure: null,
+        });
         mfaTotpService.setupInTx.mockResolvedValue(setup);
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
@@ -129,6 +139,57 @@ describe('MfaSetupTotpUseCase', () => {
     });
 
     describe('execute', () => {
+        it('commits the failed count in a transaction of its own, then throws, and leaves the work undone', async () => {
+            const refusal = new Error('refused');
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: null,
+                failure: TestUnitReauthenticationPasswordFailure,
+            });
+            userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
+                true
+            );
+            userAuthService.throwFailedReauthentication.mockImplementation(
+                () => {
+                    throw refusal;
+                }
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    { password: 'Current-pass1' }
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                TestUnitReauthenticationPasswordFailure
+            );
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledBefore(
+                userAuthService.throwFailedReauthentication
+            );
+            expect(
+                userAuthService.throwFailedReauthentication
+            ).toHaveBeenCalledWith(
+                TestUnitReauthenticationPasswordFailure,
+                true
+            );
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+        });
+
         it('rejects with the enrolment gate exception and calls no other collaborator', async () => {
             const failure = new FeatureFlagDisabledException();
             mfaService.assertEnrolmentAllowed.mockRejectedValue(failure);
@@ -147,7 +208,7 @@ describe('MfaSetupTotpUseCase', () => {
                 EnumMfaMethod.totp
             );
             expect(
-                userAuthService.assertReauthentication
+                userAuthService.checkReauthentication
             ).not.toHaveBeenCalled();
             expect(mfaTotpService.setupInTx).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
@@ -166,9 +227,7 @@ describe('MfaSetupTotpUseCase', () => {
                 }
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.mfaTotpSetup,
@@ -196,9 +255,7 @@ describe('MfaSetupTotpUseCase', () => {
                 }
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.mfaTotpSetup,
@@ -247,7 +304,7 @@ describe('MfaSetupTotpUseCase', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userSetupMfaTotp,
+                    action: EnumActivityLogAction.userMfaTotpSetUp,
                     userId: 'user-marten',
                     createdBy: 'user-marten',
                 }
@@ -257,7 +314,7 @@ describe('MfaSetupTotpUseCase', () => {
 
         it('leaves the work undone when the re-authentication fails', async () => {
             const failure = new MfaInvalidException();
-            userAuthService.assertReauthentication.mockRejectedValue(failure);
+            userAuthService.checkReauthentication.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -271,6 +328,76 @@ describe('MfaSetupTotpUseCase', () => {
 
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(mfaTotpService.setupInTx).not.toHaveBeenCalled();
+        });
+
+        it('asserts the enrolment gate and the setup together, before the re-authentication', async () => {
+            const gate = buildDeferred<void>();
+            mfaService.assertEnrolmentAllowed.mockReturnValue(gate.promise);
+            mfaTotpService.assertSetupAllowed.mockImplementation(async () => {
+                gate.resolve();
+            });
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                { password: 'Current-pass1' }
+            );
+
+            expect(mfaTotpService.assertSetupAllowed).toHaveBeenCalledWith(
+                'user-marten'
+            );
+            expect(mfaTotpService.assertSetupAllowed).toHaveBeenCalledBefore(
+                userAuthService.checkReauthentication
+            );
+            expect(mfaService.assertEnrolmentAllowed).toHaveBeenCalledBefore(
+                userAuthService.checkReauthentication
+            );
+        });
+
+        it('passes on the refusal of a confirmed TOTP, opening no transaction', async () => {
+            const failure = new MfaTotpAlreadyEnabledException();
+            mfaTotpService.assertSetupAllowed.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    { password: 'Current-pass1' }
+                )
+            ).rejects.toBe(failure);
+
+            expect(
+                userAuthService.checkReauthentication
+            ).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(mfaTotpService.setupInTx).not.toHaveBeenCalled();
+        });
+
+        it('answers MfaTotpAlreadyEnabledException on a unique collision of the user id', async () => {
+            databaseService.withTransaction.mockRejectedValue(
+                new Prisma.PrismaClientKnownRequestError('unique', {
+                    code: DatabaseUniqueConstraintCode,
+                    clientVersion: 'test',
+                    meta: { target: ['userId'] },
+                })
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    { password: 'Current-pass1' }
+                )
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.totpAlreadyEnabled,
+            });
         });
 
         it('rethrows an AppBaseException of the transaction as it is', async () => {
@@ -296,9 +423,10 @@ describe('MfaSetupTotpUseCase', () => {
                     clientVersion: 'test',
                 }
             );
-            userAuthService.assertReauthentication.mockResolvedValue(
-                withBackupCode
-            );
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: withBackupCode,
+                failure: null,
+            });
             databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
@@ -338,7 +466,10 @@ describe('MfaSetupTotpUseCase', () => {
                     userContext,
                     { password: 'Current-pass1' }
                 )
-            ).rejects.toBeInstanceOf(AppUnknownException);
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+            });
         });
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {

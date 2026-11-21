@@ -65,7 +65,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         let total = 0;
         let fetched: number;
         do {
-            // Sequential by design: fan-out over an unbounded collection runs in bounded chunks
+            // Sequential by design: a fan-out over an unbounded collection: bounded chunks in turn, each concurrent
             const stale =
                 await this.databaseService.client.workspaceInvite.findMany({
                     where: {
@@ -89,7 +89,8 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
 
     async revokePendingByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string
+        workspaceId: string,
+        updatedBy: string
     ): Promise<void> {
         const now = this.helperDateService.create();
         const pending = await tx.workspaceInvite.findMany({
@@ -100,22 +101,25 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
             select: { id: true, expiredAt: true },
         });
 
-        for (const { id, expiredAt } of pending) {
-            const nonce = this.helperHashService.sha256Hash(id);
-            await tx.workspaceInvite.updateMany({
-                where: {
-                    id,
-                    status: EnumWorkspaceInviteStatus.pending,
-                },
-                data: {
-                    status:
-                        expiredAt <= now
-                            ? EnumWorkspaceInviteStatus.expired
-                            : EnumWorkspaceInviteStatus.revoked,
-                    nonce,
-                },
-            });
-        }
+        await Promise.all(
+            pending.map(({ id, expiredAt }) => {
+                const nonce = this.helperHashService.sha256Hash(id);
+                return tx.workspaceInvite.updateMany({
+                    where: {
+                        id,
+                        status: EnumWorkspaceInviteStatus.pending,
+                    },
+                    data: {
+                        status:
+                            expiredAt <= now
+                                ? EnumWorkspaceInviteStatus.expired
+                                : EnumWorkspaceInviteStatus.revoked,
+                        nonce,
+                        updatedBy,
+                    },
+                });
+            })
+        );
     }
 
     async revokePendingByEmailInTx(
@@ -154,7 +158,8 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
 
     async revokeAllPendingByEmailInTx(
         tx: IDatabaseTransactionClient,
-        email: string
+        email: string,
+        updatedBy: string
     ): Promise<void> {
         const now = this.helperDateService.create();
         const pending = await tx.workspaceInvite.findMany({
@@ -165,22 +170,25 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
             select: { id: true, expiredAt: true },
         });
 
-        for (const { id, expiredAt } of pending) {
-            const nonce = this.helperHashService.sha256Hash(id);
-            await tx.workspaceInvite.updateMany({
-                where: {
-                    id,
-                    status: EnumWorkspaceInviteStatus.pending,
-                },
-                data: {
-                    status:
-                        expiredAt <= now
-                            ? EnumWorkspaceInviteStatus.expired
-                            : EnumWorkspaceInviteStatus.revoked,
-                    nonce,
-                },
-            });
-        }
+        await Promise.all(
+            pending.map(({ id, expiredAt }) => {
+                const nonce = this.helperHashService.sha256Hash(id);
+                return tx.workspaceInvite.updateMany({
+                    where: {
+                        id,
+                        status: EnumWorkspaceInviteStatus.pending,
+                    },
+                    data: {
+                        status:
+                            expiredAt <= now
+                                ? EnumWorkspaceInviteStatus.expired
+                                : EnumWorkspaceInviteStatus.revoked,
+                        nonce,
+                        updatedBy,
+                    },
+                });
+            })
+        );
     }
 
     async clearProjectInTx(

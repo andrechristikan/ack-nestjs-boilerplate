@@ -21,6 +21,7 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
+import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyDeleteByAdminUseCase } from '@modules/api-key/use-cases/api-key.delete-by-admin.use-case';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
@@ -103,6 +104,25 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
     });
 
     describe('execute', () => {
+        beforeEach(() => {
+            apiKeyService.getOneById.mockResolvedValue(apiKey);
+        });
+
+        it('throws ApiKeyNotFoundException from getOneById and opens no transaction', async () => {
+            const failure = new ApiKeyNotFoundException();
+            apiKeyService.getOneById.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id
+                )
+            ).rejects.toBe(failure);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
         it('deletes the api key on the outbox transaction and wraps the result', async () => {
             apiKeyService.deleteByAdminInTx.mockResolvedValue(apiKey);
 
@@ -114,9 +134,10 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
             );
 
             expect(result).toEqual({ data: apiKey });
+            expect(apiKeyService.getOneById).toHaveBeenCalledWith(apiKey.id);
             expect(apiKeyService.deleteByAdminInTx).toHaveBeenCalledWith(
                 tx,
-                apiKey.id
+                apiKey
             );
         });
 
@@ -136,7 +157,7 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminApiKeyDelete,
+                    action: EnumActivityLogAction.adminApiKeyDeleted,
                     metadata,
                 }
             );
@@ -173,7 +194,10 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
                     authContext,
                     apiKey.id
                 )
-            ).rejects.toBeInstanceOf(ApiKeyNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'apiKey',
+                statusCode: EnumApiKeyStatusCodeError.notFound,
+            });
         });
 
         it('wraps any other error in AppUnknownException', async () => {

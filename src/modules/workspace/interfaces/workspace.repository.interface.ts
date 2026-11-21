@@ -66,8 +66,7 @@ export interface IWorkspaceRepository {
         deletedAt: Date,
         deletedBy: string
     ): Promise<boolean>;
-    existsOwnedWithOtherMembersInTx(
-        tx: IDatabaseTransactionClient,
+    existsOwnedWithOtherMembers(
         workspaceIds: string[],
         userId: string
     ): Promise<boolean>;

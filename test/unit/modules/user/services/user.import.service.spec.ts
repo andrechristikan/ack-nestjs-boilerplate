@@ -8,14 +8,20 @@ import {
     EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
+    EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
+import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
+import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
+import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { UserImportService } from '@modules/user/services/user.import.service';
+import { UserService } from '@modules/user/services/user.service';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
@@ -38,6 +44,8 @@ import { buildUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserImportService', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
+    const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
+    const userService: MockProxy<UserService> = mock<UserService>();
 
     const now = new Date('2026-03-01T00:00:00.000Z');
     const password = {
@@ -82,6 +90,8 @@ describe('UserImportService', () => {
             providers: [
                 UserImportService,
                 { provide: UserRepository, useValue: userRepository },
+                { provide: AwsS3Service, useValue: awsS3Service },
+                { provide: UserService, useValue: userService },
                 UserUtil,
                 UserCreateUtil,
                 UserVerificationUtil,
@@ -430,56 +440,127 @@ describe('UserImportService', () => {
     });
 
     describe('exportByAdmin', () => {
-        it('returns the exported users when under the max data export', async () => {
+        it('reads the users with take equal to the max data export and returns them', async () => {
             const users = [{ ...baseUser, id: 'user-export-one' }];
             userRepository.findExport.mockResolvedValue(users);
 
-            const result = await service.exportByAdmin(null, null, null);
+            const result = await service.exportByAdmin(
+                [EnumUserStatus.active],
+                'role-thistle',
+                'country-thistle'
+            );
 
             expect(result).toBe(users);
             expect(userRepository.findExport).toHaveBeenCalledWith(
-                null,
-                null,
-                null,
-                3
+                [EnumUserStatus.active],
+                'role-thistle',
+                'country-thistle',
+                2
             );
         });
 
-        it('passes the provided filters through', async () => {
-            userRepository.findExport.mockResolvedValue([]);
-            const status = { status: { in: ['active'] } };
-            const roleId = { roleId: { equals: 'role-thistle' } };
-            const countryId = { countryId: { equals: 'country-thistle' } };
-
-            await service.exportByAdmin(status, roleId, countryId);
-
-            expect(userRepository.findExport).toHaveBeenCalledWith(
-                status,
-                roleId,
-                countryId,
-                3
-            );
-        });
-
-        it('throws FileExceedMaxDataExportException when the row count exceeds the maximum', async () => {
+        it('throws nothing when the read returns as many rows as the max data export', async () => {
             const users = [
                 { ...baseUser, id: 'user-export-one' },
                 { ...baseUser, id: 'user-export-two' },
-                { ...baseUser, id: 'user-export-three' },
             ];
             userRepository.findExport.mockResolvedValue(users);
 
             await expect(
-                service.exportByAdmin(null, null, null)
+                service.exportByAdmin(UserDefaultStatus, null, null)
+            ).resolves.toBe(users);
+        });
+    });
+
+    describe('assertExportByAdminDeliverable', () => {
+        it('throws AwsS3NotConfiguredException and skips the SES assert when S3 is not initialized', () => {
+            awsS3Service.isInitialized.mockReturnValue(false);
+
+            expect(() => service.assertExportByAdminDeliverable()).toThrow(
+                AwsS3NotConfiguredException
+            );
+            expect(userService.assertEmailDeliverable).not.toHaveBeenCalled();
+        });
+
+        it('lets the SES exception through when S3 is initialized and SES is not', () => {
+            awsS3Service.isInitialized.mockReturnValue(true);
+            userService.assertEmailDeliverable.mockImplementation(() => {
+                throw new AwsSesNotConfiguredException();
+            });
+
+            expect(() => service.assertExportByAdminDeliverable()).toThrow(
+                AwsSesNotConfiguredException
+            );
+            expect(userService.assertEmailDeliverable).toHaveBeenCalledTimes(1);
+        });
+
+        it('returns when S3 and SES are initialized', () => {
+            awsS3Service.isInitialized.mockReturnValue(true);
+
+            expect(() =>
+                service.assertExportByAdminDeliverable()
+            ).not.toThrow();
+            expect(userService.assertEmailDeliverable).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('assertExportByAdminWithinCap', () => {
+        it('throws FileExceedMaxDataExportException when the count is above the max data export', async () => {
+            userRepository.countExport.mockResolvedValue(3);
+
+            await expect(
+                service.assertExportByAdminWithinCap(
+                    UserDefaultStatus,
+                    null,
+                    null
+                )
             ).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.exceedMaxDataExport,
             });
         });
+
+        it('passes when the count equals the max data export', async () => {
+            userRepository.countExport.mockResolvedValue(2);
+
+            await expect(
+                service.assertExportByAdminWithinCap(
+                    [EnumUserStatus.active],
+                    'role-thistle',
+                    'country-thistle'
+                )
+            ).resolves.toBeUndefined();
+            expect(userRepository.countExport).toHaveBeenCalledWith(
+                [EnumUserStatus.active],
+                'role-thistle',
+                'country-thistle'
+            );
+        });
+    });
+
+    describe('resolveExportByAdminStatus', () => {
+        it('returns every default status when no status filter is given', () => {
+            expect(service.resolveExportByAdminStatus(null)).toEqual(
+                UserDefaultStatus
+            );
+        });
+
+        it('returns only the selected statuses, in default order', () => {
+            const result = service.resolveExportByAdminStatus({
+                status: {
+                    in: [EnumUserStatus.inactive, EnumUserStatus.active],
+                },
+            });
+
+            expect(result).toEqual([
+                EnumUserStatus.active,
+                EnumUserStatus.inactive,
+            ]);
+        });
     });
 
     describe('buildImportByAdminStages', () => {
-        it('leads with the adminUserImport row carrying the user count, then every input rows', () => {
+        it('leads with the adminUserImported row carrying the user count, then every input rows', () => {
             const input: IUserCreateWithWorkspaceInput = {
                 userId: baseUser.id,
                 email: baseUser.email,
@@ -515,7 +596,7 @@ describe('UserImportService', () => {
 
             expect(result).toEqual([
                 {
-                    action: EnumActivityLogAction.adminUserImport,
+                    action: EnumActivityLogAction.adminUserImported,
                     metadata: { userCount: 2 },
                 },
                 {

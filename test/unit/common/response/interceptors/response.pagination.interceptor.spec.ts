@@ -19,7 +19,6 @@ import { ResponsePaginationInterceptor } from '@common/response/interceptors/res
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { EnumResponseStatusCodeError } from '@common/response/enums/response.status-code.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -191,9 +190,6 @@ describe('ResponsePaginationInterceptor', () => {
                 interceptor.intercept(context, callHandler)
             );
 
-            await expect(promise).rejects.toBeInstanceOf(
-                RequestContextMissingException
-            );
             await expect(promise).rejects.toMatchObject({
                 module: 'request',
                 statusCode: EnumRequestStatusCodeError.contextMissing,

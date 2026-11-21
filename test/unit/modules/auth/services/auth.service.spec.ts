@@ -377,7 +377,10 @@ describe('AuthService', () => {
 
             await expect(
                 service.validateOAuthApple('id-token')
-            ).rejects.toBeInstanceOf(AuthSocialAppleInvalidException);
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
+            });
 
             expect(authSocialService.consumeNonce).not.toHaveBeenCalled();
         });
@@ -533,7 +536,10 @@ describe('AuthService', () => {
 
             await expect(
                 service.validateOAuthGoogle('id-token')
-            ).rejects.toBeInstanceOf(AuthSocialGoogleInvalidException);
+            ).rejects.toMatchObject({
+                module: 'auth',
+                statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
+            });
 
             expect(authSocialService.consumeNonce).not.toHaveBeenCalled();
         });

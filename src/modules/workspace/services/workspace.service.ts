@@ -1,8 +1,4 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IPaginationEqual,
@@ -17,7 +13,6 @@ import {
 } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
@@ -27,7 +22,6 @@ import {
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceOwnerTransferRequiredException } from '@modules/workspace/exceptions/workspace.owner-transfer-required.exception';
-import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceSlugInvalidException } from '@modules/workspace/exceptions/workspace.slug-invalid.exception';
 import type {
     IWorkspaceCreate,
@@ -36,6 +30,8 @@ import type {
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
+import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
+import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -51,11 +47,11 @@ export class WorkspaceService {
     constructor(
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
+        private readonly workspaceInviteService: WorkspaceInviteService,
+        private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
         private readonly featureFlagService: FeatureFlagService,
-        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
@@ -71,18 +67,37 @@ export class WorkspaceService {
         )!;
     }
 
-    private drawSlugCandidates(): string[] {
+    private isSlugAllowed(slug: string): boolean {
+        const isPatternValid = this.slugRegex.test(slug);
+
+        return slug.length <= this.slugMaxLength && isPatternValid;
+    }
+
+    private async closePendingByWorkspaceInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        updatedBy: string
+    ): Promise<void> {
+        await Promise.all([
+            this.workspaceInviteService.revokePendingByWorkspaceInTx(
+                tx,
+                workspaceId,
+                updatedBy
+            ),
+            this.workspaceJoinRequestService.cancelPendingByWorkspaceInTx(
+                tx,
+                workspaceId,
+                updatedBy
+            ),
+        ]);
+    }
+
+    drawSlugCandidates(): string[] {
         return this.helperStringService.generateSlugCandidates(
             this.slugPrefix,
             this.slugMaxLength,
             this.slugMaxAttempts
         );
-    }
-
-    private isSlugAllowed(slug: string): boolean {
-        const isPatternValid = this.slugRegex.test(slug);
-
-        return slug.length <= this.slugMaxLength && isPatternValid;
     }
 
     async getListCursorByMember(
@@ -155,186 +170,134 @@ export class WorkspaceService {
         }
     }
 
-    /** Creates the workspace with its owner row and adds the creator's activity entry in one transaction per slug attempt, dispatched after the commit. */
-    async createWorkspace(
+    async createWorkspaceInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
+        workspaceId: string,
+        slug: string,
         create: IWorkspaceCreate
     ): Promise<Workspace> {
         const userId = authContext.userId;
-        const maxWorkspacesPerUser =
-            await this.featureFlagService.getMetadataNumber(
-                EnumFeatureFlagKey.workspace,
-                EnumFeatureFlagMetadataKey.maxWorkspacesPerUser
-            );
-        const slugCandidates = this.drawSlugCandidates();
-
-        for (const slug of slugCandidates) {
-            const workspaceId = this.databaseUtil.createId();
-
-            try {
-                return await this.databaseService.withTransaction(async tx => {
-                    const ownedCount = await this.countOwnedInTx(tx, userId);
-                    if (ownedCount >= maxWorkspacesPerUser) {
-                        throw new WorkspaceCapReachedException();
-                    }
-
-                    const workspace = await this.createInTx(
-                        tx,
-                        userId,
-                        create,
-                        slug,
-                        workspaceId
-                    );
-                    const entry = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.workspaceCreated,
-                            userId,
-                            createdBy: userId,
-                            workspaceId: workspace.id,
-                        }
-                    );
-                    await this.outboxService.addInTx(tx, entry);
-
-                    return workspace;
-                });
-            } catch (error: unknown) {
-                const isSlugCollision = this.databaseUtil.isUniqueCollision(
-                    error,
-                    'slug'
-                );
-                if (!isSlugCollision) {
-                    if (error instanceof AppBaseException) {
-                        throw error;
-                    }
-
-                    throw new AppUnknownException(error);
-                }
+        const workspace = await this.createInTx(
+            tx,
+            userId,
+            create,
+            slug,
+            workspaceId
+        );
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.workspaceCreated,
+                userId,
+                createdBy: userId,
+                workspaceId: workspace.id,
             }
-        }
+        );
+        await this.outboxService.addInTx(tx, entry);
 
-        throw new DatabaseUniqueValueGenerationFailedException();
+        return workspace;
     }
 
-    /** Writes the details and adds the actor's activity entry in one transaction, dispatched after the commit. */
-    async updateWorkspace(
+    async updateWorkspaceInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         workspaceId: string,
         update: IWorkspaceUpdate
     ): Promise<Workspace> {
-        return this.databaseService.withTransaction(async tx => {
-            const workspace = await this.workspaceRepository.updateDetailsInTx(
-                tx,
+        const workspace = await this.workspaceRepository.updateDetailsInTx(
+            tx,
+            workspaceId,
+            update
+        );
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.workspaceUpdated,
+                userId: authContext.userId,
+                createdBy: authContext.userId,
                 workspaceId,
-                update
-            );
-            const entry = this.activityLogQueue.recordEffect(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null,
-                {
-                    action: EnumActivityLogAction.workspaceUpdated,
-                    userId: authContext.userId,
-                    createdBy: authContext.userId,
-                    workspaceId,
-                }
-            );
-            await this.outboxService.addInTx(tx, entry);
+            }
+        );
+        await this.outboxService.addInTx(tx, entry);
 
-            return workspace;
-        });
+        return workspace;
     }
 
-    /** Writes the visibility and adds the actor's activity entry in one transaction, dispatched after the commit. */
-    async updateWorkspaceIsPublic(
+    async updateWorkspaceIsPublicInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         workspaceId: string,
         isPublic: boolean
     ): Promise<Workspace> {
-        return this.databaseService.withTransaction(async tx => {
-            const workspace = await this.workspaceRepository.updateIsPublicInTx(
-                tx,
+        const workspace = await this.workspaceRepository.updateIsPublicInTx(
+            tx,
+            workspaceId,
+            isPublic
+        );
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.workspaceVisibilityUpdated,
+                userId: authContext.userId,
+                createdBy: authContext.userId,
                 workspaceId,
-                isPublic
-            );
-            const entry = this.activityLogQueue.recordEffect(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null,
-                {
-                    action: EnumActivityLogAction.workspaceVisibilityUpdated,
-                    userId: authContext.userId,
-                    createdBy: authContext.userId,
-                    workspaceId,
-                }
-            );
-            await this.outboxService.addInTx(tx, entry);
+            }
+        );
+        await this.outboxService.addInTx(tx, entry);
 
-            return workspace;
-        });
+        return workspace;
     }
 
-    /** Writes the slug and adds the actor's activity entry in one transaction, dispatched after the commit. */
-    async updateWorkspaceSlug(
+    async updateWorkspaceSlugInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         workspaceId: string,
         slug: string
     ): Promise<Workspace> {
+        const workspace = await this.workspaceRepository.updateSlugInTx(
+            tx,
+            workspaceId,
+            slug
+        );
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.workspaceUpdated,
+                userId: authContext.userId,
+                createdBy: authContext.userId,
+                workspaceId,
+            }
+        );
+        await this.outboxService.addInTx(tx, entry);
+
+        return workspace;
+    }
+
+    assertSlugAllowed(slug: string): void {
         const isSlugAllowed = this.isSlugAllowed(slug);
         if (!isSlugAllowed) {
             throw new WorkspaceSlugInvalidException();
-        }
-
-        try {
-            return await this.databaseService.withTransaction(async tx => {
-                const workspace = await this.workspaceRepository.updateSlugInTx(
-                    tx,
-                    workspaceId,
-                    slug
-                );
-                const entry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.workspaceUpdated,
-                        userId: authContext.userId,
-                        createdBy: authContext.userId,
-                        workspaceId,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-
-                return workspace;
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const isSlugCollision = this.databaseUtil.isUniqueCollision(
-                err,
-                'slug'
-            );
-            if (isSlugCollision) {
-                throw new WorkspaceSlugAlreadyExistsException();
-            }
-
-            throw new AppUnknownException(err);
         }
     }
 
@@ -344,6 +307,7 @@ export class WorkspaceService {
         deletedAt: Date,
         deletedBy: string
     ): Promise<void> {
+        // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
         const softDeleted = await this.workspaceRepository.softDeleteInTx(
             tx,
             workspaceId,
@@ -353,31 +317,33 @@ export class WorkspaceService {
         if (!softDeleted) {
             throw new WorkspaceNotFoundException();
         }
+
+        await this.closePendingByWorkspaceInTx(tx, workspaceId, deletedBy);
     }
 
-    async countOwnedInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string
-    ): Promise<number> {
-        return this.workspaceMemberRepository.countOwnedActiveByUserInTx(
-            tx,
-            userId
-        );
+    /** Reads `maxWorkspacesPerUser` and the owner's active workspace count; throws at the cap. */
+    async assertOwnedCapAvailable(userId: string): Promise<void> {
+        const [maxWorkspacesPerUser, ownedCount] = await Promise.all([
+            this.featureFlagService.getMetadataNumber(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.maxWorkspacesPerUser
+            ),
+            this.workspaceMemberRepository.countOwnedActiveByUser(userId),
+        ]);
+        if (ownedCount >= maxWorkspacesPerUser) {
+            throw new WorkspaceCapReachedException();
+        }
     }
 
-    async assertOwnedHasNoOtherMembersInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string
-    ): Promise<string[]> {
+    /** Returns the ids of the workspaces the user owns; one with another member throws the owner-transfer-required exception. */
+    async getOwnedForSelfDelete(userId: string): Promise<string[]> {
         const workspaceIds =
-            await this.workspaceMemberRepository.findWorkspaceIdsByUserInTx(
-                tx,
+            await this.workspaceMemberRepository.findWorkspaceIdsByUser(
                 userId,
                 EnumWorkspaceMemberRole.owner
             );
         const hasOtherMembers =
-            await this.workspaceRepository.existsOwnedWithOtherMembersInTx(
-                tx,
+            await this.workspaceRepository.existsOwnedWithOtherMembers(
                 workspaceIds,
                 userId
             );
@@ -394,12 +360,20 @@ export class WorkspaceService {
         userId: string,
         deletedAt: Date
     ): Promise<string[]> {
-        return this.workspaceRepository.softDeleteOwnedByUserInTx(
-            tx,
-            workspaceIds,
-            userId,
-            deletedAt
+        const ownedIds =
+            await this.workspaceRepository.softDeleteOwnedByUserInTx(
+                tx,
+                workspaceIds,
+                userId,
+                deletedAt
+            );
+        await Promise.all(
+            ownedIds.map(workspaceId =>
+                this.closePendingByWorkspaceInTx(tx, workspaceId, userId)
+            )
         );
+
+        return ownedIds;
     }
 
     async getListOffsetByAdmin(
@@ -422,15 +396,15 @@ export class WorkspaceService {
         return workspace;
     }
 
-    /** Gates on `workspace.joinRequestAllowed`, then resolves a live public workspace by slug; a private or deleted one throws the same not-found as an unknown slug. */
+    /** Gates on `workspace.joinRequestAllowed` and resolves a live public workspace by slug; a private or deleted one throws the same not-found as an unknown slug. */
     async previewWorkspace(slug: string): Promise<Workspace> {
-        // Sequential by design: gate before the work it guards
-        await this.featureFlagService.validateFeatureFlagMetadata(
-            EnumFeatureFlagKey.workspace,
-            EnumFeatureFlagMetadataKey.joinRequestAllowed
-        );
-        const workspace =
-            await this.workspaceRepository.findActivePublicBySlug(slug);
+        const [workspace] = await Promise.all([
+            this.workspaceRepository.findActivePublicBySlug(slug),
+            this.featureFlagService.validateFeatureFlagMetadata(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.joinRequestAllowed
+            ),
+        ]);
         if (!workspace) {
             throw new WorkspaceNotFoundException();
         }

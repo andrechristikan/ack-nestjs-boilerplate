@@ -53,7 +53,7 @@ describe('ActivityLogService', () => {
                     userId: 'user-1',
                     createdBy: 'creator-1',
                     workspaceId: null,
-                    action: EnumActivityLogAction.userLoginCredential,
+                    action: EnumActivityLogAction.userLoggedInWithCredential,
                     description: 'Description',
                     requestLog,
                     metadata: {},

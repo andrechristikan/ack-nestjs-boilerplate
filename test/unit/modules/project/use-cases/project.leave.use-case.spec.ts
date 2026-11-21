@@ -1,3 +1,14 @@
+import { ConfigService } from '@nestjs/config';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -21,6 +32,9 @@ describe('ProjectLeaveUseCase', () => {
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
 
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const tx = {} as IDatabaseTransactionClient;
+
     let useCase: ProjectLeaveUseCase;
 
     const project: Project = {
@@ -38,12 +52,20 @@ describe('ProjectLeaveUseCase', () => {
     };
 
     beforeEach(async () => {
+        databaseService.withTransaction.mockImplementation(fn => fn(tx));
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProjectLeaveUseCase,
                 {
                     provide: ProjectMemberService,
                     useValue: projectMemberService,
+                },
+                { provide: DatabaseService, useValue: databaseService },
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
                 },
             ],
         }).compile();
@@ -71,7 +93,7 @@ describe('ProjectLeaveUseCase', () => {
         const authContext = buildAuthJwtAccessContext(userContext.user.id);
         const projectContext = buildProjectContext(project, member);
 
-        it('delegates leaving the project to the domain with the asserted member', async () => {
+        it('asserts the member, then removes it in one transaction on one tx', async () => {
             projectMemberService.assertMember.mockReturnValue(member);
 
             const result = await useCase.execute(
@@ -85,7 +107,9 @@ describe('ProjectLeaveUseCase', () => {
             expect(projectMemberService.assertMember).toHaveBeenCalledWith(
                 member
             );
-            expect(projectMemberService.leaveProject).toHaveBeenCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(projectMemberService.leaveProjectInTx).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -94,7 +118,7 @@ describe('ProjectLeaveUseCase', () => {
             );
         });
 
-        it('throws the member assert exception when the context carries no member', async () => {
+        it('throws the member assert exception and opens no transaction when the context carries no member', async () => {
             const projectContextWithoutMember = {
                 ...projectContext,
                 projectMember: null,
@@ -117,13 +141,13 @@ describe('ProjectLeaveUseCase', () => {
             expect(projectMemberService.assertMember).toHaveBeenCalledWith(
                 null
             );
-            expect(projectMemberService.leaveProject).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('rejects with the domain failure', async () => {
+        it('maps a write conflict to ProjectMemberNotFoundException', async () => {
             projectMemberService.assertMember.mockReturnValue(member);
-            projectMemberService.leaveProject.mockRejectedValue(
-                new Error('boom')
+            projectMemberService.leaveProjectInTx.mockRejectedValue(
+                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
             );
 
             await expect(
@@ -133,7 +157,43 @@ describe('ProjectLeaveUseCase', () => {
                     authContext,
                     projectContext
                 )
-            ).rejects.toThrow('boom');
+            ).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.memberNotFound,
+            });
+        });
+
+        it('rethrows an AppBaseException from the transaction as is', async () => {
+            const failure = new ProjectMemberNotFoundException();
+            projectMemberService.assertMember.mockReturnValue(member);
+            projectMemberService.leaveProjectInTx.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    projectContext
+                )
+            ).rejects.toBe(failure);
+        });
+
+        it('wraps any other error in AppUnknownException', async () => {
+            const otherError = new Error('boom');
+            projectMemberService.assertMember.mockReturnValue(member);
+            projectMemberService.leaveProjectInTx.mockRejectedValue(otherError);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    projectContext
+                )
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
+            });
         });
     });
 });

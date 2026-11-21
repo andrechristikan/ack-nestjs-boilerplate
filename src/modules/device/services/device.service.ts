@@ -1,8 +1,4 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
@@ -27,7 +23,6 @@ import type {
 } from '@modules/device/interfaces/device.interface';
 import { DeviceOwnershipRepository } from '@modules/device/repositories/device.ownership.repository';
 import { DeviceRepository } from '@modules/device/repositories/device.repository';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -44,15 +39,29 @@ export class DeviceService {
         private readonly configService: ConfigService,
         private readonly deviceOwnershipRepository: DeviceOwnershipRepository,
         private readonly deviceRepository: DeviceRepository,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue
     ) {
         this.idleTimeoutInMs = this.configService.get<number>(
             'session.idleTimeoutInMs'
         )!;
+    }
+
+    private async clearTokenFromOtherUsersInTx(
+        tx: IDatabaseTransactionClient,
+        notificationToken: string | null,
+        userId: string
+    ): Promise<void> {
+        if (notificationToken === null) {
+            return;
+        }
+
+        await this.deviceOwnershipRepository.clearTokenFromOtherUsersInTx(
+            tx,
+            notificationToken,
+            userId
+        );
     }
 
     private resolveNotificationProvider(
@@ -175,12 +184,19 @@ export class DeviceService {
             device.platform,
             device.notificationToken
         );
-        const upserted = await this.deviceRepository.upsertByFingerprintInTx(
-            tx,
-            userId,
-            device,
-            now
-        );
+        const [upserted] = await Promise.all([
+            this.deviceRepository.upsertByFingerprintInTx(
+                tx,
+                userId,
+                device,
+                now
+            ),
+            this.clearTokenFromOtherUsersInTx(
+                tx,
+                device.notificationToken,
+                userId
+            ),
+        ]);
         const { deviceOwnership, isNewOwnership } =
             await this.deviceOwnershipRepository.upsertActiveInTx(
                 tx,
@@ -190,13 +206,6 @@ export class DeviceService {
                 notificationProvider,
                 now
             );
-        if (device.notificationToken !== null) {
-            await this.deviceOwnershipRepository.clearTokenFromOtherUsersInTx(
-                tx,
-                device.notificationToken,
-                userId
-            );
-        }
 
         return {
             device: upserted,
@@ -298,7 +307,9 @@ export class DeviceService {
         return deviceOwnership;
     }
 
-    async refresh(
+    /** Refreshes the ownership and its device on the caller's transaction, clears the token from other users, and adds the refresh entry; no live ownership throws DeviceNotFoundException. */
+    async refreshInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
@@ -312,56 +323,35 @@ export class DeviceService {
         );
         const now = this.helperDateService.create();
 
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                const deviceId =
-                    await this.deviceOwnershipRepository.refreshInTx(
-                        tx,
-                        userId,
-                        deviceOwnershipId,
-                        data,
-                        notificationProvider,
-                        now
-                    );
-                if (deviceId === null) {
-                    throw new DeviceNotFoundException();
-                }
-                await this.deviceRepository.refreshInTx(
-                    tx,
-                    deviceId,
-                    data,
-                    now
-                );
-                if (data.notificationToken !== null) {
-                    await this.deviceOwnershipRepository.clearTokenFromOtherUsersInTx(
-                        tx,
-                        data.notificationToken,
-                        userId
-                    );
-                }
-
-                const entry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userDeviceRefresh,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new DeviceNotFoundException();
-            }
-
-            throw new AppUnknownException(err);
+        const deviceId = await this.deviceOwnershipRepository.refreshInTx(
+            tx,
+            userId,
+            deviceOwnershipId,
+            data,
+            notificationProvider,
+            now
+        );
+        if (deviceId === null) {
+            throw new DeviceNotFoundException();
         }
+        await Promise.all([
+            this.deviceRepository.refreshInTx(tx, deviceId, data, now),
+            this.clearTokenFromOtherUsersInTx(
+                tx,
+                data.notificationToken,
+                userId
+            ),
+        ]);
+
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.userDeviceRefreshed,
+            }
+        );
+        await this.outboxService.addInTx(tx, entry);
     }
 }

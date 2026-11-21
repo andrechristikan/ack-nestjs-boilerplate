@@ -58,7 +58,7 @@ Feature modules share one shape: `Controller → Use case → Service → Reposi
 Before an edit, read each rule `bash .claude/hooks/rules.sh <path>` prints. `.claude/rules/discipline.md` binds every change and outranks every other rule; read its Hard rules first.
 
 - Validation fails fast, before the transaction opens; the write keeps its guard; a failure is a typed exception with its own status code.
-- One statement per result; a guard-loaded row comes from its context; every relation scalar carries `@relation`; behaviour is test-first.
+- One statement per result; a guard-loaded row comes whole from its context; every relation scalar carries `@relation`; behaviour is test-first.
 - A status-code block holds no gap; a notification snapshot is read before the transaction; the cache is a side resource whose failure never breaks a flow.
 
 ## Commands

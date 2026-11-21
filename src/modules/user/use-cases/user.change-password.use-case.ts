@@ -78,12 +78,9 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         }: UserChangePasswordRequestDto
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
-        // Sequential by design: gate before the work it guards
-        const check = await this.userAuthService.assertReauthentication(
-            requestContext,
-            apiKeyContext,
-            user,
-            {
+        // Sequential by design: a credential proof, awaited alone; a statement whose failure is the answer, awaited before an unrelated write
+        const { check, failure } =
+            await this.userAuthService.checkReauthentication(user, {
                 action: EnumUserReauthenticationAction.changePassword,
                 password: currentPassword ?? null,
                 method: method ?? null,
@@ -92,12 +89,22 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                 passkeyChallengeToken: passkeyChallengeToken ?? null,
                 passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
-            }
-        );
-        if (check.isPasswordChecked) {
-            await this.passwordHistoryService.assertNew(
-                authContext.userId,
-                newPassword
+            });
+        if (failure !== null) {
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.userAuthService.countFailedReauthenticationInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        failure
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(
+                failure,
+                isLocked
             );
         }
 
@@ -107,7 +114,17 @@ export class UserChangePasswordUseCase implements IAppUseCase<
             user.username,
             user.name
         );
-        await this.authPasswordService.assertAllowed(newPassword, contextWords);
+        const checks = [
+            this.authPasswordService.assertAllowed(newPassword, contextWords),
+        ];
+        if (check.isPasswordChecked) {
+            const historyCheck = this.passwordHistoryService.assertNew(
+                authContext.userId,
+                newPassword
+            );
+            checks.push(historyCheck);
+        }
+        await Promise.all(checks);
         const password =
             await this.authPasswordUtil.createPassword(newPassword);
 
@@ -120,40 +137,42 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                     authContext,
                     check
                 );
-                await this.userService.updatePasswordInTx(
-                    tx,
-                    authContext.userId,
-                    password,
-                    authContext.userId
-                );
-                await this.passwordHistoryService.createInTx(
-                    tx,
-                    authContext.userId,
-                    password.passwordHash,
-                    EnumPasswordHistoryType.profile,
-                    password.passwordPeriodExpired,
-                    password.passwordCreated,
-                    authContext.userId
-                );
-                await this.userPasswordService.markUnusedResetsUsedInTx(
-                    tx,
-                    authContext.userId,
-                    authContext.userId
-                );
-                await this.sessionService.revokeActiveByUserExceptInTx(
-                    tx,
-                    authContext.userId,
-                    authContext.sessionId,
-                    authContext.userId,
-                    password.passwordCreated
-                );
+                await Promise.all([
+                    this.userService.updatePasswordInTx(
+                        tx,
+                        authContext.userId,
+                        password,
+                        authContext.userId
+                    ),
+                    this.passwordHistoryService.createInTx(
+                        tx,
+                        authContext.userId,
+                        password.passwordHash,
+                        EnumPasswordHistoryType.profile,
+                        password.passwordPeriodExpired,
+                        password.passwordCreated,
+                        authContext.userId
+                    ),
+                    this.userPasswordService.markUnusedResetsUsedInTx(
+                        tx,
+                        authContext.userId,
+                        authContext.userId
+                    ),
+                    this.sessionService.revokeActiveByUserExceptInTx(
+                        tx,
+                        authContext.userId,
+                        authContext.sessionId,
+                        authContext.userId,
+                        password.passwordCreated
+                    ),
+                ]);
                 const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
                     null,
                     {
-                        action: EnumActivityLogAction.userChangePassword,
+                        action: EnumActivityLogAction.userPasswordChanged,
                     }
                 );
                 const effect = this.notificationQueue.notify(

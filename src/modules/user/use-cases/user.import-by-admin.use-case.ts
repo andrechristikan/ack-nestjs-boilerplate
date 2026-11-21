@@ -6,6 +6,7 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import type { UserImportResponseDto } from '@modules/user/dtos/response/user.import.response.dto';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { UserService } from '@modules/user/services/user.service';
 import { UserImportService } from '@modules/user/services/user.import.service';
 import { UserQueue } from '@modules/user/queues/user.queue';
 import { Injectable } from '@nestjs/common';
@@ -23,6 +24,7 @@ export class UserImportByAdminUseCase implements IAppUseCase<
     IResponseReturn<UserImportResponseDto>
 > {
     constructor(
+        private readonly userService: UserService,
         private readonly userQueue: UserQueue,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly userImportService: UserImportService,
@@ -36,6 +38,8 @@ export class UserImportByAdminUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         data: UserImportRequestDto[]
     ): Promise<IResponseReturn<UserImportResponseDto>> {
+        this.userService.assertEmailDeliverable();
+
         const rows = data.map(({ email, name, username }) => ({
             email,
             name: name ?? null,
@@ -43,7 +47,7 @@ export class UserImportByAdminUseCase implements IAppUseCase<
         }));
         const emails = rows.map(item => item.email);
         const usernames = rows.map(item => item.username);
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: a write after its checks
         const [existingEmails, usernameChecks] = await Promise.all([
             this.userImportService.getExistingEmails(emails),
             this.userImportService.getUsernameChecks(usernames),

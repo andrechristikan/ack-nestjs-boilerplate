@@ -7,7 +7,6 @@ import type {
     Prisma,
     User,
     Workspace,
-    WorkspaceInvite,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
 import type { IRequestStorePatch } from '@common/request/interfaces/request.interface';
@@ -47,6 +46,11 @@ export interface IWorkspaceTransferMember extends WorkspaceMember {
     user: Pick<User, 'status' | 'deletedAt'>;
 }
 
+export interface IWorkspaceTransfer {
+    ownerMember: WorkspaceMember;
+    targetMember: WorkspaceMember;
+}
+
 export interface IWorkspaceWithTransferMembers extends Workspace {
     members: IWorkspaceTransferMember[];
 }
@@ -83,9 +87,10 @@ export interface IWorkspaceInviteTokenData {
     signUpLink: string;
 }
 
-export interface IWorkspaceInviteIssued {
-    invite: WorkspaceInvite;
-    tokenData: IWorkspaceInviteTokenData;
+export interface IWorkspaceInvitePrepared {
+    workspaceInviteId: string;
+    nonce: string;
+    expiresInDays: number;
 }
 
 export interface IWorkspaceCreate {
@@ -138,6 +143,11 @@ export interface IWorkspaceInvitePreviewSummary {
 export interface IWorkspaceJoinRequestCreate {
     workspaceId: string;
     message: string | null;
+}
+
+export interface IWorkspaceJoinRequestPrepared {
+    nonce: string;
+    expiredAt: Date;
 }
 
 export interface IWorkspaceJoinRequestNotice {

@@ -24,7 +24,6 @@ import { DeviceService } from '@modules/device/services/device.service';
 import type { IMfaCheck } from '@modules/mfa/interfaces/mfa.interface';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaNotEnabledException } from '@modules/mfa/exceptions/mfa.not-enabled.exception';
-import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
@@ -45,8 +44,11 @@ import type {
     IUser,
     IUserCredential,
     IUserLoginMfaChallenge,
+    IUserPasswordAttemptLimit,
     IUserReauthenticationCheck,
+    IUserReauthenticationFailure,
     IUserReauthenticationInput,
+    IUserReauthenticationResult,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
@@ -72,7 +74,6 @@ export class UserAuthService {
         private readonly userService: UserService,
         private readonly mfaService: MfaService,
         private readonly mfaChallengeService: MfaChallengeService,
-        private readonly mfaPasskeyService: MfaPasskeyService,
         private readonly deviceService: DeviceService,
         private readonly sessionService: SessionService,
         private readonly authJwtService: AuthJwtService,
@@ -102,14 +103,14 @@ export class UserAuthService {
     ): EnumActivityLogAction {
         switch (loginWith) {
             case EnumUserLoginWith.socialApple:
-                return EnumActivityLogAction.userLoginApple;
+                return EnumActivityLogAction.userLoggedInWithApple;
             case EnumUserLoginWith.socialGoogle:
-                return EnumActivityLogAction.userLoginGoogle;
+                return EnumActivityLogAction.userLoggedInWithGoogle;
             case EnumUserLoginWith.passkey:
-                return EnumActivityLogAction.userLoginPasskey;
+                return EnumActivityLogAction.userLoggedInWithPasskey;
             case EnumUserLoginWith.credential:
             default:
-                return EnumActivityLogAction.userLoginCredential;
+                return EnumActivityLogAction.userLoggedInWithCredential;
         }
     }
 
@@ -123,13 +124,11 @@ export class UserAuthService {
         return user;
     }
 
-    private async assertPasskeyReauthentication(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
+    private async checkPasskeyReauthentication(
         user: IUser,
         passkeyChallengeToken: string,
         passkeyResponse: AuthenticationResponseJSON
-    ): Promise<IUserReauthenticationCheck> {
+    ): Promise<IUserReauthenticationResult> {
         const webAuthnChallenge =
             await this.mfaChallengeService.getWebAuthnChallengeForUser(
                 passkeyChallengeToken,
@@ -137,9 +136,7 @@ export class UserAuthService {
                 user.id
             );
 
-        const mfa = await this.mfaService.check(
-            requestContext,
-            apiKeyContext,
+        const { check, failure } = await this.mfaService.check(
             user.id,
             {
                 method: EnumMfaMethod.passkey,
@@ -149,13 +146,35 @@ export class UserAuthService {
             },
             webAuthnChallenge
         );
+        if (failure !== null) {
+            return { check: null, failure: { password: null, mfa: failure } };
+        }
 
         return {
-            isPasswordChecked: false,
-            mfa,
-            verificationId: null,
-            passkeyChallengeToken,
+            check: {
+                isPasswordChecked: false,
+                mfa: check,
+                verificationId: null,
+                passkeyChallengeToken,
+            },
+            failure: null,
         };
+    }
+
+    private async checkPassword(
+        credential: IUserCredential,
+        plainPassword: string | null
+    ): Promise<IUserPasswordAttemptLimit | null> {
+        const { user } = credential;
+        this.userPasswordService.assertPasswordAttemptAvailable(user);
+
+        const isMatch = await this.isCredentialMatch(credential, plainPassword);
+        if (!isMatch) {
+            return this.userPasswordService.getPasswordAttemptLimit();
+        }
+        this.assertPasswordNotExpired(user);
+
+        return null;
     }
 
     /** Resolves the active credential user of an email, counting nothing; an unknown, inactive, or passwordless account throws the credential error. */
@@ -188,52 +207,6 @@ export class UserAuthService {
         );
     }
 
-    /** Asserts the password of a credential: a lock throws the max-attempt error before the compare, a mismatch or a null password counts the failure and throws the max-attempt error when it locked, else not-match, and an expired password throws after a match. */
-    async assertPasswordAttempt(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        credential: IUserCredential,
-        plainPassword: string | null
-    ): Promise<void> {
-        const { user } = credential;
-        this.userPasswordService.assertPasswordAttemptAvailable(user);
-
-        const isMatch = await this.isCredentialMatch(credential, plainPassword);
-        if (!isMatch) {
-            const isLocked =
-                await this.userPasswordService.countFailedPasswordAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    user
-                );
-            if (isLocked) {
-                throw new UserPasswordAttemptMaxException();
-            }
-        }
-        this.assertPasswordMatched(isMatch);
-        this.assertPasswordNotExpired(user);
-    }
-
-    /** Asserts the password of an account holding one, counting a failure; returns at once for an account with no password. */
-    async assertCurrentPassword(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        user: IUser,
-        plainPassword: string | null
-    ): Promise<void> {
-        const credential = this.userPasswordService.getCredential(user);
-        if (credential === null) {
-            return;
-        }
-
-        await this.assertPasswordAttempt(
-            requestContext,
-            apiKeyContext,
-            credential,
-            plainPassword
-        );
-    }
-
     /** Throws when the account holds a password or has MFA on, the stronger proofs the email code never replaces. */
     async assertReauthenticationOtpAllowed(user: IUser): Promise<void> {
         const credential = this.userPasswordService.getCredential(user);
@@ -243,10 +216,8 @@ export class UserAuthService {
         }
     }
 
-    /** Asserts one passkey proof as the whole re-authentication when both passkey fields are present; otherwise the current password when the account has one, an MFA proof when MFA is on except for the mfaTotpEnable action after a password check, and the email code of the action for an account with neither, writing nothing on a match. */
-    async assertReauthentication(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
+    /** Checks one passkey proof as the whole re-authentication when both passkey fields are present; otherwise the current password when the account has one, an MFA proof when MFA is on except for the mfaTotpEnable action after a password check, and the email code of the action for an account with neither. Writes nothing: a match answers the check, a password mismatch answers the failure with the attempt limit before any MFA check, an MFA mismatch answers the MFA failure, and a lock, an expired password, a missing or invalid email code, and an uncounted MFA refusal throw. */
+    async checkReauthentication(
         user: IUser,
         {
             action,
@@ -258,11 +229,9 @@ export class UserAuthService {
             passkeyResponse,
             otp,
         }: IUserReauthenticationInput
-    ): Promise<IUserReauthenticationCheck> {
+    ): Promise<IUserReauthenticationResult> {
         if (passkeyChallengeToken !== null && passkeyResponse !== null) {
-            return this.assertPasskeyReauthentication(
-                requestContext,
-                apiKeyContext,
+            return this.checkPasskeyReauthentication(
                 user,
                 passkeyChallengeToken,
                 passkeyResponse
@@ -271,13 +240,19 @@ export class UserAuthService {
 
         const credential = this.userPasswordService.getCredential(user);
         const isPasswordChecked = credential !== null;
-        // Sequential by design: a failed password counts no MFA failure
-        await this.assertCurrentPassword(
-            requestContext,
-            apiKeyContext,
-            user,
-            password
-        );
+        if (credential !== null) {
+            // Sequential by design: a credential proof, awaited alone
+            const passwordLimit = await this.checkPassword(
+                credential,
+                password
+            );
+            if (passwordLimit !== null) {
+                return {
+                    check: null,
+                    failure: { password: passwordLimit, mfa: null },
+                };
+            }
+        }
 
         const isMfaEnabled = await this.mfaService.isEnabled(user.id);
         const requiresMfa =
@@ -286,13 +261,18 @@ export class UserAuthService {
                 !isPasswordChecked);
         let mfaCheck: IMfaCheck | null = null;
         if (requiresMfa) {
-            mfaCheck = await this.mfaService.check(
-                requestContext,
-                apiKeyContext,
+            const { check, failure } = await this.mfaService.check(
                 user.id,
                 { method, code, backupCode, passkeyResponse: null },
                 null
             );
+            if (failure !== null) {
+                return {
+                    check: null,
+                    failure: { password: null, mfa: failure },
+                };
+            }
+            mfaCheck = check;
         }
 
         let verificationId: string | null = null;
@@ -311,14 +291,81 @@ export class UserAuthService {
         }
 
         return {
-            isPasswordChecked,
-            mfa: mfaCheck,
-            verificationId,
-            passkeyChallengeToken: null,
+            check: {
+                isPasswordChecked,
+                mfa: mfaCheck,
+                verificationId,
+                passkeyChallengeToken: null,
+            },
+            failure: null,
         };
     }
 
-    /** Completes the proofs assertReauthentication checked on the caller's transaction: the passkey challenge claim, the password counter reset, the MFA completion with the verify entry, and the email code marked used, throwing when it was used first. */
+    /** Counts a failed re-authentication on the caller's transaction: a password failure counts the password attempt and adds the userReauthenticationFailed entry of the caller, an MFA failure counts through MfaService, which adds its own entry; true when the count locked. */
+    async countFailedReauthenticationInTx(
+        tx: IDatabaseTransactionClient,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        {
+            password: passwordLimit,
+            mfa: mfaFailure,
+        }: IUserReauthenticationFailure
+    ): Promise<boolean> {
+        if (passwordLimit === null) {
+            return this.mfaService.countFailedAttemptInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext.userId,
+                mfaFailure
+            );
+        }
+
+        const isLocked =
+            await this.userPasswordService.countFailedPasswordAttemptInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext.userId,
+                passwordLimit
+            );
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.userReauthenticationFailed,
+                userId: authContext.userId,
+                createdBy: authContext.userId,
+            }
+        );
+        await this.outboxService.addInTx(tx, entry);
+
+        return isLocked;
+    }
+
+    /** Throws the exception of a counted failed re-authentication: for a password failure UserPasswordAttemptMaxException when it locked, else UserPasswordNotMatchException; for an MFA failure the one MfaService.throwFailedAttempt throws. */
+    throwFailedReauthentication(
+        {
+            password: passwordLimit,
+            mfa: mfaFailure,
+        }: IUserReauthenticationFailure,
+        isLocked: boolean
+    ): never {
+        if (passwordLimit === null) {
+            return this.mfaService.throwFailedAttempt(mfaFailure, isLocked);
+        }
+
+        if (isLocked) {
+            throw new UserPasswordAttemptMaxException();
+        }
+
+        throw new UserPasswordNotMatchException();
+    }
+
+    /** Completes the proofs checkReauthentication checked on the caller's transaction: the passkey challenge claim, the password counter reset, the MFA completion with the verify entry, and the email code marked used, throwing when it was used first. */
     async completeReauthenticationInTx(
         tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
@@ -353,7 +400,7 @@ export class UserAuthService {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userVerifyMfa,
+                    action: EnumActivityLogAction.userMfaVerified,
                     userId: authContext.userId,
                     createdBy: authContext.userId,
                 }
@@ -378,12 +425,6 @@ export class UserAuthService {
             this.authPasswordUtil.isPasswordExpired(user.passwordExpired);
         if (isPasswordExpired) {
             throw new UserPasswordExpiredException();
-        }
-    }
-
-    assertPasswordMatched(isMatch: boolean): void {
-        if (!isMatch) {
-            throw new UserPasswordNotMatchException();
         }
     }
 
@@ -431,7 +472,7 @@ export class UserAuthService {
             null,
             null,
             {
-                action: EnumActivityLogAction.userVerifiedEmail,
+                action: EnumActivityLogAction.userEmailVerified,
                 userId: user.id,
                 createdBy: user.id,
             }
@@ -542,7 +583,7 @@ export class UserAuthService {
                 null,
                 null,
                 {
-                    action: EnumActivityLogAction.userRevokeSessionByDeviceLogin,
+                    action: EnumActivityLogAction.userSessionRevokedByDeviceLogin,
                     userId,
                     createdBy: user.id,
                     metadata,
@@ -618,25 +659,16 @@ export class UserAuthService {
         return user;
     }
 
-    /** Creates the login challenge on the caller's transaction and answers its token, the methods the user can finish with, and the passkey request options when the user owns a passkey. */
+    /** Creates the login challenge on the caller's transaction and answers its token, the given methods, and the given passkey request options; the options' challenge binds the challenge row. */
     async createMfaChallengeInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         device: IDeviceIdentity,
         loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserLoginWith
+        loginWith: EnumUserLoginWith,
+        methods: EnumMfaMethod[],
+        passkeyOptions: PublicKeyCredentialRequestOptionsJSON | null
     ): Promise<IUserLoginMfaChallenge> {
-        const credentials =
-            await this.mfaPasskeyService.getCredentialsByUser(userId);
-        const methods = await this.mfaService.getLoginMethods(
-            userId,
-            credentials
-        );
-        let passkeyOptions: PublicKeyCredentialRequestOptionsJSON | null = null;
-        if (methods.includes(EnumMfaMethod.passkey)) {
-            passkeyOptions =
-                await this.mfaPasskeyService.getAssertionOptions(credentials);
-        }
         const token = await this.mfaChallengeService.createInTx(tx, {
             purpose: EnumMfaChallengePurpose.login,
             userId,

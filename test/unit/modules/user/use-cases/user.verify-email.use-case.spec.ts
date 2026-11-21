@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
@@ -11,6 +12,12 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { User, Verification } from '@generated/prisma-client/client';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import type { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
 import { UserVerifyEmailUseCase } from '@modules/user/use-cases/user.verify-email.use-case';
@@ -18,12 +25,17 @@ import {
     buildRequestContext,
     buildApiKeyContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 
 describe('UserVerifyEmailUseCase', () => {
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
+    const tx = {} as IDatabaseTransactionClient;
 
     let useCase: UserVerifyEmailUseCase;
 
@@ -78,6 +90,9 @@ describe('UserVerifyEmailUseCase', () => {
         deletedBy: null,
     };
     beforeEach(async () => {
+        databaseService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
         userVerificationService.getOneActiveByEmailToken.mockResolvedValue({
             verification,
             user,
@@ -90,15 +105,21 @@ describe('UserVerifyEmailUseCase', () => {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
                 },
+                { provide: DatabaseService, useValue: databaseService },
+                DatabaseUtil,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService(TestUnitKitConfigValues),
+                },
             ],
         }).compile();
         useCase = module.get(UserVerifyEmailUseCase);
     });
 
     describe('execute', () => {
-        it('verifies the token with the context and answers empty', async () => {
-            const dto: UserVerifyEmailRequestDto = { token: 'raw-token' };
+        const dto: UserVerifyEmailRequestDto = { token: 'raw-token' };
 
+        it('opens one transaction over verifyEmailInTx and answers empty', async () => {
             const result = await useCase.execute(
                 requestContext,
                 apiKeyContext,
@@ -109,23 +130,65 @@ describe('UserVerifyEmailUseCase', () => {
             expect(
                 userVerificationService.getOneActiveByEmailToken
             ).toHaveBeenCalledWith('raw-token');
-            expect(userVerificationService.verifyEmail).toHaveBeenCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                userVerificationService.verifyEmailInTx
+            ).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 verification
             );
         });
 
-        it('rejects when the verify write rejects', async () => {
-            userVerificationService.verifyEmail.mockRejectedValue(
-                new Error('boom')
+        it('leaves withTransaction uncalled when the token is refused', async () => {
+            userVerificationService.getOneActiveByEmailToken.mockRejectedValue(
+                new UserNotFoundException()
             );
 
             await expect(
-                useCase.execute(requestContext, apiKeyContext, {
-                    token: 'raw-token',
-                })
-            ).rejects.toThrow('boom');
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+            });
+
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('maps a write conflict to UserTokenInvalidException', async () => {
+            userVerificationService.verifyEmailInTx.mockRejectedValue(
+                buildPrismaKnownRequestError('P2034')
+            );
+
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+            });
+        });
+
+        it('rethrows an AppBaseException raised in the transaction', async () => {
+            const error = new UserNotFoundException();
+            userVerificationService.verifyEmailInTx.mockRejectedValue(error);
+
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toBe(error);
+        });
+
+        it('wraps an unknown error raised in the transaction', async () => {
+            const error = new Error('boom');
+            userVerificationService.verifyEmailInTx.mockRejectedValue(error);
+
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: error,
+            });
         });
     });
 });

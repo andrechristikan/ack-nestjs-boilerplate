@@ -20,7 +20,9 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
 import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
+import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyUpdateStatusByAdminUseCase } from '@modules/api-key/use-cases/api-key.update-status-by-admin.use-case';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
@@ -105,6 +107,45 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
     describe('execute', () => {
         const updated: ApiKey = { ...apiKey, isActive: false };
 
+        beforeEach(() => {
+            apiKeyService.getOneById.mockResolvedValue(apiKey);
+        });
+
+        it('throws ApiKeyNotFoundException from getOneById and opens no transaction', async () => {
+            const failure = new ApiKeyNotFoundException();
+            apiKeyService.getOneById.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id,
+                    { isActive: false }
+                )
+            ).rejects.toBe(failure);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('throws ApiKeyExpiredException from assertNotExpired and opens no transaction', async () => {
+            const failure = new ApiKeyExpiredException();
+            apiKeyService.assertNotExpired.mockImplementation(() => {
+                throw failure;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id,
+                    { isActive: false }
+                )
+            ).rejects.toBe(failure);
+            expect(apiKeyService.assertNotExpired).toHaveBeenCalledWith(apiKey);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
         it('updates the status on the outbox transaction and wraps the result', async () => {
             apiKeyService.updateStatusByAdminInTx.mockResolvedValue(updated);
 
@@ -119,9 +160,10 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
             );
 
             expect(result).toEqual({ data: updated });
+            expect(apiKeyService.getOneById).toHaveBeenCalledWith(apiKey.id);
             expect(apiKeyService.updateStatusByAdminInTx).toHaveBeenCalledWith(
                 tx,
-                apiKey.id,
+                apiKey,
                 false
             );
         });
@@ -143,7 +185,7 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminApiKeyUpdateStatus,
+                    action: EnumActivityLogAction.adminApiKeyStatusUpdated,
                     metadata,
                 }
             );
@@ -182,7 +224,10 @@ describe('ApiKeyUpdateStatusByAdminUseCase', () => {
                     apiKey.id,
                     { isActive: false }
                 )
-            ).rejects.toBeInstanceOf(ApiKeyNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'apiKey',
+                statusCode: EnumApiKeyStatusCodeError.notFound,
+            });
         });
 
         it('wraps any other error in AppUnknownException', async () => {

@@ -60,13 +60,10 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
         }: MfaTotpEnableRequestDto
     ): Promise<IResponseReturn<MfaBackupCodesResponseDto>> {
         const { user } = userContext;
-        // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
+        // Sequential by design: a credential proof, awaited alone
         await this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.totp);
-        const check = await this.userAuthService.assertReauthentication(
-            requestContext,
-            apiKeyContext,
-            user,
-            {
+        const { check, failure } =
+            await this.userAuthService.checkReauthentication(user, {
                 action: EnumUserReauthenticationAction.mfaTotpEnable,
                 password: password ?? null,
                 method:
@@ -76,14 +73,46 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
                 passkeyChallengeToken: passkeyChallengeToken ?? null,
                 passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
-            }
-        );
-        const totpStep = await this.mfaService.checkTotpSetupCode(
-            requestContext,
-            apiKeyContext,
-            authContext.userId,
-            code
-        );
+            });
+        if (failure !== null) {
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.userAuthService.countFailedReauthenticationInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        failure
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(
+                failure,
+                isLocked
+            );
+        }
+        const {
+            totpStep,
+            pendingSecret,
+            failure: setupFailure,
+        } = await this.mfaService.checkTotpSetupCode(authContext.userId, code);
+        if (setupFailure !== null) {
+            const isSetupLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.mfaService.countFailedAttemptInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext.userId,
+                        setupFailure
+                    )
+            );
+
+            return this.mfaService.throwFailedAttempt(
+                setupFailure,
+                isSetupLocked
+            );
+        }
 
         try {
             const backupCodes = await this.databaseService.withTransaction(
@@ -98,6 +127,7 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
                     await this.mfaTotpService.enableInTx(
                         tx,
                         authContext.userId,
+                        pendingSecret,
                         totpStep
                     );
                     await this.mfaService.resetAttemptInTx(
@@ -114,7 +144,7 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
                         authContext,
                         null,
                         {
-                            action: EnumActivityLogAction.userEnableMfaTotp,
+                            action: EnumActivityLogAction.userMfaTotpEnabled,
                             userId: authContext.userId,
                             createdBy: authContext.userId,
                         }

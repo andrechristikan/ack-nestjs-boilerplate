@@ -43,10 +43,13 @@ export class ApiKeyUpdateByAdminUseCase implements IAppUseCase<
         id: string,
         { name }: ApiKeyUpdateRequestDto
     ): Promise<IResponseReturn<IApiKey>> {
+        const row = await this.apiKeyService.getOneById(id);
+        this.apiKeyService.assertActive(row);
+
         const updated = await this.databaseService.withTransaction(async tx => {
             const apiKey = await this.apiKeyService.updateByAdminInTx(
                 tx,
-                id,
+                row,
                 name
             );
 
@@ -61,7 +64,7 @@ export class ApiKeyUpdateByAdminUseCase implements IAppUseCase<
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminApiKeyUpdate,
+                    action: EnumActivityLogAction.adminApiKeyUpdated,
                     metadata,
                 }
             );

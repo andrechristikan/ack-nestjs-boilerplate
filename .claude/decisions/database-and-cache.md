@@ -15,12 +15,13 @@ Rule: `repository.md`, Writes.
 - A hand-written relation map: every relation added to the schema also needs an edit in the database kit.
 - A generated relation map: it reads the Prisma runtime data model to stamp writes no repository makes.
 
-### Validation fails fast, before the transaction opens
+### Validation fails fast, before the transaction opens, its checks in one `Promise.all`
 
-Rule: `transaction.md`, Transactions.
+Rule: `transaction.md`, Transactions; `concurrency.md`, Together and alone.
 
 - The guarded statement inside the transaction as the only check: the request opens a transaction, and may write, before it learns of a failure a read would have answered, and the answer is a guard's count where a named validation was owed.
 - The read alone, with no guard on the statement: a change between the read and the write passes unchecked.
+- Every gate first: the checks sit on one level, and the first to fail answers.
 
 ### Every `ObjectId` field carries a relation
 
@@ -29,14 +30,25 @@ Rule: `repository.md`, Schema.
 - A bare id column: nothing ties the value to a row, and no read can `include` or filter through it.
 - A relation on the audit fields too: every model would relate to `User` three times over, for values a read never joins.
 
-### One transaction per flow, cross-module allowed
+### One transaction per flow whose writes span more than one table or include an outbox row, cross-module allowed; an unbounded cascade is a chunked, idempotent job
 
-Rule: `transaction.md`, Transactions.
+Rule: `discipline.md`, Hard rules; `transaction.md`, Transactions; `database.md`.
 
 - Two transactions where one suffices: a flow is one transaction, so a failure leaves no committed half.
 - A service or a repository opening the transaction: the boundary then hides below the action, and a second caller nests it or splits the flow.
 - A compensating write after commit: it exists only when Redis is written after commit, and Redis is not the authority.
 - One transaction over every row of a large job: it outlives the transaction's lifetime.
+- One request transaction over an unbounded cascade: it holds an unbounded number of writes.
+- Chunks inside the request transaction: the transaction still holds every row.
+- The outbox row left out of the boundary, added in a second commit: a crash between the two commits loses the row.
+- A transaction for every write: ceremony on a one-table write with no outbox row, which needs no atomicity with anything.
+- An `afterCommit` callback alone for a Redis or BullMQ update: nothing recovers it when the process dies after the commit, where the sweep recovers an outbox row.
+
+### A cap is counted once, before the transaction
+
+Rule: `transaction.md`, Queries.
+
+- A second count inside the transaction that creates the row: it closes only the window between the first count and the insert, which Normal use leaves out, while two concurrent creating transactions pass it anyway.
 
 ### A relation scalar no query filters on carries no index
 
@@ -61,6 +73,22 @@ Rule: `analytic.md`.
 
 - One document per signal holding the item list: it is bounded by the document size, cut at a row cap, and sorted in memory.
 - Replacing rows inside one transaction: thousands of writes run against the transaction lifetime.
+
+## Concurrency
+
+### Independent statements on one `tx` run in one `Promise.all`, reads apart from writes
+
+Rule: `concurrency.md`, Together and alone.
+
+- Always in turn: the MongoDB Node.js driver documents no support for parallel operations in one transaction, but a rolled-back probe of 780 parallel transactions and 60 committed refreshes through `DatabaseService.withTransaction` on Prisma failed none.
+- A read beside a write on one `tx`: a write follows its checks.
+- Any read on `tx` bars its method: a read that only serves the method's own write validates nothing, and barring it puts independent writes back in turn.
+
+### A cheap check precedes the expensive or external work it guards
+
+Rule: `concurrency.md`, Together and alone.
+
+- Every independent call in one `Promise.all`: a refused request would still run the S3 reads to save a millisecond on the accepted one.
 
 ## Cache and Redis
 

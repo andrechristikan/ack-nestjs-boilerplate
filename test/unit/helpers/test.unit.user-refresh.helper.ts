@@ -25,6 +25,7 @@ export function stubUserRefreshSession(
     doubles.authJwtService.payloadToken.mockReturnValue(fixture.payload);
     doubles.authJwtService.getRefreshJti.mockReturnValue(fixture.oldJti);
     doubles.authJwtService.refreshToken.mockReturnValue(fixture.refreshed);
+    doubles.sessionService.existsLiveByJti.mockResolvedValue(true);
     doubles.sessionService.updateJtiInTx.mockResolvedValue(true);
 }
 

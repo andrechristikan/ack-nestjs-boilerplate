@@ -2,6 +2,8 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
 import type { Workspace } from '@generated/prisma-client/client';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
@@ -18,10 +20,13 @@ import {
     buildWorkspaceContext,
     buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 describe('WorkspaceUpdateUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const tx = {} as IDatabaseTransactionClient;
     const workspace: Workspace = buildWorkspace();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
@@ -36,10 +41,13 @@ describe('WorkspaceUpdateUseCase', () => {
     let useCase: WorkspaceUpdateUseCase;
 
     beforeEach(async () => {
+        databaseService.withTransaction.mockImplementation(fn => fn(tx));
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceUpdateUseCase,
                 { provide: WorkspaceService, useValue: workspaceService },
+                { provide: DatabaseService, useValue: databaseService },
             ],
         }).compile();
 
@@ -47,12 +55,12 @@ describe('WorkspaceUpdateUseCase', () => {
     });
 
     describe('execute', () => {
-        it('writes the details of the context workspace with the context context and wraps the workspace', async () => {
+        it('writes the details of the context workspace in one transaction and wraps the workspace', async () => {
             const body: WorkspaceUpdateRequestDto = {
                 name: 'Acme 2',
                 description: 'Our team workspace',
             };
-            workspaceService.updateWorkspace.mockResolvedValue(workspace);
+            workspaceService.updateWorkspaceInTx.mockResolvedValue(workspace);
 
             const result = await useCase.execute(
                 requestContext,
@@ -63,7 +71,9 @@ describe('WorkspaceUpdateUseCase', () => {
             );
 
             expect(result).toEqual({ data: workspace });
-            expect(workspaceService.updateWorkspace).toHaveBeenCalledWith(
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(workspaceService.updateWorkspaceInTx).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -77,7 +87,7 @@ describe('WorkspaceUpdateUseCase', () => {
                 name: 'Acme 2',
                 description: null,
             };
-            workspaceService.updateWorkspace.mockResolvedValue(workspace);
+            workspaceService.updateWorkspaceInTx.mockResolvedValue(workspace);
 
             await useCase.execute(
                 requestContext,
@@ -87,7 +97,8 @@ describe('WorkspaceUpdateUseCase', () => {
                 body
             );
 
-            expect(workspaceService.updateWorkspace).toHaveBeenCalledWith(
+            expect(workspaceService.updateWorkspaceInTx).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -97,7 +108,7 @@ describe('WorkspaceUpdateUseCase', () => {
         });
 
         it('rejects with the write failure', async () => {
-            workspaceService.updateWorkspace.mockRejectedValue(
+            workspaceService.updateWorkspaceInTx.mockRejectedValue(
                 new WorkspaceNotFoundException()
             );
 
@@ -112,7 +123,10 @@ describe('WorkspaceUpdateUseCase', () => {
                         description: null,
                     }
                 )
-            ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.notFound,
+            });
         });
     });
 });

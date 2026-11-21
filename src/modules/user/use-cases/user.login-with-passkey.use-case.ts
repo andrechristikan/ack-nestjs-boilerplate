@@ -50,26 +50,37 @@ export class UserLoginWithPasskeyUseCase implements IAppUseCase<
             device,
         }: UserLoginPasskeyRequestDto
     ): Promise<IResponseReturn<IUserLoginTokenOutcome>> {
-        // Sequential by design: gates before the work they guard; the lock and the check precede the writes
-        const { webAuthnChallenge } = await this.mfaChallengeService.get(
-            challengeToken,
-            EnumMfaChallengePurpose.passwordless
-        );
-        const passkey = await this.mfaPasskeyService.getOneForLogin(
-            passkeyResponse.id
-        );
-
-        const user = await this.userAuthService.getOneForPasskeyLogin(
-            passkey.userId
-        );
-        await this.mfaService.assertAttemptAvailable(user.id);
-        const checked = await this.mfaService.checkPasskeyLogin(
-            requestContext,
-            apiKeyContext,
+        const [{ webAuthnChallenge }, passkey] = await Promise.all([
+            this.mfaChallengeService.get(
+                challengeToken,
+                EnumMfaChallengePurpose.passwordless
+            ),
+            this.mfaPasskeyService.getOneForLogin(passkeyResponse.id),
+        ]);
+        const [user] = await Promise.all([
+            this.userAuthService.getOneForPasskeyLogin(passkey.userId),
+            this.mfaService.assertAttemptAvailable(passkey.userId),
+        ]);
+        // Sequential by design: a credential proof, awaited alone
+        const { check, failure } = await this.mfaService.checkPasskeyLogin(
             user.id,
             passkeyResponse,
             webAuthnChallenge
         );
+        if (failure !== null) {
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.mfaService.countFailedAttemptInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        user.id,
+                        failure
+                    )
+            );
+
+            return this.mfaService.throwFailedAttempt(failure, isLocked);
+        }
         const lastWorkspaceId =
             await this.workspaceMemberService.resolveLastWorkspaceId(
                 user.id,
@@ -81,13 +92,13 @@ export class UserLoginWithPasskeyUseCase implements IAppUseCase<
         try {
             const { tokens } = await this.databaseService.withTransaction(
                 async tx => {
-                    await this.mfaChallengeService.consumeInTx(
+                    await this.mfaService.completeChallengeInTx(
                         tx,
+                        user.id,
                         challengeToken,
                         EnumMfaChallengePurpose.passwordless,
-                        user.id
+                        check
                     );
-                    await this.mfaService.completeInTx(tx, user.id, checked);
 
                     return this.userAuthService.createTokenAndSessionInTx(
                         tx,

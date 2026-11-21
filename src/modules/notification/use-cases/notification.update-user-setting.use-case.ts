@@ -1,3 +1,4 @@
+import { DatabaseService } from '@common/database/services/database.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { NotificationUserSettingRequestDto } from '@modules/notification/dtos/request/notification.user-setting.request.dto';
@@ -17,7 +18,10 @@ export class NotificationUpdateUserSettingUseCase implements IAppUseCase<
     ],
     IResponseReturn<void>
 > {
-    constructor(private readonly notificationService: NotificationService) {}
+    constructor(
+        private readonly notificationService: NotificationService,
+        private readonly databaseService: DatabaseService
+    ) {}
 
     async execute(
         requestContext: IRequestContext,
@@ -25,11 +29,16 @@ export class NotificationUpdateUserSettingUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         data: NotificationUserSettingRequestDto
     ): Promise<IResponseReturn<void>> {
-        await this.notificationService.updateUserSetting(
-            requestContext,
-            apiKeyContext,
-            authContext,
-            data
+        this.notificationService.validateUserSetting(data.type, data.channel);
+
+        await this.databaseService.withTransaction(tx =>
+            this.notificationService.updateUserSettingInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                data
+            )
         );
 
         return {};

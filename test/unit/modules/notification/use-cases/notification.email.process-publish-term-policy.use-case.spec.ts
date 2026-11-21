@@ -22,6 +22,7 @@ import { NotificationService } from '@modules/notification/services/notification
 import { NotificationEmailProcessPublishTermPolicyUseCase } from '@modules/notification/use-cases/notification.email.process-publish-term-policy.use-case';
 import type { ITermPolicyPublishPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRecipientService } from '@modules/term-policy/services/term-policy.recipient.service';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 
 describe('NotificationEmailProcessPublishTermPolicyUseCase', () => {
     const termPolicyRecipientService: MockProxy<TermPolicyRecipientService> =
@@ -175,6 +176,26 @@ describe('NotificationEmailProcessPublishTermPolicyUseCase', () => {
                 now,
                 'admin-id'
             );
+        });
+
+        it('calls markEmailSentInTx on the tx while markSentInTx is still pending', async () => {
+            const markSent = buildDeferred<void>();
+            termPolicyRecipientService.markSentInTx.mockReturnValue(
+                markSent.promise
+            );
+
+            const running = useCase.execute(payload);
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(notificationService.markEmailSentInTx).toHaveBeenCalledWith(
+                tx,
+                ['notification-1', 'notification-2'],
+                now,
+                'admin-id'
+            );
+
+            markSent.resolve();
+            await running;
         });
 
         it('opens no transaction and marks nothing when no recipient is sent', async () => {

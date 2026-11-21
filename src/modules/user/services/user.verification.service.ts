@@ -1,7 +1,3 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
@@ -15,7 +11,6 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
 import { UserReauthenticationOtpInvalidException } from '@modules/user/exceptions/user.reauthentication-otp-invalid.exception';
@@ -45,11 +40,9 @@ export class UserVerificationService {
     constructor(
         private readonly userVerificationRepository: UserVerificationRepository,
         private readonly userRepository: UserRepository,
-        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly notificationQueue: NotificationQueue,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperHashService: HelperHashService,
         private readonly helperDateService: HelperDateService,
         private readonly helperNumberService: HelperNumberService,
@@ -142,65 +135,48 @@ export class UserVerificationService {
         return { verification, user };
     }
 
-    /** Marks the verification used and the user verified, and adds the verifiedEmail effect and the activity entry in the same transaction, dispatched after the commit. */
-    async verifyEmail(
+    /** Marks the verification used and the user verified, and adds the verifiedEmail effect and the activity entry on the caller's transaction; a verification used first throws UserTokenInvalidException. */
+    async verifyEmailInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         verification: Verification
     ): Promise<void> {
-        try {
-            const verifiedAt = this.helperDateService.create();
-            await this.databaseService.withTransaction(async tx => {
-                const isMarkedUsed =
-                    await this.userVerificationRepository.markUsedInTx(
-                        tx,
-                        verification.id,
-                        verifiedAt,
-                        verification.userId
-                    );
-                if (!isMarkedUsed) {
-                    throw new UserTokenInvalidException();
-                }
-                await this.userRepository.markVerifiedInTx(
-                    tx,
-                    verification.userId,
-                    verifiedAt
-                );
-                const effect = this.notificationQueue.notify(
-                    EnumNotificationKind.verifiedEmail,
-                    {
-                        userId: verification.userId,
-                        proceedBy: verification.userId,
-                        reference: verification.reference,
-                    }
-                );
-                const entry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    null,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userVerifiedEmail,
-                        userId: verification.userId,
-                        createdBy: verification.userId,
-                    }
-                );
-                await this.outboxService.addManyInTx(tx, [entry, effect]);
-            });
-
-            return;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new UserTokenInvalidException();
-            }
-
-            throw new AppUnknownException(err);
+        const verifiedAt = this.helperDateService.create();
+        const isMarkedUsed = await this.userVerificationRepository.markUsedInTx(
+            tx,
+            verification.id,
+            verifiedAt,
+            verification.userId
+        );
+        if (!isMarkedUsed) {
+            throw new UserTokenInvalidException();
         }
+        await this.userRepository.markVerifiedInTx(
+            tx,
+            verification.userId,
+            verifiedAt
+        );
+        const effect = this.notificationQueue.notify(
+            EnumNotificationKind.verifiedEmail,
+            {
+                userId: verification.userId,
+                proceedBy: verification.userId,
+                reference: verification.reference,
+            }
+        );
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            null,
+            null,
+            {
+                action: EnumActivityLogAction.userEmailVerified,
+                userId: verification.userId,
+                createdBy: verification.userId,
+            }
+        );
+        await this.outboxService.addManyInTx(tx, [entry, effect]);
     }
 
     /** False when the user is verified or the last verification email is inside the resend window. */
@@ -249,30 +225,6 @@ export class UserVerificationService {
             userId,
             verifiedAt
         );
-    }
-
-    /** Creates an email verification for the user, replacing its active one, and adds the verificationEmail effect and the activity entry in the same transaction, dispatched after the commit. */
-    async sendEmail(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        userId: string,
-        email: string
-    ): Promise<void> {
-        await this.databaseService.withTransaction(async tx => {
-            await this.sendEmailInTx(tx, userId, email);
-            const entry = this.activityLogQueue.recordEffect(
-                requestContext,
-                apiKeyContext,
-                null,
-                null,
-                {
-                    action: EnumActivityLogAction.userSendVerificationEmail,
-                    userId,
-                    createdBy: userId,
-                }
-            );
-            await this.outboxService.addInTx(tx, entry);
-        });
     }
 
     /** Creates an email verification for the user, replacing its active one, and adds the verificationEmail effect on the caller's transaction. */

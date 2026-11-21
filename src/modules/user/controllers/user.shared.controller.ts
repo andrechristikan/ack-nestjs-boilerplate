@@ -152,9 +152,9 @@ export class UserSharedController {
     @ApiKeyProtected()
     @Get('/profile/get')
     async profile(
-        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext
+        @UserContext() userContext: IUserContext
     ): Promise<IResponseReturn<IUserProfile>> {
-        return this.userGetProfileUseCase.execute(authContext);
+        return this.userGetProfileUseCase.execute(userContext);
     }
 
     @Doc({ summary: 'update profile' })
@@ -214,6 +214,7 @@ export class UserSharedController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Body({ schema: UserUpdateProfilePhotoRequestSchema })
         body: UserUpdateProfilePhotoRequestDto
     ): Promise<IResponseReturn<void>> {
@@ -221,6 +222,7 @@ export class UserSharedController {
             requestContext,
             apiKeyContext,
             authContext,
+            userContext,
             body
         );
     }
@@ -240,6 +242,7 @@ export class UserSharedController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @UploadedFile(
             FileRequiredPipe(),
             FileExtensionPipe([
@@ -254,6 +257,7 @@ export class UserSharedController {
             requestContext,
             apiKeyContext,
             authContext,
+            userContext,
             file
         );
     }

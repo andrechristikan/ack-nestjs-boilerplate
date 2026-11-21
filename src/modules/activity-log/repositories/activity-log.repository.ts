@@ -180,19 +180,19 @@ export class ActivityLogRepository implements IActivityLogRepository {
     async createMany(rows: IActivityLogCreate[]): Promise<void> {
         const ids = rows.map(({ id }) => id);
 
-        await this.databaseService.withTransaction(async tx => {
-            const existing = await tx.activityLog.findMany({
+        const existing = await this.databaseService.client.activityLog.findMany(
+            {
                 where: { id: { in: ids } },
                 select: { id: true },
-            });
-            const existingIds = new Set(existing.map(row => row.id));
-            const absentRows = rows.filter(({ id }) => !existingIds.has(id));
-            if (absentRows.length === 0) {
-                return;
             }
+        );
+        const existingIds = new Set(existing.map(row => row.id));
+        const absentRows = rows.filter(({ id }) => !existingIds.has(id));
+        if (absentRows.length === 0) {
+            return;
+        }
 
-            const data = this.mapCreateManyData(absentRows);
-            await tx.activityLog.createMany({ data });
-        });
+        const data = this.mapCreateManyData(absentRows);
+        await this.databaseService.client.activityLog.createMany({ data });
     }
 }

@@ -30,7 +30,7 @@ A module is `@Global()` only when a guard, strategy, interceptor, or decorator i
 | use case | `use-cases/<module>.<action>.use-case.ts`, one per endpoint or job, implements `IAppUseCase`, one public `async execute` | `src/modules/device/use-cases/` |
 | controller | `controllers/<module>.<scope>.controller.ts`, one per scope | `src/modules/device/controllers/device.shared.controller.ts` |
 
-A queue, a processor, and the use cases its jobs run follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by `<module>.module.ts`. A gate owned by another module goes in the use case around the service call, an effect or an activity entry in the write's transaction (`.claude/rules/effects.md`), and a write needing one transaction across modules goes in the use case, calling each service's `*InTx` method (`.claude/rules/use-case.md`).
+A queue, a processor, and the use cases its jobs run follow `.claude/skills/ack-build/references/add-queue.md`. A cache class goes in `caches/`, provided by `<module>.module.ts`. A gate owned by another module goes in the use case's fail-fast `Promise.all` beside the other checks, an effect or an activity entry in the write's transaction (`.claude/rules/effects.md`), and a write needing one transaction across modules goes in the use case, calling each service's `*InTx` method (`.claude/rules/use-case.md`).
 
 ## 5. The module files
 

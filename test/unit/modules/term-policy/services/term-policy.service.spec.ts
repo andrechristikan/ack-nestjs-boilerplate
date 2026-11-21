@@ -9,12 +9,13 @@ import {
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
+import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
@@ -22,10 +23,6 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    DatabaseUniqueConstraintCode,
-    DatabaseWriteConflictCode,
-} from '@common/database/constants/database.constant';
 import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
@@ -41,7 +38,6 @@ import {
     EnumActivityLogAction,
     EnumTermPolicyStatus,
     EnumTermPolicyType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
@@ -57,12 +53,13 @@ import {
     EnumTermPolicyProcess,
     EnumTermPolicyQueue,
 } from '@modules/term-policy/enums/term-policy.enum';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type {
     ITermPolicyContent,
     ITermPolicyContentUpload,
+    ITermPolicyCreate,
     ITermPolicyDeleteContentEffect,
     ITermPolicyPublishEffect,
+    ITermPolicyPublishPrepared,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
 import { TermPolicyContentTypeInvalidException } from '@modules/term-policy/exceptions/term-policy.content-type-invalid.exception';
@@ -78,6 +75,7 @@ describe('TermPolicyService', () => {
     const termPolicyRepository: MockProxy<TermPolicyRepository> =
         mock<TermPolicyRepository>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
+    const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
@@ -218,6 +216,7 @@ describe('TermPolicyService', () => {
                     useValue: termPolicyRepository,
                 },
                 { provide: AwsS3Service, useValue: awsS3Service },
+                { provide: AwsSESService, useValue: awsSESService },
                 TermPolicyUtil,
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
@@ -240,6 +239,22 @@ describe('TermPolicyService', () => {
         }).compile();
 
         service = module.get(TermPolicyService);
+    });
+
+    describe('assertEmailDeliverable', () => {
+        it('throws AwsSesNotConfiguredException when SES is not initialized', () => {
+            awsSESService.isInitialized.mockReturnValue(false);
+
+            expect(() => service.assertEmailDeliverable()).toThrow(
+                AwsSesNotConfiguredException
+            );
+        });
+
+        it('returns when SES is initialized', () => {
+            awsSESService.isInitialized.mockReturnValue(true);
+
+            expect(() => service.assertEmailDeliverable()).not.toThrow();
+        });
     });
 
     describe('getListByAdmin', () => {
@@ -350,58 +365,30 @@ describe('TermPolicyService', () => {
         });
     });
 
-    describe('createByAdmin', () => {
-        it('checks the content and writes nothing when one is not a text template', async () => {
+    describe('prepareCreateByAdmin', () => {
+        const create: ITermPolicyCreate = {
+            type: EnumTermPolicyType.privacy,
+            version: 1,
+            contents: [
+                {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/1/en.hbs',
+                },
+            ],
+        };
+
+        beforeEach(() => {
             termPolicyRepository.existsByVersionAndType.mockResolvedValue(
                 false
             );
-            termPolicyContentService.assertContentText.mockRejectedValueOnce(
-                new TermPolicyContentTypeInvalidException()
-            );
-
-            const promise = service.createByAdmin(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'term-policy-1',
-                {
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                    contents: [
-                        {
-                            language: EnumMessageLanguage.en,
-                            size: 1024,
-                            key: 'term-policies/privacy/1/a.hbs',
-                        },
-                    ],
-                }
-            );
-
-            await expect(promise).rejects.toBeInstanceOf(
-                TermPolicyContentTypeInvalidException
-            );
-            expect(
-                termPolicyContentService.assertContentText
-            ).toHaveBeenCalledExactlyOnceWith('term-policies/privacy/1/a.hbs');
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(termPolicyRepository.createInTx).not.toHaveBeenCalled();
         });
 
         it('throws TermPolicyExistException when the version and type already exist', async () => {
             termPolicyRepository.existsByVersionAndType.mockResolvedValue(true);
 
             await expect(
-                service.createByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1',
-                    {
-                        type: EnumTermPolicyType.privacy,
-                        version: 1,
-                        contents: [],
-                    }
-                )
+                service.prepareCreateByAdmin({ ...create, contents: [] })
             ).rejects.toMatchObject({
                 constructor: TermPolicyExistException,
                 module: 'termPolicy',
@@ -410,63 +397,36 @@ describe('TermPolicyService', () => {
         });
 
         it('throws TermPolicyLanguageDuplicateException when languages repeat', async () => {
-            termPolicyRepository.existsByVersionAndType.mockResolvedValue(
-                false
-            );
-
             await expect(
-                service.createByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1',
-                    {
-                        type: EnumTermPolicyType.privacy,
-                        version: 1,
-                        contents: [
-                            {
-                                language: EnumMessageLanguage.en,
-                                size: 1024,
-                                key: 'term-policies/privacy/1/a.hbs',
-                            },
-                            {
-                                language: EnumMessageLanguage.en,
-                                size: 1024,
-                                key: 'b.hbs',
-                            },
-                        ],
-                    }
-                )
+                service.prepareCreateByAdmin({
+                    ...create,
+                    contents: [
+                        ...create.contents,
+                        {
+                            language: EnumMessageLanguage.en,
+                            size: 1024,
+                            key: 'b.hbs',
+                        },
+                    ],
+                })
             ).rejects.toMatchObject({
                 constructor: TermPolicyLanguageDuplicateException,
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.languageDuplicate,
             });
-            expect(termPolicyRepository.createInTx).not.toHaveBeenCalled();
         });
 
-        it('throws TermPolicyContentKeyInvalidException and writes nothing when a content key is outside the policy path', async () => {
-            termPolicyRepository.existsByVersionAndType.mockResolvedValue(
-                false
-            );
-
-            const promise = service.createByAdmin(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'term-policy-1',
-                {
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                    contents: [
-                        {
-                            language: EnumMessageLanguage.en,
-                            size: 1024,
-                            key: 'other/path/en.hbs',
-                        },
-                    ],
-                }
-            );
+        it('throws TermPolicyContentKeyInvalidException when a content key is outside the policy path', async () => {
+            const promise = service.prepareCreateByAdmin({
+                ...create,
+                contents: [
+                    {
+                        language: EnumMessageLanguage.en,
+                        size: 1024,
+                        key: 'other/path/en.hbs',
+                    },
+                ],
+            });
 
             await expect(promise).rejects.toMatchObject({
                 constructor: TermPolicyContentKeyInvalidException,
@@ -474,139 +434,121 @@ describe('TermPolicyService', () => {
                 statusCode: EnumTermPolicyStatusCodeError.contentKeyInvalid,
             });
             expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
-            expect(termPolicyRepository.createInTx).not.toHaveBeenCalled();
         });
 
-        it('throws TermPolicyContentSizeExceededException and writes nothing when a content size exceeds the configured max', async () => {
-            termPolicyRepository.existsByVersionAndType.mockResolvedValue(
-                false
-            );
-
-            const promise = service.createByAdmin(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'term-policy-1',
-                {
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                    contents: [
-                        {
-                            language: EnumMessageLanguage.en,
-                            size: 999999,
-                            key: 'term-policies/privacy/1/b.hbs',
-                        },
-                    ],
-                }
-            );
+        it('throws TermPolicyContentSizeExceededException when a content size exceeds the configured max', async () => {
+            const promise = service.prepareCreateByAdmin({
+                ...create,
+                contents: [
+                    {
+                        language: EnumMessageLanguage.en,
+                        size: 999999,
+                        key: 'term-policies/privacy/1/b.hbs',
+                    },
+                ],
+            });
 
             await expect(promise).rejects.toMatchObject({
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.contentSizeExceeded,
             });
             expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
-            expect(termPolicyRepository.createInTx).not.toHaveBeenCalled();
         });
 
         it('throws AwsS3NotConfiguredException when S3 is not initialized', async () => {
-            termPolicyRepository.existsByVersionAndType.mockResolvedValue(
-                false
-            );
             awsS3Service.isInitialized.mockReturnValue(false);
 
-            const promise = service.createByAdmin(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'term-policy-1',
-                {
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                    contents: [
-                        {
-                            language: EnumMessageLanguage.en,
-                            size: 1024,
-                            key: 'term-policies/privacy/1/en.hbs',
-                        },
-                    ],
-                }
-            );
-
-            await expect(promise).rejects.toMatchObject({
+            await expect(
+                service.prepareCreateByAdmin(create)
+            ).rejects.toMatchObject({
                 constructor: AwsS3NotConfiguredException,
                 module: 'aws',
                 statusCode: EnumAwsStatusCodeError.s3NotConfigured,
             });
             expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
-            expect(termPolicyRepository.createInTx).not.toHaveBeenCalled();
         });
 
-        it('creates the term policy with the given id and presigned contents', async () => {
-            termPolicyRepository.existsByVersionAndType.mockResolvedValue(
-                false
+        it('throws the content text exception when a content is not a text template', async () => {
+            termPolicyContentService.assertContentText.mockRejectedValueOnce(
+                new TermPolicyContentTypeInvalidException()
             );
+
+            await expect(
+                service.prepareCreateByAdmin(create)
+            ).rejects.toMatchObject({
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentTypeInvalid,
+            });
+            expect(
+                termPolicyContentService.assertContentText
+            ).toHaveBeenCalledExactlyOnceWith('term-policies/privacy/1/en.hbs');
+            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
+        });
+
+        it('returns the contents presigned as private', async () => {
             const mapped: IAwsS3 = { ...contentEn };
             awsS3Service.mapPresign.mockReturnValue(mapped);
+
+            const result = await service.prepareCreateByAdmin(create);
+
+            expect(result).toEqual({
+                contents: [{ language: EnumMessageLanguage.en, ...mapped }],
+            });
+            expect(awsS3Service.mapPresign).toHaveBeenCalledWith(
+                { key: 'term-policies/privacy/1/en.hbs', size: 1024 },
+                { access: EnumAwsS3Accessibility.private }
+            );
+        });
+    });
+
+    describe('createByAdminInTx', () => {
+        const create: ITermPolicyCreate = {
+            type: EnumTermPolicyType.privacy,
+            version: 1,
+            contents: [
+                {
+                    language: EnumMessageLanguage.en,
+                    size: 1024,
+                    key: 'term-policies/privacy/1/en.hbs',
+                },
+            ],
+        };
+        const contents: ITermPolicyContent[] = [contentEn];
+
+        it('creates the term policy with the given id and presigned contents on the tx', async () => {
             termPolicyRepository.createInTx.mockResolvedValue(draftTermPolicy);
 
-            const result = await service.createByAdmin(
+            const result = await service.createByAdminInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'term-policy-1',
-                {
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                    contents: [
-                        {
-                            language: EnumMessageLanguage.en,
-                            size: 1024,
-                            key: 'term-policies/privacy/1/en.hbs',
-                        },
-                    ],
-                }
+                create,
+                contents
             );
 
             expect(result).toBe(draftTermPolicy);
-            expect(awsS3Service.mapPresign).toHaveBeenCalledWith(
-                {
-                    key: 'term-policies/privacy/1/en.hbs',
-                    size: 1024,
-                },
-                { access: EnumAwsS3Accessibility.private }
-            );
             expect(termPolicyRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 'term-policy-1',
                 EnumTermPolicyType.privacy,
                 1,
-                [{ language: EnumMessageLanguage.en, ...mapped }]
+                contents
             );
         });
 
         it('adds the create entry from the id, type, and version on the same tx after the write', async () => {
-            termPolicyRepository.existsByVersionAndType.mockResolvedValue(
-                false
-            );
-            awsS3Service.mapPresign.mockReturnValue({ ...contentEn });
             termPolicyRepository.createInTx.mockResolvedValue(draftTermPolicy);
 
-            await service.createByAdmin(
+            await service.createByAdminInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
                 'term-policy-1',
-                {
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                    contents: [
-                        {
-                            language: EnumMessageLanguage.en,
-                            size: 1024,
-                            key: 'term-policies/privacy/1/en.hbs',
-                        },
-                    ],
-                }
+                create,
+                contents
             );
 
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
@@ -615,7 +557,7 @@ describe('TermPolicyService', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminTermPolicyCreate,
+                    action: EnumActivityLogAction.adminTermPolicyCreated,
                     metadata: activityMetadata,
                 }
             );
@@ -625,113 +567,22 @@ describe('TermPolicyService', () => {
             );
         });
 
-        it('rethrows an AppBaseException raised while creating', async () => {
-            termPolicyRepository.existsByVersionAndType.mockResolvedValue(
-                false
-            );
-            const error = new TermPolicyExistException();
-            awsS3Service.mapPresign.mockImplementation(() => {
-                throw error;
-            });
-
-            const promise = service.createByAdmin(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'term-policy-1',
-                {
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                    contents: [
-                        {
-                            language: EnumMessageLanguage.en,
-                            size: 1024,
-                            key: 'term-policies/privacy/1/a.hbs',
-                        },
-                    ],
-                }
-            );
-
-            await expect(promise).rejects.toBe(error);
-            await expect(promise).rejects.toMatchObject({
-                constructor: TermPolicyExistException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.exist,
-            });
-        });
-
-        it('throws TermPolicyExistException on a version collision', async () => {
-            termPolicyRepository.existsByVersionAndType.mockResolvedValue(
-                false
-            );
-            awsS3Service.mapPresign.mockReturnValue({ ...contentEn });
-            const collision = new Prisma.PrismaClientKnownRequestError(
-                'unique violation',
-                {
-                    code: DatabaseUniqueConstraintCode,
-                    clientVersion: 'test',
-                    meta: { target: ['version'] },
-                }
-            );
-            termPolicyRepository.createInTx.mockRejectedValue(collision);
+        it('adds no row when the insert rejects', async () => {
+            const failure = new Error('insert failed');
+            termPolicyRepository.createInTx.mockRejectedValue(failure);
 
             await expect(
-                service.createByAdmin(
+                service.createByAdminInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
                     'term-policy-1',
-                    {
-                        type: EnumTermPolicyType.privacy,
-                        version: 1,
-                        contents: [
-                            {
-                                language: EnumMessageLanguage.en,
-                                size: 1024,
-                                key: 'term-policies/privacy/1/a.hbs',
-                            },
-                        ],
-                    }
+                    create,
+                    contents
                 )
-            ).rejects.toMatchObject({
-                constructor: TermPolicyExistException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.exist,
-            });
-        });
-
-        it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
-            termPolicyRepository.existsByVersionAndType.mockResolvedValue(
-                false
-            );
-            awsS3Service.mapPresign.mockReturnValue({ ...contentEn });
-            const cause = new Error('write failed');
-            termPolicyRepository.createInTx.mockRejectedValue(cause);
-
-            await expect(
-                service.createByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1',
-                    {
-                        type: EnumTermPolicyType.privacy,
-                        version: 1,
-                        contents: [
-                            {
-                                language: EnumMessageLanguage.en,
-                                size: 1024,
-                                key: 'term-policies/privacy/1/a.hbs',
-                            },
-                        ],
-                    }
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: cause,
-            });
+            ).rejects.toBe(failure);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -759,7 +610,7 @@ describe('TermPolicyService', () => {
         });
     });
 
-    describe('deleteByAdmin', () => {
+    describe('deleteByAdminInTx', () => {
         const deleteContentEffect: ITermPolicyDeleteContentEffect = {
             queue: EnumTermPolicyQueue.termPolicy,
             name: EnumTermPolicyProcess.deleteContent,
@@ -768,25 +619,20 @@ describe('TermPolicyService', () => {
             idempotencyKey: null,
         };
 
-        it('deletes the draft and adds the content delete row on one outbox tx', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+        it('deletes the draft and adds the content delete row on the tx', async () => {
             termPolicyQueue.deleteContentEffect.mockReturnValue(
                 deleteContentEffect
             );
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
             termPolicyRepository.deleteDraftInTx.mockResolvedValue(true);
 
-            const result = await service.deleteByAdmin(
+            await service.deleteByAdminInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                'term-policy-1'
+                draftTermPolicy
             );
 
-            expect(result).toBe(draftTermPolicy);
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(termPolicyRepository.deleteDraftInTx).toHaveBeenCalledWith(
                 tx,
                 'term-policy-1'
@@ -794,42 +640,44 @@ describe('TermPolicyService', () => {
             expect(termPolicyQueue.deleteContentEffect).toHaveBeenCalledWith([
                 contentEn.key,
             ]);
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                deleteContentEffect
-            );
-            expect(outboxService.addInTx).toHaveBeenCalledAfter(
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                deleteContentEffect,
+                entryEffect,
+            ]);
+            expect(outboxService.addManyInTx).toHaveBeenCalledAfter(
                 termPolicyRepository.deleteDraftInTx
             );
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('adds no content delete effect for a draft with no content', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(
-                emptyDraftTermPolicy
-            );
             termPolicyRepository.deleteDraftInTx.mockResolvedValue(true);
 
-            await service.deleteByAdmin(
+            await service.deleteByAdminInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                'term-policy-1'
+                emptyDraftTermPolicy
             );
 
             expect(termPolicyQueue.deleteContentEffect).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                entryEffect,
+            ]);
         });
 
         it('adds the delete entry from the deleted term policy on the same tx after the delete', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
             termPolicyRepository.deleteDraftInTx.mockResolvedValue(true);
 
-            await service.deleteByAdmin(
+            await service.deleteByAdminInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                'term-policy-1'
+                draftTermPolicy
             );
 
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
@@ -838,657 +686,286 @@ describe('TermPolicyService', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminTermPolicyDelete,
+                    action: EnumActivityLogAction.adminTermPolicyDeleted,
                     metadata: activityMetadata,
                 }
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
-        });
-
-        it('throws TermPolicyNotFoundException when the term policy does not exist', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(null);
-
-            await expect(
-                service.deleteByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: TermPolicyNotFoundException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.notFound,
-            });
-        });
-
-        it('throws TermPolicyStatusInvalidException when the term policy is not a draft', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(
-                publishedTermPolicy
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(
+                tx,
+                expect.arrayContaining([entryEffect])
             );
-
-            await expect(
-                service.deleteByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: TermPolicyStatusInvalidException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-            });
+            expect(outboxService.addManyInTx).toHaveBeenCalledAfter(
+                termPolicyRepository.deleteDraftInTx
+            );
         });
 
         it('throws TermPolicyStatusInvalidException and adds no row when the guarded delete removes no row', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
             termPolicyRepository.deleteDraftInTx.mockResolvedValue(false);
 
             await expect(
-                service.deleteByAdmin(
+                service.deleteByAdminInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    'term-policy-1'
+                    draftTermPolicy
                 )
             ).rejects.toMatchObject({
                 constructor: TermPolicyStatusInvalidException,
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
             });
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws TermPolicyStatusInvalidException when the delete transaction hits a write conflict', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'write conflict',
-                { code: DatabaseWriteConflictCode, clientVersion: 'test' }
-            );
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                service.deleteByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: TermPolicyStatusInvalidException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-            });
-        });
-
-        it('does not call S3 in the request', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
-            termPolicyRepository.deleteDraftInTx.mockResolvedValue(true);
-
-            await service.deleteByAdmin(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'term-policy-1'
-            );
-
-            expect(awsS3Service.deleteItems).not.toHaveBeenCalled();
-        });
-
-        it('adds no row when the guarded delete rejects', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
-            termPolicyRepository.deleteDraftInTx.mockRejectedValue(
-                new Error('delete failed')
-            );
-
-            await expect(
-                service.deleteByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
-            ).rejects.toBeInstanceOf(AppUnknownException);
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('rethrows an AppBaseException raised while deleting', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            const error = new TermPolicyNotFoundException();
-            termPolicyRepository.deleteDraftInTx.mockResolvedValue(true);
-            termPolicyQueue.deleteContentEffect.mockImplementation(() => {
-                throw error;
-            });
-
-            const promise = service.deleteByAdmin(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'term-policy-1'
-            );
-
-            await expect(promise).rejects.toBe(error);
-            await expect(promise).rejects.toMatchObject({
-                constructor: TermPolicyNotFoundException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.notFound,
-            });
-        });
-
-        it('wraps a mapped database error that is not a write conflict in AppUnknownException', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            const cause = new Prisma.PrismaClientKnownRequestError(
-                'unavailable',
-                { code: 'P2024', clientVersion: 'test' }
-            );
-            databaseService.withTransaction.mockRejectedValue(cause);
-
-            await expect(
-                service.deleteByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: cause,
-            });
-        });
-
-        it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            const cause = new Error('delete failed');
-            databaseService.withTransaction.mockRejectedValue(cause);
-
-            await expect(
-                service.deleteByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: cause,
-            });
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 
-    describe('publishByAdmin', () => {
-        it('throws TermPolicyNotFoundException when the term policy does not exist', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(null);
-
-            await expect(
-                service.publishByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: TermPolicyNotFoundException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.notFound,
-            });
+    describe('preparePublishByAdmin', () => {
+        beforeEach(() => {
+            termPolicyContentService.getDraftById.mockResolvedValue(
+                draftTermPolicy
+            );
+            termPolicyRepository.existsNewerPublished.mockResolvedValue(false);
+            awsS3Service.mapPresign.mockReturnValue(publicEnItem);
         });
 
-        describe('with a publishable draft', () => {
-            beforeEach(() => {
-                termPolicyRepository.findOneById.mockResolvedValue(
-                    draftTermPolicy
-                );
-                awsS3Service.mapPresign.mockReturnValue(publicEnItem);
-                databaseService.withTransaction.mockImplementation(
-                    async fn => fn(tx) as never
-                );
-                termPolicyRepository.publishInTx.mockResolvedValue(true);
-                termPolicyRepository.findOneByIdInTx.mockResolvedValue(
-                    publishedTermPolicy
-                );
-                termPolicyRepository.archivePublishedByTypeInTx.mockResolvedValue(
-                    1
-                );
-                termPolicyRepository.existsNewerPublishedInTx.mockResolvedValue(
-                    false
-                );
-            });
+        it('throws TermPolicyNotFoundException when the term policy does not exist', async () => {
+            const failure = new TermPolicyNotFoundException();
+            termPolicyContentService.getDraftById.mockRejectedValue(failure);
 
-            it('adds the publish entry from the published row on the same tx', async () => {
-                await service.publishByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                );
-
-                expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.adminTermPolicyPublish,
-                        metadata: activityMetadata,
-                    }
-                );
-                expect(outboxService.addInTx).toHaveBeenCalledWith(
-                    tx,
-                    entryEffect
-                );
-            });
-
-            it('archives only the versions below the one it publishes', async () => {
-                termPolicyRepository.findOneById.mockResolvedValue({
-                    ...draftTermPolicy,
-                    version: 3,
-                });
-                termPolicyRepository.findOneByIdInTx.mockResolvedValue({
-                    ...publishedTermPolicy,
-                    version: 3,
-                });
-
-                await service.publishByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                );
-
-                expect(
-                    termPolicyRepository.archivePublishedByTypeInTx
-                ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy, 3);
-                expect(
-                    termPolicyRepository.existsNewerPublishedInTx
-                ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy, 3);
-            });
-
-            it('throws TermPolicyStatusInvalidException when a newer version of the type is already published', async () => {
-                termPolicyRepository.existsNewerPublishedInTx.mockResolvedValue(
-                    true
-                );
-
-                await expect(
-                    service.publishByAdmin(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        'term-policy-1'
-                    )
-                ).rejects.toMatchObject({
-                    constructor: TermPolicyStatusInvalidException,
-                    module: 'termPolicy',
-                    statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-                });
-            });
-
-            it('throws TermPolicyStatusInvalidException for a published policy before any S3 or write', async () => {
-                termPolicyRepository.findOneById.mockResolvedValue(
-                    publishedTermPolicy
-                );
-
-                await expect(
-                    service.publishByAdmin(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        'term-policy-1'
-                    )
-                ).rejects.toMatchObject({
-                    constructor: TermPolicyStatusInvalidException,
-                    module: 'termPolicy',
-                    statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-                });
-                expect(awsS3Service.copyItems).not.toHaveBeenCalled();
-                expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            });
-
-            it('throws TermPolicyStatusInvalidException for an archived policy before any S3 or write', async () => {
-                termPolicyRepository.findOneById.mockResolvedValue({
-                    ...publishedTermPolicy,
-                    status: EnumTermPolicyStatus.archived,
-                });
-
-                await expect(
-                    service.publishByAdmin(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        'term-policy-1'
-                    )
-                ).rejects.toMatchObject({
-                    module: 'termPolicy',
-
-                    constructor: TermPolicyStatusInvalidException,
-                    statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-                });
-                expect(awsS3Service.copyItems).not.toHaveBeenCalled();
-                expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            });
-
-            it('throws TermPolicyStatusInvalidException when publishInTx loses the race', async () => {
-                termPolicyRepository.publishInTx.mockResolvedValue(false);
-
-                await expect(
-                    service.publishByAdmin(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        'term-policy-1'
-                    )
-                ).rejects.toMatchObject({
-                    constructor: TermPolicyStatusInvalidException,
-                    module: 'termPolicy',
-                    statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-                });
-                expect(
-                    termPolicyRepository.archivePublishedByTypeInTx
-                ).not.toHaveBeenCalled();
-            });
-
-            it('wraps a failure after the archive in AppUnknownException', async () => {
-                const cause = new Error('commit failed');
-                databaseService.withTransaction.mockImplementation(async fn => {
-                    await fn(tx);
-
-                    throw cause;
-                });
-
-                await expect(
-                    service.publishByAdmin(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        'term-policy-1'
-                    )
-                ).rejects.toMatchObject({
-                    constructor: AppUnknownException,
-                    module: 'app',
-                    statusCode: EnumAppStatusCodeError.unknown,
-                    rawError: cause,
-                });
-                expect(
-                    termPolicyRepository.archivePublishedByTypeInTx
-                ).toHaveBeenCalled();
-            });
-
-            it('adds the publish row on one publish tx after the guards, and dispatches once', async () => {
-                termPolicyQueue.publishEffect.mockReturnValue(publishEffect);
-                await service.publishByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                );
-
-                expect(databaseService.withTransaction).toHaveBeenCalledTimes(
-                    1
-                );
-                expect(termPolicyQueue.publishEffect).toHaveBeenCalledWith(
-                    {
-                        termPolicyId: 'term-policy-1',
-                        type: EnumTermPolicyType.privacy,
-                        version: 1,
-                        recipientCutoffAt: '2026-01-01T00:00:00.000Z',
-                        resendNonce: null,
-                    },
-                    'admin-1'
-                );
-                expect(outboxService.addInTx).toHaveBeenCalledWith(
-                    tx,
-                    publishEffect
-                );
-                expect(outboxService.addInTx).toHaveBeenCalledWith(
-                    tx,
-                    entryEffect
-                );
-                expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-                expect(outboxService.addInTx).toHaveBeenCalledAfter(
-                    termPolicyRepository.existsNewerPublishedInTx
-                );
-            });
-
-            it('adds no row when a newer version of the type is already published', async () => {
-                termPolicyRepository.existsNewerPublishedInTx.mockResolvedValue(
-                    true
-                );
-
-                await expect(
-                    service.publishByAdmin(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        'term-policy-1'
-                    )
-                ).rejects.toBeInstanceOf(TermPolicyStatusInvalidException);
-                expect(outboxService.addInTx).not.toHaveBeenCalled();
-            });
-
-            it('publishes the public keys, archives the earlier published versions, and returns the row', async () => {
-                const result = await service.publishByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                );
-
-                expect(result).toEqual(publishedTermPolicy);
-                expect(awsS3Service.mapPresign).toHaveBeenCalledWith(
-                    { key: publicEnKey.key, size: 1024 },
-                    { access: EnumAwsS3Accessibility.public }
-                );
-                expect(termPolicyRepository.publishInTx).toHaveBeenCalledWith(
-                    tx,
-                    'term-policy-1',
-                    [{ ...publicEnItem, language: contentEn.language }]
-                );
-                expect(
-                    termPolicyRepository.findOneByIdInTx
-                ).toHaveBeenCalledWith(tx, 'term-policy-1');
-                expect(
-                    termPolicyRepository.archivePublishedByTypeInTx
-                ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy, 1);
-            });
-
-            it('copies the draft contents to the public destination before it opens the transaction', async () => {
-                await service.publishByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                );
-
-                expect(awsS3Service.copyItems).toHaveBeenCalledWith(
-                    [contentEn],
-                    'public/term-policies/privacy/1',
-                    { access: EnumAwsS3Accessibility.public }
-                );
-                expect(awsS3Service.copyItems).toHaveBeenCalledBefore(
-                    databaseService.withTransaction
-                );
-            });
-
-            it('opens no transaction and adds no effect when the copy rejects', async () => {
-                const copyError = new Error('copy failed');
-                awsS3Service.copyItems.mockRejectedValue(copyError);
-
-                await expect(
-                    service.publishByAdmin(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        'term-policy-1'
-                    )
-                ).rejects.toMatchObject({
-                    constructor: AppUnknownException,
-                    module: 'app',
-                    statusCode: EnumAppStatusCodeError.unknown,
-                    rawError: copyError,
-                });
-                expect(databaseService.withTransaction).not.toHaveBeenCalled();
-                expect(outboxService.addInTx).not.toHaveBeenCalled();
-                expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-            });
+            await expect(
+                service.preparePublishByAdmin('term-policy-1')
+            ).rejects.toBe(failure);
+            expect(awsS3Service.copyItems).not.toHaveBeenCalled();
         });
 
         it('throws TermPolicyContentInvalidException when the stored contents are invalid', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(
+            termPolicyContentService.getDraftById.mockResolvedValue(
                 invalidContentTermPolicy
             );
 
             await expect(
-                service.publishByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
+                service.preparePublishByAdmin('term-policy-1')
             ).rejects.toMatchObject({
                 constructor: TermPolicyContentInvalidException,
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.contentInvalid,
             });
+            expect(awsS3Service.copyItems).not.toHaveBeenCalled();
         });
 
         it('throws TermPolicyContentEmptyException when there is no content', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(
+            termPolicyContentService.getDraftById.mockResolvedValue(
                 emptyDraftTermPolicy
             );
 
             await expect(
-                service.publishByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
+                service.preparePublishByAdmin('term-policy-1')
             ).rejects.toMatchObject({
                 constructor: TermPolicyContentEmptyException,
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.contentEmpty,
             });
+            expect(awsS3Service.copyItems).not.toHaveBeenCalled();
         });
 
-        it('throws AwsS3NotConfiguredException before publishing when S3 is not initialized', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
+        it('throws AwsS3NotConfiguredException when S3 is not initialized', async () => {
             awsS3Service.isInitialized.mockReturnValue(false);
 
             await expect(
-                service.publishByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
+                service.preparePublishByAdmin('term-policy-1')
             ).rejects.toMatchObject({
                 constructor: AwsS3NotConfiguredException,
                 module: 'aws',
                 statusCode: EnumAwsStatusCodeError.s3NotConfigured,
             });
             expect(awsS3Service.copyItems).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(
-                termPolicyRepository.archivePublishedByTypeInTx
-            ).not.toHaveBeenCalled();
         });
 
-        it('throws TermPolicyStatusInvalidException when the transaction hits a write conflict', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            awsS3Service.mapPresign.mockReturnValue(publicEnItem);
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'write conflict',
-                { code: DatabaseWriteConflictCode, clientVersion: 'test' }
-            );
-            databaseService.withTransaction.mockRejectedValue(conflict);
+        it('throws TermPolicyStatusInvalidException when a newer version of the type is already published', async () => {
+            termPolicyRepository.existsNewerPublished.mockResolvedValue(true);
 
             await expect(
-                service.publishByAdmin(
+                service.preparePublishByAdmin('term-policy-1')
+            ).rejects.toMatchObject({
+                constructor: TermPolicyStatusInvalidException,
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
+            });
+            expect(
+                termPolicyRepository.existsNewerPublished
+            ).toHaveBeenCalledWith(EnumTermPolicyType.privacy, 1);
+            expect(awsS3Service.copyItems).not.toHaveBeenCalled();
+        });
+
+        it('copies the draft contents to the public destination after every check and returns the draft with the public contents', async () => {
+            const result = await service.preparePublishByAdmin('term-policy-1');
+
+            expect(result).toEqual({
+                termPolicy: draftTermPolicy,
+                publicContents: [
+                    { ...publicEnItem, language: contentEn.language },
+                ],
+            });
+            expect(awsS3Service.mapPresign).toHaveBeenCalledWith(
+                { key: publicEnKey.key, size: 1024 },
+                { access: EnumAwsS3Accessibility.public }
+            );
+            expect(awsS3Service.copyItems).toHaveBeenCalledWith(
+                [contentEn],
+                'public/term-policies/privacy/1',
+                { access: EnumAwsS3Accessibility.public }
+            );
+            expect(awsS3Service.copyItems).toHaveBeenCalledAfter(
+                termPolicyRepository.existsNewerPublished
+            );
+        });
+
+        it('rejects with the copy failure', async () => {
+            const copyError = new Error('copy failed');
+            awsS3Service.copyItems.mockRejectedValue(copyError);
+
+            await expect(
+                service.preparePublishByAdmin('term-policy-1')
+            ).rejects.toBe(copyError);
+        });
+    });
+
+    describe('publishByAdminInTx', () => {
+        const prepared: ITermPolicyPublishPrepared = {
+            termPolicy: draftTermPolicy,
+            publicContents: [{ ...publicEnItem, language: contentEn.language }],
+        };
+
+        beforeEach(() => {
+            termPolicyRepository.publishInTx.mockResolvedValue(true);
+            termPolicyRepository.findOneByIdInTx.mockResolvedValue(
+                publishedTermPolicy
+            );
+            termPolicyRepository.archivePublishedByTypeInTx.mockResolvedValue(
+                1
+            );
+            termPolicyQueue.publishEffect.mockReturnValue(publishEffect);
+        });
+
+        it('publishes the public contents with its guard, reads the row back, archives the earlier versions, and returns the row', async () => {
+            const result = await service.publishByAdminInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                prepared
+            );
+
+            expect(result).toEqual(publishedTermPolicy);
+            expect(termPolicyRepository.publishInTx).toHaveBeenCalledWith(
+                tx,
+                'term-policy-1',
+                prepared.publicContents
+            );
+            expect(termPolicyRepository.findOneByIdInTx).toHaveBeenCalledWith(
+                tx,
+                'term-policy-1'
+            );
+            expect(
+                termPolicyRepository.archivePublishedByTypeInTx
+            ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy, 1);
+            expect(termPolicyRepository.findOneByIdInTx).toHaveBeenCalledAfter(
+                termPolicyRepository.publishInTx
+            );
+            expect(
+                termPolicyRepository.archivePublishedByTypeInTx
+            ).toHaveBeenCalledAfter(termPolicyRepository.findOneByIdInTx);
+        });
+
+        it('archives only the versions below the one it publishes', async () => {
+            termPolicyRepository.findOneByIdInTx.mockResolvedValue({
+                ...publishedTermPolicy,
+                version: 3,
+            });
+
+            await service.publishByAdminInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                prepared
+            );
+
+            expect(
+                termPolicyRepository.archivePublishedByTypeInTx
+            ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy, 3);
+        });
+
+        it('adds the publish row and the entry from the published row on the same tx after the archive', async () => {
+            await service.publishByAdminInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                prepared
+            );
+
+            expect(termPolicyQueue.publishEffect).toHaveBeenCalledWith(
+                {
+                    termPolicyId: 'term-policy-1',
+                    type: EnumTermPolicyType.privacy,
+                    version: 1,
+                    recipientCutoffAt: '2026-01-01T00:00:00.000Z',
+                    resendNonce: null,
+                },
+                'admin-1'
+            );
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.adminTermPolicyPublished,
+                    metadata: activityMetadata,
+                }
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                publishEffect,
+                entryEffect,
+            ]);
+            expect(outboxService.addManyInTx).toHaveBeenCalledAfter(
+                termPolicyRepository.archivePublishedByTypeInTx
+            );
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('throws TermPolicyStatusInvalidException and adds no row when the guarded publish changes no row', async () => {
+            termPolicyRepository.publishInTx.mockResolvedValue(false);
+
+            await expect(
+                service.publishByAdminInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    'term-policy-1'
+                    prepared
                 )
             ).rejects.toMatchObject({
                 constructor: TermPolicyStatusInvalidException,
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
             });
-        });
-
-        it('wraps another database error in AppUnknownException when the transaction fails', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            awsS3Service.mapPresign.mockReturnValue(publicEnItem);
-            const cause = new Prisma.PrismaClientKnownRequestError('other', {
-                code: 'P2002',
-                clientVersion: 'test',
-            });
-            databaseService.withTransaction.mockRejectedValue(cause);
-
-            await expect(
-                service.publishByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: cause,
-            });
-        });
-
-        it('wraps a mapped database error that is not a write conflict in AppUnknownException', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            awsS3Service.mapPresign.mockReturnValue(publicEnItem);
-            const cause = new Prisma.PrismaClientKnownRequestError(
-                'unavailable',
-                { code: 'P2024', clientVersion: 'test' }
-            );
-            databaseService.withTransaction.mockRejectedValue(cause);
-
-            await expect(
-                service.publishByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: cause,
-            });
+            expect(termPolicyRepository.findOneByIdInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('throws TermPolicyNotFoundException when the published row cannot be read back', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            awsS3Service.mapPresign.mockReturnValue(publicEnItem);
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
-            );
-            termPolicyRepository.publishInTx.mockResolvedValue(true);
             termPolicyRepository.findOneByIdInTx.mockResolvedValue(null);
 
             await expect(
-                service.publishByAdmin(
+                service.publishByAdminInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    'term-policy-1'
+                    prepared
                 )
             ).rejects.toMatchObject({
                 constructor: TermPolicyNotFoundException,
@@ -1498,49 +975,7 @@ describe('TermPolicyService', () => {
             expect(
                 termPolicyRepository.archivePublishedByTypeInTx
             ).not.toHaveBeenCalled();
-        });
-
-        it('rethrows an AppBaseException raised while publishing', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            const error = new TermPolicyNotFoundException();
-            awsS3Service.mapPresign.mockImplementation(() => {
-                throw error;
-            });
-
-            const promise = service.publishByAdmin(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'term-policy-1'
-            );
-
-            await expect(promise).rejects.toBe(error);
-            await expect(promise).rejects.toMatchObject({
-                constructor: TermPolicyNotFoundException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.notFound,
-            });
-        });
-
-        it('wraps a non-AppBaseException failure in AppUnknownException', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-            awsS3Service.mapPresign.mockReturnValue(publicEnItem);
-            const cause = new Error('transaction failed');
-            databaseService.withTransaction.mockRejectedValue(cause);
-
-            await expect(
-                service.publishByAdmin(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: cause,
-            });
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 

@@ -27,7 +27,6 @@ import { NotificationService } from '@modules/notification/services/notification
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
 import type { ITermPolicyBulkQueuePayload } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRecipientService } from '@modules/term-policy/services/term-policy.recipient.service';
-import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { MessageService } from '@common/message/services/message.service';
 import { TermPolicyProcessPublishUseCase } from '@modules/term-policy/use-cases/term-policy.process-publish.use-case';
 
@@ -162,7 +161,7 @@ describe('TermPolicyProcessPublishUseCase', () => {
                 termPolicyRecipientService.getPending
             ).not.toHaveBeenCalled();
             expect(
-                termPolicyRecipientService.sendPendingBatches
+                termPolicyRecipientService.sendPendingBatchesInTx
             ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
             expect(result).toEqual({
@@ -232,6 +231,41 @@ describe('TermPolicyProcessPublishUseCase', () => {
             );
         });
 
+        it('starts the recipient write while the notification write is still pending, and adds the batch row after both', async () => {
+            userService.getListActiveRecipientCursor.mockResolvedValueOnce(
+                cursorPage([u1], false)
+            );
+            termPolicyRecipientService.getPage.mockResolvedValue(
+                buildTermPolicyPage([u1])
+            );
+            const events: string[] = [];
+            notificationService.createManyInTx.mockImplementation(async () => {
+                events.push('notifications start');
+                await Promise.resolve();
+                await Promise.resolve();
+                events.push('notifications end');
+            });
+            termPolicyRecipientService.createManyInTx.mockImplementation(
+                async () => {
+                    events.push('recipients start');
+                }
+            );
+            outboxService.addInTx.mockImplementation(async () => {
+                events.push('batch row');
+
+                return 'outbox-1';
+            });
+
+            await useCase.execute(payload);
+
+            expect(events).toEqual([
+                'notifications start',
+                'recipients start',
+                'notifications end',
+                'batch row',
+            ]);
+        });
+
         it('fetches the active users off the page that a pending batch names before sending them', async () => {
             userService.getListActiveRecipientCursor.mockResolvedValueOnce(
                 cursorPage([u1], false)
@@ -241,7 +275,9 @@ describe('TermPolicyProcessPublishUseCase', () => {
             termPolicyRecipientService.getPage.mockResolvedValue(page);
             termPolicyRecipientService.getPending.mockResolvedValue(pending);
             userService.getManyActiveRecipientsByIds.mockResolvedValue([u4]);
-            termPolicyRecipientService.sendPendingBatches.mockResolvedValue(1);
+            termPolicyRecipientService.sendPendingBatchesInTx.mockResolvedValue(
+                1
+            );
 
             const result = await useCase.execute(payload);
 
@@ -252,10 +288,13 @@ describe('TermPolicyProcessPublishUseCase', () => {
             expect(
                 userService.getManyActiveRecipientsByIds
             ).toHaveBeenCalledWith(['u4'], cutoff);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
-                termPolicyRecipientService.sendPendingBatches
-            ).toHaveBeenCalledWith('admin-id', data, page, pending, [u4]);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+                termPolicyRecipientService.sendPendingBatchesInTx
+            ).toHaveBeenCalledWith(tx, 'admin-id', data, page, pending, [u4]);
+            expect(
+                termPolicyRecipientService.buildBatch
+            ).not.toHaveBeenCalled();
             expect(result).toMatchObject({
                 candidateCounts: 1,
                 createdCounts: 0,
@@ -273,7 +312,9 @@ describe('TermPolicyProcessPublishUseCase', () => {
                 sendableMarkers: [],
                 offPageUserIds: [],
             });
-            termPolicyRecipientService.sendPendingBatches.mockResolvedValue(1);
+            termPolicyRecipientService.sendPendingBatchesInTx.mockResolvedValue(
+                1
+            );
 
             await useCase.execute(payload);
 
@@ -281,8 +322,9 @@ describe('TermPolicyProcessPublishUseCase', () => {
                 userService.getManyActiveRecipientsByIds
             ).not.toHaveBeenCalled();
             expect(
-                termPolicyRecipientService.sendPendingBatches
+                termPolicyRecipientService.sendPendingBatchesInTx
             ).toHaveBeenCalledWith(
+                tx,
                 'admin-id',
                 data,
                 page,
@@ -291,35 +333,62 @@ describe('TermPolicyProcessPublishUseCase', () => {
             );
         });
 
-        it('creates the fresh batch while the pending batches read their markers and users, counting both', async () => {
+        it('sends the pending batches and creates the fresh batch of one page in one transaction, counting both', async () => {
             userService.getListActiveRecipientCursor.mockResolvedValueOnce(
                 cursorPage([u1, u2], false)
             );
             const page = buildTermPolicyPage([u1, u2], [u2], ['B1', 'B2']);
+            const pending = { sendableMarkers: [], offPageUserIds: [] };
             termPolicyRecipientService.getPage.mockResolvedValue(page);
-            const deferredPending = buildDeferred<{
-                sendableMarkers: [];
-                offPageUserIds: [];
-            }>();
-            termPolicyRecipientService.getPending.mockReturnValue(
-                deferredPending.promise
+            termPolicyRecipientService.getPending.mockResolvedValue(pending);
+            termPolicyRecipientService.sendPendingBatchesInTx.mockResolvedValue(
+                2
             );
-            outboxService.addInTx.mockImplementation(async () => {
-                deferredPending.resolve({
-                    sendableMarkers: [],
-                    offPageUserIds: [],
-                });
-
-                return '';
-            });
-            termPolicyRecipientService.sendPendingBatches.mockResolvedValue(2);
 
             const result = await useCase.execute(payload);
 
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                termPolicyRecipientService.sendPendingBatchesInTx
+            ).toHaveBeenCalledWith(tx, 'admin-id', data, page, pending, []);
             expect(termPolicyRecipientService.buildBatch).toHaveBeenCalledWith([
                 u2,
             ]);
+            expect(notificationService.createManyInTx).toHaveBeenCalledAfter(
+                termPolicyRecipientService.sendPendingBatchesInTx
+            );
+            expect(
+                termPolicyRecipientService.createManyInTx
+            ).toHaveBeenCalledAfter(notificationService.createManyInTx);
+            expect(outboxService.addInTx).toHaveBeenCalledAfter(
+                termPolicyRecipientService.createManyInTx
+            );
             expect(result).toMatchObject({ createdCounts: 1, batches: 3 });
+        });
+
+        it('reads the pending markers and the off-page users before it opens the transaction', async () => {
+            userService.getListActiveRecipientCursor.mockResolvedValueOnce(
+                cursorPage([u1], false)
+            );
+            const page = buildTermPolicyPage([u1], [], ['B']);
+            termPolicyRecipientService.getPage.mockResolvedValue(page);
+            termPolicyRecipientService.getPending.mockResolvedValue({
+                sendableMarkers: [],
+                offPageUserIds: ['u4'],
+            });
+            userService.getManyActiveRecipientsByIds.mockResolvedValue([u4]);
+
+            await useCase.execute(payload);
+
+            expect(termPolicyRecipientService.getPage).toHaveBeenCalledBefore(
+                databaseService.withTransaction
+            );
+            expect(
+                termPolicyRecipientService.getPending
+            ).toHaveBeenCalledBefore(databaseService.withTransaction);
+            expect(
+                userService.getManyActiveRecipientsByIds
+            ).toHaveBeenCalledBefore(databaseService.withTransaction);
         });
 
         it('advances the cursor past a full page that sends nothing and opens no transaction', async () => {

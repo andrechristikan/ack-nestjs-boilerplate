@@ -55,8 +55,8 @@ export const AnalyticMassRegistrationActions = [
 /** @public */
 export const AnalyticCredentialStuffingActions = [
     EnumActivityLogAction.userLoginFailed,
-    EnumActivityLogAction.userReachMaxPasswordAttempt,
-    EnumActivityLogAction.userReachMaxMfaAttempt,
+    EnumActivityLogAction.userMaxPasswordAttemptReached,
+    EnumActivityLogAction.userMaxMfaAttemptReached,
 ];
 
 /** @public */

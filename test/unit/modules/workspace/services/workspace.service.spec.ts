@@ -4,10 +4,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IPaginationQueryCursorParams,
@@ -19,7 +16,6 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
@@ -31,7 +27,6 @@ import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/f
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceOwnerTransferRequiredException } from '@modules/workspace/exceptions/workspace.owner-transfer-required.exception';
-import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceSlugInvalidException } from '@modules/workspace/exceptions/workspace.slug-invalid.exception';
 import type {
     IWorkspaceCreate,
@@ -41,6 +36,8 @@ import type {
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
+import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
+import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import {
     buildApiKeyContext,
@@ -56,14 +53,18 @@ import {
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
 import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
-import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
+import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 
 describe('WorkspaceService', () => {
     const workspaceRepository: MockProxy<WorkspaceRepository> =
         mock<WorkspaceRepository>();
     const workspaceMemberRepository: MockProxy<WorkspaceMemberRepository> =
         mock<WorkspaceMemberRepository>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
+    const workspaceInviteService: MockProxy<WorkspaceInviteService> =
+        mock<WorkspaceInviteService>();
+    const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
+        mock<WorkspaceJoinRequestService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -74,7 +75,6 @@ describe('WorkspaceService', () => {
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
     const entry = buildActivityLogCreateManyEffect('entry');
-    let databaseUtil: DatabaseUtil;
     let helperStringService: HelperStringService;
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
@@ -101,7 +101,14 @@ describe('WorkspaceService', () => {
                     provide: WorkspaceMemberRepository,
                     useValue: workspaceMemberRepository,
                 },
-                { provide: DatabaseService, useValue: databaseService },
+                {
+                    provide: WorkspaceInviteService,
+                    useValue: workspaceInviteService,
+                },
+                {
+                    provide: WorkspaceJoinRequestService,
+                    useValue: workspaceJoinRequestService,
+                },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 ...TestUnitKitProviders,
@@ -117,7 +124,6 @@ describe('WorkspaceService', () => {
         }).compile();
 
         service = module.get(WorkspaceService);
-        databaseUtil = module.get(DatabaseUtil);
         helperStringService = module.get(HelperStringService);
     });
 
@@ -273,63 +279,46 @@ describe('WorkspaceService', () => {
         });
     });
 
-    describe('createWorkspace', () => {
-        const create: IWorkspaceCreate = {
-            name: 'Acme',
-            description: null,
-            isPublic: null,
-        };
-        const tx = {} as IDatabaseTransactionClient;
-
+    describe('assertOwnedCapAvailable', () => {
         beforeEach(() => {
-            vi.spyOn(
-                helperStringService,
-                'generateSlugCandidates'
-            ).mockReturnValue(['ws-aaa', 'ws-bbb', 'ws-ccc']);
-            vi.spyOn(databaseUtil, 'createId').mockReturnValue('workspace-1');
-            featureFlagService.getMetadataNumber.mockResolvedValue(5);
+            featureFlagService.getMetadataNumber.mockResolvedValue(3);
         });
 
-        it('refuses a create for an owner of 2 workspaces when the flag caps at 2', async () => {
-            featureFlagService.getMetadataNumber.mockResolvedValue(2);
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
-                2
+        it('throws WorkspaceCapReachedException when the owner already meets the cap', async () => {
+            workspaceMemberRepository.countOwnedActiveByUser.mockResolvedValue(
+                3
             );
 
             await expect(
-                service.createWorkspace(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    create
-                )
-            ).rejects.toBeInstanceOf(WorkspaceCapReachedException);
+                service.assertOwnedCapAvailable('user-1')
+            ).rejects.toMatchObject({
+                constructor: WorkspaceCapReachedException,
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.capReached,
+            });
             expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.workspace,
                 EnumFeatureFlagMetadataKey.maxWorkspacesPerUser
             );
+            expect(
+                workspaceMemberRepository.countOwnedActiveByUser
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                workspaceMemberRepository.countOwnedActiveByUser
+            ).toHaveBeenCalledWith('user-1');
         });
 
-        it('allows a create for an owner of 2 workspaces when the flag caps at 3', async () => {
-            featureFlagService.getMetadataNumber.mockResolvedValue(3);
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
+        it('resolves for an owner of 2 workspaces when the flag caps at 3', async () => {
+            workspaceMemberRepository.countOwnedActiveByUser.mockResolvedValue(
                 2
             );
-            workspaceRepository.createInTx.mockResolvedValue(workspace);
 
-            const result = await service.createWorkspace(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                create
-            );
-
-            expect(result).toBe(workspace);
+            await expect(
+                service.assertOwnedCapAvailable('user-1')
+            ).resolves.toBeUndefined();
         });
 
-        it('propagates FeatureFlagNotConfiguredException from the read and opens no transaction', async () => {
+        it('propagates FeatureFlagNotConfiguredException from the read', async () => {
             const notConfigured = new FeatureFlagNotConfiguredException(
                 EnumFeatureFlagKey.workspace,
                 EnumFeatureFlagMetadataKey.maxWorkspacesPerUser
@@ -337,65 +326,63 @@ describe('WorkspaceService', () => {
             featureFlagService.getMetadataNumber.mockRejectedValue(
                 notConfigured
             );
+            workspaceMemberRepository.countOwnedActiveByUser.mockResolvedValue(
+                0
+            );
 
             await expect(
-                service.createWorkspace(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    create
-                )
+                service.assertOwnedCapAvailable('user-1')
             ).rejects.toBe(notConfigured);
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(workspaceRepository.createInTx).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('assertSlugAllowed', () => {
+        it('throws WorkspaceSlugInvalidException when the slug has an upper-case letter', () => {
+            expect(() => service.assertSlugAllowed('Acme')).toThrow(
+                WorkspaceSlugInvalidException
+            );
         });
 
-        it('throws WorkspaceCapReachedException from inside the transaction when the owner already meets the cap', async () => {
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
-                5
-            );
-
-            await expect(
-                service.createWorkspace(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    create
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceCapReachedException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.capReached,
-            });
-            expect(
-                workspaceMemberRepository.countOwnedActiveByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1');
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(workspaceRepository.createInTx).not.toHaveBeenCalled();
-            expect(
-                workspaceMemberRepository.createOwnerInTx
-            ).not.toHaveBeenCalled();
+        it('throws WorkspaceSlugInvalidException with the slugInvalid code when the slug breaks the pattern', () => {
+            try {
+                service.assertSlugAllowed('Not Allowed!');
+                expect.unreachable();
+            } catch (error: unknown) {
+                expect(error).toMatchObject({
+                    constructor: WorkspaceSlugInvalidException,
+                    module: 'workspace',
+                    statusCode: EnumWorkspaceStatusCodeError.slugInvalid,
+                });
+            }
         });
 
-        it('creates the workspace on the first slug candidate', async () => {
-            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
-                1
-            );
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
+        it('returns when the slug is allowed', () => {
+            expect(service.assertSlugAllowed('new-slug')).toBeUndefined();
+        });
+    });
+
+    describe('createWorkspaceInTx', () => {
+        const create: IWorkspaceCreate = {
+            name: 'Acme',
+            description: null,
+            isPublic: null,
+        };
+        const tx = {} as IDatabaseTransactionClient;
+
+        it('creates the workspace and its owner row on the tx given and returns the workspace', async () => {
             workspaceRepository.createInTx.mockResolvedValue(workspace);
 
-            const result = await service.createWorkspace(
+            const result = await service.createWorkspaceInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
+                'workspace-1',
+                'ws-aaa',
                 create
             );
 
             expect(result).toBe(workspace);
-            expect(
-                workspaceMemberRepository.countOwnedActiveByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1');
             expect(workspaceRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
@@ -405,20 +392,19 @@ describe('WorkspaceService', () => {
             );
             expect(
                 workspaceMemberRepository.createOwnerInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
+            ).toHaveBeenCalledWith(tx, workspace.id, 'user-1');
         });
 
-        it('adds the creator entry on the tx of the create', async () => {
-            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
-                1
-            );
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
+        it('adds the creator entry on the tx after the write', async () => {
             workspaceRepository.createInTx.mockResolvedValue(workspace);
 
-            await service.createWorkspace(
+            await service.createWorkspaceInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
+                'workspace-1',
+                'ws-aaa',
                 create
             );
 
@@ -431,110 +417,18 @@ describe('WorkspaceService', () => {
                     action: EnumActivityLogAction.workspaceCreated,
                     userId: 'user-1',
                     createdBy: 'user-1',
-                    workspaceId: 'workspace-1',
+                    workspaceId: workspace.id,
                 }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
-        });
-
-        it('retries with the next slug candidate after a collision and creates on the second attempt', async () => {
-            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
-                1
-            );
-            const collision = buildPrismaKnownRequestError('P2002', 'slug');
-            databaseService.withTransaction
-                .mockRejectedValueOnce(collision)
-                .mockImplementationOnce(fn => fn(tx));
-            workspaceRepository.createInTx.mockResolvedValue(workspace);
-
-            const result = await service.createWorkspace(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                create
-            );
-
-            expect(result).toBe(workspace);
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
-            expect(workspaceRepository.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-1',
-                create,
-                'ws-bbb',
-                'workspace-1'
-            );
-        });
-
-        it('wraps a non-collision transaction error in AppUnknownException without retrying', async () => {
-            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
-                1
-            );
-            const otherError = new Error('unexpected');
-            databaseService.withTransaction.mockRejectedValue(otherError);
-
-            await expect(
-                service.createWorkspace(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    create
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: otherError,
-            });
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-        });
-
-        it('propagates an AppBaseException raised in the transaction without retrying', async () => {
-            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
-                1
-            );
-            const typedError = new WorkspaceNotFoundException();
-            databaseService.withTransaction.mockRejectedValue(typedError);
-
-            await expect(
-                service.createWorkspace(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    create
-                )
-            ).rejects.toBe(typedError);
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-        });
-
-        it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
-            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
-                1
-            );
-            const collision = buildPrismaKnownRequestError('P2002', 'slug');
-            databaseService.withTransaction.mockRejectedValue(collision);
-
-            await expect(
-                service.createWorkspace(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    create
-                )
-            ).rejects.toMatchObject({
-                statusCode:
-                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
-
-                constructor: DatabaseUniqueValueGenerationFailedException,
-                module: 'database',
-            });
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(3);
+            expect(
+                workspaceMemberRepository.createOwnerInTx
+            ).toHaveBeenCalledBefore(activityLogQueue.recordEffect);
         });
     });
 
-    describe('updateWorkspace', () => {
+    describe('updateWorkspaceInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
-
-        beforeEach(() => {
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-        });
 
         it('writes the details as given and adds the entry on the same tx', async () => {
             const update: IWorkspaceUpdate = {
@@ -543,7 +437,8 @@ describe('WorkspaceService', () => {
             };
             workspaceRepository.updateDetailsInTx.mockResolvedValue(workspace);
 
-            const result = await service.updateWorkspace(
+            const result = await service.updateWorkspaceInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -573,17 +468,14 @@ describe('WorkspaceService', () => {
         });
     });
 
-    describe('updateWorkspaceIsPublic', () => {
+    describe('updateWorkspaceIsPublicInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
-
-        beforeEach(() => {
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-        });
 
         it('writes the visibility and adds the entry on the same tx', async () => {
             workspaceRepository.updateIsPublicInTx.mockResolvedValue(workspace);
 
-            const result = await service.updateWorkspaceIsPublic(
+            const result = await service.updateWorkspaceIsPublicInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -613,103 +505,14 @@ describe('WorkspaceService', () => {
         });
     });
 
-    describe('updateWorkspaceSlug', () => {
+    describe('updateWorkspaceSlugInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
 
-        beforeEach(() => {
-            databaseService.withTransaction.mockImplementation(fn => fn(tx));
-        });
-
-        it('throws WorkspaceSlugInvalidException before writing when the slug has an upper-case letter', async () => {
-            await expect(
-                service.updateWorkspaceSlug(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    'Acme'
-                )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.slugInvalid,
-            });
-            expect(workspaceRepository.updateSlugInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws WorkspaceSlugInvalidException before writing when the slug is not allowed', async () => {
-            await expect(
-                service.updateWorkspaceSlug(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    'Not Allowed!'
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceSlugInvalidException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.slugInvalid,
-            });
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(workspaceRepository.updateSlugInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws WorkspaceSlugAlreadyExistsException when the write collides on the slug index', async () => {
-            const collision = buildPrismaKnownRequestError('P2002', 'slug');
-            workspaceRepository.updateSlugInTx.mockRejectedValue(collision);
-
-            await expect(
-                service.updateWorkspaceSlug(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    'taken-slug'
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceSlugAlreadyExistsException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.slugAlreadyExists,
-            });
-        });
-
-        it('rethrows an AppBaseException thrown inside the transaction as is', async () => {
-            const thrown = new WorkspaceNotFoundException();
-            workspaceRepository.updateSlugInTx.mockRejectedValue(thrown);
-
-            await expect(
-                service.updateWorkspaceSlug(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    'new-slug'
-                )
-            ).rejects.toBe(thrown);
-        });
-
-        it('wraps a non-collision write error in AppUnknownException', async () => {
-            const otherError = new Error('unexpected');
-            workspaceRepository.updateSlugInTx.mockRejectedValue(otherError);
-
-            await expect(
-                service.updateWorkspaceSlug(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'workspace-1',
-                    'new-slug'
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: otherError,
-            });
-        });
-
-        it('writes the slug when it is allowed and adds the entry on the same tx', async () => {
+        it('writes the slug and adds the entry on the same tx', async () => {
             workspaceRepository.updateSlugInTx.mockResolvedValue(workspace);
 
-            const result = await service.updateWorkspaceSlug(
+            const result = await service.updateWorkspaceSlugInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -737,6 +540,23 @@ describe('WorkspaceService', () => {
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
+
+        it('lets a write failure reach the caller', async () => {
+            const collision = buildPrismaKnownRequestError('P2002', 'slug');
+            workspaceRepository.updateSlugInTx.mockRejectedValue(collision);
+
+            await expect(
+                service.updateWorkspaceSlugInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'workspace-1',
+                    'taken-slug'
+                )
+            ).rejects.toBe(collision);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
     });
 
     describe('softDeleteInTx', () => {
@@ -760,7 +580,67 @@ describe('WorkspaceService', () => {
             );
         });
 
-        it('throws WorkspaceNotFoundException when the guarded write misses', async () => {
+        it('revokes the pending invites and cancels the pending join requests of the workspace on the given transaction with the user who deleted it as updatedBy', async () => {
+            const tx = {} as IDatabaseTransactionClient;
+            const deletedAt = new Date('2026-01-01T00:00:00.000Z');
+            workspaceRepository.softDeleteInTx.mockResolvedValue(true);
+
+            await service.softDeleteInTx(
+                tx,
+                'workspace-1',
+                deletedAt,
+                'user-1'
+            );
+
+            expect(
+                workspaceInviteService.revokePendingByWorkspaceInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
+            expect(
+                workspaceJoinRequestService.cancelPendingByWorkspaceInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
+        });
+
+        it('starts the invite revoke and the join request cancel together after the guarded write', async () => {
+            const tx = {} as IDatabaseTransactionClient;
+            const deletedAt = new Date('2026-01-01T00:00:00.000Z');
+            const events: string[] = [];
+            workspaceRepository.softDeleteInTx.mockImplementation(async () => {
+                events.push('workspace');
+
+                return true;
+            });
+            workspaceInviteService.revokePendingByWorkspaceInTx.mockImplementation(
+                async () => {
+                    events.push('start:invites');
+                    await Promise.resolve();
+                    events.push('end:invites');
+                }
+            );
+            workspaceJoinRequestService.cancelPendingByWorkspaceInTx.mockImplementation(
+                async () => {
+                    events.push('start:joinRequests');
+                    await Promise.resolve();
+                    events.push('end:joinRequests');
+                }
+            );
+
+            await service.softDeleteInTx(
+                tx,
+                'workspace-1',
+                deletedAt,
+                'user-1'
+            );
+
+            expect(events).toEqual([
+                'workspace',
+                'start:invites',
+                'start:joinRequests',
+                'end:invites',
+                'end:joinRequests',
+            ]);
+        });
+
+        it('throws WorkspaceNotFoundException and closes nothing when the guarded write misses', async () => {
             const tx = {} as IDatabaseTransactionClient;
             const deletedAt = new Date('2026-01-01T00:00:00.000Z');
             workspaceRepository.softDeleteInTx.mockResolvedValue(false);
@@ -772,6 +652,12 @@ describe('WorkspaceService', () => {
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.notFound,
             });
+            expect(
+                workspaceInviteService.revokePendingByWorkspaceInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                workspaceJoinRequestService.cancelPendingByWorkspaceInTx
+            ).not.toHaveBeenCalled();
         });
     });
 
@@ -795,7 +681,7 @@ describe('WorkspaceService', () => {
             ).resolves.toEqual(['workspace-1', 'workspace-2']);
 
             expect(
-                workspaceMemberRepository.findWorkspaceIdsByUserInTx
+                workspaceMemberRepository.findWorkspaceIdsByUser
             ).not.toHaveBeenCalled();
             expect(
                 workspaceRepository.softDeleteOwnedByUserInTx
@@ -807,12 +693,47 @@ describe('WorkspaceService', () => {
             );
         });
 
-        it('passes an empty owner id list to the repository unchanged', async () => {
+        it('calls revokePendingByWorkspaceInTx and cancelPendingByWorkspaceInTx on the given tx for each returned workspace id with the user id as updatedBy', async () => {
+            workspaceRepository.softDeleteOwnedByUserInTx.mockResolvedValue([
+                'workspace-1',
+                'workspace-2',
+            ]);
+
+            await service.softDeleteOwnedByUserInTx(
+                tx,
+                ['workspace-1', 'workspace-2', 'workspace-3'],
+                'user-1',
+                deletedAt
+            );
+
+            for (const workspaceId of ['workspace-1', 'workspace-2']) {
+                expect(
+                    workspaceInviteService.revokePendingByWorkspaceInTx
+                ).toHaveBeenCalledWith(tx, workspaceId, 'user-1');
+                expect(
+                    workspaceJoinRequestService.cancelPendingByWorkspaceInTx
+                ).toHaveBeenCalledWith(tx, workspaceId, 'user-1');
+            }
+            expect(
+                workspaceInviteService.revokePendingByWorkspaceInTx
+            ).toHaveBeenCalledTimes(2);
+            expect(
+                workspaceJoinRequestService.cancelPendingByWorkspaceInTx
+            ).toHaveBeenCalledTimes(2);
+        });
+
+        it('passes an empty owner id list to the repository unchanged and closes nothing', async () => {
             workspaceRepository.softDeleteOwnedByUserInTx.mockResolvedValue([]);
 
             await expect(
                 service.softDeleteOwnedByUserInTx(tx, [], 'user-1', deletedAt)
             ).resolves.toEqual([]);
+            expect(
+                workspaceInviteService.revokePendingByWorkspaceInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                workspaceJoinRequestService.cancelPendingByWorkspaceInTx
+            ).not.toHaveBeenCalled();
 
             expect(
                 workspaceRepository.softDeleteOwnedByUserInTx
@@ -820,68 +741,41 @@ describe('WorkspaceService', () => {
         });
     });
 
-    describe('assertOwnedHasNoOtherMembersInTx', () => {
-        const tx = {} as IDatabaseTransactionClient;
-
+    describe('getOwnedForSelfDelete', () => {
         beforeEach(() => {
-            workspaceMemberRepository.findWorkspaceIdsByUserInTx.mockResolvedValue(
-                ['workspace-1']
-            );
+            workspaceMemberRepository.findWorkspaceIdsByUser.mockResolvedValue([
+                'workspace-1',
+            ]);
         });
 
         it('throws WorkspaceOwnerTransferRequiredException when an owned workspace has another member', async () => {
-            workspaceRepository.existsOwnedWithOtherMembersInTx.mockResolvedValue(
+            workspaceRepository.existsOwnedWithOtherMembers.mockResolvedValue(
                 true
             );
 
             await expect(
-                service.assertOwnedHasNoOtherMembersInTx(tx, 'user-1')
+                service.getOwnedForSelfDelete('user-1')
             ).rejects.toMatchObject({
                 constructor: WorkspaceOwnerTransferRequiredException,
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.ownerTransferRequired,
             });
             expect(
-                workspaceMemberRepository.findWorkspaceIdsByUserInTx
-            ).toHaveBeenCalledTimes(1);
+                workspaceMemberRepository.findWorkspaceIdsByUser
+            ).toHaveBeenCalledWith('user-1', EnumWorkspaceMemberRole.owner);
             expect(
-                workspaceMemberRepository.findWorkspaceIdsByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
-            expect(
-                workspaceRepository.existsOwnedWithOtherMembersInTx
-            ).toHaveBeenCalledWith(tx, ['workspace-1'], 'user-1');
+                workspaceRepository.existsOwnedWithOtherMembers
+            ).toHaveBeenCalledWith(['workspace-1'], 'user-1');
         });
 
         it('returns the owned workspace ids it read when no owned workspace has another member', async () => {
-            workspaceRepository.existsOwnedWithOtherMembersInTx.mockResolvedValue(
+            workspaceRepository.existsOwnedWithOtherMembers.mockResolvedValue(
                 false
             );
 
             await expect(
-                service.assertOwnedHasNoOtherMembersInTx(tx, 'user-1')
+                service.getOwnedForSelfDelete('user-1')
             ).resolves.toEqual(['workspace-1']);
-        });
-    });
-
-    describe('countOwnedInTx', () => {
-        const tx = {} as IDatabaseTransactionClient;
-
-        it('returns the one owned-active count read on the transaction and reads nothing else', async () => {
-            workspaceMemberRepository.countOwnedActiveByUserInTx.mockResolvedValue(
-                2
-            );
-
-            await expect(service.countOwnedInTx(tx, 'user-1')).resolves.toBe(2);
-
-            expect(
-                workspaceMemberRepository.countOwnedActiveByUserInTx
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                workspaceMemberRepository.countOwnedActiveByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1');
-            expect(
-                workspaceMemberRepository.findWorkspaceIdsByUserInTx
-            ).not.toHaveBeenCalled();
         });
     });
 
@@ -968,37 +862,42 @@ describe('WorkspaceService', () => {
     });
 
     describe('previewWorkspace', () => {
-        it('validates workspace.joinRequestAllowed before the read', async () => {
+        it('starts the read while the workspace.joinRequestAllowed gate is still pending', async () => {
+            const gate = buildDeferred<void>();
+            featureFlagService.validateFeatureFlagMetadata.mockReturnValue(
+                gate.promise
+            );
             workspaceRepository.findActivePublicBySlug.mockResolvedValue(
                 workspace
             );
 
-            await service.previewWorkspace('acme-team');
-
+            const pending = service.previewWorkspace('acme-team');
+            expect(
+                workspaceRepository.findActivePublicBySlug
+            ).toHaveBeenCalledWith('acme-team');
             expect(
                 featureFlagService.validateFeatureFlagMetadata
             ).toHaveBeenCalledWith(
                 EnumFeatureFlagKey.workspace,
                 EnumFeatureFlagMetadataKey.joinRequestAllowed
             );
-            expect(
-                featureFlagService.validateFeatureFlagMetadata
-            ).toHaveBeenCalledBefore(
-                workspaceRepository.findActivePublicBySlug
-            );
+
+            gate.resolve();
+
+            await expect(pending).resolves.toBe(workspace);
         });
 
-        it('reads nothing when the gate rejects', async () => {
+        it('throws the gate refusal when the gate rejects', async () => {
             featureFlagService.validateFeatureFlagMetadata.mockRejectedValue(
                 new FeatureFlagDisabledException()
             );
 
             await expect(
                 service.previewWorkspace('acme-team')
-            ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
-            expect(
-                workspaceRepository.findActivePublicBySlug
-            ).not.toHaveBeenCalled();
+            ).rejects.toMatchObject({
+                module: 'featureFlag',
+                statusCode: EnumFeatureFlagStatusCodeError.disabled,
+            });
         });
 
         it('throws WorkspaceNotFoundException when no active public workspace matches the slug', async () => {
@@ -1030,7 +929,7 @@ describe('WorkspaceService', () => {
                 .spyOn(helperStringService, 'generateSlugCandidates')
                 .mockReturnValue(['ws-aaa', 'ws-bbb', 'ws-ccc']);
 
-            const result = service['drawSlugCandidates']();
+            const result = service.drawSlugCandidates();
 
             expect(result).toEqual(['ws-aaa', 'ws-bbb', 'ws-ccc']);
             expect(generateSlugCandidates).toHaveBeenCalledWith('ws-', 12, 3);

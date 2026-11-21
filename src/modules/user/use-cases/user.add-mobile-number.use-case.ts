@@ -59,12 +59,9 @@ export class UserAddMobileNumberUseCase implements IAppUseCase<
         }: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
         const { user } = userContext;
-        // Sequential by design: gate before the work it guards
-        const check = await this.userAuthService.assertReauthentication(
-            requestContext,
-            apiKeyContext,
-            user,
-            {
+        // Sequential by design: a credential proof, awaited alone
+        const { check, failure } =
+            await this.userAuthService.checkReauthentication(user, {
                 action: EnumUserReauthenticationAction.mobileNumberAdd,
                 password: password ?? null,
                 method: method ?? null,
@@ -73,8 +70,25 @@ export class UserAddMobileNumberUseCase implements IAppUseCase<
                 passkeyChallengeToken: passkeyChallengeToken ?? null,
                 passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
-            }
-        );
+            });
+        if (failure !== null) {
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.userAuthService.countFailedReauthenticationInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        failure
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(
+                failure,
+                isLocked
+            );
+        }
+
         const [country, isDuplicate] = await Promise.all([
             this.countryService.getOne(countryId),
             this.userMobileNumberService.existsMobileNumber(
@@ -83,6 +97,11 @@ export class UserAddMobileNumberUseCase implements IAppUseCase<
                 null
             ),
         ]);
+        this.userMobileNumberService.assertMobileNumberAllowed(
+            country.phoneCode,
+            phoneCode,
+            isDuplicate
+        );
 
         try {
             const mobileNumber = await this.databaseService.withTransaction(
@@ -100,9 +119,7 @@ export class UserAddMobileNumberUseCase implements IAppUseCase<
                         requestContext,
                         apiKeyContext,
                         authContext,
-                        { number, countryId, phoneCode },
-                        country.phoneCode,
-                        isDuplicate
+                        { number, countryId, phoneCode }
                     );
                 }
             );

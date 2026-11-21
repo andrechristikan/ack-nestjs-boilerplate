@@ -53,9 +53,7 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
             await this.mfaChallengeService.getLogin(challengeToken);
 
         const user = await this.userAuthService.getOneForMfaLogin(userId);
-        const checked = await this.mfaService.check(
-            requestContext,
-            apiKeyContext,
+        const { check, failure } = await this.mfaService.check(
             user.id,
             {
                 code: code ?? null,
@@ -65,24 +63,38 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
             },
             webAuthnChallenge
         );
+        if (failure !== null) {
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.mfaService.countFailedAttemptInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        user.id,
+                        failure
+                    )
+            );
+
+            return this.mfaService.throwFailedAttempt(failure, isLocked);
+        }
         const loginAt = this.helperDateService.create();
         try {
             const { tokens } = await this.databaseService.withTransaction(
                 async tx => {
-                    await this.mfaChallengeService.consumeInTx(
+                    await this.mfaService.completeChallengeInTx(
                         tx,
+                        user.id,
                         challengeToken,
                         EnumMfaChallengePurpose.login,
-                        user.id
+                        check
                     );
-                    await this.mfaService.completeInTx(tx, user.id, checked);
                     const entry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
                         null,
                         null,
                         {
-                            action: EnumActivityLogAction.userVerifyMfa,
+                            action: EnumActivityLogAction.userMfaVerified,
                             userId: user.id,
                             createdBy: user.id,
                         }

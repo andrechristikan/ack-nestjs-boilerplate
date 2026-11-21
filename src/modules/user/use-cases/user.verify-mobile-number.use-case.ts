@@ -48,17 +48,17 @@ export class UserVerifyMobileNumberUseCase implements IAppUseCase<
         { otp }: UserVerifyMobileNumberRequestDto
     ): Promise<IResponseReturn<void>> {
         const { userId } = authContext;
-        // Sequential by design: gates before the write they guard
-        await this.userMobileNumberService.getOneUnverifiedMobileNumber(
-            userId,
-            mobileNumberId
-        );
-        const verification =
-            await this.userVerificationService.getOneActiveByMobileOtp(
+        const [verification] = await Promise.all([
+            this.userVerificationService.getOneActiveByMobileOtp(
                 userId,
                 mobileNumberId,
                 otp
-            );
+            ),
+            this.userMobileNumberService.getOneUnverifiedMobileNumber(
+                userId,
+                mobileNumberId
+            ),
+        ]);
 
         try {
             await this.databaseService.withTransaction(async tx => {
@@ -79,7 +79,7 @@ export class UserVerifyMobileNumberUseCase implements IAppUseCase<
                     authContext,
                     null,
                     {
-                        action: EnumActivityLogAction.userVerifiedMobileNumber,
+                        action: EnumActivityLogAction.userMobileNumberVerified,
                     }
                 );
                 const effect = this.notificationQueue.notify(

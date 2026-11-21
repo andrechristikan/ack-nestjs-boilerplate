@@ -41,6 +41,8 @@ export class ApiKeyCreateByAdminUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         body: ApiKeyCreateRequestDto
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
+        this.apiKeyService.assertStartAtFuture(body.startAt ?? null);
+
         const apiKeyId = this.databaseUtil.createId();
         const { apiKey, secret } = await this.databaseService.withTransaction(
             async tx => {
@@ -66,7 +68,7 @@ export class ApiKeyCreateByAdminUseCase implements IAppUseCase<
                     authContext,
                     null,
                     {
-                        action: EnumActivityLogAction.adminApiKeyCreate,
+                        action: EnumActivityLogAction.adminApiKeyCreated,
                         metadata,
                     }
                 );

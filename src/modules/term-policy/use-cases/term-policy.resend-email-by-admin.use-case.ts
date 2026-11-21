@@ -34,6 +34,8 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         termPolicyId: string
     ): Promise<IResponseReturn<void>> {
+        this.termPolicyService.assertEmailDeliverable();
+
         const termPolicy =
             await this.termPolicyService.getPublishedByAdmin(termPolicyId);
 
@@ -50,24 +52,24 @@ export class TermPolicyResendEmailByAdminUseCase implements IAppUseCase<
             authContext.userId
         );
 
-        const timestamp = this.helperDateService.create();
-        const metadata = this.termPolicyUtil.mapActivityLogMetadata(
-            termPolicy,
-            timestamp
-        );
-        const entry = this.activityLogQueue.recordEffect(
-            requestContext,
-            apiKeyContext,
-            authContext,
-            null,
-            {
-                action: EnumActivityLogAction.adminTermPolicyResendEmail,
-                metadata,
-            }
-        );
-        await this.databaseService.withTransaction(async tx =>
-            this.outboxService.addManyInTx(tx, [resend, entry])
-        );
+        await this.databaseService.withTransaction(async tx => {
+            const timestamp = this.helperDateService.create();
+            const metadata = this.termPolicyUtil.mapActivityLogMetadata(
+                termPolicy,
+                timestamp
+            );
+            const entry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.adminTermPolicyEmailResent,
+                    metadata,
+                }
+            );
+            await this.outboxService.addManyInTx(tx, [resend, entry]);
+        });
 
         return {};
     }

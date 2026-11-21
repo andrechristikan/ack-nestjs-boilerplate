@@ -3,7 +3,6 @@ import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { z } from 'zod';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { RequestSchemaValidationPipe } from '@common/request/pipes/request.schema-validation.pipe';
-import { RequestValidationException } from '@common/request/exceptions/request.validation.exception';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { buildRequestSchemaValidationPipe } from '@test/unit/helpers/test.unit.request.helper';
 
@@ -82,9 +81,10 @@ describe('RequestSchemaValidationPipe', () => {
 
             const promise = pipe.transform(5, metadata);
 
-            await expect(promise).rejects.toBeInstanceOf(
-                RequestValidationException
-            );
+            await expect(promise).rejects.toMatchObject({
+                module: 'request',
+                statusCode: EnumRequestStatusCodeError.validation,
+            });
         });
 
         it('wraps a non-AppBaseException exceptionFactory result in AppUnknownException', async () => {

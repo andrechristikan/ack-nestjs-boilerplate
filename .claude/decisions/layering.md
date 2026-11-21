@@ -27,10 +27,12 @@ Rule: `use-case.md`, Shape.
 - A single input object: it changes every multi-parameter use case's signature and its callers.
 - A marker interface with `execute(...args: never[]): Promise<unknown>`: the `unknown` result is what `null-safety.md` limits, and the type check is weak.
 
-### Each module owns its request context, passed per parameter
+### Each module owns its request context, passed per parameter, its row used whole
 
-Rule: `security.md`, Request store.
+Rule: `security.md`, Request store; `guards.md`, Contexts.
 
+- Ids only from the context: every guarded request would read its row twice.
+- The database for a displayed resource: the guard read the row on this request, so it is fresh.
 - One context type family in the kit, passed whole: the kit must know every feature.
 - One store object every guard merges into: the same feature knowledge in the kit, and one type holding every feature.
 - An activity-log input shape each caller assembles: every caller repeats the same mapping.

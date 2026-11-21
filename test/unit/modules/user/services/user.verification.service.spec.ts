@@ -11,9 +11,7 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { Verification } from '@generated/prisma-client/client';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
@@ -30,7 +28,6 @@ import {
     buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type {
     INotificationReauthenticationOtpContext,
@@ -38,9 +35,6 @@ import type {
     INotificationVerificationMobileNumberContext,
 } from '@modules/notification/interfaces/notification.interface';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
-import { UserReauthenticationOtpInvalidException } from '@modules/user/exceptions/user.reauthentication-otp-invalid.exception';
-import { UserReauthenticationOtpResendLimitException } from '@modules/user/exceptions/user.reauthentication-otp-resend-limit.exception';
 import type {
     IUser,
     IUserVerificationEmailCreate,
@@ -55,13 +49,11 @@ import { UserVerificationUtil } from '@modules/user/utils/user.verification.util
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserVerificationService', () => {
     const userVerificationRepository: MockProxy<UserVerificationRepository> =
         mock<UserVerificationRepository>();
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -138,9 +130,6 @@ describe('UserVerificationService', () => {
         userRepository.markVerifiedInTx.mockResolvedValue(baseUser);
         userVerificationRepository.markUsedInTx.mockResolvedValue(true);
 
-        databaseService.withTransaction.mockImplementation(
-            async fn => fn(tx) as never
-        );
         vi.setSystemTime(now);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -151,11 +140,9 @@ describe('UserVerificationService', () => {
                     useValue: userVerificationRepository,
                 },
                 { provide: UserRepository, useValue: userRepository },
-                { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: NotificationQueue, useValue: notificationQueue },
-                DatabaseUtil,
                 HelperHashService,
                 HelperDateService,
                 HelperNumberService,
@@ -229,15 +216,15 @@ describe('UserVerificationService', () => {
         });
     });
 
-    describe('verifyEmail', () => {
-        it('marks the verification and the user verified and adds the verifiedEmail effect in one transaction', async () => {
-            await service.verifyEmail(
+    describe('verifyEmailInTx', () => {
+        it('marks the verification and the user verified and adds the verifiedEmail effect and the entry on the given tx', async () => {
+            await service.verifyEmailInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 verification
             );
 
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.verifiedEmail,
                 {
@@ -252,7 +239,7 @@ describe('UserVerificationService', () => {
                 null,
                 null,
                 {
-                    action: EnumActivityLogAction.userVerifiedEmail,
+                    action: EnumActivityLogAction.userEmailVerified,
                     userId: 'user-flint',
                     createdBy: 'user-flint',
                 }
@@ -264,7 +251,6 @@ describe('UserVerificationService', () => {
             expect(userRepository.markVerifiedInTx).toHaveBeenCalledBefore(
                 outboxService.addManyInTx
             );
-
             expect(
                 userVerificationRepository.markUsedInTx
             ).toHaveBeenCalledWith(
@@ -283,7 +269,8 @@ describe('UserVerificationService', () => {
         it('throws UserTokenInvalidException when the token was already used', async () => {
             userVerificationRepository.markUsedInTx.mockResolvedValue(false);
 
-            const call = service.verifyEmail(
+            const call = service.verifyEmailInTx(
+                tx,
                 requestContext,
                 apiKeyContext,
                 verification
@@ -295,56 +282,6 @@ describe('UserVerificationService', () => {
             });
             expect(userRepository.markVerifiedInTx).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-        });
-
-        it('maps a write conflict to UserTokenInvalidException', async () => {
-            const conflict = buildPrismaKnownRequestError('P2034');
-            userVerificationRepository.markUsedInTx.mockRejectedValue(conflict);
-
-            const call = service.verifyEmail(
-                requestContext,
-                apiKeyContext,
-                verification
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.tokenInvalid,
-            });
-        });
-
-        it('rethrows an AppBaseException raised inside the transaction', async () => {
-            const error = new UserNotFoundException();
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = service.verifyEmail(
-                requestContext,
-                apiKeyContext,
-                verification
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-            });
-            await expect(call).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised inside the transaction', async () => {
-            const error = new Error('boom');
-            databaseService.withTransaction.mockRejectedValueOnce(error);
-
-            const call = service.verifyEmail(
-                requestContext,
-                apiKeyContext,
-                verification
-            );
-
-            await expect(call).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: error,
-            });
         });
     });
 
@@ -466,95 +403,6 @@ describe('UserVerificationService', () => {
         });
     });
 
-    describe('sendEmail', () => {
-        const emailVerification: IUserVerificationEmailCreate = {
-            reference: 'VRF-token',
-            expiredAt: new Date('2026-03-01T00:05:00.000Z'),
-            type: EnumVerificationType.email,
-            token: 'random-token',
-            hashedToken:
-                'a67fa39caab4a23f78752354d1927f69d4e367be6229afb97c3aaddf7d138739',
-            expiredInMinutes: 5,
-            link: 'https://example.com/verify?token=random-token',
-            resendInMinutes: 7,
-        };
-        const context: INotificationVerificationLinkContext = {
-            userId: 'user-flint',
-            proceedBy: 'user-flint',
-            link: 'https://example.com/verify?token=random-token',
-            expiredAt: '2026-03-01T00:05:00.000Z',
-            expiredInMinutes: 5,
-            reference: 'VRF-token',
-        };
-
-        it('replaces the active verification and adds the verificationEmail effect on one transaction', async () => {
-            vi.spyOn(helperStringService, 'random')
-                .mockReturnValueOnce('random-token')
-                .mockReturnValueOnce('token');
-
-            await service.sendEmail(
-                requestContext,
-                apiKeyContext,
-                'user-flint',
-                'flint@example.com'
-            );
-
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(
-                userVerificationRepository.createReplacingActiveInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                'user-flint',
-                'flint@example.com',
-                emailVerification,
-                now
-            );
-            expect(notificationQueue.notify).toHaveBeenCalledWith(
-                EnumNotificationKind.verificationEmail,
-                context
-            );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                notifyEffect
-            );
-            expect(
-                userVerificationRepository.createReplacingActiveInTx
-            ).toHaveBeenCalledBefore(outboxService.addInTx);
-            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                null,
-                null,
-                {
-                    action: EnumActivityLogAction.userSendVerificationEmail,
-                    userId: 'user-flint',
-                    createdBy: 'user-flint',
-                }
-            );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
-        });
-
-        it('adds no effect when the verification write throws', async () => {
-            vi.spyOn(helperStringService, 'random')
-                .mockReturnValueOnce('random-token')
-                .mockReturnValueOnce('token');
-            userVerificationRepository.createReplacingActiveInTx.mockRejectedValue(
-                new Error('boom')
-            );
-
-            await expect(
-                service.sendEmail(
-                    requestContext,
-                    apiKeyContext,
-                    'user-flint',
-                    'flint@example.com'
-                )
-            ).rejects.toThrow('boom');
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-            expect(activityLogQueue.recordEffect).not.toHaveBeenCalled();
-        });
-    });
-
     describe('sendEmailInTx', () => {
         const emailVerification: IUserVerificationEmailCreate = {
             reference: 'VRF-token',
@@ -583,7 +431,6 @@ describe('UserVerificationService', () => {
 
             await service.sendEmailInTx(tx, 'user-flint', 'flint@example.com');
 
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userVerificationRepository.createReplacingActiveInTx
             ).toHaveBeenCalledWith(
@@ -644,7 +491,10 @@ describe('UserVerificationService', () => {
                     EnumUserReauthenticationAction.mobileNumberAdd,
                     '000000'
                 )
-            ).rejects.toBeInstanceOf(UserReauthenticationOtpInvalidException);
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.reauthenticationOtpInvalid,
+            });
         });
     });
 
@@ -692,9 +542,11 @@ describe('UserVerificationService', () => {
                     'user-flint',
                     EnumUserReauthenticationAction.deleteSelf
                 )
-            ).rejects.toBeInstanceOf(
-                UserReauthenticationOtpResendLimitException
-            );
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode:
+                    EnumUserStatusCodeError.reauthenticationOtpResendLimit,
+            });
         });
     });
 
@@ -729,7 +581,6 @@ describe('UserVerificationService', () => {
                 EnumUserReauthenticationAction.mobileNumberAdd
             );
 
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userVerificationRepository.markUnusedReauthenticationUsedInTx
             ).toHaveBeenCalledWith(
@@ -845,7 +696,6 @@ describe('UserVerificationService', () => {
                 '+6281234567890'
             );
 
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userVerificationRepository.markUnusedMobileUsedInTx
             ).toHaveBeenCalledWith(tx, 'mobile-flint');

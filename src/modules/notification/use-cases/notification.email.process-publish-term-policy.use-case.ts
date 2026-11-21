@@ -47,19 +47,21 @@ export class NotificationEmailProcessPublishTermPolicyUseCase implements IAppUse
         const sentAt = this.helperDateService.create();
 
         await this.databaseService.withTransaction(async tx => {
-            await this.termPolicyRecipientService.markSentInTx(
-                tx,
-                claimNonce,
-                sentUserIds,
-                sentAt,
-                proceedBy
-            );
-            await this.notificationService.markEmailSentInTx(
-                tx,
-                sentNotificationIds,
-                sentAt,
-                proceedBy
-            );
+            await Promise.all([
+                this.termPolicyRecipientService.markSentInTx(
+                    tx,
+                    claimNonce,
+                    sentUserIds,
+                    sentAt,
+                    proceedBy
+                ),
+                this.notificationService.markEmailSentInTx(
+                    tx,
+                    sentNotificationIds,
+                    sentAt,
+                    proceedBy
+                ),
+            ]);
         });
     }
 

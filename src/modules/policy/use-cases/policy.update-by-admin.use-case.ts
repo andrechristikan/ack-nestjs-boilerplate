@@ -52,18 +52,15 @@ export class PolicyUpdateByAdminUseCase implements IAppUseCase<
         id: string,
         body: PolicyUpdateRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
-        // Sequential by design: gate before the work it guards
-        await this.roleService.assertWritableByActor(roleId, {
+        const role = await this.roleService.getWritableByActor(roleId, {
             roleId: userContext.user.roleId,
             roleType: userContext.user.role.type,
         });
+        this.policyService.assertRoleTypeAllowed(role.type);
 
         try {
             const updated = await this.databaseService.withTransaction(
                 async tx => {
-                    const role = await this.roleService.getByIdInTx(tx, roleId);
-                    this.policyService.assertRoleTypeAllowed(role.type);
-
                     const policy = await this.policyService.updateByAdminInTx(
                         tx,
                         roleId,
@@ -79,14 +76,14 @@ export class PolicyUpdateByAdminUseCase implements IAppUseCase<
                         authContext,
                         null,
                         {
-                            action: EnumActivityLogAction.adminPolicyUpdate,
+                            action: EnumActivityLogAction.adminPolicyUpdated,
                             metadata,
                         }
                     );
-                    await this.outboxService.addInTx(tx, effect);
-                    const roleEffect =
-                        this.roleService.invalidateEffect(roleId);
-                    await this.outboxService.addInTx(tx, roleEffect);
+                    await this.outboxService.addManyInTx(tx, [
+                        effect,
+                        this.roleService.invalidateEffect(roleId),
+                    ]);
 
                     return policy;
                 }

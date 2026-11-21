@@ -1,4 +1,6 @@
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -12,6 +14,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { PasswordHistory, User } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { MockInstance } from 'vitest';
@@ -212,9 +215,10 @@ describe('UserChangePasswordUseCase', () => {
         };
 
         beforeEach(() => {
-            userAuthService.assertReauthentication.mockResolvedValue(
-                passwordOnly
-            );
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: passwordOnly,
+                failure: null,
+            });
             argon2Hash = vi
                 .spyOn(helperHashService, 'argon2Hash')
                 .mockResolvedValue('hashed');
@@ -225,6 +229,57 @@ describe('UserChangePasswordUseCase', () => {
             sessionService.revokeActiveByUserExceptInTx.mockResolvedValue(
                 revoked
             );
+        });
+
+        it('commits the failed count in a transaction of its own, then throws, and leaves the work undone', async () => {
+            const refusal = new Error('refused');
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: null,
+                failure: TestUnitReauthenticationPasswordFailure,
+            });
+            userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
+                true
+            );
+            userAuthService.throwFailedReauthentication.mockImplementation(
+                () => {
+                    throw refusal;
+                }
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                TestUnitReauthenticationPasswordFailure
+            );
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledBefore(
+                userAuthService.throwFailedReauthentication
+            );
+            expect(
+                userAuthService.throwFailedReauthentication
+            ).toHaveBeenCalledWith(
+                TestUnitReauthenticationPasswordFailure,
+                true
+            );
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('asserts the re-authentication, then the history, the allowed password, and the hash before the transaction', async () => {
@@ -243,9 +298,7 @@ describe('UserChangePasswordUseCase', () => {
                 }
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.changePassword,
@@ -267,7 +320,7 @@ describe('UserChangePasswordUseCase', () => {
                 ['ACK Boilerplate', 'linden', 'jane', 'Jane Doe']
             );
             expect(
-                userAuthService.assertReauthentication
+                userAuthService.checkReauthentication
             ).toHaveBeenCalledBefore(authPasswordService.assertAllowed);
             expect(passwordHistoryService.assertNew).toHaveBeenCalledBefore(
                 argon2Hash
@@ -375,7 +428,7 @@ describe('UserChangePasswordUseCase', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userChangePassword }
+                { action: EnumActivityLogAction.userPasswordChanged }
             );
             expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.changePassword,
@@ -397,10 +450,61 @@ describe('UserChangePasswordUseCase', () => {
             ]);
         });
 
+        it('starts the history, the reset mark, and the session revoke while the password update is pending, after the completion resolved', async () => {
+            const update = buildDeferred<User>();
+            userService.updatePasswordInTx.mockReturnValue(update.promise);
+
+            const running = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                dto
+            );
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).toHaveBeenCalledBefore(userService.updatePasswordInTx);
+            expect(passwordHistoryService.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                'hashed',
+                EnumPasswordHistoryType.profile,
+                password.passwordPeriodExpired,
+                password.passwordCreated,
+                'user-linden'
+            );
+            expect(
+                userPasswordService.markUnusedResetsUsedInTx
+            ).toHaveBeenCalledWith(tx, 'user-linden', 'user-linden');
+            expect(
+                sessionService.revokeActiveByUserExceptInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                'session-1',
+                'user-linden',
+                password.passwordCreated
+            );
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+
+            update.resolve(updatedRow);
+            await running;
+
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                changeEntry,
+                notifyEffect,
+            ]);
+        });
+
         it('checks no history for an account with no password', async () => {
-            userAuthService.assertReauthentication.mockResolvedValue({
-                ...passwordOnly,
-                isPasswordChecked: false,
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: {
+                    ...passwordOnly,
+                    isPasswordChecked: false,
+                },
+                failure: null,
             });
 
             await useCase.execute(
@@ -412,9 +516,7 @@ describe('UserChangePasswordUseCase', () => {
             );
 
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.changePassword,
@@ -432,7 +534,7 @@ describe('UserChangePasswordUseCase', () => {
 
         it('writes nothing and checks nothing further when the re-authentication fails', async () => {
             const failure = new UserPasswordNotMatchException();
-            userAuthService.assertReauthentication.mockRejectedValue(failure);
+            userAuthService.checkReauthentication.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -452,7 +554,7 @@ describe('UserChangePasswordUseCase', () => {
 
         it('writes nothing when the MFA budget is spent', async () => {
             const limit = new MfaAttemptMaxException();
-            userAuthService.assertReauthentication.mockRejectedValue(limit);
+            userAuthService.checkReauthentication.mockRejectedValue(limit);
 
             await expect(
                 useCase.execute(
@@ -465,6 +567,25 @@ describe('UserChangePasswordUseCase', () => {
             ).rejects.toBe(limit);
 
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('calls the allowed-password check while the history check is still pending', async () => {
+            const history = buildDeferred<void>();
+            passwordHistoryService.assertNew.mockReturnValue(history.promise);
+
+            const running = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                dto
+            );
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(authPasswordService.assertAllowed).toHaveBeenCalled();
+
+            history.resolve();
+            await running;
         });
 
         it('refuses a disallowed new password before it hashes', async () => {
@@ -524,7 +645,10 @@ describe('UserChangePasswordUseCase', () => {
 
         it('answers MfaInvalidException when a verified MFA user loses a write conflict', async () => {
             const conflict = buildPrismaKnownRequestError('P2034');
-            userAuthService.assertReauthentication.mockResolvedValue(withMfa);
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: withMfa,
+                failure: null,
+            });
             databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(
@@ -555,7 +679,10 @@ describe('UserChangePasswordUseCase', () => {
                     userContext,
                     dto
                 )
-            ).rejects.toBeInstanceOf(AppUnknownException);
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+            });
         });
 
         it('wraps an unknown transaction failure in AppUnknownException', async () => {

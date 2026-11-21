@@ -1,8 +1,6 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
+import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -28,13 +26,11 @@ import { NotificationEmailQueue } from '@modules/notification/queues/notificatio
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import type { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
-import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceInviteNotFoundException } from '@modules/workspace/exceptions/workspace.invite-not-found.exception';
@@ -43,9 +39,9 @@ import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/excepti
 import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
 import type {
     IWorkspaceInviteCreate,
-    IWorkspaceInviteIssued,
     IWorkspaceInviteList,
     IWorkspaceInviteNotice,
+    IWorkspaceInvitePrepared,
     IWorkspaceInvitePreview,
     IWorkspaceInvitePreviewSummary,
     IWorkspaceInviteTokenData,
@@ -61,7 +57,6 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 
 @Injectable()
 export class WorkspaceInviteService {
-    private readonly referenceMaxAttempts: number;
     private readonly baseUrl: string;
     private readonly tokenLength: number;
     private readonly referencePrefix: string;
@@ -78,16 +73,13 @@ export class WorkspaceInviteService {
         private readonly featureFlagService: FeatureFlagService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly userUtil: UserUtil,
-        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
+        private readonly awsSESService: AwsSESService,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
-        this.referenceMaxAttempts = this.configService.get<number>(
-            'workspace.invite.referenceMaxAttempts'
-        )!;
         this.baseUrl = this.configService.get<string>('frontend.baseUrl')!;
         this.tokenLength = this.configService.get<number>(
             'workspace.invite.tokenLength'
@@ -104,56 +96,6 @@ export class WorkspaceInviteService {
         this.signUpLinkPattern = this.configService.get<string>(
             'workspace.invite.signUpLinkPattern'
         )!;
-    }
-
-    private async resolveExpiresInDays(
-        expiryDuration: EnumWorkspaceInviteExpiry | null
-    ): Promise<number> {
-        if (expiryDuration !== null) {
-            return expiryDuration;
-        }
-
-        const expiresInDays = await this.featureFlagService.getMetadataNumber(
-            EnumFeatureFlagKey.workspace,
-            EnumFeatureFlagMetadataKey.inviteExpiresInDays
-        );
-
-        return expiresInDays;
-    }
-
-    private createInviteTokenData(
-        expiresInDays: number
-    ): IWorkspaceInviteTokenData {
-        const token = this.helperStringService.random(this.tokenLength);
-        const hashedToken = this.helperHashService.sha256Hash(token);
-        const referenceRandom = this.helperStringService.random(
-            this.referenceRandomLength
-        );
-        const reference = `${this.referencePrefix}-${referenceRandom}`;
-        const now = this.helperDateService.create();
-        const expiredAt = this.helperDateService.forward(
-            now,
-            Duration.fromObject({
-                days: expiresInDays,
-            })
-        );
-        const claimLink = this.helperStringService.fillPattern(
-            this.linkPattern,
-            { frontendBaseUrl: this.baseUrl, token }
-        );
-        const signUpLink = this.helperStringService.fillPattern(
-            this.signUpLinkPattern,
-            { frontendBaseUrl: this.baseUrl, token }
-        );
-
-        return {
-            token,
-            hashedToken,
-            reference,
-            expiredAt,
-            claimLink,
-            signUpLink,
-        };
     }
 
     private inviteEffect(
@@ -241,6 +183,61 @@ export class WorkspaceInviteService {
         return inviteEmail.toLowerCase() === email.toLowerCase();
     }
 
+    assertEmailDeliverable(): void {
+        const isSesInitialized = this.awsSESService.isInitialized();
+        if (!isSesInitialized) {
+            throw new AwsSesNotConfiguredException();
+        }
+    }
+
+    async resolveExpiresInDays(
+        expiryDuration: EnumWorkspaceInviteExpiry | null
+    ): Promise<number> {
+        if (expiryDuration !== null) {
+            return expiryDuration;
+        }
+
+        const expiresInDays = await this.featureFlagService.getMetadataNumber(
+            EnumFeatureFlagKey.workspace,
+            EnumFeatureFlagMetadataKey.inviteExpiresInDays
+        );
+
+        return expiresInDays;
+    }
+
+    createInviteTokenData(expiresInDays: number): IWorkspaceInviteTokenData {
+        const token = this.helperStringService.random(this.tokenLength);
+        const hashedToken = this.helperHashService.sha256Hash(token);
+        const referenceRandom = this.helperStringService.random(
+            this.referenceRandomLength
+        );
+        const reference = `${this.referencePrefix}-${referenceRandom}`;
+        const now = this.helperDateService.create();
+        const expiredAt = this.helperDateService.forward(
+            now,
+            Duration.fromObject({
+                days: expiresInDays,
+            })
+        );
+        const claimLink = this.helperStringService.fillPattern(
+            this.linkPattern,
+            { frontendBaseUrl: this.baseUrl, token }
+        );
+        const signUpLink = this.helperStringService.fillPattern(
+            this.signUpLinkPattern,
+            { frontendBaseUrl: this.baseUrl, token }
+        );
+
+        return {
+            token,
+            hashedToken,
+            reference,
+            expiredAt,
+            claimLink,
+            signUpLink,
+        };
+    }
+
     mapInvitePreview(
         invite: IWorkspaceInvitePreview
     ): IWorkspaceInvitePreviewSummary {
@@ -263,18 +260,18 @@ export class WorkspaceInviteService {
         };
     }
 
-    /** Gates on `workspace.invitationAllowed`, then reads the pending invite of a token with its workspace and inviter name; a soft-deleted workspace throws the workspace-not-found exception. */
+    /** Gates on `workspace.invitationAllowed` and reads the pending invite of a token with its workspace and inviter name; a soft-deleted workspace throws the workspace-not-found exception. */
     async validateInviteToken(token: string): Promise<IWorkspaceInvitePreview> {
-        // Sequential by design: gate before the work it guards
-        await this.featureFlagService.validateFeatureFlagMetadata(
-            EnumFeatureFlagKey.workspace,
-            EnumFeatureFlagMetadataKey.invitationAllowed
-        );
         const hashedToken = this.helperHashService.sha256Hash(token);
-        const invite =
-            await this.workspaceInviteRepository.findPendingByHashedToken(
+        const [invite] = await Promise.all([
+            this.workspaceInviteRepository.findPendingByHashedToken(
                 hashedToken
-            );
+            ),
+            this.featureFlagService.validateFeatureFlagMetadata(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            ),
+        ]);
         if (!invite) {
             throw new WorkspaceInviteInvalidException();
         }
@@ -331,11 +328,13 @@ export class WorkspaceInviteService {
 
     async revokePendingByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string
+        workspaceId: string,
+        updatedBy: string
     ): Promise<void> {
         await this.workspaceInviteRepository.revokePendingByWorkspaceInTx(
             tx,
-            workspaceId
+            workspaceId,
+            updatedBy
         );
     }
 
@@ -353,11 +352,13 @@ export class WorkspaceInviteService {
 
     async revokeAllPendingByEmailInTx(
         tx: IDatabaseTransactionClient,
-        email: string
+        email: string,
+        updatedBy: string
     ): Promise<void> {
         await this.workspaceInviteRepository.revokeAllPendingByEmailInTx(
             tx,
-            email
+            email,
+            updatedBy
         );
     }
 
@@ -373,17 +374,19 @@ export class WorkspaceInviteService {
         pagination: IPaginationQueryCursorParams,
         status?: Record<string, IPaginationIn>
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
-        // Sequential by design: gate before the work it guards
-        await this.featureFlagService.validateFeatureFlagMetadata(
-            EnumFeatureFlagKey.workspace,
-            EnumFeatureFlagMetadataKey.invitationAllowed
-        );
+        const [page] = await Promise.all([
+            this.workspaceInviteRepository.findWithPaginationCursor(
+                workspaceId,
+                pagination,
+                status ?? null
+            ),
+            this.featureFlagService.validateFeatureFlagMetadata(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            ),
+        ]);
 
-        return this.workspaceInviteRepository.findWithPaginationCursor(
-            workspaceId,
-            pagination,
-            status ?? null
-        );
+        return page;
     }
 
     /** Gates on `workspace.invitationAllowed`, then asserts the project id and role are both set or both null. */
@@ -411,124 +414,83 @@ export class WorkspaceInviteService {
         }
     }
 
-    /** Creates the pending invite and adds its notification row and activity entries in one transaction per attempt, dispatched after the commit. */
-    async createInvite(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
+    /** Draws the invite id and nonce and resolves the lifetime before the transaction. */
+    async prepareInvite(
         workspaceId: string,
-        create: IWorkspaceInviteCreate,
-        notice: IWorkspaceInviteNotice
-    ): Promise<IWorkspaceInviteIssued> {
-        const actorId = authContext.userId;
+        create: IWorkspaceInviteCreate
+    ): Promise<IWorkspaceInvitePrepared> {
         const workspaceInviteId = this.databaseUtil.createId();
         const noncePattern = this.helperStringService.fillPattern(
             WorkspaceInviteNoncePattern,
             { workspaceId, email: create.email }
         );
         const nonce = this.helperHashService.sha256Hash(noncePattern);
-
         const expiresInDays = await this.resolveExpiresInDays(
             create.expiryDuration
         );
 
-        for (let attempt = 0; attempt < this.referenceMaxAttempts; attempt++) {
-            const tokenData = this.createInviteTokenData(expiresInDays);
-
-            try {
-                const invite = await this.databaseService.withTransaction(
-                    async tx => {
-                        const created =
-                            await this.workspaceInviteRepository.createPendingInTx(
-                                tx,
-                                {
-                                    workspaceInviteId,
-                                    workspaceId,
-                                    email: create.email,
-                                    workspaceRole: create.workspaceRole,
-                                    projectId: create.projectId,
-                                    projectRole: create.projectRole,
-                                    hashedToken: tokenData.hashedToken,
-                                    reference: tokenData.reference,
-                                    expiredAt: tokenData.expiredAt,
-                                    invitedByUserId: actorId,
-                                    nonce,
-                                }
-                            );
-                        const effect = this.inviteEffect(
-                            created,
-                            tokenData,
-                            actorId,
-                            notice
-                        );
-                        await this.outboxService.addInTx(tx, effect);
-                        const entries = this.inviteActivityEffects(
-                            requestContext,
-                            apiKeyContext,
-                            authContext,
-                            EnumActivityLogAction.workspaceInviteCreated,
-                            EnumActivityLogAction.workspaceInviteCreatedByAdmin,
-                            workspaceId,
-                            created.id,
-                            notice.inviteeUserId
-                        );
-                        await this.outboxService.addManyInTx(tx, entries);
-
-                        return created;
-                    }
-                );
-
-                return { invite, tokenData };
-            } catch (err: unknown) {
-                const isDuplicate = this.databaseUtil.isUniqueCollision(
-                    err,
-                    'nonce'
-                );
-                if (isDuplicate) {
-                    throw new WorkspaceInviteDuplicateException();
-                }
-
-                const isTokenCollision = this.databaseUtil.isUniqueCollision(
-                    err,
-                    'token'
-                );
-                const isReferenceCollision =
-                    this.databaseUtil.isUniqueCollision(err, 'reference');
-                if (isTokenCollision || isReferenceCollision) {
-                    continue;
-                }
-
-                if (err instanceof AppBaseException) {
-                    throw err;
-                }
-
-                const mapped = this.databaseUtil.toException(err);
-                if (mapped instanceof DatabaseWriteConflictException) {
-                    throw new WorkspaceInviteDuplicateException();
-                }
-
-                throw new AppUnknownException(err);
-            }
-        }
-
-        throw new DatabaseUniqueValueGenerationFailedException();
+        return { workspaceInviteId, nonce, expiresInDays };
     }
 
-    /** Gates on `workspace.invitationAllowed`, then reads the invite of the workspace; a missing one throws not-found and a non-pending one already-processed. */
+    async createInviteInTx(
+        tx: IDatabaseTransactionClient,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        workspaceId: string,
+        create: IWorkspaceInviteCreate,
+        { workspaceInviteId, nonce }: IWorkspaceInvitePrepared,
+        tokenData: IWorkspaceInviteTokenData,
+        notice: IWorkspaceInviteNotice
+    ): Promise<WorkspaceInvite> {
+        const actorId = authContext.userId;
+        const created = await this.workspaceInviteRepository.createPendingInTx(
+            tx,
+            {
+                workspaceInviteId,
+                workspaceId,
+                email: create.email,
+                workspaceRole: create.workspaceRole,
+                projectId: create.projectId,
+                projectRole: create.projectRole,
+                hashedToken: tokenData.hashedToken,
+                reference: tokenData.reference,
+                expiredAt: tokenData.expiredAt,
+                invitedByUserId: actorId,
+                nonce,
+            }
+        );
+        const effect = this.inviteEffect(created, tokenData, actorId, notice);
+        const entries = this.inviteActivityEffects(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            EnumActivityLogAction.workspaceInviteCreated,
+            EnumActivityLogAction.workspaceInviteCreatedByAdmin,
+            workspaceId,
+            created.id,
+            notice.inviteeUserId
+        );
+        await this.outboxService.addManyInTx(tx, [effect, ...entries]);
+
+        return created;
+    }
+
+    /** Gates on `workspace.invitationAllowed` and reads the invite of the workspace; a missing one throws not-found and a non-pending one already-processed. */
     async getPendingById(
         workspaceInviteId: string,
         workspaceId: string
     ): Promise<WorkspaceInvite> {
-        // Sequential by design: gate before the work it guards
-        await this.featureFlagService.validateFeatureFlagMetadata(
-            EnumFeatureFlagKey.workspace,
-            EnumFeatureFlagMetadataKey.invitationAllowed
-        );
-        const existing =
-            await this.workspaceInviteRepository.findByIdAndWorkspace(
+        const [existing] = await Promise.all([
+            this.workspaceInviteRepository.findByIdAndWorkspace(
                 workspaceInviteId,
                 workspaceId
-            );
+            ),
+            this.featureFlagService.validateFeatureFlagMetadata(
+                EnumFeatureFlagKey.workspace,
+                EnumFeatureFlagMetadataKey.invitationAllowed
+            ),
+        ]);
         if (!existing) {
             throw new WorkspaceInviteNotFoundException();
         } else if (existing.status !== EnumWorkspaceInviteStatus.pending) {
@@ -554,92 +516,48 @@ export class WorkspaceInviteService {
         return existing;
     }
 
-    /** Rotates the invite token and adds its notification row and activity entries in one transaction per attempt, dispatched after the commit. */
-    async resendInvite(
+    async resendInviteInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         workspaceInviteId: string,
-        expiryDuration: EnumWorkspaceInviteExpiry | null,
+        tokenData: IWorkspaceInviteTokenData,
         notice: IWorkspaceInviteNotice
-    ): Promise<IWorkspaceInviteIssued> {
+    ): Promise<WorkspaceInvite> {
         const actorId = authContext.userId;
         const resentAt = this.helperDateService.create();
-
-        const expiresInDays = await this.resolveExpiresInDays(expiryDuration);
-
-        for (let attempt = 0; attempt < this.referenceMaxAttempts; attempt++) {
-            const tokenData = this.createInviteTokenData(expiresInDays);
-
-            try {
-                const invite = await this.databaseService.withTransaction(
-                    async tx => {
-                        const rotated =
-                            await this.workspaceInviteRepository.rotateForResendInTx(
-                                tx,
-                                workspaceInviteId,
-                                tokenData.hashedToken,
-                                tokenData.reference,
-                                tokenData.expiredAt,
-                                resentAt
-                            );
-                        if (!rotated) {
-                            throw new WorkspaceInviteAlreadyProcessedException();
-                        }
-
-                        const effect = this.inviteEffect(
-                            rotated,
-                            tokenData,
-                            actorId,
-                            notice
-                        );
-                        await this.outboxService.addInTx(tx, effect);
-                        const entries = this.inviteActivityEffects(
-                            requestContext,
-                            apiKeyContext,
-                            authContext,
-                            EnumActivityLogAction.workspaceInviteResent,
-                            EnumActivityLogAction.workspaceInviteResentByAdmin,
-                            rotated.workspaceId,
-                            workspaceInviteId,
-                            notice.inviteeUserId
-                        );
-                        await this.outboxService.addManyInTx(tx, entries);
-
-                        return rotated;
-                    }
-                );
-
-                return { invite, tokenData };
-            } catch (err: unknown) {
-                if (err instanceof AppBaseException) {
-                    throw err;
-                }
-
-                const isTokenCollision = this.databaseUtil.isUniqueCollision(
-                    err,
-                    'token'
-                );
-                const isReferenceCollision =
-                    this.databaseUtil.isUniqueCollision(err, 'reference');
-                if (isTokenCollision || isReferenceCollision) {
-                    continue;
-                }
-
-                const mapped = this.databaseUtil.toException(err);
-                if (mapped instanceof DatabaseWriteConflictException) {
-                    throw new WorkspaceInviteAlreadyProcessedException();
-                }
-
-                throw new AppUnknownException(err);
-            }
+        const rotated =
+            await this.workspaceInviteRepository.rotateForResendInTx(
+                tx,
+                workspaceInviteId,
+                tokenData.hashedToken,
+                tokenData.reference,
+                tokenData.expiredAt,
+                resentAt
+            );
+        if (!rotated) {
+            throw new WorkspaceInviteAlreadyProcessedException();
         }
 
-        throw new DatabaseUniqueValueGenerationFailedException();
+        const effect = this.inviteEffect(rotated, tokenData, actorId, notice);
+        const entries = this.inviteActivityEffects(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            EnumActivityLogAction.workspaceInviteResent,
+            EnumActivityLogAction.workspaceInviteResentByAdmin,
+            rotated.workspaceId,
+            workspaceInviteId,
+            notice.inviteeUserId
+        );
+        await this.outboxService.addManyInTx(tx, [effect, ...entries]);
+
+        return rotated;
     }
 
-    /** Revokes the pending invite and adds its activity entries in one transaction, dispatched after the commit. */
-    async revokeInvite(
+    async revokeInviteInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
@@ -647,40 +565,25 @@ export class WorkspaceInviteService {
         workspaceId: string,
         inviteeUserId: string | null
     ): Promise<void> {
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                const revoked = await this.workspaceInviteRepository.revokeInTx(
-                    tx,
-                    workspaceInviteId
-                );
-                if (!revoked) {
-                    throw new WorkspaceInviteAlreadyProcessedException();
-                }
-
-                const entries = this.inviteActivityEffects(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    EnumActivityLogAction.workspaceInviteRevoked,
-                    EnumActivityLogAction.workspaceInviteRevokedByAdmin,
-                    workspaceId,
-                    workspaceInviteId,
-                    inviteeUserId
-                );
-                await this.outboxService.addManyInTx(tx, entries);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new WorkspaceInviteAlreadyProcessedException();
-            }
-
-            throw new AppUnknownException(err);
+        const revoked = await this.workspaceInviteRepository.revokeInTx(
+            tx,
+            workspaceInviteId
+        );
+        if (!revoked) {
+            throw new WorkspaceInviteAlreadyProcessedException();
         }
+
+        const entries = this.inviteActivityEffects(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            EnumActivityLogAction.workspaceInviteRevoked,
+            EnumActivityLogAction.workspaceInviteRevokedByAdmin,
+            workspaceId,
+            workspaceInviteId,
+            inviteeUserId
+        );
+        await this.outboxService.addManyInTx(tx, entries);
     }
 
     async acceptPendingInTx(
@@ -689,27 +592,14 @@ export class WorkspaceInviteService {
         userId: string,
         acceptedAt: Date
     ): Promise<void> {
-        try {
-            const accepted = await this.workspaceInviteRepository.acceptInTx(
-                tx,
-                workspaceInviteId,
-                userId,
-                acceptedAt
-            );
-            if (!accepted) {
-                throw new WorkspaceInviteAlreadyProcessedException();
-            }
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new WorkspaceInviteAlreadyProcessedException();
-            }
-
-            throw new AppUnknownException(err);
+        const accepted = await this.workspaceInviteRepository.acceptInTx(
+            tx,
+            workspaceInviteId,
+            userId,
+            acceptedAt
+        );
+        if (!accepted) {
+            throw new WorkspaceInviteAlreadyProcessedException();
         }
     }
 

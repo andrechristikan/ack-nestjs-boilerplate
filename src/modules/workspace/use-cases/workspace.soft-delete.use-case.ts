@@ -9,10 +9,8 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { ProjectService } from '@modules/project/services/project.service';
+import { ProjectQueue } from '@modules/project/queues/project.queue';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
-import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
-import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -30,9 +28,7 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
 
     constructor(
         private readonly workspaceService: WorkspaceService,
-        private readonly workspaceInviteService: WorkspaceInviteService,
-        private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
-        private readonly projectService: ProjectService,
+        private readonly projectQueue: ProjectQueue,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
@@ -57,25 +53,12 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
         try {
             await this.databaseService.withTransaction(
                 async tx => {
+                    // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
                     await this.workspaceService.softDeleteInTx(
                         tx,
                         workspaceId,
                         deletedAt,
                         actorId
-                    );
-                    await this.projectService.softDeleteByWorkspaceInTx(
-                        tx,
-                        workspaceId,
-                        deletedAt,
-                        actorId
-                    );
-                    await this.workspaceInviteService.revokePendingByWorkspaceInTx(
-                        tx,
-                        workspaceId
-                    );
-                    await this.workspaceJoinRequestService.cancelPendingByWorkspaceInTx(
-                        tx,
-                        workspaceId
                     );
                     const entry = this.activityLogQueue.recordEffect(
                         requestContext,
@@ -89,7 +72,16 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
                             workspaceId,
                         }
                     );
-                    await this.outboxService.addInTx(tx, entry);
+                    const projectEffect =
+                        this.projectQueue.softDeleteByWorkspaceEffect(
+                            workspaceId,
+                            deletedAt,
+                            actorId
+                        );
+                    await this.outboxService.addManyInTx(tx, [
+                        projectEffect,
+                        entry,
+                    ]);
                 },
                 { timeout: this.timeoutInMs }
             );

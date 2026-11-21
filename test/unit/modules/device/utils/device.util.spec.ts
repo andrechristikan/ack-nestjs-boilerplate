@@ -89,6 +89,16 @@ describe('DeviceUtil', () => {
         });
     });
 
+    describe('isOwnedByOther', () => {
+        it('returns true when the actor is not the owner', () => {
+            expect(util.isOwnedByOther('user-1', 'admin-1')).toBe(true);
+        });
+
+        it('returns false when the actor is the owner', () => {
+            expect(util.isOwnedByOther('user-1', 'user-1')).toBe(false);
+        });
+    });
+
     describe('mapActivityLogMetadata', () => {
         it('projects the ownership id, device id, and session count', () => {
             const result = util.mapActivityLogMetadata(

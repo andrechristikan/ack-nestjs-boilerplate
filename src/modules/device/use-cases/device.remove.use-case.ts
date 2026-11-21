@@ -64,12 +64,9 @@ export class DeviceRemoveUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
         const userId = authContext.userId;
-        // Sequential by design: gate before the work it guards
-        const check = await this.userAuthService.assertReauthentication(
-            requestContext,
-            apiKeyContext,
-            user,
-            {
+        // Sequential by design: a credential proof, awaited alone
+        const { check, failure } =
+            await this.userAuthService.checkReauthentication(user, {
                 action: EnumUserReauthenticationAction.deviceRemove,
                 password: password ?? null,
                 method: method ?? null,
@@ -78,8 +75,24 @@ export class DeviceRemoveUseCase implements IAppUseCase<
                 passkeyChallengeToken: passkeyChallengeToken ?? null,
                 passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
-            }
-        );
+            });
+        if (failure !== null) {
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.userAuthService.countFailedReauthenticationInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        failure
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(
+                failure,
+                isLocked
+            );
+        }
 
         const now = this.helperDateService.create();
         try {
@@ -110,7 +123,7 @@ export class DeviceRemoveUseCase implements IAppUseCase<
                     authContext,
                     null,
                     {
-                        action: EnumActivityLogAction.userRemoveDevice,
+                        action: EnumActivityLogAction.userDeviceRemoved,
                         userId,
                         createdBy: userId,
                         metadata,

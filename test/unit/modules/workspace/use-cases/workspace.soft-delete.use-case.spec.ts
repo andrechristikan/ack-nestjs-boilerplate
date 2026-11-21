@@ -4,7 +4,6 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -12,11 +11,15 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { ProjectService } from '@modules/project/services/project.service';
+import {
+    EnumProjectProcess,
+    EnumProjectQueue,
+} from '@modules/project/enums/project.enum';
+import type { IProjectSoftDeleteByWorkspaceEffect } from '@modules/project/interfaces/project.interface';
+import { ProjectQueue } from '@modules/project/queues/project.queue';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
-import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
-import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
@@ -34,21 +37,29 @@ import {
     buildAuthJwtAccessContext,
     buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 describe('WorkspaceSoftDeleteUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
-    const workspaceInviteService: MockProxy<WorkspaceInviteService> =
-        mock<WorkspaceInviteService>();
-    const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
-        mock<WorkspaceJoinRequestService>();
-    const projectService: MockProxy<ProjectService> = mock<ProjectService>();
+    const projectQueue: MockProxy<ProjectQueue> = mock<ProjectQueue>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const firstEntry = buildActivityLogCreateManyEffect('first-entry');
-    const secondEntry = buildActivityLogCreateManyEffect('second-entry');
+    const entry = buildActivityLogCreateManyEffect('first-entry');
+    const projectEffect: IProjectSoftDeleteByWorkspaceEffect = {
+        queue: EnumProjectQueue.project,
+        name: EnumProjectProcess.softDeleteByWorkspace,
+        data: {
+            workspaceId: 'workspace-1',
+            deletedAt: '2026-01-01T00:00:00.000Z',
+            deletedBy: 'user-1',
+        },
+        priority: EnumQueuePriority.high,
+        idempotencyKey: null,
+    };
     const configValues: Record<string, unknown> = {
         'workspace.delete.timeoutInMs': 10000,
     };
@@ -72,9 +83,8 @@ describe('WorkspaceSoftDeleteUseCase', () => {
     });
 
     beforeEach(async () => {
-        activityLogQueue.recordEffect
-            .mockReturnValueOnce(firstEntry)
-            .mockReturnValueOnce(secondEntry);
+        activityLogQueue.recordEffect.mockReturnValue(entry);
+        projectQueue.softDeleteByWorkspaceEffect.mockReturnValue(projectEffect);
         vi.setSystemTime(deletedAt);
         databaseService.withTransaction.mockImplementation(async fn => fn(tx));
 
@@ -82,15 +92,7 @@ describe('WorkspaceSoftDeleteUseCase', () => {
             providers: [
                 WorkspaceSoftDeleteUseCase,
                 { provide: WorkspaceService, useValue: workspaceService },
-                {
-                    provide: WorkspaceInviteService,
-                    useValue: workspaceInviteService,
-                },
-                {
-                    provide: WorkspaceJoinRequestService,
-                    useValue: workspaceJoinRequestService,
-                },
-                { provide: ProjectService, useValue: projectService },
+                { provide: ProjectQueue, useValue: projectQueue },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
@@ -113,30 +115,15 @@ describe('WorkspaceSoftDeleteUseCase', () => {
     });
 
     describe('execute', () => {
-        it('soft-deletes the workspace, its projects, its pending invites, and its pending join requests in order on one transaction and adds the deleted entry on it', async () => {
+        it('soft-deletes the workspace and adds the project cascade effect with the deleted entry in one add on one transaction', async () => {
             const callOrder: string[] = [];
             workspaceService.softDeleteInTx.mockImplementation(async () => {
                 callOrder.push('workspace');
             });
-            projectService.softDeleteByWorkspaceInTx.mockImplementation(
-                async () => {
-                    callOrder.push('projects');
-                }
-            );
-            workspaceInviteService.revokePendingByWorkspaceInTx.mockImplementation(
-                async () => {
-                    callOrder.push('invites');
-                }
-            );
-            workspaceJoinRequestService.cancelPendingByWorkspaceInTx.mockImplementation(
-                async () => {
-                    callOrder.push('joinRequests');
-                }
-            );
-            outboxService.addInTx.mockImplementation(async () => {
-                callOrder.push('addEntry');
+            outboxService.addManyInTx.mockImplementation(async () => {
+                callOrder.push('addEffects');
 
-                return 'outbox-1';
+                return ['outbox-1', 'outbox-2'];
             });
 
             const result = await useCase.execute(
@@ -155,14 +142,8 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                 'user-1'
             );
             expect(
-                projectService.softDeleteByWorkspaceInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', deletedAt, 'user-1');
-            expect(
-                workspaceInviteService.revokePendingByWorkspaceInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1');
-            expect(
-                workspaceJoinRequestService.cancelPendingByWorkspaceInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1');
+                projectQueue.softDeleteByWorkspaceEffect
+            ).toHaveBeenCalledWith('workspace-1', deletedAt, 'user-1');
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
@@ -175,14 +156,12 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                     workspaceId: 'workspace-1',
                 }
             );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, firstEntry);
-            expect(callOrder).toEqual([
-                'workspace',
-                'projects',
-                'invites',
-                'joinRequests',
-                'addEntry',
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                projectEffect,
+                entry,
             ]);
+            expect(callOrder).toEqual(['workspace', 'addEffects']);
         });
 
         it('runs no later step and stages nothing when the workspace soft delete rejects', async () => {
@@ -197,18 +176,12 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                     authContext,
                     workspaceContext
                 )
-            ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.notFound,
+            });
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(
-                projectService.softDeleteByWorkspaceInTx
-            ).not.toHaveBeenCalled();
-            expect(
-                workspaceInviteService.revokePendingByWorkspaceInTx
-            ).not.toHaveBeenCalled();
-            expect(
-                workspaceJoinRequestService.cancelPendingByWorkspaceInTx
-            ).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('opens the transaction with workspace.delete.timeoutInMs', async () => {
@@ -238,8 +211,11 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                     authContext,
                     workspaceContext
                 )
-            ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.notFound,
+            });
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('wraps an unknown error', async () => {
@@ -254,8 +230,11 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                     authContext,
                     workspaceContext
                 )
-            ).rejects.toBeInstanceOf(AppUnknownException);
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+            });
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
 });

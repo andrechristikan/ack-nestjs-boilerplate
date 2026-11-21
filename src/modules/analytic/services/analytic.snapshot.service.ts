@@ -86,7 +86,7 @@ export class AnalyticSnapshotService {
         const startedAt = this.helperDateService.create();
         const batchSize = this.writeBatchSize;
 
-        // Sequential by design: bounded batches in turn; the header after its items; the delete after the header write decides it
+        // Sequential by design: side effects whose order is part of the contract (the header after its items, the delete after the header write decides it); a fan-out over an unbounded collection: bounded chunks in turn, each concurrent
         for (
             let offset = 0;
             offset < result.items.length;

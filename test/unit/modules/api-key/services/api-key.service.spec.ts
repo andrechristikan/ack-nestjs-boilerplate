@@ -176,6 +176,162 @@ describe('ApiKeyService', () => {
         });
     });
 
+    describe('getOneById', () => {
+        it('returns the row read on the client', async () => {
+            apiKeyRepository.findOneById.mockResolvedValue(apiKey);
+
+            const result = await service.getOneById(apiKey.id);
+
+            expect(result).toBe(apiKey);
+            expect(apiKeyRepository.findOneById).toHaveBeenCalledWith(
+                apiKey.id
+            );
+        });
+
+        it('throws ApiKeyNotFoundException when the api key does not exist', async () => {
+            apiKeyRepository.findOneById.mockResolvedValue(null);
+
+            await expect(service.getOneById('missing')).rejects.toMatchObject({
+                module: 'apiKey',
+                statusCode: EnumApiKeyStatusCodeError.notFound,
+            });
+        });
+    });
+
+    describe('assertActive', () => {
+        it('returns when the api key is active', () => {
+            expect(() => service.assertActive(apiKey)).not.toThrow();
+        });
+
+        it('throws ApiKeyInactiveException when the api key is inactive', () => {
+            expect(() =>
+                service.assertActive({ ...apiKey, isActive: false })
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'apiKey',
+                    statusCode: EnumApiKeyStatusCodeError.inactive,
+                })
+            );
+        });
+    });
+
+    describe('assertNotExpired', () => {
+        it('returns when the api key has no end date', () => {
+            expect(() => service.assertNotExpired(apiKey)).not.toThrow();
+        });
+
+        it('returns when the end date is ahead', () => {
+            expect(() =>
+                service.assertNotExpired({
+                    ...apiKey,
+                    endAt: new Date('2026-02-01T00:00:00.000Z'),
+                })
+            ).not.toThrow();
+        });
+
+        it('throws ApiKeyExpiredException when the end date has passed', () => {
+            expect(() =>
+                service.assertNotExpired({
+                    ...apiKey,
+                    startAt: new Date('2026-01-01T00:00:00.000Z'),
+                    endAt: new Date('2026-01-10T00:00:00.000Z'),
+                })
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'apiKey',
+                    statusCode: EnumApiKeyStatusCodeError.expired,
+                })
+            );
+        });
+    });
+
+    describe('assertStartAtFuture', () => {
+        it('returns when the start date is null', () => {
+            expect(() => service.assertStartAtFuture(null)).not.toThrow();
+        });
+
+        it('returns when the start date is ahead', () => {
+            expect(() =>
+                service.assertStartAtFuture(
+                    new Date('2026-02-01T00:00:00.000Z')
+                )
+            ).not.toThrow();
+        });
+
+        it('throws ApiKeyStartAtNotFutureException when the start date is before now', () => {
+            expect(() =>
+                service.assertStartAtFuture(
+                    new Date('2025-01-01T00:00:00.000Z')
+                )
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'apiKey',
+                    statusCode: EnumApiKeyStatusCodeError.startAtNotFuture,
+                })
+            );
+        });
+
+        it('throws ApiKeyStartAtNotFutureException when the start date is exactly now', () => {
+            expect(() => service.assertStartAtFuture(now)).toThrow(
+                expect.objectContaining({
+                    module: 'apiKey',
+                    statusCode: EnumApiKeyStatusCodeError.startAtNotFuture,
+                })
+            );
+        });
+    });
+
+    describe('assertEndAtFuture', () => {
+        const startAt = new Date('2026-01-01T00:00:00.000Z');
+
+        it('returns when the start date is null', () => {
+            expect(() =>
+                service.assertEndAtFuture(
+                    null,
+                    new Date('2025-01-01T00:00:00.000Z')
+                )
+            ).not.toThrow();
+        });
+
+        it('returns when the end date is null', () => {
+            expect(() =>
+                service.assertEndAtFuture(startAt, null)
+            ).not.toThrow();
+        });
+
+        it('returns when the end date is ahead', () => {
+            expect(() =>
+                service.assertEndAtFuture(
+                    startAt,
+                    new Date('2026-03-01T00:00:00.000Z')
+                )
+            ).not.toThrow();
+        });
+
+        it('returns for an end date earlier today whose end of day is still ahead', () => {
+            expect(() =>
+                service.assertEndAtFuture(
+                    startAt,
+                    new Date('2026-01-15T00:00:00.000Z')
+                )
+            ).not.toThrow();
+        });
+
+        it('throws ApiKeyEndAtNotFutureException when the end of day of the end date has passed', () => {
+            expect(() =>
+                service.assertEndAtFuture(
+                    startAt,
+                    new Date('2026-01-14T10:00:00.000Z')
+                )
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'apiKey',
+                    statusCode: EnumApiKeyStatusCodeError.endAtNotFuture,
+                })
+            );
+        });
+    });
+
     describe('createByAdminInTx', () => {
         const create: IApiKeyCreate = {
             name: 'Acme Api Key',
@@ -211,9 +367,9 @@ describe('ApiKeyService', () => {
             );
         });
 
-        it('validates a future startAt and normalizes the date window when both dates are given', async () => {
-            const startAt = new Date('2026-02-01T00:00:00.000Z');
-            const endAt = new Date('2026-03-01T00:00:00.000Z');
+        it('rounds the date window to the start and end of day when both dates are given', async () => {
+            const startAt = new Date('2026-02-01T10:00:00.000Z');
+            const endAt = new Date('2026-03-01T10:00:00.000Z');
             const startAtDay = new Date('2026-02-01T00:00:00.000Z');
             const endAtDay = new Date('2026-03-01T23:59:59.999Z');
 
@@ -237,57 +393,24 @@ describe('ApiKeyService', () => {
             );
         });
 
-        it('throws ApiKeyStartAtNotFutureException when startAt is not in the future', async () => {
-            const startAt = new Date('2025-01-01T00:00:00.000Z');
+        it('lets the repository rejection through', async () => {
+            const failure = new Error('collision');
+            apiKeyRepository.createInTx.mockRejectedValue(failure);
 
             await expect(
-                service.createByAdminInTx(tx, 'api-key-1', {
-                    ...create,
-                    startAt,
-                })
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.startAtNotFuture,
-            });
+                service.createByAdminInTx(tx, 'api-key-1', create)
+            ).rejects.toBe(failure);
         });
     });
 
     describe('updateStatusByAdminInTx', () => {
-        it('throws ApiKeyNotFoundException when the api key does not exist', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(null);
-
-            await expect(
-                service.updateStatusByAdminInTx(tx, 'missing', true)
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.notFound,
-            });
-        });
-
-        it('throws ApiKeyExpiredException when the api key window already expired', async () => {
-            const expiredApiKey: ApiKey = {
-                ...apiKey,
-                startAt: new Date('2026-01-01T00:00:00.000Z'),
-                endAt: new Date('2026-01-10T00:00:00.000Z'),
-            };
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(expiredApiKey);
-
-            await expect(
-                service.updateStatusByAdminInTx(tx, apiKey.id, true)
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.expired,
-            });
-        });
-
         it('updates the status and adds the cache invalidation effect on the tx', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
             const updated: ApiKey = { ...apiKey, isActive: false };
             apiKeyRepository.updateStatusInTx.mockResolvedValue(updated);
 
             const result = await service.updateStatusByAdminInTx(
                 tx,
-                apiKey.id,
+                apiKey,
                 false
             );
 
@@ -306,11 +429,10 @@ describe('ApiKeyService', () => {
         });
 
         it('throws ApiKeyNotFoundException when the guarded write misses', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
             apiKeyRepository.updateStatusInTx.mockResolvedValue(null);
 
             await expect(
-                service.updateStatusByAdminInTx(tx, apiKey.id, false)
+                service.updateStatusByAdminInTx(tx, apiKey, false)
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
@@ -320,39 +442,13 @@ describe('ApiKeyService', () => {
     });
 
     describe('updateByAdminInTx', () => {
-        it('throws ApiKeyNotFoundException when the api key does not exist', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(null);
-
-            await expect(
-                service.updateByAdminInTx(tx, 'missing', 'New Name')
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.notFound,
-            });
-        });
-
-        it('throws ApiKeyInactiveException when the api key is inactive', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue({
-                ...apiKey,
-                isActive: false,
-            });
-
-            await expect(
-                service.updateByAdminInTx(tx, apiKey.id, 'New Name')
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.inactive,
-            });
-        });
-
         it('renames the api key and adds the cache invalidation effect on the tx', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
             const renamed: ApiKey = { ...apiKey, name: 'New Name' };
             apiKeyRepository.updateNameInTx.mockResolvedValue(renamed);
 
             const result = await service.updateByAdminInTx(
                 tx,
-                apiKey.id,
+                apiKey,
                 'New Name'
             );
 
@@ -381,7 +477,6 @@ describe('ApiKeyService', () => {
             const nextYear = new Date('2027-01-15T10:00:00.000Z');
             const yesterdayDay = new Date('2026-01-14T00:00:00.000Z');
             const nextYearDay = new Date('2027-01-15T23:59:59.999Z');
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
             const updated: ApiKey = {
                 ...apiKey,
                 startAt: yesterdayDay,
@@ -391,7 +486,7 @@ describe('ApiKeyService', () => {
 
             const result = await service.updateDatesByAdminInTx(
                 tx,
-                apiKey.id,
+                apiKey,
                 yesterday,
                 nextYear
             );
@@ -405,29 +500,13 @@ describe('ApiKeyService', () => {
             );
         });
 
-        it('throws ApiKeyEndAtNotFutureException when the rounded endAt is not after now', async () => {
-            await expect(
-                service.updateDatesByAdminInTx(
-                    tx,
-                    apiKey.id,
-                    startAt,
-                    new Date('2025-01-01T00:00:00.000Z')
-                )
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.endAtNotFuture,
-            });
-            expect(apiKeyRepository.updateDatesInTx).not.toHaveBeenCalled();
-        });
-
         it('writes both dates null when both inputs are null', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
             const updated: ApiKey = { ...apiKey, startAt: null, endAt: null };
             apiKeyRepository.updateDatesInTx.mockResolvedValue(updated);
 
             const result = await service.updateDatesByAdminInTx(
                 tx,
-                apiKey.id,
+                apiKey,
                 null,
                 null
             );
@@ -442,10 +521,9 @@ describe('ApiKeyService', () => {
         });
 
         it('writes both dates null when exactly one input is null', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
             apiKeyRepository.updateDatesInTx.mockResolvedValue(apiKey);
 
-            await service.updateDatesByAdminInTx(tx, apiKey.id, startAt, null);
+            await service.updateDatesByAdminInTx(tx, apiKey, startAt, null);
 
             expect(apiKeyRepository.updateDatesInTx).toHaveBeenCalledWith(
                 tx,
@@ -455,33 +533,7 @@ describe('ApiKeyService', () => {
             );
         });
 
-        it('throws ApiKeyNotFoundException when the api key does not exist', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(null);
-
-            await expect(
-                service.updateDatesByAdminInTx(tx, 'missing', startAt, endAt)
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.notFound,
-            });
-        });
-
-        it('throws ApiKeyInactiveException when the api key is inactive', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue({
-                ...apiKey,
-                isActive: false,
-            });
-
-            await expect(
-                service.updateDatesByAdminInTx(tx, apiKey.id, startAt, endAt)
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.inactive,
-            });
-        });
-
-        it('normalizes and updates the date window and adds the cache invalidation effect on the tx', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
+        it('adds the cache invalidation effect on the tx after the write', async () => {
             const updated: ApiKey = {
                 ...apiKey,
                 startAt: startAtDay,
@@ -491,7 +543,7 @@ describe('ApiKeyService', () => {
 
             const result = await service.updateDatesByAdminInTx(
                 tx,
-                apiKey.id,
+                apiKey,
                 startAt,
                 endAt
             );
@@ -511,11 +563,10 @@ describe('ApiKeyService', () => {
         });
 
         it('throws ApiKeyInactiveException when the guarded write misses', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
             apiKeyRepository.updateDatesInTx.mockResolvedValue(null);
 
             await expect(
-                service.updateDatesByAdminInTx(tx, apiKey.id, startAt, endAt)
+                service.updateDatesByAdminInTx(tx, apiKey, startAt, endAt)
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.inactive,
@@ -525,40 +576,14 @@ describe('ApiKeyService', () => {
     });
 
     describe('resetByAdminInTx', () => {
-        it('throws ApiKeyNotFoundException when the api key does not exist', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(null);
-
-            await expect(
-                service.resetByAdminInTx(tx, 'missing')
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.notFound,
-            });
-        });
-
-        it('throws ApiKeyInactiveException when the api key is inactive', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue({
-                ...apiKey,
-                isActive: false,
-            });
-
-            await expect(
-                service.resetByAdminInTx(tx, apiKey.id)
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.inactive,
-            });
-        });
-
         it('creates a new secret, updates the hash, and adds the cache invalidation effect on the tx', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
             stubRandom(random, 'unused', 'new-secret');
             const newHash =
                 '182f48be1503436e9fc2845af64b59df8c972076e47d5b1e78232e664dead6bc';
             const updated: ApiKey = { ...apiKey, hash: newHash };
             apiKeyRepository.updateHashInTx.mockResolvedValue(updated);
 
-            const result = await service.resetByAdminInTx(tx, apiKey.id);
+            const result = await service.resetByAdminInTx(tx, apiKey);
 
             expect(result).toEqual({ apiKey: updated, secret: 'new-secret' });
             expect(apiKeyRepository.updateHashInTx).toHaveBeenCalledWith(
@@ -574,12 +599,11 @@ describe('ApiKeyService', () => {
         });
 
         it('throws ApiKeyInactiveException when the guarded write misses', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
             stubRandom(random, 'unused', 'new-secret');
             apiKeyRepository.updateHashInTx.mockResolvedValue(null);
 
             await expect(
-                service.resetByAdminInTx(tx, apiKey.id)
+                service.resetByAdminInTx(tx, apiKey)
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.inactive,
@@ -589,22 +613,10 @@ describe('ApiKeyService', () => {
     });
 
     describe('deleteByAdminInTx', () => {
-        it('throws ApiKeyNotFoundException when the api key does not exist', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(null);
-
-            await expect(
-                service.deleteByAdminInTx(tx, 'missing')
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.notFound,
-            });
-        });
-
-        it('deletes the api key, adds the cache invalidation effect on the tx, and returns the row it read', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
+        it('deletes the api key, adds the cache invalidation effect on the tx, and returns the row it was given', async () => {
             apiKeyRepository.deleteInTx.mockResolvedValue(true);
 
-            const result = await service.deleteByAdminInTx(tx, apiKey.id);
+            const result = await service.deleteByAdminInTx(tx, apiKey);
 
             expect(result).toBe(apiKey);
             expect(apiKeyRepository.deleteInTx).toHaveBeenCalledWith(
@@ -619,11 +631,10 @@ describe('ApiKeyService', () => {
         });
 
         it('throws ApiKeyNotFoundException when the guarded write misses', async () => {
-            apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
             apiKeyRepository.deleteInTx.mockResolvedValue(false);
 
             await expect(
-                service.deleteByAdminInTx(tx, apiKey.id)
+                service.deleteByAdminInTx(tx, apiKey)
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
@@ -807,72 +818,6 @@ describe('ApiKeyService', () => {
             ]);
 
             expect(result).toBe(true);
-        });
-    });
-
-    describe('getValidApiKey', () => {
-        it('throws ApiKeyNotFoundException when the api key is null', () => {
-            let thrown: unknown;
-            try {
-                service['getValidApiKey'](null);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.notFound,
-            });
-        });
-
-        it('throws ApiKeyInactiveException when includeActive is true and the api key is inactive', () => {
-            let thrown: unknown;
-            try {
-                service['getValidApiKey']({ ...apiKey, isActive: false }, true);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.inactive,
-            });
-        });
-
-        it('returns the api key when includeActive is false, whatever the active flag', () => {
-            const inactiveApiKey: ApiKey = { ...apiKey, isActive: false };
-
-            expect(service['getValidApiKey'](inactiveApiKey, false)).toBe(
-                inactiveApiKey
-            );
-        });
-
-        it('returns the api key when includeActive is true and the api key is active', () => {
-            expect(service['getValidApiKey'](apiKey, true)).toBe(apiKey);
-        });
-    });
-
-    describe('validateStartAtIsFuture', () => {
-        it('throws ApiKeyStartAtNotFutureException when startAt is at or before now', () => {
-            let thrown: unknown;
-            try {
-                service['validateStartAtIsFuture'](now);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.startAtNotFuture,
-            });
-        });
-
-        it('returns with no throw when startAt is after now', () => {
-            const future = new Date('2026-02-01T00:00:00.000Z');
-
-            expect(() =>
-                service['validateStartAtIsFuture'](future)
-            ).not.toThrow();
         });
     });
 

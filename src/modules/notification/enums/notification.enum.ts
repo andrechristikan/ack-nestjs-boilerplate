@@ -50,6 +50,7 @@ export enum EnumNotificationKind {
     publishTermPolicy = 'publishTermPolicy',
     userAcceptTermPolicy = 'userAcceptTermPolicy',
     userImportResult = 'userImportResult',
+    userExportResult = 'userExportResult',
     workspaceInvite = 'workspaceInvite',
     workspaceJoinRequest = 'workspaceJoinRequest',
     workspaceJoinAccepted = 'workspaceJoinAccepted',

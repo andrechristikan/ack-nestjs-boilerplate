@@ -1,18 +1,10 @@
 import { z } from 'zod';
-import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.response.dto';
 
 /** @public */
-export const UserExportResponseSchema = UserListResponseSchema.omit({
-    role: true,
-    photo: true,
-}).extend({
-    photo: z.string().nullable().meta({
-        description: 'User photo URL',
-        example: 'https://example.com/photo.jpg',
-    }),
-    role: z.string().meta({
-        description: 'User role',
-        example: 'admin',
+export const UserExportResponseSchema = z.object({
+    outboxId: z.string().meta({
+        description: 'Id of the queued export job record',
+        example: '507f1f77bcf86cd799439011',
     }),
 });
 

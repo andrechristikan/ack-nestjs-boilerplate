@@ -1,7 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { INotificationTermPolicyBatchRecipient } from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailQueue } from '@modules/notification/queues/notification.email.queue';
@@ -26,7 +25,6 @@ export class TermPolicyRecipientService {
     constructor(
         private readonly termPolicyRecipientRepository: TermPolicyRecipientRepository,
         private readonly notificationEmailQueue: NotificationEmailQueue,
-        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
@@ -93,8 +91,9 @@ export class TermPolicyRecipientService {
         return { sendableMarkers, offPageUserIds };
     }
 
-    /** Re-adds each pending batch of one page from its stored markers in one outbox add, and returns how many it added. */
-    async sendPendingBatches(
+    /** Re-adds each pending batch of one page from its stored markers in one outbox add on the given transaction, and returns how many it added. */
+    async sendPendingBatchesInTx(
+        tx: IDatabaseTransactionClient,
         proceedBy: string,
         data: ITermPolicyPublishPayload,
         { users, pendingBatchIds }: ITermPolicyRecipientPage,
@@ -135,9 +134,7 @@ export class TermPolicyRecipientService {
                 recipientsByBatchId.get(batchId) ?? []
             )
         );
-        await this.databaseService.withTransaction(async tx =>
-            this.outboxService.addManyInTx(tx, effects)
-        );
+        await this.outboxService.addManyInTx(tx, effects);
 
         return pendingBatchIds.length;
     }

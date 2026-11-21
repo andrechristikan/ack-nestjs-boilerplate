@@ -129,7 +129,7 @@ export abstract class QueueProcessorBase extends WorkerHost {
         const maxAttempts = job.opts.attempts ?? 1;
         const outboxId = this.getOutboxId(job);
 
-        // Sequential by design: side effects whose order is part of the contract; a write that must not happen if an earlier step throws
+        // Sequential by design: a write after its checks; side effects whose order is part of the contract
         await this.writeJobLog(job, 'Job started');
         await this.writeJobLog(
             job,

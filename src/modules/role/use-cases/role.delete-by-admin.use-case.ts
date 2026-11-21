@@ -46,15 +46,19 @@ export class RoleDeleteByAdminUseCase implements IAppUseCase<
         userContext: IUserContext,
         id: string
     ): Promise<IResponseReturn<void>> {
+        const target = await this.roleService.getDeletableByActor(
+            {
+                roleId: userContext.user.roleId,
+                roleType: userContext.user.role.type,
+            },
+            id
+        );
+
         try {
             await this.databaseService.withTransaction(async tx => {
                 const deleted = await this.roleService.deleteByAdminInTx(
                     tx,
-                    id,
-                    {
-                        roleId: userContext.user.roleId,
-                        roleType: userContext.user.role.type,
-                    }
+                    target
                 );
 
                 const timestamp = this.helperDateService.create();
@@ -68,7 +72,7 @@ export class RoleDeleteByAdminUseCase implements IAppUseCase<
                     authContext,
                     null,
                     {
-                        action: EnumActivityLogAction.adminRoleDelete,
+                        action: EnumActivityLogAction.adminRoleDeleted,
                         metadata,
                     }
                 );

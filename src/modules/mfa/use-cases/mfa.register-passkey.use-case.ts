@@ -17,15 +17,18 @@ import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interfa
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 import type { MfaPasskeyRegisterRequestDto } from '@modules/mfa/dtos/request/mfa.passkey-register.request.dto';
 import type { MfaPasskeyRegisterResponseDto } from '@modules/mfa/dtos/response/mfa.passkey-register.response.dto';
+import type { IMfaPasskeyRegistration } from '@modules/mfa/interfaces/mfa.interface';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
+import { MfaPasskeyAlreadyRegisteredException } from '@modules/mfa/exceptions/mfa.passkey-already-registered.exception';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import type { IUserContext } from '@modules/user/interfaces/user.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { Injectable } from '@nestjs/common';
+import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 
 @Injectable()
 export class MfaRegisterPasskeyUseCase implements IAppUseCase<
@@ -49,6 +52,25 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
+    private async getRegistration(
+        userId: string,
+        challengeToken: string,
+        registrationResponse: RegistrationResponseJSON
+    ): Promise<IMfaPasskeyRegistration> {
+        const webAuthnChallenge =
+            await this.mfaChallengeService.getWebAuthnChallengeForUser(
+                challengeToken,
+                EnumMfaChallengePurpose.registration,
+                userId
+            );
+
+        return this.mfaPasskeyService.assertRegistrable(
+            userId,
+            registrationResponse,
+            webAuthnChallenge
+        );
+    }
+
     async execute(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
@@ -67,13 +89,17 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
             otp,
         }: MfaPasskeyRegisterRequestDto
     ): Promise<IResponseReturn<MfaPasskeyRegisterResponseDto>> {
-        // Sequential by design: gates before the work they guard
-        await this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.passkey);
-        const check = await this.userAuthService.assertReauthentication(
-            requestContext,
-            apiKeyContext,
-            user,
-            {
+        const [registration] = await Promise.all([
+            this.getRegistration(
+                authContext.userId,
+                challengeToken,
+                registrationResponse
+            ),
+            this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.passkey),
+        ]);
+        // Sequential by design: a credential proof, awaited alone
+        const { check, failure } =
+            await this.userAuthService.checkReauthentication(user, {
                 action: EnumUserReauthenticationAction.mfaPasskeyRegister,
                 password: password ?? null,
                 method: method ?? null,
@@ -82,16 +108,24 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
                 passkeyChallengeToken: passkeyChallengeToken ?? null,
                 passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
-            }
-        );
-        const [webAuthnChallenge, maxPerUser] = await Promise.all([
-            this.mfaChallengeService.getWebAuthnChallengeForUser(
-                challengeToken,
-                EnumMfaChallengePurpose.registration,
-                authContext.userId
-            ),
-            this.mfaPasskeyService.getMaxPerUser(),
-        ]);
+            });
+        if (failure !== null) {
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.userAuthService.countFailedReauthenticationInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        failure
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(
+                failure,
+                isLocked
+            );
+        }
 
         try {
             return await this.databaseService.withTransaction(async tx => {
@@ -112,9 +146,7 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
                     tx,
                     authContext.userId,
                     name,
-                    registrationResponse,
-                    webAuthnChallenge,
-                    maxPerUser
+                    registration
                 );
                 const backupCodes = await this.mfaService.createBackupCodesInTx(
                     tx,
@@ -125,7 +157,7 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
                     apiKeyContext,
                     authContext,
                     null,
-                    { action: EnumActivityLogAction.userRegisterMfaPasskey }
+                    { action: EnumActivityLogAction.userMfaPasskeyRegistered }
                 );
                 await this.outboxService.addInTx(tx, entry);
 
@@ -134,6 +166,14 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
+            }
+
+            const isCredentialCollision = this.databaseUtil.isUniqueCollision(
+                err,
+                'credentialId'
+            );
+            if (isCredentialCollision) {
+                throw new MfaPasskeyAlreadyRegisteredException();
             }
 
             const mapped = this.databaseUtil.toException(err);

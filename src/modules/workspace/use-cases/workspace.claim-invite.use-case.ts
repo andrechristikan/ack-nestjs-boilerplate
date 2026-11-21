@@ -9,6 +9,7 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
+import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
@@ -60,9 +61,15 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
             userContext.user.email
         );
 
+        await this.workspaceInviteService.assertInviteeNotMember(
+            invite.workspaceId,
+            userId
+        );
+
         const acceptedAt = this.helperDateService.create();
         try {
             await this.databaseService.withTransaction(async tx => {
+                // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
                 await this.workspaceInviteService.acceptPendingInTx(
                     tx,
                     invite.id,
@@ -76,18 +83,10 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
                     invite.workspaceRole,
                     userId
                 );
-                await this.workspaceJoinRequestService.cancelPendingByUserInTx(
-                    tx,
-                    invite.workspaceId,
-                    userId
-                );
-                await this.userService.setLastWorkspaceInTx(
-                    tx,
-                    userId,
-                    invite.workspaceId
-                );
+                let membership: Promise<IProjectMember | null> =
+                    Promise.resolve(null);
                 if (invite.projectId && invite.projectRole) {
-                    await this.projectMemberService.createInTx(
+                    membership = this.projectMemberService.createInTx(
                         tx,
                         invite.projectId,
                         userId,
@@ -95,6 +94,19 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
                         userId
                     );
                 }
+                await Promise.all([
+                    this.workspaceJoinRequestService.cancelPendingByUserInTx(
+                        tx,
+                        invite.workspaceId,
+                        userId
+                    ),
+                    this.userService.setLastWorkspaceInTx(
+                        tx,
+                        userId,
+                        invite.workspaceId
+                    ),
+                    membership,
+                ]);
                 const inviteeEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,

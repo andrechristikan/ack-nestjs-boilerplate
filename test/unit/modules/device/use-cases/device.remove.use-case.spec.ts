@@ -1,4 +1,5 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
@@ -29,6 +30,7 @@ import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queu
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
+import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { DeviceRemoveUseCase } from '@modules/device/use-cases/device.remove.use-case';
@@ -145,7 +147,10 @@ describe('DeviceRemoveUseCase', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userAuthService.assertReauthentication.mockResolvedValue(check);
+        userAuthService.checkReauthentication.mockResolvedValue({
+            check,
+            failure: null,
+        });
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         sessionService.removeDeviceOwnershipInTx.mockResolvedValue({
             deviceOwnership,
@@ -172,13 +177,65 @@ describe('DeviceRemoveUseCase', () => {
     });
 
     describe('execute', () => {
+        it('commits the failed count in a transaction of its own, then throws, and leaves the work undone', async () => {
+            const refusal = new Error('refused');
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: null,
+                failure: TestUnitReauthenticationPasswordFailure,
+            });
+            userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
+                true
+            );
+            userAuthService.throwFailedReauthentication.mockImplementation(
+                () => {
+                    throw refusal;
+                }
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'device-ownership-1',
+                    dto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                TestUnitReauthenticationPasswordFailure
+            );
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledBefore(
+                userAuthService.throwFailedReauthentication
+            );
+            expect(
+                userAuthService.throwFailedReauthentication
+            ).toHaveBeenCalledWith(
+                TestUnitReauthenticationPasswordFailure,
+                true
+            );
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+        });
+
         it('asserts the re-authentication, then completes it, removes the ownership, and adds the entry on one transaction', async () => {
             const calls: string[] = [];
-            userAuthService.assertReauthentication.mockImplementation(
+            userAuthService.checkReauthentication.mockImplementation(
                 async () => {
                     calls.push('assert');
 
-                    return check;
+                    return { check, failure: null };
                 }
             );
             databaseService.withTransaction.mockImplementation(async fn => {
@@ -220,9 +277,7 @@ describe('DeviceRemoveUseCase', () => {
                 )
             ).resolves.toEqual({});
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.deviceRemove,
@@ -259,7 +314,7 @@ describe('DeviceRemoveUseCase', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userRemoveDevice,
+                    action: EnumActivityLogAction.userDeviceRemoved,
                     userId: 'user-1',
                     createdBy: 'user-1',
                     metadata,
@@ -293,9 +348,7 @@ describe('DeviceRemoveUseCase', () => {
                 }
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.deviceRemove,
@@ -312,7 +365,7 @@ describe('DeviceRemoveUseCase', () => {
 
         it('leaves the device alone when the re-authentication fails', async () => {
             const failure = new UserPasswordNotMatchException();
-            userAuthService.assertReauthentication.mockRejectedValue(failure);
+            userAuthService.checkReauthentication.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -390,7 +443,10 @@ describe('DeviceRemoveUseCase', () => {
                     'device-ownership-1',
                     dto
                 )
-            ).rejects.toBeInstanceOf(DeviceNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'device',
+                statusCode: EnumDeviceStatusCodeError.notFound,
+            });
         });
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {

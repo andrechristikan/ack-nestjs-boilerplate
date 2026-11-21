@@ -1,4 +1,6 @@
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
+import type { IMfaAttemptFailure } from '@modules/mfa/interfaces/mfa.interface';
+import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
@@ -31,6 +33,7 @@ import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
 import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.exception';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
+import { MfaTotpSetupRequiredException } from '@modules/mfa/exceptions/mfa.totp-setup-required.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import type { IUserReauthenticationCheck } from '@modules/user/interfaces/user.interface';
@@ -114,12 +117,116 @@ describe('MfaEnableTotpUseCase', () => {
 
     describe('execute', () => {
         beforeEach(() => {
-            userAuthService.assertReauthentication.mockResolvedValue(
-                passwordOnly
-            );
-            mfaService.checkTotpSetupCode.mockResolvedValue(42);
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: passwordOnly,
+                failure: null,
+            });
+            mfaService.checkTotpSetupCode.mockResolvedValue({
+                totpStep: 42,
+                pendingSecret: 'encrypted-pending',
+                failure: null,
+            });
             mfaService.createBackupCodesInTx.mockResolvedValue(['CODE000001']);
             activityLogQueue.recordEffect.mockReturnValue(entryEffect);
+        });
+
+        it('commits the failed count in a transaction of its own, then throws, and enables nothing on a wrong setup code', async () => {
+            const refusal = new Error('refused');
+            const failure: IMfaAttemptFailure = {
+                method: EnumMfaMethod.totp,
+                maxAttempts: 5,
+                lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
+            };
+            mfaService.checkTotpSetupCode.mockResolvedValue({
+                totpStep: null,
+                pendingSecret: null,
+                failure,
+            });
+            mfaService.countFailedAttemptInTx.mockResolvedValue(false);
+            mfaService.throwFailedAttempt.mockImplementation(() => {
+                throw refusal;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    enableDto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                'user-nell',
+                failure
+            );
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledBefore(
+                mfaService.throwFailedAttempt
+            );
+            expect(mfaService.throwFailedAttempt).toHaveBeenCalledWith(
+                failure,
+                false
+            );
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(mfaTotpService.enableInTx).not.toHaveBeenCalled();
+        });
+
+        it('commits the failed count in a transaction of its own, then throws, and leaves the work undone', async () => {
+            const refusal = new Error('refused');
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: null,
+                failure: TestUnitReauthenticationPasswordFailure,
+            });
+            userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
+                true
+            );
+            userAuthService.throwFailedReauthentication.mockImplementation(
+                () => {
+                    throw refusal;
+                }
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    enableDto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                TestUnitReauthenticationPasswordFailure
+            );
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledBefore(
+                userAuthService.throwFailedReauthentication
+            );
+            expect(
+                userAuthService.throwFailedReauthentication
+            ).toHaveBeenCalledWith(
+                TestUnitReauthenticationPasswordFailure,
+                true
+            );
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('rejects with the enrolment gate exception and calls no other collaborator', async () => {
@@ -140,7 +247,7 @@ describe('MfaEnableTotpUseCase', () => {
                 EnumMfaMethod.totp
             );
             expect(
-                userAuthService.assertReauthentication
+                userAuthService.checkReauthentication
             ).not.toHaveBeenCalled();
             expect(mfaService.checkTotpSetupCode).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
@@ -155,9 +262,7 @@ describe('MfaEnableTotpUseCase', () => {
                 enableDto
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.mfaTotpEnable,
@@ -171,14 +276,12 @@ describe('MfaEnableTotpUseCase', () => {
                 }
             );
             expect(mfaService.checkTotpSetupCode).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
                 'user-nell',
                 '654321'
             );
             expect(mfaService.check).not.toHaveBeenCalled();
             expect(
-                userAuthService.assertReauthentication
+                userAuthService.checkReauthentication
             ).toHaveBeenCalledBefore(mfaService.checkTotpSetupCode);
         });
 
@@ -208,6 +311,7 @@ describe('MfaEnableTotpUseCase', () => {
             expect(mfaTotpService.enableInTx).toHaveBeenCalledWith(
                 tx,
                 'user-nell',
+                'encrypted-pending',
                 42
             );
             expect(mfaTotpService.enableInTx).toHaveBeenCalledBefore(
@@ -227,7 +331,7 @@ describe('MfaEnableTotpUseCase', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userEnableMfaTotp,
+                    action: EnumActivityLogAction.userMfaTotpEnabled,
                     userId: 'user-nell',
                     createdBy: 'user-nell',
                 }
@@ -258,9 +362,7 @@ describe('MfaEnableTotpUseCase', () => {
                 { code: '654321' }
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 expect.objectContaining({ password: null })
             );
@@ -275,9 +377,7 @@ describe('MfaEnableTotpUseCase', () => {
                 { code: '654321', backupCode: 'ABCD1234EF' }
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 expect.objectContaining({
                     method: EnumMfaMethod.backupCode,
@@ -301,9 +401,7 @@ describe('MfaEnableTotpUseCase', () => {
                 }
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.mfaTotpEnable,
@@ -320,7 +418,7 @@ describe('MfaEnableTotpUseCase', () => {
 
         it('leaves the work undone when the password proof fails', async () => {
             const failure = new UserPasswordNotMatchException();
-            userAuthService.assertReauthentication.mockRejectedValue(failure);
+            userAuthService.checkReauthentication.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -336,8 +434,26 @@ describe('MfaEnableTotpUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('leaves the work undone when the new authenticator code is wrong', async () => {
+        it('leaves the work undone when the setup-code check refuses with an exception', async () => {
             const failure = new MfaAttemptMaxException();
+            mfaService.checkTotpSetupCode.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    enableDto
+                )
+            ).rejects.toBe(failure);
+
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(mfaTotpService.enableInTx).not.toHaveBeenCalled();
+        });
+
+        it('throws MfaTotpSetupRequiredException from the setup-code check when no pending secret exists, opening no transaction', async () => {
+            const failure = new MfaTotpSetupRequiredException();
             mfaService.checkTotpSetupCode.mockRejectedValue(failure);
 
             await expect(

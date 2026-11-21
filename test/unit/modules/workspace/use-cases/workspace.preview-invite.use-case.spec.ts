@@ -15,6 +15,7 @@ import { WorkspaceInviteService } from '@modules/workspace/services/workspace.in
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspacePreviewInviteUseCase } from '@modules/workspace/use-cases/workspace.preview-invite.use-case';
 import { buildWorkspace } from '@test/unit/helpers/test.unit.request.helper';
+import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 describe('WorkspacePreviewInviteUseCase', () => {
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
@@ -94,7 +95,10 @@ describe('WorkspacePreviewInviteUseCase', () => {
 
             await expect(
                 useCase.execute({ inviteToken: 'raw-token' })
-            ).rejects.toBeInstanceOf(WorkspaceInviteInvalidException);
+            ).rejects.toMatchObject({
+                module: 'workspace',
+                statusCode: EnumWorkspaceStatusCodeError.inviteInvalid,
+            });
             expect(
                 workspaceInviteService.mapInvitePreview
             ).not.toHaveBeenCalled();

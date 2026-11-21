@@ -1,3 +1,4 @@
+import { DatabaseService } from '@common/database/services/database.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { Project } from '@generated/prisma-client/client';
@@ -20,7 +21,10 @@ export class ProjectUpdateUseCase implements IAppUseCase<
     ],
     IResponseReturn<Project>
 > {
-    constructor(private readonly projectService: ProjectService) {}
+    constructor(
+        private readonly projectService: ProjectService,
+        private readonly databaseService: DatabaseService
+    ) {}
 
     async execute(
         requestContext: IRequestContext,
@@ -29,12 +33,15 @@ export class ProjectUpdateUseCase implements IAppUseCase<
         projectContext: IProjectContext,
         { name, description }: ProjectUpdateRequestDto
     ): Promise<IResponseReturn<Project>> {
-        const updated = await this.projectService.updateProject(
-            requestContext,
-            apiKeyContext,
-            authContext,
-            projectContext.project,
-            { name, description }
+        const updated = await this.databaseService.withTransaction(async tx =>
+            this.projectService.updateProjectInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                projectContext.project,
+                { name, description }
+            )
         );
 
         return { data: updated };

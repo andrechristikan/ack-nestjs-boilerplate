@@ -109,10 +109,10 @@ export const UserAdminNearLockoutSelect = {
 
 /** @public */
 export const UserLoginAnalyticActions: EnumActivityLogAction[] = [
-    EnumActivityLogAction.userLoginCredential,
-    EnumActivityLogAction.userLoginGoogle,
-    EnumActivityLogAction.userLoginApple,
-    EnumActivityLogAction.userLoginPasskey,
+    EnumActivityLogAction.userLoggedInWithCredential,
+    EnumActivityLogAction.userLoggedInWithGoogle,
+    EnumActivityLogAction.userLoggedInWithApple,
+    EnumActivityLogAction.userLoggedInWithPasskey,
 ];
 
 /** @public */

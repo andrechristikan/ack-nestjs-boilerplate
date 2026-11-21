@@ -1,3 +1,4 @@
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -188,6 +189,10 @@ describe('UserRefreshUseCase', () => {
                 )
             ).resolves.toEqual({ data: tokens });
 
+            expect(sessionService.existsLiveByJti).toHaveBeenCalledWith(
+                'session-bramble',
+                'old-jti'
+            );
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(sessionService.updateJtiInTx).toHaveBeenCalledWith(
                 tx,
@@ -208,7 +213,7 @@ describe('UserRefreshUseCase', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userRefreshToken }
+                { action: EnumActivityLogAction.userTokenRefreshed }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
             expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
@@ -227,6 +232,49 @@ describe('UserRefreshUseCase', () => {
                 'touchOwnershipInTx',
                 'addInTx',
             ]);
+        });
+
+        it('starts the device touch before the login stamp resolves, both on the one tx', async () => {
+            stubUserRefreshSession(refreshSessionDoubles, {
+                payload,
+                oldJti: 'old-jti',
+                refreshed,
+            });
+            sessionService.getRefreshedTokens.mockReturnValue(tokens);
+            sessionService.updateJtiInTx.mockResolvedValue(true);
+            const login = buildDeferred<IUser>();
+            userService.updateLoginInTx.mockReturnValue(login.promise);
+            deviceService.touchOwnershipInTx.mockResolvedValue(undefined);
+            outboxService.addInTx.mockResolvedValue('outbox-id');
+
+            const pending = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext
+            );
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(deviceService.touchOwnershipInTx).toHaveBeenCalledWith(
+                tx,
+                'user-bramble',
+                'device-ownership-bramble',
+                expect.any(Date)
+            );
+            expect(userService.updateLoginInTx).toHaveBeenCalledWith(
+                tx,
+                'user-bramble',
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                requestLog.ipAddress,
+                expect.any(Date)
+            );
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+
+            login.resolve(baseUser);
+
+            await expect(pending).resolves.toEqual({ data: tokens });
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
         });
 
         it('throws AuthJwtRefreshTokenInvalidException when the token carries no jti', async () => {
@@ -248,16 +296,16 @@ describe('UserRefreshUseCase', () => {
             });
         });
 
-        it('revokes the session and adds the revoke entry on the same tx, then answers revoked, when the rotation matches no row', async () => {
+        it('revokes the session and adds the revoke entry in one tx of its own, then answers revoked, when no live row holds the jti', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 oldJti: 'old-jti',
                 refreshed,
             });
+            sessionService.existsLiveByJti.mockResolvedValue(false);
             sessionService.getRefreshedTokens.mockImplementation(() => {
                 throw new SessionRevokedException();
             });
-            sessionService.updateJtiInTx.mockResolvedValue(false);
             sessionService.revokeReusedInTx.mockResolvedValue(true);
 
             await expectSessionRevoked(
@@ -269,6 +317,10 @@ describe('UserRefreshUseCase', () => {
                 )
             );
 
+            expect(sessionService.existsLiveByJti).toHaveBeenCalledWith(
+                'session-bramble',
+                'old-jti'
+            );
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(sessionService.revokeReusedInTx).toHaveBeenCalledWith(
                 tx,
@@ -282,26 +334,28 @@ describe('UserRefreshUseCase', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userRevokeSession }
+                { action: EnumActivityLogAction.userSessionRevoked }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
             expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
                 null
             );
+            expect(sessionService.updateJtiInTx).not.toHaveBeenCalled();
+            expect(authJwtService.refreshToken).not.toHaveBeenCalled();
             expect(userService.updateLoginInTx).not.toHaveBeenCalled();
             expect(deviceService.touchOwnershipInTx).not.toHaveBeenCalled();
         });
 
-        it('adds no entry and answers revoked when the rotation matches no row of a revoked, expired, or idle session', async () => {
+        it('adds no entry and answers revoked when the reuse revoke matches no row of a revoked, expired, or idle session', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 oldJti: 'old-jti',
                 refreshed,
             });
+            sessionService.existsLiveByJti.mockResolvedValue(false);
             sessionService.getRefreshedTokens.mockImplementation(() => {
                 throw new SessionRevokedException();
             });
-            sessionService.updateJtiInTx.mockResolvedValue(false);
             sessionService.revokeReusedInTx.mockResolvedValue(false);
 
             await expectSessionRevoked(
@@ -321,7 +375,36 @@ describe('UserRefreshUseCase', () => {
             );
         });
 
-        it('answers SessionRevokedException on a write conflict', async () => {
+        it('answers revoked without revoking when the guarded rotation matches no row after a live read', async () => {
+            stubUserRefreshSession(refreshSessionDoubles, {
+                payload,
+                oldJti: 'old-jti',
+                refreshed,
+            });
+            sessionService.getRefreshedTokens.mockImplementation(() => {
+                throw new SessionRevokedException();
+            });
+            sessionService.updateJtiInTx.mockResolvedValue(false);
+
+            await expectSessionRevoked(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext
+                )
+            );
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(sessionService.revokeReusedInTx).not.toHaveBeenCalled();
+            expect(activityLogQueue.recordEffect).not.toHaveBeenCalled();
+            expect(userService.updateLoginInTx).not.toHaveBeenCalled();
+            expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
+                null
+            );
+        });
+
+        it('answers SessionRevokedException on a write conflict of the refresh transaction', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 oldJti: 'old-jti',
@@ -345,6 +428,78 @@ describe('UserRefreshUseCase', () => {
             expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
                 null
             );
+        });
+
+        it('answers SessionRevokedException, not the general conflict, on a write conflict of the reuse transaction', async () => {
+            stubUserRefreshSession(refreshSessionDoubles, {
+                payload,
+                oldJti: 'old-jti',
+                refreshed,
+            });
+            sessionService.existsLiveByJti.mockResolvedValue(false);
+            sessionService.getRefreshedTokens.mockImplementation(() => {
+                throw new SessionRevokedException();
+            });
+            const conflict = buildPrismaKnownRequestError('P2034');
+            databaseService.withTransaction.mockRejectedValue(conflict);
+
+            await expectSessionRevoked(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext
+                )
+            );
+
+            expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
+                null
+            );
+        });
+
+        it('rethrows an app exception raised by the reuse transaction unchanged', async () => {
+            stubUserRefreshSession(refreshSessionDoubles, {
+                payload,
+                oldJti: 'old-jti',
+                refreshed,
+            });
+            sessionService.existsLiveByJti.mockResolvedValue(false);
+            const failure = new SessionRevokedException();
+            databaseService.withTransaction.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext
+                )
+            ).rejects.toBe(failure);
+            expect(sessionService.getRefreshedTokens).not.toHaveBeenCalled();
+        });
+
+        it('wraps any other failure raised by the reuse transaction in the unknown exception', async () => {
+            stubUserRefreshSession(refreshSessionDoubles, {
+                payload,
+                oldJti: 'old-jti',
+                refreshed,
+            });
+            sessionService.existsLiveByJti.mockResolvedValue(false);
+            const failure = new Error('boom');
+            databaseService.withTransaction.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext
+                )
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: failure,
+            });
         });
 
         it('rethrows an app exception raised while rotating the session unchanged', async () => {

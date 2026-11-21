@@ -48,17 +48,21 @@ export interface IUserRepository {
     findOneActiveByEmail(email: string): Promise<User | null>;
     findOneWithRoleByEmail(email: string): Promise<IUser | null>;
     findOneProfileById(id: string): Promise<IUserProfile | null>;
-    findOneActiveProfileById(id: string): Promise<IUserProfile | null>;
     findOneWithRoleById(id: string): Promise<IUser | null>;
     findRoleById(id: string): Promise<IRole | null>;
     findByEmails(emails: string[]): Promise<IUser[]>;
     findByUsernames(usernames: string[]): Promise<IUser[]>;
     findExport(
-        status: Record<string, IPaginationIn> | null,
-        roleId: Record<string, IPaginationEqual> | null,
-        countryId: Record<string, IPaginationEqual> | null,
+        status: EnumUserStatus[],
+        roleId: string | null,
+        countryId: string | null,
         take: number
     ): Promise<IUser[]>;
+    countExport(
+        status: EnumUserStatus[],
+        roleId: string | null,
+        countryId: string | null
+    ): Promise<number>;
     existsByEmail(email: string): Promise<boolean>;
     existsByUsername(username: string): Promise<boolean>;
     createInTx(

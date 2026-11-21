@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
@@ -27,6 +28,7 @@ import {
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
+import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 import { MfaPasskeyNotFoundException } from '@modules/mfa/exceptions/mfa.passkey-not-found.exception';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
@@ -101,7 +103,10 @@ describe('MfaDeletePasskeyUseCase', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userAuthService.assertReauthentication.mockResolvedValue(passwordOnly);
+        userAuthService.checkReauthentication.mockResolvedValue({
+            check: passwordOnly,
+            failure: null,
+        });
         sessionService.revokeActiveByUserExceptInTx.mockResolvedValue([]);
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
@@ -126,13 +131,65 @@ describe('MfaDeletePasskeyUseCase', () => {
     });
 
     describe('execute', () => {
+        it('commits the failed count in a transaction of its own, then throws, and leaves the work undone', async () => {
+            const refusal = new Error('refused');
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: null,
+                failure: TestUnitReauthenticationPasswordFailure,
+            });
+            userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
+                true
+            );
+            userAuthService.throwFailedReauthentication.mockImplementation(
+                () => {
+                    throw refusal;
+                }
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'passkey-one',
+                    { password: 'Current-pass1' }
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                TestUnitReauthenticationPasswordFailure
+            );
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledBefore(
+                userAuthService.throwFailedReauthentication
+            );
+            expect(
+                userAuthService.throwFailedReauthentication
+            ).toHaveBeenCalledWith(
+                TestUnitReauthenticationPasswordFailure,
+                true
+            );
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+        });
+
         it('asserts the re-authentication before the transaction, then completes it first, deletes the passkey, clears the codes when no factor is left, revokes every other session, and adds the entry on one tx', async () => {
             const calls: string[] = [];
-            userAuthService.assertReauthentication.mockImplementation(
+            userAuthService.checkReauthentication.mockImplementation(
                 async () => {
                     calls.push('assert');
 
-                    return passwordOnly;
+                    return { check: passwordOnly, failure: null };
                 }
             );
             databaseService.withTransaction.mockImplementation(async fn => {
@@ -189,9 +246,7 @@ describe('MfaDeletePasskeyUseCase', () => {
                 'entry',
                 'commit',
             ]);
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.mfaPasskeyDelete,
@@ -226,7 +281,7 @@ describe('MfaDeletePasskeyUseCase', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userDeleteMfaPasskey }
+                { action: EnumActivityLogAction.userMfaPasskeyDeleted }
             );
         });
 
@@ -247,9 +302,7 @@ describe('MfaDeletePasskeyUseCase', () => {
                 }
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.mfaPasskeyDelete,
@@ -266,7 +319,7 @@ describe('MfaDeletePasskeyUseCase', () => {
 
         it('leaves the work undone when the proof fails', async () => {
             const failure = new MfaInvalidException();
-            userAuthService.assertReauthentication.mockRejectedValue(failure);
+            userAuthService.checkReauthentication.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -304,14 +357,17 @@ describe('MfaDeletePasskeyUseCase', () => {
         });
 
         it('answers MfaInvalidException on a write conflict after an MFA proof', async () => {
-            userAuthService.assertReauthentication.mockResolvedValue({
-                ...passwordOnly,
-                mfa: {
-                    method: EnumMfaMethod.totp,
-                    totpStep: 1,
-                    backupCodeHash: null,
-                    passkey: null,
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: {
+                    ...passwordOnly,
+                    mfa: {
+                        method: EnumMfaMethod.totp,
+                        totpStep: 1,
+                        backupCodeHash: null,
+                        passkey: null,
+                    },
                 },
+                failure: null,
             });
             databaseService.withTransaction.mockRejectedValue(
                 new Prisma.PrismaClientKnownRequestError('conflict', {
@@ -329,7 +385,10 @@ describe('MfaDeletePasskeyUseCase', () => {
                     'passkey-one',
                     {}
                 )
-            ).rejects.toBeInstanceOf(MfaInvalidException);
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.invalid,
+            });
         });
 
         it('answers MfaPasskeyNotFoundException on a write conflict with no MFA proof', async () => {
@@ -349,7 +408,10 @@ describe('MfaDeletePasskeyUseCase', () => {
                     'passkey-one',
                     {}
                 )
-            ).rejects.toBeInstanceOf(MfaPasskeyNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'mfa',
+                statusCode: EnumMfaStatusCodeError.passkeyNotFound,
+            });
         });
 
         it('wraps any other transaction failure in the unknown exception', async () => {

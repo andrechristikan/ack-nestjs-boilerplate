@@ -28,6 +28,44 @@ export interface IMfaCheck {
     passkey: IMfaPasskeyCheck | null;
 }
 
+export interface IMfaAttemptFailure {
+    method: EnumMfaMethod;
+    maxAttempts: number;
+    lockedUntil: Date;
+}
+
+interface IMfaCheckMatched {
+    check: IMfaCheck;
+    failure: null;
+}
+
+interface IMfaCheckMismatched {
+    check: null;
+    failure: IMfaAttemptFailure;
+}
+
+export type IMfaCheckResult = IMfaCheckMatched | IMfaCheckMismatched;
+
+export interface IMfaTotpSetupCheck {
+    totpStep: number | null;
+    pendingSecret: string;
+}
+
+interface IMfaTotpSetupMatched {
+    totpStep: number;
+    pendingSecret: string;
+    failure: null;
+}
+
+interface IMfaTotpSetupMismatched {
+    totpStep: null;
+    pendingSecret: null;
+    failure: IMfaAttemptFailure;
+}
+
+export type IMfaTotpSetupCheckResult =
+    IMfaTotpSetupMatched | IMfaTotpSetupMismatched;
+
 export interface IMfaTotpStatus {
     isEnabled: boolean;
     isPendingConfirmation: boolean;
@@ -47,6 +85,15 @@ export interface IMfaPasskey {
 export interface IMfaPasskeyCredential {
     credentialId: string;
     transports: string[];
+}
+
+export interface IMfaPasskeyRegistration {
+    credentialId: string;
+    publicKey: string;
+    counter: number;
+    transports: string[];
+    deviceType: EnumMfaPasskeyDeviceType;
+    backedUp: boolean;
 }
 
 export interface IMfaPasskeyCreate {

@@ -2,6 +2,11 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
+import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { UserForgotPasswordRequestDto } from '@modules/user/dtos/request/user.forgot-password.request.dto';
 import type {
@@ -18,8 +23,11 @@ import {
 describe('UserForgotPasswordUseCase', () => {
     const userPasswordService: MockProxy<UserPasswordService> =
         mock<UserPasswordService>();
+    const userService: MockProxy<UserService> = mock<UserService>();
+    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
+    const tx = {} as IDatabaseTransactionClient;
 
     let useCase: UserForgotPasswordUseCase;
 
@@ -35,10 +43,16 @@ describe('UserForgotPasswordUseCase', () => {
     };
 
     beforeEach(async () => {
+        databaseService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserForgotPasswordUseCase,
                 { provide: UserPasswordService, useValue: userPasswordService },
+                { provide: UserService, useValue: userService },
+                { provide: DatabaseService, useValue: databaseService },
             ],
         }).compile();
         useCase = module.get(UserForgotPasswordUseCase);
@@ -56,14 +70,33 @@ describe('UserForgotPasswordUseCase', () => {
             });
         });
 
-        it('creates the request with its notification and entry through the domain', async () => {
+        it('answers AwsSesNotConfiguredException before any account read when SES is unset', async () => {
+            userService.assertEmailDeliverable.mockImplementation(() => {
+                throw new AwsSesNotConfiguredException();
+            });
+
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toMatchObject({
+                module: 'aws',
+                statusCode: EnumAwsStatusCodeError.sesNotConfigured,
+            });
+            expect(
+                userPasswordService.prepareForgotPassword
+            ).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('opens one transaction over createForgotPasswordInTx', async () => {
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).resolves.toEqual({});
 
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
-                userPasswordService.createForgotPassword
+                userPasswordService.createForgotPasswordInTx
             ).toHaveBeenCalledWith(
+                tx,
                 requestContext,
                 apiKeyContext,
                 'user-linden',
@@ -72,19 +105,20 @@ describe('UserForgotPasswordUseCase', () => {
             );
         });
 
-        it('answers empty and creates nothing when no active user holds the email', async () => {
+        it('answers empty and opens no transaction when no active user holds the email', async () => {
             userPasswordService.prepareForgotPassword.mockResolvedValue(null);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).resolves.toEqual({});
 
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
-                userPasswordService.createForgotPassword
+                userPasswordService.createForgotPasswordInTx
             ).not.toHaveBeenCalled();
         });
 
-        it('creates nothing when the prepare rejects', async () => {
+        it('opens no transaction when the prepare rejects', async () => {
             userPasswordService.prepareForgotPassword.mockRejectedValue(
                 new Error('flag')
             );
@@ -92,9 +126,7 @@ describe('UserForgotPasswordUseCase', () => {
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toThrow('flag');
-            expect(
-                userPasswordService.createForgotPassword
-            ).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
     });
 });

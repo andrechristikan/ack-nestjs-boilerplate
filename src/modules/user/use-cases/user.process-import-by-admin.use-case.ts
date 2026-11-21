@@ -121,14 +121,16 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
                                 reasons: [],
                             }
                         );
-                        await this.outboxService.addManyInTx(tx, [
-                            ...entries,
-                            ...welcomes,
-                            result,
+                        await Promise.all([
+                            this.outboxService.addManyInTx(tx, [
+                                ...entries,
+                                ...welcomes,
+                                result,
+                            ]),
+                            this.outboxService.updateDataInTx(tx, outboxId, {
+                                created: users.length,
+                            }),
                         ]);
-                        await this.outboxService.updateDataInTx(tx, outboxId, {
-                            created: users.length,
-                        });
 
                         return users;
                     },
@@ -179,7 +181,7 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         }
 
         const { actorUserId } = activityLog;
-        // Sequential by design: gate before the work it guards; write after the preparation
+        // Sequential by design: a cheap check before the expensive or external work it guards
         const [role, countryId] = await Promise.all([
             this.roleService.getByName(this.defaultRole),
             this.countryService.getIdByAlpha2Code(this.defaultCountry),

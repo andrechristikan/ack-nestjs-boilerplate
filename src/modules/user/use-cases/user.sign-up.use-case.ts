@@ -1,5 +1,6 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -28,6 +29,7 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
+import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
@@ -89,11 +91,6 @@ export class UserSignUpUseCase implements IAppUseCase<
             try {
                 await this.databaseService.withTransaction(
                     async tx => {
-                        await this.termPolicyAcceptanceService.assertRequiredPublishedInTx(
-                            tx,
-                            UserTermPolicyContract.requiredTypes
-                        );
-
                         const created =
                             await this.userRegistrationService.createInTx(
                                 tx,
@@ -118,24 +115,26 @@ export class UserSignUpUseCase implements IAppUseCase<
                                 input.userId,
                                 workspaceContext
                             );
-                            if (
-                                workspaceContext.projectId &&
-                                workspaceContext.projectMemberRole
-                            ) {
-                                await this.projectMemberService.createInTx(
-                                    tx,
-                                    workspaceContext.projectId,
-                                    input.userId,
-                                    workspaceContext.projectMemberRole,
-                                    input.userId
-                                );
-                            }
                         }
 
                         await this.termPolicyAcceptanceService.acceptPublishedManyInTx(
                             tx,
                             termPolicyAcceptances
                         );
+                        if (
+                            workspaceContext.type ===
+                                EnumUserSignUpWorkspaceContextType.invite &&
+                            workspaceContext.projectId &&
+                            workspaceContext.projectMemberRole
+                        ) {
+                            await this.projectMemberService.createInTx(
+                                tx,
+                                workspaceContext.projectId,
+                                input.userId,
+                                workspaceContext.projectMemberRole,
+                                input.userId
+                            );
+                        }
 
                         const welcome = this.notificationQueue.notify(
                             EnumNotificationKind.welcome,
@@ -188,6 +187,15 @@ export class UserSignUpUseCase implements IAppUseCase<
                     throw mapped;
                 }
 
+                const exception = this.databaseUtil.toException(error);
+                const isInviteConflict =
+                    workspaceContext.type ===
+                        EnumUserSignUpWorkspaceContextType.invite &&
+                    exception instanceof DatabaseWriteConflictException;
+                if (isInviteConflict) {
+                    throw new WorkspaceInviteAlreadyProcessedException();
+                }
+
                 throw new AppUnknownException(mapped);
             }
         }
@@ -210,6 +218,8 @@ export class UserSignUpUseCase implements IAppUseCase<
             marketing,
         }: UserSignUpRequestDto
     ): Promise<IResponseReturn<void>> {
+        this.userService.assertEmailDeliverable();
+
         const signUp: IUserSignUp = {
             countryId,
             email,
@@ -221,23 +231,17 @@ export class UserSignUpUseCase implements IAppUseCase<
             cookies,
             marketing,
         };
-        // Sequential by design: gate before the work it guards
-        const invite = await this.workspaceInviteService.getSignUpInvite(
-            signUp.inviteToken,
-            signUp.email
-        );
-        const workspaceContext =
-            this.userCreateUtil.buildSignUpWorkspaceContext(
-                invite,
-                signUp.username
-            );
         const contextWords = this.authPasswordUtil.createContextWords(
             this.appName,
             signUp.email,
             signUp.username,
             signUp.name
         );
-        const [role, emailExist, usernameCheck] = await Promise.all([
+        const [invite, role, emailExist, usernameCheck] = await Promise.all([
+            this.workspaceInviteService.getSignUpInvite(
+                signUp.inviteToken,
+                signUp.email
+            ),
             this.roleService.getByName(this.defaultRole),
             this.userService.existsByEmail(signUp.email),
             this.userService.checkUsername(signUp.username),
@@ -246,7 +250,15 @@ export class UserSignUpUseCase implements IAppUseCase<
                 signUp.password,
                 contextWords
             ),
+            this.termPolicyAcceptanceService.assertRequiredPublished(
+                UserTermPolicyContract.requiredTypes
+            ),
         ]);
+        const workspaceContext =
+            this.userCreateUtil.buildSignUpWorkspaceContext(
+                invite,
+                signUp.username
+            );
         this.userService.assertEmailAvailable(emailExist);
         this.userService.assertUsernameAvailable(usernameCheck);
 

@@ -33,7 +33,7 @@ A `*.dto.ts` file exports one schema const and its type: `export const XRequestS
 
 ## Concurrency
 
-Independent calls run concurrently in `Promise.all([...])` or `Promise.allSettled([...])`; statements on one `tx` run in sequence. Rule: `.claude/rules/concurrency.md`.
+Independent calls run concurrently in `Promise.all([...])` or `Promise.allSettled([...])`, statements on one `tx` included. Rule: `.claude/rules/concurrency.md`.
 
 ## Imports
 
@@ -51,9 +51,9 @@ A request failure extends `AppBaseException`, a job failure `QueueException`, an
 
 From `.claude/rules/discipline.md`, which outranks every other rule:
 
-- A flow's writes commit in one transaction, or one per chunk of a paging job, opened by its use case; services and repositories join through `*InTx` methods.
+- A flow whose writes span more than one table or include an outbox row commits them in one transaction, or one per chunk of a paging job, opened by its use case; services and repositories join through `*InTx` methods.
 - Validation fails fast, before the transaction opens, and the write still carries its guard.
 - A side effect is an outbox row written in the transaction of the action that causes it, enqueued after the commit through the owning module's queue class; a scheduler job has no row.
 - A service injects no service of another module on its level, and no util of another module; a use case sequences them.
 - A result is one statement, never a first query whose rows drive a second.
-- A row a guard loaded comes from its context, never read again.
+- A row a guard loaded comes from its context, whole, never read again.

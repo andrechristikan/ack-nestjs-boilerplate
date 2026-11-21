@@ -4,6 +4,7 @@ import type {
     EnumUserQueue,
 } from '@modules/user/enums/user.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
+import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import {
     EnumActivityLogAction,
@@ -23,7 +24,10 @@ import type {
     PublicKeyCredentialRequestOptionsJSON,
 } from '@simplewebauthn/server';
 import type { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
-import type { IMfaCheck } from '@modules/mfa/interfaces/mfa.interface';
+import type {
+    IMfaAttemptFailure,
+    IMfaCheck,
+} from '@modules/mfa/interfaces/mfa.interface';
 import type {
     Country,
     EnumAwsS3Accessibility,
@@ -273,6 +277,11 @@ export interface IUserUpdatePhotoProfile {
     key: string;
 }
 
+export interface IUserPhotoProfileCheck {
+    isContentValid: boolean;
+    photo: IAwsS3;
+}
+
 export type IUserMobileNumberSummary = Prisma.UserMobileNumberGetPayload<{
     select: typeof UserMobileNumberSummarySelect;
 }>;
@@ -343,6 +352,37 @@ export interface IUserReauthenticationCheck {
     passkeyChallengeToken: string | null;
 }
 
+export interface IUserPasswordAttemptLimit {
+    maxAttempts: number;
+    lockedUntil: Date;
+}
+
+interface IUserReauthenticationPasswordFailure {
+    password: IUserPasswordAttemptLimit;
+    mfa: null;
+}
+
+interface IUserReauthenticationMfaFailure {
+    password: null;
+    mfa: IMfaAttemptFailure;
+}
+
+export type IUserReauthenticationFailure =
+    IUserReauthenticationPasswordFailure | IUserReauthenticationMfaFailure;
+
+interface IUserReauthenticationPassed {
+    check: IUserReauthenticationCheck;
+    failure: null;
+}
+
+interface IUserReauthenticationRefused {
+    check: null;
+    failure: IUserReauthenticationFailure;
+}
+
+export type IUserReauthenticationResult =
+    IUserReauthenticationPassed | IUserReauthenticationRefused;
+
 export interface IUserLoginMfaChallenge {
     challengeToken: string;
     expiresInMs: number;
@@ -381,6 +421,46 @@ export interface IUserImportByAdminPayload {
     created: number | null;
 }
 
+export interface IUserExportByAdminPayload {
+    status: EnumUserStatus[];
+    roleId: string | null;
+    countryId: string | null;
+    activityLog: IActivityLogActorPayload;
+    exported: number | null;
+}
+
+export interface IUserDeleteSelfPayload {
+    userId: string;
+    ownedWorkspaceIds: string[];
+    activityLog: IActivityLogActorPayload;
+}
+
+export interface IUserExport {
+    id: string;
+    createdAt: Date;
+    createdBy: string | null;
+    updatedAt: Date;
+    updatedBy: string | null;
+    deletedAt: Date | null;
+    deletedBy: string | null;
+    name: string | null;
+    username: string;
+    isVerified: boolean;
+    verifiedAt: Date | null;
+    email: string;
+    roleId: string;
+    status: EnumUserStatus;
+    countryId: string;
+    photo: string | null;
+    role: string;
+}
+
+export interface IUserExportUploaded {
+    count: number;
+    link: string;
+    expiredAt: string;
+}
+
 export interface IUserCreateContracts {
     signUp: IUserCreateContract;
     social: IUserCreateContract;
@@ -399,6 +479,18 @@ export interface IUserImportByAdminEffect extends IOutboxEffect {
     data: IUserImportByAdminPayload;
 }
 
+export interface IUserExportByAdminEffect extends IOutboxEffect {
+    queue: EnumUserQueue.user;
+    name: EnumUserProcess.exportByAdmin;
+    data: IUserExportByAdminPayload;
+}
+
+export interface IUserDeleteSelfEffect extends IOutboxEffect {
+    queue: EnumUserQueue.user;
+    name: EnumUserProcess.deleteSelf;
+    data: IUserDeleteSelfPayload;
+}
+
 export interface IUserDeletePhotoQueueResponse extends IQueueResponse {
     key: string;
 }
@@ -406,6 +498,10 @@ export interface IUserDeletePhotoQueueResponse extends IQueueResponse {
 export interface IUserImportByAdminQueueResponse extends IQueueResponse {
     created: number;
     failed: number;
+}
+
+export interface IUserExportByAdminQueueResponse extends IQueueResponse {
+    exported: number;
 }
 
 export interface IUserPurgeExpiredQueueResponse extends IQueueResponse {

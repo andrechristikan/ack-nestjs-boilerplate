@@ -1,4 +1,6 @@
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { Test } from '@nestjs/testing';
+import type { IMfaAttemptFailure } from '@modules/mfa/interfaces/mfa.interface';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -143,7 +145,10 @@ describe('UserLoginWithPasskeyUseCase', () => {
         mfaChallengeService.get.mockResolvedValue(challenge);
         mfaPasskeyService.getOneForLogin.mockResolvedValue(storedPasskey);
         userAuthService.getOneForPasskeyLogin.mockResolvedValue(baseUser);
-        mfaService.checkPasskeyLogin.mockResolvedValue(checked);
+        mfaService.checkPasskeyLogin.mockResolvedValue({
+            check: checked,
+            failure: null,
+        });
         workspaceMemberService.resolveLastWorkspaceId.mockResolvedValue(
             'workspace-bramble'
         );
@@ -174,6 +179,47 @@ describe('UserLoginWithPasskeyUseCase', () => {
     });
 
     describe('execute', () => {
+        it('commits the failed count in a transaction of its own, then throws, and claims and writes nothing on a mismatch', async () => {
+            const refusal = new Error('refused');
+            const failure: IMfaAttemptFailure = {
+                method: EnumMfaMethod.passkey,
+                maxAttempts: 5,
+                lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
+            };
+            mfaService.checkPasskeyLogin.mockResolvedValue({
+                check: null,
+                failure,
+            });
+            mfaService.countFailedAttemptInTx.mockResolvedValue(true);
+            mfaService.throwFailedAttempt.mockImplementation(() => {
+                throw refusal;
+            });
+
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                'user-bramble',
+                failure
+            );
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledBefore(
+                mfaService.throwFailedAttempt
+            );
+            expect(mfaService.throwFailedAttempt).toHaveBeenCalledWith(
+                failure,
+                true
+            );
+            expect(mfaService.completeChallengeInTx).not.toHaveBeenCalled();
+            expect(
+                userAuthService.createTokenAndSessionInTx
+            ).not.toHaveBeenCalled();
+        });
+
         it('creates the session with loginWith passkey and calls no password check and no MFA challenge', async () => {
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
@@ -199,9 +245,6 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 now
             );
             expect(userAuthService.isCredentialMatch).not.toHaveBeenCalled();
-            expect(
-                userAuthService.assertPasswordAttempt
-            ).not.toHaveBeenCalled();
             expect(
                 userAuthService.assertPasswordNotExpired
             ).not.toHaveBeenCalled();
@@ -235,7 +278,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
             mfaService.checkPasskeyLogin.mockImplementation(async () => {
                 callOrder.push('check');
 
-                return checked;
+                return { check: checked, failure: null };
             });
             workspaceMemberService.resolveLastWorkspaceId.mockImplementation(
                 async () => {
@@ -244,11 +287,8 @@ describe('UserLoginWithPasskeyUseCase', () => {
                     return 'workspace-bramble';
                 }
             );
-            mfaChallengeService.consumeInTx.mockImplementation(async () => {
-                callOrder.push('consumeInTx');
-            });
-            mfaService.completeInTx.mockImplementation(async () => {
-                callOrder.push('completeInTx');
+            mfaService.completeChallengeInTx.mockImplementation(async () => {
+                callOrder.push('completeChallengeInTx');
             });
             userAuthService.createTokenAndSessionInTx.mockImplementation(
                 async () => {
@@ -274,8 +314,6 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 'user-bramble'
             );
             expect(mfaService.checkPasskeyLogin).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
                 'user-bramble',
                 passkeyResponse,
                 'challenge-webauthn'
@@ -284,15 +322,11 @@ describe('UserLoginWithPasskeyUseCase', () => {
             expect(
                 workspaceMemberService.resolveLastWorkspaceId
             ).toHaveBeenCalledWith('user-bramble', 'workspace-bramble');
-            expect(mfaChallengeService.consumeInTx).toHaveBeenCalledWith(
-                tx,
-                'challenge-token',
-                EnumMfaChallengePurpose.passwordless,
-                'user-bramble'
-            );
-            expect(mfaService.completeInTx).toHaveBeenCalledWith(
+            expect(mfaService.completeChallengeInTx).toHaveBeenCalledWith(
                 tx,
                 'user-bramble',
+                'challenge-token',
+                EnumMfaChallengePurpose.passwordless,
                 checked
             );
             expect(callOrder).toEqual([
@@ -302,8 +336,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 'assertAttemptAvailable',
                 'check',
                 'resolveLastWorkspaceId',
-                'consumeInTx',
-                'completeInTx',
+                'completeChallengeInTx',
                 'createTokenAndSessionInTx',
             ]);
         });
@@ -325,7 +358,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
             });
         });
 
-        it('refuses a token of another purpose before reading the passkey', async () => {
+        it('refuses a token of another purpose and opens no transaction', async () => {
             mfaChallengeService.get.mockImplementation(
                 async (_token, purpose) => {
                     if (purpose !== EnumMfaChallengePurpose.passwordless) {
@@ -342,8 +375,39 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.challengeInvalid,
             });
-            expect(mfaPasskeyService.getOneForLogin).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('reads the passkey while the challenge read is still pending', async () => {
+            const challengeRead = buildDeferred<typeof challenge>();
+            mfaChallengeService.get.mockReturnValue(challengeRead.promise);
+
+            const running = useCase.execute(requestContext, apiKeyContext, dto);
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(mfaPasskeyService.getOneForLogin).toHaveBeenCalledWith(
+                passkeyResponse.id
+            );
+
+            challengeRead.resolve(challenge);
+            await running;
+        });
+
+        it('checks the attempt lock while the user read is still pending', async () => {
+            const userRead = buildDeferred<typeof baseUser>();
+            userAuthService.getOneForPasskeyLogin.mockReturnValue(
+                userRead.promise
+            );
+
+            const running = useCase.execute(requestContext, apiKeyContext, dto);
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(mfaService.assertAttemptAvailable).toHaveBeenCalledWith(
+                storedPasskey.userId
+            );
+
+            userRead.resolve(baseUser);
+            await running;
         });
 
         it('passes on the MfaPasskeyInvalidException of an unknown credential and counts nothing', async () => {
@@ -361,11 +425,11 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 userAuthService.getOneForPasskeyLogin
             ).not.toHaveBeenCalled();
             expect(mfaService.checkPasskeyLogin).not.toHaveBeenCalled();
-            expect(mfaService.countFailedAttempt).not.toHaveBeenCalled();
+            expect(mfaService.countFailedAttemptInTx).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('answers UserCredentialInvalidException for an inactive user and checks nothing', async () => {
+        it('answers UserCredentialInvalidException for an inactive user and checks no assertion', async () => {
             userAuthService.getOneForPasskeyLogin.mockRejectedValue(
                 new UserCredentialInvalidException()
             );
@@ -376,7 +440,6 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.credentialInvalid,
             });
-            expect(mfaService.assertAttemptAvailable).not.toHaveBeenCalled();
             expect(mfaService.checkPasskeyLogin).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
@@ -416,12 +479,11 @@ describe('UserLoginWithPasskeyUseCase', () => {
 
         it('creates no session when the challenge claim is lost', async () => {
             const failure = new MfaChallengeInvalidException();
-            mfaChallengeService.consumeInTx.mockRejectedValue(failure);
+            mfaService.completeChallengeInTx.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toBe(failure);
-            expect(mfaService.completeInTx).not.toHaveBeenCalled();
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();

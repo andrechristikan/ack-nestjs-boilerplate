@@ -19,7 +19,6 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import {
     Response,
-    ResponseFile,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
 import { UserGetListOffsetByAdminUseCase } from '@modules/user/use-cases/user.get-list-offset-by-admin.use-case';
@@ -54,7 +53,6 @@ import {
     ApiKeyProtected,
 } from '@modules/api-key/decorators/api-key.decorator';
 import type {
-    IResponseFileReturn,
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
@@ -84,6 +82,8 @@ import { FileCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pi
 import { UserImportRequestSchema } from '@modules/user/dtos/request/user.import.request.dto';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
 import { UserImportResponseSchema } from '@modules/user/dtos/response/user.import.response.dto';
+import { UserExportResponseSchema } from '@modules/user/dtos/response/user.export.response.dto';
+import type { UserExportResponseDto } from '@modules/user/dtos/response/user.export.response.dto';
 import type { UserImportResponseDto } from '@modules/user/dtos/response/user.import.response.dto';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -279,7 +279,7 @@ export class UserAdminController {
     }
 
     @Doc({ summary: 'export users via csv file' })
-    @ResponseFile({ maxDataExportConfigKey: 'user.maxDataExport' })
+    @Response('user.export', { schema: UserExportResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.user,
@@ -293,9 +293,17 @@ export class UserAdminController {
     @HttpCode(HttpStatus.OK)
     @Post('/export')
     async export(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Query({ schema: UserExportRequestSchema })
         query: UserExportRequestDto
-    ): Promise<IResponseFileReturn> {
-        return this.userExportByAdminUseCase.execute(query);
+    ): Promise<IResponseReturn<UserExportResponseDto>> {
+        return this.userExportByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            query
+        );
     }
 }

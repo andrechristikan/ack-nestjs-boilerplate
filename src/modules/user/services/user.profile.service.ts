@@ -2,7 +2,6 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { NotFound } from '@aws-sdk/client-s3';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import type {
@@ -18,19 +17,16 @@ import type {
 } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
 import type { UserPhoto } from '@generated/prisma-client/client';
-import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserPhotoContentInvalidException } from '@modules/user/exceptions/user.photo-content-invalid.exception';
 import { UserPhotoKeyInvalidException } from '@modules/user/exceptions/user.photo-key-invalid.exception';
 import { UserPhotoSizeExceededException } from '@modules/user/exceptions/user.photo-size-exceeded.exception';
-import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type {
     IUserGeneratePhotoProfile,
-    IUserProfile,
+    IUserPhotoProfileCheck,
     IUserUpdatePhotoProfile,
     IUserUpdateProfile,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
-import { UserService } from '@modules/user/services/user.service';
 import { FileExtensionInvalidException } from '@common/file/exceptions/file.extension-invalid.exception';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -38,7 +34,6 @@ import { UserQueue } from '@modules/user/queues/user.queue';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -52,11 +47,8 @@ export class UserProfileService {
 
     constructor(
         private readonly userRepository: UserRepository,
-        private readonly userService: UserService,
         private readonly awsS3Service: AwsS3Service,
         private readonly fileService: FileService,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly userQueue: UserQueue,
@@ -103,35 +95,6 @@ export class UserProfileService {
         await this.deleteOwnedPhotoInTx(tx, userId, previousPhoto);
     }
 
-    private async replacePhotoProfile(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
-        previousPhoto: UserPhoto | null,
-        photo: IAwsS3
-    ): Promise<void> {
-        const userId = authContext.userId;
-        await this.databaseService.withTransaction(async tx => {
-            await this.userRepository.updatePhotoProfileInTx(tx, userId, photo);
-            await this.deletePreviousPhotoInTx(
-                tx,
-                userId,
-                previousPhoto,
-                photo.key
-            );
-            const entry = this.activityLogQueue.recordEffect(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                null,
-                {
-                    action: EnumActivityLogAction.userUpdatePhotoProfile,
-                }
-            );
-            await this.outboxService.addInTx(tx, entry);
-        });
-    }
-
     /** Adds the photo delete row on the caller's transaction; adds nothing when the photo is null or not under the profile path of the user. */
     async deleteOwnedPhotoInTx(
         tx: IDatabaseTransactionClient,
@@ -169,15 +132,6 @@ export class UserProfileService {
         access: EnumAwsS3Accessibility
     ): Promise<void> {
         await this.awsS3Service.deleteItem(key, { access });
-    }
-
-    async getProfile(userId: string): Promise<IUserProfile> {
-        const user = await this.userRepository.findOneActiveProfileById(userId);
-        if (!user) {
-            throw new UserNotFoundException();
-        }
-
-        return user;
     }
 
     async updateProfileInTx(
@@ -226,12 +180,11 @@ export class UserProfileService {
         return aws;
     }
 
-    async updatePhotoProfile(
-        requestContext: IRequestContext,
-        apiKeyContext: IApiKeyContext,
+    /** Reads the uploaded object and checks the key, the size, and the content bytes; writes nothing. */
+    async checkPhotoProfile(
         authContext: IAuthJwtAccessContext,
         { key }: IUserUpdatePhotoProfile
-    ): Promise<void> {
+    ): Promise<IUserPhotoProfileCheck> {
         const userId = authContext.userId;
         const isOwned = this.isPhotoProfileKeyOwned(userId, key);
         if (!isOwned) {
@@ -239,10 +192,15 @@ export class UserProfileService {
         }
 
         try {
-            // Sequential by design: gate before the work it guards
-            const aws: IAwsS3 | null = await this.awsS3Service.checkItem(key, {
-                access: EnumAwsS3Accessibility.public,
-            });
+            const [aws, head]: [IAwsS3 | null, Buffer | null] =
+                await Promise.all([
+                    this.awsS3Service.checkItem(key, {
+                        access: EnumAwsS3Accessibility.public,
+                    }),
+                    this.awsS3Service.getItemBytes(key, FileSniffSizeInBytes, {
+                        access: EnumAwsS3Accessibility.public,
+                    }),
+                ]);
             if (!aws) {
                 throw new AwsS3NotConfiguredException();
             }
@@ -252,11 +210,6 @@ export class UserProfileService {
                 throw new UserPhotoSizeExceededException();
             }
 
-            const head: Buffer | null = await this.awsS3Service.getItemBytes(
-                key,
-                FileSniffSizeInBytes,
-                { access: EnumAwsS3Accessibility.public }
-            );
             if (!head) {
                 throw new AwsS3NotConfiguredException();
             }
@@ -265,29 +218,8 @@ export class UserProfileService {
                 head,
                 aws.extension
             );
-            if (!isContentValid) {
-                const effect = this.userQueue.deletePhotoEffect(userId, aws);
-                await this.databaseService.withTransaction(async tx =>
-                    this.outboxService.addInTx(tx, effect)
-                );
 
-                throw new UserPhotoContentInvalidException();
-            }
-
-            const user = await this.userRepository.findOneById(userId);
-            if (!user) {
-                throw new UserNotFoundException();
-            }
-
-            await this.replacePhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                user.photo,
-                aws
-            );
-
-            return;
+            return { isContentValid, photo: aws };
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -299,12 +231,53 @@ export class UserProfileService {
         }
     }
 
-    async uploadPhotoProfile(
+    assertPhotoContentValid({ isContentValid }: IUserPhotoProfileCheck): void {
+        if (!isContentValid) {
+            throw new UserPhotoContentInvalidException();
+        }
+    }
+
+    /** Adds the delete row of an uploaded photo whose content was rejected on the caller's transaction. */
+    async deleteRejectedPhotoInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        photo: IAwsS3
+    ): Promise<void> {
+        const effect = this.userQueue.deletePhotoEffect(userId, photo);
+        await this.outboxService.addInTx(tx, effect);
+    }
+
+    /** Stores the photo, adds the delete row of a different previous photo under the profile path, and adds the entry on the caller's transaction. */
+    async replacePhotoProfileInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
-        file: IFile
+        previousPhoto: UserPhoto | null,
+        photo: IAwsS3
     ): Promise<void> {
+        const userId = authContext.userId;
+        await Promise.all([
+            this.userRepository.updatePhotoProfileInTx(tx, userId, photo),
+            this.deletePreviousPhotoInTx(tx, userId, previousPhoto, photo.key),
+        ]);
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.userPhotoProfileUpdated,
+            }
+        );
+        await this.outboxService.addInTx(tx, entry);
+    }
+
+    /** Checks the size and the extension and puts the file to S3. */
+    async prepareUploadPhotoProfile(
+        authContext: IAuthJwtAccessContext,
+        file: IFile
+    ): Promise<IAwsS3> {
         const userId = authContext.userId;
         const isSizeAllowed = this.isPhotoSizeAllowed(file.size);
         if (!isSizeAllowed) {
@@ -330,20 +303,14 @@ export class UserProfileService {
                 }
             );
 
-            const [user, aws] = await Promise.all([
-                this.userRepository.findOneById(userId),
-                this.awsS3Service.putItem(
-                    {
-                        key,
-                        size: file.size,
-                        file: file.buffer,
-                    },
-                    { access: EnumAwsS3Accessibility.public }
-                ),
-            ]);
-            if (!user) {
-                throw new UserNotFoundException();
-            }
+            const aws = await this.awsS3Service.putItem(
+                {
+                    key,
+                    size: file.size,
+                    file: file.buffer,
+                },
+                { access: EnumAwsS3Accessibility.public }
+            );
             if (!aws) {
                 throw new AwsS3NotConfiguredException();
             }
@@ -358,15 +325,7 @@ export class UserProfileService {
                 'Photo profile uploaded to S3'
             );
 
-            await this.replacePhotoProfile(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                user.photo,
-                aws
-            );
-
-            return;
+            return aws;
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -376,52 +335,25 @@ export class UserProfileService {
         }
     }
 
-    async claimUsername(
+    async claimUsernameInTx(
+        tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         username: Lowercase<string>
     ): Promise<void> {
-        // Sequential by design: gate before the work it guards
-        const check = await this.userService.checkUsername(username);
-        this.userService.assertUsernameAvailable(check);
-
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                await this.userRepository.claimUsernameInTx(
-                    tx,
-                    authContext.userId,
-                    {
-                        username,
-                    }
-                );
-                const entry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userClaimUsername,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-            });
-
-            return;
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
+        await this.userRepository.claimUsernameInTx(tx, authContext.userId, {
+            username,
+        });
+        const entry = this.activityLogQueue.recordEffect(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            null,
+            {
+                action: EnumActivityLogAction.userUsernameClaimed,
             }
-
-            const isUsernameCollision = this.databaseUtil.isUniqueCollision(
-                err,
-                'username'
-            );
-            if (isUsernameCollision) {
-                throw new UserUsernameExistException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        );
+        await this.outboxService.addInTx(tx, entry);
     }
 }

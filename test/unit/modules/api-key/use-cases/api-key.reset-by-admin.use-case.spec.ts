@@ -21,6 +21,8 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
+import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
+import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { ApiKeyResetByAdminUseCase } from '@modules/api-key/use-cases/api-key.reset-by-admin.use-case';
 import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
@@ -105,6 +107,43 @@ describe('ApiKeyResetByAdminUseCase', () => {
     describe('execute', () => {
         const reset = { ...apiKey, secret: 'new-secret' };
 
+        beforeEach(() => {
+            apiKeyService.getOneById.mockResolvedValue(apiKey);
+        });
+
+        it('throws ApiKeyNotFoundException from getOneById and opens no transaction', async () => {
+            const failure = new ApiKeyNotFoundException();
+            apiKeyService.getOneById.mockRejectedValue(failure);
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id
+                )
+            ).rejects.toBe(failure);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('throws ApiKeyInactiveException from assertActive and opens no transaction', async () => {
+            const failure = new ApiKeyInactiveException();
+            apiKeyService.assertActive.mockImplementation(() => {
+                throw failure;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    apiKey.id
+                )
+            ).rejects.toBe(failure);
+            expect(apiKeyService.assertActive).toHaveBeenCalledWith(apiKey);
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
         it('resets the secret on the outbox transaction and shapes the secret-bearing response', async () => {
             apiKeyService.resetByAdminInTx.mockResolvedValue({
                 apiKey,
@@ -119,9 +158,10 @@ describe('ApiKeyResetByAdminUseCase', () => {
             );
 
             expect(result).toEqual({ data: reset });
+            expect(apiKeyService.getOneById).toHaveBeenCalledWith(apiKey.id);
             expect(apiKeyService.resetByAdminInTx).toHaveBeenCalledWith(
                 tx,
-                apiKey.id
+                apiKey
             );
         });
 
@@ -181,7 +221,10 @@ describe('ApiKeyResetByAdminUseCase', () => {
                     authContext,
                     apiKey.id
                 )
-            ).rejects.toBeInstanceOf(ApiKeyInactiveException);
+            ).rejects.toMatchObject({
+                module: 'apiKey',
+                statusCode: EnumApiKeyStatusCodeError.inactive,
+            });
         });
 
         it('wraps any other error in AppUnknownException', async () => {

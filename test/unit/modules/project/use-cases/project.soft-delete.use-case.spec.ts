@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -14,6 +14,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
+import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { ProjectSoftDeleteUseCase } from '@modules/project/use-cases/project.soft-delete.use-case';
 import {
@@ -212,7 +213,10 @@ describe('ProjectSoftDeleteUseCase', () => {
                     workspaceContext,
                     projectContext
                 )
-            ).rejects.toBeInstanceOf(ProjectNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.notFound,
+            });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
@@ -229,7 +233,10 @@ describe('ProjectSoftDeleteUseCase', () => {
                     workspaceContext,
                     projectContext
                 )
-            ).rejects.toBeInstanceOf(AppUnknownException);
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+            });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });

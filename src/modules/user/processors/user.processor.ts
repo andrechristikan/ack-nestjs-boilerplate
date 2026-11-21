@@ -2,9 +2,13 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumUserProcess } from '@modules/user/enums/user.enum';
 import type {
     IUserDeletePhotoPayload,
+    IUserDeleteSelfPayload,
+    IUserExportByAdminPayload,
     IUserImportByAdminPayload,
 } from '@modules/user/interfaces/user.interface';
 import { UserProcessDeletePhotoUseCase } from '@modules/user/use-cases/user.process-delete-photo.use-case';
+import { UserProcessDeleteSelfUseCase } from '@modules/user/use-cases/user.process-delete-self.use-case';
+import { UserProcessExportByAdminUseCase } from '@modules/user/use-cases/user.process-export-by-admin.use-case';
 import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.process-import-by-admin.use-case';
 import { UserProcessPurgeExpiredUseCase } from '@modules/user/use-cases/user.process-purge-expired.use-case';
 import { Job, UnrecoverableError } from 'bullmq';
@@ -19,6 +23,8 @@ export class UserProcessor extends QueueProcessorBase {
     constructor(
         private readonly userProcessDeletePhotoUseCase: UserProcessDeletePhotoUseCase,
         private readonly userProcessImportByAdminUseCase: UserProcessImportByAdminUseCase,
+        private readonly userProcessExportByAdminUseCase: UserProcessExportByAdminUseCase,
+        private readonly userProcessDeleteSelfUseCase: UserProcessDeleteSelfUseCase,
         private readonly userProcessPurgeExpiredUseCase: UserProcessPurgeExpiredUseCase
     ) {
         super();
@@ -65,6 +71,20 @@ export class UserProcessor extends QueueProcessorBase {
                     data as IUserImportByAdminPayload
                 );
             }
+            case EnumUserProcess.exportByAdmin: {
+                if (outboxId === null) {
+                    this.throwUnrecoverable('user.queue.error.outboxIdMissing');
+                }
+
+                return await this.userProcessExportByAdminUseCase.execute(
+                    outboxId,
+                    data as IUserExportByAdminPayload
+                );
+            }
+            case EnumUserProcess.deleteSelf:
+                return await this.userProcessDeleteSelfUseCase.execute(
+                    data as IUserDeleteSelfPayload
+                );
             case EnumUserProcess.purgeExpired:
                 return await this.userProcessPurgeExpiredUseCase.execute();
             default:

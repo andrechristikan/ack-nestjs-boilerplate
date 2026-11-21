@@ -43,27 +43,32 @@ export class WorkspaceLeaveUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         const workspaceId = workspaceContext.workspace.id;
         const member = workspaceContext.workspaceMember;
+        this.workspaceMemberService.assertLeavable(member);
+
         try {
             await this.databaseService.withTransaction(async tx => {
+                // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
                 await this.workspaceMemberService.leaveWorkspaceInTx(
                     tx,
                     member
                 );
-                await this.projectMemberService.removeByWorkspaceAndUserInTx(
-                    tx,
-                    workspaceId,
-                    member.userId
-                );
-                await this.workspaceJoinRequestService.cancelPendingByUserInTx(
-                    tx,
-                    workspaceId,
-                    member.userId
-                );
-                await this.userService.clearLastWorkspaceInTx(
-                    tx,
-                    member.userId,
-                    workspaceId
-                );
+                await Promise.all([
+                    this.projectMemberService.removeByWorkspaceAndUserInTx(
+                        tx,
+                        workspaceId,
+                        member.userId
+                    ),
+                    this.workspaceJoinRequestService.cancelPendingByUserInTx(
+                        tx,
+                        workspaceId,
+                        member.userId
+                    ),
+                    this.userService.clearLastWorkspaceInTx(
+                        tx,
+                        member.userId,
+                        workspaceId
+                    ),
+                ]);
                 const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,

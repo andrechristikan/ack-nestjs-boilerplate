@@ -8,7 +8,7 @@
     "uploadPhotoProfile": "Profile photo upload request successful.",
     "updatePhotoProfile": "Profile picture uploaded successfully.",
     "generatePhotoProfilePresign": "Presigned URL for profile photo upload generated successfully.",
-    "deleteSelf": "User deleted successfully.",
+    "deleteSelf": "User deletion queued successfully.",
     "addMobileNumber": "Mobile number added successfully.",
     "updateMobileNumber": "Mobile number updated successfully.",
     "deleteMobileNumber": "Mobile number deleted successfully.",
@@ -35,15 +35,20 @@
     "verifyEmail": "Email has been successfully verified.",
     "updateStatus": "User status updated successfully.",
     "import": "User import queued successfully.",
+    "export": "User export queued successfully.",
     "logout": "Logged out successfully.",
     "queue": {
         "deletePhoto": "Deleted previous user photo.",
         "importByAdmin": "Imported users by admin.",
+        "exportByAdmin": "Exported users by admin.",
+        "deleteSelf": "Deleted the user account on its own request.",
         "purgeExpired": "Purged expired identity rows.",
         "error": {
             "unknownProcess": "No {process} job handler exists.",
             "importFailed": "The user import job failed.",
-            "outboxIdMissing": "The import job carries no outbox row id."
+            "exportFailed": "The user export job failed.",
+            "deleteSelfFailed": "The user self-deletion job failed.",
+            "outboxIdMissing": "The job carries no outbox row id."
         }
     },
     "error": {

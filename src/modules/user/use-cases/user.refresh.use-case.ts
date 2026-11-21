@@ -43,62 +43,15 @@ export class UserRefreshUseCase implements IAppUseCase<
         private readonly helperDateService: HelperDateService
     ) {}
 
-    private async rotateSession(
+    private async revokeReused(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtRefreshContext,
-        user: IUser
-    ): Promise<IAuthToken | null> {
-        const { requestLog } = requestContext;
-        const { token: refreshToken } = authContext;
-        const payload =
-            this.authJwtService.payloadToken<IAuthJwtRefreshTokenPayload>(
-                refreshToken
-            );
-        const oldJti = this.authJwtService.getRefreshJti(payload);
-        const { sessionId, userId, loginWith, deviceOwnershipId } = authContext;
-        const { loginFrom } = payload;
-        const { jti: newJti, tokens } = this.authJwtService.refreshToken(
-            user,
-            refreshToken
-        );
+        authContext: IAuthJwtRefreshContext
+    ): Promise<void> {
+        const { sessionId, userId } = authContext;
+        const now = this.helperDateService.create();
         try {
-            // Sequential by design: write must not run if an earlier step throws
-            return await this.databaseService.withTransaction(async tx => {
-                const isJtiUpdated = await this.sessionService.updateJtiInTx(
-                    tx,
-                    sessionId,
-                    oldJti,
-                    newJti
-                );
-                const now = this.helperDateService.create();
-                if (isJtiUpdated) {
-                    await this.userService.updateLoginInTx(
-                        tx,
-                        userId,
-                        loginFrom,
-                        loginWith,
-                        requestLog.ipAddress,
-                        now
-                    );
-                    await this.deviceService.touchOwnershipInTx(
-                        tx,
-                        userId,
-                        deviceOwnershipId,
-                        now
-                    );
-                    const entry = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        { action: EnumActivityLogAction.userRefreshToken }
-                    );
-                    await this.outboxService.addInTx(tx, entry);
-
-                    return tokens;
-                }
-
+            await this.databaseService.withTransaction(async tx => {
                 const isRevoked = await this.sessionService.revokeReusedInTx(
                     tx,
                     userId,
@@ -112,12 +65,78 @@ export class UserRefreshUseCase implements IAppUseCase<
                         apiKeyContext,
                         authContext,
                         null,
-                        { action: EnumActivityLogAction.userRevokeSession }
+                        { action: EnumActivityLogAction.userSessionRevoked }
                     );
                     await this.outboxService.addInTx(tx, revokeEntry);
                 }
+            });
+        } catch (err: unknown) {
+            if (err instanceof AppBaseException) {
+                throw err;
+            }
 
-                return null;
+            const mapped = this.databaseUtil.toException(err);
+            if (!(mapped instanceof DatabaseWriteConflictException)) {
+                throw new AppUnknownException(err);
+            }
+        }
+    }
+
+    private async rotateSession(
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtRefreshContext,
+        user: IUser,
+        { loginFrom }: IAuthJwtRefreshTokenPayload,
+        oldJti: string
+    ): Promise<IAuthToken | null> {
+        const { requestLog } = requestContext;
+        const { token: refreshToken } = authContext;
+        const { sessionId, userId, loginWith, deviceOwnershipId } = authContext;
+        const { jti: newJti, tokens } = this.authJwtService.refreshToken(
+            user,
+            refreshToken
+        );
+        try {
+            // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
+            return await this.databaseService.withTransaction(async tx => {
+                const isJtiUpdated = await this.sessionService.updateJtiInTx(
+                    tx,
+                    sessionId,
+                    oldJti,
+                    newJti
+                );
+                if (!isJtiUpdated) {
+                    return null;
+                }
+
+                const now = this.helperDateService.create();
+                await Promise.all([
+                    this.userService.updateLoginInTx(
+                        tx,
+                        userId,
+                        loginFrom,
+                        loginWith,
+                        requestLog.ipAddress,
+                        now
+                    ),
+                    this.deviceService.touchOwnershipInTx(
+                        tx,
+                        userId,
+                        deviceOwnershipId,
+                        now
+                    ),
+                ]);
+                const entry = this.activityLogQueue.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    { action: EnumActivityLogAction.userTokenRefreshed }
+                );
+                await this.outboxService.addInTx(tx, entry);
+
+                return tokens;
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
@@ -139,12 +158,31 @@ export class UserRefreshUseCase implements IAppUseCase<
         authContext: IAuthJwtRefreshContext,
         userContext: IUserContext
     ): Promise<IResponseReturn<IAuthToken>> {
+        const payload =
+            this.authJwtService.payloadToken<IAuthJwtRefreshTokenPayload>(
+                authContext.token
+            );
+        const oldJti = this.authJwtService.getRefreshJti(payload);
+        const isLive = await this.sessionService.existsLiveByJti(
+            authContext.sessionId,
+            oldJti
+        );
+        if (!isLive) {
+            await this.revokeReused(requestContext, apiKeyContext, authContext);
+            const revoked = this.sessionService.getRefreshedTokens(null);
+
+            return { data: revoked };
+        }
+
         const tokens = await this.rotateSession(
             requestContext,
             apiKeyContext,
             authContext,
-            userContext.user
+            userContext.user,
+            payload,
+            oldJti
         );
+
         const refreshed = this.sessionService.getRefreshedTokens(tokens);
 
         return { data: refreshed };

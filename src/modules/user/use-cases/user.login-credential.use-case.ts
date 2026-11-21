@@ -7,6 +7,8 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { DeviceUtil } from '@modules/device/utils/device.util';
@@ -23,6 +25,7 @@ import type {
 import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { Injectable } from '@nestjs/common';
+import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/server';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
@@ -36,6 +39,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         private readonly userPasswordService: UserPasswordService,
         private readonly userVerificationService: UserVerificationService,
         private readonly mfaService: MfaService,
+        private readonly mfaPasskeyService: MfaPasskeyService,
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly userUtil: UserUtil,
@@ -55,7 +59,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         loginAt: Date
     ): Promise<IUserLoginOutcome> {
         const { lastWorkspaceChangedAt } = user;
-        // Sequential by design: write must not run if an earlier step throws
+        // Sequential by design: a write after its checks
         const [lastWorkspaceId, isMfaEnabled] = await Promise.all([
             this.workspaceMemberService.resolveLastWorkspaceId(
                 user.id,
@@ -92,19 +96,34 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
             };
         }
 
-        const mfa = await this.databaseService.withTransaction(async tx => {
-            await this.userPasswordService.resetPasswordAttemptInTx(
-                tx,
-                user.id
-            );
+        const credentials = await this.mfaPasskeyService.getCredentialsByUser(
+            user.id
+        );
+        const methods = await this.mfaService.getLoginMethods(
+            user.id,
+            credentials
+        );
+        let passkeyOptions: PublicKeyCredentialRequestOptionsJSON | null = null;
+        if (methods.includes(EnumMfaMethod.passkey)) {
+            passkeyOptions =
+                await this.mfaPasskeyService.getAssertionOptions(credentials);
+        }
 
-            return this.userAuthService.createMfaChallengeInTx(
-                tx,
-                user.id,
-                device,
-                loginFrom,
-                loginWith
-            );
+        const mfa = await this.databaseService.withTransaction(async tx => {
+            const [challenge] = await Promise.all([
+                this.userAuthService.createMfaChallengeInTx(
+                    tx,
+                    user.id,
+                    device,
+                    loginFrom,
+                    loginWith,
+                    methods,
+                    passkeyOptions
+                ),
+                this.userPasswordService.resetPasswordAttemptInTx(tx, user.id),
+            ]);
+
+            return challenge;
         });
 
         return {
@@ -120,7 +139,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         user: IUser
     ): Promise<void> {
-        // Sequential by design: gate before the work it guards
+        // Sequential by design: a write after its checks
         const isResendable =
             await this.userVerificationService.isEmailResendable(user);
         if (!isResendable) {
@@ -128,22 +147,21 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         }
 
         await this.databaseService.withTransaction(async tx => {
-            await this.userPasswordService.resetPasswordAttemptInTx(
-                tx,
-                user.id
-            );
-            await this.userVerificationService.sendEmailInTx(
-                tx,
-                user.id,
-                user.email
-            );
+            await Promise.all([
+                this.userVerificationService.sendEmailInTx(
+                    tx,
+                    user.id,
+                    user.email
+                ),
+                this.userPasswordService.resetPasswordAttemptInTx(tx, user.id),
+            ]);
             const entry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 null,
                 null,
                 {
-                    action: EnumActivityLogAction.userSendVerificationEmail,
+                    action: EnumActivityLogAction.userVerificationEmailSent,
                     userId: user.id,
                     createdBy: user.id,
                 }
@@ -163,31 +181,39 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         const { user } = credential;
         this.userPasswordService.assertPasswordAttemptAvailable(user);
 
-        // Sequential by design: gate before the work it guards; write after the gate; the count precedes the failed entry
+        // Sequential by design: a credential proof, awaited alone
         const isMatch = await this.userAuthService.isCredentialMatch(
             credential,
             password
         );
         if (!isMatch) {
-            const isLocked =
-                await this.userPasswordService.countFailedPasswordAttempt(
-                    requestContext,
-                    apiKeyContext,
-                    user
-                );
-            const failedEntry = this.activityLogQueue.recordEffect(
-                requestContext,
-                apiKeyContext,
-                null,
-                null,
-                {
-                    action: EnumActivityLogAction.userLoginFailed,
-                    userId: user.id,
-                    createdBy: user.id,
+            const limit =
+                await this.userPasswordService.getPasswordAttemptLimit();
+            const isLocked = await this.databaseService.withTransaction(
+                async tx => {
+                    const isLockedNow =
+                        await this.userPasswordService.countFailedPasswordAttemptInTx(
+                            tx,
+                            requestContext,
+                            apiKeyContext,
+                            user.id,
+                            limit
+                        );
+                    const failedEntry = this.activityLogQueue.recordEffect(
+                        requestContext,
+                        apiKeyContext,
+                        null,
+                        null,
+                        {
+                            action: EnumActivityLogAction.userLoginFailed,
+                            userId: user.id,
+                            createdBy: user.id,
+                        }
+                    );
+                    await this.outboxService.addInTx(tx, failedEntry);
+
+                    return isLockedNow;
                 }
-            );
-            await this.databaseService.withTransaction(async tx =>
-                this.outboxService.addInTx(tx, failedEntry)
             );
             this.userPasswordService.assertPasswordNotLocked(isLocked);
         }

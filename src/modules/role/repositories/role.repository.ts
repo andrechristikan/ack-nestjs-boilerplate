@@ -81,21 +81,10 @@ export class RoleRepository implements IRoleRepository {
         });
     }
 
-    async findOneByIdInTx(
-        tx: IDatabaseTransactionClient,
-        id: string
-    ): Promise<IRole | null> {
-        return tx.role.findUnique({
-            where: { id },
-            select: RoleSelect,
-        });
-    }
-
-    async findOneWithPolicyCountByIdInTx(
-        tx: IDatabaseTransactionClient,
+    async findOneWithPolicyCountById(
         id: string
     ): Promise<IRoleWithPolicyCount | null> {
-        return tx.role.findUnique({
+        return this.databaseService.client.role.findUnique({
             where: { id },
             include: RoleWithPolicyCountInclude,
         });

@@ -88,12 +88,14 @@ Rule: `notification.md`, Fan-out and send.
 
 - `job.updateData`: the row is the one source every attempt and every dispatch reads, and the recorded decision is part of the history.
 
-### An activity entry is written by whoever runs the write, in that write's transaction
+### An activity entry is built after its write by whoever runs it, in that write's transaction
 
 Rule: `activity-entry.md`.
 
 - Rows staged in the CLS store and flushed by an interceptor: an entry would be staged in one place and written in another, and an error path would lose it.
 - The `ActivityLog` row inserted in the business transaction: the outbox row already commits with the write, and the job keeps the insert off the request path.
+- The entry built ahead of every write of its transaction: inside a transaction a failing entry rolls the write back either way, so the order protects nothing.
+- Before the write unless the entry needs its result: two orders to read where one serves every flow, since some entries carry what the write returned.
 
 ### A user's activity log hides another actor's request details at read
 

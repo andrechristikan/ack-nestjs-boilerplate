@@ -62,7 +62,7 @@ export class UserLogoutUseCase implements IAppUseCase<
                     authContext,
                     null,
                     {
-                        action: EnumActivityLogAction.userLogout,
+                        action: EnumActivityLogAction.userLoggedOut,
                     }
                 );
                 await this.outboxService.addInTx(tx, entry);

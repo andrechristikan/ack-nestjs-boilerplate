@@ -1,3 +1,4 @@
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -7,7 +8,7 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { Verification } from '@generated/prisma-client/client';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -24,6 +25,7 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { UserMobileNumberAlreadyVerifiedException } from '@modules/user/exceptions/user.mobile-number-already-verified.exception';
 import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IUserMobileNumberSummary } from '@modules/user/interfaces/user.interface';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
@@ -173,7 +175,7 @@ describe('UserVerifyMobileNumberUseCase', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userVerifiedMobileNumber }
+                { action: EnumActivityLogAction.userMobileNumberVerified }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 entry,
@@ -182,7 +184,7 @@ describe('UserVerifyMobileNumberUseCase', () => {
             expect(result).toEqual({});
         });
 
-        it('throws UserMobileNumberNotFoundException first and reads no code', async () => {
+        it('throws UserMobileNumberNotFoundException and writes nothing', async () => {
             userMobileNumberService.getOneUnverifiedMobileNumber.mockRejectedValue(
                 new UserMobileNumberNotFoundException()
             );
@@ -195,13 +197,36 @@ describe('UserVerifyMobileNumberUseCase', () => {
                     'mobile-other',
                     dto
                 )
-            ).rejects.toBeInstanceOf(UserMobileNumberNotFoundException);
-            expect(
-                userVerificationService.getOneActiveByMobileOtp
-            ).not.toHaveBeenCalled();
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
+            });
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('throws UserMobileNumberAlreadyVerifiedException before it reads the code', async () => {
+        it('reads the code while the unverified number read is still pending', async () => {
+            const numberRead = buildDeferred<IUserMobileNumberSummary>();
+            userMobileNumberService.getOneUnverifiedMobileNumber.mockReturnValue(
+                numberRead.promise
+            );
+
+            const running = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'mobile-swift',
+                dto
+            );
+
+            expect(
+                userVerificationService.getOneActiveByMobileOtp
+            ).toHaveBeenCalledWith('user-swift', 'mobile-swift', '482913');
+
+            numberRead.resolve(mobileNumber);
+            await running;
+        });
+
+        it('throws UserMobileNumberAlreadyVerifiedException and writes nothing', async () => {
             userMobileNumberService.getOneUnverifiedMobileNumber.mockRejectedValue(
                 new UserMobileNumberAlreadyVerifiedException()
             );
@@ -214,10 +239,11 @@ describe('UserVerifyMobileNumberUseCase', () => {
                     'mobile-swift',
                     dto
                 )
-            ).rejects.toBeInstanceOf(UserMobileNumberAlreadyVerifiedException);
-            expect(
-                userVerificationService.getOneActiveByMobileOtp
-            ).not.toHaveBeenCalled();
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.mobileNumberAlreadyVerified,
+            });
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws UserTokenInvalidException for a code sent before a number change and writes nothing', async () => {
@@ -233,7 +259,10 @@ describe('UserVerifyMobileNumberUseCase', () => {
                     'mobile-swift',
                     dto
                 )
-            ).rejects.toBeInstanceOf(UserTokenInvalidException);
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+            });
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
@@ -250,7 +279,10 @@ describe('UserVerifyMobileNumberUseCase', () => {
                     'mobile-swift',
                     dto
                 )
-            ).rejects.toBeInstanceOf(UserTokenInvalidException);
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+            });
             expect(
                 userMobileNumberService.markVerifiedInTx
             ).not.toHaveBeenCalled();
@@ -271,7 +303,10 @@ describe('UserVerifyMobileNumberUseCase', () => {
                     'mobile-swift',
                     dto
                 )
-            ).rejects.toBeInstanceOf(UserTokenInvalidException);
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.tokenInvalid,
+            });
         });
 
         it('wraps an unknown error in AppUnknownException', async () => {
@@ -288,7 +323,10 @@ describe('UserVerifyMobileNumberUseCase', () => {
                     'mobile-swift',
                     dto
                 )
-            ).rejects.toBeInstanceOf(AppUnknownException);
+            ).rejects.toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+            });
         });
     });
 });

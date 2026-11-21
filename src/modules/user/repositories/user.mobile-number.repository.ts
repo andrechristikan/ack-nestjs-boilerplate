@@ -26,6 +26,13 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
         });
     }
 
+    async findManyByUser(userId: string): Promise<IUserMobileNumber[]> {
+        return this.databaseService.client.userMobileNumber.findMany({
+            where: { userId },
+            include: { country: true },
+        });
+    }
+
     async existsMobileNumber(
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,

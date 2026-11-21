@@ -25,7 +25,6 @@ import type {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
-import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 
@@ -37,7 +36,6 @@ export class FeatureFlagService {
         private readonly cacheService: CacheService,
         private readonly cacheQueue: CacheQueue,
         private readonly helperHashService: HelperHashService,
-        private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService
     ) {}
 
@@ -235,36 +233,19 @@ export class FeatureFlagService {
         return this.featureFlagRepository.findWithPaginationCursor(pagination);
     }
 
-    async updateStatusByAdmin(
-        id: string,
-        data: IFeatureFlagUpdateStatus
-    ): Promise<FeatureFlag> {
-        return this.databaseService.withTransaction(async tx => {
-            const updated = await this.featureFlagRepository.updateStatusInTx(
-                tx,
-                id,
-                data
-            );
-            if (!updated) {
-                throw new FeatureFlagNotFoundException();
-            }
-
-            await this.addInvalidateEffectInTx(tx, updated.key);
-
-            return updated;
-        });
-    }
-
-    async updateMetadataByAdmin(
-        id: string,
-        data: IFeatureFlagUpdateMetadata
-    ): Promise<FeatureFlag> {
-        // Sequential by design: gate before the work it guards
+    async getOneById(id: string): Promise<FeatureFlag> {
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
             throw new FeatureFlagNotFoundException();
         }
 
+        return featureFlag;
+    }
+
+    assertMetadataValid(
+        featureFlag: FeatureFlag,
+        data: IFeatureFlagUpdateMetadata
+    ): void {
         const validated = this.isMetadataValid(
             featureFlag.metadata as IFeatureFlagMetadata | null,
             data.metadata
@@ -272,16 +253,39 @@ export class FeatureFlagService {
         if (!validated) {
             throw new FeatureFlagInvalidMetadataException();
         }
+    }
 
-        return this.databaseService.withTransaction(async tx => {
-            const updated = await this.featureFlagRepository.updateMetadataInTx(
-                tx,
-                id,
-                data
-            );
-            await this.addInvalidateEffectInTx(tx, updated.key);
+    async updateStatusByAdminInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        data: IFeatureFlagUpdateStatus
+    ): Promise<FeatureFlag> {
+        const updated = await this.featureFlagRepository.updateStatusInTx(
+            tx,
+            id,
+            data
+        );
+        if (!updated) {
+            throw new FeatureFlagNotFoundException();
+        }
 
-            return updated;
-        });
+        await this.addInvalidateEffectInTx(tx, updated.key);
+
+        return updated;
+    }
+
+    async updateMetadataByAdminInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        data: IFeatureFlagUpdateMetadata
+    ): Promise<FeatureFlag> {
+        const updated = await this.featureFlagRepository.updateMetadataInTx(
+            tx,
+            id,
+            data
+        );
+        await this.addInvalidateEffectInTx(tx, updated.key);
+
+        return updated;
     }
 }

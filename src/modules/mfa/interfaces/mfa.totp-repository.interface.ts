@@ -3,10 +3,6 @@ import type { MfaTotp } from '@generated/prisma-client/client';
 
 export interface IMfaTotpRepository {
     findOneByUserId(userId: string): Promise<MfaTotp | null>;
-    findOneByUserIdInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string
-    ): Promise<MfaTotp | null>;
     existsConfirmed(userId: string): Promise<boolean>;
     existsConfirmedInTx(
         tx: IDatabaseTransactionClient,

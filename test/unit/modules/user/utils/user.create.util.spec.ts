@@ -255,7 +255,7 @@ describe('UserCreateUtil', () => {
                     metadata: {},
                 },
                 {
-                    action: EnumActivityLogAction.userSendVerificationEmail,
+                    action: EnumActivityLogAction.userVerificationEmailSent,
                     userId: user.id,
                     createdBy: user.id,
                     metadata: {},
@@ -339,7 +339,7 @@ describe('UserCreateUtil', () => {
                     metadata: {},
                 },
                 {
-                    action: EnumActivityLogAction.userSendVerificationEmail,
+                    action: EnumActivityLogAction.userVerificationEmailSent,
                     userId: user.id,
                     workspaceId: null,
                     createdBy: user.id,

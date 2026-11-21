@@ -49,13 +49,17 @@ export class ApiKeyUpdateDatesByAdminUseCase implements IAppUseCase<
         id: string,
         { startAt, endAt }: ApiKeyUpdateDateRequestDto
     ): Promise<IResponseReturn<IApiKey>> {
+        this.apiKeyService.assertEndAtFuture(startAt, endAt);
+        const row = await this.apiKeyService.getOneById(id);
+        this.apiKeyService.assertActive(row);
+
         try {
             const updated = await this.databaseService.withTransaction(
                 async tx => {
                     const apiKey =
                         await this.apiKeyService.updateDatesByAdminInTx(
                             tx,
-                            id,
+                            row,
                             startAt,
                             endAt
                         );
@@ -71,7 +75,7 @@ export class ApiKeyUpdateDatesByAdminUseCase implements IAppUseCase<
                         authContext,
                         null,
                         {
-                            action: EnumActivityLogAction.adminApiKeyUpdateDate,
+                            action: EnumActivityLogAction.adminApiKeyDatesUpdated,
                             metadata,
                         }
                     );

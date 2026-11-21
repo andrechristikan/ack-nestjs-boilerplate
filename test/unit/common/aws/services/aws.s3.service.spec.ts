@@ -80,6 +80,8 @@ describe('AwsS3Service', () => {
         'aws.s3.private': privateSource,
         'aws.s3.presignExpiresInSeconds': 1800,
         'aws.s3.multipartExpiresInDays': 3,
+        'aws.s3.temporaryPath': 'temporary',
+        'aws.s3.temporaryExpiresInDays': 1,
         'aws.s3.corsMaxAgeLongInSeconds': 86400,
         'aws.s3.corsMaxAgeShortInSeconds': 3600,
         'aws.s3.baseUrlPattern': amazonawsBaseUrlPattern,
@@ -1874,6 +1876,34 @@ describe('AwsS3Service', () => {
             });
 
             expect(send).toHaveBeenCalledTimes(1);
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: {
+                        Bucket: 'public-bucket',
+                        LifecycleConfiguration: {
+                            Rules: [
+                                {
+                                    ID: 'delete-incomplete-multipart',
+                                    Status: 'Enabled',
+                                    Filter: { Prefix: '' },
+                                    AbortIncompleteMultipartUpload: {
+                                        DaysAfterInitiation: 3,
+                                    },
+                                    Expiration: {
+                                        ExpiredObjectDeleteMarker: true,
+                                    },
+                                },
+                                {
+                                    ID: 'delete-temporary',
+                                    Status: 'Enabled',
+                                    Filter: { Prefix: 'temporary/' },
+                                    Expiration: { Days: 1 },
+                                },
+                            ],
+                        },
+                    },
+                })
+            );
         });
     });
 

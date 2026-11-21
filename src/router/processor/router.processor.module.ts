@@ -9,6 +9,8 @@ import { NotificationEmailProcessor } from '@modules/notification/processors/not
 import { NotificationProcessor } from '@modules/notification/processors/notification.processor';
 import { NotificationPushProcessor } from '@modules/notification/processors/notification.push.processor';
 import { NotificationSmsProcessor } from '@modules/notification/processors/notification.sms.processor';
+import { ProjectProcessor } from '@modules/project/processors/project.processor';
+import { ProjectUseCaseModule } from '@modules/project/project.use-case.module';
 import { SessionProcessor } from '@modules/session/processors/session.processor';
 import { SessionUseCaseModule } from '@modules/session/session.use-case.module';
 import { TermPolicyProcessor } from '@modules/term-policy/processors/term-policy.processor';
@@ -30,6 +32,7 @@ import { Module } from '@nestjs/common';
         NotificationPushProcessor,
         NotificationSmsProcessor,
         OutboxProcessor,
+        ProjectProcessor,
         SessionProcessor,
         TermPolicyProcessor,
         UserProcessor,
@@ -40,6 +43,7 @@ import { Module } from '@nestjs/common';
         ActivityLogUseCaseModule,
         AnalyticUseCaseModule,
         NotificationUseCaseModule,
+        ProjectUseCaseModule,
         SessionUseCaseModule,
         TermPolicyUseCaseModule,
         UserUseCaseModule,

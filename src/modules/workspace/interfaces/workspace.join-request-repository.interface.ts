@@ -16,11 +16,6 @@ export interface IWorkspaceJoinRequestRepository {
     findByIdAndWorkspace(
         workspaceJoinRequestId: string,
         workspaceId: string
-    ): Promise<WorkspaceJoinRequest | null>;
-    findByIdAndWorkspaceInTx(
-        tx: IDatabaseTransactionClient,
-        workspaceJoinRequestId: string,
-        workspaceId: string
     ): Promise<IWorkspaceJoinRequestWithEmail | null>;
     findWithPaginationCursor(
         workspaceId: string,
@@ -52,11 +47,13 @@ export interface IWorkspaceJoinRequestRepository {
     ): Promise<boolean>;
     cancelPendingByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string
+        workspaceId: string,
+        updatedBy: string
     ): Promise<void>;
     cancelPendingByRequesterInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        userId: string,
+        updatedBy: string
     ): Promise<void>;
     cancelPendingByUserInTx(
         tx: IDatabaseTransactionClient,

@@ -50,20 +50,23 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
         id: string,
         body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
+        const update = { description: body.description, type: body.type };
+        const target = await this.roleService.getUpdatableByActor(
+            {
+                roleId: userContext.user.roleId,
+                roleType: userContext.user.role.type,
+            },
+            id,
+            update
+        );
+
         try {
             const updated = await this.databaseService.withTransaction(
                 async tx => {
                     const role = await this.roleService.updateByAdminInTx(
                         tx,
-                        id,
-                        {
-                            description: body.description,
-                            type: body.type,
-                        },
-                        {
-                            roleId: userContext.user.roleId,
-                            roleType: userContext.user.role.type,
-                        }
+                        target,
+                        update
                     );
 
                     const timestamp = this.helperDateService.create();
@@ -77,7 +80,7 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
                         authContext,
                         null,
                         {
-                            action: EnumActivityLogAction.adminRoleUpdate,
+                            action: EnumActivityLogAction.adminRoleUpdated,
                             metadata,
                         }
                     );

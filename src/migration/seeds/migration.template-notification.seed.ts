@@ -56,6 +56,7 @@ export class MigrationTemplateEmailNotificationSeed
             loginLockedEmail,
             publishTermPolicyEmail,
             userImportResultEmail,
+            userExportResultEmail,
             resetPasswordEmail,
             workspaceInviteEmail,
             workspaceJoinRequestEmail,
@@ -104,6 +105,9 @@ export class MigrationTemplateEmailNotificationSeed
             ),
             this.notificationTemplateService.emailGet(
                 EnumNotificationKind.userImportResult
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.userExportResult
             ),
             this.notificationTemplateService.emailGet(
                 EnumNotificationKind.resetPassword
@@ -278,6 +282,17 @@ export class MigrationTemplateEmailNotificationSeed
             promises.push(userImportResultEmailImport);
         }
 
+        if (!userExportResultEmail) {
+            this.logger.log(
+                'User Export Result Email template missing, importing...'
+            );
+            const userExportResultEmailImport =
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.userExportResult
+                );
+            promises.push(userExportResultEmailImport);
+        }
+
         if (!resetPasswordEmail) {
             this.logger.log(
                 'Reset Password Email template missing, importing...'
@@ -406,6 +421,9 @@ export class MigrationTemplateEmailNotificationSeed
                 ),
                 this.notificationTemplateService.emailDelete(
                     EnumNotificationKind.userImportResult
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.userExportResult
                 ),
                 this.notificationTemplateService.emailDelete(
                     EnumNotificationKind.resetPassword

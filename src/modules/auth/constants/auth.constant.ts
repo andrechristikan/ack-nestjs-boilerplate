@@ -105,7 +105,7 @@ export const AuthSocialGoogleProtectedDocErrors: IDocResponseEntry[] = [
         messagePath: 'auth.error.socialNonceInvalid',
     },
     {
-        httpStatus: HttpStatus.NOT_FOUND,
+        httpStatus: HttpStatus.NOT_IMPLEMENTED,
         statusCode: EnumAuthStatusCodeError.socialGoogleNotConfigured,
         messagePath: 'auth.error.socialGoogleNotConfigured',
     },
@@ -134,7 +134,7 @@ export const AuthSocialAppleProtectedDocErrors: IDocResponseEntry[] = [
         messagePath: 'auth.error.socialNonceInvalid',
     },
     {
-        httpStatus: HttpStatus.NOT_FOUND,
+        httpStatus: HttpStatus.NOT_IMPLEMENTED,
         statusCode: EnumAuthStatusCodeError.socialAppleNotConfigured,
         messagePath: 'auth.error.socialAppleNotConfigured',
     },

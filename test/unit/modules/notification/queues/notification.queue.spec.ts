@@ -320,6 +320,46 @@ describe('NotificationQueue', () => {
             });
         });
 
+        it('returns the userExportResult effect keyed by the reference with the link sealed against the recipient and the count and expiry plain', () => {
+            const result = queue.notify(EnumNotificationKind.userExportResult, {
+                userId: 'admin-id',
+                proceedBy: 'admin-id',
+                reference: 'outbox-id',
+                link: 'https://s3.test/export.csv?sig=abc',
+                count: 12,
+                expiredAt: '2026-01-02T00:00:00.000Z',
+            });
+
+            expect(result).toEqual({
+                queue: EnumNotificationQueue.notification,
+                name: EnumNotificationProcess.notify,
+                data: {
+                    kind: EnumNotificationKind.userExportResult,
+                    context: {
+                        userId: 'admin-id',
+                        proceedBy: 'admin-id',
+                        reference: 'outbox-id',
+                        encryptedLink: expect.any(String),
+                        count: 12,
+                        expiredAt: '2026-01-02T00:00:00.000Z',
+                        snapshot: null,
+                        verificationId: null,
+                    },
+                    recipient: null,
+                    notificationId: null,
+                },
+                priority: EnumQueuePriority.medium,
+                idempotencyKey: 'userExportResult-outbox-id',
+            });
+            expect(result.data.context).not.toHaveProperty('link');
+            expect(
+                buildUnsealedNotificationPayload(
+                    String(result.data.context.encryptedLink),
+                    'admin-id'
+                )
+            ).toBe('https://s3.test/export.csv?sig=abc');
+        });
+
         it('leaves a non-string context field out of the idempotency key values', () => {
             const result = queue.notify(
                 EnumNotificationKind.userAcceptTermPolicy,

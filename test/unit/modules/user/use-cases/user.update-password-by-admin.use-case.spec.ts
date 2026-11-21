@@ -1,3 +1,4 @@
+import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
@@ -29,6 +30,8 @@ import { PasswordHistoryService } from '@modules/password-history/services/passw
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
+import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -131,7 +134,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 _workspaceContext,
                 input
             ) =>
-                input.action === EnumActivityLogAction.adminUserUpdatePassword
+                input.action === EnumActivityLogAction.adminUserPasswordUpdated
                     ? adminEntry
                     : targetEntry
         );
@@ -179,6 +182,28 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 password,
                 passwordString: 'temp-password',
             });
+        });
+
+        it('answers AwsSesNotConfiguredException before the self check and any read when SES is unset', async () => {
+            userService.assertEmailDeliverable.mockImplementation(() => {
+                throw new AwsSesNotConfiguredException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'user-linden'
+                )
+            ).rejects.toMatchObject({
+                module: 'aws',
+                statusCode: EnumAwsStatusCodeError.sesNotConfigured,
+            });
+            expect(userService.assertNotSelf).not.toHaveBeenCalled();
+            expect(userService.getOneWithRole).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('gates the actor rank, writes the password, history, and revoke on one transaction, and adds both entries and the notification on it', async () => {
@@ -270,9 +295,9 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 password.passwordCreated
             );
             expect(calls).toEqual([
+                'snapshot',
                 'begin',
                 'updatePassword',
-                'snapshot',
                 'createHistory',
                 'markUnusedResetsUsed',
                 'revokeSessions',
@@ -297,7 +322,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.adminUserUpdatePassword,
+                    action: EnumActivityLogAction.adminUserPasswordUpdated,
                     metadata: {
                         targetUserId: 'user-linden',
                         targetUsername: 'lindenFrost',
@@ -312,7 +337,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 authContext,
                 null,
                 {
-                    action: EnumActivityLogAction.userUpdatePasswordByAdmin,
+                    action: EnumActivityLogAction.userPasswordUpdatedByAdmin,
                     userId: 'user-linden',
                     createdBy: 'admin-linden',
                     metadata: {
@@ -328,23 +353,47 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             ]);
         });
 
-        it('starts the snapshot read while the first statement is pending and reads it before the revoke', async () => {
-            let snapshotStarted = false;
-            let startedWhenFirstSettles = false;
-            notificationService.getSnapshot.mockImplementation(async () => {
-                snapshotStarted = true;
+        it('starts the history, the unused-reset mark, and the session revoke while the password update is pending', async () => {
+            const update = buildDeferred<User>();
+            userService.updatePasswordInTx.mockReturnValue(update.promise);
 
-                return snapshot;
-            });
-            databaseService.withTransaction.mockImplementation(
-                async fn => fn(tx) as never
+            const running = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'user-linden'
             );
-            userService.updatePasswordInTx.mockImplementation(async () => {
-                await Promise.resolve();
-                startedWhenFirstSettles = snapshotStarted;
+            await vi.advanceTimersByTimeAsync(0);
 
-                return updatedRow;
-            });
+            expect(passwordHistoryService.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                'hashed',
+                EnumPasswordHistoryType.admin,
+                password.passwordPeriodExpired,
+                password.passwordCreated,
+                'admin-linden'
+            );
+            expect(
+                userPasswordService.markUnusedResetsUsedInTx
+            ).toHaveBeenCalledWith(tx, 'user-linden', 'admin-linden');
+            expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-linden',
+                'admin-linden',
+                password.passwordCreated
+            );
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+
+            update.resolve(updatedRow);
+            await running;
+
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+        });
+
+        it('reads the snapshot before it opens the transaction', async () => {
+            userService.updatePasswordInTx.mockResolvedValue(updatedRow);
 
             await useCase.execute(
                 requestContext,
@@ -354,9 +403,8 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 'user-linden'
             );
 
-            expect(startedWhenFirstSettles).toBe(true);
             expect(notificationService.getSnapshot).toHaveBeenCalledBefore(
-                sessionService.revokeActiveByUserInTx
+                databaseService.withTransaction
             );
         });
 
@@ -425,6 +473,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     'user-linden'
                 )
             ).rejects.toThrow('read');
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 sessionService.revokeActiveByUserInTx
             ).not.toHaveBeenCalled();

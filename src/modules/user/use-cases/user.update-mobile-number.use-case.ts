@@ -61,12 +61,9 @@ export class UserUpdateMobileNumberUseCase implements IAppUseCase<
         }: UserUpdateMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
         const { user } = userContext;
-        // Sequential by design: gate before the work it guards
-        const check = await this.userAuthService.assertReauthentication(
-            requestContext,
-            apiKeyContext,
-            user,
-            {
+        // Sequential by design: a credential proof, awaited alone
+        const { check, failure } =
+            await this.userAuthService.checkReauthentication(user, {
                 action: EnumUserReauthenticationAction.mobileNumberUpdate,
                 password: password ?? null,
                 method: method ?? null,
@@ -75,20 +72,42 @@ export class UserUpdateMobileNumberUseCase implements IAppUseCase<
                 passkeyChallengeToken: passkeyChallengeToken ?? null,
                 passkeyResponse: passkeyResponse ?? null,
                 otp: otp ?? null,
-            }
-        );
-        const current = await this.userMobileNumberService.getOneMobileNumber(
-            authContext.userId,
-            mobileNumberId
-        );
-        const [country, isDuplicate] = await Promise.all([
+            });
+        if (failure !== null) {
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.userAuthService.countFailedReauthenticationInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        failure
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(
+                failure,
+                isLocked
+            );
+        }
+
+        const [current, country, isDuplicate] = await Promise.all([
+            this.userMobileNumberService.getOneMobileNumber(
+                authContext.userId,
+                mobileNumberId
+            ),
             this.countryService.getOne(countryId),
             this.userMobileNumberService.existsMobileNumber(
                 authContext.userId,
                 { number, countryId, phoneCode },
-                current.id
+                mobileNumberId
             ),
         ]);
+        this.userMobileNumberService.assertMobileNumberAllowed(
+            country.phoneCode,
+            phoneCode,
+            isDuplicate
+        );
 
         try {
             const mobileNumber = await this.databaseService.withTransaction(
@@ -107,9 +126,7 @@ export class UserUpdateMobileNumberUseCase implements IAppUseCase<
                         apiKeyContext,
                         authContext,
                         current,
-                        { number, countryId, phoneCode },
-                        country.phoneCode,
-                        isDuplicate
+                        { number, countryId, phoneCode }
                     );
                 }
             );

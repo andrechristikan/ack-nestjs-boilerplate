@@ -11,6 +11,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { CountryService } from '@modules/country/services/country.service';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
+import { EnumCountryStatusCodeError } from '@modules/country/enums/country.status-code.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
@@ -92,7 +93,7 @@ describe('UserUpdateProfileUseCase', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userUpdateProfile }
+                { action: EnumActivityLogAction.userProfileUpdated }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
@@ -105,7 +106,10 @@ describe('UserUpdateProfileUseCase', () => {
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, authContext, dto)
-            ).rejects.toBeInstanceOf(CountryNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'country',
+                statusCode: EnumCountryStatusCodeError.notFound,
+            });
 
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();

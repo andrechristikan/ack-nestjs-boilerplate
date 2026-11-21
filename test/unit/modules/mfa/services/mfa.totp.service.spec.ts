@@ -171,7 +171,6 @@ describe('MfaTotpService', () => {
 
     describe('setupInTx', () => {
         it('stores the encrypted pending secret under the configured key and the user id, and answers the secret and the URL', async () => {
-            mfaTotpRepository.findOneByUserIdInTx.mockResolvedValue(null);
             let stored = '';
             mfaTotpRepository.setupInTx.mockImplementation(
                 async (_tx, _userId, encryptedSecret) => {
@@ -202,8 +201,6 @@ describe('MfaTotpService', () => {
         });
 
         it('carries the issuer once, the email, and the secret in the otpauth URL', async () => {
-            mfaTotpRepository.findOneByUserIdInTx.mockResolvedValue(null);
-
             const { secret, otpauthUrl } = await service.setupInTx(
                 tx,
                 'user-quartz',
@@ -217,29 +214,44 @@ describe('MfaTotpService', () => {
             expect(url.searchParams.get('issuer')).toBe('AckBoilerplate');
         });
 
-        it('replaces an unconfirmed pending secret', async () => {
-            mfaTotpRepository.findOneByUserIdInTx.mockResolvedValue(
-                pendingTotp
-            );
-
+        it('reads no row', async () => {
             await service.setupInTx(tx, 'user-quartz', 'quartz@example.com');
 
             expect(mfaTotpRepository.setupInTx).toHaveBeenCalledTimes(1);
+            expect(mfaTotpRepository.findOneByUserId).not.toHaveBeenCalled();
         });
+    });
 
-        it('throws MfaTotpAlreadyEnabledException with a confirmed TOTP and writes nothing', async () => {
-            mfaTotpRepository.findOneByUserIdInTx.mockResolvedValue(
-                confirmedTotp
-            );
+    describe('assertSetupAllowed', () => {
+        it('reads the row of the user on the client and returns for none', async () => {
+            mfaTotpRepository.findOneByUserId.mockResolvedValue(null);
 
             await expect(
-                service.setupInTx(tx, 'user-quartz', 'quartz@example.com')
+                service.assertSetupAllowed('user-quartz')
+            ).resolves.toBeUndefined();
+
+            expect(mfaTotpRepository.findOneByUserId).toHaveBeenCalledWith(
+                'user-quartz'
+            );
+        });
+
+        it('returns for an unconfirmed pending secret', async () => {
+            mfaTotpRepository.findOneByUserId.mockResolvedValue(pendingTotp);
+
+            await expect(
+                service.assertSetupAllowed('user-quartz')
+            ).resolves.toBeUndefined();
+        });
+
+        it('throws MfaTotpAlreadyEnabledException with a confirmed TOTP', async () => {
+            mfaTotpRepository.findOneByUserId.mockResolvedValue(confirmedTotp);
+
+            await expect(
+                service.assertSetupAllowed('user-quartz')
             ).rejects.toMatchObject({
                 module: 'mfa',
-
                 statusCode: EnumMfaStatusCodeError.totpAlreadyEnabled,
             });
-            expect(mfaTotpRepository.setupInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -364,7 +376,7 @@ describe('MfaTotpService', () => {
     });
 
     describe('checkSetupCode', () => {
-        it('answers the step of a correct code against the pending secret', async () => {
+        it('answers the step and the stored encrypted pending secret of a correct code', async () => {
             mfaTotpRepository.findOneByUserId.mockResolvedValue(pendingTotp);
             const code = createTotpCode(
                 base32Secret,
@@ -374,15 +386,21 @@ describe('MfaTotpService', () => {
 
             await expect(
                 service.checkSetupCode('user-quartz', ` ${code} `)
-            ).resolves.toBe(nowStep);
+            ).resolves.toEqual({
+                totpStep: nowStep,
+                pendingSecret: pendingTotp.pendingSecret,
+            });
         });
 
-        it('answers null for a wrong code', async () => {
+        it('answers a null step with the stored pending secret for a wrong code', async () => {
             mfaTotpRepository.findOneByUserId.mockResolvedValue(pendingTotp);
 
             await expect(
                 service.checkSetupCode('user-quartz', '000000')
-            ).resolves.toBeNull();
+            ).resolves.toEqual({
+                totpStep: null,
+                pendingSecret: pendingTotp.pendingSecret,
+            });
         });
 
         it('throws MfaTotpAlreadyEnabledException when no secret is pending and one is confirmed', async () => {
@@ -439,13 +457,15 @@ describe('MfaTotpService', () => {
     });
 
     describe('enableInTx', () => {
-        it('moves the pending secret into the confirmed one with the step', async () => {
-            mfaTotpRepository.findOneByUserIdInTx.mockResolvedValue(
-                pendingTotp
-            );
+        it('moves the given pending secret into the confirmed one with the step, reading no row', async () => {
             mfaTotpRepository.enableInTx.mockResolvedValue(true);
 
-            await service.enableInTx(tx, 'user-quartz', 7);
+            await service.enableInTx(
+                tx,
+                'user-quartz',
+                pendingTotp.pendingSecret!,
+                7
+            );
 
             expect(mfaTotpRepository.enableInTx).toHaveBeenCalledWith(
                 tx,
@@ -454,31 +474,19 @@ describe('MfaTotpService', () => {
                 7,
                 now
             );
-        });
-
-        it('throws MfaTotpSetupRequiredException without a pending secret', async () => {
-            mfaTotpRepository.findOneByUserIdInTx.mockResolvedValue(
-                confirmedTotp
-            );
-
-            await expect(
-                service.enableInTx(tx, 'user-quartz', 7)
-            ).rejects.toMatchObject({
-                module: 'mfa',
-
-                statusCode: EnumMfaStatusCodeError.totpSetupRequired,
-            });
-            expect(mfaTotpRepository.enableInTx).not.toHaveBeenCalled();
+            expect(mfaTotpRepository.findOneByUserId).not.toHaveBeenCalled();
         });
 
         it('throws MfaTotpSetupRequiredException when the pending secret changed', async () => {
-            mfaTotpRepository.findOneByUserIdInTx.mockResolvedValue(
-                pendingTotp
-            );
             mfaTotpRepository.enableInTx.mockResolvedValue(false);
 
             await expect(
-                service.enableInTx(tx, 'user-quartz', 7)
+                service.enableInTx(
+                    tx,
+                    'user-quartz',
+                    pendingTotp.pendingSecret!,
+                    7
+                )
             ).rejects.toMatchObject({
                 module: 'mfa',
 

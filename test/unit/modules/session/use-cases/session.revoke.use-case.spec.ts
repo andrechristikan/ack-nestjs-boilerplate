@@ -1,4 +1,5 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
@@ -27,6 +28,7 @@ import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queu
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
+import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionRevokeUseCase } from '@modules/session/use-cases/session.revoke.use-case';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
@@ -96,7 +98,10 @@ describe('SessionRevokeUseCase', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userAuthService.assertReauthentication.mockResolvedValue(check);
+        userAuthService.checkReauthentication.mockResolvedValue({
+            check,
+            failure: null,
+        });
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -119,13 +124,65 @@ describe('SessionRevokeUseCase', () => {
     });
 
     describe('execute', () => {
+        it('commits the failed count in a transaction of its own, then throws, and leaves the work undone', async () => {
+            const refusal = new Error('refused');
+            userAuthService.checkReauthentication.mockResolvedValue({
+                check: null,
+                failure: TestUnitReauthenticationPasswordFailure,
+            });
+            userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
+                true
+            );
+            userAuthService.throwFailedReauthentication.mockImplementation(
+                () => {
+                    throw refusal;
+                }
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'session-1',
+                    dto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                TestUnitReauthenticationPasswordFailure
+            );
+            expect(
+                userAuthService.countFailedReauthenticationInTx
+            ).toHaveBeenCalledBefore(
+                userAuthService.throwFailedReauthentication
+            );
+            expect(
+                userAuthService.throwFailedReauthentication
+            ).toHaveBeenCalledWith(
+                TestUnitReauthenticationPasswordFailure,
+                true
+            );
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+        });
+
         it('asserts the re-authentication, then completes it, revokes the session, and adds the entry on one transaction', async () => {
             const calls: string[] = [];
-            userAuthService.assertReauthentication.mockImplementation(
+            userAuthService.checkReauthentication.mockImplementation(
                 async () => {
                     calls.push('assert');
 
-                    return check;
+                    return { check, failure: null };
                 }
             );
             databaseService.withTransaction.mockImplementation(async fn => {
@@ -160,9 +217,7 @@ describe('SessionRevokeUseCase', () => {
                 )
             ).resolves.toEqual({});
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.sessionRevoke,
@@ -196,7 +251,7 @@ describe('SessionRevokeUseCase', () => {
                 apiKeyContext,
                 authContext,
                 null,
-                { action: EnumActivityLogAction.userRevokeSession }
+                { action: EnumActivityLogAction.userSessionRevoked }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
             expect(calls).toEqual([
@@ -226,9 +281,7 @@ describe('SessionRevokeUseCase', () => {
                 }
             );
 
-            expect(userAuthService.assertReauthentication).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
+            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
                 user,
                 {
                     action: EnumUserReauthenticationAction.sessionRevoke,
@@ -245,7 +298,7 @@ describe('SessionRevokeUseCase', () => {
 
         it('leaves the session alone when the re-authentication fails', async () => {
             const failure = new UserPasswordNotMatchException();
-            userAuthService.assertReauthentication.mockRejectedValue(failure);
+            userAuthService.checkReauthentication.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -319,7 +372,10 @@ describe('SessionRevokeUseCase', () => {
                     'session-1',
                     dto
                 )
-            ).rejects.toBeInstanceOf(SessionNotFoundException);
+            ).rejects.toMatchObject({
+                module: 'session',
+                statusCode: EnumSessionStatusCodeError.notFound,
+            });
         });
 
         it('wraps an unknown error of the transaction in AppUnknownException', async () => {

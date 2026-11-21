@@ -161,8 +161,8 @@ export class AnalyticFraudRepository implements IAnalyticFraudRepository {
                 $match: {
                     action: {
                         $in: [
-                            EnumActivityLogAction.userRevokeSessionByAdmin,
-                            EnumActivityLogAction.userRevokeAllSessionsByAdmin,
+                            EnumActivityLogAction.userSessionRevokedByAdmin,
+                            EnumActivityLogAction.userAllSessionsRevokedByAdmin,
                         ],
                     },
                     createdAt: { $gte: start, $lt: end },
@@ -562,7 +562,7 @@ export class AnalyticFraudRepository implements IAnalyticFraudRepository {
         const rows = await this.databaseService.client.activityLog.groupBy({
             by: ['ipAddress'],
             where: {
-                action: EnumActivityLogAction.userForgotPassword,
+                action: EnumActivityLogAction.userPasswordResetRequested,
                 ipAddress: { not: null },
                 createdAt: { gte: range.startDate, lt: range.endDate },
             },
@@ -578,7 +578,7 @@ export class AnalyticFraudRepository implements IAnalyticFraudRepository {
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticPasswordResetEnumeration>> {
         const stages = this.ipCountStages(
-            [EnumActivityLogAction.userForgotPassword],
+            [EnumActivityLogAction.userPasswordResetRequested],
             range,
             minRequestsPerIp
         );
