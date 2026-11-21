@@ -5,7 +5,6 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Queue } from 'bullmq';
-import { CacheService } from '@common/cache/services/cache.service';
 import { EnumWorkspaceQueue } from '@modules/workspace/enums/workspace.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
@@ -17,7 +16,6 @@ describe('WorkspaceQueue', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     let configService: MockProxy<ConfigService>;
     const workspaceQueue: MockProxy<Queue> = mock<Queue>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let queue: WorkspaceQueue;
 
     beforeEach(async () => {
@@ -35,7 +33,6 @@ describe('WorkspaceQueue', () => {
                     provide: getQueueToken(EnumWorkspaceQueue.workspace),
                     useValue: workspaceQueue,
                 },
-                { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();

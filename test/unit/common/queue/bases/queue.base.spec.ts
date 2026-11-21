@@ -2,7 +2,6 @@ import { Logger } from '@nestjs/common';
 import type { Job, Queue, QueueListener } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { CacheService } from '@common/cache/services/cache.service';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import {
     EnumQueueJobState,
@@ -12,7 +11,6 @@ import { buildOutboxRow } from '@test/unit/helpers/test.unit.queue.helper';
 
 describe('QueueBase', () => {
     const queue: MockProxy<Queue> = mock<Queue>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let errorListener: QueueListener['error'] | null = null;
     let subject: QueueBase;
 
@@ -23,7 +21,7 @@ describe('QueueBase', () => {
 
             return queue;
         });
-        subject = Reflect.construct(QueueBase, [queue, cacheService]);
+        subject = Reflect.construct(QueueBase, [queue]);
     });
 
     describe('constructor', () => {
@@ -35,25 +33,21 @@ describe('QueueBase', () => {
             );
         });
 
-        it('classifies a connection error raised on the queue and does not log it', () => {
+        it('logs a warning for a connection error raised on the queue', () => {
             const warn = vi.spyOn(Logger.prototype, 'warn');
             const error = new Error('connect ECONNREFUSED 127.0.0.1:6379');
-            cacheService.isConnectionError.mockReturnValue(true);
 
             expect(errorListener).not.toBeNull();
             expect(() => errorListener?.(error)).not.toThrow();
-            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
-            expect(warn).not.toHaveBeenCalled();
+            expect(warn).toHaveBeenCalledWith(error, 'Queue error');
         });
 
-        it('classifies any other error raised on the queue and logs a warning', () => {
+        it('logs a warning for any other error raised on the queue', () => {
             const warn = vi.spyOn(Logger.prototype, 'warn');
             const error = new Error('queue failure');
-            cacheService.isConnectionError.mockReturnValue(false);
 
             expect(errorListener).not.toBeNull();
             expect(() => errorListener?.(error)).not.toThrow();
-            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
             expect(warn).toHaveBeenCalledWith(error, 'Queue error');
         });
     });

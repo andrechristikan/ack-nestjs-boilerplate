@@ -223,11 +223,6 @@ export abstract class QueueProcessorBase extends WorkerHost {
 
     @OnWorkerEvent('error')
     onError(error: Error): void {
-        const isConnection = this.cacheService.isConnectionError(error);
-        if (isConnection) {
-            return;
-        }
-
         this.logger.warn(error, 'Queue worker error');
     }
 }

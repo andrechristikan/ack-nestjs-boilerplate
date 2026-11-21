@@ -2,7 +2,6 @@ import { getQueueToken } from '@nestjs/bullmq';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import type { Queue } from 'bullmq';
-import { CacheService } from '@common/cache/services/cache.service';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
@@ -26,7 +25,6 @@ import {
 describe('NotificationPushQueue', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationPushQueue: MockProxy<Queue> = mock<Queue>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let configService: MockProxy<ConfigService>;
     let queue: NotificationPushQueue;
 
@@ -49,7 +47,6 @@ describe('NotificationPushQueue', () => {
                     ),
                     useValue: notificationPushQueue,
                 },
-                { provide: CacheService, useValue: cacheService },
                 NotificationUtil,
                 { provide: ConfigService, useValue: configService },
             ],

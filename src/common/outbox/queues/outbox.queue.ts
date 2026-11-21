@@ -3,7 +3,6 @@ import { Injectable } from '@nestjs/common';
 import type { OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
-import { CacheService } from '@common/cache/services/cache.service';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import {
     EnumOutboxProcess,
@@ -17,10 +16,9 @@ export class OutboxQueue extends QueueBase implements OnModuleInit {
 
     constructor(
         @InjectQueue(EnumOutboxQueue.outbox) protected readonly queue: Queue,
-        protected readonly cacheService: CacheService,
         private readonly configService: ConfigService
     ) {
-        super(queue, cacheService);
+        super(queue);
         this.sweepIntervalInMs = this.configService.get<number>(
             'outbox.sweepIntervalInMs'
         )!;

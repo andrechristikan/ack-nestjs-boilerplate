@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
@@ -27,12 +26,11 @@ export class NotificationQueue extends QueueBase {
     constructor(
         @InjectQueue(EnumNotificationQueue.notification)
         protected readonly queue: Queue,
-        protected readonly cacheService: CacheService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
         private readonly notificationUtil: NotificationUtil
     ) {
-        super(queue, cacheService);
+        super(queue);
         const userPattern = this.configService.get<string>(
             'notification.idempotencyKey.userPattern'
         )!;

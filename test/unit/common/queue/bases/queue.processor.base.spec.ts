@@ -390,23 +390,21 @@ describe('QueueProcessorBase', () => {
     });
 
     describe('onError', () => {
-        it('classifies a connection error and does not log it', () => {
+        it('logs a warning for a connection error without asking the cache service', () => {
             const warn = vi.spyOn(Logger.prototype, 'warn');
             const error = new Error('connect ECONNREFUSED 127.0.0.1:6379');
-            cacheService.isConnectionError.mockReturnValue(true);
 
             expect(() => processor.onError(error)).not.toThrow();
-            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
-            expect(warn).not.toHaveBeenCalled();
+            expect(cacheService.isConnectionError).not.toHaveBeenCalled();
+            expect(warn).toHaveBeenCalledWith(error, 'Queue worker error');
         });
 
-        it('classifies any other error and logs a warning', () => {
+        it('logs a warning for any other error', () => {
             const warn = vi.spyOn(Logger.prototype, 'warn');
             const error = new Error('worker failure');
-            cacheService.isConnectionError.mockReturnValue(false);
 
             expect(() => processor.onError(error)).not.toThrow();
-            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+            expect(cacheService.isConnectionError).not.toHaveBeenCalled();
             expect(warn).toHaveBeenCalledWith(error, 'Queue worker error');
         });
     });

@@ -4,7 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import type { Queue } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { CacheService } from '@common/cache/services/cache.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumNotificationChannel,
@@ -37,7 +36,6 @@ import {
 
 describe('NotificationEmailQueue', () => {
     const bullQueue: MockProxy<Queue> = mock<Queue>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let queue: NotificationEmailQueue;
 
     const publishPayload: ITermPolicyPublishPayload = {
@@ -84,7 +82,6 @@ describe('NotificationEmailQueue', () => {
                     ),
                     useValue: bullQueue,
                 },
-                { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
         queue = module.get(NotificationEmailQueue);

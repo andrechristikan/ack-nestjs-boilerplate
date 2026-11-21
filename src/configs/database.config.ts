@@ -9,7 +9,6 @@ export interface IConfigDatabase {
     serverSelectionTimeoutInMs: number;
     connectTimeoutInMs: number;
     slowQueryThresholdInMs: number;
-    warnWindowInMs: number;
 }
 
 export default registerAs('database', (): IConfigDatabase => {
@@ -21,6 +20,5 @@ export default registerAs('database', (): IConfigDatabase => {
         serverSelectionTimeoutInMs: ms('5s'),
         connectTimeoutInMs: ms('5s'),
         slowQueryThresholdInMs: ms('500ms'),
-        warnWindowInMs: ms('1m'),
     };
 });

@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -16,10 +15,9 @@ export class ProjectQueue extends QueueBase {
     constructor(
         @InjectQueue(EnumProjectQueue.project)
         protected readonly queue: Queue,
-        protected readonly cacheService: CacheService,
         private readonly helperDateService: HelperDateService
     ) {
-        super(queue, cacheService);
+        super(queue);
     }
 
     softDeleteByWorkspaceEffect(

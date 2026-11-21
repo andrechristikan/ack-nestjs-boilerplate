@@ -5,7 +5,6 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Queue } from 'bullmq';
-import { CacheService } from '@common/cache/services/cache.service';
 import {
     EnumOutboxProcess,
     EnumOutboxQueue,
@@ -16,7 +15,6 @@ import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 describe('OutboxQueue', () => {
     let configService: MockProxy<ConfigService>;
     const outboxQueue: MockProxy<Queue> = mock<Queue>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let queue: OutboxQueue;
 
     beforeEach(async () => {
@@ -32,7 +30,6 @@ describe('OutboxQueue', () => {
                     provide: getQueueToken(EnumOutboxQueue.outbox),
                     useValue: outboxQueue,
                 },
-                { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();

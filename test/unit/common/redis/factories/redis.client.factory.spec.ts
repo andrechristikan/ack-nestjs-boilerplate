@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -154,17 +155,17 @@ describe('RedisClientFactory', () => {
             await factory.connect(client);
         });
 
-        it('records the client down on its first error', () => {
-            listeners.get('error')!(connectionError);
+        it('writes the connection lost warning on every error event', () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
 
-            expect(factory['downClients'].has(client)).toBe(true);
-        });
-
-        it('keeps one down record across repeated errors', () => {
             listeners.get('error')!(connectionError);
             listeners.get('error')!(connectionError);
 
-            expect(factory['downClients'].size).toBe(1);
+            expect(warn).toHaveBeenCalledTimes(2);
+            expect(warn).toHaveBeenCalledWith(
+                { connectionName: 'ack-test:queue', err: connectionError },
+                'Redis connection lost'
+            );
         });
     });
 
@@ -178,17 +179,17 @@ describe('RedisClientFactory', () => {
             await factory.connect(client);
         });
 
-        it('clears a client recorded down', () => {
-            listeners.get('error')!(connectionError);
+        it('writes the connection ready line on every ready event', () => {
+            const log = vi.spyOn(Logger.prototype, 'log');
+
+            listeners.get('ready')!();
             listeners.get('ready')!();
 
-            expect(factory['downClients'].has(client)).toBe(false);
-        });
-
-        it('records nothing for a client never down', () => {
-            listeners.get('ready')!();
-
-            expect(factory['downClients'].size).toBe(0);
+            expect(log).toHaveBeenCalledTimes(2);
+            expect(log).toHaveBeenCalledWith(
+                { connectionName: 'ack-test:queue' },
+                'Redis connection ready'
+            );
         });
     });
 });

@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -34,12 +33,11 @@ export class NotificationEmailQueue extends QueueBase {
     constructor(
         @InjectQueue(EnumNotificationQueue.notificationEmail)
         protected readonly queue: Queue,
-        protected readonly cacheService: CacheService,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
         private readonly notificationUtil: NotificationUtil
     ) {
-        super(queue, cacheService);
+        super(queue);
         this.referencePattern = this.configService.get<string>(
             'notification.idempotencyKey.referencePattern'
         )!;

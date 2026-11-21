@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { QueueBase } from '@common/queue/bases/queue.base';
@@ -39,12 +38,11 @@ export class ActivityLogQueue extends QueueBase {
     constructor(
         @InjectQueue(EnumActivityLogQueue.activityLog)
         protected readonly queue: Queue,
-        protected readonly cacheService: CacheService,
         private readonly activityLogUtil: ActivityLogUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {
-        super(queue, cacheService);
+        super(queue);
     }
 
     private getContract(

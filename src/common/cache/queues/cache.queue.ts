@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import {
     EnumCacheProcess,
@@ -14,10 +13,9 @@ import { Queue } from 'bullmq';
 export class CacheQueue extends QueueBase {
     constructor(
         @InjectQueue(EnumCacheQueue.cache)
-        protected readonly queue: Queue,
-        protected readonly cacheService: CacheService
+        protected readonly queue: Queue
     ) {
-        super(queue, cacheService);
+        super(queue);
     }
 
     /** The outbox effect that deletes the keys through the cache queue. */

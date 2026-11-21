@@ -1,17 +1,13 @@
 import { Logger } from '@nestjs/common';
 import type { Queue } from 'bullmq';
 import type { Outbox } from '@generated/prisma-client/client';
-import { CacheService } from '@common/cache/services/cache.service';
 import { EnumQueueJobState } from '@common/queue/enums/queue.enum';
 import type { IQueueJobState } from '@common/queue/interfaces/queue.interface';
 
 export abstract class QueueBase {
     private readonly logger = new Logger(QueueBase.name);
 
-    constructor(
-        protected readonly queue: Queue,
-        protected readonly cacheService: CacheService
-    ) {
+    constructor(protected readonly queue: Queue) {
         this.registerErrorListener();
     }
 
@@ -20,11 +16,6 @@ export abstract class QueueBase {
     }
 
     private onError(error: Error): void {
-        const isConnection = this.cacheService.isConnectionError(error);
-        if (isConnection) {
-            return;
-        }
-
         this.logger.warn(error, 'Queue error');
     }
 

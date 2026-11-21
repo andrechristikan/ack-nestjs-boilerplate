@@ -66,15 +66,15 @@ Rule: `notify.md`; `exceptions.md`, The hierarchy.
 - A route decorator with a guard: the service assert per use case matches how S3 is refused, so every optional integration is refused the same way.
 - Answering success and skipping the send: the caller is told an email went out that never will, and an admin-created account's temporary password reaches nobody.
 
-### An unset optional integration answers 501, reported once per window
+### An unset optional integration answers 501
 
 Rule: `exceptions.md`, The hierarchy.
 
 - 404: the route exists, and a client cannot tell the answer from a wrong address when the deployment lacks the capability.
 - 503: it reads as a temporary outage, so clients and load balancers retry a request that fails until the configuration changes.
 - 409 or 422: the request is valid, and the server is the side not ready.
-- Keeping 501 out of Sentry: an email-purpose route called with SES unset in production is an operator fault worth one report.
-- A report per request: it floods Sentry.
+- Keeping 501 out of Sentry: an email-purpose route called with SES unset in production is an operator fault worth a report.
+- A report once per exception class per window: the count of requests that hit a missing credential is lost.
 
 ### Feature flags are seeded, with keys the code names
 

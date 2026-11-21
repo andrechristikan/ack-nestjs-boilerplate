@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
@@ -17,10 +16,9 @@ import { Queue } from 'bullmq';
 export class SessionQueue extends QueueBase {
     constructor(
         @InjectQueue(EnumSessionQueue.session)
-        protected readonly queue: Queue,
-        protected readonly cacheService: CacheService
+        protected readonly queue: Queue
     ) {
-        super(queue, cacheService);
+        super(queue);
     }
 
     purgeLoginsEffect(

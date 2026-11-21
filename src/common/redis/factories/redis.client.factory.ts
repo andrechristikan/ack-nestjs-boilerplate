@@ -9,7 +9,6 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 export class RedisClientFactory implements OnApplicationShutdown {
     private readonly logger = new Logger(RedisClientFactory.name);
     private readonly clients = new Set<Redis>();
-    private readonly downClients = new Set<Redis>();
     private readonly cacheUrl: string;
     private readonly cacheKeyPrefix: string;
     private readonly queueUrl: string;
@@ -45,12 +44,6 @@ export class RedisClientFactory implements OnApplicationShutdown {
     }
 
     private onError(client: Redis, error: Error): void {
-        const isDown = this.downClients.has(client);
-        if (isDown) {
-            return;
-        }
-
-        this.downClients.add(client);
         this.logger.warn(
             { connectionName: client.options.connectionName, err: error },
             'Redis connection lost'
@@ -58,12 +51,10 @@ export class RedisClientFactory implements OnApplicationShutdown {
     }
 
     private onReady(client: Redis): void {
-        const wasDown = this.downClients.delete(client);
-        if (!wasDown) {
-            return;
-        }
-
-        this.logger.log('Redis connection restored');
+        this.logger.log(
+            { connectionName: client.options.connectionName },
+            'Redis connection ready'
+        );
     }
 
     private async close(client: Redis): Promise<void> {

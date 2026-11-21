@@ -12,7 +12,6 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AppGeneralFilter } from '@app/filters/app.general.filter';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
-import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import { CacheService } from '@common/cache/services/cache.service';
@@ -36,7 +35,6 @@ describe('AppGeneralFilter', () => {
         mock<ResponseMetadataService>();
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const response: MockProxy<Response> = mock<Response>();
     const httpArgumentsHost: MockProxy<
         ReturnType<ArgumentsHost['switchToHttp']>
@@ -75,7 +73,6 @@ describe('AppGeneralFilter', () => {
                 DatabaseUtil,
                 { provide: ConfigService, useValue: buildConfigService({}) },
                 { provide: CacheService, useValue: cacheService },
-                { provide: DatabaseService, useValue: databaseService },
             ],
         }).compile();
 
@@ -190,7 +187,6 @@ describe('AppGeneralFilter', () => {
         it('renders RedisUnavailableException (503, 52400) carrying the raw error as rawError when the raw error is a connection error', async () => {
             const error = new Error('connection lost');
             cacheService.isConnectionError.mockReturnValue(true);
-            cacheService.isFirstInWindow.mockReturnValue(true);
 
             await filter.catch(error, argumentsHost);
 
@@ -215,35 +211,19 @@ describe('AppGeneralFilter', () => {
             expect(sentryService.captureException).toHaveBeenCalledWith(error);
         });
 
-        it('logs and reports the first RedisUnavailableException in a window', async () => {
+        it('logs and reports every RedisUnavailableException', async () => {
             const rawError = new Error('connection lost');
-            cacheService.isFirstInWindow.mockReturnValue(true);
+            const error = vi.spyOn(Logger.prototype, 'error');
 
             await filter.catch(
                 new RedisUnavailableException(rawError),
                 argumentsHost
             );
-
-            expect(cacheService.isFirstInWindow).toHaveBeenCalledWith(
-                RedisUnavailableException.name
-            );
-            expect(sentryService.captureException).toHaveBeenCalledTimes(1);
-            expect(sentryService.captureException).toHaveBeenCalledWith(
-                rawError
-            );
-        });
-
-        it('answers 503 without a report for a RedisUnavailableException inside the window', async () => {
-            cacheService.isFirstInWindow.mockReturnValue(false);
-
             await filter.catch(
-                new RedisUnavailableException(new Error('connection lost')),
+                new RedisUnavailableException(rawError),
                 argumentsHost
             );
 
-            expect(cacheService.isFirstInWindow).toHaveBeenCalledWith(
-                RedisUnavailableException.name
-            );
             expect(response.status).toHaveBeenCalledWith(
                 HttpStatus.SERVICE_UNAVAILABLE
             );
@@ -257,20 +237,22 @@ describe('AppGeneralFilter', () => {
                 message: 'Internal Server Error',
                 metadata,
             });
-            expect(sentryService.captureException).not.toHaveBeenCalled();
+            expect(error).toHaveBeenCalledTimes(2);
+            expect(sentryService.captureException).toHaveBeenCalledTimes(2);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                rawError
+            );
         });
 
-        it('logs and reports the first 501 exception of its class in a window', async () => {
+        it('logs and reports every 501 exception', async () => {
             const exception = new AwsS3NotConfiguredException();
-            cacheService.isFirstInWindow.mockReturnValue(true);
             const error = vi.spyOn(Logger.prototype, 'error');
 
             await filter.catch(exception, argumentsHost);
+            await filter.catch(exception, argumentsHost);
 
-            expect(cacheService.isFirstInWindow).toHaveBeenCalledWith(
-                AwsS3NotConfiguredException.name
-            );
-            expect(error).toHaveBeenCalledTimes(1);
+            expect(error).toHaveBeenCalledTimes(2);
+            expect(sentryService.captureException).toHaveBeenCalledTimes(2);
             expect(sentryService.captureException).toHaveBeenCalledWith(
                 exception
             );
@@ -284,32 +266,14 @@ describe('AppGeneralFilter', () => {
             );
         });
 
-        it('answers 501 without a log or a report for a 501 exception inside the window', async () => {
-            const exception = new AwsS3NotConfiguredException();
-            cacheService.isFirstInWindow.mockReturnValue(false);
+        it.each([
+            ['a P2010 server selection timeout', serverSelectionTimeout],
+            ['a PrismaClientInitializationError', initializationError],
+        ])('logs and reports every %s', async (_label, rawError) => {
             const error = vi.spyOn(Logger.prototype, 'error');
 
-            await filter.catch(exception, argumentsHost);
-
-            expect(cacheService.isFirstInWindow).toHaveBeenCalledWith(
-                AwsS3NotConfiguredException.name
-            );
-            expect(error).not.toHaveBeenCalled();
-            expect(sentryService.captureException).not.toHaveBeenCalled();
-            expect(response.status).toHaveBeenCalledWith(
-                HttpStatus.NOT_IMPLEMENTED
-            );
-            expect(response.json).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    statusCode: EnumAwsStatusCodeError.s3NotConfigured,
-                })
-            );
-        });
-
-        it('logs and reports a P2010 server selection timeout first in the database window', async () => {
-            databaseService.isFirstUnavailableInWindow.mockReturnValue(true);
-
-            await filter.catch(serverSelectionTimeout, argumentsHost);
+            await filter.catch(rawError, argumentsHost);
+            await filter.catch(rawError, argumentsHost);
 
             expect(response.status).toHaveBeenCalledWith(
                 HttpStatus.SERVICE_UNAVAILABLE
@@ -318,68 +282,11 @@ describe('AppGeneralFilter', () => {
                 ...databaseUnavailableBody,
                 metadata,
             });
-            expect(sentryService.captureException).toHaveBeenCalledTimes(1);
-            expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
-        });
-
-        it('answers 503 without a report for a P2010 server selection timeout inside the database window', async () => {
-            databaseService.isFirstUnavailableInWindow.mockReturnValue(false);
-
-            await filter.catch(serverSelectionTimeout, argumentsHost);
-
-            expect(response.status).toHaveBeenCalledWith(
-                HttpStatus.SERVICE_UNAVAILABLE
+            expect(error).toHaveBeenCalledTimes(2);
+            expect(sentryService.captureException).toHaveBeenCalledTimes(2);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                rawError
             );
-            expect(response.json).toHaveBeenCalledWith({
-                ...databaseUnavailableBody,
-                metadata,
-            });
-            expect(sentryService.captureException).not.toHaveBeenCalled();
-            expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
-        });
-
-        it('logs and reports a PrismaClientInitializationError first in the database window', async () => {
-            databaseService.isFirstUnavailableInWindow.mockReturnValue(true);
-
-            await filter.catch(initializationError, argumentsHost);
-
-            expect(response.status).toHaveBeenCalledWith(
-                HttpStatus.SERVICE_UNAVAILABLE
-            );
-            expect(response.json).toHaveBeenCalledWith({
-                ...databaseUnavailableBody,
-                metadata,
-            });
-            expect(sentryService.captureException).toHaveBeenCalledTimes(1);
-            expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
-        });
-
-        it('answers 503 without a report for a PrismaClientInitializationError inside the database window', async () => {
-            databaseService.isFirstUnavailableInWindow.mockReturnValue(false);
-
-            await filter.catch(initializationError, argumentsHost);
-
-            expect(response.status).toHaveBeenCalledWith(
-                HttpStatus.SERVICE_UNAVAILABLE
-            );
-            expect(response.json).toHaveBeenCalledWith({
-                ...databaseUnavailableBody,
-                metadata,
-            });
-            expect(sentryService.captureException).not.toHaveBeenCalled();
-            expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
-        });
-
-        it('reports every other 5xx without consulting the window', async () => {
-            const error = new Error('boom');
-
-            await filter.catch(error, argumentsHost);
-
-            expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
-            expect(
-                databaseService.isFirstUnavailableInWindow
-            ).not.toHaveBeenCalled();
-            expect(sentryService.captureException).toHaveBeenCalledWith(error);
         });
 
         it('answers 500 for a raw ECONNREFUSED error that names no subject', async () => {
@@ -551,7 +458,6 @@ describe('AppGeneralFilter', () => {
         it('renders the mapped RedisUnavailableException for an AppUnknownException whose rawError is a connection error', async () => {
             const rawError = new Error('connection lost');
             cacheService.isConnectionError.mockReturnValue(true);
-            cacheService.isFirstInWindow.mockReturnValue(true);
 
             await filter.catch(
                 new AppUnknownException(rawError),
@@ -693,10 +599,12 @@ describe('AppGeneralFilter', () => {
 
         it('reports nothing when the resolved exception is below 500', () => {
             const exception = new RequestValidationException([]);
+            const error = vi.spyOn(Logger.prototype, 'error');
 
             filter['sendToSentry'](exception, exception);
 
             expect(sentryService.captureException).not.toHaveBeenCalled();
+            expect(error).not.toHaveBeenCalled();
         });
     });
 });

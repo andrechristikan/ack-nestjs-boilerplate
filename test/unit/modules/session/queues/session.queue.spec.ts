@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing';
 import type { Queue } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { CacheService } from '@common/cache/services/cache.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumSessionProcess,
@@ -13,7 +12,6 @@ import { SessionQueue } from '@modules/session/queues/session.queue';
 
 describe('SessionQueue', () => {
     const bullQueue: MockProxy<Queue> = mock<Queue>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let queue: SessionQueue;
 
     beforeEach(async () => {
@@ -24,7 +22,6 @@ describe('SessionQueue', () => {
                     provide: getQueueToken(EnumSessionQueue.session),
                     useValue: bullQueue,
                 },
-                { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
         queue = module.get(SessionQueue);

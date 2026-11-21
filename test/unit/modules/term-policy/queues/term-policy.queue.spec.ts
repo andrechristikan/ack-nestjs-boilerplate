@@ -4,7 +4,6 @@ import { Test } from '@nestjs/testing';
 import type { Queue } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { CacheService } from '@common/cache/services/cache.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
@@ -21,7 +20,6 @@ import {
 
 describe('TermPolicyQueue', () => {
     const bullQueue: MockProxy<Queue> = mock<Queue>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let queue: TermPolicyQueue;
     let databaseUtil: DatabaseUtil;
 
@@ -44,7 +42,6 @@ describe('TermPolicyQueue', () => {
                     provide: getQueueToken(EnumTermPolicyQueue.termPolicy),
                     useValue: bullQueue,
                 },
-                { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
         queue = module.get(TermPolicyQueue);

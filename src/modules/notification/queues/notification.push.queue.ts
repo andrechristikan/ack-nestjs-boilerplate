@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import {
     EnumNotificationKind,
     EnumNotificationPushProcess,
@@ -29,11 +28,10 @@ export class NotificationPushQueue extends QueueBase implements OnModuleInit {
     constructor(
         @InjectQueue(EnumNotificationQueue.notificationPush)
         protected readonly queue: Queue,
-        protected readonly cacheService: CacheService,
         private readonly configService: ConfigService,
         private readonly notificationUtil: NotificationUtil
     ) {
-        super(queue, cacheService);
+        super(queue);
         this.timezone = this.configService.get<string>('app.timezone')!;
         this.cleanupStaleTokensCron = this.configService.get<string>(
             'notification.push.cleanupStaleTokensCron'

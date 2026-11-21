@@ -27,7 +27,6 @@ describe('DatabaseService', () => {
             {
                 'database.debugEnabled': true,
                 'database.slowQueryThresholdInMs': 500,
-                'database.warnWindowInMs': 60000,
             },
             databaseClientFactory,
             client
@@ -293,41 +292,6 @@ describe('DatabaseService', () => {
 
             expect(callbackB).toHaveBeenCalledTimes(1);
             expect(callbackA).toHaveBeenCalledTimes(1);
-        });
-    });
-
-    describe('isFirstUnavailableInWindow', () => {
-        const now = new Date('2026-01-01T00:00:00.000Z');
-
-        it('returns true on its first call and false on a second call at the same time', () => {
-            vi.setSystemTime(now);
-
-            const first = service.isFirstUnavailableInWindow();
-            const second = service.isFirstUnavailableInWindow();
-
-            expect(first).toBe(true);
-            expect(second).toBe(false);
-        });
-
-        it('returns false 59999 ms after the first call', () => {
-            vi.setSystemTime(now);
-            service.isFirstUnavailableInWindow();
-            vi.setSystemTime(new Date('2026-01-01T00:00:59.999Z'));
-            const result = service.isFirstUnavailableInWindow();
-
-            expect(result).toBe(false);
-        });
-
-        it('returns true 60000 ms after the first call and false on the call after that', () => {
-            const later = new Date('2026-01-01T00:01:00.000Z');
-            vi.setSystemTime(now);
-            service.isFirstUnavailableInWindow();
-            vi.setSystemTime(later);
-            const second = service.isFirstUnavailableInWindow();
-            const third = service.isFirstUnavailableInWindow();
-
-            expect(second).toBe(true);
-            expect(third).toBe(false);
         });
     });
 

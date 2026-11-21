@@ -8,7 +8,6 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumOutboxStatus } from '@generated/prisma-client/client';
 import type { Outbox } from '@generated/prisma-client/client';
-import { CacheService } from '@common/cache/services/cache.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -41,7 +40,6 @@ describe('OutboxService', () => {
         mock<OutboxRepository>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const moduleRef: MockProxy<ModuleRef> = mock<ModuleRef>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let configService: MockProxy<ConfigService>;
     const sessionQueue: MockProxy<QueueBase> = mock<QueueBase>();
     const tx: MockProxy<IDatabaseTransactionClient> =
@@ -114,7 +112,6 @@ describe('OutboxService', () => {
                 { provide: DatabaseService, useValue: databaseService },
                 ...TestUnitKitProviders,
                 { provide: ModuleRef, useValue: moduleRef },
-                { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -680,7 +677,8 @@ describe('OutboxService', () => {
             expect(outboxRepository.updateEnqueued).not.toHaveBeenCalled();
         });
 
-        it('leaves an enqueued row whose job read rejects, dispatches the pending rows, and resolves', async () => {
+        it('warns on every call, leaves an enqueued row whose job read rejects, dispatches the pending rows, and resolves', async () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
             const error = new Error('Connection is closed.');
             outboxRepository.findManyPendingBefore.mockResolvedValue([
                 purgeRow,
@@ -689,11 +687,11 @@ describe('OutboxService', () => {
                 { ...enqueuedRow, id: 'outbox-3', idempotencyKey: 'outbox-3' },
             ]);
             sessionQueue.getJobState.mockRejectedValue(error);
-            cacheService.isConnectionError.mockReturnValue(true);
-            cacheService.isFirstInWindow.mockReturnValue(true);
 
+            const first = await service.sweep();
             const result = await service.sweep();
 
+            expect(first).toBe(1);
             expect(result).toBe(1);
             expect(sessionQueue.getJobState).toHaveBeenCalledWith('outbox-3');
             expect(outboxRepository.updateEnqueued).toHaveBeenCalledWith(
@@ -702,21 +700,28 @@ describe('OutboxService', () => {
             );
             expect(outboxRepository.updateCompleted).not.toHaveBeenCalled();
             expect(outboxRepository.updateFailed).not.toHaveBeenCalled();
-            expect(cacheService.isFirstInWindow).toHaveBeenCalledWith(
-                OutboxDispatchWarnKey
+            expect(warn).toHaveBeenCalledTimes(2);
+            expect(warn).toHaveBeenCalledWith(
+                { key: OutboxDispatchWarnKey, err: error },
+                'Outbox dispatch failed'
             );
         });
 
-        it('resolves zero and dispatches nothing when the stale read fails', async () => {
-            outboxRepository.findManyPendingBefore.mockRejectedValue(
-                new Error('server selection timeout')
-            );
+        it('warns on every call, resolves zero, and dispatches nothing when the stale read fails', async () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
+            const error = new Error('server selection timeout');
+            outboxRepository.findManyPendingBefore.mockRejectedValue(error);
 
+            await expect(service.sweep()).resolves.toBe(0);
             await expect(service.sweep()).resolves.toBe(0);
 
             expect(sessionQueue.getJobState).not.toHaveBeenCalled();
             expect(sessionQueue.enqueue).not.toHaveBeenCalled();
-            expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
+            expect(warn).toHaveBeenCalledTimes(2);
+            expect(warn).toHaveBeenCalledWith(
+                { key: OutboxDispatchWarnKey, err: error },
+                'Outbox dispatch failed'
+            );
         });
     });
 
@@ -791,7 +796,8 @@ describe('OutboxService', () => {
             expect(outboxRepository.updateEnqueued).not.toHaveBeenCalled();
         });
 
-        it('leaves the rows of a rejected enqueue pending, stamps the other queue, and consults the window on a connection error', async () => {
+        it('leaves the rows of a rejected enqueue pending, stamps the other queue, and warns on every connection error', async () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
             const userQueue: MockProxy<QueueBase> = mock<QueueBase>();
             const error = new Error('Connection is closed.');
             moduleRef.get.mockImplementation(token =>
@@ -802,9 +808,10 @@ describe('OutboxService', () => {
                 userRow,
             ]);
             sessionQueue.enqueue.mockRejectedValue(error);
-            cacheService.isConnectionError.mockReturnValue(true);
-            cacheService.isFirstInWindow.mockReturnValue(false);
 
+            await expect(
+                service['dispatch'](['outbox-1', 'outbox-2'])
+            ).resolves.toBeUndefined();
             await expect(
                 service['dispatch'](['outbox-1', 'outbox-2'])
             ).resolves.toBeUndefined();
@@ -813,9 +820,10 @@ describe('OutboxService', () => {
                 ['outbox-2'],
                 now
             );
-            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
-            expect(cacheService.isFirstInWindow).toHaveBeenCalledWith(
-                OutboxDispatchWarnKey
+            expect(warn).toHaveBeenCalledTimes(2);
+            expect(warn).toHaveBeenCalledWith(
+                { key: OutboxDispatchWarnKey, err: error },
+                'Outbox dispatch failed'
             );
         });
 
@@ -826,7 +834,6 @@ describe('OutboxService', () => {
                 throw error;
             });
             outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
-            cacheService.isConnectionError.mockReturnValue(false);
 
             await expect(
                 service['dispatch'](['outbox-1'])
@@ -841,34 +848,25 @@ describe('OutboxService', () => {
             );
         });
 
-        it('resolves, warns once, and leaves the rows unstamped on any other enqueue error', async () => {
+        it('resolves, warns on every call, and leaves the rows unstamped on any other enqueue error', async () => {
             const warn = vi.spyOn(Logger.prototype, 'warn');
+            const error = new Error('bad job');
             outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
-            sessionQueue.enqueue.mockRejectedValue(new Error('bad job'));
-            cacheService.isConnectionError.mockReturnValue(false);
+            sessionQueue.enqueue.mockRejectedValue(error);
 
+            await expect(
+                service['dispatch'](['outbox-1'])
+            ).resolves.toBeUndefined();
             await expect(
                 service['dispatch'](['outbox-1'])
             ).resolves.toBeUndefined();
 
             expect(outboxRepository.updateEnqueued).not.toHaveBeenCalled();
-            expect(cacheService.isFirstInWindow).not.toHaveBeenCalled();
-            expect(warn).toHaveBeenCalledTimes(1);
-        });
-
-        it('resolves when the connection error is the first in its window', async () => {
-            outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
-            sessionQueue.enqueue.mockRejectedValue(
-                new Error('Connection is closed.')
+            expect(warn).toHaveBeenCalledTimes(2);
+            expect(warn).toHaveBeenCalledWith(
+                { key: OutboxDispatchWarnKey, err: error },
+                'Outbox dispatch failed'
             );
-            cacheService.isConnectionError.mockReturnValue(true);
-            cacheService.isFirstInWindow.mockReturnValue(true);
-
-            await expect(
-                service['dispatch'](['outbox-1'])
-            ).resolves.toBeUndefined();
-
-            expect(cacheService.isFirstInWindow).toHaveBeenCalledTimes(1);
         });
 
         it('resolves when the pending read fails', async () => {

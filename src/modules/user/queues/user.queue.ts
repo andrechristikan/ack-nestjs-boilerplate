@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import type { OnModuleInit } from '@nestjs/common';
@@ -28,10 +27,9 @@ export class UserQueue extends QueueBase implements OnModuleInit {
     constructor(
         @InjectQueue(EnumUserQueue.user)
         protected readonly queue: Queue,
-        protected readonly cacheService: CacheService,
         private readonly configService: ConfigService
     ) {
-        super(queue, cacheService);
+        super(queue);
         this.timezone = this.configService.get<string>('app.timezone')!;
         this.purgeExpiredCron = this.configService.get<string>(
             'user.purgeExpiredCron'

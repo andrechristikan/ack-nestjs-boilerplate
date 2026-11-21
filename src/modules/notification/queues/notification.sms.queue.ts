@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import {
@@ -22,10 +21,9 @@ export class NotificationSmsQueue extends QueueBase {
     constructor(
         @InjectQueue(EnumNotificationQueue.notificationSms)
         protected readonly queue: Queue,
-        protected readonly cacheService: CacheService,
         private readonly notificationUtil: NotificationUtil
     ) {
-        super(queue, cacheService);
+        super(queue);
     }
 
     sendEffect(

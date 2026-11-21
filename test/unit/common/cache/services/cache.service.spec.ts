@@ -1,28 +1,22 @@
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
-import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import type { MockInstance } from 'vitest';
 import { z } from 'zod';
 import type { ICacheLease } from '@common/cache/interfaces/cache.interface';
 import { CacheService } from '@common/cache/services/cache.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import {
-    TestUnitKitConfigValues,
-    TestUnitKitProviders,
-} from '@test/unit/helpers/test.unit.kit.helper';
 import { RedisCacheClient } from '@common/redis/constants/redis.constant';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import type { IStubCacheClient } from '@test/unit/helpers/test.unit.cache.helper';
 
 describe('CacheService', () => {
-    let configService: MockProxy<ConfigService>;
     const redis: MockProxy<IStubCacheClient> = mock<IStubCacheClient>();
 
     const key = 'Entry:entry-1';
     const ttlInMs = 4000;
-    const now = new Date('2026-01-03T00:00:00.000Z');
     const entrySchema = z.object({ id: z.string(), name: z.string() });
     const entry = { id: 'entry-1', name: 'Entry One' };
     const loader = vi.fn<() => Promise<typeof entry | null>>();
@@ -33,32 +27,19 @@ describe('CacheService', () => {
     };
 
     let service: CacheService;
+    let warn: MockInstance<Logger['warn']>;
     let helperStringService: HelperStringService;
 
-    beforeAll(() => {
-        vi.useFakeTimers();
-    });
-
-    afterAll(() => {
-        vi.useRealTimers();
-    });
-
     beforeEach(async () => {
-        configService = buildConfigService({
-            ...TestUnitKitConfigValues,
-            'redis.warnWindowInMs': 60000,
-        });
-        vi.setSystemTime(now);
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 CacheService,
                 { provide: RedisCacheClient, useValue: redis },
-                { provide: ConfigService, useValue: configService },
-                ...TestUnitKitProviders,
+                HelperStringService,
             ],
         }).compile();
 
+        warn = vi.spyOn(Logger.prototype, 'warn');
         service = module.get(CacheService);
         helperStringService = module.get(HelperStringService);
         vi.spyOn(helperStringService, 'random').mockReturnValue('lease-token');
@@ -112,7 +93,7 @@ describe('CacheService', () => {
             expect(result).toEqual(entry);
             expect(loader).toHaveBeenCalledTimes(1);
             expect(redis.unlink).not.toHaveBeenCalled();
-            expect(service['warnedAtByKey'].size).toBe(0);
+            expect(warn).not.toHaveBeenCalled();
         });
 
         it('does not store a null result', async () => {
@@ -130,10 +111,16 @@ describe('CacheService', () => {
             expect(redis.set).not.toHaveBeenCalled();
         });
 
-        it('unlinks the key, records a warning, and loads when the entry fails the schema', async () => {
+        it('unlinks the key, warns on every read, and loads when the entry fails the schema', async () => {
             redis.get.mockResolvedValue('{"id":1}');
             loader.mockResolvedValue(entry);
 
+            const first = await service.readThrough(
+                key,
+                entrySchema,
+                ttlInMs,
+                loader
+            );
             const result = await service.readThrough(
                 key,
                 entrySchema,
@@ -141,10 +128,16 @@ describe('CacheService', () => {
                 loader
             );
 
+            expect(first).toEqual(entry);
             expect(result).toEqual(entry);
+            expect(redis.unlink).toHaveBeenCalledTimes(2);
             expect(redis.unlink).toHaveBeenCalledWith(key);
-            expect(service['warnedAtByKey'].get(key)).toBe(now.getTime());
-            expect(loader).toHaveBeenCalledTimes(1);
+            expect(warn).toHaveBeenCalledTimes(2);
+            expect(warn).toHaveBeenCalledWith(
+                { key, err: expect.any(Error) },
+                'Cache entry failed its schema'
+            );
+            expect(loader).toHaveBeenCalledTimes(2);
             expect(redis.set).toHaveBeenCalledWith(
                 key,
                 JSON.stringify(entry),
@@ -165,7 +158,10 @@ describe('CacheService', () => {
             );
 
             expect(result).toEqual(entry);
-            expect(service['warnedAtByKey'].get(key)).toBe(now.getTime());
+            expect(warn).toHaveBeenCalledWith(
+                { key, err: expect.any(Error) },
+                'Cache read failed'
+            );
             expect(redis.unlink).not.toHaveBeenCalled();
             expect(redis.set).toHaveBeenCalledWith(
                 key,
@@ -176,9 +172,11 @@ describe('CacheService', () => {
         });
 
         it('loads and records a warning when the read fails with a non-connection error', async () => {
-            redis.get.mockRejectedValue(new Error('wrong kind of value'));
+            const error = new Error('wrong kind of value');
+            redis.get.mockRejectedValue(error);
             loader.mockResolvedValue(entry);
 
+            await service.readThrough(key, entrySchema, ttlInMs, loader);
             const result = await service.readThrough(
                 key,
                 entrySchema,
@@ -187,8 +185,12 @@ describe('CacheService', () => {
             );
 
             expect(result).toEqual(entry);
-            expect(loader).toHaveBeenCalledTimes(1);
-            expect(service['warnedAtByKey'].get(key)).toBe(now.getTime());
+            expect(loader).toHaveBeenCalledTimes(2);
+            expect(warn).toHaveBeenCalledTimes(2);
+            expect(warn).toHaveBeenCalledWith(
+                { key, err: error },
+                'Cache read failed'
+            );
         });
 
         it('throws RedisUnavailableException carrying the caught error as rawError when the read fails with a connection error', async () => {
@@ -216,7 +218,10 @@ describe('CacheService', () => {
             );
 
             expect(result).toEqual(entry);
-            expect(service['warnedAtByKey'].get(key)).toBe(now.getTime());
+            expect(warn).toHaveBeenCalledWith(
+                { key, err: expect.any(Error) },
+                'Cache write failed'
+            );
         });
 
         it('throws RedisUnavailableException when the set fails with a connection error', async () => {
@@ -240,7 +245,7 @@ describe('CacheService', () => {
             await expect(
                 service.readThrough(key, entrySchema, ttlInMs, loader)
             ).rejects.toBe(failure);
-            expect(service['warnedAtByKey'].size).toBe(0);
+            expect(warn).not.toHaveBeenCalled();
         });
 
         it('loads and sets the result as JSON with a PX TTL on a miss', async () => {
@@ -342,7 +347,10 @@ describe('CacheService', () => {
             expect(result).toEqual(entry);
             expect(redis.eval).not.toHaveBeenCalled();
             expect(redis.set).toHaveBeenCalledTimes(1);
-            expect(service['warnedAtByKey'].get(key)).toBe(now.getTime());
+            expect(warn).toHaveBeenCalledWith(
+                { key, err: expect.any(Error) },
+                'Cache lease take failed'
+            );
         });
 
         it('throws RedisUnavailableException before the loader when the lease take fails with a connection error', async () => {
@@ -392,7 +400,10 @@ describe('CacheService', () => {
             );
 
             expect(result).toEqual(entry);
-            expect(service['warnedAtByKey'].get(key)).toBe(now.getTime());
+            expect(warn).toHaveBeenCalledWith(
+                { key, err: expect.any(Error) },
+                'Cache write failed'
+            );
         });
     });
 
@@ -430,11 +441,13 @@ describe('CacheService', () => {
             redis.unlink.mockRejectedValue(new Error('READONLY'));
 
             await expect(service.invalidate(keys)).resolves.toBeUndefined();
-            expect(
-                service['warnedAtByKey'].get(
-                    'Entry:entry-1,Entry:Lease:entry-1'
-                )
-            ).toBe(now.getTime());
+            expect(warn).toHaveBeenCalledWith(
+                {
+                    key: 'Entry:entry-1,Entry:Lease:entry-1',
+                    err: expect.any(Error),
+                },
+                'Cache invalidation failed'
+            );
         });
     });
 
@@ -460,7 +473,10 @@ describe('CacheService', () => {
             redis.flushdb.mockRejectedValue(new Error('READONLY'));
 
             await expect(service.flush()).resolves.toBeUndefined();
-            expect(service['warnedAtByKey'].get('flushdb')).toBe(now.getTime());
+            expect(warn).toHaveBeenCalledWith(
+                { key: 'flushdb', err: expect.any(Error) },
+                'Cache flush failed'
+            );
         });
     });
 
@@ -520,66 +536,6 @@ describe('CacheService', () => {
             expect(service.isConnectionError('Connection is closed.')).toBe(
                 false
             );
-        });
-    });
-
-    describe('isFirstInWindow', () => {
-        it('returns true and records the key on its first call', () => {
-            const result = service.isFirstInWindow(key);
-
-            expect(result).toBe(true);
-            expect(service['warnedAtByKey'].get(key)).toBe(now.getTime());
-        });
-
-        it('returns false for a repeat inside the window', () => {
-            service.isFirstInWindow(key);
-            vi.setSystemTime(new Date('2026-01-03T00:00:59.999Z'));
-            const result = service.isFirstInWindow(key);
-
-            expect(result).toBe(false);
-        });
-
-        it('returns true once the window has passed', () => {
-            service.isFirstInWindow(key);
-            vi.setSystemTime(new Date('2026-01-03T00:01:00.000Z'));
-            const result = service.isFirstInWindow(key);
-
-            expect(result).toBe(true);
-        });
-    });
-
-    describe('warnOnce', () => {
-        const failure = new Error('wrong kind of value');
-
-        it('records the key with the current time on its first warning', () => {
-            service.warnOnce(key, failure, 'Cache read failed');
-
-            expect(service['warnedAtByKey'].get(key)).toBe(now.getTime());
-        });
-
-        it('keeps the first time for a repeat inside the window', () => {
-            service.warnOnce(key, failure, 'Cache read failed');
-            vi.setSystemTime(new Date('2026-01-03T00:00:30.000Z'));
-            service.warnOnce(key, failure, 'Cache read failed');
-
-            expect(service['warnedAtByKey'].get(key)).toBe(now.getTime());
-        });
-
-        it('re-records the key once the window has passed', () => {
-            const later = new Date('2026-01-03T00:01:00.000Z');
-            service.warnOnce(key, failure, 'Cache read failed');
-            vi.setSystemTime(later);
-            service.warnOnce(key, failure, 'Cache read failed');
-
-            expect(service['warnedAtByKey'].get(key)).toBe(later.getTime());
-        });
-
-        it('drops entries older than the window', () => {
-            service.warnOnce('Entry:old', failure, 'Cache read failed');
-            vi.setSystemTime(new Date('2026-01-03T00:01:00.000Z'));
-            service.warnOnce(key, failure, 'Cache read failed');
-
-            expect([...service['warnedAtByKey'].keys()]).toEqual([key]);
         });
     });
 });

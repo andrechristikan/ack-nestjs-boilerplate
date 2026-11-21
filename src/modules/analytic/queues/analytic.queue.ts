@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
@@ -20,10 +19,9 @@ export class AnalyticQueue extends QueueBase implements OnModuleInit {
     constructor(
         @InjectQueue(EnumAnalyticQueue.analytic)
         protected readonly queue: Queue,
-        protected readonly cacheService: CacheService,
         private readonly configService: ConfigService
     ) {
-        super(queue, cacheService);
+        super(queue);
         this.refreshIntervalInMs = this.configService.get<number>(
             'analytic.snapshot.refreshIntervalInMs'
         )!;

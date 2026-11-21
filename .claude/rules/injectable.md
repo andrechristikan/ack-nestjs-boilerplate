@@ -15,7 +15,7 @@ An outbound HTTP call goes through `HttpClient` from `@nestjs/http-client`, neve
 
 - Every constructor parameter is a parameter property, never plain, never `public`; `QueueWorkerBase` alone takes plain parameters, because BullMQ's `Worker` holds public `name` and `opts` and `@nestjs/bullmq` constructs it positionally. `QueueProcessorBase` alone takes property injection, `@Inject(<Class>) protected readonly <field>: <Class>` for its four kit services.
 - In an exception (`*.exception.ts`), each is bare `readonly` (`constructor(readonly period: number)`, `readonly rawError: unknown = null`).
-- Elsewhere, `private readonly` by default; `protected readonly` for a value forwarded to `super(...)` or a member a subclass reads (`queue` and `cacheService` on a `QueueBase` subclass, `options`, `storageService`, and `reflector` on `RequestThrottleDefaultGuard`, `configService` on the two JWT strategies).
+- Elsewhere, `private readonly` by default; `protected readonly` for a value forwarded to `super(...)` or a member a subclass reads (`queue` on a `QueueBase` subclass, `options`, `storageService`, and `reflector` on `RequestThrottleDefaultGuard`, `configService` on the two JWT strategies).
 - Values forwarded to `super(...)` come first, in `super`'s order, then the injected collaborators.
 - A field assigned in the constructor is `private readonly`; one another class reads is a `readonly` field, never a parameter property (`DatabaseService.client`).
 - The one mutable field is a third-party client an `onModuleInit` adapter creates: `AwsS3Service.s3Client`, `AwsSESService.sesClient`, `FirebaseService.app`, `FirebaseService.messaging`; and the static `QueueWorkerBase.connection`, which `QueueWorkerFactory` sets.

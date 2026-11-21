@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { QueueBase } from '@common/queue/bases/queue.base';
@@ -26,12 +25,11 @@ export class TermPolicyQueue extends QueueBase {
     constructor(
         @InjectQueue(EnumTermPolicyQueue.termPolicy)
         protected readonly queue: Queue,
-        protected readonly cacheService: CacheService,
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperStringService: HelperStringService
     ) {
-        super(queue, cacheService);
+        super(queue);
         this.publishPattern = this.configService.get<string>(
             'termPolicy.idempotencyKey.publishPattern'
         )!;

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerStorage } from '@nestjs/throttler';
 import { ThrottlerStorageRecord } from '@nestjs/throttler/dist/throttler-storage-record.interface.js';
@@ -11,6 +11,7 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 
 @Injectable()
 export class RequestThrottleStorageService implements ThrottlerStorage {
+    private readonly logger = new Logger(RequestThrottleStorageService.name);
     private readonly keyPattern: string;
     private readonly blockKeyPattern: string;
     private readonly sequenceKeyPattern: string;
@@ -154,9 +155,13 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
             );
 
             if (!Array.isArray(results) || results.length < 4) {
-                this.cacheService.warnOnce(
-                    throttlerName,
-                    new RequestThrottleResponseInvalidException(results),
+                this.logger.warn(
+                    {
+                        key: throttlerName,
+                        err: new RequestThrottleResponseInvalidException(
+                            results
+                        ),
+                    },
                     'Throttler got an invalid response, allowing request'
                 );
 
@@ -164,10 +169,14 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
             }
 
             const parsed = (results as unknown[]).map(r => Number(r));
-            if (parsed.some(n => isNaN(n))) {
-                this.cacheService.warnOnce(
-                    throttlerName,
-                    new RequestThrottleResponseInvalidException(results),
+            if (parsed.some(n => Number.isNaN(n))) {
+                this.logger.warn(
+                    {
+                        key: throttlerName,
+                        err: new RequestThrottleResponseInvalidException(
+                            results
+                        ),
+                    },
                     'Throttler got a non-numeric value, allowing request'
                 );
 
@@ -192,9 +201,8 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
                 throw new RedisUnavailableException(error);
             }
 
-            this.cacheService.warnOnce(
-                throttlerName,
-                error,
+            this.logger.warn(
+                { key: throttlerName, err: error },
                 'Throttler storage failed, allowing request'
             );
 

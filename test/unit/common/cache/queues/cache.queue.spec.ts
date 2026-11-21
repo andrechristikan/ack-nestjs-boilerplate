@@ -8,12 +8,10 @@ import {
     EnumCacheQueue,
 } from '@common/cache/enums/cache.enum';
 import { CacheQueue } from '@common/cache/queues/cache.queue';
-import { CacheService } from '@common/cache/services/cache.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 
 describe('CacheQueue', () => {
     const bullQueue: MockProxy<Queue> = mock<Queue>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let queue: CacheQueue;
 
     beforeEach(async () => {
@@ -24,7 +22,6 @@ describe('CacheQueue', () => {
                     provide: getQueueToken(EnumCacheQueue.cache),
                     useValue: bullQueue,
                 },
-                { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
         queue = module.get(CacheQueue);

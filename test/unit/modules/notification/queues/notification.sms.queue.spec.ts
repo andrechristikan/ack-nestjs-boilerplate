@@ -4,7 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import type { Queue } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { CacheService } from '@common/cache/services/cache.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import {
@@ -26,7 +25,6 @@ import {
 
 describe('NotificationSmsQueue', () => {
     const bullQueue: MockProxy<Queue> = mock<Queue>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let queue: NotificationSmsQueue;
 
     beforeEach(async () => {
@@ -49,7 +47,6 @@ describe('NotificationSmsQueue', () => {
                     ),
                     useValue: bullQueue,
                 },
-                { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
         queue = module.get(NotificationSmsQueue);

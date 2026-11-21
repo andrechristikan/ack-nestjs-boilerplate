@@ -1,8 +1,10 @@
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import type { MockInstance } from 'vitest';
 import { CacheService } from '@common/cache/services/cache.service';
 import { RedisCacheClient } from '@common/redis/constants/redis.constant';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
@@ -24,6 +26,7 @@ describe('RequestThrottleStorageService', () => {
     const redis: MockProxy<IStubCacheClient> = mock<IStubCacheClient>();
 
     let service: RequestThrottleStorageService;
+    let warn: MockInstance<Logger['warn']>;
 
     beforeEach(async () => {
         configService = buildConfigService({
@@ -45,6 +48,7 @@ describe('RequestThrottleStorageService', () => {
             ],
         }).compile();
 
+        warn = vi.spyOn(Logger.prototype, 'warn');
         service = module.get(RequestThrottleStorageService);
     });
 
@@ -104,9 +108,16 @@ describe('RequestThrottleStorageService', () => {
             });
         });
 
-        it('fails open and warns once per throttler when the script result is not an array', async () => {
+        it('fails open and warns on every call when the script result is not an array', async () => {
             redis.eval.mockResolvedValue('not-an-array');
 
+            const first = await service.increment(
+                'tracker-1',
+                1000,
+                5,
+                2000,
+                'default'
+            );
             const result = await service.increment(
                 'tracker-1',
                 1000,
@@ -115,17 +126,30 @@ describe('RequestThrottleStorageService', () => {
                 'default'
             );
 
+            expect(first).toEqual(failOpenRecord);
             expect(result).toEqual(failOpenRecord);
-            expect(cacheService.warnOnce).toHaveBeenCalledWith(
-                'default',
-                new RequestThrottleResponseInvalidException('not-an-array'),
+            expect(warn).toHaveBeenCalledTimes(2);
+            expect(warn).toHaveBeenCalledWith(
+                {
+                    key: 'default',
+                    err: new RequestThrottleResponseInvalidException(
+                        'not-an-array'
+                    ),
+                },
                 'Throttler got an invalid response, allowing request'
             );
         });
 
-        it('fails open and warns once per throttler when the script result is too short', async () => {
+        it('fails open and warns on every call when the script result is too short', async () => {
             redis.eval.mockResolvedValue([1, 2, 0]);
 
+            const first = await service.increment(
+                'tracker-1',
+                1000,
+                5,
+                2000,
+                'default'
+            );
             const result = await service.increment(
                 'tracker-1',
                 1000,
@@ -134,17 +158,28 @@ describe('RequestThrottleStorageService', () => {
                 'default'
             );
 
+            expect(first).toEqual(failOpenRecord);
             expect(result).toEqual(failOpenRecord);
-            expect(cacheService.warnOnce).toHaveBeenCalledWith(
-                'default',
-                new RequestThrottleResponseInvalidException([1, 2, 0]),
+            expect(warn).toHaveBeenCalledTimes(2);
+            expect(warn).toHaveBeenCalledWith(
+                {
+                    key: 'default',
+                    err: new RequestThrottleResponseInvalidException([1, 2, 0]),
+                },
                 'Throttler got an invalid response, allowing request'
             );
         });
 
-        it('fails open and warns once per throttler when a script result value is non-numeric', async () => {
+        it('fails open and warns on every call when a script result value is non-numeric', async () => {
             redis.eval.mockResolvedValue([1, 'nope', 0, 0]);
 
+            const first = await service.increment(
+                'tracker-1',
+                1000,
+                5,
+                2000,
+                'default'
+            );
             const result = await service.increment(
                 'tracker-1',
                 1000,
@@ -153,10 +188,19 @@ describe('RequestThrottleStorageService', () => {
                 'default'
             );
 
+            expect(first).toEqual(failOpenRecord);
             expect(result).toEqual(failOpenRecord);
-            expect(cacheService.warnOnce).toHaveBeenCalledWith(
-                'default',
-                new RequestThrottleResponseInvalidException([1, 'nope', 0, 0]),
+            expect(warn).toHaveBeenCalledTimes(2);
+            expect(warn).toHaveBeenCalledWith(
+                {
+                    key: 'default',
+                    err: new RequestThrottleResponseInvalidException([
+                        1,
+                        'nope',
+                        0,
+                        0,
+                    ]),
+                },
                 'Throttler got a non-numeric value, allowing request'
             );
         });
@@ -174,13 +218,20 @@ describe('RequestThrottleStorageService', () => {
                 rawError: error,
             });
             expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
-            expect(cacheService.warnOnce).not.toHaveBeenCalled();
+            expect(warn).not.toHaveBeenCalled();
         });
 
-        it('fails open and warns once per throttler when the client rejects with any other error', async () => {
+        it('fails open and warns on every call when the client rejects with any other error', async () => {
             const error = new Error('ERR Error running script');
             redis.eval.mockRejectedValue(error);
 
+            const first = await service.increment(
+                'tracker-1',
+                1000,
+                5,
+                2000,
+                'default'
+            );
             const result = await service.increment(
                 'tracker-1',
                 1000,
@@ -189,18 +240,26 @@ describe('RequestThrottleStorageService', () => {
                 'default'
             );
 
+            expect(first).toEqual(failOpenRecord);
             expect(result).toEqual(failOpenRecord);
             expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
-            expect(cacheService.warnOnce).toHaveBeenCalledWith(
-                'default',
-                error,
+            expect(warn).toHaveBeenCalledTimes(2);
+            expect(warn).toHaveBeenCalledWith(
+                { key: 'default', err: error },
                 'Throttler storage failed, allowing request'
             );
         });
 
-        it('fails open and warns once per throttler when the client rejects with a non-Error value', async () => {
+        it('fails open and warns on every call when the client rejects with a non-Error value', async () => {
             redis.eval.mockRejectedValue('script failed');
 
+            const first = await service.increment(
+                'tracker-1',
+                1000,
+                5,
+                2000,
+                'default'
+            );
             const result = await service.increment(
                 'tracker-1',
                 1000,
@@ -209,13 +268,14 @@ describe('RequestThrottleStorageService', () => {
                 'default'
             );
 
+            expect(first).toEqual(failOpenRecord);
             expect(result).toEqual(failOpenRecord);
             expect(cacheService.isConnectionError).toHaveBeenCalledWith(
                 'script failed'
             );
-            expect(cacheService.warnOnce).toHaveBeenCalledWith(
-                'default',
-                'script failed',
+            expect(warn).toHaveBeenCalledTimes(2);
+            expect(warn).toHaveBeenCalledWith(
+                { key: 'default', err: 'script failed' },
                 'Throttler storage failed, allowing request'
             );
         });

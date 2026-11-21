@@ -4,7 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import type { Queue } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { CacheService } from '@common/cache/services/cache.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumTermPolicyType,
@@ -29,7 +28,6 @@ import type { INotificationWorkspaceInviteContext } from '@modules/notification/
 
 describe('NotificationQueue', () => {
     const bullQueue: MockProxy<Queue> = mock<Queue>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let queue: NotificationQueue;
 
     const inviteContext: INotificationWorkspaceInviteContext = {
@@ -68,7 +66,6 @@ describe('NotificationQueue', () => {
                     provide: getQueueToken(EnumNotificationQueue.notification),
                     useValue: bullQueue,
                 },
-                { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
         queue = module.get(NotificationQueue);

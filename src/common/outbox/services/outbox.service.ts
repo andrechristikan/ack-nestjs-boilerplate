@@ -4,7 +4,6 @@ import { ModuleRef } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { EnumOutboxStatus } from '@generated/prisma-client/client';
 import type { Outbox, Prisma } from '@generated/prisma-client/client';
-import { CacheService } from '@common/cache/services/cache.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -32,7 +31,6 @@ export class OutboxService implements OnApplicationBootstrap {
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly moduleRef: ModuleRef,
-        private readonly cacheService: CacheService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
     ) {
@@ -133,16 +131,6 @@ export class OutboxService implements OnApplicationBootstrap {
     }
 
     private warnDispatchFailure(error: unknown): void {
-        const isConnection = this.cacheService.isConnectionError(error);
-        if (isConnection) {
-            const isFirst = this.cacheService.isFirstInWindow(
-                OutboxDispatchWarnKey
-            );
-            if (!isFirst) {
-                return;
-            }
-        }
-
         this.logger.warn(
             { key: OutboxDispatchWarnKey, err: error },
             'Outbox dispatch failed'

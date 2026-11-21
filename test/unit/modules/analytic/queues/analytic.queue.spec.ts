@@ -1,4 +1,3 @@
-import { CacheService } from '@common/cache/services/cache.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
 import {
@@ -18,7 +17,6 @@ import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 describe('AnalyticQueue', () => {
     let configService: MockProxy<ConfigService>;
     const analyticQueue: MockProxy<Queue> = mock<Queue>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const refreshIntervalInMs = 900000;
     let queue: AnalyticQueue;
 
@@ -34,7 +32,6 @@ describe('AnalyticQueue', () => {
                     provide: getQueueToken(EnumAnalyticQueue.analytic),
                     useValue: analyticQueue,
                 },
-                { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();

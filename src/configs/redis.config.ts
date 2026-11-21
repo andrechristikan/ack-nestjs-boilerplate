@@ -14,7 +14,6 @@ export interface IConfigRedis {
     };
     commandTimeoutInMs: number;
     connectTimeoutInMs: number;
-    warnWindowInMs: number;
 }
 
 export default registerAs('redis', (): IConfigRedis => {
@@ -31,6 +30,5 @@ export default registerAs('redis', (): IConfigRedis => {
         },
         commandTimeoutInMs: ms('2s'),
         connectTimeoutInMs: ms('5s'),
-        warnWindowInMs: ms('1m'),
     };
 });

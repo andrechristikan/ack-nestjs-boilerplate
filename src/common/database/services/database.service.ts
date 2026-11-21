@@ -9,8 +9,6 @@ import {
     DatabaseQueryTargetRegex,
 } from '@common/database/constants/database.constant';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
-import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IDatabaseClient,
     IDatabaseQueryLog,
@@ -23,8 +21,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     private readonly logger: Logger = new Logger(DatabaseService.name);
     private readonly debugEnabled: boolean;
     private readonly slowQueryThresholdInMs: number;
-    private readonly warnWindowInMs: number;
-    private readonly warnedAtByKey: Map<string, number> = new Map();
     private readonly callbacksByTx: WeakMap<
         IDatabaseTransactionClient,
         Array<() => Promise<void>>
@@ -35,17 +31,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         private readonly configService: ConfigService,
         private readonly databaseClientFactory: DatabaseClientFactory,
         @Inject(DatabaseClient)
-        private readonly databaseClient: IDatabaseClient,
-        private readonly helperDateService: HelperDateService
+        private readonly databaseClient: IDatabaseClient
     ) {
         this.debugEnabled = this.configService.get<boolean>(
             'database.debugEnabled'
         )!;
         this.slowQueryThresholdInMs = this.configService.get<number>(
             'database.slowQueryThresholdInMs'
-        )!;
-        this.warnWindowInMs = this.configService.get<number>(
-            'database.warnWindowInMs'
         )!;
         this.client = this.databaseClient;
     }
@@ -162,21 +154,5 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     ): void {
         const callbacks = this.callbacksByTx.get(tx)!;
         callbacks.push(callback);
-    }
-
-    /** True at most once per database.warnWindowInMs; a true call records its time. */
-    isFirstUnavailableInWindow(): boolean {
-        const date = this.helperDateService.create();
-        const now = date.getTime();
-        const key = DatabaseUnavailableException.name;
-        const recorded = this.warnedAtByKey.get(key);
-        const recordedAt = recorded ?? null;
-        if (recordedAt !== null && now - recordedAt < this.warnWindowInMs) {
-            return false;
-        }
-
-        this.warnedAtByKey.set(key, now);
-
-        return true;
     }
 }

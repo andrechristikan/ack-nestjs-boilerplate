@@ -1,12 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import type { Redis } from 'ioredis';
 import type { ZodType } from 'zod';
 import type {
     ICacheLease,
     ICacheReadThroughOptions,
 } from '@common/cache/interfaces/cache.interface';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     RedisCacheClient,
@@ -19,19 +17,11 @@ import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavai
 @Injectable()
 export class CacheService {
     private readonly logger = new Logger(CacheService.name);
-    private readonly warnWindowInMs: number;
-    private readonly warnedAtByKey: Map<string, number> = new Map();
 
     constructor(
         @Inject(RedisCacheClient) private readonly redis: Redis,
-        private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService
-    ) {
-        this.warnWindowInMs = this.configService.get<number>(
-            'redis.warnWindowInMs'
-        )!;
-    }
+    ) {}
 
     private async readEntry<T>(
         key: string,
@@ -48,7 +38,10 @@ export class CacheService {
                 return parsed.data;
             }
 
-            this.warnOnce(key, parsed.error, 'Cache entry failed its schema');
+            this.logger.warn(
+                { key, err: parsed.error },
+                'Cache entry failed its schema'
+            );
             await this.redis.unlink(key);
 
             return null;
@@ -130,7 +123,7 @@ export class CacheService {
             throw new RedisUnavailableException(error);
         }
 
-        this.warnOnce(key, error, message);
+        this.logger.warn({ key, err: error }, message);
     }
 
     /** The cached value when it passes the schema, else the loader's result, stored best-effort unless null; a connection error throws RedisUnavailableException. */
@@ -201,34 +194,5 @@ export class CacheService {
                 typeof error.code === 'string' &&
                 RedisConnectionErrorCodes.has(error.code))
         );
-    }
-
-    /** Logs the error at warn at most once per key per redis.warnWindowInMs. */
-    warnOnce(key: string, error: unknown, message: string): void {
-        const isFirst = this.isFirstInWindow(key);
-        if (isFirst) {
-            this.logger.warn({ key, err: error }, message);
-        }
-    }
-
-    /** True at most once per key per redis.warnWindowInMs; a true call records the key. */
-    isFirstInWindow(key: string): boolean {
-        const date = this.helperDateService.create();
-        const now = date.getTime();
-        const windowStart = now - this.warnWindowInMs;
-        for (const [recordedKey, recordedAt] of this.warnedAtByKey) {
-            if (recordedAt <= windowStart) {
-                this.warnedAtByKey.delete(recordedKey);
-            }
-        }
-
-        const isRecorded = this.warnedAtByKey.has(key);
-        if (isRecorded) {
-            return false;
-        }
-
-        this.warnedAtByKey.set(key, now);
-
-        return true;
     }
 }

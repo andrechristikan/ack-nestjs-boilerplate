@@ -4,7 +4,6 @@ import { Test } from '@nestjs/testing';
 import type { Queue } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { CacheService } from '@common/cache/services/cache.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
@@ -17,7 +16,6 @@ import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper
 
 describe('ProjectQueue', () => {
     const bullQueue: MockProxy<Queue> = mock<Queue>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     let queue: ProjectQueue;
 
     beforeEach(async () => {
@@ -29,7 +27,6 @@ describe('ProjectQueue', () => {
                     provide: getQueueToken(EnumProjectQueue.project),
                     useValue: bullQueue,
                 },
-                { provide: CacheService, useValue: cacheService },
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),

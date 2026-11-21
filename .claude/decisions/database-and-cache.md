@@ -174,9 +174,16 @@ Rule: `guards.md`, Guards.
 
 ## Outage logging
 
-### A Redis or MongoDB outage is logged once per window
+### Every 5xx and every warning an outage causes is logged, and every 5xx reported, with no window
 
-Rule: `exceptions.md`, The hierarchy; `cache.md`.
+Rule: `exceptions.md`, The hierarchy; `cache.md`; `outbox.md`, Dispatch.
 
-- One log and report per request: an outage floods the logs and spends the Sentry quota.
-- A per-request log with no Sentry report: the logs still flood and Sentry never sees the outage.
+- Once per window: the extent and the end of an outage are not visible.
+- A per-request log with no Sentry report: Sentry never sees the outage.
+
+### Every `error` event of a Redis client, a BullMQ queue, or a worker is logged
+
+Rule: `cache.md`.
+
+- One line per outage through a down-state set: each failed reconnect after the first leaves no line.
+- Dropping a connection error in the BullMQ listeners because the Redis client factory logs it: a queue's own connection failure is not in the log.

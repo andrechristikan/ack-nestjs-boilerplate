@@ -5,7 +5,6 @@ import { getQueueToken } from '@nestjs/bullmq';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { CacheService } from '@common/cache/services/cache.service';
 
 import { HealthQueueIndicator } from '@modules/health/indicators/health.queue.indicator';
 import type { Queue, QueueListener } from 'bullmq';
@@ -21,7 +20,6 @@ describe('HealthQueueIndicator', () => {
     });
     const healthIndicatorService: MockProxy<HealthIndicatorService> =
         mock<HealthIndicatorService>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const session = { up: vi.fn(), down: vi.fn() };
 
     let indicator: HealthQueueIndicator;
@@ -47,7 +45,6 @@ describe('HealthQueueIndicator', () => {
                     provide: HealthIndicatorService,
                     useValue: healthIndicatorService,
                 },
-                { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
 
@@ -63,20 +60,20 @@ describe('HealthQueueIndicator', () => {
             );
         });
 
-        it('classifies a connection error raised on the queue and returns without throwing', () => {
+        it('logs a warning for a connection error raised on the queue', () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
             const error = new Error('connect ECONNREFUSED 127.0.0.1:6379');
-            cacheService.isConnectionError.mockReturnValue(true);
 
             expect(() => errorListener?.(error)).not.toThrow();
-            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+            expect(warn).toHaveBeenCalledWith(error, 'Health queue error');
         });
 
-        it('classifies any other error raised on the queue and handles it without throwing', () => {
+        it('logs a warning for any other error raised on the queue', () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
             const error = new Error('queue failure');
-            cacheService.isConnectionError.mockReturnValue(false);
 
             expect(() => errorListener?.(error)).not.toThrow();
-            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
+            expect(warn).toHaveBeenCalledWith(error, 'Health queue error');
         });
     });
 

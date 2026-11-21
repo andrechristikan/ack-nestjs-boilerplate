@@ -7,7 +7,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 import { Queue } from 'bullmq';
-import { CacheService } from '@common/cache/services/cache.service';
 
 @Injectable()
 export class HealthQueueIndicator {
@@ -16,8 +15,7 @@ export class HealthQueueIndicator {
     constructor(
         @InjectQueue(EnumHealthQueue.health)
         private readonly queue: Queue,
-        private readonly healthIndicatorService: HealthIndicatorService,
-        private readonly cacheService: CacheService
+        private readonly healthIndicatorService: HealthIndicatorService
     ) {
         this.registerErrorListener();
     }
@@ -27,11 +25,6 @@ export class HealthQueueIndicator {
     }
 
     private onError(error: Error): void {
-        const isConnection = this.cacheService.isConnectionError(error);
-        if (isConnection) {
-            return;
-        }
-
         this.logger.warn(error, 'Health queue error');
     }
 

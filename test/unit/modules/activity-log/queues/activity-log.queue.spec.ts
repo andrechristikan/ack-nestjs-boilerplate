@@ -18,7 +18,6 @@ import { ActivityLogActionContract } from '@modules/activity-log/contracts/activ
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { getQueueToken } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
-import { CacheService } from '@common/cache/services/cache.service';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -88,7 +87,6 @@ describe('ActivityLogQueue', () => {
                     provide: getQueueToken(EnumActivityLogQueue.activityLog),
                     useValue: mock<Queue>(),
                 },
-                { provide: CacheService, useValue: mock<CacheService>() },
                 ActivityLogUtil,
                 { provide: MessageService, useValue: messageService },
                 ...TestUnitKitProviders,
