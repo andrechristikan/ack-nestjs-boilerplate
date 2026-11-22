@@ -3,7 +3,7 @@ import { NotificationListRequestSchema } from '@modules/notification/dtos/reques
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     RequestContext,
-    RequestThrottle,
+    RequestThrottleProtected,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
@@ -72,7 +72,7 @@ export class NotificationSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -95,7 +95,7 @@ export class NotificationSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/setting/list')
@@ -109,7 +109,7 @@ export class NotificationSharedController {
     @Response('notification.markAsRead')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/update/:notificationId/read')
@@ -128,7 +128,7 @@ export class NotificationSharedController {
     @Response('notification.markAllAsRead')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/read-all')
@@ -142,7 +142,7 @@ export class NotificationSharedController {
     @Response('notification.updateUserSetting')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/setting/update')

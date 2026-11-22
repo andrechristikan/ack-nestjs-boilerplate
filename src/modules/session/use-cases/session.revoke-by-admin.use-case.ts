@@ -46,11 +46,12 @@ export class SessionRevokeByAdminUseCase implements IAppUseCase<
         sessionId: string
     ): Promise<IResponseReturn<void>> {
         // Sequential by design: a write after its checks
-        const targetRole = await this.userService.getRoleById(userId);
+        const target = await this.userService.getOneWithRole(userId);
         this.roleService.assertActorOutranks(
             userContext.user.role.type,
-            targetRole.type
+            target.role.type
         );
+        this.userService.assertUnblocked(target);
 
         const revokedAt = this.helperDateService.create();
         try {

@@ -40,7 +40,7 @@ describe('AnalyticAuthLockoutUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticAuthService.authLockout.mockResolvedValue({
+            analyticAuthService.getAuthLockout.mockResolvedValue({
                 failed: 6,
                 maxAttempt: 3,
             });
@@ -48,7 +48,7 @@ describe('AnalyticAuthLockoutUseCase', () => {
             const result = await useCase.execute({ startDate, endDate });
 
             expect(result).toEqual({ data: { failed: 6, maxAttempt: 3 } });
-            expect(analyticAuthService.authLockout).toHaveBeenCalledWith(
+            expect(analyticAuthService.getAuthLockout).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
@@ -58,7 +58,7 @@ describe('AnalyticAuthLockoutUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticAuthService.authLockout.mockResolvedValue({
+            analyticAuthService.getAuthLockout.mockResolvedValue({
                 failed: 6,
                 maxAttempt: 3,
             });

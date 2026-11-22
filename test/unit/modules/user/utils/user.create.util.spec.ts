@@ -17,13 +17,13 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
-    IUserSignUpWorkspaceInvite,
-    IUserSignUpWorkspacePersonal,
+    IUserCreateWorkspaceInvite,
+    IUserCreateWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
@@ -62,8 +62,8 @@ describe('UserCreateUtil', () => {
     };
     const user: IUser = buildUser('user-harbor', 'harbor@example.com');
 
-    const personalContext: IUserSignUpWorkspacePersonal = {
-        type: EnumUserSignUpWorkspaceContextType.personal,
+    const personalContext: IUserCreateWorkspacePersonal = {
+        type: EnumUserCreateWorkspaceContextType.personal,
         workspaceId: 'workspace-harbor',
         slugCandidates: ['w-harbor'],
         name: "harborFinch's Workspace",
@@ -128,13 +128,13 @@ describe('UserCreateUtil', () => {
 
             expect(result).toEqual([
                 {
-                    type: EnumUserSignUpWorkspaceContextType.personal,
+                    type: EnumUserCreateWorkspaceContextType.personal,
                     workspaceId: 'workspace-one',
                     slugCandidates: ['w-one-a', 'w-one-b', 'w-one-c'],
                     name: "harborFinch's Workspace",
                 },
                 {
-                    type: EnumUserSignUpWorkspaceContextType.personal,
+                    type: EnumUserCreateWorkspaceContextType.personal,
                     workspaceId: 'workspace-two',
                     slugCandidates: ['w-two-a', 'w-two-b', 'w-two-c'],
                     name: "marigoldFinch's Workspace",
@@ -161,7 +161,7 @@ describe('UserCreateUtil', () => {
             );
 
             expect(result).toEqual({
-                type: EnumUserSignUpWorkspaceContextType.personal,
+                type: EnumUserCreateWorkspaceContextType.personal,
                 workspaceId: 'workspace-one',
                 slugCandidates: ['w-one-a', 'w-one-b', 'w-one-c'],
                 name: "harborFinch's Workspace",
@@ -196,7 +196,7 @@ describe('UserCreateUtil', () => {
             );
 
             expect(result).toEqual({
-                type: EnumUserSignUpWorkspaceContextType.invite,
+                type: EnumUserCreateWorkspaceContextType.invite,
                 workspaceId: 'workspace-harbor',
                 workspaceInviteId: 'invite-harbor',
                 invitedByUserId: 'inviter-harbor',
@@ -420,8 +420,8 @@ describe('UserCreateUtil', () => {
         });
 
         it('builds an invite create activity set, skipping the verification email request and adding the inviter row', () => {
-            const inviteContext: IUserSignUpWorkspaceInvite = {
-                type: EnumUserSignUpWorkspaceContextType.invite,
+            const inviteContext: IUserCreateWorkspaceInvite = {
+                type: EnumUserCreateWorkspaceContextType.invite,
                 workspaceId: 'workspace-harbor',
                 workspaceInviteId: 'invite-harbor',
                 invitedByUserId: 'inviter-harbor',
@@ -463,8 +463,8 @@ describe('UserCreateUtil', () => {
         });
 
         it('builds an invite create activity set with no inviter row when the inviter is the new user', () => {
-            const inviteContext: IUserSignUpWorkspaceInvite = {
-                type: EnumUserSignUpWorkspaceContextType.invite,
+            const inviteContext: IUserCreateWorkspaceInvite = {
+                type: EnumUserCreateWorkspaceContextType.invite,
                 workspaceId: 'workspace-harbor',
                 workspaceInviteId: 'invite-harbor',
                 invitedByUserId: user.id,

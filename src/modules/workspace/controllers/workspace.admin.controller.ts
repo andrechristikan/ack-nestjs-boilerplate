@@ -7,7 +7,7 @@ import type { WorkspaceTransferOwnershipRequestDto } from '@modules/workspace/dt
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     RequestContext,
-    RequestThrottle,
+    RequestThrottleProtected,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
@@ -76,7 +76,7 @@ export class WorkspaceAdminController {
         description:
             'orderBy presets: latest (createdAt descending, default), name (name ascending).',
     })
-    @ResponsePagination('workspace.admin.list', {
+    @ResponsePagination('workspace.listByAdmin', {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -86,7 +86,7 @@ export class WorkspaceAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -101,7 +101,7 @@ export class WorkspaceAdminController {
         summary:
             'admin get a workspace by id (read-only, includes soft-deleted)',
     })
-    @Response('workspace.admin.get', {
+    @Response('workspace.getByAdmin', {
         schema: WorkspaceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -111,7 +111,7 @@ export class WorkspaceAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/get/:workspaceId')
@@ -127,7 +127,7 @@ export class WorkspaceAdminController {
         description:
             'orderBy presets: latest (createdAt descending, default), recentlyJoined (joinedAt descending).',
     })
-    @ResponsePagination('workspace.admin.member.list', {
+    @ResponsePagination('workspace.member.listByAdmin', {
         schema: WorkspaceMemberResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -137,7 +137,7 @@ export class WorkspaceAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/member/:workspaceId/list')
@@ -154,7 +154,7 @@ export class WorkspaceAdminController {
     }
 
     @Doc({ summary: 'admin transfer workspace ownership to an active member' })
-    @Response('workspace.admin.transferOwnership')
+    @Response('workspace.transferOwnershipByAdmin')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.workspace,
@@ -162,7 +162,7 @@ export class WorkspaceAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)

@@ -108,7 +108,8 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
                             ),
                             this.notificationService.createDefaultsManyInTx(
                                 tx,
-                                userIds
+                                userIds,
+                                activityLog.actorUserId
                             ),
                         ]);
 

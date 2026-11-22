@@ -1,7 +1,7 @@
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     RequestContext,
-    RequestThrottle,
+    RequestThrottleProtected,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
@@ -53,7 +53,7 @@ export class MfaAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/reset/:userId')

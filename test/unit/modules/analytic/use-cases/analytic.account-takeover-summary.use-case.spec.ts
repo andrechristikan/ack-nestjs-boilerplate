@@ -29,7 +29,7 @@ describe('AnalyticAccountTakeoverSummaryUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticFraudService.accountTakeoverSummary.mockResolvedValue({
+            analyticFraudService.getAccountTakeoverSummary.mockResolvedValue({
                 count: 6,
                 windowStart: null,
                 windowEnd: null,
@@ -47,7 +47,7 @@ describe('AnalyticAccountTakeoverSummaryUseCase', () => {
                 },
             });
             expect(
-                analyticFraudService.accountTakeoverSummary
+                analyticFraudService.getAccountTakeoverSummary
             ).toHaveBeenCalledWith();
         });
     });

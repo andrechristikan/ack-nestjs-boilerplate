@@ -7,9 +7,9 @@ export const ResponseMetadataSchema = z.object({
         description: 'Language of the response message',
         example: EnumMessageLanguage.en,
     }),
-    timestamp: z.number().meta({
-        description: 'Timestamp of the response',
-        example: 1660190937231,
+    timestamp: z.iso.datetime({ offset: true }).meta({
+        description: 'Timestamp of the response as an ISO-8601 string',
+        example: '2022-08-10T14:22:17.231+07:00',
     }),
     timezone: z.string().meta({
         description: 'Timezone of the response',

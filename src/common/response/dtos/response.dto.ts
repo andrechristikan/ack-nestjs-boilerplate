@@ -17,7 +17,7 @@ export const ResponseSchema = z.object({
         description: 'Contain metadata about API',
         example: {
             language: EnumMessageLanguage.en,
-            timestamp: 1660190937231,
+            timestamp: '2022-08-10T14:22:17.231+07:00',
             timezone: 'Asia/Jakarta',
             version: '1',
             repoVersion: '1.0.0',

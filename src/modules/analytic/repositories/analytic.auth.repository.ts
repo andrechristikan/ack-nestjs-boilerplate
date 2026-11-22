@@ -6,12 +6,7 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { IActivityLogAnalyticActionCount } from '@modules/activity-log/interfaces/activity-log.interface';
-import {
-    AnalyticAuthConcurrentSessionsPipelineSchema,
-    AnalyticAuthMfaAdoptionPipelineSchema,
-    AnalyticAuthSessionsGroupPipelineSchema,
-    AnalyticCountRanges,
-} from '@modules/analytic/constants/analytic.constant';
+import { AnalyticCountRanges } from '@modules/analytic/constants/analytic.constant';
 import type { IAnalyticAuthRepository } from '@modules/analytic/interfaces/analytic.auth-repository.interface';
 import type {
     IAnalyticCountBucket,
@@ -23,6 +18,9 @@ import type {
 import { AnalyticPipelineUtil } from '@modules/analytic/utils/analytic.pipeline.util';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@generated/prisma-client/client';
+import { AnalyticAuthConcurrentSessionsPipelineSchema } from '@modules/analytic/dtos/analytic.auth-concurrent-sessions-pipeline.dto';
+import { AnalyticAuthMfaAdoptionPipelineSchema } from '@modules/analytic/dtos/analytic.auth-mfa-adoption-pipeline.dto';
+import { AnalyticAuthSessionsGroupPipelineSchema } from '@modules/analytic/dtos/analytic.auth-sessions-group-pipeline.dto';
 
 @Injectable()
 export class AnalyticAuthRepository implements IAnalyticAuthRepository {

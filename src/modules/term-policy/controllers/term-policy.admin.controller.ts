@@ -6,7 +6,7 @@ import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     RequestContext,
-    RequestThrottle,
+    RequestThrottleProtected,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMessageLanguageSchema } from '@common/request/validations/request.message-language.validation';
@@ -36,8 +36,6 @@ import { TermPolicyContentRequestSchema } from '@modules/term-policy/dtos/reques
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import { TermPolicyCreateRequestSchema } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
-import { TermPolicyRemoveContentRequestSchema } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
-import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermPolicyResponseSchema } from '@modules/term-policy/dtos/response/term-policy.response.dto';
 import { TermPolicyGetListByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-by-admin.use-case';
 import { TermPolicyCreateByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.create-by-admin.use-case';
@@ -107,7 +105,7 @@ export class TermPolicyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -127,7 +125,7 @@ export class TermPolicyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Post('/create')
@@ -146,7 +144,7 @@ export class TermPolicyAdminController {
         );
     }
 
-    @Doc({ summary: 'delete a term or policy by ID' })
+    @Doc({ summary: 'delete a term or policy by id' })
     @Response('termPolicy.delete', {
         schema: TermPolicyResponseSchema,
     })
@@ -157,7 +155,7 @@ export class TermPolicyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/delete/:termPolicyId')
@@ -191,7 +189,7 @@ export class TermPolicyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -205,7 +203,7 @@ export class TermPolicyAdminController {
         );
     }
 
-    @Doc({ summary: 'update content of a term or policy by ID' })
+    @Doc({ summary: 'update content of a term or policy by id' })
     @Response('termPolicy.updateContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -214,7 +212,7 @@ export class TermPolicyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/content/:termPolicyId/update')
@@ -236,7 +234,7 @@ export class TermPolicyAdminController {
         );
     }
 
-    @Doc({ summary: 'add content to a term or policy by ID' })
+    @Doc({ summary: 'add content to a term or policy by id' })
     @Response('termPolicy.addContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -245,10 +243,11 @@ export class TermPolicyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Put('/content/:termPolicyId/add')
+    @HttpCode(HttpStatus.OK)
+    @Post('/content/:termPolicyId/add')
     async addContent(
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
@@ -267,7 +266,7 @@ export class TermPolicyAdminController {
         );
     }
 
-    @Doc({ summary: 'remove content of a term or policy by ID' })
+    @Doc({ summary: 'remove content of a term or policy by id' })
     @Response('termPolicy.removeContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -276,29 +275,29 @@ export class TermPolicyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Delete('/content/:termPolicyId/remove')
+    @Delete('/content/:termPolicyId/:language/remove')
     async removeContent(
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('termPolicyId', { schema: RequestMongoIdSchema })
         termPolicyId: string,
-        @Body({ schema: TermPolicyRemoveContentRequestSchema })
-        body: TermPolicyRemoveContentRequestDto
+        @Param('language', { schema: RequestMessageLanguageSchema })
+        language: EnumMessageLanguage
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyRemoveContentByAdminUseCase.execute(
             requestContext,
             apiKeyContext,
             authContext,
             termPolicyId,
-            body
+            language
         );
     }
 
-    @Doc({ summary: 'get content of a term or policy by ID and language' })
+    @Doc({ summary: 'get content of a term or policy by id and language' })
     @Response('termPolicy.getContent', {
         schema: AwsS3PresignResponseSchema,
     })
@@ -309,7 +308,7 @@ export class TermPolicyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/content/:termPolicyId/:language/get')
@@ -325,7 +324,7 @@ export class TermPolicyAdminController {
         );
     }
 
-    @Doc({ summary: 'publish a term or policy by ID' })
+    @Doc({ summary: 'publish a term or policy by id' })
     @Response('termPolicy.publish')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -334,7 +333,7 @@ export class TermPolicyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/publish/:termPolicyId')
@@ -353,7 +352,7 @@ export class TermPolicyAdminController {
         );
     }
 
-    @Doc({ summary: 'resend the publish email of a term or policy by ID' })
+    @Doc({ summary: 'resend the publish email of a term or policy by id' })
     @Response('termPolicy.resendEmail')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
@@ -362,7 +361,7 @@ export class TermPolicyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)

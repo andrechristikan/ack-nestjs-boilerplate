@@ -59,4 +59,13 @@ describe('WorkspaceJoinRequestCreateRequestSchema', () => {
             expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
         ]);
     });
+
+    it('trims the message', () => {
+        const result = WorkspaceJoinRequestCreateRequestSchema.parse({
+            ...payload,
+            message: '  Please  ',
+        });
+
+        expect(result.message).toBe('Please');
+    });
 });

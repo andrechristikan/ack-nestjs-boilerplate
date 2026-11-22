@@ -23,7 +23,7 @@ export class AnalyticAuthPasswordChangeUseCase implements IAppUseCase<
         IResponseReturn<IAnalyticMetricCount>
     > {
         const range = this.analyticDateService.requireRange(startDate, endDate);
-        const data = await this.analyticAuthService.authPasswordChange(
+        const data = await this.analyticAuthService.getAuthPasswordChange(
             range.startDate,
             range.endDate
         );

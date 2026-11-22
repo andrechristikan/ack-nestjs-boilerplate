@@ -29,7 +29,6 @@ import {
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
-import { ApiKeyCacheSchema } from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import type {
@@ -40,6 +39,7 @@ import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.reposito
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
 import { buildApiKey } from '@test/unit/helpers/test.unit.request.helper';
+import { ApiKeyCacheSchema } from '@modules/api-key/dtos/api-key.cache.dto';
 
 describe('ApiKeyService', () => {
     const apiKeyCache: MockProxy<ApiKeyCache> = mock<ApiKeyCache>({

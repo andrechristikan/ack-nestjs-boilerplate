@@ -42,7 +42,7 @@ describe('AnalyticAuthSessionsUserAgentUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticAuthService.authSessionsUserAgent.mockResolvedValue({
+            analyticAuthService.getAuthSessionsUserAgent.mockResolvedValue({
                 buckets: [{ key: 'Chrome', count: 7 }],
             });
 
@@ -56,7 +56,7 @@ describe('AnalyticAuthSessionsUserAgentUseCase', () => {
                 data: { buckets: [{ key: 'Chrome', count: 7 }] },
             });
             expect(
-                analyticAuthService.authSessionsUserAgent
+                analyticAuthService.getAuthSessionsUserAgent
             ).toHaveBeenCalledWith(startDate, endDate);
         });
 
@@ -72,7 +72,7 @@ describe('AnalyticAuthSessionsUserAgentUseCase', () => {
                 statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
             });
             expect(
-                analyticAuthService.authSessionsUserAgent
+                analyticAuthService.getAuthSessionsUserAgent
             ).not.toHaveBeenCalled();
         });
     });

@@ -15,7 +15,7 @@ export class AnalyticCredentialStuffingSummaryUseCase implements IAppUseCase<
         IResponseReturn<IAnalyticFraudCredentialStuffingSummary>
     > {
         const data =
-            await this.analyticFraudService.credentialStuffingSummary();
+            await this.analyticFraudService.getCredentialStuffingSummary();
 
         return { data };
     }

@@ -13,7 +13,7 @@ Producing a notification, its key, and the `snapshot`: `notify.md`.
 
 ## Recipient
 
-- A `null` id, a job with no row, is an `UnrecoverableError` in the processor.
+- A `null` id, a job with no row, is an `UnrecoverableError` in the processor; a push step whose delivery row is missing throws `NotificationPushDeliveryNotFoundException`, which the processor maps to one.
 - `NotificationProcessUseCase` resolves the recipient on the first attempt: user, address, settings, and live-session tokens through `UserService`, `NotificationService`, and `DeviceService`; a missing or inactive user writes no row and sends nothing. A kind whose channels hold `sms` takes the number from its verification row (`UserVerificationService.getOneActiveMobileRecipient`); a used or expired row gives none. It encrypts them and records them through `OutboxService.updateData`; a later attempt reuses the recorded recipient.
 - A user's notification settings are one stored row per channel and type, created with the user by each creating use case (`NotificationService.createDefaultsManyInTx`); an update changes that row, never stores an override of a default.
 - Channels are `NotificationUtil.resolveChannels`: the contract's channels minus those the user disabled for a toggleable, non-mandatory type. Only `silent` left writes no row and sends nothing.
@@ -27,7 +27,7 @@ Producing a notification, its key, and the `snapshot`: `notify.md`.
 - No service or use case exists per kind. A kind costs its enum member, its contract row, its messages, its context type, and its template.
 - Step state between attempts lives in the row through `OutboxService.updateData`, never `job.updateData`: the recipient, the notification id, `completedSteps`, `encryptedPendingTokens`, `encryptedFailureTokens`. A retry skips a completed step.
 - Ciphertext travels unchanged. A channel use case decrypts immediately before its SES or FCM call, an email value into `templateData` only.
-- The channel processors map `HelperDecryptFailedException` and `NotificationEmailDeliveryUnknownException` to `UnrecoverableError` (`queue.md`, Processors).
+- The channel processors map `HelperDecryptFailedException`, `NotificationEmailDeliveryUnknownException`, and `NotificationPushDeliveryNotFoundException` to `UnrecoverableError` (`queue.md`, Processors).
 - `FirebaseService.sendMulticast` returns `failureTokens` (invalid, cleared from the user's devices through `DeviceService.cleanupNotificationTokensInTx` in the transaction that stamps the push sent) and `retryTokens` (a `FirebaseRetryableTokenCodes` code, no code, or a rejected chunk), kept as `encryptedPendingTokens`: a retry sends only to those, and push `sentAt` is stamped once none is pending.
 - An email body is a seeded SES Handlebars template (`seeding.md`), one per kind, registered in `NotificationTemplateService`.
 

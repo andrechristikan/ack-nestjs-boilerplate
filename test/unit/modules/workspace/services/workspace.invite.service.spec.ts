@@ -47,8 +47,8 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
-import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
+import type { IUserCreateWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
@@ -1677,8 +1677,8 @@ describe('WorkspaceInviteService', () => {
 
     describe('acceptOnSignUpInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
-        const inviteContext: IUserSignUpWorkspaceInvite = {
-            type: EnumUserSignUpWorkspaceContextType.invite,
+        const inviteContext: IUserCreateWorkspaceInvite = {
+            type: EnumUserCreateWorkspaceContextType.invite,
             workspaceId: 'workspace-1',
             workspaceInviteId: 'invite-1',
             invitedByUserId: 'user-1',

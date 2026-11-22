@@ -27,7 +27,7 @@ describe('AnalyticAuthConcurrentSessionsUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticAuthService.authConcurrentSessions.mockResolvedValue({
+            analyticAuthService.getAuthConcurrentSessions.mockResolvedValue({
                 buckets: [{ key: 'key-1', count: 7 }],
                 computedAt: null,
             });
@@ -41,7 +41,7 @@ describe('AnalyticAuthConcurrentSessionsUseCase', () => {
                 },
             });
             expect(
-                analyticAuthService.authConcurrentSessions
+                analyticAuthService.getAuthConcurrentSessions
             ).toHaveBeenCalledWith();
         });
     });

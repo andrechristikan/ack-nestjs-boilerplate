@@ -5,19 +5,14 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumMfaPasskeyDeviceType } from '@generated/prisma-client/client';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaGetStatusUseCase } from '@modules/mfa/use-cases/mfa.get-status.use-case';
-import {
-    buildUser,
-    buildUserContext,
-} from '@test/unit/helpers/test.unit.request.helper';
+import { buildAuthJwtAccessContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('MfaGetStatusUseCase', () => {
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
 
     let useCase: MfaGetStatusUseCase;
 
-    const userContext = buildUserContext(
-        buildUser('user-marten', 'marten@example.com')
-    );
+    const authContext = buildAuthJwtAccessContext('user-marten');
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -53,7 +48,7 @@ describe('MfaGetStatusUseCase', () => {
             };
             mfaService.getStatus.mockResolvedValue(status);
 
-            await expect(useCase.execute(userContext)).resolves.toEqual({
+            await expect(useCase.execute(authContext)).resolves.toEqual({
                 data: status,
             });
             expect(mfaService.getStatus).toHaveBeenCalledWith('user-marten');

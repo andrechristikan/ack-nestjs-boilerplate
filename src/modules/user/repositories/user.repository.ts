@@ -12,8 +12,6 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { RoleSelect } from '@modules/role/constants/role.constant';
-import type { IRole } from '@modules/role/interfaces/role.interface';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import {
     UserActiveRecipientCursorScope,
@@ -195,15 +193,6 @@ export class UserRepository implements IUserRepository {
             where: { id, deletedAt: null },
             include: UserWithRoleInclude,
         });
-    }
-
-    async findRoleById(id: string): Promise<IRole | null> {
-        const user = await this.databaseService.client.user.findUnique({
-            where: { id, deletedAt: null },
-            select: { role: { select: RoleSelect } },
-        });
-
-        return user?.role ?? null;
     }
 
     async findByEmails(emails: string[]): Promise<IUser[]> {

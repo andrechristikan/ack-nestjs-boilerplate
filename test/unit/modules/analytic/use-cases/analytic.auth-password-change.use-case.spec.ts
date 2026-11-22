@@ -40,7 +40,7 @@ describe('AnalyticAuthPasswordChangeUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticAuthService.authPasswordChange.mockResolvedValue({
+            analyticAuthService.getAuthPasswordChange.mockResolvedValue({
                 count: 12,
             });
 
@@ -50,17 +50,16 @@ describe('AnalyticAuthPasswordChangeUseCase', () => {
             });
 
             expect(result).toEqual({ data: { count: 12 } });
-            expect(analyticAuthService.authPasswordChange).toHaveBeenCalledWith(
-                startDate,
-                endDate
-            );
+            expect(
+                analyticAuthService.getAuthPasswordChange
+            ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes the query dates to the range check', async () => {
             analyticDateService.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
-            analyticAuthService.authPasswordChange.mockResolvedValue({
+            analyticAuthService.getAuthPasswordChange.mockResolvedValue({
                 count: 12,
             });
 

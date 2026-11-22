@@ -29,7 +29,7 @@ describe('AnalyticSharedFingerprintSummaryUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticFraudService.sharedFingerprintSummary.mockResolvedValue({
+            analyticFraudService.getSharedFingerprintSummary.mockResolvedValue({
                 count: 6,
                 windowStart: null,
                 windowEnd: null,
@@ -47,7 +47,7 @@ describe('AnalyticSharedFingerprintSummaryUseCase', () => {
                 },
             });
             expect(
-                analyticFraudService.sharedFingerprintSummary
+                analyticFraudService.getSharedFingerprintSummary
             ).toHaveBeenCalledWith();
         });
     });

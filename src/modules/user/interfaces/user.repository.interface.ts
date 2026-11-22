@@ -7,7 +7,6 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { IRole } from '@modules/role/interfaces/role.interface';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
 import type {
     IUser,
@@ -49,7 +48,6 @@ export interface IUserRepository {
     findOneWithRoleByEmail(email: string): Promise<IUser | null>;
     findOneProfileById(id: string): Promise<IUserProfile | null>;
     findOneWithRoleById(id: string): Promise<IUser | null>;
-    findRoleById(id: string): Promise<IRole | null>;
     findByEmails(emails: string[]): Promise<IUser[]>;
     findByUsernames(usernames: string[]): Promise<IUser[]>;
     findExport(

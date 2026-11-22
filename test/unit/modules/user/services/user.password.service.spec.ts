@@ -19,7 +19,10 @@ import {
     buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
-import type { IAuthPasswordTemporary } from '@modules/auth/interfaces/auth.interface';
+import type {
+    IAuthPassword,
+    IAuthPasswordTemporary,
+} from '@modules/auth/interfaces/auth.interface';
 import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
@@ -734,19 +737,29 @@ describe('UserPasswordService', () => {
         });
     });
 
-    describe('markUnusedResetsUsedInTx', () => {
-        it("marks the user's unused resets used on the given transaction", async () => {
-            await expect(
-                service.markUnusedResetsUsedInTx(
-                    tx,
-                    'user-hollow',
-                    'user-hollow'
-                )
-            ).resolves.toBeUndefined();
+    describe('replaceInTx', () => {
+        it('writes the password and marks the unused resets used on the given transaction', async () => {
+            const password: IAuthPassword = {
+                passwordHash: 'hashed',
+                passwordExpired: null,
+                passwordCreated: now,
+                passwordPeriodExpired: new Date('2026-05-30T00:00:00.000Z'),
+            };
+            userService.updatePasswordInTx.mockResolvedValue(baseUser);
 
+            await expect(
+                service.replaceInTx(tx, 'user-hollow', password, 'user-admin')
+            ).resolves.toBe(baseUser);
+
+            expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
+                tx,
+                'user-hollow',
+                password,
+                'user-admin'
+            );
             expect(
                 userForgotPasswordRepository.markUnusedUsedByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-hollow', 'user-hollow');
+            ).toHaveBeenCalledWith(tx, 'user-hollow', 'user-admin');
         });
     });
 

@@ -74,7 +74,7 @@ describe('AnalyticDeviceProliferationListUseCase', () => {
                     },
                 ],
             };
-            analyticAnomalyService.deviceProliferationList.mockResolvedValue(
+            analyticAnomalyService.getDeviceProliferationList.mockResolvedValue(
                 page
             );
 
@@ -85,7 +85,7 @@ describe('AnalyticDeviceProliferationListUseCase', () => {
 
             expect(result).toEqual(page);
             expect(
-                analyticAnomalyService.deviceProliferationList
+                analyticAnomalyService.getDeviceProliferationList
             ).toHaveBeenCalledWith(pagination);
             expect(requestStoreService.merge).toHaveBeenCalledTimes(1);
         });

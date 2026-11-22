@@ -3,12 +3,6 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import {
-    AnalyticBucketsResultCacheSchema,
-    AnalyticDevicesPerUserSnapshotDataSchema,
-    AnalyticMetricCountCacheSchema,
-    AnalyticMetricRateCacheSchema,
-} from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticBucketsResult,
@@ -21,10 +15,13 @@ import type {
 import { AnalyticDeviceRepository } from '@modules/analytic/repositories/analytic.device.repository';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
 import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
+import { AnalyticBucketsResultCacheSchema } from '@modules/analytic/dtos/analytic.buckets-result-cache.dto';
+import { AnalyticDevicePerUserSnapshotDataSchema } from '@modules/analytic/dtos/analytic.device-per-user-snapshot-data.dto';
+import { AnalyticMetricCountCacheSchema } from '@modules/analytic/dtos/analytic.metric-count-cache.dto';
+import { AnalyticMetricRateCacheSchema } from '@modules/analytic/dtos/analytic.metric-rate-cache.dto';
 
 @Injectable()
 export class AnalyticDeviceService {
@@ -34,7 +31,6 @@ export class AnalyticDeviceService {
         private readonly configService: ConfigService,
         private readonly analyticCache: AnalyticCache,
         private readonly cacheService: CacheService,
-        private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly analyticBucketUtil: AnalyticBucketUtil,
         private readonly analyticSnapshotService: AnalyticSnapshotService,
         private readonly helperDateService: HelperDateService,
@@ -46,20 +42,34 @@ export class AnalyticDeviceService {
         )!;
     }
 
-    private dashboardKey(
-        metric: EnumAnalyticDashboardMetric,
-        startDate: Date | null,
-        endDate: Date | null
-    ): string {
-        const start = this.analyticDateUtil.cacheToken(startDate);
-        const end = this.analyticDateUtil.cacheToken(endDate);
+    private async loadDevicePlatform(): Promise<IAnalyticBucketsResult> {
+        const buckets = await this.analyticDeviceRepository.groupPlatform();
 
-        return this.analyticCache.buildDashboardKey(metric, start, end);
+        return { buckets };
     }
 
-    async devicesPlatform(): Promise<IAnalyticBucketsResult> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.devicesPlatform,
+    private async loadDevicePushToken(): Promise<IAnalyticMetricRate> {
+        const { total, withToken } =
+            await this.analyticDeviceRepository.countPushToken();
+        const rate = this.helperNumberService.percent(withToken, total);
+
+        return { count: withToken, total, rate };
+    }
+
+    private async loadDeviceInactivity(): Promise<IAnalyticMetricCount> {
+        const now = this.helperDateService.create();
+        const before = this.helperDateService.backward(
+            now,
+            Duration.fromMillis(this.inactivityInMs)
+        );
+        const count = await this.analyticDeviceRepository.countInactive(before);
+
+        return { count };
+    }
+
+    async getDevicePlatform(): Promise<IAnalyticBucketsResult> {
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.devicePlatform,
             null,
             null
         );
@@ -68,18 +78,13 @@ export class AnalyticDeviceService {
             key,
             AnalyticBucketsResultCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const buckets =
-                    await this.analyticDeviceRepository.groupPlatform();
-
-                return { buckets };
-            }
+            () => this.loadDevicePlatform()
         );
     }
 
-    async devicesPushToken(): Promise<IAnalyticMetricRate> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.devicesPushToken,
+    async getDevicePushToken(): Promise<IAnalyticMetricRate> {
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.devicePushToken,
             null,
             null
         );
@@ -88,17 +93,11 @@ export class AnalyticDeviceService {
             key,
             AnalyticMetricRateCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const { total, withToken } =
-                    await this.analyticDeviceRepository.countPushToken();
-                const rate = this.helperNumberService.percent(withToken, total);
-
-                return { count: withToken, total, rate };
-            }
+            () => this.loadDevicePushToken()
         );
     }
 
-    async computeDevicesPerUser(): Promise<
+    async computeDevicePerUser(): Promise<
         IAnalyticSnapshotResult<IAnalyticCountBucket, null>
     > {
         const buckets = await this.analyticDeviceRepository.groupPerUser();
@@ -106,16 +105,16 @@ export class AnalyticDeviceService {
         return this.analyticBucketUtil.toBucketSnapshot(buckets);
     }
 
-    async devicesPerUser(): Promise<IAnalyticSnapshotBucketsResult> {
+    async getDevicePerUser(): Promise<IAnalyticSnapshotBucketsResult> {
         return this.analyticSnapshotService.getBuckets(
             EnumAnalyticSnapshotSignal.devicesPerUser,
-            AnalyticDevicesPerUserSnapshotDataSchema
+            AnalyticDevicePerUserSnapshotDataSchema
         );
     }
 
-    async devicesInactivity(): Promise<IAnalyticMetricCount> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.devicesInactivity,
+    async getDeviceInactivity(): Promise<IAnalyticMetricCount> {
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.deviceInactivity,
             null,
             null
         );
@@ -124,17 +123,7 @@ export class AnalyticDeviceService {
             key,
             AnalyticMetricCountCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const now = this.helperDateService.create();
-                const before = this.helperDateService.backward(
-                    now,
-                    Duration.fromMillis(this.inactivityInMs)
-                );
-                const count =
-                    await this.analyticDeviceRepository.countInactive(before);
-
-                return { count };
-            }
+            () => this.loadDeviceInactivity()
         );
     }
 }

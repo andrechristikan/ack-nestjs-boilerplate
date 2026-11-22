@@ -12,10 +12,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { EnumRoleType } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
 import { RoleCache } from '@modules/role/caches/role.cache';
-import {
-    RoleRank,
-    RoleWithPoliciesCacheSchema,
-} from '@modules/role/constants/role.constant';
+import { RoleRank } from '@modules/role/constants/role.constant';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
 import { RoleHasPoliciesException } from '@modules/role/exceptions/role.has-policies.exception';
 import { RoleImmutableException } from '@modules/role/exceptions/role.immutable.exception';
@@ -34,6 +31,7 @@ import type {
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
+import { RoleCacheSchema } from '@modules/role/dtos/role.cache.dto';
 
 @Injectable()
 export class RoleService {
@@ -184,7 +182,7 @@ export class RoleService {
 
         const role = await this.cacheService.readThrough(
             cacheKey,
-            RoleWithPoliciesCacheSchema,
+            RoleCacheSchema,
             this.roleCache.cacheTtlInMs,
             () => this.roleRepository.findOneWithPoliciesById(id),
             { lease }

@@ -51,7 +51,7 @@ export function RequestEnvProtected(
 }
 
 /** @public */
-export function RequestThrottle(
+export function RequestThrottleProtected(
     options: IRequestThrottleOptions
 ): MethodDecorator {
     return applyDecorators(

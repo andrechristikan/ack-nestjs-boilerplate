@@ -1,4 +1,4 @@
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IUserCreateWithWorkspaceInput } from '@modules/user/interfaces/user.interface';
 import type { IWorkspaceOwnedUser } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
@@ -12,7 +12,7 @@ export class WorkspaceUtil {
         return inputs.flatMap(input => {
             if (
                 input.workspaceContext.type !==
-                EnumUserSignUpWorkspaceContextType.personal
+                EnumUserCreateWorkspaceContextType.personal
             ) {
                 return [];
             }
@@ -32,7 +32,7 @@ export class WorkspaceUtil {
         const slugAttemptCount = inputs.reduce((min, input) => {
             if (
                 input.workspaceContext.type !==
-                EnumUserSignUpWorkspaceContextType.personal
+                EnumUserCreateWorkspaceContextType.personal
             ) {
                 return min;
             }

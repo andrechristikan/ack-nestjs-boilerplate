@@ -2,7 +2,7 @@ import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     RequestContext,
-    RequestThrottle,
+    RequestThrottleProtected,
 } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -98,14 +98,14 @@ export class MfaSharedController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/status/get')
     async getStatus(
-        @UserContext() userContext: IUserContext
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext
     ): Promise<IResponseReturn<MfaStatusResponseDto>> {
-        return this.mfaGetStatusUseCase.execute(userContext);
+        return this.mfaGetStatusUseCase.execute(authContext);
     }
 
     @Doc({
@@ -116,7 +116,10 @@ export class MfaSharedController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({
+        user: true,
+        route: EnumRequestThrottleRoute.strict,
+    })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -146,7 +149,10 @@ export class MfaSharedController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({
+        user: true,
+        route: EnumRequestThrottleRoute.strict,
+    })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -173,7 +179,10 @@ export class MfaSharedController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({
+        user: true,
+        route: EnumRequestThrottleRoute.strict,
+    })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -202,7 +211,10 @@ export class MfaSharedController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({
+        user: true,
+        route: EnumRequestThrottleRoute.strict,
+    })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -234,7 +246,10 @@ export class MfaSharedController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({
+        user: true,
+        route: EnumRequestThrottleRoute.strict,
+    })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -259,7 +274,10 @@ export class MfaSharedController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({
+        user: true,
+        route: EnumRequestThrottleRoute.strict,
+    })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -279,10 +297,12 @@ export class MfaSharedController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({
+        user: true,
+        route: EnumRequestThrottleRoute.strict,
+    })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @HttpCode(HttpStatus.OK)
     @Post('/passkey/register')
     async registerPasskey(
         @RequestContext() requestContext: IRequestContext,
@@ -306,7 +326,10 @@ export class MfaSharedController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({
+        user: true,
+        route: EnumRequestThrottleRoute.strict,
+    })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/passkey/:passkeyId/update')
@@ -333,7 +356,10 @@ export class MfaSharedController {
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.mfa)
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({
+        user: true,
+        route: EnumRequestThrottleRoute.strict,
+    })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)

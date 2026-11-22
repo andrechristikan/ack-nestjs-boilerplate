@@ -4,9 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { ApiKey } from '@generated/prisma-client/client';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
-import { ApiKeyCacheSchema } from '@modules/api-key/constants/api-key.constant';
 import { buildApiKey } from '@test/unit/helpers/test.unit.request.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { ApiKeyCacheSchema } from '@modules/api-key/dtos/api-key.cache.dto';
 
 describe('ApiKeyCache', () => {
     let configService: MockProxy<ConfigService>;

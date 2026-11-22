@@ -2,7 +2,6 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IPaginationCursorReturn,
     IPaginationEqual,
@@ -56,11 +55,11 @@ import type {
     IUserRecipient,
 } from '@modules/user/interfaces/user.interface';
 import { RoleService } from '@modules/role/services/role.service';
-import type { IRole } from '@modules/role/interfaces/role.interface';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
+import { UserUsernameRegex } from '@modules/user/constants/user.constant';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -80,7 +79,6 @@ export class UserService {
         private readonly awsSESService: AwsSESService,
         private readonly authPasswordService: AuthPasswordService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
         this.deleteSelfEmailPattern = this.configService.get<string>(
@@ -92,16 +90,21 @@ export class UserService {
     }
 
     private createDeletedIdentity(id: string): IUserDeletedIdentity {
-        const deletedEmail = this.helperStringService.fillPattern(
-            this.deleteSelfEmailPattern,
-            { id }
+        const deletedEmail = this.deleteSelfEmailPattern.replace(
+            '{id}',
+            () => id
         );
-        const deletedUsername = this.helperStringService.fillPattern(
-            this.deleteSelfUsernamePattern,
-            { id }
+        const deletedUsername = this.deleteSelfUsernamePattern.replace(
+            '{id}',
+            () => id
         );
 
         return { email: deletedEmail, username: deletedUsername };
+    }
+
+    /** True when the username does not match the allowed pattern, so true rejects it. */
+    private isUsernamePatternInvalid(username: string): boolean {
+        return !!username.search(UserUsernameRegex);
     }
 
     private isDeleteSelfRefused({ role }: IUser): boolean {
@@ -398,15 +401,6 @@ export class UserService {
         return user;
     }
 
-    async getRoleById(userId: string): Promise<IRole> {
-        const role = await this.userRepository.findRoleById(userId);
-        if (!role) {
-            throw new UserNotFoundException();
-        }
-
-        return role;
-    }
-
     assertUnblocked({ status }: IUser): void {
         if (status === EnumUserStatus.blocked) {
             throw new UserBlockedInvalidException();
@@ -456,7 +450,7 @@ export class UserService {
 
     async checkUsername(username: string): Promise<IUserCheckUsername> {
         const isUsernamePatternInvalid =
-            this.userUtil.isUsernamePatternInvalid(username);
+            this.isUsernamePatternInvalid(username);
         const hasBadWord = this.userUtil.hasBadWord(username);
         const isExist = await this.userRepository.existsByUsername(username);
 

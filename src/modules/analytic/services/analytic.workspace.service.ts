@@ -4,13 +4,6 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
 import { ActivityLogWorkspaceVolumeContract } from '@modules/activity-log/contracts/activity-log.workspace-volume.contract';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import {
-    AnalyticMetricCountCacheSchema,
-    AnalyticStatusCountsCacheSchema,
-    AnalyticWorkspaceCountPageCacheSchema,
-    AnalyticWorkspaceMembershipSnapshotDataSchema,
-    AnalyticWorkspaceSummaryCacheSchema,
-} from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticMetricCount,
@@ -22,29 +15,22 @@ import type {
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticWorkspaceRepository } from '@modules/analytic/repositories/analytic.workspace.repository';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { Injectable } from '@nestjs/common';
+import { AnalyticMetricCountCacheSchema } from '@modules/analytic/dtos/analytic.metric-count-cache.dto';
+import { AnalyticRoleCountsCacheSchema } from '@modules/analytic/dtos/analytic.role-counts-cache.dto';
+import { AnalyticStatusCountsCacheSchema } from '@modules/analytic/dtos/analytic.status-counts-cache.dto';
+import { AnalyticWorkspaceCountPageCacheSchema } from '@modules/analytic/dtos/analytic.workspace-count-page-cache.dto';
+import { AnalyticWorkspaceMembershipSnapshotDataSchema } from '@modules/analytic/dtos/analytic.workspace-membership-snapshot-data.dto';
+import { AnalyticWorkspaceSummaryCacheSchema } from '@modules/analytic/dtos/analytic.workspace-summary-cache.dto';
 
 @Injectable()
 export class AnalyticWorkspaceService {
     constructor(
         private readonly analyticCache: AnalyticCache,
         private readonly cacheService: CacheService,
-        private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly analyticSnapshotService: AnalyticSnapshotService,
         private readonly analyticWorkspaceRepository: AnalyticWorkspaceRepository
     ) {}
-
-    private dashboardKey(
-        metric: EnumAnalyticDashboardMetric,
-        startDate: Date | null,
-        endDate: Date | null
-    ): string {
-        const start = this.analyticDateUtil.cacheToken(startDate);
-        const end = this.analyticDateUtil.cacheToken(endDate);
-
-        return this.analyticCache.buildDashboardKey(metric, start, end);
-    }
 
     private dashboardPageKey(
         metric: EnumAnalyticDashboardMetric,
@@ -53,24 +39,63 @@ export class AnalyticWorkspaceService {
         skip: number,
         limit: number
     ): string {
-        const start = this.analyticDateUtil.cacheToken(startDate);
-        const end = this.analyticDateUtil.cacheToken(endDate);
-
         return this.analyticCache.buildDashboardPageKey(
             metric,
-            start,
-            end,
+            startDate,
+            endDate,
             Math.floor(skip / limit) + 1,
             limit
         );
     }
 
-    async workspacesCreation(
+    private async loadWorkspaceCreation(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.workspacesCreation,
+        const count = await this.analyticWorkspaceRepository.countCreated(
+            startDate,
+            endDate
+        );
+
+        return { count };
+    }
+
+    private async loadInviteFunnel(
+        workspaceId: string,
+        startDate: Date,
+        endDate: Date
+    ): Promise<IAnalyticStatusCount[]> {
+        return this.analyticWorkspaceRepository.groupInviteFunnel(
+            startDate,
+            endDate,
+            workspaceId
+        );
+    }
+
+    private async loadJoinOutcomes(
+        workspaceId: string,
+        startDate: Date,
+        endDate: Date
+    ): Promise<IAnalyticStatusCount[]> {
+        return this.analyticWorkspaceRepository.groupJoinOutcomes(
+            startDate,
+            endDate,
+            workspaceId
+        );
+    }
+
+    private async loadMemberRoles(
+        workspaceId: string
+    ): Promise<IAnalyticRoleCount[]> {
+        return this.analyticWorkspaceRepository.groupMemberRoles(workspaceId);
+    }
+
+    async getWorkspaceCreation(
+        startDate: Date,
+        endDate: Date
+    ): Promise<IAnalyticMetricCount> {
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.workspaceCreation,
             startDate,
             endDate
         );
@@ -79,24 +104,16 @@ export class AnalyticWorkspaceService {
             key,
             AnalyticMetricCountCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const count =
-                    await this.analyticWorkspaceRepository.countCreated(
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            () => this.loadWorkspaceCreation(startDate, endDate)
         );
     }
 
-    async workspacesInviteFunnel(
+    async getWorkspaceInviteFunnel(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticStatusCount[]> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.workspacesInviteFunnel,
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.workspaceInviteFunnel,
             startDate,
             endDate
         );
@@ -114,12 +131,12 @@ export class AnalyticWorkspaceService {
         );
     }
 
-    async workspacesJoinOutcomes(
+    async getWorkspaceJoinOutcomes(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticStatusCount[]> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.workspacesJoinOutcomes,
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.workspaceJoinOutcomes,
             startDate,
             endDate
         );
@@ -145,7 +162,7 @@ export class AnalyticWorkspaceService {
         return { items, metadata: null, windowStart: null, windowEnd: null };
     }
 
-    async workspacesMembership(
+    async getWorkspaceMembershipList(
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         return this.analyticSnapshotService.getListOffset(
@@ -156,13 +173,13 @@ export class AnalyticWorkspaceService {
         );
     }
 
-    async workspacesActivityVolume(
+    async getWorkspaceActivityVolumeList(
         startDate: Date,
         endDate: Date,
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
         const key = this.dashboardPageKey(
-            EnumAnalyticDashboardMetric.workspacesActivity,
+            EnumAnalyticDashboardMetric.workspaceActivityVolume,
             startDate,
             endDate,
             params.skip,
@@ -186,17 +203,15 @@ export class AnalyticWorkspaceService {
         );
     }
 
-    async summary(
+    async getSummary(
         workspaceId: string,
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticWorkspaceSummary> {
-        const start = this.analyticDateUtil.cacheToken(startDate);
-        const end = this.analyticDateUtil.cacheToken(endDate);
         const key = this.analyticCache.buildWorkspaceSummaryKey(
             workspaceId,
-            start,
-            end
+            startDate,
+            endDate
         );
 
         return this.cacheService.readThrough(
@@ -213,31 +228,53 @@ export class AnalyticWorkspaceService {
         );
     }
 
-    async inviteFunnel(
+    async getInviteFunnel(
         workspaceId: string,
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticStatusCount[]> {
-        return this.analyticWorkspaceRepository.groupInviteFunnel(
+        const key = this.analyticCache.buildWorkspaceInviteFunnelKey(
+            workspaceId,
             startDate,
-            endDate,
-            workspaceId
+            endDate
+        );
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticStatusCountsCacheSchema,
+            this.analyticCache.dashboardTtlInMs,
+            () => this.loadInviteFunnel(workspaceId, startDate, endDate)
         );
     }
 
-    async joinOutcomes(
+    async getJoinOutcomes(
         workspaceId: string,
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticStatusCount[]> {
-        return this.analyticWorkspaceRepository.groupJoinOutcomes(
+        const key = this.analyticCache.buildWorkspaceJoinOutcomesKey(
+            workspaceId,
             startDate,
-            endDate,
-            workspaceId
+            endDate
+        );
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticStatusCountsCacheSchema,
+            this.analyticCache.dashboardTtlInMs,
+            () => this.loadJoinOutcomes(workspaceId, startDate, endDate)
         );
     }
 
-    async memberRoles(workspaceId: string): Promise<IAnalyticRoleCount[]> {
-        return this.analyticWorkspaceRepository.groupMemberRoles(workspaceId);
+    async getMemberRoles(workspaceId: string): Promise<IAnalyticRoleCount[]> {
+        const key =
+            this.analyticCache.buildWorkspaceMemberRolesKey(workspaceId);
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticRoleCountsCacheSchema,
+            this.analyticCache.dashboardTtlInMs,
+            () => this.loadMemberRoles(workspaceId)
+        );
     }
 }

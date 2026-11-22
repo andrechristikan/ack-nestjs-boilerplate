@@ -27,7 +27,7 @@ describe('AnalyticPasswordResetEnumerationSummaryUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope and passes no window to the service', async () => {
-            analyticFraudService.passwordResetEnumerationSummary.mockResolvedValue(
+            analyticFraudService.getPasswordResetEnumerationSummary.mockResolvedValue(
                 {
                     count: 6,
                     windowStart: null,
@@ -47,7 +47,7 @@ describe('AnalyticPasswordResetEnumerationSummaryUseCase', () => {
                 },
             });
             expect(
-                analyticFraudService.passwordResetEnumerationSummary
+                analyticFraudService.getPasswordResetEnumerationSummary
             ).toHaveBeenCalledWith();
         });
     });

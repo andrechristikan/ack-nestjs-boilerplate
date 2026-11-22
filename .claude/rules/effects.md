@@ -20,7 +20,7 @@ A side effect is one of a closed list: a notification, an activity entry, a cach
 
 - An effect is an `IOutboxEffect`, the kit base in `src/common/outbox/interfaces/outbox.interface.ts`: `queue`, `name`, `data`, `priority` (`EnumQueuePriority`), and `idempotencyKey` (`string | null`), with no union. A new job declares its member `I<Module><Action>Effect extends IOutboxEffect` in its owner's interface file, with literal `queue` and `name` and its payload as `data` (`IUserPurgeLoginsEffect`).
 - The module owning the job builds the effect in the queue class of the effect's queue, a method `<action>Effect` returning its member (`UserAuthQueue.purgeLoginsEffect`, `CacheQueue.invalidateEffect`). A method forwarding another builder's effect, an `IOutboxEffect[]` return or local, a parameter, and every `OutboxService` method take the base. No call site writes an effect literal. A service or a use case of any module injects that queue class and adds the effect it returns (`layering.md`, Levels).
-- `idempotencyKey` is also the BullMQ `jobId`, unique per `(queue, name, idempotencyKey)` (`@@unique`); a business pattern carries the process, because the `jobId` space is per queue. It is filled from a `<namespace>.idempotencyKey.<name>Pattern` config key only when a duplicate the normal flow produces collapses into one job; any other effect passes `null`, and the row id becomes its key.
+- `idempotencyKey` is also the BullMQ `jobId`, unique per `(queue, name, idempotencyKey)` (`@@unique`); a business pattern carries the process, because the `jobId` space is per queue: a notification channel step is `notification.idempotencyKey.stepPattern`, `'{process}-{notificationId}'`. It is filled from a `<namespace>.idempotencyKey.<name>Pattern` config key only when a duplicate the normal flow produces collapses into one job; any other effect passes `null`, and the row id becomes its key.
 
 ## Writing
 
@@ -31,8 +31,9 @@ A side effect is one of a closed list: a notification, an activity entry, a cach
 
 ## Payloads
 
-Whoever builds a payload (an `<action>Effect` method, `NotificationQueue.notify`) encrypts a sensitive field (password, link, one-time code, recipient email, recipient mobile number, device tokens; a contact value an import row or a message carries as data included) with `HelperEncryptionService` (`security.md`, Cryptography), its context the id it belongs to: the recipient's user id, or the invite reference for an invitee with no account. Name it `encrypted<Field>`: `Outbox.data` is readable in the database.
+Whoever builds a payload (an `<action>Effect` method, `NotificationQueue.notify`) encrypts a sensitive field (password, link, one-time code, recipient email, recipient mobile number, device tokens; a contact value an import row or a message carries as data included) with `HelperEncryptionService` (`security.md`, Cryptography), its context the id it belongs to: the recipient's user id, the invite reference for an invitee with no account, or the importing admin's id for an import row's contact value. Name it `encrypted<Field>`: `Outbox.data` is readable in the database.
 
+- A field in a kind's `secrets` stays sealed in `Notification.metadata`, is opened at read, and is censored before a response carries it (`security.md`, Contact values).
 - BullMQ ignores a fixed-`jobId` enqueue while a job holding that id exists, until retention ages it out; a `jobId` never guards a race (`discipline.md`, Normal use).
 - No producer reads, retries, or removes a job; the outbox sweep reads one through `QueueBase.getJobState` alone; no caller branches on an `enqueue` result.
 - A fan-out from one request is one `addManyInTx` or one bulk job, and the effects one method adds on its `tx` are one `addManyInTx`.

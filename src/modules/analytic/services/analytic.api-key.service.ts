@@ -1,37 +1,30 @@
 import { CacheService } from '@common/cache/services/cache.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import { AnalyticApiKeyActiveExpiredCacheSchema } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import type { IAnalyticApiKeyActiveExpired } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticApiKeyRepository } from '@modules/analytic/repositories/analytic.api-key.repository';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { Injectable } from '@nestjs/common';
+import { AnalyticApiKeyActiveExpiredCacheSchema } from '@modules/analytic/dtos/analytic.api-key-active-expired-cache.dto';
 
 @Injectable()
 export class AnalyticApiKeyService {
     constructor(
         private readonly analyticCache: AnalyticCache,
         private readonly cacheService: CacheService,
-        private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly helperDateService: HelperDateService,
         private readonly analyticApiKeyRepository: AnalyticApiKeyRepository
     ) {}
 
-    private dashboardKey(
-        metric: EnumAnalyticDashboardMetric,
-        startDate: Date | null,
-        endDate: Date | null
-    ): string {
-        const start = this.analyticDateUtil.cacheToken(startDate);
-        const end = this.analyticDateUtil.cacheToken(endDate);
+    private async loadApiKeyActiveExpired(): Promise<IAnalyticApiKeyActiveExpired> {
+        const now = this.helperDateService.create();
 
-        return this.analyticCache.buildDashboardKey(metric, start, end);
+        return this.analyticApiKeyRepository.findActiveExpired(now);
     }
 
-    async apiKeysActiveExpired(): Promise<IAnalyticApiKeyActiveExpired> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.apiKeysActiveExpired,
+    async getApiKeyActiveExpired(): Promise<IAnalyticApiKeyActiveExpired> {
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.apiKeyActiveExpired,
             null,
             null
         );
@@ -40,11 +33,7 @@ export class AnalyticApiKeyService {
             key,
             AnalyticApiKeyActiveExpiredCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const now = this.helperDateService.create();
-
-                return this.analyticApiKeyRepository.findActiveExpired(now);
-            }
+            () => this.loadApiKeyActiveExpired()
         );
     }
 }

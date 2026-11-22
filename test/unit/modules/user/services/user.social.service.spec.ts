@@ -137,14 +137,16 @@ describe('UserSocialService', () => {
                 tx,
                 'user-bramble',
                 EnumUserLoginWith.socialApple,
-                'subject-bramble'
+                'subject-bramble',
+                'user-bramble'
             );
 
             expect(userSocialRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 'user-bramble',
                 EnumUserLoginWith.socialApple,
-                'subject-bramble'
+                'subject-bramble',
+                'user-bramble'
             );
         });
     });

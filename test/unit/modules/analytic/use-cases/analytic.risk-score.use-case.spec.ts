@@ -32,7 +32,7 @@ describe('AnalyticRiskScoreUseCase', () => {
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
             const computedAt = new Date('2026-03-01T00:15:00.000Z');
-            analyticFraudService.riskScore.mockResolvedValue({
+            analyticFraudService.getRiskScore.mockResolvedValue({
                 userId: 'user-1',
                 score: 42,
                 band: EnumAnalyticFraudBand.review,
@@ -55,7 +55,7 @@ describe('AnalyticRiskScoreUseCase', () => {
                     computedAt,
                 },
             });
-            expect(analyticFraudService.riskScore).toHaveBeenCalledWith(
+            expect(analyticFraudService.getRiskScore).toHaveBeenCalledWith(
                 'user-1'
             );
         });

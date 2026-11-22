@@ -12,7 +12,7 @@ import { RequestThrottleUserGuard } from '@common/request/guards/request.throttl
 import { RequestUtil } from '@common/request/utils/request.util';
 import { ClsModule } from 'nestjs-cls';
 
-/** Shared module: RequestStoreService, RequestContextService, RequestUtil, RequestThrottleService, and RequestThrottleStorageService for every guard, interceptor, service, and use case reading request state and for the ThrottlerModule storage, RequestThrottleUserGuard for the RequestThrottle decorator. */
+/** Shared module: RequestStoreService, RequestContextService, RequestUtil, RequestThrottleService, and RequestThrottleStorageService for every guard, interceptor, service, and use case reading request state and for the ThrottlerModule storage, RequestThrottleUserGuard for the RequestThrottleProtected decorator. */
 @Global()
 @Module({})
 export class RequestModule {

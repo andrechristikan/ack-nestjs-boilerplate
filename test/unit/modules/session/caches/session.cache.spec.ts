@@ -5,7 +5,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { SessionLoginCacheSchema } from '@modules/session/constants/session.constant';
+import { SessionLoginCacheSchema } from '@modules/session/dtos/session.login-cache.dto';
 
 describe('SessionCache', () => {
     const configValues = {

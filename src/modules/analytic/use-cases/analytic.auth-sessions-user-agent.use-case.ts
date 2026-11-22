@@ -23,7 +23,7 @@ export class AnalyticAuthSessionsUserAgentUseCase implements IAppUseCase<
         IResponseReturn<IAnalyticBucketsResult>
     > {
         const range = this.analyticDateService.requireRange(startDate, endDate);
-        const data = await this.analyticAuthService.authSessionsUserAgent(
+        const data = await this.analyticAuthService.getAuthSessionsUserAgent(
             range.startDate,
             range.endDate
         );

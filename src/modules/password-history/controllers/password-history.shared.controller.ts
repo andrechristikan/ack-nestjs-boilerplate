@@ -1,7 +1,7 @@
 import type { PasswordHistorySharedListRequestDto } from '@modules/password-history/dtos/request/password-history.shared-list.request.dto';
 import { PasswordHistorySharedListRequestSchema } from '@modules/password-history/dtos/request/password-history.shared-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestThrottleProtected } from '@common/request/decorators/request.decorator';
 import { ResponsePagination } from '@common/response/decorators/response.decorator';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -37,7 +37,7 @@ export class PasswordHistorySharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')

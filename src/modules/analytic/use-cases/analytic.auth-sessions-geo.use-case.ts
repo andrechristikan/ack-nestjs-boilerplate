@@ -23,7 +23,7 @@ export class AnalyticAuthSessionsGeoUseCase implements IAppUseCase<
         IResponseReturn<IAnalyticBucketsResult>
     > {
         const range = this.analyticDateService.requireRange(startDate, endDate);
-        const data = await this.analyticAuthService.authSessionsGeo(
+        const data = await this.analyticAuthService.getAuthSessionsGeo(
             range.startDate,
             range.endDate
         );

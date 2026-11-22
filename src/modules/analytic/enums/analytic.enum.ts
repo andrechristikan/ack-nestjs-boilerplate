@@ -10,18 +10,18 @@ export enum EnumAnalyticProcess {
 
 /** @public */
 export enum EnumAnalyticAnomalySignal {
-    failedLoginSpike = 'failed-login-spike',
-    loginSpikeIp = 'login-spike-ip',
+    failedLoginSpike = 'failedLoginSpike',
+    loginSpikeIp = 'loginSpikeIp',
 }
 
 /** @public */
 export enum EnumAnalyticFraudSignal {
-    credentialStuffing = 'credential-stuffing',
-    accountTakeover = 'account-takeover',
-    sessionAfterAdmin = 'session-after-admin',
-    massRegistration = 'mass-registration',
-    passwordResetEnumeration = 'password-reset-enumeration',
-    forgotPasswordTokenAbuse = 'forgot-password-token-abuse',
+    credentialStuffing = 'credentialStuffing',
+    accountTakeover = 'accountTakeover',
+    sessionAfterAdmin = 'sessionAfterAdmin',
+    massRegistration = 'massRegistration',
+    passwordResetEnumeration = 'passwordResetEnumeration',
+    forgotPasswordTokenAbuse = 'forgotPasswordTokenAbuse',
 }
 
 /** @public */
@@ -46,34 +46,34 @@ export enum EnumAnalyticFraudContributingSignal {
 
 /** @public */
 export enum EnumAnalyticDashboardMetric {
-    usersRegistrations = 'users.registrations',
-    usersChurn = 'users.churn',
-    usersBlocked = 'users.blocked',
-    usersSignUpWith = 'users.signUpWith',
-    usersEmailVerification = 'users.emailVerification',
-    usersStatus = 'users.status',
-    usersCountry = 'users.country',
-    usersRole = 'users.role',
-    usersActive = 'users.active',
-    authLoginFrequency = 'auth.loginFrequency',
-    authLoginMethod = 'auth.loginMethod',
-    authLockout = 'auth.lockout',
-    authSessionsGeo = 'auth.sessionsGeo',
-    authSessionsUa = 'auth.sessionsUa',
-    authVerificationFunnel = 'auth.verificationFunnel',
-    authPasswordChange = 'auth.passwordChange',
-    authForgotConversion = 'auth.forgotConversion',
-    devicesPlatform = 'devices.platform',
-    devicesPushToken = 'devices.pushToken',
-    devicesInactivity = 'devices.inactivity',
-    apiKeysActiveExpired = 'apiKeys.activeExpired',
-    termPoliciesAcceptance = 'termPolicies.acceptance',
-    workspacesCreation = 'workspaces.creation',
-    workspacesInviteFunnel = 'workspaces.inviteFunnel',
-    workspacesJoinOutcomes = 'workspaces.joinOutcomes',
-    workspacesActivity = 'workspaces.activity',
-    projectsCreation = 'projects.creation',
-    notificationsDelivery = 'notifications.delivery',
+    userRegistrations = 'userRegistrations',
+    userChurn = 'userChurn',
+    userBlocked = 'userBlocked',
+    userSignUpWith = 'userSignUpWith',
+    userEmailVerification = 'userEmailVerification',
+    userStatusDistribution = 'userStatusDistribution',
+    userCountryDistribution = 'userCountryDistribution',
+    userRoleDistribution = 'userRoleDistribution',
+    userActive = 'userActive',
+    authLoginFrequency = 'authLoginFrequency',
+    authLoginMethod = 'authLoginMethod',
+    authLockout = 'authLockout',
+    authSessionsGeo = 'authSessionsGeo',
+    authSessionsUserAgent = 'authSessionsUserAgent',
+    authVerificationFunnel = 'authVerificationFunnel',
+    authPasswordChange = 'authPasswordChange',
+    authForgotPasswordConversion = 'authForgotPasswordConversion',
+    devicePlatform = 'devicePlatform',
+    devicePushToken = 'devicePushToken',
+    deviceInactivity = 'deviceInactivity',
+    apiKeyActiveExpired = 'apiKeyActiveExpired',
+    termPolicyAcceptanceRate = 'termPolicyAcceptanceRate',
+    workspaceCreation = 'workspaceCreation',
+    workspaceInviteFunnel = 'workspaceInviteFunnel',
+    workspaceJoinOutcomes = 'workspaceJoinOutcomes',
+    workspaceActivityVolume = 'workspaceActivityVolume',
+    projectCreation = 'projectCreation',
+    notificationDelivery = 'notificationDelivery',
 }
 
 /** @public */

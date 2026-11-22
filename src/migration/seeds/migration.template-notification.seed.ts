@@ -64,67 +64,67 @@ export class MigrationTemplateEmailNotificationSeed
             workspaceJoinRejectedEmail,
             reauthenticationOtpEmail,
         ] = await Promise.all([
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.changePassword
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.welcomeSocial
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.welcomeByAdmin
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.verifiedEmail
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.forgotPassword
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.verifiedMobileNumber
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.temporaryPasswordByAdmin
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.verificationEmail
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.welcome
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.resetMfaByAdmin
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.newDeviceLogin
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.loginLocked
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.publishTermPolicy
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.userImportResult
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.userExportResult
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.resetPassword
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.workspaceInvite
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.workspaceJoinRequest
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.workspaceJoinAccepted
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.workspaceJoinRejected
             ),
-            this.notificationTemplateService.emailGet(
+            this.notificationTemplateService.getEmail(
                 EnumNotificationKind.reauthenticationOtp
             ),
         ]);

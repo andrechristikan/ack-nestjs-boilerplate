@@ -74,7 +74,9 @@ describe('AnalyticSharedFingerprintListUseCase', () => {
                     },
                 ],
             };
-            analyticFraudService.sharedFingerprintList.mockResolvedValue(page);
+            analyticFraudService.getSharedFingerprintList.mockResolvedValue(
+                page
+            );
 
             const result = await useCase.execute({
                 page: 1,
@@ -83,7 +85,7 @@ describe('AnalyticSharedFingerprintListUseCase', () => {
 
             expect(result).toEqual(page);
             expect(
-                analyticFraudService.sharedFingerprintList
+                analyticFraudService.getSharedFingerprintList
             ).toHaveBeenCalledWith(pagination);
         });
     });

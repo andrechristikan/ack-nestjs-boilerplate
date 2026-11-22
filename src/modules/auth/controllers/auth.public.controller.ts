@@ -1,5 +1,5 @@
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestThrottleProtected } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -24,7 +24,7 @@ export class AuthPublicController {
     @Response('auth.createSocialNonce', {
         schema: AuthSocialNonceResponseSchema,
     })
-    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @Post('/social/nonce/create')
     async createSocialNonce(): Promise<IResponseReturn<IAuthSocialNonce>> {

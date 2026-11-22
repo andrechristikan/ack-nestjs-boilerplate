@@ -23,7 +23,7 @@ export class AnalyticAuthLoginFrequencyUseCase implements IAppUseCase<
         IResponseReturn<IAnalyticMetricCount>
     > {
         const range = this.analyticDateService.requireRange(startDate, endDate);
-        const data = await this.analyticAuthService.authLoginFrequency(
+        const data = await this.analyticAuthService.getAuthLoginFrequency(
             range.startDate,
             range.endDate
         );

@@ -3,7 +3,7 @@ import { DeviceAdminListRequestSchema } from '@modules/device/dtos/request/devic
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     RequestContext,
-    RequestThrottle,
+    RequestThrottleProtected,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
@@ -57,7 +57,7 @@ export class DeviceAdminController {
     ) {}
 
     @Doc({
-        summary: 'admin get all user Devices',
+        summary: 'admin get all user devices',
         description:
             'orderBy presets: latest (createdAt descending, default), recentlyActive (lastActiveAt descending).',
     })
@@ -77,7 +77,7 @@ export class DeviceAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -90,7 +90,7 @@ export class DeviceAdminController {
         return this.deviceGetListOffsetByAdminUseCase.execute(userId, query);
     }
 
-    @Doc({ summary: 'admin remove user Device' })
+    @Doc({ summary: 'admin remove user device' })
     @Response('device.remove')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
@@ -105,7 +105,7 @@ export class DeviceAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/remove/:deviceOwnershipId')

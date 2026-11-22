@@ -4,7 +4,7 @@ import { Doc } from '@common/doc/decorators/doc.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import {
     RequestContext,
-    RequestThrottle,
+    RequestThrottleProtected,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
@@ -62,13 +62,13 @@ export class SessionSharedController {
     ) {}
 
     @Doc({
-        summary: 'get all user Sessions',
+        summary: 'get all user sessions',
         description: 'orderBy presets: latest (createdAt descending, default).',
     })
     @ResponsePagination('session.list', { schema: SessionResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -80,11 +80,14 @@ export class SessionSharedController {
         return this.sessionGetListCursorUseCase.execute(authContext, query);
     }
 
-    @Doc({ summary: 'revoke user Session' })
+    @Doc({ summary: 'revoke user session' })
     @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({
+        user: true,
+        route: EnumRequestThrottleRoute.strict,
+    })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)

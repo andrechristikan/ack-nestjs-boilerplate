@@ -40,7 +40,7 @@ describe('AnalyticAuthLoginMethodUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticAuthService.authLoginMethod.mockResolvedValue({
+            analyticAuthService.getAuthLoginMethod.mockResolvedValue({
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
@@ -57,7 +57,7 @@ describe('AnalyticAuthLoginMethodUseCase', () => {
             expect(result).toEqual({
                 data: { buckets: [{ key: 'key-1', count: 7 }] },
             });
-            expect(analyticAuthService.authLoginMethod).toHaveBeenCalledWith(
+            expect(analyticAuthService.getAuthLoginMethod).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
@@ -67,7 +67,7 @@ describe('AnalyticAuthLoginMethodUseCase', () => {
                 startDate: null,
                 endDate: null,
             });
-            analyticAuthService.authLoginMethod.mockResolvedValue({
+            analyticAuthService.getAuthLoginMethod.mockResolvedValue({
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
@@ -78,7 +78,7 @@ describe('AnalyticAuthLoginMethodUseCase', () => {
                 null
             );
 
-            expect(analyticAuthService.authLoginMethod).toHaveBeenCalledWith(
+            expect(analyticAuthService.getAuthLoginMethod).toHaveBeenCalledWith(
                 null,
                 null
             );

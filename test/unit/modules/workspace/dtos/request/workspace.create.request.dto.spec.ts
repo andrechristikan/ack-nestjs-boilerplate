@@ -62,4 +62,19 @@ describe('WorkspaceCreateRequestSchema', () => {
             expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
         ]);
     });
+
+    it('trims name and description and rejects a whitespace-only name', () => {
+        expect(
+            WorkspaceCreateRequestSchema.parse({
+                name: '  Acme  ',
+                description: '  Team  ',
+            })
+        ).toEqual({ name: 'Acme', description: 'Team' });
+        expect(
+            WorkspaceCreateRequestSchema.safeParse({ name: '   ' }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_small' }),
+        ]);
+    });
 });

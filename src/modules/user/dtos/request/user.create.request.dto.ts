@@ -21,7 +21,7 @@ export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
         description: 'Identifier of the role to assign',
         example: faker.database.mongodbObjectId(),
     }),
-    name: z.string().min(1).max(100).optional().meta({
+    name: z.string().trim().min(1).max(100).optional().meta({
         description: 'Display name of the user to create',
         example: faker.person.fullName(),
     }),

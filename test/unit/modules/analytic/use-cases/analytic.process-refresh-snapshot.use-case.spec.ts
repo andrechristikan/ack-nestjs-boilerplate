@@ -407,7 +407,7 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
                 windowStart: null,
                 windowEnd: null,
             };
-            analyticDeviceService.computeDevicesPerUser.mockResolvedValue(
+            analyticDeviceService.computeDevicePerUser.mockResolvedValue(
                 snapshot
             );
 
@@ -416,7 +416,7 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
             });
 
             expect(
-                analyticDeviceService.computeDevicesPerUser
+                analyticDeviceService.computeDevicePerUser
             ).toHaveBeenCalledTimes(1);
             expect(analyticSnapshotService.replace).toHaveBeenCalledWith(
                 EnumAnalyticSnapshotSignal.devicesPerUser,

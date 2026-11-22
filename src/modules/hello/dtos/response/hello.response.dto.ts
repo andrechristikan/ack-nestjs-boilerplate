@@ -10,17 +10,11 @@ export const HelloResponseSchema = z.object({
                 description: 'Current server date as an ISO-8601 string',
                 example: '2022-08-10T07:22:17.231Z',
             }),
-            timestamp: z.number().meta({
-                description:
-                    'Current server date as a Unix timestamp in milliseconds',
-                example: 1660190937231,
-            }),
         })
         .meta({
             description: 'Current server date in several representations',
             example: {
                 iso: '2022-08-10T07:22:17.231Z',
-                timestamp: 1660190937231,
             },
         }),
     app: z

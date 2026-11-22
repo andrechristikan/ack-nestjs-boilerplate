@@ -40,7 +40,7 @@ describe('AnalyticImpossibleTravelSummaryUseCase', () => {
                 computedAt,
                 metadata: { minDistanceKm: 500, maxDeltaInMs: 3600000 },
             };
-            analyticAnomalyService.impossibleTravelSummary.mockResolvedValue(
+            analyticAnomalyService.getImpossibleTravelSummary.mockResolvedValue(
                 summary
             );
 
@@ -48,7 +48,7 @@ describe('AnalyticImpossibleTravelSummaryUseCase', () => {
 
             expect(result).toEqual({ data: summary });
             expect(
-                analyticAnomalyService.impossibleTravelSummary
+                analyticAnomalyService.getImpossibleTravelSummary
             ).toHaveBeenCalledWith();
         });
     });

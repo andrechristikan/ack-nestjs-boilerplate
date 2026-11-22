@@ -1,5 +1,5 @@
-import { AnalyticWorkspacesActivityVolumeListRequestSchema } from '@modules/analytic/dtos/request/analytic.workspaces-activity-volume-list.request.dto';
-import type { AnalyticWorkspacesActivityVolumeListRequestDto } from '@modules/analytic/dtos/request/analytic.workspaces-activity-volume-list.request.dto';
+import { AnalyticWorkspaceActivityVolumeListRequestSchema } from '@modules/analytic/dtos/request/analytic.workspace-activity-volume-list.request.dto';
+import type { AnalyticWorkspaceActivityVolumeListRequestDto } from '@modules/analytic/dtos/request/analytic.workspace-activity-volume-list.request.dto';
 import { AnalyticMassRegistrationListRequestSchema } from '@modules/analytic/dtos/request/analytic.mass-registration-list.request.dto';
 import type { AnalyticMassRegistrationListRequestDto } from '@modules/analytic/dtos/request/analytic.mass-registration-list.request.dto';
 import { AnalyticPasswordResetEnumerationListRequestSchema } from '@modules/analytic/dtos/request/analytic.password-reset-enumeration-list.request.dto';
@@ -60,7 +60,7 @@ import type {
     IAnalyticVerificationFunnels,
     IAnalyticWorkspaceCount,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestThrottleProtected } from '@common/request/decorators/request.decorator';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
@@ -121,15 +121,15 @@ import { AnalyticDeviceProliferationResponseSchema } from '@modules/analytic/dto
 import { AnalyticImpossibleTravelResponseSchema } from '@modules/analytic/dtos/response/analytic.impossible-travel.response.dto';
 import { AnalyticLoginSpikeIpResponseSchema } from '@modules/analytic/dtos/response/analytic.login-spike-ip.response.dto';
 import { AnalyticNearLockoutResponseSchema } from '@modules/analytic/dtos/response/analytic.near-lockout.response.dto';
-import { AnalyticUsersRegistrationsUseCase } from '@modules/analytic/use-cases/analytic.users-registrations.use-case';
-import { AnalyticUsersChurnUseCase } from '@modules/analytic/use-cases/analytic.users-churn.use-case';
-import { AnalyticUsersBlockedUseCase } from '@modules/analytic/use-cases/analytic.users-blocked.use-case';
-import { AnalyticUsersSignUpWithUseCase } from '@modules/analytic/use-cases/analytic.users-sign-up-with.use-case';
-import { AnalyticUsersEmailVerificationUseCase } from '@modules/analytic/use-cases/analytic.users-email-verification.use-case';
-import { AnalyticUsersStatusDistributionUseCase } from '@modules/analytic/use-cases/analytic.users-status-distribution.use-case';
-import { AnalyticUsersCountryDistributionUseCase } from '@modules/analytic/use-cases/analytic.users-country-distribution.use-case';
-import { AnalyticUsersActiveUseCase } from '@modules/analytic/use-cases/analytic.users-active.use-case';
-import { AnalyticUsersRoleDistributionUseCase } from '@modules/analytic/use-cases/analytic.users-role-distribution.use-case';
+import { AnalyticUserRegistrationsUseCase } from '@modules/analytic/use-cases/analytic.user-registrations.use-case';
+import { AnalyticUserChurnUseCase } from '@modules/analytic/use-cases/analytic.user-churn.use-case';
+import { AnalyticUserBlockedUseCase } from '@modules/analytic/use-cases/analytic.user-blocked.use-case';
+import { AnalyticUserSignUpWithUseCase } from '@modules/analytic/use-cases/analytic.user-sign-up-with.use-case';
+import { AnalyticUserEmailVerificationUseCase } from '@modules/analytic/use-cases/analytic.user-email-verification.use-case';
+import { AnalyticUserStatusDistributionUseCase } from '@modules/analytic/use-cases/analytic.user-status-distribution.use-case';
+import { AnalyticUserCountryDistributionUseCase } from '@modules/analytic/use-cases/analytic.user-country-distribution.use-case';
+import { AnalyticUserActiveUseCase } from '@modules/analytic/use-cases/analytic.user-active.use-case';
+import { AnalyticUserRoleDistributionUseCase } from '@modules/analytic/use-cases/analytic.user-role-distribution.use-case';
 import { AnalyticAuthLoginFrequencyUseCase } from '@modules/analytic/use-cases/analytic.auth-login-frequency.use-case';
 import { AnalyticAuthLoginMethodUseCase } from '@modules/analytic/use-cases/analytic.auth-login-method.use-case';
 import { AnalyticAuthLockoutUseCase } from '@modules/analytic/use-cases/analytic.auth-lockout.use-case';
@@ -140,19 +140,19 @@ import { AnalyticAuthVerificationFunnelUseCase } from '@modules/analytic/use-cas
 import { AnalyticAuthPasswordChangeUseCase } from '@modules/analytic/use-cases/analytic.auth-password-change.use-case';
 import { AnalyticAuthForgotPasswordConversionUseCase } from '@modules/analytic/use-cases/analytic.auth-forgot-password-conversion.use-case';
 import { AnalyticAuthMfaAdoptionUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-adoption.use-case';
-import { AnalyticDevicesPlatformUseCase } from '@modules/analytic/use-cases/analytic.devices-platform.use-case';
-import { AnalyticDevicesPushTokenUseCase } from '@modules/analytic/use-cases/analytic.devices-push-token.use-case';
-import { AnalyticDevicesPerUserUseCase } from '@modules/analytic/use-cases/analytic.devices-per-user.use-case';
-import { AnalyticDevicesInactivityUseCase } from '@modules/analytic/use-cases/analytic.devices-inactivity.use-case';
-import { AnalyticApiKeysActiveExpiredUseCase } from '@modules/analytic/use-cases/analytic.api-keys-active-expired.use-case';
-import { AnalyticTermPoliciesAcceptanceRateUseCase } from '@modules/analytic/use-cases/analytic.term-policies-acceptance-rate.use-case';
-import { AnalyticWorkspacesCreationUseCase } from '@modules/analytic/use-cases/analytic.workspaces-creation.use-case';
-import { AnalyticWorkspacesInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.workspaces-invite-funnel.use-case';
-import { AnalyticWorkspacesJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.workspaces-join-outcomes.use-case';
-import { AnalyticWorkspacesMembershipListUseCase } from '@modules/analytic/use-cases/analytic.workspaces-membership-list.use-case';
-import { AnalyticWorkspacesActivityVolumeListUseCase } from '@modules/analytic/use-cases/analytic.workspaces-activity-volume-list.use-case';
-import { AnalyticProjectsCreationUseCase } from '@modules/analytic/use-cases/analytic.projects-creation.use-case';
-import { AnalyticNotificationsDeliveryUseCase } from '@modules/analytic/use-cases/analytic.notifications-delivery.use-case';
+import { AnalyticDevicePlatformUseCase } from '@modules/analytic/use-cases/analytic.device-platform.use-case';
+import { AnalyticDevicePushTokenUseCase } from '@modules/analytic/use-cases/analytic.device-push-token.use-case';
+import { AnalyticDevicePerUserUseCase } from '@modules/analytic/use-cases/analytic.device-per-user.use-case';
+import { AnalyticDeviceInactivityUseCase } from '@modules/analytic/use-cases/analytic.device-inactivity.use-case';
+import { AnalyticApiKeyActiveExpiredUseCase } from '@modules/analytic/use-cases/analytic.api-key-active-expired.use-case';
+import { AnalyticTermPolicyAcceptanceRateUseCase } from '@modules/analytic/use-cases/analytic.term-policy-acceptance-rate.use-case';
+import { AnalyticWorkspaceCreationUseCase } from '@modules/analytic/use-cases/analytic.workspace-creation.use-case';
+import { AnalyticWorkspaceInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.workspace-invite-funnel.use-case';
+import { AnalyticWorkspaceJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.workspace-join-outcomes.use-case';
+import { AnalyticWorkspaceMembershipListUseCase } from '@modules/analytic/use-cases/analytic.workspace-membership-list.use-case';
+import { AnalyticWorkspaceActivityVolumeListUseCase } from '@modules/analytic/use-cases/analytic.workspace-activity-volume-list.use-case';
+import { AnalyticProjectCreationUseCase } from '@modules/analytic/use-cases/analytic.project-creation.use-case';
+import { AnalyticNotificationDeliveryUseCase } from '@modules/analytic/use-cases/analytic.notification-delivery.use-case';
 import { AnalyticCredentialStuffingSummaryUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-summary.use-case';
 import { AnalyticCredentialStuffingListUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-list.use-case';
 import { AnalyticAccountTakeoverSummaryUseCase } from '@modules/analytic/use-cases/analytic.account-takeover-summary.use-case';
@@ -185,15 +185,15 @@ import { AnalyticDeviceProliferationListUseCase } from '@modules/analytic/use-ca
 })
 export class AnalyticAdminController {
     constructor(
-        private readonly analyticUsersRegistrationsUseCase: AnalyticUsersRegistrationsUseCase,
-        private readonly analyticUsersChurnUseCase: AnalyticUsersChurnUseCase,
-        private readonly analyticUsersBlockedUseCase: AnalyticUsersBlockedUseCase,
-        private readonly analyticUsersSignUpWithUseCase: AnalyticUsersSignUpWithUseCase,
-        private readonly analyticUsersEmailVerificationUseCase: AnalyticUsersEmailVerificationUseCase,
-        private readonly analyticUsersStatusDistributionUseCase: AnalyticUsersStatusDistributionUseCase,
-        private readonly analyticUsersCountryDistributionUseCase: AnalyticUsersCountryDistributionUseCase,
-        private readonly analyticUsersRoleDistributionUseCase: AnalyticUsersRoleDistributionUseCase,
-        private readonly analyticUsersActiveUseCase: AnalyticUsersActiveUseCase,
+        private readonly analyticUserRegistrationsUseCase: AnalyticUserRegistrationsUseCase,
+        private readonly analyticUserChurnUseCase: AnalyticUserChurnUseCase,
+        private readonly analyticUserBlockedUseCase: AnalyticUserBlockedUseCase,
+        private readonly analyticUserSignUpWithUseCase: AnalyticUserSignUpWithUseCase,
+        private readonly analyticUserEmailVerificationUseCase: AnalyticUserEmailVerificationUseCase,
+        private readonly analyticUserStatusDistributionUseCase: AnalyticUserStatusDistributionUseCase,
+        private readonly analyticUserCountryDistributionUseCase: AnalyticUserCountryDistributionUseCase,
+        private readonly analyticUserRoleDistributionUseCase: AnalyticUserRoleDistributionUseCase,
+        private readonly analyticUserActiveUseCase: AnalyticUserActiveUseCase,
         private readonly analyticAuthLoginFrequencyUseCase: AnalyticAuthLoginFrequencyUseCase,
         private readonly analyticAuthLoginMethodUseCase: AnalyticAuthLoginMethodUseCase,
         private readonly analyticAuthLockoutUseCase: AnalyticAuthLockoutUseCase,
@@ -204,19 +204,19 @@ export class AnalyticAdminController {
         private readonly analyticAuthPasswordChangeUseCase: AnalyticAuthPasswordChangeUseCase,
         private readonly analyticAuthForgotPasswordConversionUseCase: AnalyticAuthForgotPasswordConversionUseCase,
         private readonly analyticAuthMfaAdoptionUseCase: AnalyticAuthMfaAdoptionUseCase,
-        private readonly analyticDevicesPlatformUseCase: AnalyticDevicesPlatformUseCase,
-        private readonly analyticDevicesPushTokenUseCase: AnalyticDevicesPushTokenUseCase,
-        private readonly analyticDevicesPerUserUseCase: AnalyticDevicesPerUserUseCase,
-        private readonly analyticDevicesInactivityUseCase: AnalyticDevicesInactivityUseCase,
-        private readonly analyticApiKeysActiveExpiredUseCase: AnalyticApiKeysActiveExpiredUseCase,
-        private readonly analyticTermPoliciesAcceptanceRateUseCase: AnalyticTermPoliciesAcceptanceRateUseCase,
-        private readonly analyticWorkspacesCreationUseCase: AnalyticWorkspacesCreationUseCase,
-        private readonly analyticWorkspacesInviteFunnelUseCase: AnalyticWorkspacesInviteFunnelUseCase,
-        private readonly analyticWorkspacesJoinOutcomesUseCase: AnalyticWorkspacesJoinOutcomesUseCase,
-        private readonly analyticWorkspacesMembershipListUseCase: AnalyticWorkspacesMembershipListUseCase,
-        private readonly analyticWorkspacesActivityVolumeListUseCase: AnalyticWorkspacesActivityVolumeListUseCase,
-        private readonly analyticProjectsCreationUseCase: AnalyticProjectsCreationUseCase,
-        private readonly analyticNotificationsDeliveryUseCase: AnalyticNotificationsDeliveryUseCase,
+        private readonly analyticDevicePlatformUseCase: AnalyticDevicePlatformUseCase,
+        private readonly analyticDevicePushTokenUseCase: AnalyticDevicePushTokenUseCase,
+        private readonly analyticDevicePerUserUseCase: AnalyticDevicePerUserUseCase,
+        private readonly analyticDeviceInactivityUseCase: AnalyticDeviceInactivityUseCase,
+        private readonly analyticApiKeyActiveExpiredUseCase: AnalyticApiKeyActiveExpiredUseCase,
+        private readonly analyticTermPolicyAcceptanceRateUseCase: AnalyticTermPolicyAcceptanceRateUseCase,
+        private readonly analyticWorkspaceCreationUseCase: AnalyticWorkspaceCreationUseCase,
+        private readonly analyticWorkspaceInviteFunnelUseCase: AnalyticWorkspaceInviteFunnelUseCase,
+        private readonly analyticWorkspaceJoinOutcomesUseCase: AnalyticWorkspaceJoinOutcomesUseCase,
+        private readonly analyticWorkspaceMembershipListUseCase: AnalyticWorkspaceMembershipListUseCase,
+        private readonly analyticWorkspaceActivityVolumeListUseCase: AnalyticWorkspaceActivityVolumeListUseCase,
+        private readonly analyticProjectCreationUseCase: AnalyticProjectCreationUseCase,
+        private readonly analyticNotificationDeliveryUseCase: AnalyticNotificationDeliveryUseCase,
         private readonly analyticCredentialStuffingSummaryUseCase: AnalyticCredentialStuffingSummaryUseCase,
         private readonly analyticCredentialStuffingListUseCase: AnalyticCredentialStuffingListUseCase,
         private readonly analyticAccountTakeoverSummaryUseCase: AnalyticAccountTakeoverSummaryUseCase,
@@ -244,7 +244,7 @@ export class AnalyticAdminController {
     ) {}
 
     @Doc({ summary: 'admin get user registration count by date range' })
-    @Response('analytic.usersRegistrations', {
+    @Response('analytic.userRegistrations', {
         schema: AnalyticMetricCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -254,19 +254,19 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/users/registrations')
-    async usersRegistrations(
+    @Get('/user/registrations')
+    async userRegistrations(
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticUsersRegistrationsUseCase.execute(query);
+        return this.analyticUserRegistrationsUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get user churn rate by date range' })
-    @Response('analytic.usersChurn', {
+    @Response('analytic.userChurn', {
         schema: AnalyticMetricRateResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -276,19 +276,19 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/users/churn')
-    async usersChurn(
+    @Get('/user/churn')
+    async userChurn(
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricRate>> {
-        return this.analyticUsersChurnUseCase.execute(query);
+        return this.analyticUserChurnUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get blocked user counts by date range' })
-    @Response('analytic.usersBlocked', {
+    @Response('analytic.userBlocked', {
         schema: AnalyticBlockedUsersResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -298,19 +298,19 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/users/blocked')
-    async usersBlocked(
+    @Get('/user/blocked')
+    async userBlocked(
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBlockedUsers>> {
-        return this.analyticUsersBlockedUseCase.execute(query);
+        return this.analyticUserBlockedUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get user sign up method distribution' })
-    @Response('analytic.usersSignUpWith', {
+    @Response('analytic.userSignUpWith', {
         schema: AnalyticBucketsResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -320,19 +320,19 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/users/sign-up-with')
-    async usersSignUpWith(
+    @Get('/user/sign-up-with')
+    async userSignUpWith(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticUsersSignUpWithUseCase.execute(query);
+        return this.analyticUserSignUpWithUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get user email verification rate' })
-    @Response('analytic.usersEmailVerification', {
+    @Response('analytic.userEmailVerification', {
         schema: AnalyticMetricRateResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -342,19 +342,19 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/users/email-verification')
-    async usersEmailVerification(
+    @Get('/user/email-verification')
+    async userEmailVerification(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricRate>> {
-        return this.analyticUsersEmailVerificationUseCase.execute(query);
+        return this.analyticUserEmailVerificationUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get user status distribution' })
-    @Response('analytic.usersStatusDistribution', {
+    @Response('analytic.userStatusDistribution', {
         schema: AnalyticBucketsResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -364,18 +364,18 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/users/status-distribution')
-    async usersStatusDistribution(): Promise<
+    @Get('/user/status-distribution')
+    async userStatusDistribution(): Promise<
         IResponseReturn<IAnalyticBucketsResult>
     > {
-        return this.analyticUsersStatusDistributionUseCase.execute();
+        return this.analyticUserStatusDistributionUseCase.execute();
     }
 
     @Doc({ summary: 'admin get user country distribution' })
-    @Response('analytic.usersCountryDistribution', {
+    @Response('analytic.userCountryDistribution', {
         schema: AnalyticBucketsResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -385,18 +385,18 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/users/country-distribution')
-    async usersCountryDistribution(): Promise<
+    @Get('/user/country-distribution')
+    async userCountryDistribution(): Promise<
         IResponseReturn<IAnalyticBucketsResult>
     > {
-        return this.analyticUsersCountryDistributionUseCase.execute();
+        return this.analyticUserCountryDistributionUseCase.execute();
     }
 
     @Doc({ summary: 'admin get user role distribution' })
-    @Response('analytic.usersRoleDistribution', {
+    @Response('analytic.userRoleDistribution', {
         schema: AnalyticBucketsResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -406,14 +406,14 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/users/role-distribution')
-    async usersRoleDistribution(): Promise<
+    @Get('/user/role-distribution')
+    async userRoleDistribution(): Promise<
         IResponseReturn<IAnalyticBucketsResult>
     > {
-        return this.analyticUsersRoleDistributionUseCase.execute();
+        return this.analyticUserRoleDistributionUseCase.execute();
     }
 
     @Doc({
@@ -421,7 +421,7 @@ export class AnalyticAdminController {
         description:
             'Counts live users whose last sign-in or token refresh falls within the last day, 7 days, and 30 days.',
     })
-    @Response('analytic.usersActive', {
+    @Response('analytic.userActive', {
         schema: AnalyticActiveUsersResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -431,12 +431,12 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/users/active')
-    async usersActive(): Promise<IResponseReturn<IAnalyticActiveUsers>> {
-        return this.analyticUsersActiveUseCase.execute();
+    @Get('/user/active')
+    async userActive(): Promise<IResponseReturn<IAnalyticActiveUsers>> {
+        return this.analyticUserActiveUseCase.execute();
     }
 
     @Doc({ summary: 'admin get login frequency by date range' })
@@ -450,7 +450,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/auth/login-frequency')
@@ -472,7 +472,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/auth/login-method')
@@ -494,7 +494,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/auth/lockout')
@@ -516,7 +516,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/auth/concurrent-sessions')
@@ -537,7 +537,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/auth/sessions-geo')
@@ -559,7 +559,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/auth/sessions-user-agent')
@@ -584,7 +584,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/auth/verification-funnel')
@@ -606,7 +606,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/auth/password-change')
@@ -628,7 +628,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/auth/forgot-password-conversion')
@@ -650,7 +650,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/auth/mfa-adoption')
@@ -659,7 +659,7 @@ export class AnalyticAdminController {
     }
 
     @Doc({ summary: 'admin get device platform distribution' })
-    @Response('analytic.devicesPlatform', {
+    @Response('analytic.devicePlatform', {
         schema: AnalyticBucketsResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -669,16 +669,16 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/devices/platform')
-    async devicesPlatform(): Promise<IResponseReturn<IAnalyticBucketsResult>> {
-        return this.analyticDevicesPlatformUseCase.execute();
+    @Get('/device/platform')
+    async devicePlatform(): Promise<IResponseReturn<IAnalyticBucketsResult>> {
+        return this.analyticDevicePlatformUseCase.execute();
     }
 
     @Doc({ summary: 'admin get device push token coverage rate' })
-    @Response('analytic.devicesPushToken', {
+    @Response('analytic.devicePushToken', {
         schema: AnalyticMetricRateResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -688,16 +688,16 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/devices/push-token')
-    async devicesPushToken(): Promise<IResponseReturn<IAnalyticMetricRate>> {
-        return this.analyticDevicesPushTokenUseCase.execute();
+    @Get('/device/push-token')
+    async devicePushToken(): Promise<IResponseReturn<IAnalyticMetricRate>> {
+        return this.analyticDevicePushTokenUseCase.execute();
     }
 
     @Doc({ summary: 'admin get device per user distribution' })
-    @Response('analytic.devicesPerUser', {
+    @Response('analytic.devicePerUser', {
         schema: AnalyticSnapshotBucketsResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -707,18 +707,18 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/devices/per-user')
-    async devicesPerUser(): Promise<
+    @Get('/device/per-user')
+    async devicePerUser(): Promise<
         IResponseReturn<IAnalyticSnapshotBucketsResult>
     > {
-        return this.analyticDevicesPerUserUseCase.execute();
+        return this.analyticDevicePerUserUseCase.execute();
     }
 
     @Doc({ summary: 'admin get inactive device count' })
-    @Response('analytic.devicesInactivity', {
+    @Response('analytic.deviceInactivity', {
         schema: AnalyticMetricCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -728,16 +728,16 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/devices/inactivity')
-    async devicesInactivity(): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticDevicesInactivityUseCase.execute();
+    @Get('/device/inactivity')
+    async deviceInactivity(): Promise<IResponseReturn<IAnalyticMetricCount>> {
+        return this.analyticDeviceInactivityUseCase.execute();
     }
 
     @Doc({ summary: 'admin get active and expired api key counts' })
-    @Response('analytic.apiKeysActiveExpired', {
+    @Response('analytic.apiKeyActiveExpired', {
         schema: AnalyticApiKeyActiveExpiredResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -747,18 +747,18 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/api-keys/active-expired')
-    async apiKeysActiveExpired(): Promise<
+    @Get('/api-key/active-expired')
+    async apiKeyActiveExpired(): Promise<
         IResponseReturn<IAnalyticApiKeyActiveExpired>
     > {
-        return this.analyticApiKeysActiveExpiredUseCase.execute();
+        return this.analyticApiKeyActiveExpiredUseCase.execute();
     }
 
     @Doc({ summary: 'admin get term policy acceptance rate' })
-    @Response('analytic.termPoliciesAcceptanceRate', {
+    @Response('analytic.termPolicyAcceptanceRate', {
         schema: AnalyticTermPolicyAcceptanceRateResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -768,19 +768,19 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/term-policies/acceptance-rate')
-    async termPoliciesAcceptanceRate(
+    @Get('/term-policy/acceptance-rate')
+    async termPolicyAcceptanceRate(
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticTermPolicyAcceptanceRate>> {
-        return this.analyticTermPoliciesAcceptanceRateUseCase.execute(query);
+        return this.analyticTermPolicyAcceptanceRateUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get workspace creation count by date range' })
-    @Response('analytic.workspacesCreation', {
+    @Response('analytic.workspaceCreation', {
         schema: AnalyticMetricCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -790,19 +790,19 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/workspaces/creation')
-    async workspacesCreation(
+    @Get('/workspace/creation')
+    async workspaceCreation(
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticWorkspacesCreationUseCase.execute(query);
+        return this.analyticWorkspaceCreationUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get workspace invite funnel by date range' })
-    @Response('analytic.workspacesInviteFunnel', {
+    @Response('analytic.workspaceInviteFunnel', {
         schema: AnalyticStatusCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -812,19 +812,19 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/workspaces/invite-funnel')
-    async workspacesInviteFunnel(
+    @Get('/workspace/invite-funnel')
+    async workspaceInviteFunnel(
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
-        return this.analyticWorkspacesInviteFunnelUseCase.execute(query);
+        return this.analyticWorkspaceInviteFunnelUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get workspace join request outcomes by date range' })
-    @Response('analytic.workspacesJoinOutcomes', {
+    @Response('analytic.workspaceJoinOutcomes', {
         schema: AnalyticStatusCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -834,15 +834,15 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/workspaces/join-outcomes')
-    async workspacesJoinOutcomes(
+    @Get('/workspace/join-outcomes')
+    async workspaceJoinOutcomes(
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
-        return this.analyticWorkspacesJoinOutcomesUseCase.execute(query);
+        return this.analyticWorkspaceJoinOutcomesUseCase.execute(query);
     }
 
     @Doc({
@@ -850,7 +850,7 @@ export class AnalyticAdminController {
         description:
             'orderBy presets: highestValue (member count descending, default), key (workspace id ascending).',
     })
-    @ResponsePagination('analytic.workspacesMembershipList', {
+    @ResponsePagination('analytic.workspaceMembershipList', {
         schema: AnalyticWorkspaceCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -860,22 +860,22 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/workspaces/membership/list')
-    async workspacesMembershipList(
+    @Get('/workspace/membership/list')
+    async workspaceMembershipList(
         @Query({ schema: AnalyticSnapshotListRequestSchema })
         query: AnalyticSnapshotListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
-        return this.analyticWorkspacesMembershipListUseCase.execute(query);
+        return this.analyticWorkspaceMembershipListUseCase.execute(query);
     }
 
     @Doc({
         summary: 'admin get activity volume per workspace by date range',
         description: 'orderBy presets: mostCount (count descending, default).',
     })
-    @ResponsePagination('analytic.workspacesActivityVolumeList', {
+    @ResponsePagination('analytic.workspaceActivityVolumeList', {
         schema: AnalyticWorkspaceCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -885,19 +885,19 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/workspaces/activity-volume/list')
-    async workspacesActivityVolumeList(
-        @Query({ schema: AnalyticWorkspacesActivityVolumeListRequestSchema })
-        query: AnalyticWorkspacesActivityVolumeListRequestDto
+    @Get('/workspace/activity-volume/list')
+    async workspaceActivityVolumeList(
+        @Query({ schema: AnalyticWorkspaceActivityVolumeListRequestSchema })
+        query: AnalyticWorkspaceActivityVolumeListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticWorkspaceCount>> {
-        return this.analyticWorkspacesActivityVolumeListUseCase.execute(query);
+        return this.analyticWorkspaceActivityVolumeListUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get project creation counts by date range' })
-    @Response('analytic.projectsCreation', {
+    @Response('analytic.projectCreation', {
         schema: AnalyticProjectCreationResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -907,15 +907,15 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/projects/creation')
-    async projectsCreation(
+    @Get('/project/creation')
+    async projectCreation(
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticProjectCreation>> {
-        return this.analyticProjectsCreationUseCase.execute(query);
+        return this.analyticProjectCreationUseCase.execute(query);
     }
 
     @Doc({
@@ -923,7 +923,7 @@ export class AnalyticAdminController {
         description:
             'Counts delivery rows created in the date range per channel. Sent means sentAt is set; failed means processedAt is set and sentAt is null; pending means both are null. A delivery being sent or retried counts as failed until sentAt lands, because the email and sms flows stamp processedAt before the send.',
     })
-    @Response('analytic.notificationsDelivery', {
+    @Response('analytic.notificationDelivery', {
         schema: AnalyticNotificationDeliveryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -933,15 +933,15 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @Get('/notifications/delivery')
-    async notificationsDelivery(
+    @Get('/notification/delivery')
+    async notificationDelivery(
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticNotificationDeliveryResult>> {
-        return this.analyticNotificationsDeliveryUseCase.execute(query);
+        return this.analyticNotificationDeliveryUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get credential stuffing fraud summary' })
@@ -955,7 +955,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/credential-stuffing')
@@ -980,7 +980,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/credential-stuffing/list')
@@ -1002,7 +1002,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/account-takeover')
@@ -1025,7 +1025,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/account-takeover/list')
@@ -1047,7 +1047,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/mass-registration')
@@ -1070,7 +1070,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/mass-registration/list')
@@ -1092,7 +1092,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/password-reset-enumeration')
@@ -1117,7 +1117,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/password-reset-enumeration/list')
@@ -1139,7 +1139,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/shared-fingerprint')
@@ -1162,7 +1162,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/shared-fingerprint/list')
@@ -1184,7 +1184,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/session-after-admin')
@@ -1207,7 +1207,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/session-after-admin/list')
@@ -1229,7 +1229,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/forgot-password-token-abuse')
@@ -1254,7 +1254,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/forgot-password-token-abuse/list')
@@ -1280,7 +1280,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/risk-score/list')
@@ -1302,7 +1302,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/risk-score/user/:userId')
@@ -1324,7 +1324,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/impossible-travel')
@@ -1349,7 +1349,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/impossible-travel/list')
@@ -1371,7 +1371,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/login-spike-ip')
@@ -1396,7 +1396,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/login-spike-ip/list')
@@ -1418,7 +1418,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/failed-login-spike')
@@ -1443,7 +1443,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/failed-login-spike/list')
@@ -1465,7 +1465,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/device-proliferation')
@@ -1490,7 +1490,7 @@ export class AnalyticAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/device-proliferation/list')

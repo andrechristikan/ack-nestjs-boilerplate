@@ -17,7 +17,8 @@ export interface IUserSocialRepository {
         tx: IDatabaseTransactionClient,
         userId: string,
         provider: EnumUserLoginWith,
-        subject: string
+        subject: string,
+        createdBy: string
     ): Promise<void>;
     deleteByUserInTx(
         tx: IDatabaseTransactionClient,

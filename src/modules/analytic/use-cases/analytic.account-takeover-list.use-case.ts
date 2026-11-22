@@ -30,6 +30,6 @@ export class AnalyticAccountTakeoverListUseCase implements IAppUseCase<
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticFraudService.accountTakeoverList(params);
+        return this.analyticFraudService.getAccountTakeoverList(params);
     }
 }

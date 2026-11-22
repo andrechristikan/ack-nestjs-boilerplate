@@ -35,6 +35,7 @@ A value has one layer:
 
 - An environment key is its config path in `UPPER_SNAKE_CASE`, segments and camelCase words joined by `_`: `mfa.totp.encryptionSecret` is `MFA_TOTP_ENCRYPTION_SECRET`, and Sentry has its own `sentry` namespace for `SENTRY_DSN`. A key has one owning path; another config may derive from it (`doc.name` from `APP_NAME`). The config factory spec asserts it for every `AppEnvSchema` key (`testing.md`).
 - One vocabulary in both layers: a boolean ends in `enabled`; a list is plural, one key for every accepted value (`AUTH_SOCIAL_APPLE_CLIENT_IDS`); a lifetime is `expiresIn<Unit>`; a count of tries is `maxAttempts`; a placeholder string ends in `Pattern`; an e-mail address ends in `Address`; a root secret is `Secret`; AWS credentials are `accessKeyId` and `secretAccessKey`; a `Url` key holds a full URL, read as given, never a bare host (`AWS_S3_PUBLIC_CDN_URL`).
+- A key carrying a dependency's own option keeps that option's name (`redis.queue.maxRetriesPerRequest`). Sibling objects of one group that repeat the same key names are flattened so the last segment names its subject (`analytic.fraud.credentialStuffingWindowInMs`, `user.createTimeoutInMs`).
 
 ## Files
 

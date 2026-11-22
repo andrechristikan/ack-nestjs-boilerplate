@@ -29,7 +29,7 @@ describe('AnalyticSessionAfterAdminSummaryUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticFraudService.sessionAfterAdminSummary.mockResolvedValue({
+            analyticFraudService.getSessionAfterAdminSummary.mockResolvedValue({
                 count: 6,
                 windowStart: null,
                 windowEnd: null,
@@ -47,7 +47,7 @@ describe('AnalyticSessionAfterAdminSummaryUseCase', () => {
                 },
             });
             expect(
-                analyticFraudService.sessionAfterAdminSummary
+                analyticFraudService.getSessionAfterAdminSummary
             ).toHaveBeenCalledWith();
         });
     });

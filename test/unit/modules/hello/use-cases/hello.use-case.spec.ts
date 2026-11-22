@@ -61,7 +61,6 @@ describe('HelloUseCase', () => {
                 data: {
                     date: {
                         iso: '2026-01-01T00:00:00.000Z',
-                        timestamp: 1767225600000,
                     },
                     app: {
                         name: 'Ack NestJS Boilerplate',

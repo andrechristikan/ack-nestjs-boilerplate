@@ -81,7 +81,7 @@ describe('ResponseMetadataService', () => {
 
             expect(result).toEqual<ResponseMetadataDto>({
                 language: EnumMessageLanguage.en,
-                timestamp: today.getTime(),
+                timestamp: '2026-01-01T07:00:00.000+07:00',
                 timezone: 'Asia/Jakarta',
                 version: '2',
                 repoVersion: '1.0.0',
@@ -103,7 +103,7 @@ describe('ResponseMetadataService', () => {
 
             expect(result).toMatchObject({
                 language: 'id',
-                timestamp: today.getTime(),
+                timestamp: '2026-01-01T07:00:00.000+07:00',
                 timezone: 'Asia/Jakarta',
                 version: '1',
                 repoVersion: '1.0.0',
@@ -161,7 +161,7 @@ describe('ResponseMetadataService', () => {
             const response: MockProxy<Response> = mock<Response>();
             const metadata: ResponseMetadataDto = {
                 language: EnumMessageLanguage.en,
-                timestamp: today.getTime(),
+                timestamp: '2026-01-01T07:00:00.000+07:00',
                 timezone: 'Asia/Jakarta',
                 version: '1',
                 repoVersion: '1.0.0',
@@ -213,7 +213,7 @@ describe('ResponseMetadataService', () => {
             const response: MockProxy<Response> = mock<Response>();
             const metadata: ResponseMetadataDto = {
                 language: EnumMessageLanguage.en,
-                timestamp: today.getTime(),
+                timestamp: '2026-01-01T07:00:00.000+07:00',
                 timezone: 'Asia/Jakarta',
                 version: '1',
                 repoVersion: '1.0.0',

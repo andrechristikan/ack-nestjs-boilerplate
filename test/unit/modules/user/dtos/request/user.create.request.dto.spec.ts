@@ -63,4 +63,16 @@ describe('UserCreateRequestSchema', () => {
             expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
         ]);
     });
+
+    it('trims the name and rejects a whitespace-only name', () => {
+        expect(
+            UserCreateRequestSchema.parse({ ...payload, name: '  John  ' }).name
+        ).toBe('John');
+        expect(
+            UserCreateRequestSchema.safeParse({ ...payload, name: '   ' }).error
+                ?.issues
+        ).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_small' }),
+        ]);
+    });
 });

@@ -7,6 +7,7 @@ import {
     EnumAnalyticAnomalySignal,
     EnumAnalyticFraudSignal,
 } from '@modules/analytic/enums/analytic.enum';
+import { AnalyticCacheEmptyToken } from '@modules/analytic/constants/analytic.constant';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
@@ -23,6 +24,12 @@ describe('AnalyticCache', () => {
                 'Dashboard:{metric}:{start}:{end}:{page}:{perPage}',
             'analytic.cache.workspaceSummaryKeyPattern':
                 'Workspace:{workspaceId}:Summary:{start}:{end}',
+            'analytic.cache.workspaceInviteFunnelKeyPattern':
+                'Workspace:{workspaceId}:InviteFunnel:{start}:{end}',
+            'analytic.cache.workspaceJoinOutcomesKeyPattern':
+                'Workspace:{workspaceId}:JoinOutcomes:{start}:{end}',
+            'analytic.cache.workspaceMemberRolesKeyPattern':
+                'Workspace:{workspaceId}:MemberRoles',
             'analytic.cache.anomalySummaryKeyPattern':
                 'Anomaly:{signal}:{window}',
             'analytic.cache.fraudSummaryKeyPattern': 'Fraud:{signal}:{window}',
@@ -70,14 +77,16 @@ describe('AnalyticCache', () => {
     });
 
     describe('buildDashboardKey', () => {
-        it('builds the dashboard key from the pattern', () => {
+        it('builds the dashboard key with the ISO string of a date and the empty token for null', () => {
             const result = cache.buildDashboardKey(
                 'users.registrations',
-                'start',
-                'end'
+                new Date('2025-01-01T00:00:00.000Z'),
+                null
             );
 
-            expect(result).toBe('Dashboard:users.registrations:start:end');
+            expect(result).toBe(
+                `Dashboard:users.registrations:2025-01-01T00:00:00.000Z:${AnalyticCacheEmptyToken}`
+            );
         });
     });
 
@@ -85,14 +94,14 @@ describe('AnalyticCache', () => {
         it('builds the paged dashboard key from its own pattern', () => {
             const result = cache.buildDashboardPageKey(
                 'workspaces.membership',
-                'start',
-                'end',
+                new Date('2025-01-01T00:00:00.000Z'),
+                null,
                 2,
                 20
             );
 
             expect(result).toBe(
-                'Dashboard:workspaces.membership:start:end:2:20'
+                `Dashboard:workspaces.membership:2025-01-01T00:00:00.000Z:${AnalyticCacheEmptyToken}:2:20`
             );
         });
     });
@@ -101,11 +110,56 @@ describe('AnalyticCache', () => {
         it('builds the workspace summary key from its own pattern', () => {
             const result = cache.buildWorkspaceSummaryKey(
                 'ws-1',
-                'start',
-                'end'
+                null,
+                new Date('2025-02-01T00:00:00.000Z')
             );
 
-            expect(result).toBe('Workspace:ws-1:Summary:start:end');
+            expect(result).toBe(
+                `Workspace:ws-1:Summary:${AnalyticCacheEmptyToken}:2025-02-01T00:00:00.000Z`
+            );
+        });
+    });
+
+    describe('buildWorkspaceInviteFunnelKey', () => {
+        it('fills the pattern and separates two workspaces', () => {
+            const start = new Date('2025-01-01T00:00:00.000Z');
+            const end = new Date('2025-02-01T00:00:00.000Z');
+
+            expect(
+                cache.buildWorkspaceInviteFunnelKey('ws-1', start, end)
+            ).toBe(
+                'Workspace:ws-1:InviteFunnel:2025-01-01T00:00:00.000Z:2025-02-01T00:00:00.000Z'
+            );
+            expect(
+                cache.buildWorkspaceInviteFunnelKey('ws-2', start, end)
+            ).not.toBe(cache.buildWorkspaceInviteFunnelKey('ws-1', start, end));
+        });
+    });
+
+    describe('buildWorkspaceJoinOutcomesKey', () => {
+        it('fills the pattern and separates two workspaces', () => {
+            const start = new Date('2025-01-01T00:00:00.000Z');
+            const end = new Date('2025-02-01T00:00:00.000Z');
+
+            expect(
+                cache.buildWorkspaceJoinOutcomesKey('ws-1', start, end)
+            ).toBe(
+                'Workspace:ws-1:JoinOutcomes:2025-01-01T00:00:00.000Z:2025-02-01T00:00:00.000Z'
+            );
+            expect(
+                cache.buildWorkspaceJoinOutcomesKey('ws-2', start, end)
+            ).not.toBe(cache.buildWorkspaceJoinOutcomesKey('ws-1', start, end));
+        });
+    });
+
+    describe('buildWorkspaceMemberRolesKey', () => {
+        it('fills the pattern with the workspace id and no date', () => {
+            expect(cache.buildWorkspaceMemberRolesKey('ws-1')).toBe(
+                'Workspace:ws-1:MemberRoles'
+            );
+            expect(cache.buildWorkspaceMemberRolesKey('ws-2')).toBe(
+                'Workspace:ws-2:MemberRoles'
+            );
         });
     });
 
@@ -116,7 +170,7 @@ describe('AnalyticCache', () => {
                 '3600000'
             );
 
-            expect(result).toBe('Anomaly:failed-login-spike:3600000');
+            expect(result).toBe('Anomaly:failedLoginSpike:3600000');
         });
     });
 
@@ -127,7 +181,7 @@ describe('AnalyticCache', () => {
                 '86400000'
             );
 
-            expect(result).toBe('Fraud:mass-registration:86400000');
+            expect(result).toBe('Fraud:massRegistration:86400000');
         });
     });
 });

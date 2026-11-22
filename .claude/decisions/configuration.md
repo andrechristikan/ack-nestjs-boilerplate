@@ -8,6 +8,13 @@ Rule: `config.md`, Names.
 
 - The same words under a free prefix (`CACHE_REDIS_URL` for `redis.cache.url`): no spec can check it, and a reader still searches for the file that reads the key.
 
+### A config value whose bare segment loses its subject gets a flattened key
+
+Rule: `config.md`, Names.
+
+- The bare segment as the field (`windowInMs` for `analytic.fraud.credentialStuffing.windowInMs`): a class reading several signals holds several fields of one name, and none says which signal it bounds.
+- An earlier segment prefixed to the field over sibling objects of one group repeating key names (`credentialStuffingWindowInMs` over `analytic.fraud.credentialStuffing.windowInMs`): the key and the field holding it are two spellings, and a search for one misses the other.
+
 ### A value read at decoration or schema-definition time is a constant
 
 Rule: `config.md`, Layers.

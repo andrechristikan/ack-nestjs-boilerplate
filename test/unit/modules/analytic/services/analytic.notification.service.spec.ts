@@ -7,15 +7,14 @@ import {
 import { CacheService } from '@common/cache/services/cache.service';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import { AnalyticNotificationDeliveryCacheSchema } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticNotificationRepository } from '@modules/analytic/repositories/analytic.notification.repository';
 import { AnalyticNotificationService } from '@modules/analytic/services/analytic.notification.service';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AnalyticNotificationDeliveryCacheSchema } from '@modules/analytic/dtos/analytic.notification-delivery-cache.dto';
 
 describe('AnalyticNotificationService', () => {
     const dashboardTtlInMs = 1800000;
@@ -35,7 +34,8 @@ describe('AnalyticNotificationService', () => {
 
     beforeEach(async () => {
         analyticCache.buildDashboardKey.mockImplementation(
-            (metric, start, end) => `${metric}:${start}:${end}`
+            (metric, start, end) =>
+                `${metric}:${start?.toISOString() ?? '_'}:${end?.toISOString() ?? '_'}`
         );
         cacheService.readThrough.mockImplementation(
             async (_key, _schema, _ttlInMs, loader) => loader()
@@ -46,14 +46,11 @@ describe('AnalyticNotificationService', () => {
                 AnalyticNotificationService,
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: CacheService, useValue: cacheService },
-                AnalyticDateUtil,
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
                         ...TestUnitKitConfigValues,
-                        'analytic.cache.windowTokenPattern':
-                            'Window:{start}:{end}',
                     }),
                 },
                 {
@@ -66,7 +63,7 @@ describe('AnalyticNotificationService', () => {
         service = module.get(AnalyticNotificationService);
     });
 
-    describe('notificationsDelivery', () => {
+    describe('getNotificationDelivery', () => {
         it('reads through the dashboard key and returns the repository rows under channels', async () => {
             const rows = [
                 {
@@ -81,19 +78,19 @@ describe('AnalyticNotificationService', () => {
                 rows
             );
 
-            const result = await service.notificationsDelivery(
+            const result = await service.getNotificationDelivery(
                 startDate,
                 endDate
             );
 
             expect(result).toEqual({ channels: rows });
             expect(analyticCache.buildDashboardKey).toHaveBeenCalledWith(
-                EnumAnalyticDashboardMetric.notificationsDelivery,
-                startToken,
-                endToken
+                EnumAnalyticDashboardMetric.notificationDelivery,
+                startDate,
+                endDate
             );
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.notificationsDelivery}:${startToken}:${endToken}`,
+                `${EnumAnalyticDashboardMetric.notificationDelivery}:${startToken}:${endToken}`,
                 AnalyticNotificationDeliveryCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
@@ -106,7 +103,7 @@ describe('AnalyticNotificationService', () => {
         it('answers an empty channels list when the repository finds no row', async () => {
             analyticNotificationRepository.groupDelivery.mockResolvedValue([]);
 
-            const result = await service.notificationsDelivery(
+            const result = await service.getNotificationDelivery(
                 startDate,
                 endDate
             );

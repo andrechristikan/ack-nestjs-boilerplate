@@ -23,7 +23,7 @@ export class AnalyticAuthVerificationFunnelUseCase implements IAppUseCase<
         IResponseReturn<IAnalyticVerificationFunnels>
     > {
         const range = this.analyticDateService.requireRange(startDate, endDate);
-        const data = await this.analyticAuthService.authVerificationFunnel(
+        const data = await this.analyticAuthService.getAuthVerificationFunnel(
             range.startDate,
             range.endDate
         );

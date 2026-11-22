@@ -5,7 +5,7 @@ import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IPasswordHistoryCreate } from '@modules/password-history/interfaces/password-history.interface';
 import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type { IUserCreateActivity } from '@modules/user/interfaces/user.create.interface';
@@ -13,8 +13,8 @@ import type {
     IUser,
     IUserCreateContract,
     IUserCreateWithWorkspaceInput,
-    IUserSignUpWorkspaceContext,
-    IUserSignUpWorkspacePersonal,
+    IUserCreateWorkspaceContext,
+    IUserCreateWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -79,7 +79,7 @@ export class UserCreateUtil {
 
         if (
             workspaceContext.type ===
-            EnumUserSignUpWorkspaceContextType.personal
+            EnumUserCreateWorkspaceContextType.personal
         ) {
             activities.push({
                 action: personalWorkspaceAction,
@@ -114,7 +114,7 @@ export class UserCreateUtil {
 
     buildPersonalWorkspaceContexts(
         usernames: string[]
-    ): IUserSignUpWorkspacePersonal[] {
+    ): IUserCreateWorkspacePersonal[] {
         return usernames.map(username => {
             const workspaceId = this.databaseUtil.createId();
             const slugCandidates =
@@ -129,7 +129,7 @@ export class UserCreateUtil {
             );
 
             return {
-                type: EnumUserSignUpWorkspaceContextType.personal,
+                type: EnumUserCreateWorkspaceContextType.personal,
                 workspaceId,
                 slugCandidates,
                 name,
@@ -140,7 +140,7 @@ export class UserCreateUtil {
     buildSignUpWorkspaceContext(
         invite: WorkspaceInvite | null,
         username: string
-    ): IUserSignUpWorkspaceContext {
+    ): IUserCreateWorkspaceContext {
         if (invite === null) {
             const personalContexts = this.buildPersonalWorkspaceContexts([
                 username,
@@ -150,7 +150,7 @@ export class UserCreateUtil {
         }
 
         return {
-            type: EnumUserSignUpWorkspaceContextType.invite,
+            type: EnumUserCreateWorkspaceContextType.invite,
             workspaceId: invite.workspaceId,
             workspaceInviteId: invite.id,
             invitedByUserId: invite.invitedByUserId,

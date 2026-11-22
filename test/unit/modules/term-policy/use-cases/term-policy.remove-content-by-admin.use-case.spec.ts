@@ -15,7 +15,6 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
-import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
@@ -70,9 +69,6 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext('admin-1');
-    const body: TermPolicyRemoveContentRequestDto = {
-        language: EnumMessageLanguage.en,
-    };
     const prepared: ITermPolicyContentPrepared<ITermPolicyContent, null> = {
         termPolicy,
         contents: [],
@@ -122,7 +118,7 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     'term-policy-1',
-                    body
+                    EnumMessageLanguage.en
                 )
             ).rejects.toBe(failure);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
@@ -136,7 +132,7 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 'term-policy-1',
-                body
+                EnumMessageLanguage.en
             );
 
             expect(result).toEqual({});
@@ -166,7 +162,7 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     'term-policy-1',
-                    body
+                    EnumMessageLanguage.en
                 )
             ).rejects.toBe(failure);
         });
@@ -185,7 +181,7 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     'term-policy-1',
-                    body
+                    EnumMessageLanguage.en
                 )
             ).rejects.toMatchObject({
                 module: 'termPolicy',
@@ -205,7 +201,7 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     'term-policy-1',
-                    body
+                    EnumMessageLanguage.en
                 )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,

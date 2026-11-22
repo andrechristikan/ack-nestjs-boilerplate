@@ -22,8 +22,8 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 import { RoleService } from '@modules/role/services/role.service';
 import { UserService } from '@modules/user/services/user.service';
+import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
-import type { IRole } from '@modules/role/interfaces/role.interface';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type { ISession } from '@modules/session/interfaces/session.interface';
@@ -37,18 +37,6 @@ describe('SessionRevokeByAdminUseCase', () => {
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const tx = {} as IDatabaseTransactionClient;
     const revokedAt = new Date('2026-01-05T00:00:00.000Z');
-    const userRole: IRole = {
-        id: 'role-user',
-        name: 'user',
-        type: EnumRoleType.user,
-        isImmutable: false,
-    };
-    const superAdminRole: IRole = {
-        id: 'role-root',
-        name: 'superadmin',
-        type: EnumRoleType.superAdmin,
-        isImmutable: false,
-    };
     const session: ISession = {
         id: 'session-1',
         userId: 'user-1',
@@ -102,6 +90,24 @@ describe('SessionRevokeByAdminUseCase', () => {
             policies: [],
         },
     };
+    const targetUser: IUser = {
+        ...buildUser('user-1', 'jane@example.com'),
+        role: {
+            ...admin.role,
+            id: 'role-user',
+            name: 'user',
+            type: EnumRoleType.user,
+        },
+    };
+    const rootUser: IUser = {
+        ...buildUser('root-1', 'root@example.com'),
+        role: {
+            ...admin.role,
+            id: 'role-root',
+            name: 'superadmin',
+            type: EnumRoleType.superAdmin,
+        },
+    };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(admin);
@@ -141,7 +147,7 @@ describe('SessionRevokeByAdminUseCase', () => {
 
     describe('execute', () => {
         it('checks rank, then revokes as the admin passing the request context', async () => {
-            userService.getRoleById.mockResolvedValue(userRole);
+            userService.getOneWithRole.mockResolvedValue(targetUser);
             sessionService.revokeByAdminInTx.mockResolvedValue(session);
 
             const result = await useCase.execute(
@@ -154,7 +160,7 @@ describe('SessionRevokeByAdminUseCase', () => {
             );
 
             expect(result).toEqual({});
-            expect(userService.getRoleById).toHaveBeenCalledWith('user-1');
+            expect(userService.getOneWithRole).toHaveBeenCalledWith('user-1');
             expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
                 EnumRoleType.admin,
                 EnumRoleType.user
@@ -171,7 +177,7 @@ describe('SessionRevokeByAdminUseCase', () => {
         });
 
         it('rethrows the rank exception and revokes nothing when the actor does not outrank the target', async () => {
-            userService.getRoleById.mockResolvedValue(superAdminRole);
+            userService.getOneWithRole.mockResolvedValue(rootUser);
             const rankForbidden = new RoleRankForbiddenException();
             roleService.assertActorOutranks.mockImplementation(() => {
                 throw rankForbidden;
@@ -192,7 +198,7 @@ describe('SessionRevokeByAdminUseCase', () => {
         });
 
         it('rethrows the domain exception', async () => {
-            userService.getRoleById.mockResolvedValue(userRole);
+            userService.getOneWithRole.mockResolvedValue(targetUser);
             const failure = new SessionNotFoundException();
             sessionService.revokeByAdminInTx.mockRejectedValue(failure);
 
@@ -209,7 +215,7 @@ describe('SessionRevokeByAdminUseCase', () => {
         });
 
         it('answers SessionNotFoundException on a write conflict', async () => {
-            userService.getRoleById.mockResolvedValue(userRole);
+            userService.getOneWithRole.mockResolvedValue(targetUser);
             databaseService.withTransaction.mockRejectedValue(
                 buildPrismaKnownRequestError('P2034')
             );
@@ -231,7 +237,7 @@ describe('SessionRevokeByAdminUseCase', () => {
         });
 
         it('wraps any other failure in the unknown exception', async () => {
-            userService.getRoleById.mockResolvedValue(userRole);
+            userService.getOneWithRole.mockResolvedValue(targetUser);
             const failure = new Error('database exploded');
             databaseService.withTransaction.mockRejectedValue(failure);
 
@@ -249,6 +255,32 @@ describe('SessionRevokeByAdminUseCase', () => {
                 statusCode: EnumAppStatusCodeError.unknown,
                 rawError: failure,
             });
+        });
+
+        it('rejects with the blocked-user exception and opens no transaction when the target is blocked', async () => {
+            const blocked = new UserBlockedInvalidException();
+            userService.getOneWithRole.mockResolvedValue(targetUser);
+            userService.assertUnblocked.mockImplementation(() => {
+                throw blocked;
+            });
+
+            const rejection = useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'user-1',
+                'session-1'
+            );
+
+            await expect(rejection).rejects.toMatchObject({
+                module: 'user',
+                statusCode: blocked.statusCode,
+            });
+            expect(userService.assertUnblocked).toHaveBeenCalledWith(
+                targetUser
+            );
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
     });
 });

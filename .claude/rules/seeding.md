@@ -26,7 +26,7 @@ src/migration/
 - A seed writes its audit fields explicitly: `createdBy` on every seeded row, and `updatedBy` on every row whose model carries it, including the update branch of an upsert and every nested row, carry `MigrationUserSuperAdminId` from `src/migration/data/migration.user.data.ts`.
 - A seed's create writes `null` into each nullable column a read filters by `null` (`repository.md`).
 - A missing data prerequisite (roles, countries, term policies, seeded users) logs an error and returns.
-- A seed whose integration is unset logs a `warn` and returns: it checks `isInitialized()` first (`MigrationTemplateEmailNotificationSeed.seed`, `src/migration/seeds/migration.template-notification.seed.ts`), and `awsS3Config` also needs `AWS_S3_IAM_PRINCIPAL_ARN`. A failed write is wrapped and thrown with no log before it: `throw new AppUnknownException(error)` (`exceptions.md`, `logging.md`).
+- A seed whose integration is unset logs a `warn` and returns: it checks `isInitialized()` first (`MigrationTemplateEmailNotificationSeed.seed`, `src/migration/seeds/migration.template-email-notification.seed.ts`), and `awsS3Config` also needs `AWS_S3_IAM_PRINCIPAL_ARN`. A failed write is wrapped and thrown with no log before it: `throw new AppUnknownException(error)` (`exceptions.md`, `logging.md`).
 - A transaction opens through `this.databaseService.withTransaction` with `database.seedTransactionTimeoutInMs`; hashing, key drawing, and row building happen before the callback so the transaction holds only statements.
 
 ## Outside the layering

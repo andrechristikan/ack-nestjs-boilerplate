@@ -19,7 +19,7 @@ import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import type { UserLoginPasskeyRequestDto } from '@modules/user/dtos/request/user.login-passkey.request.dto';
-import type { IUserLoginTokenOutcome } from '@modules/user/interfaces/user.interface';
+import type { IUserAuthTokenOutcome } from '@modules/user/interfaces/user.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { Injectable } from '@nestjs/common';
@@ -27,7 +27,7 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class UserLoginWithPasskeyUseCase implements IAppUseCase<
     [IRequestContext, IApiKeyContext, UserLoginPasskeyRequestDto],
-    IResponseReturn<IUserLoginTokenOutcome>
+    IResponseReturn<IUserAuthTokenOutcome>
 > {
     constructor(
         private readonly userAuthService: UserAuthService,
@@ -51,7 +51,7 @@ export class UserLoginWithPasskeyUseCase implements IAppUseCase<
             from,
             device,
         }: UserLoginPasskeyRequestDto
-    ): Promise<IResponseReturn<IUserLoginTokenOutcome>> {
+    ): Promise<IResponseReturn<IUserAuthTokenOutcome>> {
         const [{ webAuthnChallenge }, passkey] = await Promise.all([
             this.mfaChallengeService.get(
                 challengeToken,

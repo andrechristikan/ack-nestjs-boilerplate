@@ -5,7 +5,7 @@ export enum EnumUserQueue {
 }
 
 /** @public */
-export enum EnumUserSignUpWorkspaceContextType {
+export enum EnumUserCreateWorkspaceContextType {
     personal = 'personal',
     invite = 'invite',
 }

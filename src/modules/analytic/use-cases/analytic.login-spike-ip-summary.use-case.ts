@@ -16,7 +16,7 @@ export class AnalyticLoginSpikeIpSummaryUseCase implements IAppUseCase<
     async execute(): Promise<
         IResponseReturn<IAnalyticAnomalyLoginSpikeIpSummary>
     > {
-        const data = await this.analyticAnomalyService.loginSpikeIpSummary();
+        const data = await this.analyticAnomalyService.getLoginSpikeIpSummary();
 
         return { data };
     }

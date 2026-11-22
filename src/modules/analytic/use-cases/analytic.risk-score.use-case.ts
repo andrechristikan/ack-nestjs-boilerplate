@@ -14,7 +14,7 @@ export class AnalyticRiskScoreUseCase implements IAppUseCase<
     async execute(
         userId: string
     ): Promise<IResponseReturn<IAnalyticFraudRiskScoreUser>> {
-        const data = await this.analyticFraudService.riskScore(userId);
+        const data = await this.analyticFraudService.getRiskScore(userId);
 
         return { data };
     }

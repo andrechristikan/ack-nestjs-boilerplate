@@ -22,7 +22,7 @@ export class AnalyticJoinOutcomesUseCase implements IAppUseCase<
         { startDate, endDate }: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
         const range = this.analyticDateService.requireRange(startDate, endDate);
-        const statuses = await this.analyticWorkspaceService.joinOutcomes(
+        const statuses = await this.analyticWorkspaceService.getJoinOutcomes(
             workspaceContext.workspace.id,
             range.startDate,
             range.endDate

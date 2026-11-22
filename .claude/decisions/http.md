@@ -18,8 +18,17 @@ Rule: `guards.md`, Guards.
 
 Rule: `filter.md`.
 
-- An open record on the metadata type: any key type-checks as metadata.
+- A record of `unknown` values on the metadata type: a nested object type-checks as metadata, where the client reads flat primitive values.
+- `Partial<ResponseMetadataDto>`: the filter overwrites every schema key, so the option could add nothing of its own.
 - No `metadata` option on the exception: the owner keeps response metadata as part of the template, and an error answering with extra keys needs the option.
+
+### Contact values are censored outside the admin scope, in the use case
+
+Rule: `security.md`, Contact values.
+
+- A censor transform in the response schema: `UserProfileResponseSchema` and the mobile-number schema embedded in it serve an admin route too.
+- Censoring the admin scope too: an admin needs the full value to support a user.
+- The full value on the user's own profile: a leaked response or a glance at the screen would still give it away.
 
 ### `PaginationQueryUtil` returns the search `where` with no type argument
 

@@ -148,6 +148,21 @@ Rule: `code-style.md`, Dates.
 
 ## Notification jobs
 
+### A step idempotency key is `{process}-{notificationId}`
+
+Rule: `effects.md`, Effects.
+
+- `{step}` kept beside the process: the step repeats the channel the queue already names, so the key carries a segment that tells no two jobs apart.
+- The step standing in for the process: the key's uniqueness is per queue and process, so the key names the process the job runs, as every business pattern does.
+
+### A sensitive notification field is sealed at rest, opened at read, and censored before it is sent
+
+Rule: `effects.md`, Payloads; `security.md`, Contact values.
+
+- Plain in `Notification.metadata`: a database reader sees the value, and every sensitive value is sealed wherever it is stored.
+- Dropped from the metadata: the in-app text fills its placeholder from the metadata, so the list could not render it.
+- The full value in the list: a leaked response or a glance at the screen would give it away.
+
 ### A notification setting is one stored row per channel and type, created at registration
 
 Rule: `notification.md`, Recipient.

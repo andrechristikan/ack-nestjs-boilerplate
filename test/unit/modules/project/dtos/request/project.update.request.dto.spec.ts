@@ -110,4 +110,19 @@ describe('ProjectUpdateRequestSchema', () => {
             expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
         ]);
     });
+
+    it('trims name and description and rejects a whitespace-only name', () => {
+        expect(
+            ProjectUpdateRequestSchema.parse({
+                name: '  Apollo  ',
+                description: '  Moon  ',
+            })
+        ).toEqual({ name: 'Apollo', description: 'Moon' });
+        expect(
+            ProjectUpdateRequestSchema.safeParse({ ...payload, name: '   ' })
+                .error?.issues
+        ).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_small' }),
+        ]);
+    });
 });

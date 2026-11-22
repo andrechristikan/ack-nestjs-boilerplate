@@ -12,7 +12,8 @@ export class AnalyticSessionAfterAdminSummaryUseCase implements IAppUseCase<
     constructor(private readonly analyticFraudService: AnalyticFraudService) {}
 
     async execute(): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        const data = await this.analyticFraudService.sessionAfterAdminSummary();
+        const data =
+            await this.analyticFraudService.getSessionAfterAdminSummary();
 
         return { data };
     }

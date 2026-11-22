@@ -79,7 +79,7 @@ describe('AnalyticAccountTakeoverListUseCase', () => {
                     },
                 ],
             };
-            analyticFraudService.accountTakeoverList.mockResolvedValue(page);
+            analyticFraudService.getAccountTakeoverList.mockResolvedValue(page);
 
             const result = await useCase.execute({
                 page: 1,
@@ -88,7 +88,7 @@ describe('AnalyticAccountTakeoverListUseCase', () => {
 
             expect(result).toEqual(page);
             expect(
-                analyticFraudService.accountTakeoverList
+                analyticFraudService.getAccountTakeoverList
             ).toHaveBeenCalledWith(pagination);
         });
     });

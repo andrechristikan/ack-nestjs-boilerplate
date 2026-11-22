@@ -84,7 +84,7 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
 
         await this.databaseService.withTransaction(async tx => {
             const [updated] = await Promise.all([
-                this.userService.updatePasswordInTx(
+                this.userPasswordService.replaceInTx(
                     tx,
                     userId,
                     password,
@@ -97,11 +97,6 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                     EnumPasswordHistoryType.admin,
                     password.passwordPeriodExpired,
                     password.passwordCreated,
-                    authContext.userId
-                ),
-                this.userPasswordService.markUnusedResetsUsedInTx(
-                    tx,
-                    userId,
                     authContext.userId
                 ),
                 this.sessionService.revokeActiveByUserInTx(

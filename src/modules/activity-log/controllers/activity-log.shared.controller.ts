@@ -1,7 +1,7 @@
 import type { ActivityLogSharedListRequestDto } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
 import { ActivityLogSharedListRequestSchema } from '@modules/activity-log/dtos/request/activity-log.shared-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestThrottleProtected } from '@common/request/decorators/request.decorator';
 import { ResponsePagination } from '@common/response/decorators/response.decorator';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
@@ -46,7 +46,7 @@ export class ActivityLogSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -72,7 +72,7 @@ export class ActivityLogSharedController {
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/workspace/list')

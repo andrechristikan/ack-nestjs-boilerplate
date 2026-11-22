@@ -1,15 +1,13 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
-import {
-    AnalyticCountRanges,
-    AnalyticDevicePerUserPipelineSchema,
-} from '@modules/analytic/constants/analytic.constant';
+import { AnalyticCountRanges } from '@modules/analytic/constants/analytic.constant';
 import type { IAnalyticDeviceRepository } from '@modules/analytic/interfaces/analytic.device-repository.interface';
 import type {
     IAnalyticCountBucket,
     IAnalyticDevicePushTokenCount,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
+import { AnalyticDevicePerUserPipelineSchema } from '@modules/analytic/dtos/analytic.device-per-user-pipeline.dto';
 
 @Injectable()
 export class AnalyticDeviceRepository implements IAnalyticDeviceRepository {

@@ -29,13 +29,15 @@ describe('AnalyticCredentialStuffingSummaryUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticFraudService.credentialStuffingSummary.mockResolvedValue({
-                count: 6,
-                windowStart: null,
-                windowEnd: null,
-                computedAt,
-                metadata: { minUniqueAccounts: 2 },
-            });
+            analyticFraudService.getCredentialStuffingSummary.mockResolvedValue(
+                {
+                    count: 6,
+                    windowStart: null,
+                    windowEnd: null,
+                    computedAt,
+                    metadata: { minUniqueAccounts: 2 },
+                }
+            );
 
             const result = await useCase.execute();
 
@@ -49,7 +51,7 @@ describe('AnalyticCredentialStuffingSummaryUseCase', () => {
                 },
             });
             expect(
-                analyticFraudService.credentialStuffingSummary
+                analyticFraudService.getCredentialStuffingSummary
             ).toHaveBeenCalledWith();
         });
     });

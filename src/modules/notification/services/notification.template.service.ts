@@ -274,7 +274,7 @@ export class NotificationTemplateService {
         }
     }
 
-    async emailGet(
+    async getEmail(
         name: INotificationTemplateName
     ): Promise<GetTemplateCommandOutput | null> {
         try {

@@ -4,7 +4,7 @@ import { Doc } from '@common/doc/decorators/doc.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import {
     RequestContext,
-    RequestThrottle,
+    RequestThrottleProtected,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
@@ -74,7 +74,7 @@ export class DeviceSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -90,7 +90,7 @@ export class DeviceSharedController {
     @Response('device.refresh')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
@@ -114,7 +114,10 @@ export class DeviceSharedController {
     @Response('device.remove')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({
+        user: true,
+        route: EnumRequestThrottleRoute.strict,
+    })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)

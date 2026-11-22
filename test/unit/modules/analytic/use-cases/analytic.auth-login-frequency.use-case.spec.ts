@@ -40,7 +40,7 @@ describe('AnalyticAuthLoginFrequencyUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticAuthService.authLoginFrequency.mockResolvedValue({
+            analyticAuthService.getAuthLoginFrequency.mockResolvedValue({
                 count: 12,
             });
 
@@ -50,17 +50,16 @@ describe('AnalyticAuthLoginFrequencyUseCase', () => {
             });
 
             expect(result).toEqual({ data: { count: 12 } });
-            expect(analyticAuthService.authLoginFrequency).toHaveBeenCalledWith(
-                startDate,
-                endDate
-            );
+            expect(
+                analyticAuthService.getAuthLoginFrequency
+            ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes the query dates to the range check', async () => {
             analyticDateService.requireRange.mockReturnValue({
                 startDate,
                 endDate,
             });
-            analyticAuthService.authLoginFrequency.mockResolvedValue({
+            analyticAuthService.getAuthLoginFrequency.mockResolvedValue({
                 count: 12,
             });
 

@@ -42,7 +42,7 @@ describe('AnalyticAuthSessionsGeoUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticAuthService.authSessionsGeo.mockResolvedValue({
+            analyticAuthService.getAuthSessionsGeo.mockResolvedValue({
                 buckets: [{ key: 'key-1', count: 7 }],
             });
 
@@ -55,7 +55,7 @@ describe('AnalyticAuthSessionsGeoUseCase', () => {
             expect(result).toEqual({
                 data: { buckets: [{ key: 'key-1', count: 7 }] },
             });
-            expect(analyticAuthService.authSessionsGeo).toHaveBeenCalledWith(
+            expect(analyticAuthService.getAuthSessionsGeo).toHaveBeenCalledWith(
                 startDate,
                 endDate
             );
@@ -72,7 +72,9 @@ describe('AnalyticAuthSessionsGeoUseCase', () => {
                 module: 'analytic',
                 statusCode: EnumAnalyticStatusCodeError.invalidDateRange,
             });
-            expect(analyticAuthService.authSessionsGeo).not.toHaveBeenCalled();
+            expect(
+                analyticAuthService.getAuthSessionsGeo
+            ).not.toHaveBeenCalled();
         });
     });
 });

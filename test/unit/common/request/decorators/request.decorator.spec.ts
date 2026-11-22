@@ -15,7 +15,7 @@ import {
 import {
     RequestContext,
     RequestEnvProtected,
-    RequestThrottle,
+    RequestThrottleProtected,
     RequestTimeout,
 } from '@common/request/decorators/request.decorator';
 import { RequestEnvGuard } from '@common/request/guards/request.env.guard';
@@ -108,13 +108,13 @@ describe('request.decorator', () => {
         });
     });
 
-    describe('RequestThrottle', () => {
+    describe('RequestThrottleProtected', () => {
         it('sets the throttle options and mounts RequestThrottleUserGuard on the handler', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
             const options = { user: true };
 
-            RequestThrottle(options)(target, 'method', descriptor);
+            RequestThrottleProtected(options)(target, 'method', descriptor);
 
             expect(
                 Reflect.getMetadata(

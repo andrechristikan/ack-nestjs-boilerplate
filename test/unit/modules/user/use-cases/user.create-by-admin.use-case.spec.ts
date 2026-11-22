@@ -38,13 +38,13 @@ import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
 import { UserService } from '@modules/user/services/user.service';
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import type {
     IUser,
     IUserCheckUsername,
     IUserCreateWithWorkspaceInput,
-    IUserSignUpWorkspacePersonal,
+    IUserCreateWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
@@ -139,8 +139,8 @@ describe('UserCreateByAdminUseCase', () => {
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         updatedBy: null,
     };
-    const personalContext: IUserSignUpWorkspacePersonal = {
-        type: EnumUserSignUpWorkspaceContextType.personal,
+    const personalContext: IUserCreateWorkspacePersonal = {
+        type: EnumUserCreateWorkspaceContextType.personal,
         workspaceId: 'workspace-bramble',
         slugCandidates: ['w-bramble', 'w-bramble-b'],
         name: "bramble2fox's Workspace",
@@ -528,7 +528,8 @@ describe('UserCreateByAdminUseCase', () => {
                 apiKeyContext,
                 [input],
                 [welcomeEffect],
-                7000
+                7000,
+                'admin-bramble'
             );
 
             expect(users).toEqual([committedUser]);
@@ -565,7 +566,8 @@ describe('UserCreateByAdminUseCase', () => {
                 apiKeyContext,
                 [input],
                 [welcomeEffect],
-                7000
+                7000,
+                'admin-bramble'
             );
 
             expect(mfaService.createInTx).toHaveBeenCalledWith(
@@ -588,7 +590,7 @@ describe('UserCreateByAdminUseCase', () => {
             );
             expect(
                 notificationService.createDefaultsManyInTx
-            ).toHaveBeenCalledWith(tx, ['user-bramble']);
+            ).toHaveBeenCalledWith(tx, ['user-bramble'], 'admin-bramble');
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 mfaService.createInTx
             );
@@ -609,7 +611,8 @@ describe('UserCreateByAdminUseCase', () => {
                 apiKeyContext,
                 [input],
                 [welcomeEffect],
-                7000
+                7000,
+                'admin-bramble'
             );
 
             expect(databaseService.withTransaction).toHaveBeenCalledWith(
@@ -629,7 +632,8 @@ describe('UserCreateByAdminUseCase', () => {
                 apiKeyContext,
                 [input],
                 [welcomeEffect],
-                5000
+                5000,
+                'admin-bramble'
             );
 
             expect(users).toEqual([committedUser]);
@@ -649,7 +653,8 @@ describe('UserCreateByAdminUseCase', () => {
                     apiKeyContext,
                     [input],
                     [welcomeEffect],
-                    5000
+                    5000,
+                    'admin-bramble'
                 )
             ).rejects.toMatchObject({
                 module: 'user',
@@ -667,7 +672,8 @@ describe('UserCreateByAdminUseCase', () => {
                     apiKeyContext,
                     [input],
                     [welcomeEffect],
-                    5000
+                    5000,
+                    'admin-bramble'
                 )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
@@ -686,7 +692,8 @@ describe('UserCreateByAdminUseCase', () => {
                     apiKeyContext,
                     [input],
                     [welcomeEffect],
-                    5000
+                    5000,
+                    'admin-bramble'
                 )
             ).rejects.toMatchObject({
                 module: 'database',

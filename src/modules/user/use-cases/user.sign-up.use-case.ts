@@ -24,10 +24,10 @@ import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type {
     IUserCreateWithWorkspaceInput,
-    IUserSignUp,
+    IUserRegistration,
     IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
@@ -118,7 +118,8 @@ export class UserSignUpUseCase implements IAppUseCase<
                             ),
                             this.notificationService.createDefaultsManyInTx(
                                 tx,
-                                userIds
+                                userIds,
+                                input.userId
                             ),
                         ]);
 
@@ -133,7 +134,7 @@ export class UserSignUpUseCase implements IAppUseCase<
 
                         if (
                             workspaceContext.type ===
-                            EnumUserSignUpWorkspaceContextType.invite
+                            EnumUserCreateWorkspaceContextType.invite
                         ) {
                             await this.workspaceInviteService.acceptOnSignUpInTx(
                                 tx,
@@ -148,7 +149,7 @@ export class UserSignUpUseCase implements IAppUseCase<
                         );
                         if (
                             workspaceContext.type ===
-                                EnumUserSignUpWorkspaceContextType.invite &&
+                                EnumUserCreateWorkspaceContextType.invite &&
                             workspaceContext.projectId &&
                             workspaceContext.projectMemberRole
                         ) {
@@ -215,7 +216,7 @@ export class UserSignUpUseCase implements IAppUseCase<
                 const exception = this.databaseUtil.toException(error);
                 const isInviteConflict =
                     workspaceContext.type ===
-                        EnumUserSignUpWorkspaceContextType.invite &&
+                        EnumUserCreateWorkspaceContextType.invite &&
                     exception instanceof DatabaseWriteConflictException;
                 if (isInviteConflict) {
                     throw new WorkspaceInviteAlreadyProcessedException();
@@ -245,7 +246,7 @@ export class UserSignUpUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         this.userService.assertEmailDeliverable();
 
-        const signUp: IUserSignUp = {
+        const signUp: IUserRegistration = {
             countryId,
             email,
             username,

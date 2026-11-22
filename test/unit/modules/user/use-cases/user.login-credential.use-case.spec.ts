@@ -41,11 +41,11 @@ import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.p
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import type {
     IUser,
-    IUserLoginOutcome,
-    IUserLoginMfaChallenge,
+    IUserAuthOutcome,
+    IUserAuthMfaChallenge,
     IUserPasswordAttemptLimit,
 } from '@modules/user/interfaces/user.interface';
-import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
+import type { IUserAuthSession } from '@modules/user/interfaces/user.auth.interface';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import type { IMfaPasskeyCredential } from '@modules/mfa/interfaces/mfa.interface';
 import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/server';
@@ -95,7 +95,7 @@ describe('UserLoginCredentialUseCase', () => {
         accessToken: 'access-token',
         refreshToken: 'refresh-token',
     };
-    const tokenOutcome: IUserLoginOutcome = {
+    const tokenOutcome: IUserAuthOutcome = {
         isMfaRequired: false,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
@@ -128,7 +128,7 @@ describe('UserLoginCredentialUseCase', () => {
     const passkeyCredentials: IMfaPasskeyCredential[] = [
         { credentialId: 'credential-bramble', transports: ['internal'] },
     ];
-    const mfaChallenge: IUserLoginMfaChallenge = {
+    const mfaChallenge: IUserAuthMfaChallenge = {
         challengeToken: 'challenge-token',
         expiresInMs: 60000,
         methods: [EnumMfaMethod.passkey, EnumMfaMethod.backupCode],
@@ -140,7 +140,7 @@ describe('UserLoginCredentialUseCase', () => {
         isNewDevice: true,
         otherOwnershipIds: [],
     } as unknown as IDeviceLoginUpsert;
-    const session: IUserLoginSession = {
+    const session: IUserAuthSession = {
         tokens,
         sessionId: 'session-bramble',
     };
@@ -761,7 +761,7 @@ describe('UserLoginCredentialUseCase', () => {
         });
 
         it('answers methods without passkey and null passkeyOptions for a TOTP-only user', async () => {
-            const totpChallenge: IUserLoginMfaChallenge = {
+            const totpChallenge: IUserAuthMfaChallenge = {
                 ...mfaChallenge,
                 methods: [EnumMfaMethod.totp, EnumMfaMethod.backupCode],
                 passkeyOptions: null,

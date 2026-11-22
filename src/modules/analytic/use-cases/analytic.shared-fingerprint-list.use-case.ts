@@ -30,6 +30,6 @@ export class AnalyticSharedFingerprintListUseCase implements IAppUseCase<
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticFraudService.sharedFingerprintList(params);
+        return this.analyticFraudService.getSharedFingerprintList(params);
     }
 }

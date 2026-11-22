@@ -6,7 +6,7 @@ import {
     EnumUserSignUpWith,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IUserCreateWithWorkspaceInput } from '@modules/user/interfaces/user.interface';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 
@@ -29,7 +29,7 @@ describe('WorkspaceUtil', () => {
         passwordHistoryType: null,
         verification: null,
         workspaceContext: {
-            type: EnumUserSignUpWorkspaceContextType.personal,
+            type: EnumUserCreateWorkspaceContextType.personal,
             workspaceId: 'workspace-1',
             slugCandidates: ['slug-a', 'slug-b'],
             name: 'User One',
@@ -41,7 +41,7 @@ describe('WorkspaceUtil', () => {
         ...personalInput,
         userId: 'user-2',
         workspaceContext: {
-            type: EnumUserSignUpWorkspaceContextType.invite,
+            type: EnumUserCreateWorkspaceContextType.invite,
             workspaceId: 'workspace-1',
             workspaceInviteId: 'invite-1',
             invitedByUserId: 'user-1',
@@ -83,7 +83,7 @@ describe('WorkspaceUtil', () => {
             const shorter: IUserCreateWithWorkspaceInput = {
                 ...personalInput,
                 workspaceContext: {
-                    type: EnumUserSignUpWorkspaceContextType.personal,
+                    type: EnumUserCreateWorkspaceContextType.personal,
                     workspaceId: 'workspace-3',
                     slugCandidates: ['slug-x'],
                     name: 'User Three',

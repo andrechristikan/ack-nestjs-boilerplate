@@ -5,16 +5,14 @@
     "update": "Project updated successfully",
     "updateSlug": "Project slug updated successfully",
     "softDelete": "Project deleted successfully",
+    "listByAdmin": "List of all projects",
+    "getByAdmin": "Project retrieved successfully",
     "member": {
         "list": "List of project members",
         "assign": "Project member assigned successfully",
         "updateRole": "Project member role updated successfully",
         "remove": "Project member removed successfully",
         "leave": "You have left the project"
-    },
-    "admin": {
-        "list": "List of all projects",
-        "get": "Project retrieved successfully"
     },
     "error": {
         "notFound": "Sorry, we couldn't find the project.",

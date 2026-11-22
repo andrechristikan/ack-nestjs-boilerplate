@@ -24,7 +24,6 @@ import type {
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
-import { FeatureFlagCacheSchema } from '@modules/feature-flag/constants/feature-flag.constant';
 import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
@@ -41,6 +40,7 @@ import type {
 } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
 import { OutboxService } from '@common/outbox/services/outbox.service';
+import { FeatureFlagCacheSchema } from '@modules/feature-flag/dtos/feature-flag.cache.dto';
 
 describe('FeatureFlagService', () => {
     const featureFlagRepository: MockProxy<FeatureFlagRepository> =
@@ -162,41 +162,6 @@ describe('FeatureFlagService', () => {
             cacheService.readThrough.mockResolvedValue(null);
 
             const result = await service.getByKey(
-                EnumFeatureFlagKey.loginWithGoogle
-            );
-
-            expect(result).toBeNull();
-        });
-    });
-
-    describe('getMetadataByKey', () => {
-        it('returns the metadata of the flag', async () => {
-            cacheService.readThrough.mockResolvedValue({
-                ...baseFlag,
-                metadata: { newFeature: true },
-            });
-
-            const result = await service.getMetadataByKey<{
-                newFeature: boolean;
-            }>(EnumFeatureFlagKey.loginWithGoogle);
-
-            expect(result).toEqual({ newFeature: true });
-        });
-
-        it('returns null when no flag is found', async () => {
-            cacheService.readThrough.mockResolvedValue(null);
-
-            const result = await service.getMetadataByKey(
-                EnumFeatureFlagKey.loginWithGoogle
-            );
-
-            expect(result).toBeNull();
-        });
-
-        it('returns null when the flag carries no metadata', async () => {
-            cacheService.readThrough.mockResolvedValue(baseFlag);
-
-            const result = await service.getMetadataByKey(
                 EnumFeatureFlagKey.loginWithGoogle
             );
 

@@ -56,11 +56,12 @@ export class DeviceRemoveByAdminUseCase implements IAppUseCase<
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
         // Sequential by design: a write after its checks
-        const targetRole = await this.userService.getRoleById(userId);
+        const target = await this.userService.getOneWithRole(userId);
         this.roleService.assertActorOutranks(
             userContext.user.role.type,
-            targetRole.type
+            target.role.type
         );
+        this.userService.assertUnblocked(target);
 
         const removedBy = authContext.userId;
         const isOwnedByOther = this.deviceUtil.isOwnedByOther(

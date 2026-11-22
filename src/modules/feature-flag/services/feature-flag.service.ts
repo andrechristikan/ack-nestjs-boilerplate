@@ -7,7 +7,6 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { FeatureFlagCacheSchema } from '@modules/feature-flag/constants/feature-flag.constant';
 import { FeatureFlagInvalidMetadataException } from '@modules/feature-flag/exceptions/feature-flag.invalid-metadata.exception';
 import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
 import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
@@ -27,6 +26,7 @@ import type {
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
+import { FeatureFlagCacheSchema } from '@modules/feature-flag/dtos/feature-flag.cache.dto';
 
 @Injectable()
 export class FeatureFlagService {
@@ -128,15 +128,6 @@ export class FeatureFlagService {
             () => this.featureFlagRepository.findOneByKey(key),
             { lease }
         );
-    }
-
-    async getMetadataByKey<T>(key: EnumFeatureFlagKey): Promise<T | null> {
-        const featureFlag = await this.getByKey(key);
-        if (featureFlag && featureFlag.metadata) {
-            return featureFlag.metadata as T;
-        }
-
-        return null;
     }
 
     async validateFeatureFlag(

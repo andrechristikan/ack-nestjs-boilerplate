@@ -68,7 +68,9 @@ describe('AnalyticMassRegistrationListUseCase', () => {
                 ...offsetPage,
                 data: [{ key: '10.0.0.1', count: 8 }],
             };
-            analyticFraudService.massRegistrationList.mockResolvedValue(page);
+            analyticFraudService.getMassRegistrationList.mockResolvedValue(
+                page
+            );
 
             const result = await useCase.execute({
                 page: 1,
@@ -77,7 +79,7 @@ describe('AnalyticMassRegistrationListUseCase', () => {
 
             expect(result).toEqual(page);
             expect(
-                analyticFraudService.massRegistrationList
+                analyticFraudService.getMassRegistrationList
             ).toHaveBeenCalledWith(pagination);
         });
     });

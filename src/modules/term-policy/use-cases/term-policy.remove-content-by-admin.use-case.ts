@@ -9,7 +9,7 @@ import { TermPolicyStatusInvalidException } from '@modules/term-policy/exception
 import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
-import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
+import type { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
@@ -20,7 +20,7 @@ export class TermPolicyRemoveContentByAdminUseCase implements IAppUseCase<
         IApiKeyContext,
         IAuthJwtAccessContext,
         string,
-        TermPolicyRemoveContentRequestDto,
+        EnumMessageLanguage,
     ],
     IResponseReturn<void>
 > {
@@ -35,7 +35,7 @@ export class TermPolicyRemoveContentByAdminUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         termPolicyId: string,
-        { language }: TermPolicyRemoveContentRequestDto
+        language: EnumMessageLanguage
     ): Promise<IResponseReturn<void>> {
         try {
             const prepared =

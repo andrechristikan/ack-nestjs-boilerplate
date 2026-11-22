@@ -49,13 +49,15 @@ export class UserSocialService {
         tx: IDatabaseTransactionClient,
         userId: string,
         provider: EnumUserLoginWith,
-        subject: string
+        subject: string,
+        createdBy: string
     ): Promise<void> {
         await this.userSocialRepository.createInTx(
             tx,
             userId,
             provider,
-            subject
+            subject,
+            createdBy
         );
     }
 

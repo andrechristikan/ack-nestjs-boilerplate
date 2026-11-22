@@ -12,7 +12,8 @@ export class AnalyticSharedFingerprintSummaryUseCase implements IAppUseCase<
     constructor(private readonly analyticFraudService: AnalyticFraudService) {}
 
     async execute(): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        const data = await this.analyticFraudService.sharedFingerprintSummary();
+        const data =
+            await this.analyticFraudService.getSharedFingerprintSummary();
 
         return { data };
     }

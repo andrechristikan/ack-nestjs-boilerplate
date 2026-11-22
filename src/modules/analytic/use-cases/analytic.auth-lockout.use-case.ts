@@ -23,7 +23,7 @@ export class AnalyticAuthLockoutUseCase implements IAppUseCase<
         IResponseReturn<IAnalyticLockoutMetrics>
     > {
         const range = this.analyticDateService.requireRange(startDate, endDate);
-        const data = await this.analyticAuthService.authLockout(
+        const data = await this.analyticAuthService.getAuthLockout(
             range.startDate,
             range.endDate
         );

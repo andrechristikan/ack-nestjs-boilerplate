@@ -16,22 +16,24 @@ import {
 } from '@generated/prisma-client/client';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
+import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
     IUserLoginSocial,
-    IUserSignUpResolved,
-    IUserSignUpWorkspacePersonal,
+    IUserRegistrationResolved,
+    IUserCreateWorkspacePersonal,
     IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
+import { UserUtil } from '@modules/user/utils/user.util';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
@@ -76,7 +78,7 @@ describe('UserRegistrationService', () => {
             passwordHistoryType: EnumPasswordHistoryType.signUp,
             verification: null,
             workspaceContext: {
-                type: EnumUserSignUpWorkspaceContextType.personal,
+                type: EnumUserCreateWorkspaceContextType.personal,
                 workspaceId: 'workspace-1',
                 slugCandidates: ['user-ochre'],
                 name: 'user-ochre',
@@ -90,21 +92,19 @@ describe('UserRegistrationService', () => {
     );
     const email = 'ochre@example.com';
 
-    const workspaceContext: IUserSignUpWorkspacePersonal = {
-        type: EnumUserSignUpWorkspaceContextType.personal,
+    const workspaceContext: IUserCreateWorkspacePersonal = {
+        type: EnumUserCreateWorkspaceContextType.personal,
         workspaceId: 'workspace-halcyon',
         slugCandidates: ['w-halcyon'],
         name: "halcyonVane's Workspace",
     };
-    const resolved: IUserSignUpResolved = {
+    const resolved: IUserRegistrationResolved = {
         roleId: 'role-halcyon',
         workspaceContext,
     };
 
     beforeEach(async () => {
-        featureFlagService.getMetadataByKey.mockResolvedValue({
-            [EnumFeatureFlagMetadataKey.signUpAllowed]: true,
-        });
+        featureFlagService.isMetadataAllowed.mockResolvedValue(true);
         userAuthService.getOneByEmail.mockResolvedValue(null);
 
         const moduleRef: TestingModule = await Test.createTestingModule({
@@ -113,6 +113,7 @@ describe('UserRegistrationService', () => {
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 UserCreateUtil,
+                UserUtil,
                 { provide: AuthPasswordService, useValue: authPasswordService },
                 UserVerificationUtil,
                 DatabaseUtil,
@@ -132,15 +133,16 @@ describe('UserRegistrationService', () => {
     });
 
     describe('isSocialSignUpAllowed', () => {
-        it('returns true when no user holds the email and signUpAllowed is true', async () => {
+        it('returns true when no user holds the email and the flag allows sign-up', async () => {
             const result = await service.isSocialSignUpAllowed(
                 email,
                 EnumUserLoginWith.socialGoogle
             );
 
             expect(result).toBe(true);
-            expect(featureFlagService.getMetadataByKey).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.loginWithGoogle
+            expect(featureFlagService.isMetadataAllowed).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.loginWithGoogle,
+                EnumFeatureFlagMetadataKey.signUpAllowed
             );
             expect(userAuthService.getOneByEmail).toHaveBeenCalledWith(email);
         });
@@ -154,42 +156,36 @@ describe('UserRegistrationService', () => {
             );
 
             expect(result).toBe(false);
-            expect(featureFlagService.getMetadataByKey).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.loginWithGoogle
-            );
-            expect(userAuthService.getOneByEmail).toHaveBeenCalledWith(email);
         });
 
-        it('returns false when the flag has no metadata', async () => {
-            featureFlagService.getMetadataByKey.mockResolvedValue(null);
+        it('returns false when the flag answers false', async () => {
+            featureFlagService.isMetadataAllowed.mockResolvedValue(false);
 
             const result = await service.isSocialSignUpAllowed(
                 email,
-                EnumUserLoginWith.socialGoogle
+                EnumUserLoginWith.socialApple
             );
 
             expect(result).toBe(false);
-            expect(featureFlagService.getMetadataByKey).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.loginWithGoogle
+            expect(featureFlagService.isMetadataAllowed).toHaveBeenCalledWith(
+                EnumFeatureFlagKey.loginWithApple,
+                EnumFeatureFlagMetadataKey.signUpAllowed
             );
-            expect(userAuthService.getOneByEmail).toHaveBeenCalledWith(email);
         });
 
-        it('returns false when signUpAllowed is false', async () => {
-            featureFlagService.getMetadataByKey.mockResolvedValue({
-                [EnumFeatureFlagMetadataKey.signUpAllowed]: false,
-            });
-
-            const result = await service.isSocialSignUpAllowed(
-                email,
-                EnumUserLoginWith.socialGoogle
+        it('rejects when the flag is not configured', async () => {
+            featureFlagService.isMetadataAllowed.mockRejectedValue(
+                new FeatureFlagNotConfiguredException(
+                    EnumFeatureFlagKey.loginWithGoogle
+                )
             );
 
-            expect(result).toBe(false);
-            expect(featureFlagService.getMetadataByKey).toHaveBeenCalledWith(
-                EnumFeatureFlagKey.loginWithGoogle
-            );
-            expect(userAuthService.getOneByEmail).toHaveBeenCalledWith(email);
+            await expect(
+                service.isSocialSignUpAllowed(
+                    email,
+                    EnumUserLoginWith.socialGoogle
+                )
+            ).rejects.toBeInstanceOf(FeatureFlagNotConfiguredException);
         });
     });
 

@@ -4,8 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IFeatureFlag } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
-import { FeatureFlagCacheSchema } from '@modules/feature-flag/constants/feature-flag.constant';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { FeatureFlagCacheSchema } from '@modules/feature-flag/dtos/feature-flag.cache.dto';
 
 describe('FeatureFlagCache', () => {
     let configService: MockProxy<ConfigService>;

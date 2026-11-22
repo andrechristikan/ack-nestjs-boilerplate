@@ -13,7 +13,6 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
-import { ApiKeyCacheSchema } from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyEndAtNotFutureException } from '@modules/api-key/exceptions/api-key.end-at-not-future.exception';
 import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
 import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
@@ -35,6 +34,7 @@ import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ApiKeyCacheSchema } from '@modules/api-key/dtos/api-key.cache.dto';
 
 @Injectable()
 export class ApiKeyService {

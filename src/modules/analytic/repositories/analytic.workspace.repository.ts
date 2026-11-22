@@ -7,11 +7,6 @@ import type {
     EnumActivityLogAction,
     Prisma,
 } from '@generated/prisma-client/client';
-import {
-    AnalyticWorkspaceActivityVolumePipelineSchema,
-    AnalyticWorkspaceMembershipPipelineSchema,
-    AnalyticWorkspaceSummaryPipelineSchema,
-} from '@modules/analytic/constants/analytic.constant';
 import type {
     IAnalyticRoleCount,
     IAnalyticSnapshotItemInput,
@@ -22,6 +17,9 @@ import type {
 import type { IAnalyticWorkspaceRepository } from '@modules/analytic/interfaces/analytic.workspace-repository.interface';
 import { AnalyticPipelineUtil } from '@modules/analytic/utils/analytic.pipeline.util';
 import { Injectable } from '@nestjs/common';
+import { AnalyticWorkspaceActivityVolumePipelineSchema } from '@modules/analytic/dtos/analytic.workspace-activity-volume-pipeline.dto';
+import { AnalyticWorkspaceMembershipPipelineSchema } from '@modules/analytic/dtos/analytic.workspace-membership-pipeline.dto';
+import { AnalyticWorkspaceSummaryPipelineSchema } from '@modules/analytic/dtos/analytic.workspace-summary-pipeline.dto';
 
 @Injectable()
 export class AnalyticWorkspaceRepository implements IAnalyticWorkspaceRepository {

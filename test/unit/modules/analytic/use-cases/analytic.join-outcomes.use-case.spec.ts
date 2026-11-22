@@ -50,7 +50,7 @@ describe('AnalyticJoinOutcomesUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticWorkspaceService.joinOutcomes.mockResolvedValue([
+            analyticWorkspaceService.getJoinOutcomes.mockResolvedValue([
                 { status: 'pending', count: 2 },
             ]);
 
@@ -62,11 +62,9 @@ describe('AnalyticJoinOutcomesUseCase', () => {
             expect(result).toEqual({
                 data: { statuses: [{ status: 'pending', count: 2 }] },
             });
-            expect(analyticWorkspaceService.joinOutcomes).toHaveBeenCalledWith(
-                'workspace-1',
-                startDate,
-                endDate
-            );
+            expect(
+                analyticWorkspaceService.getJoinOutcomes
+            ).toHaveBeenCalledWith('workspace-1', startDate, endDate);
         });
 
         it('passes the query dates to the range check', async () => {
@@ -74,7 +72,7 @@ describe('AnalyticJoinOutcomesUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticWorkspaceService.joinOutcomes.mockResolvedValue([]);
+            analyticWorkspaceService.getJoinOutcomes.mockResolvedValue([]);
 
             await useCase.execute(workspaceContext, { startDate, endDate });
 

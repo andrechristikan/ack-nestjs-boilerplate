@@ -25,7 +25,7 @@ The decorator nearest the method runs first. Keep this order, skipping what a ro
 @Get('/endpoint')                      // 16. HTTP method, always last
 ```
 
-`@RequestThrottleProtected` takes `{ user: true, route? }` on a JWT route and `{ route }` only on `public` and `system`. A creating `@Post` keeps 201. An admin-scope controller carries no `Workspace*` or `Project*` guard. An endpoint body is `return this.<module>[<Concern>]<Action>UseCase.execute(...);`: the use case builds every envelope, `{}` included.
+`@RequestThrottleProtected` takes `{ user: true, route? }` on a JWT route and `{ route }` only on `public` and `system`. A `@Post` that creates a row keeps 201. An admin-scope controller carries no `Workspace*` or `Project*` guard. An endpoint body is `return this.<module>[<Concern>]<Action>UseCase.execute(...);`: the use case builds every envelope, `{}` included.
 
 ## DTOs are zod
 

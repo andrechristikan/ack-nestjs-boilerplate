@@ -78,7 +78,9 @@ describe('AnalyticFailedLoginSpikeListUseCase', () => {
                     },
                 ],
             };
-            analyticAnomalyService.failedLoginSpikeList.mockResolvedValue(page);
+            analyticAnomalyService.getFailedLoginSpikeList.mockResolvedValue(
+                page
+            );
 
             const result = await useCase.execute({
                 page: 1,
@@ -87,7 +89,7 @@ describe('AnalyticFailedLoginSpikeListUseCase', () => {
 
             expect(result).toEqual(page);
             expect(
-                analyticAnomalyService.failedLoginSpikeList
+                analyticAnomalyService.getFailedLoginSpikeList
             ).toHaveBeenCalledWith(pagination);
         });
     });

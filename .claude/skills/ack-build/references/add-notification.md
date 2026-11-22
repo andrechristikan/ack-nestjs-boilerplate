@@ -26,7 +26,7 @@ One member of `EnumNotificationKind` (`src/modules/notification/enums/notificati
 
 1. `src/modules/notification/templates/notification.<kind-kebab>.template.hbs`, placeholders named as the contract's `templateFields` plus `username`.
 2. Register the kind in `NotificationTemplateService`: subject and the literal `../templates` filename.
-3. Seed: `src/migration/seeds/migration.template-notification.seed.ts` imports, gets, and deletes the template through `NotificationTemplateService`. The owner runs `pnpm migration templateEmailNotification --type seed`.
+3. Seed: `src/migration/seeds/migration.template-email-notification.seed.ts` imports, gets, and deletes the template through `NotificationTemplateService`. The owner runs `pnpm migration templateEmailNotification --type seed`.
 
 ## 6. Push
 

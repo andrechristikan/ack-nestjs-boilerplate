@@ -13,7 +13,7 @@ export class AnalyticForgotPasswordTokenAbuseSummaryUseCase implements IAppUseCa
 
     async execute(): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         const data =
-            await this.analyticFraudService.forgotPasswordTokenAbuseSummary();
+            await this.analyticFraudService.getForgotPasswordTokenAbuseSummary();
 
         return { data };
     }

@@ -47,7 +47,7 @@ export class ResponseMetadataService {
         const storedLanguage = this.requestStoreService.get<string>(
             RequestLanguageStoreKey
         );
-        const timestamp = this.helperDateService.getTimestamp(today);
+        const timestamp = this.helperDateService.formatToIso(today);
         const timezone = this.helperDateService.getZone(today);
         const storedVersion = this.requestStoreService.get<string>(
             RequestVersionStoreKey

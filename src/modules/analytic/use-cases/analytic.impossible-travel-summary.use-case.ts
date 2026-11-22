@@ -17,7 +17,7 @@ export class AnalyticImpossibleTravelSummaryUseCase implements IAppUseCase<
         IResponseReturn<IAnalyticAnomalyImpossibleTravelSummary>
     > {
         const data =
-            await this.analyticAnomalyService.impossibleTravelSummary();
+            await this.analyticAnomalyService.getImpossibleTravelSummary();
 
         return { data };
     }

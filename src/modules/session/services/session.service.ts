@@ -28,10 +28,8 @@ import type {
     ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
-import { SessionLoginCacheSchema } from '@modules/session/constants/session.constant';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
-import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import type { IUserPurgeLoginsPayload } from '@modules/user/interfaces/user.interface';
 import { UserAuthQueue } from '@modules/user/queues/user.auth.queue';
 import { Injectable } from '@nestjs/common';
@@ -42,6 +40,7 @@ import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import { SessionLoginCacheSchema } from '@modules/session/dtos/session.login-cache.dto';
 
 @Injectable()
 export class SessionService {
@@ -528,12 +527,6 @@ export class SessionService {
         await this.outboxService.addManyInTx(tx, effects);
 
         return session;
-    }
-
-    assertNotSelf(userId: string, revokedBy: string): void {
-        if (userId === revokedBy) {
-            throw new UserNotSelfException();
-        }
     }
 
     /** Revokes every active session of the user as an admin on the caller's transaction, adds their cache purge row and the activity entries, and returns the revoked refs; none revoked throws SessionNotFoundException. */

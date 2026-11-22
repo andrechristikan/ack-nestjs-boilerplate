@@ -9,9 +9,11 @@ export interface IConfigAnalytic {
         dashboardKeyPattern: string;
         dashboardPageKeyPattern: string;
         workspaceSummaryKeyPattern: string;
+        workspaceInviteFunnelKeyPattern: string;
+        workspaceJoinOutcomesKeyPattern: string;
+        workspaceMemberRolesKeyPattern: string;
         anomalySummaryKeyPattern: string;
         fraudSummaryKeyPattern: string;
-        windowTokenPattern: string;
     };
     maxWindowInMs: number;
     anomaly: {
@@ -103,9 +105,14 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
             'Analytic:Dashboard:{metric}:{start}:{end}:{page}:{perPage}',
         workspaceSummaryKeyPattern:
             'Analytic:Workspace:{workspaceId}:Summary:{start}:{end}',
+        workspaceInviteFunnelKeyPattern:
+            'Analytic:Workspace:{workspaceId}:InviteFunnel:{start}:{end}',
+        workspaceJoinOutcomesKeyPattern:
+            'Analytic:Workspace:{workspaceId}:JoinOutcomes:{start}:{end}',
+        workspaceMemberRolesKeyPattern:
+            'Analytic:Workspace:{workspaceId}:MemberRoles',
         anomalySummaryKeyPattern: 'Analytic:Anomaly:{signal}:{window}',
         fraudSummaryKeyPattern: 'Analytic:Fraud:{signal}:{window}',
-        windowTokenPattern: '{start}:{end}',
     },
     maxWindowInMs: ms('90d'),
     anomaly: {

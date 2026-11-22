@@ -6,7 +6,7 @@ import { ApiKeyDateRequestSchema } from '@modules/api-key/dtos/request/api-key.d
 /** @public */
 export const ApiKeyCreateBaseRequestSchema =
     ApiKeyDateRequestSchema.partial().extend({
-        name: z.string().min(1).max(100).meta({
+        name: z.string().trim().min(1).max(100).meta({
             description: 'Api Key name',
             example: faker.company.name(),
         }),

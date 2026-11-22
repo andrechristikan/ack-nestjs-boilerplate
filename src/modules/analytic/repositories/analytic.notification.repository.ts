@@ -1,10 +1,10 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
-import { AnalyticNotificationDeliveryPipelineSchema } from '@modules/analytic/constants/analytic.constant';
 import type { IAnalyticNotificationDelivery } from '@modules/analytic/interfaces/analytic.interface';
 import type { IAnalyticNotificationRepository } from '@modules/analytic/interfaces/analytic.notification-repository.interface';
 import { AnalyticPipelineUtil } from '@modules/analytic/utils/analytic.pipeline.util';
 import { Injectable } from '@nestjs/common';
+import { AnalyticNotificationDeliveryPipelineSchema } from '@modules/analytic/dtos/analytic.notification-delivery-pipeline.dto';
 
 @Injectable()
 export class AnalyticNotificationRepository implements IAnalyticNotificationRepository {

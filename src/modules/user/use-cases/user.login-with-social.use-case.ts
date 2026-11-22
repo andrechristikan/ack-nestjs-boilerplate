@@ -38,13 +38,13 @@ import { UserRegistrationService } from '@modules/user/services/user.registratio
 import { UserService } from '@modules/user/services/user.service';
 import { UserSocialService } from '@modules/user/services/user.social.service';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type {
     IUser,
-    IUserLoginOutcome,
+    IUserAuthOutcome,
     IUserLoginSocial,
 } from '@modules/user/interfaces/user.interface';
-import type { IUserLoginSignUp } from '@modules/user/interfaces/user.login.interface';
+import type { IUserAuthSignUp } from '@modules/user/interfaces/user.auth.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
@@ -67,7 +67,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         EnumUserLoginWith,
         UserCreateSocialRequestDto,
     ],
-    IResponseReturn<IUserLoginOutcome>
+    IResponseReturn<IUserAuthOutcome>
 > {
     private readonly defaultRole: string;
     private readonly createTimeoutInMs: number;
@@ -116,7 +116,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         loginSocial: IUserLoginSocial,
         loginAt: Date,
         subject: string
-    ): Promise<IUserLoginSignUp> {
+    ): Promise<IUserAuthSignUp> {
         const [invite, role, usernameCheck] = await Promise.all([
             this.workspaceInviteService.getSignUpInvite(
                 loginSocial.inviteToken,
@@ -173,7 +173,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                             ),
                             this.notificationService.createDefaultsManyInTx(
                                 tx,
-                                userIds
+                                userIds,
+                                input.userId
                             ),
                         ]);
                         const ownedUsers = this.workspaceUtil.buildOwnedUsers(
@@ -187,7 +188,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
 
                         if (
                             inputContext.type ===
-                            EnumUserSignUpWorkspaceContextType.invite
+                            EnumUserCreateWorkspaceContextType.invite
                         ) {
                             await this.workspaceInviteService.acceptOnSignUpInTx(
                                 tx,
@@ -204,7 +205,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                             Promise.resolve(null);
                         if (
                             inputContext.type ===
-                                EnumUserSignUpWorkspaceContextType.invite &&
+                                EnumUserCreateWorkspaceContextType.invite &&
                             inputContext.projectId &&
                             inputContext.projectMemberRole
                         ) {
@@ -221,7 +222,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                                 tx,
                                 input.userId,
                                 loginWith,
-                                subject
+                                subject,
+                                input.userId
                             ),
                             membership,
                         ]);
@@ -290,7 +292,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                 const exception = this.databaseUtil.toException(error);
                 const isInviteConflict =
                     inputContext.type ===
-                        EnumUserSignUpWorkspaceContextType.invite &&
+                        EnumUserCreateWorkspaceContextType.invite &&
                     exception instanceof DatabaseWriteConflictException;
                 if (isInviteConflict) {
                     throw new WorkspaceInviteAlreadyProcessedException();
@@ -312,7 +314,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         loginWith: EnumUserLoginWith,
         loginAt: Date,
         subject: string | null
-    ): Promise<IUserLoginOutcome> {
+    ): Promise<IUserAuthOutcome> {
         const { lastWorkspaceChangedAt } = user;
         // Sequential by design: a write after its checks
         const [lastWorkspaceId, isMfaEnabled] = await Promise.all([
@@ -341,7 +343,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         }
 
         return this.databaseService.withTransaction(
-            async (tx): Promise<IUserLoginOutcome> => {
+            async (tx): Promise<IUserAuthOutcome> => {
                 let verifying = Promise.resolve(user);
                 if (isUnverified) {
                     verifying = this.userAuthService.verifyEmailBySocialInTx(
@@ -357,7 +359,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                         tx,
                         user.id,
                         loginWith,
-                        subject
+                        subject,
+                        user.id
                     );
                 }
                 const [loginUser] = await Promise.all([verifying, linking]);
@@ -426,7 +429,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             cookies,
             marketing,
         }: UserCreateSocialRequestDto
-    ): Promise<IResponseReturn<IUserLoginOutcome>> {
+    ): Promise<IResponseReturn<IUserAuthOutcome>> {
         const deviceIdentity = this.deviceUtil.toIdentity(device);
         const loginSocial: IUserLoginSocial = {
             from,
@@ -463,7 +466,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             return { data: outcome };
         }
 
-        const normalizedEmail = authContext.email.trim().toLowerCase();
+        const normalizedEmail = this.userUtil.normalizeEmail(authContext.email);
         const isSignUpAllowed =
             await this.userRegistrationService.isSocialSignUpAllowed(
                 normalizedEmail,

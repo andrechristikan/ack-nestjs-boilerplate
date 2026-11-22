@@ -1,11 +1,11 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
-import { AnalyticProjectCreationPipelineSchema } from '@modules/analytic/constants/analytic.constant';
 import type { IAnalyticProjectCreation } from '@modules/analytic/interfaces/analytic.interface';
 import type { IAnalyticProjectRepository } from '@modules/analytic/interfaces/analytic.project-repository.interface';
 import { AnalyticPipelineUtil } from '@modules/analytic/utils/analytic.pipeline.util';
 import { Injectable } from '@nestjs/common';
+import { AnalyticProjectCreationPipelineSchema } from '@modules/analytic/dtos/analytic.project-creation-pipeline.dto';
 
 @Injectable()
 export class AnalyticProjectRepository implements IAnalyticProjectRepository {

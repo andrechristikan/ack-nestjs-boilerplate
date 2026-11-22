@@ -52,6 +52,14 @@ describe('AppBaseException', () => {
             expect(exception.rawError).toBeNull();
         });
 
+        it('assigns flat primitive metadata values', () => {
+            const exception = new ResponseSerializationException({
+                metadata: { retryAfterInSeconds: 30 },
+            });
+
+            expect(exception.metadata).toEqual({ retryAfterInSeconds: 30 });
+        });
+
         it('sets cause from an Error rawError', () => {
             const rawError = new Error('boom');
 

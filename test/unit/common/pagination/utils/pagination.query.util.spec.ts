@@ -369,7 +369,7 @@ describe('PaginationQueryUtil', () => {
 
     describe('validateAndParsePage', () => {
         it('passes null when the page is omitted and returns the parsed page', () => {
-            expect(util['validateAndParsePage'](undefined)).toBe(1);
+            expect(util['validateAndParsePage'](null)).toBe(1);
         });
 
         it('returns the page the sibling parsed from a sent value', () => {
@@ -409,13 +409,13 @@ describe('PaginationQueryUtil', () => {
 
     describe('validateAndParsePerPage', () => {
         it('defaults to the default perPage when omitted', () => {
-            expect(util['validateAndParsePerPage'](undefined)).toBe(
+            expect(util['validateAndParsePerPage'](null)).toBe(
                 PaginationDefaultPerPage
             );
         });
 
         it('defaults to a named default perPage when omitted', () => {
-            expect(util['validateAndParsePerPage'](undefined, 5)).toBe(5);
+            expect(util['validateAndParsePerPage'](null, 5)).toBe(5);
         });
 
         it('parses a numeric string', () => {
@@ -494,8 +494,8 @@ describe('PaginationQueryUtil', () => {
     });
 
     describe('validateAndSanitizeCursor', () => {
-        it('returns null for a non-string cursor', () => {
-            expect(util['validateAndSanitizeCursor'](undefined)).toBeNull();
+        it('returns null for a null cursor', () => {
+            expect(util['validateAndSanitizeCursor'](null)).toBeNull();
         });
 
         it('returns null for a blank cursor', () => {

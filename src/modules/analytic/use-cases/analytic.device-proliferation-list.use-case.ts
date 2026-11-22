@@ -30,6 +30,6 @@ export class AnalyticDeviceProliferationListUseCase implements IAppUseCase<
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticAnomalyService.deviceProliferationList(params);
+        return this.analyticAnomalyService.getDeviceProliferationList(params);
     }
 }

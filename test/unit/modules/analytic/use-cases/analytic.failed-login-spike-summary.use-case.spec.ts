@@ -27,13 +27,15 @@ describe('AnalyticFailedLoginSpikeSummaryUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticAnomalyService.failedLoginSpikeSummary.mockResolvedValue({
-                count: 4,
-                windowStart: null,
-                windowEnd: null,
-                computedAt: null,
-                metadata: { nearLockoutMinAttempt: 4 },
-            });
+            analyticAnomalyService.getFailedLoginSpikeSummary.mockResolvedValue(
+                {
+                    count: 4,
+                    windowStart: null,
+                    windowEnd: null,
+                    computedAt: null,
+                    metadata: { nearLockoutMinAttempt: 4 },
+                }
+            );
 
             const result = await useCase.execute();
 
@@ -47,7 +49,7 @@ describe('AnalyticFailedLoginSpikeSummaryUseCase', () => {
                 },
             });
             expect(
-                analyticAnomalyService.failedLoginSpikeSummary
+                analyticAnomalyService.getFailedLoginSpikeSummary
             ).toHaveBeenCalledWith();
         });
     });

@@ -30,6 +30,6 @@ export class AnalyticImpossibleTravelListUseCase implements IAppUseCase<
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticAnomalyService.impossibleTravelList(params);
+        return this.analyticAnomalyService.getImpossibleTravelList(params);
     }
 }

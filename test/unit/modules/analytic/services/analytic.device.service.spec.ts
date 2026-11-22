@@ -6,23 +6,20 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
-import {
-    AnalyticBucketsResultCacheSchema,
-    AnalyticDevicesPerUserSnapshotDataSchema,
-    AnalyticMetricCountCacheSchema,
-    AnalyticMetricRateCacheSchema,
-} from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticDeviceRepository } from '@modules/analytic/repositories/analytic.device.repository';
 import { AnalyticDeviceService } from '@modules/analytic/services/analytic.device.service';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
 import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
+import { AnalyticBucketsResultCacheSchema } from '@modules/analytic/dtos/analytic.buckets-result-cache.dto';
+import { AnalyticDevicePerUserSnapshotDataSchema } from '@modules/analytic/dtos/analytic.device-per-user-snapshot-data.dto';
+import { AnalyticMetricCountCacheSchema } from '@modules/analytic/dtos/analytic.metric-count-cache.dto';
+import { AnalyticMetricRateCacheSchema } from '@modules/analytic/dtos/analytic.metric-rate-cache.dto';
 
 describe('AnalyticDeviceService', () => {
     const dashboardTtlInMs = 1800000;
@@ -57,12 +54,12 @@ describe('AnalyticDeviceService', () => {
     beforeEach(async () => {
         configService = buildConfigService({
             ...TestUnitKitConfigValues,
-            'analytic.cache.windowTokenPattern': 'Window:{start}:{end}',
             'analytic.device.inactivityInMs': deviceInactivityInMs,
             'session.idleTimeoutInMs': idleTimeoutInMs,
         });
         analyticCache.buildDashboardKey.mockImplementation(
-            (metric, start, end) => `${metric}:${start}:${end}`
+            (metric, start, end) =>
+                `${metric}:${start?.toISOString() ?? '_'}:${end?.toISOString() ?? '_'}`
         );
         cacheService.readThrough.mockImplementation(
             async (_key, _schema, _ttlInMs, loader) => loader()
@@ -75,7 +72,6 @@ describe('AnalyticDeviceService', () => {
                 { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
                 ...TestUnitKitProviders,
-                AnalyticDateUtil,
                 AnalyticBucketUtil,
                 {
                     provide: AnalyticSnapshotService,
@@ -91,21 +87,21 @@ describe('AnalyticDeviceService', () => {
         service = module.get(AnalyticDeviceService);
     });
 
-    describe('devicesPushToken', () => {
+    describe('getDevicePushToken', () => {
         it('answers the share of live ownerships holding a token from one repository call', async () => {
             analyticDeviceRepository.countPushToken.mockResolvedValue({
                 total: 4,
                 withToken: 3,
             });
 
-            const result = await service.devicesPushToken();
+            const result = await service.getDevicePushToken();
 
             expect(result).toEqual({ count: 3, total: 4, rate: 75 });
             expect(
                 analyticDeviceRepository.countPushToken
             ).toHaveBeenCalledTimes(1);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.devicesPushToken}:_:_`,
+                `${EnumAnalyticDashboardMetric.devicePushToken}:_:_`,
                 AnalyticMetricRateCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
@@ -118,24 +114,24 @@ describe('AnalyticDeviceService', () => {
                 withToken: 5,
             });
 
-            const result = await service.devicesPushToken();
+            const result = await service.getDevicePushToken();
 
             expect(result).toEqual({ count: 5, total: 5, rate: 100 });
         });
     });
 
-    describe('devicesPlatform', () => {
+    describe('getDevicePlatform', () => {
         it('wraps the platform groups as buckets', async () => {
             analyticDeviceRepository.groupPlatform.mockResolvedValue(buckets);
 
-            const result = await service.devicesPlatform();
+            const result = await service.getDevicePlatform();
 
             expect(result).toEqual({ buckets });
             expect(
                 analyticDeviceRepository.groupPlatform
             ).toHaveBeenCalledTimes(1);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.devicesPlatform}:_:_`,
+                `${EnumAnalyticDashboardMetric.devicePlatform}:_:_`,
                 AnalyticBucketsResultCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
@@ -143,7 +139,7 @@ describe('AnalyticDeviceService', () => {
         });
     });
 
-    describe('computeDevicesPerUser', () => {
+    describe('computeDevicePerUser', () => {
         it('passes the repository buckets to the snapshot util with no bucketing', async () => {
             const snapshot = {
                 items: [
@@ -160,7 +156,7 @@ describe('AnalyticDeviceService', () => {
             };
             analyticDeviceRepository.groupPerUser.mockResolvedValue(buckets);
 
-            const result = await service.computeDevicesPerUser();
+            const result = await service.computeDevicePerUser();
 
             expect(result).toEqual(snapshot);
             expect(analyticDeviceRepository.groupPerUser).toHaveBeenCalledTimes(
@@ -169,34 +165,34 @@ describe('AnalyticDeviceService', () => {
         });
     });
 
-    describe('devicesPerUser', () => {
+    describe('getDevicePerUser', () => {
         it('reads the stored buckets through the snapshot service with no cache', async () => {
             const stored = { buckets, computedAt: now };
             analyticSnapshotService.getBuckets.mockResolvedValue(stored);
 
-            const result = await service.devicesPerUser();
+            const result = await service.getDevicePerUser();
 
             expect(result).toBe(stored);
             expect(analyticSnapshotService.getBuckets).toHaveBeenCalledWith(
                 EnumAnalyticSnapshotSignal.devicesPerUser,
-                AnalyticDevicesPerUserSnapshotDataSchema
+                AnalyticDevicePerUserSnapshotDataSchema
             );
             expect(cacheService.readThrough).not.toHaveBeenCalled();
         });
     });
 
-    describe('devicesInactivity', () => {
+    describe('getDeviceInactivity', () => {
         it('counts ownerships idle since the configured inactivity window', async () => {
             analyticDeviceRepository.countInactive.mockResolvedValue(2);
 
-            const result = await service.devicesInactivity();
+            const result = await service.getDeviceInactivity();
 
             expect(result).toEqual({ count: 2 });
             expect(analyticDeviceRepository.countInactive).toHaveBeenCalledWith(
                 before
             );
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.devicesInactivity}:_:_`,
+                `${EnumAnalyticDashboardMetric.deviceInactivity}:_:_`,
                 AnalyticMetricCountCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)

@@ -50,7 +50,7 @@ describe('AnalyticSummaryUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticWorkspaceService.summary.mockResolvedValue({
+            analyticWorkspaceService.getSummary.mockResolvedValue({
                 memberCount: 3,
                 projectCount: 2,
                 activityCount: 9,
@@ -68,7 +68,7 @@ describe('AnalyticSummaryUseCase', () => {
             expect(result).toEqual({
                 data: { memberCount: 3, projectCount: 2, activityCount: 9 },
             });
-            expect(analyticWorkspaceService.summary).toHaveBeenCalledWith(
+            expect(analyticWorkspaceService.getSummary).toHaveBeenCalledWith(
                 'workspace-1',
                 startDate,
                 endDate
@@ -80,7 +80,7 @@ describe('AnalyticSummaryUseCase', () => {
                 startDate: null,
                 endDate: null,
             });
-            analyticWorkspaceService.summary.mockResolvedValue({
+            analyticWorkspaceService.getSummary.mockResolvedValue({
                 memberCount: 0,
                 projectCount: 0,
                 activityCount: 0,
@@ -92,7 +92,7 @@ describe('AnalyticSummaryUseCase', () => {
                 null,
                 null
             );
-            expect(analyticWorkspaceService.summary).toHaveBeenCalledWith(
+            expect(analyticWorkspaceService.getSummary).toHaveBeenCalledWith(
                 'workspace-1',
                 null,
                 null

@@ -19,8 +19,6 @@ export type IPaginationOrderBy = Record<
     EnumPaginationOrderDirectionType
 >;
 
-export type IPaginationOrderByQuery = string | undefined;
-
 export interface IPaginationQuery {
     search?: string;
     filters?: IPaginationQueryFilter;

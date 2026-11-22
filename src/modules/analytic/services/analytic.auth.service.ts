@@ -9,21 +9,13 @@ import {
 } from '@generated/prisma-client/client';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
-    AnalyticBucketsResultCacheSchema,
-    AnalyticConcurrentSessionsSnapshotDataSchema,
-    AnalyticForgotPasswordConversionCacheSchema,
-    AnalyticLockoutMetricsCacheSchema,
-    AnalyticMetricCountCacheSchema,
-    AnalyticMfaAdoptionSnapshotMetaSchema,
-    AnalyticVerificationFunnelsCacheSchema,
-} from '@modules/analytic/constants/analytic.constant';
-import {
     EnumAnalyticDashboardMetric,
     EnumAnalyticGroupKey,
 } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticBucketsResult,
     IAnalyticCountBucket,
+    IAnalyticCounted,
     IAnalyticForgotPasswordConversion,
     IAnalyticLockoutMetrics,
     IAnalyticMetricCount,
@@ -39,11 +31,17 @@ import type {
 import { AnalyticAuthRepository } from '@modules/analytic/repositories/analytic.auth.repository';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
 import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
+import { AnalyticBucketsResultCacheSchema } from '@modules/analytic/dtos/analytic.buckets-result-cache.dto';
+import { AnalyticConcurrentSessionsSnapshotDataSchema } from '@modules/analytic/dtos/analytic.concurrent-sessions-snapshot-data.dto';
+import { AnalyticForgotPasswordConversionCacheSchema } from '@modules/analytic/dtos/analytic.forgot-password-conversion-cache.dto';
+import { AnalyticLockoutMetricsCacheSchema } from '@modules/analytic/dtos/analytic.lockout-metrics-cache.dto';
+import { AnalyticMetricCountCacheSchema } from '@modules/analytic/dtos/analytic.metric-count-cache.dto';
+import { AnalyticMfaAdoptionSnapshotMetaSchema } from '@modules/analytic/dtos/analytic.mfa-adoption-snapshot-meta.dto';
+import { AnalyticVerificationFunnelsCacheSchema } from '@modules/analytic/dtos/analytic.verification-funnels-cache.dto';
 
 @Injectable()
 export class AnalyticAuthService {
@@ -53,7 +51,6 @@ export class AnalyticAuthService {
         private readonly configService: ConfigService,
         private readonly analyticCache: AnalyticCache,
         private readonly cacheService: CacheService,
-        private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly analyticBucketUtil: AnalyticBucketUtil,
         private readonly analyticSnapshotService: AnalyticSnapshotService,
         private readonly helperDateService: HelperDateService,
@@ -63,17 +60,6 @@ export class AnalyticAuthService {
         this.idleTimeoutInMs = this.configService.get<number>(
             'session.idleTimeoutInMs'
         )!;
-    }
-
-    private dashboardKey(
-        metric: EnumAnalyticDashboardMetric,
-        startDate: Date | null,
-        endDate: Date | null
-    ): string {
-        const start = this.analyticDateUtil.cacheToken(startDate);
-        const end = this.analyticDateUtil.cacheToken(endDate);
-
-        return this.analyticCache.buildDashboardKey(metric, start, end);
     }
 
     private idleSince(now: Date): Date {
@@ -106,23 +92,32 @@ export class AnalyticAuthService {
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        const key = this.dashboardKey(metric, startDate, endDate);
+        const key = this.analyticCache.buildDashboardKey(
+            metric,
+            startDate,
+            endDate
+        );
 
         return this.cacheService.readThrough(
             key,
             AnalyticMetricCountCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const count =
-                    await this.analyticAuthRepository.countActivityByActions(
-                        actions,
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            () => this.loadCountByActions(actions, startDate, endDate)
         );
+    }
+
+    private async loadCountByActions(
+        actions: EnumActivityLogAction[],
+        startDate: Date,
+        endDate: Date
+    ): Promise<IAnalyticMetricCount> {
+        const count = await this.analyticAuthRepository.countActivityByActions(
+            actions,
+            startDate,
+            endDate
+        );
+
+        return { count };
     }
 
     private async countPasswordHistory(
@@ -131,23 +126,33 @@ export class AnalyticAuthService {
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        const key = this.dashboardKey(metric, startDate, endDate);
+        const key = this.analyticCache.buildDashboardKey(
+            metric,
+            startDate,
+            endDate
+        );
 
         return this.cacheService.readThrough(
             key,
             AnalyticMetricCountCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const count =
-                    await this.analyticAuthRepository.countPasswordHistoryByType(
-                        type,
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            () => this.loadCountPasswordHistory(type, startDate, endDate)
         );
+    }
+
+    private async loadCountPasswordHistory(
+        type: EnumPasswordHistoryType,
+        startDate: Date,
+        endDate: Date
+    ): Promise<IAnalyticMetricCount> {
+        const count =
+            await this.analyticAuthRepository.countPasswordHistoryByType(
+                type,
+                startDate,
+                endDate
+            );
+
+        return { count };
     }
 
     private mapAdoption(
@@ -158,7 +163,138 @@ export class AnalyticAuthService {
         return { enabled, total: activeUserCount, rate };
     }
 
-    async authLoginFrequency(
+    private async loadAuthLoginMethod(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<IAnalyticBucketsResult> {
+        const rows = await this.analyticAuthRepository.groupActivityByAction(
+            UserLoginAnalyticActions,
+            startDate,
+            endDate
+        );
+
+        const buckets = this.toBuckets(rows, 'action');
+
+        return { buckets };
+    }
+
+    private toBuckets<T extends IAnalyticCounted>(
+        rows: T[],
+        keyField: keyof T
+    ): IAnalyticCountBucket[] {
+        return rows.map(row => ({
+            key: String(row[keyField]),
+            count: row.count,
+        }));
+    }
+
+    private async loadAuthLockout(
+        startDate: Date,
+        endDate: Date
+    ): Promise<IAnalyticLockoutMetrics> {
+        const rows = await this.analyticAuthRepository.groupActivityByAction(
+            [
+                EnumActivityLogAction.userLoginFailed,
+                EnumActivityLogAction.userMaxPasswordAttemptReached,
+                EnumActivityLogAction.userMaxMfaAttemptReached,
+            ],
+            startDate,
+            endDate
+        );
+        const countByAction = new Map(rows.map(row => [row.action, row.count]));
+        const countOf = (action: EnumActivityLogAction): number =>
+            countByAction.get(action) ?? 0;
+
+        return {
+            failed: countOf(EnumActivityLogAction.userLoginFailed),
+            maxAttempt:
+                countOf(EnumActivityLogAction.userMaxPasswordAttemptReached) +
+                countOf(EnumActivityLogAction.userMaxMfaAttemptReached),
+        };
+    }
+
+    private async loadAuthSessionsGeo(
+        startDate: Date,
+        endDate: Date
+    ): Promise<IAnalyticBucketsResult> {
+        const now = this.helperDateService.create();
+        const idleSince = this.idleSince(now);
+        const rows = await this.analyticAuthRepository.groupSessionsGeo(
+            startDate,
+            endDate,
+            now,
+            idleSince
+        );
+
+        return {
+            buckets: rows.map(({ key: group, count }) => ({
+                key: group ?? EnumAnalyticGroupKey.unknown,
+                count,
+            })),
+        };
+    }
+
+    private async loadAuthSessionsUserAgent(
+        startDate: Date,
+        endDate: Date
+    ): Promise<IAnalyticBucketsResult> {
+        const now = this.helperDateService.create();
+        const idleSince = this.idleSince(now);
+        const rows = await this.analyticAuthRepository.groupSessionsUserAgent(
+            startDate,
+            endDate,
+            now,
+            idleSince
+        );
+
+        return {
+            buckets: rows.map(({ key: group, count }) => ({
+                key: group ?? EnumAnalyticGroupKey.unknown,
+                count,
+            })),
+        };
+    }
+
+    private async loadAuthVerificationFunnel(
+        startDate: Date,
+        endDate: Date
+    ): Promise<IAnalyticVerificationFunnels> {
+        const rows = await this.analyticAuthRepository.groupVerificationFunnel(
+            startDate,
+            endDate
+        );
+
+        const email = this.toVerificationFunnel(
+            rows,
+            EnumVerificationType.email
+        );
+        const mobile = this.toVerificationFunnel(
+            rows,
+            EnumVerificationType.mobileNumber
+        );
+
+        return { email, mobile };
+    }
+
+    private async loadAuthForgotPasswordConversion(
+        startDate: Date,
+        endDate: Date
+    ): Promise<IAnalyticForgotPasswordConversion> {
+        const rows =
+            await this.analyticAuthRepository.groupForgotPasswordConversion(
+                startDate,
+                endDate
+            );
+        const created = rows.reduce((sum, row) => sum + row.count, 0);
+        const used = rows
+            .filter(row => row.isUsed)
+            .reduce((sum, row) => sum + row.count, 0);
+        const rate = this.helperNumberService.percent(used, created);
+
+        return { created, used, rate };
+    }
+
+    async getAuthLoginFrequency(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
@@ -170,11 +306,11 @@ export class AnalyticAuthService {
         );
     }
 
-    async authLoginMethod(
+    async getAuthLoginMethod(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticBucketsResult> {
-        const key = this.dashboardKey(
+        const key = this.analyticCache.buildDashboardKey(
             EnumAnalyticDashboardMetric.authLoginMethod,
             startDate,
             endDate
@@ -184,29 +320,15 @@ export class AnalyticAuthService {
             key,
             AnalyticBucketsResultCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const rows =
-                    await this.analyticAuthRepository.groupActivityByAction(
-                        UserLoginAnalyticActions,
-                        startDate,
-                        endDate
-                    );
-
-                const buckets = this.analyticBucketUtil.toBuckets(
-                    rows,
-                    'action'
-                );
-
-                return { buckets };
-            }
+            () => this.loadAuthLoginMethod(startDate, endDate)
         );
     }
 
-    async authLockout(
+    async getAuthLockout(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticLockoutMetrics> {
-        const key = this.dashboardKey(
+        const key = this.analyticCache.buildDashboardKey(
             EnumAnalyticDashboardMetric.authLockout,
             startDate,
             endDate
@@ -216,32 +338,7 @@ export class AnalyticAuthService {
             key,
             AnalyticLockoutMetricsCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const rows =
-                    await this.analyticAuthRepository.groupActivityByAction(
-                        [
-                            EnumActivityLogAction.userLoginFailed,
-                            EnumActivityLogAction.userMaxPasswordAttemptReached,
-                            EnumActivityLogAction.userMaxMfaAttemptReached,
-                        ],
-                        startDate,
-                        endDate
-                    );
-                const countByAction = new Map(
-                    rows.map(row => [row.action, row.count])
-                );
-                const countOf = (action: EnumActivityLogAction): number =>
-                    countByAction.get(action) ?? 0;
-
-                return {
-                    failed: countOf(EnumActivityLogAction.userLoginFailed),
-                    maxAttempt:
-                        countOf(
-                            EnumActivityLogAction.userMaxPasswordAttemptReached
-                        ) +
-                        countOf(EnumActivityLogAction.userMaxMfaAttemptReached),
-                };
-            }
+            () => this.loadAuthLockout(startDate, endDate)
         );
     }
 
@@ -259,18 +356,18 @@ export class AnalyticAuthService {
         return this.analyticBucketUtil.toBucketSnapshot(buckets);
     }
 
-    async authConcurrentSessions(): Promise<IAnalyticSnapshotBucketsResult> {
+    async getAuthConcurrentSessions(): Promise<IAnalyticSnapshotBucketsResult> {
         return this.analyticSnapshotService.getBuckets(
             EnumAnalyticSnapshotSignal.concurrentSessions,
             AnalyticConcurrentSessionsSnapshotDataSchema
         );
     }
 
-    async authSessionsGeo(
+    async getAuthSessionsGeo(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticBucketsResult> {
-        const key = this.dashboardKey(
+        const key = this.analyticCache.buildDashboardKey(
             EnumAnalyticDashboardMetric.authSessionsGeo,
             startDate,
             endDate
@@ -280,32 +377,16 @@ export class AnalyticAuthService {
             key,
             AnalyticBucketsResultCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const now = this.helperDateService.create();
-                const idleSince = this.idleSince(now);
-                const rows = await this.analyticAuthRepository.groupSessionsGeo(
-                    startDate,
-                    endDate,
-                    now,
-                    idleSince
-                );
-
-                return {
-                    buckets: rows.map(({ key: group, count }) => ({
-                        key: group ?? EnumAnalyticGroupKey.unknown,
-                        count,
-                    })),
-                };
-            }
+            () => this.loadAuthSessionsGeo(startDate, endDate)
         );
     }
 
-    async authSessionsUserAgent(
+    async getAuthSessionsUserAgent(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticBucketsResult> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.authSessionsUa,
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.authSessionsUserAgent,
             startDate,
             endDate
         );
@@ -314,32 +395,15 @@ export class AnalyticAuthService {
             key,
             AnalyticBucketsResultCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const now = this.helperDateService.create();
-                const idleSince = this.idleSince(now);
-                const rows =
-                    await this.analyticAuthRepository.groupSessionsUserAgent(
-                        startDate,
-                        endDate,
-                        now,
-                        idleSince
-                    );
-
-                return {
-                    buckets: rows.map(({ key: group, count }) => ({
-                        key: group ?? EnumAnalyticGroupKey.unknown,
-                        count,
-                    })),
-                };
-            }
+            () => this.loadAuthSessionsUserAgent(startDate, endDate)
         );
     }
 
-    async authVerificationFunnel(
+    async getAuthVerificationFunnel(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticVerificationFunnels> {
-        const key = this.dashboardKey(
+        const key = this.analyticCache.buildDashboardKey(
             EnumAnalyticDashboardMetric.authVerificationFunnel,
             startDate,
             endDate
@@ -349,28 +413,11 @@ export class AnalyticAuthService {
             key,
             AnalyticVerificationFunnelsCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const rows =
-                    await this.analyticAuthRepository.groupVerificationFunnel(
-                        startDate,
-                        endDate
-                    );
-
-                const email = this.toVerificationFunnel(
-                    rows,
-                    EnumVerificationType.email
-                );
-                const mobile = this.toVerificationFunnel(
-                    rows,
-                    EnumVerificationType.mobileNumber
-                );
-
-                return { email, mobile };
-            }
+            () => this.loadAuthVerificationFunnel(startDate, endDate)
         );
     }
 
-    async authPasswordChange(
+    async getAuthPasswordChange(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
@@ -382,12 +429,12 @@ export class AnalyticAuthService {
         );
     }
 
-    async authForgotPasswordConversion(
+    async getAuthForgotPasswordConversion(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticForgotPasswordConversion> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.authForgotConversion,
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.authForgotPasswordConversion,
             startDate,
             endDate
         );
@@ -396,20 +443,7 @@ export class AnalyticAuthService {
             key,
             AnalyticForgotPasswordConversionCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const rows =
-                    await this.analyticAuthRepository.groupForgotPasswordConversion(
-                        startDate,
-                        endDate
-                    );
-                const created = rows.reduce((sum, row) => sum + row.count, 0);
-                const used = rows
-                    .filter(row => row.isUsed)
-                    .reduce((sum, row) => sum + row.count, 0);
-                const rate = this.helperNumberService.percent(used, created);
-
-                return { created, used, rate };
-            }
+            () => this.loadAuthForgotPasswordConversion(startDate, endDate)
         );
     }
 
@@ -427,7 +461,7 @@ export class AnalyticAuthService {
         };
     }
 
-    async authMfaAdoption(): Promise<IAnalyticMfaAdoption> {
+    async getAuthMfaAdoption(): Promise<IAnalyticMfaAdoption> {
         const { metadata, computedAt } =
             await this.analyticSnapshotService.getSummary(
                 EnumAnalyticSnapshotSignal.mfaAdoption,

@@ -65,7 +65,7 @@ import { DatabaseIdResponseSchema } from '@common/database/dtos/response/databas
 import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import {
     RequestContext,
-    RequestThrottle,
+    RequestThrottleProtected,
     RequestTimeout,
 } from '@common/request/decorators/request.decorator';
 import { RequestUploadTimeout } from '@common/request/constants/request.constant';
@@ -117,7 +117,7 @@ export class UserAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -136,7 +136,7 @@ export class UserAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/get/:userId')
@@ -156,7 +156,7 @@ export class UserAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Post('/create')
@@ -186,7 +186,7 @@ export class UserAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/update/:userId/status')
@@ -219,7 +219,7 @@ export class UserAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/update/:userId/password')
@@ -249,7 +249,7 @@ export class UserAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @FileImportSingle()
@@ -287,7 +287,7 @@ export class UserAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)

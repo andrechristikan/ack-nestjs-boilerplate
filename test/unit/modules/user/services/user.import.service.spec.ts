@@ -24,7 +24,7 @@ import { UserImportService } from '@modules/user/services/user.import.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
@@ -589,7 +589,7 @@ describe('UserImportService', () => {
                 passwordHistoryType: null,
                 verification: null,
                 workspaceContext: {
-                    type: EnumUserSignUpWorkspaceContextType.personal,
+                    type: EnumUserCreateWorkspaceContextType.personal,
                     workspaceId: 'workspace-thistle',
                     slugCandidates: ['w-thistle'],
                     name: "thistleRowe's Workspace",

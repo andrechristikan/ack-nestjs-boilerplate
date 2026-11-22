@@ -21,7 +21,6 @@ import { PasswordHistoryService } from '@modules/password-history/services/passw
 import { SessionService } from '@modules/session/services/session.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
-import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import { Injectable } from '@nestjs/common';
@@ -45,7 +44,6 @@ export class UserChangePasswordUseCase implements IAppUseCase<
     private readonly appName: string;
 
     constructor(
-        private readonly userService: UserService,
         private readonly userPasswordService: UserPasswordService,
         private readonly userAuthService: UserAuthService,
         private readonly mfaService: MfaService,
@@ -176,7 +174,7 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                     mfaCheck
                 );
                 await Promise.all([
-                    this.userService.updatePasswordInTx(
+                    this.userPasswordService.replaceInTx(
                         tx,
                         authContext.userId,
                         password,
@@ -189,11 +187,6 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                         EnumPasswordHistoryType.profile,
                         password.passwordPeriodExpired,
                         password.passwordCreated,
-                        authContext.userId
-                    ),
-                    this.userPasswordService.markUnusedResetsUsedInTx(
-                        tx,
-                        authContext.userId,
                         authContext.userId
                     ),
                     this.sessionService.revokeActiveByUserExceptInTx(

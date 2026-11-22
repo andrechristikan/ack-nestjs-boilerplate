@@ -1,4 +1,5 @@
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { AnalyticCacheEmptyToken } from '@modules/analytic/constants/analytic.constant';
 import type {
     EnumAnalyticAnomalySignal,
     EnumAnalyticFraudSignal,
@@ -11,6 +12,9 @@ export class AnalyticCache {
     private readonly dashboardKeyPattern: string;
     private readonly dashboardPageKeyPattern: string;
     private readonly workspaceSummaryKeyPattern: string;
+    private readonly workspaceInviteFunnelKeyPattern: string;
+    private readonly workspaceJoinOutcomesKeyPattern: string;
+    private readonly workspaceMemberRolesKeyPattern: string;
     private readonly anomalySummaryKeyPattern: string;
     private readonly fraudSummaryKeyPattern: string;
     readonly dashboardTtlInMs: number;
@@ -30,6 +34,15 @@ export class AnalyticCache {
         this.workspaceSummaryKeyPattern = this.configService.get<string>(
             'analytic.cache.workspaceSummaryKeyPattern'
         )!;
+        this.workspaceInviteFunnelKeyPattern = this.configService.get<string>(
+            'analytic.cache.workspaceInviteFunnelKeyPattern'
+        )!;
+        this.workspaceJoinOutcomesKeyPattern = this.configService.get<string>(
+            'analytic.cache.workspaceJoinOutcomesKeyPattern'
+        )!;
+        this.workspaceMemberRolesKeyPattern = this.configService.get<string>(
+            'analytic.cache.workspaceMemberRolesKeyPattern'
+        )!;
         this.anomalySummaryKeyPattern = this.configService.get<string>(
             'analytic.cache.anomalySummaryKeyPattern'
         )!;
@@ -45,6 +58,10 @@ export class AnalyticCache {
         this.liveSummaryTtlInMs = this.configService.get<number>(
             'analytic.cache.liveSummaryTtlInMs'
         )!;
+    }
+
+    private toToken(date: Date | null): string {
+        return date ? date.toISOString() : AnalyticCacheEmptyToken;
     }
 
     buildAnomalySummaryKey(
@@ -73,7 +90,14 @@ export class AnalyticCache {
         );
     }
 
-    buildDashboardKey(metric: string, start: string, end: string): string {
+    buildDashboardKey(
+        metric: string,
+        startDate: Date | null,
+        endDate: Date | null
+    ): string {
+        const start = this.toToken(startDate);
+        const end = this.toToken(endDate);
+
         return this.helperStringService.fillPattern(this.dashboardKeyPattern, {
             metric,
             start,
@@ -83,11 +107,14 @@ export class AnalyticCache {
 
     buildDashboardPageKey(
         metric: string,
-        start: string,
-        end: string,
+        startDate: Date | null,
+        endDate: Date | null,
         page: number,
         perPage: number
     ): string {
+        const start = this.toToken(startDate);
+        const end = this.toToken(endDate);
+
         return this.helperStringService.fillPattern(
             this.dashboardPageKeyPattern,
             {
@@ -102,12 +129,50 @@ export class AnalyticCache {
 
     buildWorkspaceSummaryKey(
         workspaceId: string,
-        start: string,
-        end: string
+        startDate: Date | null,
+        endDate: Date | null
     ): string {
+        const start = this.toToken(startDate);
+        const end = this.toToken(endDate);
+
         return this.helperStringService.fillPattern(
             this.workspaceSummaryKeyPattern,
             { workspaceId, start, end }
+        );
+    }
+
+    buildWorkspaceInviteFunnelKey(
+        workspaceId: string,
+        startDate: Date,
+        endDate: Date
+    ): string {
+        const start = this.toToken(startDate);
+        const end = this.toToken(endDate);
+
+        return this.helperStringService.fillPattern(
+            this.workspaceInviteFunnelKeyPattern,
+            { workspaceId, start, end }
+        );
+    }
+
+    buildWorkspaceJoinOutcomesKey(
+        workspaceId: string,
+        startDate: Date,
+        endDate: Date
+    ): string {
+        const start = this.toToken(startDate);
+        const end = this.toToken(endDate);
+
+        return this.helperStringService.fillPattern(
+            this.workspaceJoinOutcomesKeyPattern,
+            { workspaceId, start, end }
+        );
+    }
+
+    buildWorkspaceMemberRolesKey(workspaceId: string): string {
+        return this.helperStringService.fillPattern(
+            this.workspaceMemberRolesKeyPattern,
+            { workspaceId }
         );
     }
 }

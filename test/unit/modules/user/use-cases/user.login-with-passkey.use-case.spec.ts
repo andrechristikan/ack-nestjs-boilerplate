@@ -36,7 +36,7 @@ import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserCredentialInvalidException } from '@modules/user/exceptions/user.credential-invalid.exception';
-import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
+import type { IUserAuthSession } from '@modules/user/interfaces/user.auth.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserLoginWithPasskeyUseCase } from '@modules/user/use-cases/user.login-with-passkey.use-case';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -94,7 +94,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
         lastWorkspaceId: 'workspace-bramble',
         lastWorkspaceChangedAt,
     };
-    const session: IUserLoginSession = {
+    const session: IUserAuthSession = {
         tokens,
         sessionId: 'session-bramble',
     };

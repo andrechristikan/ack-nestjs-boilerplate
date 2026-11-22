@@ -25,7 +25,7 @@ export class AnalyticSummaryUseCase implements IAppUseCase<
             query.startDate ?? null,
             query.endDate ?? null
         );
-        const data = await this.analyticWorkspaceService.summary(
+        const data = await this.analyticWorkspaceService.getSummary(
             workspaceContext.workspace.id,
             range.startDate,
             range.endDate

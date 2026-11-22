@@ -7,15 +7,15 @@ import { AnalyticFailedLoginSpikeSummaryUseCase } from '@modules/analytic/use-ca
 import { AnalyticFailedLoginSpikeListUseCase } from '@modules/analytic/use-cases/analytic.failed-login-spike-list.use-case';
 import { AnalyticDeviceProliferationSummaryUseCase } from '@modules/analytic/use-cases/analytic.device-proliferation-summary.use-case';
 import { AnalyticDeviceProliferationListUseCase } from '@modules/analytic/use-cases/analytic.device-proliferation-list.use-case';
-import { AnalyticUsersRegistrationsUseCase } from '@modules/analytic/use-cases/analytic.users-registrations.use-case';
-import { AnalyticUsersChurnUseCase } from '@modules/analytic/use-cases/analytic.users-churn.use-case';
-import { AnalyticUsersBlockedUseCase } from '@modules/analytic/use-cases/analytic.users-blocked.use-case';
-import { AnalyticUsersSignUpWithUseCase } from '@modules/analytic/use-cases/analytic.users-sign-up-with.use-case';
-import { AnalyticUsersEmailVerificationUseCase } from '@modules/analytic/use-cases/analytic.users-email-verification.use-case';
-import { AnalyticUsersStatusDistributionUseCase } from '@modules/analytic/use-cases/analytic.users-status-distribution.use-case';
-import { AnalyticUsersCountryDistributionUseCase } from '@modules/analytic/use-cases/analytic.users-country-distribution.use-case';
-import { AnalyticUsersActiveUseCase } from '@modules/analytic/use-cases/analytic.users-active.use-case';
-import { AnalyticUsersRoleDistributionUseCase } from '@modules/analytic/use-cases/analytic.users-role-distribution.use-case';
+import { AnalyticUserRegistrationsUseCase } from '@modules/analytic/use-cases/analytic.user-registrations.use-case';
+import { AnalyticUserChurnUseCase } from '@modules/analytic/use-cases/analytic.user-churn.use-case';
+import { AnalyticUserBlockedUseCase } from '@modules/analytic/use-cases/analytic.user-blocked.use-case';
+import { AnalyticUserSignUpWithUseCase } from '@modules/analytic/use-cases/analytic.user-sign-up-with.use-case';
+import { AnalyticUserEmailVerificationUseCase } from '@modules/analytic/use-cases/analytic.user-email-verification.use-case';
+import { AnalyticUserStatusDistributionUseCase } from '@modules/analytic/use-cases/analytic.user-status-distribution.use-case';
+import { AnalyticUserCountryDistributionUseCase } from '@modules/analytic/use-cases/analytic.user-country-distribution.use-case';
+import { AnalyticUserActiveUseCase } from '@modules/analytic/use-cases/analytic.user-active.use-case';
+import { AnalyticUserRoleDistributionUseCase } from '@modules/analytic/use-cases/analytic.user-role-distribution.use-case';
 import { AnalyticAuthLoginFrequencyUseCase } from '@modules/analytic/use-cases/analytic.auth-login-frequency.use-case';
 import { AnalyticAuthLoginMethodUseCase } from '@modules/analytic/use-cases/analytic.auth-login-method.use-case';
 import { AnalyticAuthLockoutUseCase } from '@modules/analytic/use-cases/analytic.auth-lockout.use-case';
@@ -26,19 +26,19 @@ import { AnalyticAuthVerificationFunnelUseCase } from '@modules/analytic/use-cas
 import { AnalyticAuthPasswordChangeUseCase } from '@modules/analytic/use-cases/analytic.auth-password-change.use-case';
 import { AnalyticAuthForgotPasswordConversionUseCase } from '@modules/analytic/use-cases/analytic.auth-forgot-password-conversion.use-case';
 import { AnalyticAuthMfaAdoptionUseCase } from '@modules/analytic/use-cases/analytic.auth-mfa-adoption.use-case';
-import { AnalyticDevicesPlatformUseCase } from '@modules/analytic/use-cases/analytic.devices-platform.use-case';
-import { AnalyticDevicesPushTokenUseCase } from '@modules/analytic/use-cases/analytic.devices-push-token.use-case';
-import { AnalyticDevicesPerUserUseCase } from '@modules/analytic/use-cases/analytic.devices-per-user.use-case';
-import { AnalyticDevicesInactivityUseCase } from '@modules/analytic/use-cases/analytic.devices-inactivity.use-case';
-import { AnalyticApiKeysActiveExpiredUseCase } from '@modules/analytic/use-cases/analytic.api-keys-active-expired.use-case';
-import { AnalyticTermPoliciesAcceptanceRateUseCase } from '@modules/analytic/use-cases/analytic.term-policies-acceptance-rate.use-case';
-import { AnalyticWorkspacesCreationUseCase } from '@modules/analytic/use-cases/analytic.workspaces-creation.use-case';
-import { AnalyticWorkspacesInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.workspaces-invite-funnel.use-case';
-import { AnalyticWorkspacesJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.workspaces-join-outcomes.use-case';
-import { AnalyticWorkspacesMembershipListUseCase } from '@modules/analytic/use-cases/analytic.workspaces-membership-list.use-case';
-import { AnalyticWorkspacesActivityVolumeListUseCase } from '@modules/analytic/use-cases/analytic.workspaces-activity-volume-list.use-case';
-import { AnalyticProjectsCreationUseCase } from '@modules/analytic/use-cases/analytic.projects-creation.use-case';
-import { AnalyticNotificationsDeliveryUseCase } from '@modules/analytic/use-cases/analytic.notifications-delivery.use-case';
+import { AnalyticDevicePlatformUseCase } from '@modules/analytic/use-cases/analytic.device-platform.use-case';
+import { AnalyticDevicePushTokenUseCase } from '@modules/analytic/use-cases/analytic.device-push-token.use-case';
+import { AnalyticDevicePerUserUseCase } from '@modules/analytic/use-cases/analytic.device-per-user.use-case';
+import { AnalyticDeviceInactivityUseCase } from '@modules/analytic/use-cases/analytic.device-inactivity.use-case';
+import { AnalyticApiKeyActiveExpiredUseCase } from '@modules/analytic/use-cases/analytic.api-key-active-expired.use-case';
+import { AnalyticTermPolicyAcceptanceRateUseCase } from '@modules/analytic/use-cases/analytic.term-policy-acceptance-rate.use-case';
+import { AnalyticWorkspaceCreationUseCase } from '@modules/analytic/use-cases/analytic.workspace-creation.use-case';
+import { AnalyticWorkspaceInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.workspace-invite-funnel.use-case';
+import { AnalyticWorkspaceJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.workspace-join-outcomes.use-case';
+import { AnalyticWorkspaceMembershipListUseCase } from '@modules/analytic/use-cases/analytic.workspace-membership-list.use-case';
+import { AnalyticWorkspaceActivityVolumeListUseCase } from '@modules/analytic/use-cases/analytic.workspace-activity-volume-list.use-case';
+import { AnalyticProjectCreationUseCase } from '@modules/analytic/use-cases/analytic.project-creation.use-case';
+import { AnalyticNotificationDeliveryUseCase } from '@modules/analytic/use-cases/analytic.notification-delivery.use-case';
 import { AnalyticCredentialStuffingSummaryUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-summary.use-case';
 import { AnalyticCredentialStuffingListUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-list.use-case';
 import { AnalyticAccountTakeoverSummaryUseCase } from '@modules/analytic/use-cases/analytic.account-takeover-summary.use-case';
@@ -73,15 +73,15 @@ import { Module } from '@nestjs/common';
         AnalyticFailedLoginSpikeListUseCase,
         AnalyticDeviceProliferationSummaryUseCase,
         AnalyticDeviceProliferationListUseCase,
-        AnalyticUsersRegistrationsUseCase,
-        AnalyticUsersChurnUseCase,
-        AnalyticUsersBlockedUseCase,
-        AnalyticUsersSignUpWithUseCase,
-        AnalyticUsersEmailVerificationUseCase,
-        AnalyticUsersStatusDistributionUseCase,
-        AnalyticUsersCountryDistributionUseCase,
-        AnalyticUsersRoleDistributionUseCase,
-        AnalyticUsersActiveUseCase,
+        AnalyticUserRegistrationsUseCase,
+        AnalyticUserChurnUseCase,
+        AnalyticUserBlockedUseCase,
+        AnalyticUserSignUpWithUseCase,
+        AnalyticUserEmailVerificationUseCase,
+        AnalyticUserStatusDistributionUseCase,
+        AnalyticUserCountryDistributionUseCase,
+        AnalyticUserRoleDistributionUseCase,
+        AnalyticUserActiveUseCase,
         AnalyticAuthLoginFrequencyUseCase,
         AnalyticAuthLoginMethodUseCase,
         AnalyticAuthLockoutUseCase,
@@ -92,19 +92,19 @@ import { Module } from '@nestjs/common';
         AnalyticAuthPasswordChangeUseCase,
         AnalyticAuthForgotPasswordConversionUseCase,
         AnalyticAuthMfaAdoptionUseCase,
-        AnalyticDevicesPlatformUseCase,
-        AnalyticDevicesPushTokenUseCase,
-        AnalyticDevicesPerUserUseCase,
-        AnalyticDevicesInactivityUseCase,
-        AnalyticApiKeysActiveExpiredUseCase,
-        AnalyticTermPoliciesAcceptanceRateUseCase,
-        AnalyticWorkspacesCreationUseCase,
-        AnalyticWorkspacesInviteFunnelUseCase,
-        AnalyticWorkspacesJoinOutcomesUseCase,
-        AnalyticWorkspacesMembershipListUseCase,
-        AnalyticWorkspacesActivityVolumeListUseCase,
-        AnalyticProjectsCreationUseCase,
-        AnalyticNotificationsDeliveryUseCase,
+        AnalyticDevicePlatformUseCase,
+        AnalyticDevicePushTokenUseCase,
+        AnalyticDevicePerUserUseCase,
+        AnalyticDeviceInactivityUseCase,
+        AnalyticApiKeyActiveExpiredUseCase,
+        AnalyticTermPolicyAcceptanceRateUseCase,
+        AnalyticWorkspaceCreationUseCase,
+        AnalyticWorkspaceInviteFunnelUseCase,
+        AnalyticWorkspaceJoinOutcomesUseCase,
+        AnalyticWorkspaceMembershipListUseCase,
+        AnalyticWorkspaceActivityVolumeListUseCase,
+        AnalyticProjectCreationUseCase,
+        AnalyticNotificationDeliveryUseCase,
         AnalyticCredentialStuffingSummaryUseCase,
         AnalyticCredentialStuffingListUseCase,
         AnalyticAccountTakeoverSummaryUseCase,
@@ -136,15 +136,15 @@ import { Module } from '@nestjs/common';
         AnalyticFailedLoginSpikeListUseCase,
         AnalyticDeviceProliferationSummaryUseCase,
         AnalyticDeviceProliferationListUseCase,
-        AnalyticUsersRegistrationsUseCase,
-        AnalyticUsersChurnUseCase,
-        AnalyticUsersBlockedUseCase,
-        AnalyticUsersSignUpWithUseCase,
-        AnalyticUsersEmailVerificationUseCase,
-        AnalyticUsersStatusDistributionUseCase,
-        AnalyticUsersCountryDistributionUseCase,
-        AnalyticUsersRoleDistributionUseCase,
-        AnalyticUsersActiveUseCase,
+        AnalyticUserRegistrationsUseCase,
+        AnalyticUserChurnUseCase,
+        AnalyticUserBlockedUseCase,
+        AnalyticUserSignUpWithUseCase,
+        AnalyticUserEmailVerificationUseCase,
+        AnalyticUserStatusDistributionUseCase,
+        AnalyticUserCountryDistributionUseCase,
+        AnalyticUserRoleDistributionUseCase,
+        AnalyticUserActiveUseCase,
         AnalyticAuthLoginFrequencyUseCase,
         AnalyticAuthLoginMethodUseCase,
         AnalyticAuthLockoutUseCase,
@@ -155,19 +155,19 @@ import { Module } from '@nestjs/common';
         AnalyticAuthPasswordChangeUseCase,
         AnalyticAuthForgotPasswordConversionUseCase,
         AnalyticAuthMfaAdoptionUseCase,
-        AnalyticDevicesPlatformUseCase,
-        AnalyticDevicesPushTokenUseCase,
-        AnalyticDevicesPerUserUseCase,
-        AnalyticDevicesInactivityUseCase,
-        AnalyticApiKeysActiveExpiredUseCase,
-        AnalyticTermPoliciesAcceptanceRateUseCase,
-        AnalyticWorkspacesCreationUseCase,
-        AnalyticWorkspacesInviteFunnelUseCase,
-        AnalyticWorkspacesJoinOutcomesUseCase,
-        AnalyticWorkspacesMembershipListUseCase,
-        AnalyticWorkspacesActivityVolumeListUseCase,
-        AnalyticProjectsCreationUseCase,
-        AnalyticNotificationsDeliveryUseCase,
+        AnalyticDevicePlatformUseCase,
+        AnalyticDevicePushTokenUseCase,
+        AnalyticDevicePerUserUseCase,
+        AnalyticDeviceInactivityUseCase,
+        AnalyticApiKeyActiveExpiredUseCase,
+        AnalyticTermPolicyAcceptanceRateUseCase,
+        AnalyticWorkspaceCreationUseCase,
+        AnalyticWorkspaceInviteFunnelUseCase,
+        AnalyticWorkspaceJoinOutcomesUseCase,
+        AnalyticWorkspaceMembershipListUseCase,
+        AnalyticWorkspaceActivityVolumeListUseCase,
+        AnalyticProjectCreationUseCase,
+        AnalyticNotificationDeliveryUseCase,
         AnalyticCredentialStuffingSummaryUseCase,
         AnalyticCredentialStuffingListUseCase,
         AnalyticAccountTakeoverSummaryUseCase,

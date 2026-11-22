@@ -1,10 +1,10 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
-import { AnalyticApiKeyActiveExpiredPipelineSchema } from '@modules/analytic/constants/analytic.constant';
 import type { IAnalyticApiKeyRepository } from '@modules/analytic/interfaces/analytic.api-key-repository.interface';
 import type { IAnalyticApiKeyActiveExpired } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticPipelineUtil } from '@modules/analytic/utils/analytic.pipeline.util';
 import { Injectable } from '@nestjs/common';
+import { AnalyticApiKeyActiveExpiredPipelineSchema } from '@modules/analytic/dtos/analytic.api-key-active-expired-pipeline.dto';
 
 @Injectable()
 export class AnalyticApiKeyRepository implements IAnalyticApiKeyRepository {

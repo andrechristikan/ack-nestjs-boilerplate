@@ -76,7 +76,9 @@ describe('AnalyticSessionAfterAdminListUseCase', () => {
                     },
                 ],
             };
-            analyticFraudService.sessionAfterAdminList.mockResolvedValue(page);
+            analyticFraudService.getSessionAfterAdminList.mockResolvedValue(
+                page
+            );
 
             const result = await useCase.execute({
                 page: 1,
@@ -85,7 +87,7 @@ describe('AnalyticSessionAfterAdminListUseCase', () => {
 
             expect(result).toEqual(page);
             expect(
-                analyticFraudService.sessionAfterAdminList
+                analyticFraudService.getSessionAfterAdminList
             ).toHaveBeenCalledWith(pagination);
         });
     });

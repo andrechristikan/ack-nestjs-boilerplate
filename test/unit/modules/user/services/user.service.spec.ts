@@ -47,7 +47,7 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import {
     buildAuthJwtAccessContext,
     buildUser,
@@ -476,7 +476,7 @@ describe('UserService', () => {
             passwordHistoryType: null,
             verification,
             workspaceContext: {
-                type: EnumUserSignUpWorkspaceContextType.personal,
+                type: EnumUserCreateWorkspaceContextType.personal,
                 workspaceId: 'workspace-cobalt',
                 slugCandidates: ['w-cobalt'],
                 name: "cobaltReyes's Workspace",
@@ -774,7 +774,7 @@ describe('UserService', () => {
             );
             expect(result.input.password).toBe(temporaryPassword);
             expect(result.input.workspaceContext).toEqual({
-                type: EnumUserSignUpWorkspaceContextType.personal,
+                type: EnumUserCreateWorkspaceContextType.personal,
                 workspaceId: 'workspace-cobalt',
                 slugCandidates: ['w-cobalt-a', 'w-cobalt-b', 'w-cobalt-c'],
                 name: "cobaltReyes's Workspace",
@@ -913,6 +913,18 @@ describe('UserService', () => {
                 pattern: true,
             });
         });
+
+        it('reports the pattern as valid for an allowed username', async () => {
+            userRepository.existsByUsername.mockResolvedValue(false);
+
+            await expect(
+                service.checkUsername('marigoldFinch')
+            ).resolves.toEqual({
+                badWord: false,
+                exist: false,
+                pattern: false,
+            });
+        });
     });
 
     describe('checkEmail', () => {
@@ -961,31 +973,6 @@ describe('UserService', () => {
 
             await expect(
                 service.getOneWithRole('user-cobalt')
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-            });
-        });
-    });
-
-    describe('getRoleById', () => {
-        it('returns the role the user holds', async () => {
-            const { policies: _policies, ...userRole } = role;
-            userRepository.findRoleById.mockResolvedValue(userRole);
-
-            const result = await service.getRoleById('user-cobalt');
-
-            expect(result).toBe(userRole);
-            expect(userRepository.findRoleById).toHaveBeenCalledWith(
-                'user-cobalt'
-            );
-        });
-
-        it('throws UserNotFoundException when the repository answers null', async () => {
-            userRepository.findRoleById.mockResolvedValue(null);
-
-            await expect(
-                service.getRoleById('user-cobalt')
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,

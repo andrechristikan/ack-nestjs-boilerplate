@@ -12,7 +12,8 @@ export class AnalyticAccountTakeoverSummaryUseCase implements IAppUseCase<
     constructor(private readonly analyticFraudService: AnalyticFraudService) {}
 
     async execute(): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        const data = await this.analyticFraudService.accountTakeoverSummary();
+        const data =
+            await this.analyticFraudService.getAccountTakeoverSummary();
 
         return { data };
     }

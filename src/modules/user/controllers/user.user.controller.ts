@@ -1,7 +1,7 @@
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     RequestContext,
-    RequestThrottle,
+    RequestThrottleProtected,
 } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -46,7 +46,10 @@ export class UserUserController {
     @TermPolicyAcceptanceProtected()
     @RoleProtected(EnumRoleType.user)
     @UserProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({
+        user: true,
+        route: EnumRequestThrottleRoute.strict,
+    })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)

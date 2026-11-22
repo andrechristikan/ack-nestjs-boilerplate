@@ -1,3 +1,4 @@
+import { FileMaxMultiple } from '@common/file/constants/file.constant';
 import { FileUploadMultipleRequestSchema } from '@common/file/dtos/request/file.upload-multiple.request.dto';
 import type { IFile } from '@common/file/interfaces/file.interface';
 
@@ -20,6 +21,23 @@ describe('FileUploadMultipleRequestSchema', () => {
             });
 
             expect(result).toEqual({ files: [] });
+        });
+
+        it('accepts FileMaxMultiple files and rejects one more', () => {
+            const file = {} as IFile;
+
+            expect(
+                FileUploadMultipleRequestSchema.safeParse({
+                    files: Array<IFile>(FileMaxMultiple).fill(file),
+                }).success
+            ).toBe(true);
+            expect(
+                FileUploadMultipleRequestSchema.safeParse({
+                    files: Array<IFile>(FileMaxMultiple + 1).fill(file),
+                }).error?.issues
+            ).toEqual([
+                expect.objectContaining({ path: ['files'], code: 'too_big' }),
+            ]);
         });
 
         it('rejects an undeclared key', () => {

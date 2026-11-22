@@ -27,7 +27,7 @@ describe('AnalyticAuthMfaAdoptionUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticAuthService.authMfaAdoption.mockResolvedValue({
+            analyticAuthService.getAuthMfaAdoption.mockResolvedValue({
                 enabled: 3,
                 total: 9,
                 rate: 0.33,
@@ -39,7 +39,9 @@ describe('AnalyticAuthMfaAdoptionUseCase', () => {
             expect(result).toEqual({
                 data: { enabled: 3, total: 9, rate: 0.33, computedAt: null },
             });
-            expect(analyticAuthService.authMfaAdoption).toHaveBeenCalledWith();
+            expect(
+                analyticAuthService.getAuthMfaAdoption
+            ).toHaveBeenCalledWith();
         });
     });
 });

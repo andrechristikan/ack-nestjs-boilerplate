@@ -48,7 +48,6 @@ import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
-import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { IMfaReauthenticationResult } from '@modules/mfa/interfaces/mfa.interface';
 import { MfaService } from '@modules/mfa/services/mfa.service';
@@ -80,7 +79,6 @@ const passkeyResponse = {
 } as const;
 
 describe('UserChangePasswordUseCase', () => {
-    const userService: MockProxy<UserService> = mock<UserService>();
     const userPasswordService: MockProxy<UserPasswordService> =
         mock<UserPasswordService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
@@ -172,7 +170,6 @@ describe('UserChangePasswordUseCase', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserChangePasswordUseCase,
-                { provide: UserService, useValue: userService },
                 { provide: UserPasswordService, useValue: userPasswordService },
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: MfaService, useValue: mfaService },
@@ -217,7 +214,7 @@ describe('UserChangePasswordUseCase', () => {
                 null
             );
             authPasswordService.create.mockResolvedValue(password);
-            userService.updatePasswordInTx.mockResolvedValue(updatedRow);
+            userPasswordService.replaceInTx.mockResolvedValue(updatedRow);
             passwordHistoryService.createInTx.mockResolvedValue(
                 passwordHistory
             );
@@ -391,7 +388,7 @@ describe('UserChangePasswordUseCase', () => {
                     calls.push('complete');
                 }
             );
-            userService.updatePasswordInTx.mockImplementation(async () => {
+            userPasswordService.replaceInTx.mockImplementation(async () => {
                 calls.push('updatePassword');
 
                 return updatedRow;
@@ -401,11 +398,6 @@ describe('UserChangePasswordUseCase', () => {
 
                 return passwordHistory;
             });
-            userPasswordService.markUnusedResetsUsedInTx.mockImplementation(
-                async () => {
-                    calls.push('markUnusedResetsUsed');
-                }
-            );
             sessionService.revokeActiveByUserExceptInTx.mockImplementation(
                 async () => {
                     calls.push('revokeSessions');
@@ -441,7 +433,7 @@ describe('UserChangePasswordUseCase', () => {
                 authContext,
                 TestUnitReauthenticationMfaOff
             );
-            expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
+            expect(userPasswordService.replaceInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
                 password,
@@ -456,9 +448,6 @@ describe('UserChangePasswordUseCase', () => {
                 password.passwordCreated,
                 'user-linden'
             );
-            expect(
-                userPasswordService.markUnusedResetsUsedInTx
-            ).toHaveBeenCalledWith(tx, 'user-linden', 'user-linden');
             expect(
                 sessionService.revokeActiveByUserExceptInTx
             ).toHaveBeenCalledWith(
@@ -489,16 +478,15 @@ describe('UserChangePasswordUseCase', () => {
                 'complete',
                 'updatePassword',
                 'createHistory',
-                'markUnusedResetsUsed',
                 'revokeSessions',
                 'addEffects',
                 'commit',
             ]);
         });
 
-        it('starts the history, the reset mark, and the session revoke while the password update is pending, after the completion resolved', async () => {
+        it('starts the history and the session revoke while the password update is pending, after the completion resolved', async () => {
             const update = buildDeferred<User>();
-            userService.updatePasswordInTx.mockReturnValue(update.promise);
+            userPasswordService.replaceInTx.mockReturnValue(update.promise);
 
             const running = useCase.execute(
                 requestContext,
@@ -511,7 +499,7 @@ describe('UserChangePasswordUseCase', () => {
 
             expect(
                 userAuthService.completeReauthenticationInTx
-            ).toHaveBeenCalledBefore(userService.updatePasswordInTx);
+            ).toHaveBeenCalledBefore(userPasswordService.replaceInTx);
             expect(passwordHistoryService.createInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -521,9 +509,6 @@ describe('UserChangePasswordUseCase', () => {
                 password.passwordCreated,
                 'user-linden'
             );
-            expect(
-                userPasswordService.markUnusedResetsUsedInTx
-            ).toHaveBeenCalledWith(tx, 'user-linden', 'user-linden');
             expect(
                 sessionService.revokeActiveByUserExceptInTx
             ).toHaveBeenCalledWith(
@@ -571,7 +556,7 @@ describe('UserChangePasswordUseCase', () => {
                 passkeyResponse: null,
                 otp: null,
             });
-            expect(userService.updatePasswordInTx).toHaveBeenCalled();
+            expect(userPasswordService.replaceInTx).toHaveBeenCalled();
         });
 
         it('writes nothing and checks nothing further when the re-authentication fails', async () => {
@@ -683,7 +668,7 @@ describe('UserChangePasswordUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(userService.updatePasswordInTx).not.toHaveBeenCalled();
+            expect(userPasswordService.replaceInTx).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 

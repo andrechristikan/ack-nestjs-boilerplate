@@ -1,5 +1,8 @@
 import { HttpStatus } from '@nestjs/common';
-import type { IAppBaseExceptionOptions } from '@app/interfaces/app.interface';
+import type {
+    IAppBaseExceptionMetadata,
+    IAppBaseExceptionOptions,
+} from '@app/interfaces/app.interface';
 import type { IMessageProperties } from '@common/message/interfaces/message.interface';
 
 /** @public */
@@ -10,7 +13,7 @@ export abstract class AppBaseException extends Error {
     abstract readonly httpStatus: HttpStatus;
 
     readonly messageProperties: IMessageProperties | null;
-    readonly metadata: Record<string, unknown> | null;
+    readonly metadata: IAppBaseExceptionMetadata | null;
     readonly rawError: unknown;
 
     constructor(

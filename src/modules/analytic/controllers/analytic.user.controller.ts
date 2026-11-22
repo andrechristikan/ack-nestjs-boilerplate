@@ -1,5 +1,5 @@
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestThrottleProtected } from '@common/request/decorators/request.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { AnalyticRoleCountResponseSchema } from '@modules/analytic/dtos/response/analytic.role-count.response.dto';
 import { AnalyticStatusCountResponseSchema } from '@modules/analytic/dtos/response/analytic.status-count.response.dto';
@@ -54,7 +54,7 @@ export class AnalyticUserController {
     @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/workspace/summary')
@@ -74,7 +74,7 @@ export class AnalyticUserController {
     @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/workspace/invite-funnel')
@@ -99,7 +99,7 @@ export class AnalyticUserController {
     @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/workspace/join-outcomes')
@@ -122,7 +122,7 @@ export class AnalyticUserController {
     @WorkspaceProtected(EnumWorkspaceMemberRole.admin)
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/workspace/member-roles')

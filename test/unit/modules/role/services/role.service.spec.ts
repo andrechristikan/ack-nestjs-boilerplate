@@ -33,7 +33,6 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import { RoleCache } from '@modules/role/caches/role.cache';
-import { RoleWithPoliciesCacheSchema } from '@modules/role/constants/role.constant';
 import { RoleService } from '@modules/role/services/role.service';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type {
@@ -46,6 +45,7 @@ import type {
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { buildUser } from '@test/unit/helpers/test.unit.request.helper';
+import { RoleCacheSchema } from '@modules/role/dtos/role.cache.dto';
 
 describe('RoleService', () => {
     const roleRepository: MockProxy<RoleRepository> = mock<RoleRepository>();
@@ -324,7 +324,7 @@ describe('RoleService', () => {
             Object.assign(roleCache, { cacheTtlInMs: 900000 });
         });
 
-        it('reads through with the role key, RoleWithPoliciesCacheSchema, the TTL, a loader, and the lease', async () => {
+        it('reads through with the role key, RoleCacheSchema, the TTL, a loader, and the lease', async () => {
             cacheService.readThrough.mockResolvedValue(roleWithPolicies);
 
             const result = await service.getOne(role.id);
@@ -334,7 +334,7 @@ describe('RoleService', () => {
             expect(roleCache.buildRoleLease).toHaveBeenCalledWith(role.id);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
                 'Role:role-1',
-                RoleWithPoliciesCacheSchema,
+                RoleCacheSchema,
                 900000,
                 expect.any(Function),
                 { lease: roleLease }

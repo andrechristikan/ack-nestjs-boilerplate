@@ -30,7 +30,7 @@ export class AnalyticRiskScoreListUseCase implements IAppUseCase<
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticFraudService.riskScores(
+        return this.analyticFraudService.getRiskScoreList(
             query.minScore ?? null,
             params
         );

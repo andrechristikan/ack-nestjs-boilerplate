@@ -40,7 +40,7 @@ describe('AnalyticLoginSpikeIpSummaryUseCase', () => {
                 computedAt,
                 metadata: { minUniqueAccounts: 2 },
             };
-            analyticAnomalyService.loginSpikeIpSummary.mockResolvedValue(
+            analyticAnomalyService.getLoginSpikeIpSummary.mockResolvedValue(
                 summary
             );
 
@@ -48,7 +48,7 @@ describe('AnalyticLoginSpikeIpSummaryUseCase', () => {
 
             expect(result).toEqual({ data: summary });
             expect(
-                analyticAnomalyService.loginSpikeIpSummary
+                analyticAnomalyService.getLoginSpikeIpSummary
             ).toHaveBeenCalledWith();
         });
     });

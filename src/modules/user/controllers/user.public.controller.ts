@@ -1,7 +1,7 @@
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     RequestContext,
-    RequestThrottle,
+    RequestThrottleProtected,
 } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -45,8 +45,8 @@ import { UserLoginPasskeyGenerateResponseSchema } from '@modules/user/dtos/respo
 import type { UserLoginPasskeyGenerateResponseDto } from '@modules/user/dtos/response/user.login-passkey-generate.response.dto';
 import { UserLoginResponseSchema } from '@modules/user/dtos/response/user.login.response.dto';
 import type {
-    IUserLoginOutcome,
-    IUserLoginTokenOutcome,
+    IUserAuthOutcome,
+    IUserAuthTokenOutcome,
 } from '@modules/user/interfaces/user.interface';
 import { UserLoginCredentialUseCase } from '@modules/user/use-cases/user.login-credential.use-case';
 import { UserLoginWithSocialUseCase } from '@modules/user/use-cases/user.login-with-social.use-case';
@@ -98,7 +98,7 @@ export class UserPublicController {
     @Doc({ summary: 'login with credential' })
     @Response('user.loginCredential', { schema: UserLoginResponseSchema })
     @FeatureFlagProtected(EnumFeatureFlagKey.loginWithCredential)
-    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/login/credential')
@@ -107,7 +107,7 @@ export class UserPublicController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @Body({ schema: UserLoginRequestSchema })
         body: UserLoginRequestDto
-    ): Promise<IResponseReturn<IUserLoginOutcome>> {
+    ): Promise<IResponseReturn<IUserAuthOutcome>> {
         return this.userLoginCredentialUseCase.execute(
             requestContext,
             apiKeyContext,
@@ -121,7 +121,7 @@ export class UserPublicController {
     })
     @AuthSocialGoogleProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.loginWithGoogle)
-    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/login/social/google')
@@ -131,7 +131,7 @@ export class UserPublicController {
         @AuthSocialContext() authContext: IAuthSocialContext,
         @Body({ schema: UserCreateSocialRequestSchema })
         body: UserCreateSocialRequestDto
-    ): Promise<IResponseReturn<IUserLoginOutcome>> {
+    ): Promise<IResponseReturn<IUserAuthOutcome>> {
         return this.userLoginWithSocialUseCase.execute(
             requestContext,
             apiKeyContext,
@@ -147,7 +147,7 @@ export class UserPublicController {
     })
     @AuthSocialAppleProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.loginWithApple)
-    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/login/social/apple')
@@ -157,7 +157,7 @@ export class UserPublicController {
         @AuthSocialContext() authContext: IAuthSocialContext,
         @Body({ schema: UserCreateSocialRequestSchema })
         body: UserCreateSocialRequestDto
-    ): Promise<IResponseReturn<IUserLoginOutcome>> {
+    ): Promise<IResponseReturn<IUserAuthOutcome>> {
         return this.userLoginWithSocialUseCase.execute(
             requestContext,
             apiKeyContext,
@@ -170,7 +170,7 @@ export class UserPublicController {
     @Doc({ summary: 'user sign up' })
     @Response('user.signUp')
     @FeatureFlagProtected(EnumFeatureFlagKey.signUp)
-    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @Post('/sign-up')
     async signUp(
@@ -188,7 +188,7 @@ export class UserPublicController {
 
     @Doc({ summary: 'user email verification' })
     @Response('user.verifyEmail')
-    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @Patch('/email/verify')
     async verifyEmail(
@@ -206,7 +206,7 @@ export class UserPublicController {
 
     @Doc({ summary: 'user resend email verification' })
     @Response('user.sendEmailVerification')
-    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/email/send')
@@ -226,7 +226,7 @@ export class UserPublicController {
     @Doc({ summary: 'user forgot password' })
     @Response('user.forgotPassword')
     @FeatureFlagProtected(EnumFeatureFlagKey.changePassword)
-    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/password/forgot')
@@ -246,7 +246,7 @@ export class UserPublicController {
     @Doc({ summary: 'user reset password' })
     @Response('user.resetPassword')
     @FeatureFlagProtected(EnumFeatureFlagKey.changePassword)
-    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @Patch('/password/reset')
     async reset(
@@ -267,7 +267,7 @@ export class UserPublicController {
         schema: UserResetPasswordGenerateMfaResponseSchema,
     })
     @FeatureFlagProtected(EnumFeatureFlagKey.changePassword)
-    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/password/reset/mfa/generate')
@@ -280,7 +280,7 @@ export class UserPublicController {
 
     @Doc({ summary: 'user verify multi-factor authentication during login' })
     @Response('user.verifyMfa', { schema: AuthTokenResponseSchema })
-    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @Patch('/login/mfa/verify')
     async loginVerifyMfa(
@@ -301,7 +301,7 @@ export class UserPublicController {
         schema: UserLoginPasskeyGenerateResponseSchema,
     })
     @FeatureFlagProtected(EnumFeatureFlagKey.loginWithPasskey)
-    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/login/passkey/generate')
@@ -314,7 +314,7 @@ export class UserPublicController {
     @Doc({ summary: 'login with passkey' })
     @Response('user.loginWithPasskey', { schema: UserLoginResponseSchema })
     @FeatureFlagProtected(EnumFeatureFlagKey.loginWithPasskey)
-    @RequestThrottle({ route: EnumRequestThrottleRoute.strict })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.strict })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/login/passkey')
@@ -323,7 +323,7 @@ export class UserPublicController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @Body({ schema: UserLoginPasskeyRequestSchema })
         body: UserLoginPasskeyRequestDto
-    ): Promise<IResponseReturn<IUserLoginTokenOutcome>> {
+    ): Promise<IResponseReturn<IUserAuthTokenOutcome>> {
         return this.userLoginWithPasskeyUseCase.execute(
             requestContext,
             apiKeyContext,

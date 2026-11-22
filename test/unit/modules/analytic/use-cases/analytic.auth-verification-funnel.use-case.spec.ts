@@ -40,7 +40,7 @@ describe('AnalyticAuthVerificationFunnelUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticAuthService.authVerificationFunnel.mockResolvedValue({
+            analyticAuthService.getAuthVerificationFunnel.mockResolvedValue({
                 email: { used: 1, unused: 2, total: 3, rate: 0.33 },
                 mobile: { used: 4, unused: 1, total: 5, rate: 0.8 },
             });
@@ -57,7 +57,7 @@ describe('AnalyticAuthVerificationFunnelUseCase', () => {
                 },
             });
             expect(
-                analyticAuthService.authVerificationFunnel
+                analyticAuthService.getAuthVerificationFunnel
             ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes the query dates to the range check', async () => {
@@ -65,7 +65,7 @@ describe('AnalyticAuthVerificationFunnelUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticAuthService.authVerificationFunnel.mockResolvedValue({
+            analyticAuthService.getAuthVerificationFunnel.mockResolvedValue({
                 email: { used: 1, unused: 2, total: 3, rate: 0.33 },
                 mobile: { used: 4, unused: 1, total: 5, rate: 0.8 },
             });

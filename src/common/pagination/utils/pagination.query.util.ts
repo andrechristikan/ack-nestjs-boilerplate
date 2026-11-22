@@ -6,13 +6,13 @@ import {
 } from '@common/pagination/constants/pagination.constant';
 import type { PaginationCursorQueryDto } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import type { PaginationOffsetQueryDto } from '@common/pagination/dtos/pagination.offset-query.dto';
+import type { PaginationOrderByQueryDto } from '@common/pagination/dtos/pagination.order-by-query.dto';
 import { PaginationInvalidPerPageException } from '@common/pagination/exceptions/pagination.invalid-per-page.exception';
 import { PaginationPerPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.per-page-cannot-be-less-than-one.exception';
 import { PaginationPerPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.per-page-exceeds-maximum.exception';
 import type {
     IPaginationOrderBy,
     IPaginationOrderByPresets,
-    IPaginationOrderByQuery,
     IPaginationQueryCursorOptions,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetOptions,
@@ -59,8 +59,8 @@ export class PaginationQueryUtil {
         return { name, terms: [...presets[name]!] };
     }
 
-    private validateAndParsePage(page?: number | string): number {
-        const result = this.paginationOffsetUtil.parsePage(page ?? null);
+    private validateAndParsePage(page: number | string | null): number {
+        const result = this.paginationOffsetUtil.parsePage(page);
         if (result instanceof AppBaseException) {
             throw result;
         }
@@ -69,7 +69,7 @@ export class PaginationQueryUtil {
     }
 
     private validateAndParsePerPage(
-        perPage?: number | string,
+        perPage: number | string | null,
         defaultPerPage: number = PaginationDefaultPerPage
     ): number {
         let finalPerPage = perPage ?? defaultPerPage;
@@ -100,7 +100,7 @@ export class PaginationQueryUtil {
         return finalPerPage;
     }
 
-    private validateAndSanitizeCursor(cursor?: string): string | null {
+    private validateAndSanitizeCursor(cursor: string | null): string | null {
         if (typeof cursor !== 'string') {
             return null;
         }
@@ -120,16 +120,16 @@ export class PaginationQueryUtil {
     }
 
     offset<T extends IPaginationOrderByPresets>(
-        dto: PaginationOffsetQueryDto & { orderBy?: IPaginationOrderByQuery },
+        dto: PaginationOffsetQueryDto & PaginationOrderByQueryDto,
         options: IPaginationQueryOffsetOptions<T>
     ): {
         params: IPaginationQueryOffsetParams;
         storePatch: IPaginationQueryPatch;
     } {
         const availableSearch = options.availableSearch ?? [];
-        const page = this.validateAndParsePage(dto.page);
+        const page = this.validateAndParsePage(dto.page ?? null);
         const perPage = this.validateAndParsePerPage(
-            dto.perPage,
+            dto.perPage ?? null,
             options.defaultPerPage
         );
         const search = dto.search?.trim();
@@ -163,7 +163,7 @@ export class PaginationQueryUtil {
     }
 
     cursor<T extends IPaginationOrderByPresets>(
-        dto: PaginationCursorQueryDto & { orderBy?: IPaginationOrderByQuery },
+        dto: PaginationCursorQueryDto & PaginationOrderByQueryDto,
         options: IPaginationQueryCursorOptions<T>
     ): {
         params: IPaginationQueryCursorParams;
@@ -171,10 +171,10 @@ export class PaginationQueryUtil {
     } {
         const availableSearch = options.availableSearch ?? [];
         const perPage = this.validateAndParsePerPage(
-            dto.perPage,
+            dto.perPage ?? null,
             options.defaultPerPage
         );
-        const cursor = this.validateAndSanitizeCursor(dto.cursor);
+        const cursor = this.validateAndSanitizeCursor(dto.cursor ?? null);
         const search = dto.search?.trim();
         let where: IPaginationSearchWhere | null = null;
         if (search && availableSearch.length > 0) {

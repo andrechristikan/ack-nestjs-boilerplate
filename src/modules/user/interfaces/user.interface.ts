@@ -50,7 +50,7 @@ import type {
     IRole,
     IRoleWithPolicies,
 } from '@modules/role/interfaces/role.interface';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
@@ -116,7 +116,7 @@ export interface IUserForgotPasswordCreate {
     link: string;
 }
 
-export interface IUserSignUpPrepared {
+export interface IUserRegistrationPrepared {
     input: IUserCreateWithWorkspaceInput;
     emailVerification: IUserVerificationEmailCreate;
 }
@@ -154,15 +154,15 @@ export interface IUserVerificationEmailTarget {
     user: User;
 }
 
-export interface IUserSignUpWorkspacePersonal {
-    type: EnumUserSignUpWorkspaceContextType.personal;
+export interface IUserCreateWorkspacePersonal {
+    type: EnumUserCreateWorkspaceContextType.personal;
     workspaceId: string;
     slugCandidates: string[];
     name: string;
 }
 
-export interface IUserSignUpWorkspaceInvite {
-    type: EnumUserSignUpWorkspaceContextType.invite;
+export interface IUserCreateWorkspaceInvite {
+    type: EnumUserCreateWorkspaceContextType.invite;
     workspaceId: string;
     workspaceInviteId: string;
     invitedByUserId: string;
@@ -171,14 +171,14 @@ export interface IUserSignUpWorkspaceInvite {
     projectMemberRole: EnumProjectMemberRole | null;
 }
 
-export type IUserSignUpWorkspaceContext =
-    IUserSignUpWorkspacePersonal | IUserSignUpWorkspaceInvite;
+export type IUserCreateWorkspaceContext =
+    IUserCreateWorkspacePersonal | IUserCreateWorkspaceInvite;
 
 export type IUserCreateRole = Pick<IRole, 'id'>;
 
-export interface IUserSignUpResolved {
+export interface IUserRegistrationResolved {
     roleId: string;
-    workspaceContext: IUserSignUpWorkspaceContext;
+    workspaceContext: IUserCreateWorkspaceContext;
 }
 
 export interface IUserCreateContract {
@@ -208,7 +208,7 @@ export interface IUserCreateWithWorkspaceInput {
     password: IAuthPassword | null;
     passwordHistoryType: EnumPasswordHistoryType | null;
     verification: IUserCreateVerification | null;
-    workspaceContext: IUserSignUpWorkspaceContext;
+    workspaceContext: IUserCreateWorkspaceContext;
     createdBy: string;
 }
 
@@ -304,7 +304,7 @@ export interface IUserLoginSocial {
     inviteToken: string | null;
 }
 
-export interface IUserSignUp {
+export interface IUserRegistration {
     username: string;
     email: string;
     name: string | null;
@@ -345,31 +345,31 @@ export interface IUserReauthenticationPasswordResult {
     limit: IUserPasswordAttemptLimit | null;
 }
 
-export interface IUserLoginMfaChallenge {
+export interface IUserAuthMfaChallenge {
     challengeToken: string;
     expiresInMs: number;
     methods: EnumMfaMethod[];
     passkeyOptions: PublicKeyCredentialRequestOptionsJSON | null;
 }
 
-interface IUserLoginOutcomeBase {
+interface IUserAuthOutcomeBase {
     lastWorkspaceId: string | null;
     lastWorkspaceChangedAt: Date | null;
 }
 
-export interface IUserLoginTokenOutcome extends IUserLoginOutcomeBase {
+export interface IUserAuthTokenOutcome extends IUserAuthOutcomeBase {
     isMfaRequired: false;
     tokens: IAuthToken;
     mfa?: never;
 }
 
-export interface IUserLoginMfaOutcome extends IUserLoginOutcomeBase {
+export interface IUserAuthMfaOutcome extends IUserAuthOutcomeBase {
     isMfaRequired: true;
-    mfa: IUserLoginMfaChallenge;
+    mfa: IUserAuthMfaChallenge;
     tokens?: never;
 }
 
-export type IUserLoginOutcome = IUserLoginTokenOutcome | IUserLoginMfaOutcome;
+export type IUserAuthOutcome = IUserAuthTokenOutcome | IUserAuthMfaOutcome;
 
 export interface IUserDeletePhotoPayload {
     userId: string;

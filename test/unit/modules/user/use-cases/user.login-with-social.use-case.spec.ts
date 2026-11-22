@@ -72,7 +72,7 @@ import { UserRegistrationService } from '@modules/user/services/user.registratio
 import { UserService } from '@modules/user/services/user.service';
 import { UserSocialService } from '@modules/user/services/user.social.service';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
@@ -80,13 +80,13 @@ import type {
     IUser,
     IUserCheckUsername,
     IUserCreateWithWorkspaceInput,
-    IUserLoginOutcome,
+    IUserAuthOutcome,
     IUserLoginSocial,
-    IUserLoginMfaChallenge,
-    IUserSignUpWorkspaceInvite,
-    IUserSignUpWorkspacePersonal,
+    IUserAuthMfaChallenge,
+    IUserCreateWorkspaceInvite,
+    IUserCreateWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
-import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
+import type { IUserAuthSession } from '@modules/user/interfaces/user.auth.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import type { IMfaPasskeyCredential } from '@modules/mfa/interfaces/mfa.interface';
@@ -167,7 +167,7 @@ describe('UserLoginWithSocialUseCase', () => {
         accessToken: 'access-token',
         refreshToken: 'refresh-token',
     };
-    const tokenOutcome: IUserLoginOutcome = {
+    const tokenOutcome: IUserAuthOutcome = {
         isMfaRequired: false,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
@@ -230,13 +230,13 @@ describe('UserLoginWithSocialUseCase', () => {
     const passkeyCredentials: IMfaPasskeyCredential[] = [
         { credentialId: 'credential-bramble', transports: ['internal'] },
     ];
-    const mfaChallenge: IUserLoginMfaChallenge = {
+    const mfaChallenge: IUserAuthMfaChallenge = {
         challengeToken: 'challenge-token',
         expiresInMs: 60000,
         methods: [EnumMfaMethod.passkey, EnumMfaMethod.backupCode],
         passkeyOptions: { challenge: 'challenge-webauthn' },
     };
-    const session: IUserLoginSession = {
+    const session: IUserAuthSession = {
         tokens,
         sessionId: 'session-bramble',
     };
@@ -253,14 +253,14 @@ describe('UserLoginWithSocialUseCase', () => {
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         updatedBy: null,
     };
-    const personalContext: IUserSignUpWorkspacePersonal = {
-        type: EnumUserSignUpWorkspaceContextType.personal,
+    const personalContext: IUserCreateWorkspacePersonal = {
+        type: EnumUserCreateWorkspaceContextType.personal,
         workspaceId: 'workspace-bramble',
         slugCandidates: ['w-bramble', 'w-bramble-b'],
         name: "bramble2fox's Workspace",
     };
-    const inviteContext: IUserSignUpWorkspaceInvite = {
-        type: EnumUserSignUpWorkspaceContextType.invite,
+    const inviteContext: IUserCreateWorkspaceInvite = {
+        type: EnumUserCreateWorkspaceContextType.invite,
         workspaceId: 'workspace-invite',
         workspaceInviteId: 'invite-bramble',
         invitedByUserId: 'user-inviter',
@@ -684,7 +684,8 @@ describe('UserLoginWithSocialUseCase', () => {
                 tx,
                 'user-bramble',
                 EnumUserLoginWith.socialApple,
-                'subject-bramble'
+                'subject-bramble',
+                'user-bramble'
             );
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 userSocialService.linkInTx
@@ -716,7 +717,8 @@ describe('UserLoginWithSocialUseCase', () => {
                 tx,
                 'user-bramble',
                 EnumUserLoginWith.socialGoogle,
-                'subject-bramble'
+                'subject-bramble',
+                'user-bramble'
             );
             expect(userSocialService.assertLinkable).toHaveBeenCalledBefore(
                 databaseService.withTransaction
@@ -1347,7 +1349,7 @@ describe('UserLoginWithSocialUseCase', () => {
             );
             expect(
                 notificationService.createDefaultsManyInTx
-            ).toHaveBeenCalledWith(tx, ['user-bramble']);
+            ).toHaveBeenCalledWith(tx, ['user-bramble'], 'user-bramble');
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 mfaService.createInTx
             );

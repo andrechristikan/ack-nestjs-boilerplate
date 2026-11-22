@@ -12,7 +12,7 @@ export class AnalyticAuthMfaAdoptionUseCase implements IAppUseCase<
     constructor(private readonly analyticAuthService: AnalyticAuthService) {}
 
     async execute(): Promise<IResponseReturn<IAnalyticMfaAdoption>> {
-        const data = await this.analyticAuthService.authMfaAdoption();
+        const data = await this.analyticAuthService.getAuthMfaAdoption();
 
         return { data };
     }

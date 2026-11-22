@@ -143,13 +143,9 @@ describe('UserUtil', () => {
         });
     });
 
-    describe('isUsernamePatternInvalid', () => {
-        it('returns false when the username matches the allowed pattern', () => {
-            expect(util.isUsernamePatternInvalid('marigoldFinch')).toBe(false);
-        });
-
-        it('returns true when the username does not match the allowed pattern', () => {
-            expect(util.isUsernamePatternInvalid('marigold finch')).toBe(true);
+    describe('normalizeEmail', () => {
+        it('trims and lowercases the email', () => {
+            expect(util.normalizeEmail('  Ada@Mail.COM ')).toBe('ada@mail.com');
         });
     });
 

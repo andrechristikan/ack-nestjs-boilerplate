@@ -30,6 +30,6 @@ export class AnalyticFailedLoginSpikeListUseCase implements IAppUseCase<
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticAnomalyService.failedLoginSpikeList(params);
+        return this.analyticAnomalyService.getFailedLoginSpikeList(params);
     }
 }

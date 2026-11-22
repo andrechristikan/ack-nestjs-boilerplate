@@ -76,7 +76,9 @@ describe('AnalyticImpossibleTravelListUseCase', () => {
                     },
                 ],
             };
-            analyticAnomalyService.impossibleTravelList.mockResolvedValue(page);
+            analyticAnomalyService.getImpossibleTravelList.mockResolvedValue(
+                page
+            );
 
             const result = await useCase.execute({
                 page: 1,
@@ -85,7 +87,7 @@ describe('AnalyticImpossibleTravelListUseCase', () => {
 
             expect(result).toEqual(page);
             expect(
-                analyticAnomalyService.impossibleTravelList
+                analyticAnomalyService.getImpossibleTravelList
             ).toHaveBeenCalledWith(pagination);
             expect(requestStoreService.merge).toHaveBeenCalledTimes(1);
         });

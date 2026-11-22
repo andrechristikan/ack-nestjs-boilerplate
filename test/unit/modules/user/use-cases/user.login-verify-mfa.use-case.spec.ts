@@ -44,7 +44,7 @@ import type {
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
-import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
+import type { IUserAuthSession } from '@modules/user/interfaces/user.auth.interface';
 import { UserLoginVerifyMfaUseCase } from '@modules/user/use-cases/user.login-verify-mfa.use-case';
 import {
     buildApiKeyContext,
@@ -103,7 +103,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
         ...buildUser('user-bramble', 'bramble@example.com'),
         isVerified: true,
     };
-    const session: IUserLoginSession = {
+    const session: IUserAuthSession = {
         tokens,
         sessionId: 'session-bramble',
     };

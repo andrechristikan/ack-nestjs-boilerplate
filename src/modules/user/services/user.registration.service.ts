@@ -20,12 +20,13 @@ import type {
     IUser,
     IUserCreateWithWorkspaceInput,
     IUserLoginSocial,
-    IUserSignUp,
-    IUserSignUpPrepared,
-    IUserSignUpResolved,
+    IUserRegistration,
+    IUserRegistrationPrepared,
+    IUserRegistrationResolved,
 } from '@modules/user/interfaces/user.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
+import { UserUtil } from '@modules/user/utils/user.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { Injectable } from '@nestjs/common';
 
@@ -35,6 +36,7 @@ export class UserRegistrationService {
         private readonly userAuthService: UserAuthService,
         private readonly featureFlagService: FeatureFlagService,
         private readonly userCreateUtil: UserCreateUtil,
+        private readonly userUtil: UserUtil,
         private readonly authPasswordService: AuthPasswordService,
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly databaseUtil: DatabaseUtil,
@@ -66,15 +68,13 @@ export class UserRegistrationService {
         loginWith: EnumUserLoginWith
     ): Promise<boolean> {
         const featureFlagKey = this.resolveSocialFeatureFlagKey(loginWith);
-        const [featureFlag, existing] = await Promise.all([
-            this.featureFlagService.getMetadataByKey<{
-                [EnumFeatureFlagMetadataKey.signUpAllowed]: boolean;
-            }>(featureFlagKey),
+        const [signUpAllowed, existing] = await Promise.all([
+            this.featureFlagService.isMetadataAllowed(
+                featureFlagKey,
+                EnumFeatureFlagMetadataKey.signUpAllowed
+            ),
             this.userAuthService.getOneByEmail(email),
         ]);
-
-        const signUpAllowed =
-            featureFlag?.[EnumFeatureFlagMetadataKey.signUpAllowed] === true;
 
         return existing === null && signUpAllowed;
     }
@@ -89,9 +89,9 @@ export class UserRegistrationService {
             from,
             cookies,
             marketing,
-        }: IUserSignUp,
-        { roleId, workspaceContext }: IUserSignUpResolved
-    ): Promise<IUserSignUpPrepared> {
+        }: IUserRegistration,
+        { roleId, workspaceContext }: IUserRegistrationResolved
+    ): Promise<IUserRegistrationPrepared> {
         const userId = this.databaseUtil.createId();
         const password = await this.authPasswordService.create(passwordString);
         const emailVerification = this.userVerificationUtil.createEmail();
@@ -145,9 +145,10 @@ export class UserRegistrationService {
             cookies,
             marketing,
         }: IUserLoginSocial,
-        { roleId, workspaceContext }: IUserSignUpResolved
+        { roleId, workspaceContext }: IUserRegistrationResolved
     ): IUserCreateWithWorkspaceInput {
         const userId = this.databaseUtil.createId();
+        const normalizedEmail = this.userUtil.normalizeEmail(email);
         const verifiedAt = this.helperDateService.create();
         const acceptedTermPolicyTypes = this.buildAcceptedTermPolicyTypes(
             cookies,
@@ -156,7 +157,7 @@ export class UserRegistrationService {
 
         return {
             userId,
-            email: email.trim().toLowerCase(),
+            email: normalizedEmail,
             name,
             username,
             countryId,

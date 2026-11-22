@@ -7,7 +7,7 @@ import { UserCreateRequestSchema } from '@modules/user/dtos/request/user.create.
 export const UserUpdateProfileRequestSchema = UserCreateRequestSchema.pick({
     countryId: true,
 }).extend({
-    name: z.string().min(1).max(100).nullable().meta({
+    name: z.string().trim().min(1).max(100).nullable().meta({
         description: 'Display name of the user; null clears it',
         example: faker.person.fullName(),
     }),

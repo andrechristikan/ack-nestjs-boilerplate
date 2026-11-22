@@ -30,6 +30,6 @@ export class AnalyticSessionAfterAdminListUseCase implements IAppUseCase<
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticFraudService.sessionAfterAdminList(params);
+        return this.analyticFraudService.getSessionAfterAdminList(params);
     }
 }

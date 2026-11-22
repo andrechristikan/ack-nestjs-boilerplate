@@ -37,7 +37,7 @@ import type {
     IUserReauthenticationInput,
     IUserReauthenticationPasswordResult,
 } from '@modules/user/interfaces/user.interface';
-import type { IUserLoginSession } from '@modules/user/interfaces/user.login.interface';
+import type { IUserAuthSession } from '@modules/user/interfaces/user.auth.interface';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
@@ -289,15 +289,15 @@ export class UserAuthService {
 
     /** Trims and lowercases the email; null when no undeleted user holds it. */
     async getOneByEmail(email: string): Promise<IUser | null> {
-        return this.userRepository.findOneWithRoleByEmail(
-            email.trim().toLowerCase()
-        );
+        const normalizedEmail = this.userUtil.normalizeEmail(email);
+
+        return this.userRepository.findOneWithRoleByEmail(normalizedEmail);
     }
 
     async getOneForSocialLogin(email: string): Promise<IUser> {
-        const user = await this.userRepository.findOneWithRoleByEmail(
-            email.trim().toLowerCase()
-        );
+        const normalizedEmail = this.userUtil.normalizeEmail(email);
+        const user =
+            await this.userRepository.findOneWithRoleByEmail(normalizedEmail);
 
         return this.assertSocialLoginAllowed(user);
     }
@@ -351,7 +351,7 @@ export class UserAuthService {
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
         loginAt: Date
-    ): Promise<IUserLoginSession> {
+    ): Promise<IUserAuthSession> {
         const { requestLog } = requestContext;
         const { sessionId, jti } = this.authJwtService.createLoginIdentifiers();
         const expiredAt = this.helperDateService.forward(

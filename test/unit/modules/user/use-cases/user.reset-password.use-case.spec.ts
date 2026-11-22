@@ -52,7 +52,6 @@ import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
-import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
@@ -74,7 +73,6 @@ import {
 import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserResetPasswordUseCase', () => {
-    const userService: MockProxy<UserService> = mock<UserService>();
     const userPasswordService: MockProxy<UserPasswordService> =
         mock<UserPasswordService>();
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
@@ -194,7 +192,6 @@ describe('UserResetPasswordUseCase', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserResetPasswordUseCase,
-                { provide: UserService, useValue: userService },
                 { provide: UserPasswordService, useValue: userPasswordService },
                 {
                     provide: MfaService,
@@ -244,7 +241,7 @@ describe('UserResetPasswordUseCase', () => {
         beforeEach(() => {
             userPasswordService.getOneActiveReset.mockResolvedValue(resetRow);
             authPasswordService.create.mockResolvedValue(password);
-            userService.updatePasswordInTx.mockResolvedValue(updatedRow);
+            userPasswordService.replaceInTx.mockResolvedValue(updatedRow);
             passwordHistoryService.createInTx.mockResolvedValue(
                 passwordHistory
             );
@@ -276,7 +273,7 @@ describe('UserResetPasswordUseCase', () => {
 
                 return value as never;
             });
-            userService.updatePasswordInTx.mockImplementation(async () => {
+            userPasswordService.replaceInTx.mockImplementation(async () => {
                 calls.push('updatePassword');
 
                 return updatedRow;
@@ -289,11 +286,6 @@ describe('UserResetPasswordUseCase', () => {
             userPasswordService.markResetUsedInTx.mockImplementation(
                 async () => {
                     calls.push('markResetUsed');
-                }
-            );
-            userPasswordService.markUnusedResetsUsedInTx.mockImplementation(
-                async () => {
-                    calls.push('markUnusedResetsUsed');
                 }
             );
             deviceService.getNotificationTokens.mockImplementation(async () => {
@@ -361,7 +353,7 @@ describe('UserResetPasswordUseCase', () => {
                 resetEntry,
                 notifyEffect,
             ]);
-            expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
+            expect(userPasswordService.replaceInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
                 password,
@@ -382,9 +374,6 @@ describe('UserResetPasswordUseCase', () => {
                 password.passwordCreated,
                 'user-linden'
             );
-            expect(
-                userPasswordService.markUnusedResetsUsedInTx
-            ).toHaveBeenCalledWith(tx, 'user-linden', 'user-linden');
             expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -398,29 +387,25 @@ describe('UserResetPasswordUseCase', () => {
                 'markResetUsed',
                 'updatePassword',
                 'createHistory',
-                'markUnusedResetsUsed',
                 'revokeSessions',
                 'addEffects',
                 'commit',
             ]);
         });
 
-        it('marks the reset used alone, then starts the history, the unused-reset mark, and the session revoke while the password update is pending', async () => {
+        it('marks the reset used alone, then starts the history and the session revoke while the password update is pending', async () => {
             const marked = buildDeferred<void>();
             const update = buildDeferred<User>();
             userPasswordService.markResetUsedInTx.mockReturnValue(
                 marked.promise
             );
-            userService.updatePasswordInTx.mockReturnValue(update.promise);
+            userPasswordService.replaceInTx.mockReturnValue(update.promise);
 
             const running = useCase.execute(requestContext, apiKeyContext, dto);
             await vi.advanceTimersByTimeAsync(0);
 
-            expect(userService.updatePasswordInTx).not.toHaveBeenCalled();
+            expect(userPasswordService.replaceInTx).not.toHaveBeenCalled();
             expect(passwordHistoryService.createInTx).not.toHaveBeenCalled();
-            expect(
-                userPasswordService.markUnusedResetsUsedInTx
-            ).not.toHaveBeenCalled();
             expect(
                 sessionService.revokeActiveByUserInTx
             ).not.toHaveBeenCalled();
@@ -437,9 +422,6 @@ describe('UserResetPasswordUseCase', () => {
                 password.passwordCreated,
                 'user-linden'
             );
-            expect(
-                userPasswordService.markUnusedResetsUsedInTx
-            ).toHaveBeenCalledWith(tx, 'user-linden', 'user-linden');
             expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -515,7 +497,7 @@ describe('UserResetPasswordUseCase', () => {
                 mfaChecked
             );
             expect(mfaService.completeInTx).toHaveBeenCalledBefore(
-                userService.updatePasswordInTx
+                userPasswordService.replaceInTx
             );
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
@@ -603,7 +585,7 @@ describe('UserResetPasswordUseCase', () => {
                     passkeyChecked
                 );
                 expect(mfaService.completeChallengeInTx).toHaveBeenCalledBefore(
-                    userService.updatePasswordInTx
+                    userPasswordService.replaceInTx
                 );
                 expect(mfaService.completeInTx).not.toHaveBeenCalled();
                 expect(mfaChallengeService.consumeInTx).not.toHaveBeenCalled();
@@ -668,7 +650,7 @@ describe('UserResetPasswordUseCase', () => {
                 );
                 expect(mfaService.completeChallengeInTx).not.toHaveBeenCalled();
                 expect(mfaService.completeInTx).not.toHaveBeenCalled();
-                expect(userService.updatePasswordInTx).not.toHaveBeenCalled();
+                expect(userPasswordService.replaceInTx).not.toHaveBeenCalled();
             });
 
             it('sends no WebAuthn challenge to the check and claims nothing when the token is missing', async () => {

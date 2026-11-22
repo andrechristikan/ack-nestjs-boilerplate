@@ -5,12 +5,6 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { Prisma } from '@generated/prisma-client/client';
-import {
-    AnalyticDeviceProliferationPipelineSchema,
-    AnalyticImpossibleTravelPipelineSchema,
-    AnalyticLoginSpikeIpCountPipelineSchema,
-    AnalyticLoginSpikeIpPipelineSchema,
-} from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticGroupKey } from '@modules/analytic/enums/analytic.enum';
 import type { IAnalyticAnomalyRepository } from '@modules/analytic/interfaces/analytic.anomaly-repository.interface';
 import type {
@@ -28,6 +22,10 @@ import {
     UserLoginAnalyticActions,
 } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
+import { AnalyticDeviceProliferationPipelineSchema } from '@modules/analytic/dtos/analytic.device-proliferation-pipeline.dto';
+import { AnalyticImpossibleTravelPipelineSchema } from '@modules/analytic/dtos/analytic.impossible-travel-pipeline.dto';
+import { AnalyticLoginSpikeIpCountPipelineSchema } from '@modules/analytic/dtos/analytic.login-spike-ip-count-pipeline.dto';
+import { AnalyticLoginSpikeIpPipelineSchema } from '@modules/analytic/dtos/analytic.login-spike-ip-pipeline.dto';
 
 @Injectable()
 export class AnalyticAnomalyRepository implements IAnalyticAnomalyRepository {

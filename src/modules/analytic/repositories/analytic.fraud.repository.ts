@@ -10,16 +10,8 @@ import {
 } from '@generated/prisma-client/client';
 import type { Prisma } from '@generated/prisma-client/client';
 import {
-    AnalyticAccountTakeoverPipelineSchema,
     AnalyticCredentialStuffingActions,
-    AnalyticCredentialStuffingPipelineSchema,
-    AnalyticForgotPasswordAbusePipelineSchema,
-    AnalyticFraudCountPipelineSchema,
-    AnalyticKeyCountPipelineSchema,
     AnalyticMassRegistrationActions,
-    AnalyticRiskScorePipelineSchema,
-    AnalyticSessionAfterAdminPipelineSchema,
-    AnalyticSharedFingerprintPipelineSchema,
 } from '@modules/analytic/constants/analytic.constant';
 import {
     EnumAnalyticFraudBand,
@@ -43,6 +35,14 @@ import { AnalyticPipelineUtil } from '@modules/analytic/utils/analytic.pipeline.
 import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
 import { Duration } from 'luxon';
+import { AnalyticAccountTakeoverPipelineSchema } from '@modules/analytic/dtos/analytic.account-takeover-pipeline.dto';
+import { AnalyticCredentialStuffingPipelineSchema } from '@modules/analytic/dtos/analytic.credential-stuffing-pipeline.dto';
+import { AnalyticForgotPasswordAbusePipelineSchema } from '@modules/analytic/dtos/analytic.forgot-password-abuse-pipeline.dto';
+import { AnalyticFraudCountPipelineSchema } from '@modules/analytic/dtos/analytic.fraud-count-pipeline.dto';
+import { AnalyticKeyCountPipelineSchema } from '@modules/analytic/dtos/analytic.key-count-pipeline.dto';
+import { AnalyticRiskScorePipelineSchema } from '@modules/analytic/dtos/analytic.risk-score-pipeline.dto';
+import { AnalyticSessionAfterAdminPipelineSchema } from '@modules/analytic/dtos/analytic.session-after-admin-pipeline.dto';
+import { AnalyticSharedFingerprintPipelineSchema } from '@modules/analytic/dtos/analytic.shared-fingerprint-pipeline.dto';
 
 @Injectable()
 export class AnalyticFraudRepository implements IAnalyticFraudRepository {
@@ -342,21 +342,32 @@ export class AnalyticFraudRepository implements IAnalyticFraudRepository {
         };
     }
 
-    async countCredentialStuffing(
-        range: IAnalyticDateRange,
-        minUniqueAccounts: number
+    private async countStages(
+        delegate:
+            | DatabaseService['client']['activityLog']
+            | DatabaseService['client']['passwordHistory'],
+        stages: Prisma.InputJsonValue[]
     ): Promise<number> {
-        const stages = this.credentialStuffingStages(range, minUniqueAccounts);
-        const result =
-            await this.databaseService.client.activityLog.aggregateRaw({
-                pipeline: [...stages, { $count: 'n' }],
-            });
+        const result = await delegate.aggregateRaw({
+            pipeline: [...stages, { $count: 'n' }],
+        });
         const parsed = AnalyticFraudCountPipelineSchema.safeParse(result);
         if (!parsed.success) {
             throw new AppUnknownException(parsed.error);
         }
 
         return parsed.data[0]?.n ?? 0;
+    }
+
+    async countCredentialStuffing(
+        range: IAnalyticDateRange,
+        minUniqueAccounts: number
+    ): Promise<number> {
+        const stages = this.credentialStuffingStages(range, minUniqueAccounts);
+        return this.countStages(
+            this.databaseService.client.activityLog,
+            stages
+        );
     }
 
     async findCredentialStuffingOffset(
@@ -395,16 +406,10 @@ export class AnalyticFraudRepository implements IAnalyticFraudRepository {
             range,
             newDeviceAfterPasswordChangeInMs
         );
-        const result =
-            await this.databaseService.client.passwordHistory.aggregateRaw({
-                pipeline: [...stages, { $count: 'n' }],
-            });
-        const parsed = AnalyticFraudCountPipelineSchema.safeParse(result);
-        if (!parsed.success) {
-            throw new AppUnknownException(parsed.error);
-        }
-
-        return parsed.data[0]?.n ?? 0;
+        return this.countStages(
+            this.databaseService.client.passwordHistory,
+            stages
+        );
     }
 
     async findAccountTakeoverOffset(
@@ -451,16 +456,10 @@ export class AnalyticFraudRepository implements IAnalyticFraudRepository {
             range,
             sessionAfterAdminRevokeInMs
         );
-        const result =
-            await this.databaseService.client.activityLog.aggregateRaw({
-                pipeline: [...stages, { $count: 'n' }],
-            });
-        const parsed = AnalyticFraudCountPipelineSchema.safeParse(result);
-        if (!parsed.success) {
-            throw new AppUnknownException(parsed.error);
-        }
-
-        return parsed.data[0]?.n ?? 0;
+        return this.countStages(
+            this.databaseService.client.activityLog,
+            stages
+        );
     }
 
     async findSessionAfterAdminOffset(

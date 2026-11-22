@@ -9,22 +9,20 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
 import { ActivityLogWorkspaceVolumeContract } from '@modules/activity-log/contracts/activity-log.workspace-volume.contract';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import {
-    AnalyticMetricCountCacheSchema,
-    AnalyticStatusCountsCacheSchema,
-    AnalyticWorkspaceCountPageCacheSchema,
-    AnalyticWorkspaceMembershipSnapshotDataSchema,
-    AnalyticWorkspaceSummaryCacheSchema,
-} from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticWorkspaceRepository } from '@modules/analytic/repositories/analytic.workspace.repository';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
 import { AnalyticWorkspaceService } from '@modules/analytic/services/analytic.workspace.service';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AnalyticMetricCountCacheSchema } from '@modules/analytic/dtos/analytic.metric-count-cache.dto';
+import { AnalyticRoleCountsCacheSchema } from '@modules/analytic/dtos/analytic.role-counts-cache.dto';
+import { AnalyticStatusCountsCacheSchema } from '@modules/analytic/dtos/analytic.status-counts-cache.dto';
+import { AnalyticWorkspaceCountPageCacheSchema } from '@modules/analytic/dtos/analytic.workspace-count-page-cache.dto';
+import { AnalyticWorkspaceMembershipSnapshotDataSchema } from '@modules/analytic/dtos/analytic.workspace-membership-snapshot-data.dto';
+import { AnalyticWorkspaceSummaryCacheSchema } from '@modules/analytic/dtos/analytic.workspace-summary-cache.dto';
 
 describe('AnalyticWorkspaceService', () => {
     const dashboardTtlInMs = 1800000;
@@ -58,15 +56,27 @@ describe('AnalyticWorkspaceService', () => {
 
     beforeEach(async () => {
         analyticCache.buildDashboardKey.mockImplementation(
-            (metric, start, end) => `${metric}:${start}:${end}`
+            (metric, start, end) =>
+                `${metric}:${start?.toISOString() ?? '_'}:${end?.toISOString() ?? '_'}`
         );
         analyticCache.buildDashboardPageKey.mockImplementation(
             (metric, start, end, page, perPage) =>
-                `${metric}:${start}:${end}:${page}:${perPage}`
+                `${metric}:${start?.toISOString() ?? '_'}:${end?.toISOString() ?? '_'}:${page}:${perPage}`
         );
         analyticCache.buildWorkspaceSummaryKey.mockImplementation(
             (workspaceId, start, end) =>
-                `Summary:${workspaceId}:${start}:${end}`
+                `Summary:${workspaceId}:${start?.toISOString() ?? '_'}:${end?.toISOString() ?? '_'}`
+        );
+        analyticCache.buildWorkspaceInviteFunnelKey.mockImplementation(
+            (workspaceId, start, end) =>
+                `InviteFunnel:${workspaceId}:${start.toISOString()}:${end.toISOString()}`
+        );
+        analyticCache.buildWorkspaceJoinOutcomesKey.mockImplementation(
+            (workspaceId, start, end) =>
+                `JoinOutcomes:${workspaceId}:${start.toISOString()}:${end.toISOString()}`
+        );
+        analyticCache.buildWorkspaceMemberRolesKey.mockImplementation(
+            workspaceId => `MemberRoles:${workspaceId}`
         );
         cacheService.readThrough.mockImplementation(
             async (_key, _schema, _ttlInMs, loader) => loader()
@@ -77,14 +87,11 @@ describe('AnalyticWorkspaceService', () => {
                 AnalyticWorkspaceService,
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: CacheService, useValue: cacheService },
-                AnalyticDateUtil,
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
                         ...TestUnitKitConfigValues,
-                        'analytic.cache.windowTokenPattern':
-                            'Window:{start}:{end}',
                     }),
                 },
                 {
@@ -101,11 +108,14 @@ describe('AnalyticWorkspaceService', () => {
         service = module.get(AnalyticWorkspaceService);
     });
 
-    describe('workspacesCreation', () => {
+    describe('getWorkspaceCreation', () => {
         it('wraps the repository count', async () => {
             analyticWorkspaceRepository.countCreated.mockResolvedValue(4);
 
-            const result = await service.workspacesCreation(startDate, endDate);
+            const result = await service.getWorkspaceCreation(
+                startDate,
+                endDate
+            );
 
             expect(result).toEqual({ count: 4 });
             expect(
@@ -116,11 +126,14 @@ describe('AnalyticWorkspaceService', () => {
         it('reads through with the dashboard key, AnalyticMetricCountCacheSchema, and the dashboard TTL', async () => {
             cacheService.readThrough.mockResolvedValue(cachedValue);
 
-            const result = await service.workspacesCreation(startDate, endDate);
+            const result = await service.getWorkspaceCreation(
+                startDate,
+                endDate
+            );
 
             expect(result).toBe(cachedValue);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.workspacesCreation}:${startToken}:${endToken}`,
+                `${EnumAnalyticDashboardMetric.workspaceCreation}:${startToken}:${endToken}`,
                 AnalyticMetricCountCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
@@ -128,14 +141,14 @@ describe('AnalyticWorkspaceService', () => {
         });
     });
 
-    describe('workspacesInviteFunnel', () => {
+    describe('getWorkspaceInviteFunnel', () => {
         it('asks the repository with a null workspace id', async () => {
             const rows = [{ status: 'pending', count: 2 }];
             analyticWorkspaceRepository.groupInviteFunnel.mockResolvedValue(
                 rows
             );
 
-            const result = await service.workspacesInviteFunnel(
+            const result = await service.getWorkspaceInviteFunnel(
                 startDate,
                 endDate
             );
@@ -149,10 +162,10 @@ describe('AnalyticWorkspaceService', () => {
         it('reads through with the dashboard key, AnalyticStatusCountsCacheSchema, and the dashboard TTL', async () => {
             cacheService.readThrough.mockResolvedValue(cachedValue);
 
-            await service.workspacesInviteFunnel(startDate, endDate);
+            await service.getWorkspaceInviteFunnel(startDate, endDate);
 
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.workspacesInviteFunnel}:${startToken}:${endToken}`,
+                `${EnumAnalyticDashboardMetric.workspaceInviteFunnel}:${startToken}:${endToken}`,
                 AnalyticStatusCountsCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
@@ -160,14 +173,14 @@ describe('AnalyticWorkspaceService', () => {
         });
     });
 
-    describe('workspacesJoinOutcomes', () => {
+    describe('getWorkspaceJoinOutcomes', () => {
         it('asks the repository with a null workspace id', async () => {
             const rows = [{ status: 'approved', count: 1 }];
             analyticWorkspaceRepository.groupJoinOutcomes.mockResolvedValue(
                 rows
             );
 
-            const result = await service.workspacesJoinOutcomes(
+            const result = await service.getWorkspaceJoinOutcomes(
                 startDate,
                 endDate
             );
@@ -181,10 +194,10 @@ describe('AnalyticWorkspaceService', () => {
         it('reads through with the dashboard key, AnalyticStatusCountsCacheSchema, and the dashboard TTL', async () => {
             cacheService.readThrough.mockResolvedValue(cachedValue);
 
-            await service.workspacesJoinOutcomes(startDate, endDate);
+            await service.getWorkspaceJoinOutcomes(startDate, endDate);
 
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.workspacesJoinOutcomes}:${startToken}:${endToken}`,
+                `${EnumAnalyticDashboardMetric.workspaceJoinOutcomes}:${startToken}:${endToken}`,
                 AnalyticStatusCountsCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
@@ -218,11 +231,11 @@ describe('AnalyticWorkspaceService', () => {
         });
     });
 
-    describe('workspacesMembership', () => {
+    describe('getWorkspaceMembershipList', () => {
         it('returns the stored page for the signal with a null value filter and touches neither the repository nor the cache', async () => {
             analyticSnapshotService.getListOffset.mockResolvedValue(offsetPage);
 
-            const result = await service.workspacesMembership(pagination);
+            const result = await service.getWorkspaceMembershipList(pagination);
 
             expect(result).toBe(offsetPage);
             expect(analyticSnapshotService.getListOffset).toHaveBeenCalledWith(
@@ -238,13 +251,13 @@ describe('AnalyticWorkspaceService', () => {
         });
     });
 
-    describe('workspacesActivityVolume', () => {
+    describe('getWorkspaceActivityVolumeList', () => {
         it('passes the range, the contract actions, and the params to one repository method and returns its page unchanged', async () => {
             analyticWorkspaceRepository.groupActivityVolume.mockResolvedValue(
                 offsetPage
             );
 
-            const result = await service.workspacesActivityVolume(
+            const result = await service.getWorkspaceActivityVolumeList(
                 startDate,
                 endDate,
                 pagination
@@ -267,14 +280,14 @@ describe('AnalyticWorkspaceService', () => {
         it('reads through with the page key, AnalyticWorkspaceCountPageCacheSchema, and the dashboard TTL', async () => {
             cacheService.readThrough.mockResolvedValue(cachedValue);
 
-            await service.workspacesActivityVolume(
+            await service.getWorkspaceActivityVolumeList(
                 startDate,
                 endDate,
                 pagination
             );
 
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.workspacesActivity}:${startToken}:${endToken}:1:20`,
+                `${EnumAnalyticDashboardMetric.workspaceActivityVolume}:${startToken}:${endToken}:1:20`,
                 AnalyticWorkspaceCountPageCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
@@ -282,7 +295,7 @@ describe('AnalyticWorkspaceService', () => {
         });
     });
 
-    describe('summary', () => {
+    describe('getSummary', () => {
         it('reads through with the workspace summary key, AnalyticWorkspaceSummaryCacheSchema, and the dashboard TTL', async () => {
             const cached = {
                 memberCount: 9,
@@ -291,7 +304,7 @@ describe('AnalyticWorkspaceService', () => {
             };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.summary(
+            const result = await service.getSummary(
                 'workspace-1',
                 startDate,
                 endDate
@@ -314,7 +327,7 @@ describe('AnalyticWorkspaceService', () => {
             };
             analyticWorkspaceRepository.findSummary.mockResolvedValue(counts);
 
-            const result = await service.summary('workspace-1', null, null);
+            const result = await service.getSummary('workspace-1', null, null);
 
             expect(result).toEqual(counts);
             expect(
@@ -328,14 +341,33 @@ describe('AnalyticWorkspaceService', () => {
         });
     });
 
-    describe('inviteFunnel', () => {
-        it('asks the repository with the workspace id', async () => {
+    describe('getInviteFunnel', () => {
+        it('reads through with the workspace invite funnel key, AnalyticStatusCountsCacheSchema, and dashboardTtlInMs', async () => {
+            const cached = [{ status: 'pending', count: 2 }];
+            cacheService.readThrough.mockResolvedValue(cached);
+
+            const result = await service.getInviteFunnel(
+                'workspace-1',
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cached);
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `InviteFunnel:workspace-1:${startToken}:${endToken}`,
+                AnalyticStatusCountsCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+
+        it('loads from the repository with the workspace id', async () => {
             const rows = [{ status: 'pending', count: 2 }];
             analyticWorkspaceRepository.groupInviteFunnel.mockResolvedValue(
                 rows
             );
 
-            const result = await service.inviteFunnel(
+            const result = await service.getInviteFunnel(
                 'workspace-1',
                 startDate,
                 endDate
@@ -348,14 +380,33 @@ describe('AnalyticWorkspaceService', () => {
         });
     });
 
-    describe('joinOutcomes', () => {
-        it('asks the repository with the workspace id', async () => {
+    describe('getJoinOutcomes', () => {
+        it('reads through with the workspace join outcomes key, AnalyticStatusCountsCacheSchema, and dashboardTtlInMs', async () => {
+            const cached = [{ status: 'approved', count: 1 }];
+            cacheService.readThrough.mockResolvedValue(cached);
+
+            const result = await service.getJoinOutcomes(
+                'workspace-1',
+                startDate,
+                endDate
+            );
+
+            expect(result).toBe(cached);
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                `JoinOutcomes:workspace-1:${startToken}:${endToken}`,
+                AnalyticStatusCountsCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+
+        it('loads from the repository with the workspace id', async () => {
             const rows = [{ status: 'approved', count: 1 }];
             analyticWorkspaceRepository.groupJoinOutcomes.mockResolvedValue(
                 rows
             );
 
-            const result = await service.joinOutcomes(
+            const result = await service.getJoinOutcomes(
                 'workspace-1',
                 startDate,
                 endDate
@@ -368,14 +419,29 @@ describe('AnalyticWorkspaceService', () => {
         });
     });
 
-    describe('memberRoles', () => {
-        it('returns the repository role counts', async () => {
+    describe('getMemberRoles', () => {
+        it('reads through with the workspace member roles key, AnalyticRoleCountsCacheSchema, and dashboardTtlInMs', async () => {
+            const cached = [{ role: 'admin', count: 2 }];
+            cacheService.readThrough.mockResolvedValue(cached);
+
+            const result = await service.getMemberRoles('workspace-1');
+
+            expect(result).toBe(cached);
+            expect(cacheService.readThrough).toHaveBeenCalledWith(
+                'MemberRoles:workspace-1',
+                AnalyticRoleCountsCacheSchema,
+                dashboardTtlInMs,
+                expect.any(Function)
+            );
+        });
+
+        it('loads the repository role counts', async () => {
             const rows = [{ role: 'admin', count: 2 }];
             analyticWorkspaceRepository.groupMemberRoles.mockResolvedValue(
                 rows
             );
 
-            const result = await service.memberRoles('workspace-1');
+            const result = await service.getMemberRoles('workspace-1');
 
             expect(result).toEqual(rows);
             expect(

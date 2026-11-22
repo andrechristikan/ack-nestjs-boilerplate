@@ -7,7 +7,7 @@ describe('ResponseErrorSchema', () => {
         message: 'error message',
         metadata: {
             language: EnumMessageLanguage.en,
-            timestamp: 1660190937231,
+            timestamp: '2026-01-01T00:00:00.000Z',
             timezone: 'Asia/Jakarta',
             version: '1',
             repoVersion: '1.0.0',

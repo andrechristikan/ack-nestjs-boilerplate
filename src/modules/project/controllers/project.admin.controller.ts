@@ -1,7 +1,7 @@
 import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/project.admin-list.request.dto';
 import { ProjectAdminListRequestSchema } from '@modules/project/dtos/request/project.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestThrottleProtected } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -42,11 +42,11 @@ export class ProjectAdminController {
 
     @Doc({
         summary:
-            'admin list all projects (read-only); optional workspaceId filter',
+            'admin list all projects (read-only); optional workspace id filter',
         description:
             'orderBy presets: latest (createdAt descending, default), name (name ascending).',
     })
-    @ResponsePagination('project.admin.list', {
+    @ResponsePagination('project.listByAdmin', {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -56,7 +56,7 @@ export class ProjectAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -70,7 +70,7 @@ export class ProjectAdminController {
     @Doc({
         summary: 'admin get a project by id (read-only, includes soft-deleted)',
     })
-    @Response('project.admin.get', {
+    @Response('project.getByAdmin', {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
@@ -80,7 +80,7 @@ export class ProjectAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/get/:projectId')

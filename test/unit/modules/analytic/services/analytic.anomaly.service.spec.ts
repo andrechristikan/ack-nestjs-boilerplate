@@ -6,15 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import {
-    AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema,
-    AnalyticAnomalyLoginSpikeIpSummaryCacheSchema,
-    AnalyticCacheEmptyToken,
-    AnalyticDeviceProliferationSnapshotDataSchema,
-    AnalyticDeviceProliferationSnapshotMetaSchema,
-    AnalyticImpossibleTravelSnapshotDataSchema,
-    AnalyticImpossibleTravelSnapshotMetaSchema,
-} from '@modules/analytic/constants/analytic.constant';
+import { AnalyticCacheEmptyToken } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticAnomalySignal } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticAnomalyRepository } from '@modules/analytic/repositories/analytic.anomaly.repository';
 import { AnalyticAnomalyService } from '@modules/analytic/services/analytic.anomaly.service';
@@ -26,6 +18,12 @@ import {
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 import { createAnalyticAnomalyService } from '@test/unit/helpers/test.unit.analytic.helper';
+import { AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema } from '@modules/analytic/dtos/analytic.anomaly-failed-login-spike-summary-cache.dto';
+import { AnalyticAnomalyLoginSpikeIpSummaryCacheSchema } from '@modules/analytic/dtos/analytic.anomaly-login-spike-ip-summary-cache.dto';
+import { AnalyticDeviceProliferationSnapshotDataSchema } from '@modules/analytic/dtos/analytic.device-proliferation-snapshot-data.dto';
+import { AnalyticDeviceProliferationSnapshotMetaSchema } from '@modules/analytic/dtos/analytic.device-proliferation-snapshot-meta.dto';
+import { AnalyticImpossibleTravelSnapshotDataSchema } from '@modules/analytic/dtos/analytic.impossible-travel-snapshot-data.dto';
+import { AnalyticImpossibleTravelSnapshotMetaSchema } from '@modules/analytic/dtos/analytic.impossible-travel-snapshot-meta.dto';
 
 describe('AnalyticAnomalyService', () => {
     const anomalySummaryTtlInMs = 900000;
@@ -79,7 +77,6 @@ describe('AnalyticAnomalyService', () => {
     beforeEach(async () => {
         configService = buildConfigService({
             ...TestUnitKitConfigValues,
-            'analytic.cache.windowTokenPattern': '{start}:{end}',
             'analytic.fraud.nearLockoutOffset': 1,
             'analytic.anomaly.impossibleTravel.minDistanceKm': 500,
             'analytic.anomaly.impossibleTravel.maxDeltaInMs': 3600000,
@@ -108,7 +105,7 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('impossibleTravelSummary', () => {
+    describe('getImpossibleTravelSummary', () => {
         it('reads the snapshot summary and returns its header fields and metadata', async () => {
             const computedAt = new Date('2026-02-28T23:45:00.000Z');
             analyticSnapshotService.getSummary.mockResolvedValue({
@@ -119,7 +116,7 @@ describe('AnalyticAnomalyService', () => {
                 computedAt,
             });
 
-            const result = await service.impossibleTravelSummary();
+            const result = await service.getImpossibleTravelSummary();
 
             expect(result).toEqual({
                 count: 3,
@@ -143,7 +140,7 @@ describe('AnalyticAnomalyService', () => {
                 computedAt: null,
             });
 
-            const result = await service.impossibleTravelSummary();
+            const result = await service.getImpossibleTravelSummary();
 
             expect(result).toEqual({
                 count: 0,
@@ -159,11 +156,11 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('impossibleTravelList', () => {
+    describe('getImpossibleTravelList', () => {
         it('pages the snapshot rows of the impossible-travel signal', async () => {
             analyticSnapshotService.getListOffset.mockResolvedValue(offsetPage);
 
-            const result = await service.impossibleTravelList(pagination);
+            const result = await service.getImpossibleTravelList(pagination);
 
             expect(result).toBe(offsetPage);
             expect(analyticSnapshotService.getListOffset).toHaveBeenCalledWith(
@@ -175,11 +172,11 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('loginSpikeIpSummary', () => {
-        it('reads through with the login-spike-ip key for the configured window, the cache schema, and the anomaly summary TTL', async () => {
+    describe('getLoginSpikeIpSummary', () => {
+        it('reads through with the loginSpikeIp key for the configured window, the cache schema, and the anomaly summary TTL', async () => {
             analyticAnomalyRepository.countLoginSpikeIp.mockResolvedValue(3);
 
-            await service.loginSpikeIpSummary();
+            await service.getLoginSpikeIpSummary();
 
             expect(analyticCache.buildAnomalySummaryKey).toHaveBeenCalledWith(
                 EnumAnalyticAnomalySignal.loginSpikeIp,
@@ -196,7 +193,7 @@ describe('AnalyticAnomalyService', () => {
         it('counts once over the configured window and answers its dates, the minimum as metadata, and no computedAt', async () => {
             analyticAnomalyRepository.countLoginSpikeIp.mockResolvedValue(3);
 
-            const result = await service.loginSpikeIpSummary();
+            const result = await service.getLoginSpikeIpSummary();
 
             expect(result).toEqual({
                 count: 3,
@@ -223,7 +220,7 @@ describe('AnalyticAnomalyService', () => {
             };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.loginSpikeIpSummary();
+            const result = await service.getLoginSpikeIpSummary();
 
             expect(result).toEqual(cached);
             expect(
@@ -232,13 +229,13 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('loginSpikeIpList', () => {
+    describe('getLoginSpikeIpList', () => {
         it('pages the repository over the configured window and minimum', async () => {
             analyticAnomalyRepository.findLoginSpikeIpOffset.mockResolvedValue(
                 offsetPage
             );
 
-            const result = await service.loginSpikeIpList(pagination);
+            const result = await service.getLoginSpikeIpList(pagination);
 
             expect(result).toBe(offsetPage);
             expect(
@@ -247,8 +244,8 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('failedLoginSpikeSummary', () => {
-        it('reads through with the failed-login-spike key, AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema, and the anomaly summary TTL', async () => {
+    describe('getFailedLoginSpikeSummary', () => {
+        it('reads through with the failedLoginSpike key, AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema, and the anomaly summary TTL', async () => {
             const cached = {
                 count: 1,
                 windowStart: null,
@@ -258,7 +255,7 @@ describe('AnalyticAnomalyService', () => {
             };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.failedLoginSpikeSummary();
+            const result = await service.getFailedLoginSpikeSummary();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildAnomalySummaryKey).toHaveBeenCalledWith(
@@ -266,7 +263,7 @@ describe('AnalyticAnomalyService', () => {
                 AnalyticCacheEmptyToken
             );
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `failed-login-spike:${AnalyticCacheEmptyToken}`,
+                `failedLoginSpike:${AnalyticCacheEmptyToken}`,
                 AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema,
                 anomalySummaryTtlInMs,
                 expect.any(Function)
@@ -279,7 +276,7 @@ describe('AnalyticAnomalyService', () => {
         it('counts the near-lockout users once in the loader on a cache miss', async () => {
             analyticAnomalyRepository.countNearLockout.mockResolvedValue(1);
 
-            const result = await service.failedLoginSpikeSummary();
+            const result = await service.getFailedLoginSpikeSummary();
 
             expect(result).toEqual({
                 count: 1,
@@ -307,7 +304,7 @@ describe('AnalyticAnomalyService', () => {
                 );
                 analyticAnomalyRepository.countNearLockout.mockResolvedValue(0);
 
-                const result = await service.failedLoginSpikeSummary();
+                const result = await service.getFailedLoginSpikeSummary();
 
                 expect(
                     featureFlagService.getMetadataNumber
@@ -331,19 +328,19 @@ describe('AnalyticAnomalyService', () => {
                 metadata: { nearLockoutMinAttempt: 4 },
             });
 
-            await service.failedLoginSpikeSummary();
+            await service.getFailedLoginSpikeSummary();
 
             expect(featureFlagService.getMetadataNumber).not.toHaveBeenCalled();
         });
     });
 
-    describe('failedLoginSpikeList', () => {
+    describe('getFailedLoginSpikeList', () => {
         it('lists near-lockout users at the threshold of the password budget', async () => {
             analyticAnomalyRepository.findNearLockoutOffset.mockResolvedValue(
                 offsetPage
             );
 
-            const result = await service.failedLoginSpikeList(pagination);
+            const result = await service.getFailedLoginSpikeList(pagination);
 
             expect(result).toEqual(offsetPage);
             expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
@@ -356,7 +353,7 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('deviceProliferationSummary', () => {
+    describe('getDeviceProliferationSummary', () => {
         it('reads the snapshot summary and returns its header fields and metadata', async () => {
             const computedAt = new Date('2026-02-28T23:45:00.000Z');
             analyticSnapshotService.getSummary.mockResolvedValue({
@@ -367,7 +364,7 @@ describe('AnalyticAnomalyService', () => {
                 computedAt,
             });
 
-            const result = await service.deviceProliferationSummary();
+            const result = await service.getDeviceProliferationSummary();
 
             expect(result).toEqual({
                 count: 2,
@@ -391,7 +388,7 @@ describe('AnalyticAnomalyService', () => {
                 computedAt: null,
             });
 
-            const result = await service.deviceProliferationSummary();
+            const result = await service.getDeviceProliferationSummary();
 
             expect(result).toEqual({
                 count: 0,
@@ -406,11 +403,11 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('deviceProliferationList', () => {
+    describe('getDeviceProliferationList', () => {
         it('pages the snapshot rows of the device-proliferation signal', async () => {
             analyticSnapshotService.getListOffset.mockResolvedValue(offsetPage);
 
-            const result = await service.deviceProliferationList(pagination);
+            const result = await service.getDeviceProliferationList(pagination);
 
             expect(result).toBe(offsetPage);
             expect(analyticSnapshotService.getListOffset).toHaveBeenCalledWith(

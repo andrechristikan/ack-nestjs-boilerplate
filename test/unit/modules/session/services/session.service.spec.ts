@@ -40,11 +40,9 @@ import type {
     ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
-import { SessionLoginCacheSchema } from '@modules/session/constants/session.constant';
 import { CacheService } from '@common/cache/services/cache.service';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionService } from '@modules/session/services/session.service';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { UserAuthQueue } from '@modules/user/queues/user.auth.queue';
@@ -55,6 +53,7 @@ import {
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { SessionUtil } from '@modules/session/utils/session.util';
+import { SessionLoginCacheSchema } from '@modules/session/dtos/session.login-cache.dto';
 
 const JtiDigest =
     '5b1288bdb86ccf33cc0158da1a1f405c4095d9c00fe9dadd9c58af82ff2abae5';
@@ -1043,23 +1042,6 @@ describe('SessionService', () => {
                 statusCode: EnumSessionStatusCodeError.notFound,
             });
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('assertNotSelf', () => {
-        it('throws UserNotSelfException when the admin targets their own account', () => {
-            expect(() => service.assertNotSelf('user-1', 'user-1')).toThrow(
-                expect.objectContaining({
-                    module: 'user',
-                    statusCode: EnumUserStatusCodeError.notSelf,
-                })
-            );
-        });
-
-        it('returns when the admin targets another account', () => {
-            expect(() =>
-                service.assertNotSelf('user-1', 'admin-1')
-            ).not.toThrow();
         });
     });
 

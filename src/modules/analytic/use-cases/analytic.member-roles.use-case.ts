@@ -17,7 +17,7 @@ export class AnalyticMemberRolesUseCase implements IAppUseCase<
     async execute(
         workspaceContext: IWorkspaceContext
     ): Promise<IResponseReturn<IAnalyticRoleCountList>> {
-        const roles = await this.analyticWorkspaceService.memberRoles(
+        const roles = await this.analyticWorkspaceService.getMemberRoles(
             workspaceContext.workspace.id
         );
 

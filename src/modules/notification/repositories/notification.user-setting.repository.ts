@@ -21,7 +21,8 @@ export class NotificationUserSettingRepository implements INotificationUserSetti
 
     async createDefaultsManyInTx(
         tx: IDatabaseTransactionClient,
-        userIds: string[]
+        userIds: string[],
+        createdBy: string
     ): Promise<void> {
         await tx.notificationUserSetting.createMany({
             data: userIds.flatMap(userId =>
@@ -31,6 +32,7 @@ export class NotificationUserSettingRepository implements INotificationUserSetti
                         channel,
                         type,
                         isActive: true,
+                        createdBy,
                     }))
                 )
             ),

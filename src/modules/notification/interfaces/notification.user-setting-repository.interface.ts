@@ -6,7 +6,8 @@ export interface INotificationUserSettingRepository {
     findUserSetting(userId: string): Promise<NotificationUserSetting[]>;
     createDefaultsManyInTx(
         tx: IDatabaseTransactionClient,
-        userIds: string[]
+        userIds: string[],
+        createdBy: string
     ): Promise<void>;
     updateUserSettingInTx(
         tx: IDatabaseTransactionClient,

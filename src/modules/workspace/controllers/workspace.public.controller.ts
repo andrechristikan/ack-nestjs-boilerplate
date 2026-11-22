@@ -1,5 +1,5 @@
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestThrottleProtected } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -46,7 +46,7 @@ export class WorkspacePublicController {
         schema: WorkspaceInvitePreviewResponseSchema,
     })
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
-    @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.moderate })
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/invite/preview')
@@ -65,7 +65,7 @@ export class WorkspacePublicController {
         schema: WorkspacePreviewResponseSchema,
     })
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
-    @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
+    @RequestThrottleProtected({ route: EnumRequestThrottleRoute.moderate })
     @ApiKeyProtected()
     @Get('/preview/:slug')
     async preview(

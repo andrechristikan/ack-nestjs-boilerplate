@@ -26,8 +26,8 @@ import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-f
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceUtil } from '@modules/device/utils/device.util';
+import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
-import type { IRole } from '@modules/role/interfaces/role.interface';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -74,11 +74,14 @@ describe('DeviceRemoveByAdminUseCase', () => {
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(admin);
     const authContext = buildAuthJwtAccessContext(admin.id);
-    const userRole: IRole = {
-        id: 'role-user',
-        name: 'user',
-        type: EnumRoleType.user,
-        isImmutable: false,
+    const targetUser: IUser = {
+        ...buildUser('user-1', 'jane@example.com'),
+        role: {
+            ...admin.role,
+            id: 'role-user',
+            name: 'user',
+            type: EnumRoleType.user,
+        },
     };
     const deviceOwnership: IDeviceOwnership = {
         id: 'device-ownership-1',
@@ -174,7 +177,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
 
     describe('execute', () => {
         it('checks the rank, then revokes and removes on one tx and adds the actor and target entries in one addManyInTx after the removal when the admin removes another user device', async () => {
-            userService.getRoleById.mockResolvedValue(userRole);
+            userService.getOneWithRole.mockResolvedValue(targetUser);
             const callOrder: string[] = [];
             sessionService.revokeByDeviceOwnershipInTx.mockImplementation(
                 async () => {
@@ -204,7 +207,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
             );
 
             expect(result).toEqual({});
-            expect(userService.getRoleById).toHaveBeenCalledWith('user-1');
+            expect(userService.getOneWithRole).toHaveBeenCalledWith('user-1');
             expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
                 EnumRoleType.admin,
                 EnumRoleType.user
@@ -277,9 +280,9 @@ describe('DeviceRemoveByAdminUseCase', () => {
         });
 
         it('adds only the actor entry when the admin removes their own device', async () => {
-            userService.getRoleById.mockResolvedValue({
-                ...userRole,
-                type: EnumRoleType.admin,
+            userService.getOneWithRole.mockResolvedValue({
+                ...targetUser,
+                role: { ...targetUser.role, type: EnumRoleType.admin },
             });
             sessionService.revokeByDeviceOwnershipInTx.mockResolvedValue([]);
             deviceService.removeOwnershipInTx.mockResolvedValue({
@@ -306,7 +309,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
 
         it('rethrows the removal exception', async () => {
             const notFound = new DeviceNotFoundException();
-            userService.getRoleById.mockResolvedValue(userRole);
+            userService.getOneWithRole.mockResolvedValue(targetUser);
             sessionService.revokeByDeviceOwnershipInTx.mockResolvedValue([]);
             deviceService.removeOwnershipInTx.mockRejectedValue(notFound);
 
@@ -323,7 +326,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
         });
 
         it('answers DeviceNotFoundException on a write conflict', async () => {
-            userService.getRoleById.mockResolvedValue(userRole);
+            userService.getOneWithRole.mockResolvedValue(targetUser);
             databaseService.withTransaction.mockRejectedValue(
                 buildPrismaKnownRequestError('P2034')
             );
@@ -345,7 +348,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
         });
 
         it('wraps any other failure in the unknown exception', async () => {
-            userService.getRoleById.mockResolvedValue(userRole);
+            userService.getOneWithRole.mockResolvedValue(targetUser);
             const failure = new Error('database exploded');
             databaseService.withTransaction.mockRejectedValue(failure);
 
@@ -367,9 +370,9 @@ describe('DeviceRemoveByAdminUseCase', () => {
 
         it('opens no transaction when the actor does not outrank the target', async () => {
             const rankForbidden = new RoleRankForbiddenException();
-            userService.getRoleById.mockResolvedValue({
-                ...userRole,
-                type: EnumRoleType.superAdmin,
+            userService.getOneWithRole.mockResolvedValue({
+                ...targetUser,
+                role: { ...targetUser.role, type: EnumRoleType.superAdmin },
             });
             roleService.assertActorOutranks.mockImplementation(() => {
                 throw rankForbidden;
@@ -390,6 +393,32 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 sessionService.revokeByDeviceOwnershipInTx
             ).not.toHaveBeenCalled();
             expect(deviceService.removeOwnershipInTx).not.toHaveBeenCalled();
+        });
+
+        it('rejects with the blocked-user exception and opens no transaction when the target is blocked', async () => {
+            const blocked = new UserBlockedInvalidException();
+            userService.getOneWithRole.mockResolvedValue(targetUser);
+            userService.assertUnblocked.mockImplementation(() => {
+                throw blocked;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'user-1',
+                    'device-ownership-1'
+                )
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: blocked.statusCode,
+            });
+            expect(userService.assertUnblocked).toHaveBeenCalledWith(
+                targetUser
+            );
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
     });
 });

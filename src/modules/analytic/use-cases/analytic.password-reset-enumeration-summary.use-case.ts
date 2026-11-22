@@ -13,7 +13,7 @@ export class AnalyticPasswordResetEnumerationSummaryUseCase implements IAppUseCa
 
     async execute(): Promise<IResponseReturn<IAnalyticFraudSummary>> {
         const data =
-            await this.analyticFraudService.passwordResetEnumerationSummary();
+            await this.analyticFraudService.getPasswordResetEnumerationSummary();
 
         return { data };
     }

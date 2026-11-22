@@ -17,7 +17,7 @@ export class AnalyticFailedLoginSpikeSummaryUseCase implements IAppUseCase<
         IResponseReturn<IAnalyticAnomalyFailedLoginSpikeSummary>
     > {
         const data =
-            await this.analyticAnomalyService.failedLoginSpikeSummary();
+            await this.analyticAnomalyService.getFailedLoginSpikeSummary();
 
         return { data };
     }

@@ -4,8 +4,10 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import type { User } from '@generated/prisma-client/client';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import {
     EnumFeatureFlagKey,
@@ -93,6 +95,18 @@ export class UserPasswordService {
 
     private hasPassword(user: IUser): user is IUserPasswordSet {
         return user.password !== null;
+    }
+
+    private async markUnusedResetsUsedInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        updatedBy: string
+    ): Promise<void> {
+        await this.userForgotPasswordRepository.markUnusedUsedByUserInTx(
+            tx,
+            userId,
+            updatedBy
+        );
     }
 
     private createReference(): string {
@@ -359,16 +373,24 @@ export class UserPasswordService {
         }
     }
 
-    async markUnusedResetsUsedInTx(
+    /** Writes the new password and marks the user's unused reset rows used; returns the updated user row. */
+    async replaceInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
+        password: IAuthPassword,
         updatedBy: string
-    ): Promise<void> {
-        await this.userForgotPasswordRepository.markUnusedUsedByUserInTx(
-            tx,
-            userId,
-            updatedBy
-        );
+    ): Promise<User> {
+        const [updated] = await Promise.all([
+            this.userService.updatePasswordInTx(
+                tx,
+                userId,
+                password,
+                updatedBy
+            ),
+            this.markUnusedResetsUsedInTx(tx, userId, updatedBy),
+        ]);
+
+        return updated;
     }
 
     /** Deletes the reset rows that expired longer ago than forgotPassword.retentionInMs; returns the count. */

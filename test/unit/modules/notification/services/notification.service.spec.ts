@@ -877,18 +877,26 @@ describe('NotificationService', () => {
         const tx = {} as IDatabaseTransactionClient;
 
         it('creates the default settings of every user in one repository statement', async () => {
-            await service.createDefaultsManyInTx(tx, ['user-one', 'user-two']);
+            await service.createDefaultsManyInTx(
+                tx,
+                ['user-one', 'user-two'],
+                'admin-bramble'
+            );
 
             expect(
                 notificationUserSettingRepository.createDefaultsManyInTx
             ).toHaveBeenCalledTimes(1);
             expect(
                 notificationUserSettingRepository.createDefaultsManyInTx
-            ).toHaveBeenCalledWith(tx, ['user-one', 'user-two']);
+            ).toHaveBeenCalledWith(
+                tx,
+                ['user-one', 'user-two'],
+                'admin-bramble'
+            );
         });
 
         it('issues no statement for an empty list', async () => {
-            await service.createDefaultsManyInTx(tx, []);
+            await service.createDefaultsManyInTx(tx, [], 'admin-bramble');
 
             expect(
                 notificationUserSettingRepository.createDefaultsManyInTx

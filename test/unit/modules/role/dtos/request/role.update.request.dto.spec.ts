@@ -90,4 +90,13 @@ describe('RoleUpdateRequestSchema', () => {
             expect.objectContaining({ path: ['type'], code: 'invalid_value' }),
         ]);
     });
+
+    it('trims the description', () => {
+        const result = RoleUpdateRequestSchema.parse({
+            description: '  Team lead role  ',
+            type: EnumRoleType.admin,
+        });
+
+        expect(result.description).toBe('Team lead role');
+    });
 });

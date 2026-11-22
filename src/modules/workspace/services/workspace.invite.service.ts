@@ -27,7 +27,7 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import type { IUserSignUpWorkspaceInvite } from '@modules/user/interfaces/user.interface';
+import type { IUserCreateWorkspaceInvite } from '@modules/user/interfaces/user.interface';
 import { WorkspaceInviteNoncePattern } from '@modules/workspace/constants/workspace.constant';
 import type { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
@@ -603,7 +603,7 @@ export class WorkspaceInviteService {
     async acceptOnSignUpInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        context: IUserSignUpWorkspaceInvite
+        context: IUserCreateWorkspaceInvite
     ): Promise<void> {
         const acceptedAt = this.helperDateService.create();
 

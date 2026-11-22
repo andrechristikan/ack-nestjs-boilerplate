@@ -60,16 +60,16 @@ import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
 import { UserService } from '@modules/user/services/user.service';
 import type { UserSignUpRequestDto } from '@modules/user/dtos/request/user.sign-up.request.dto';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type {
     IUser,
     IUserCheckUsername,
     IUserCreateWithWorkspaceInput,
-    IUserSignUp,
-    IUserSignUpWorkspaceInvite,
-    IUserSignUpWorkspacePersonal,
+    IUserRegistration,
+    IUserCreateWorkspaceInvite,
+    IUserCreateWorkspacePersonal,
     IUserVerificationEmailCreate,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
@@ -184,14 +184,14 @@ describe('UserSignUpUseCase', () => {
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         updatedBy: null,
     };
-    const personalContext: IUserSignUpWorkspacePersonal = {
-        type: EnumUserSignUpWorkspaceContextType.personal,
+    const personalContext: IUserCreateWorkspacePersonal = {
+        type: EnumUserCreateWorkspaceContextType.personal,
         workspaceId: 'workspace-bramble',
         slugCandidates: ['w-bramble', 'w-bramble-b'],
         name: "bramble2fox's Workspace",
     };
-    const inviteContext: IUserSignUpWorkspaceInvite = {
-        type: EnumUserSignUpWorkspaceContextType.invite,
+    const inviteContext: IUserCreateWorkspaceInvite = {
+        type: EnumUserCreateWorkspaceContextType.invite,
         workspaceId: 'workspace-invite',
         workspaceInviteId: 'invite-bramble',
         invitedByUserId: 'user-inviter',
@@ -378,7 +378,7 @@ describe('UserSignUpUseCase', () => {
             cookies: true,
             from: EnumUserSignUpFrom.website,
         };
-        const signUpInput: IUserSignUp = {
+        const signUpInput: IUserRegistration = {
             username: 'bramble2fox',
             email: 'bramble@example.com',
             name: null,
@@ -767,7 +767,7 @@ describe('UserSignUpUseCase', () => {
             );
             expect(
                 notificationService.createDefaultsManyInTx
-            ).toHaveBeenCalledWith(tx, ['user-bramble']);
+            ).toHaveBeenCalledWith(tx, ['user-bramble'], 'user-bramble');
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 mfaService.createInTx
             );

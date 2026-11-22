@@ -4,7 +4,7 @@ import { EnumRoleType } from '@generated/prisma-client/client';
 
 /** @public */
 export const RoleUpdateRequestSchema = z.strictObject({
-    description: z.string().max(500).nullable().meta({
+    description: z.string().trim().max(500).nullable().meta({
         description: 'Description of role; null clears it',
         example: faker.lorem.sentence(),
     }),

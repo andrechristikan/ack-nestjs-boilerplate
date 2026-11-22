@@ -29,7 +29,7 @@ import {
 } from '@modules/api-key/decorators/api-key.decorator';
 import {
     RequestContext,
-    RequestThrottle,
+    RequestThrottleProtected,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type {
@@ -69,7 +69,7 @@ export class TermPolicySharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/acceptance/list')
@@ -92,7 +92,7 @@ export class TermPolicySharedController {
         schema: TermPolicyPendingResponseSchema,
     })
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/pending/list')
@@ -105,7 +105,7 @@ export class TermPolicySharedController {
     @Doc({ summary: 'user accepts term or policy' })
     @Response('termPolicy.accept')
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)

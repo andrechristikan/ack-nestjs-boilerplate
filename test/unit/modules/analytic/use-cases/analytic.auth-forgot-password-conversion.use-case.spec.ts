@@ -40,11 +40,13 @@ describe('AnalyticAuthForgotPasswordConversionUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticAuthService.authForgotPasswordConversion.mockResolvedValue({
-                created: 5,
-                used: 2,
-                rate: 0.4,
-            });
+            analyticAuthService.getAuthForgotPasswordConversion.mockResolvedValue(
+                {
+                    created: 5,
+                    used: 2,
+                    rate: 0.4,
+                }
+            );
 
             const result = await useCase.execute({
                 startDate,
@@ -55,7 +57,7 @@ describe('AnalyticAuthForgotPasswordConversionUseCase', () => {
                 data: { created: 5, used: 2, rate: 0.4 },
             });
             expect(
-                analyticAuthService.authForgotPasswordConversion
+                analyticAuthService.getAuthForgotPasswordConversion
             ).toHaveBeenCalledWith(startDate, endDate);
         });
         it('passes the query dates to the range check', async () => {
@@ -63,11 +65,13 @@ describe('AnalyticAuthForgotPasswordConversionUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticAuthService.authForgotPasswordConversion.mockResolvedValue({
-                created: 5,
-                used: 2,
-                rate: 0.4,
-            });
+            analyticAuthService.getAuthForgotPasswordConversion.mockResolvedValue(
+                {
+                    created: 5,
+                    used: 2,
+                    rate: 0.4,
+                }
+            );
 
             await useCase.execute({ startDate, endDate });
 

@@ -195,7 +195,7 @@ describe('NotificationTemplateService', () => {
         });
     });
 
-    describe('emailGet', () => {
+    describe('getEmail', () => {
         it('returns the template from SES', async () => {
             const template: GetTemplateCommandOutput = {
                 $metadata: {},
@@ -203,7 +203,7 @@ describe('NotificationTemplateService', () => {
             };
             awsSESService.getTemplate.mockResolvedValue(template);
 
-            const result = await service.emailGet(EnumNotificationKind.welcome);
+            const result = await service.getEmail(EnumNotificationKind.welcome);
 
             expect(result).toBe(template);
             expect(awsSESService.getTemplate).toHaveBeenCalledWith({
@@ -220,7 +220,7 @@ describe('NotificationTemplateService', () => {
             );
 
             await expect(
-                service.emailGet(EnumNotificationKind.welcome)
+                service.getEmail(EnumNotificationKind.welcome)
             ).resolves.toBeNull();
         });
 
@@ -229,7 +229,7 @@ describe('NotificationTemplateService', () => {
             awsSESService.getTemplate.mockRejectedValue(error);
 
             await expect(
-                service.emailGet(EnumNotificationKind.welcome)
+                service.getEmail(EnumNotificationKind.welcome)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: error,

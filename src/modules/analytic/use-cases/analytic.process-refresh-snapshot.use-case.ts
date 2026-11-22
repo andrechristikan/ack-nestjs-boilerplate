@@ -82,7 +82,7 @@ export class AnalyticProcessRefreshSnapshotUseCase implements IAppUseCase<
             }
             case EnumAnalyticSnapshotSignal.devicesPerUser: {
                 const result =
-                    await this.analyticDeviceService.computeDevicesPerUser();
+                    await this.analyticDeviceService.computeDevicePerUser();
                 await this.analyticSnapshotService.replace(signal, result);
 
                 return this.toResponse(signal, result.items.length);

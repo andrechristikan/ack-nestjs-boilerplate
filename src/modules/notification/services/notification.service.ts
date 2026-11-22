@@ -346,7 +346,8 @@ export class NotificationService {
 
     async createDefaultsManyInTx(
         tx: IDatabaseTransactionClient,
-        userIds: string[]
+        userIds: string[],
+        createdBy: string
     ): Promise<void> {
         if (userIds.length === 0) {
             return;
@@ -354,7 +355,8 @@ export class NotificationService {
 
         await this.notificationUserSettingRepository.createDefaultsManyInTx(
             tx,
-            userIds
+            userIds,
+            createdBy
         );
     }
 

@@ -74,7 +74,7 @@ describe('AnalyticLoginSpikeIpListUseCase', () => {
                     },
                 ],
             };
-            analyticAnomalyService.loginSpikeIpList.mockResolvedValue(page);
+            analyticAnomalyService.getLoginSpikeIpList.mockResolvedValue(page);
 
             const result = await useCase.execute({
                 page: 1,
@@ -83,7 +83,7 @@ describe('AnalyticLoginSpikeIpListUseCase', () => {
 
             expect(result).toEqual(page);
             expect(
-                analyticAnomalyService.loginSpikeIpList
+                analyticAnomalyService.getLoginSpikeIpList
             ).toHaveBeenCalledWith(pagination);
             expect(requestStoreService.merge).toHaveBeenCalledTimes(1);
         });

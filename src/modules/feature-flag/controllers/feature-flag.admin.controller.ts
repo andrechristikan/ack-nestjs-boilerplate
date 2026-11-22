@@ -1,7 +1,7 @@
 import type { FeatureFlagAdminListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
 import { FeatureFlagAdminListRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { RequestThrottleProtected } from '@common/request/decorators/request.decorator';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
 import {
     Response,
@@ -55,7 +55,7 @@ export class FeatureFlagAdminController {
     ) {}
 
     @Doc({
-        summary: 'admin get all Feature Flags',
+        summary: 'admin get all feature flags',
         description:
             'orderBy presets: latest (createdAt descending, default), key (key ascending).',
     })
@@ -69,7 +69,7 @@ export class FeatureFlagAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -80,7 +80,7 @@ export class FeatureFlagAdminController {
         return this.featureFlagGetListByAdminUseCase.execute(query);
     }
 
-    @Doc({ summary: 'admin update Feature Flag status' })
+    @Doc({ summary: 'admin update feature flag status' })
     @Response('featureFlag.updateStatus', {
         schema: FeatureFlagResponseSchema,
     })
@@ -91,7 +91,7 @@ export class FeatureFlagAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Patch('/update/:featureFlagId/status')
@@ -107,7 +107,7 @@ export class FeatureFlagAdminController {
         );
     }
 
-    @Doc({ summary: 'admin update Feature Flag metadata' })
+    @Doc({ summary: 'admin update feature flag metadata' })
     @Response('featureFlag.updateMetadata', {
         schema: FeatureFlagResponseSchema,
     })
@@ -118,7 +118,7 @@ export class FeatureFlagAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Put('/update/:featureFlagId/metadata')

@@ -68,7 +68,7 @@ describe('AnalyticForgotPasswordTokenAbuseListUseCase', () => {
                 ...offsetPage,
                 data: [{ userId: 'user-1', tokenCount: 4 }],
             };
-            analyticFraudService.forgotPasswordTokenAbuseList.mockResolvedValue(
+            analyticFraudService.getForgotPasswordTokenAbuseList.mockResolvedValue(
                 page
             );
 
@@ -79,7 +79,7 @@ describe('AnalyticForgotPasswordTokenAbuseListUseCase', () => {
 
             expect(result).toEqual(page);
             expect(
-                analyticFraudService.forgotPasswordTokenAbuseList
+                analyticFraudService.getForgotPasswordTokenAbuseList
             ).toHaveBeenCalledWith(pagination);
         });
     });

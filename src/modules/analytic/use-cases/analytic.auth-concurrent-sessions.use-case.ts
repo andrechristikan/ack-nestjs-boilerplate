@@ -12,7 +12,7 @@ export class AnalyticAuthConcurrentSessionsUseCase implements IAppUseCase<
     constructor(private readonly analyticAuthService: AnalyticAuthService) {}
 
     async execute(): Promise<IResponseReturn<IAnalyticSnapshotBucketsResult>> {
-        const data = await this.analyticAuthService.authConcurrentSessions();
+        const data = await this.analyticAuthService.getAuthConcurrentSessions();
 
         return { data };
     }

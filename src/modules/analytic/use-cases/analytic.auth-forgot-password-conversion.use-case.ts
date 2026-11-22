@@ -24,7 +24,7 @@ export class AnalyticAuthForgotPasswordConversionUseCase implements IAppUseCase<
     > {
         const range = this.analyticDateService.requireRange(startDate, endDate);
         const data =
-            await this.analyticAuthService.authForgotPasswordConversion(
+            await this.analyticAuthService.getAuthForgotPasswordConversion(
                 range.startDate,
                 range.endDate
             );

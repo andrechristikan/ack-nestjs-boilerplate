@@ -30,6 +30,6 @@ export class AnalyticCredentialStuffingListUseCase implements IAppUseCase<
         });
         this.requestStoreService.merge(PaginationStoreKey, storePatch);
 
-        return this.analyticFraudService.credentialStuffingList(params);
+        return this.analyticFraudService.getCredentialStuffingList(params);
     }
 }

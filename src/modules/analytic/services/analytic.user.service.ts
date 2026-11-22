@@ -2,13 +2,6 @@ import { CacheService } from '@common/cache/services/cache.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperNumberService } from '@common/helper/services/helper.number.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import {
-    AnalyticActiveUsersCacheSchema,
-    AnalyticBlockedUsersCacheSchema,
-    AnalyticBucketsResultCacheSchema,
-    AnalyticMetricCountCacheSchema,
-    AnalyticMetricRateCacheSchema,
-} from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticActiveUsers,
@@ -19,10 +12,14 @@ import type {
     IAnalyticVerifiedGroupCount,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticUserRepository } from '@modules/analytic/repositories/analytic.user.repository';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
+import { AnalyticActiveUsersCacheSchema } from '@modules/analytic/dtos/analytic.active-users-cache.dto';
+import { AnalyticBlockedUsersCacheSchema } from '@modules/analytic/dtos/analytic.blocked-users-cache.dto';
+import { AnalyticBucketsResultCacheSchema } from '@modules/analytic/dtos/analytic.buckets-result-cache.dto';
+import { AnalyticMetricCountCacheSchema } from '@modules/analytic/dtos/analytic.metric-count-cache.dto';
+import { AnalyticMetricRateCacheSchema } from '@modules/analytic/dtos/analytic.metric-rate-cache.dto';
 
 @Injectable()
 export class AnalyticUserService {
@@ -34,7 +31,6 @@ export class AnalyticUserService {
         private readonly configService: ConfigService,
         private readonly analyticCache: AnalyticCache,
         private readonly cacheService: CacheService,
-        private readonly analyticDateUtil: AnalyticDateUtil,
         private readonly helperDateService: HelperDateService,
         private readonly helperNumberService: HelperNumberService,
         private readonly analyticUserRepository: AnalyticUserRepository
@@ -50,17 +46,6 @@ export class AnalyticUserService {
         )!;
     }
 
-    private dashboardKey(
-        metric: EnumAnalyticDashboardMetric,
-        startDate: Date | null,
-        endDate: Date | null
-    ): string {
-        const start = this.analyticDateUtil.cacheToken(startDate);
-        const end = this.analyticDateUtil.cacheToken(endDate);
-
-        return this.analyticCache.buildDashboardKey(metric, start, end);
-    }
-
     private toVerificationRate(
         rows: IAnalyticVerifiedGroupCount[]
     ): IAnalyticMetricRate {
@@ -74,9 +59,101 @@ export class AnalyticUserService {
         return { count: verified, total, rate };
     }
 
-    async usersActive(): Promise<IAnalyticActiveUsers> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.usersActive,
+    private async loadUserActive(): Promise<IAnalyticActiveUsers> {
+        const now = this.helperDateService.create();
+        const dailySince = this.helperDateService.backward(
+            now,
+            Duration.fromMillis(this.dailyInMs)
+        );
+        const weeklySince = this.helperDateService.backward(
+            now,
+            Duration.fromMillis(this.weeklyInMs)
+        );
+        const monthlySince = this.helperDateService.backward(
+            now,
+            Duration.fromMillis(this.monthlyInMs)
+        );
+        const counts = await this.analyticUserRepository.findActiveCounts(
+            dailySince,
+            weeklySince,
+            monthlySince
+        );
+
+        return { ...counts, windowEnd: now, computedAt: null };
+    }
+
+    private async loadUserRegistrations(
+        startDate: Date,
+        endDate: Date
+    ): Promise<IAnalyticMetricCount> {
+        const count = await this.analyticUserRepository.countRegistrations(
+            startDate,
+            endDate
+        );
+
+        return { count };
+    }
+
+    private async loadUserChurn(
+        startDate: Date,
+        endDate: Date
+    ): Promise<IAnalyticMetricRate> {
+        const { deleted, total } =
+            await this.analyticUserRepository.findChurnCounts(
+                startDate,
+                endDate
+            );
+
+        const rate = this.helperNumberService.percent(deleted, total);
+
+        return { count: deleted, total, rate };
+    }
+
+    private async loadUserSignUpWith(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<IAnalyticBucketsResult> {
+        const buckets = await this.analyticUserRepository.groupSignUpWith(
+            startDate,
+            endDate
+        );
+
+        return { buckets };
+    }
+
+    private async loadUserEmailVerification(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<IAnalyticMetricRate> {
+        const rows = await this.analyticUserRepository.groupEmailVerification(
+            startDate,
+            endDate
+        );
+
+        return this.toVerificationRate(rows);
+    }
+
+    private async loadUserStatusDistribution(): Promise<IAnalyticBucketsResult> {
+        const buckets = await this.analyticUserRepository.groupStatus();
+
+        return { buckets };
+    }
+
+    private async loadUserCountryDistribution(): Promise<IAnalyticBucketsResult> {
+        const buckets = await this.analyticUserRepository.groupCountry();
+
+        return { buckets };
+    }
+
+    private async loadUserRoleDistribution(): Promise<IAnalyticBucketsResult> {
+        const buckets = await this.analyticUserRepository.groupRole();
+
+        return { buckets };
+    }
+
+    async getUserActive(): Promise<IAnalyticActiveUsers> {
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.userActive,
             null,
             null
         );
@@ -85,38 +162,16 @@ export class AnalyticUserService {
             key,
             AnalyticActiveUsersCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const now = this.helperDateService.create();
-                const dailySince = this.helperDateService.backward(
-                    now,
-                    Duration.fromMillis(this.dailyInMs)
-                );
-                const weeklySince = this.helperDateService.backward(
-                    now,
-                    Duration.fromMillis(this.weeklyInMs)
-                );
-                const monthlySince = this.helperDateService.backward(
-                    now,
-                    Duration.fromMillis(this.monthlyInMs)
-                );
-                const counts =
-                    await this.analyticUserRepository.findActiveCounts(
-                        dailySince,
-                        weeklySince,
-                        monthlySince
-                    );
-
-                return { ...counts, windowEnd: now, computedAt: null };
-            }
+            () => this.loadUserActive()
         );
     }
 
-    async usersRegistrations(
+    async getUserRegistrations(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricCount> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.usersRegistrations,
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.userRegistrations,
             startDate,
             endDate
         );
@@ -125,24 +180,16 @@ export class AnalyticUserService {
             key,
             AnalyticMetricCountCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const count =
-                    await this.analyticUserRepository.countRegistrations(
-                        startDate,
-                        endDate
-                    );
-
-                return { count };
-            }
+            () => this.loadUserRegistrations(startDate, endDate)
         );
     }
 
-    async usersChurn(
+    async getUserChurn(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticMetricRate> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.usersChurn,
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.userChurn,
             startDate,
             endDate
         );
@@ -151,26 +198,16 @@ export class AnalyticUserService {
             key,
             AnalyticMetricRateCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const { deleted, total } =
-                    await this.analyticUserRepository.findChurnCounts(
-                        startDate,
-                        endDate
-                    );
-
-                const rate = this.helperNumberService.percent(deleted, total);
-
-                return { count: deleted, total, rate };
-            }
+            () => this.loadUserChurn(startDate, endDate)
         );
     }
 
-    async usersBlocked(
+    async getUserBlocked(
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticBlockedUsers> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.usersBlocked,
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.userBlocked,
             startDate,
             endDate
         );
@@ -187,12 +224,12 @@ export class AnalyticUserService {
         );
     }
 
-    async usersSignUpWith(
+    async getUserSignUpWith(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticBucketsResult> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.usersSignUpWith,
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.userSignUpWith,
             startDate,
             endDate
         );
@@ -201,24 +238,16 @@ export class AnalyticUserService {
             key,
             AnalyticBucketsResultCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const buckets =
-                    await this.analyticUserRepository.groupSignUpWith(
-                        startDate,
-                        endDate
-                    );
-
-                return { buckets };
-            }
+            () => this.loadUserSignUpWith(startDate, endDate)
         );
     }
 
-    async usersEmailVerification(
+    async getUserEmailVerification(
         startDate: Date | null,
         endDate: Date | null
     ): Promise<IAnalyticMetricRate> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.usersEmailVerification,
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.userEmailVerification,
             startDate,
             endDate
         );
@@ -227,21 +256,13 @@ export class AnalyticUserService {
             key,
             AnalyticMetricRateCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const rows =
-                    await this.analyticUserRepository.groupEmailVerification(
-                        startDate,
-                        endDate
-                    );
-
-                return this.toVerificationRate(rows);
-            }
+            () => this.loadUserEmailVerification(startDate, endDate)
         );
     }
 
-    async usersStatusDistribution(): Promise<IAnalyticBucketsResult> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.usersStatus,
+    async getUserStatusDistribution(): Promise<IAnalyticBucketsResult> {
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.userStatusDistribution,
             null,
             null
         );
@@ -250,17 +271,13 @@ export class AnalyticUserService {
             key,
             AnalyticBucketsResultCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const buckets = await this.analyticUserRepository.groupStatus();
-
-                return { buckets };
-            }
+            () => this.loadUserStatusDistribution()
         );
     }
 
-    async usersCountryDistribution(): Promise<IAnalyticBucketsResult> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.usersCountry,
+    async getUserCountryDistribution(): Promise<IAnalyticBucketsResult> {
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.userCountryDistribution,
             null,
             null
         );
@@ -269,18 +286,13 @@ export class AnalyticUserService {
             key,
             AnalyticBucketsResultCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const buckets =
-                    await this.analyticUserRepository.groupCountry();
-
-                return { buckets };
-            }
+            () => this.loadUserCountryDistribution()
         );
     }
 
-    async usersRoleDistribution(): Promise<IAnalyticBucketsResult> {
-        const key = this.dashboardKey(
-            EnumAnalyticDashboardMetric.usersRole,
+    async getUserRoleDistribution(): Promise<IAnalyticBucketsResult> {
+        const key = this.analyticCache.buildDashboardKey(
+            EnumAnalyticDashboardMetric.userRoleDistribution,
             null,
             null
         );
@@ -289,11 +301,7 @@ export class AnalyticUserService {
             key,
             AnalyticBucketsResultCacheSchema,
             this.analyticCache.dashboardTtlInMs,
-            async () => {
-                const buckets = await this.analyticUserRepository.groupRole();
-
-                return { buckets };
-            }
+            () => this.loadUserRoleDistribution()
         );
     }
 }

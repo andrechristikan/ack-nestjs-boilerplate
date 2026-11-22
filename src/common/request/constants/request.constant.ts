@@ -83,3 +83,10 @@ export const RequestHelmetCspDocDirectives: Record<string, string[]> = {
 
 /** @public */
 export const RequestUploadTimeout = '1m';
+
+/** @public */
+export const RequestTrustedProxyPresets: ReadonlySet<string> = new Set([
+    'loopback',
+    'linklocal',
+    'uniquelocal',
+]);

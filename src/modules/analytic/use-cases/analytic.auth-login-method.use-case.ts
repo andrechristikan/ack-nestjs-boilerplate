@@ -23,7 +23,7 @@ export class AnalyticAuthLoginMethodUseCase implements IAppUseCase<
             query.startDate ?? null,
             query.endDate ?? null
         );
-        const data = await this.analyticAuthService.authLoginMethod(
+        const data = await this.analyticAuthService.getAuthLoginMethod(
             range.startDate,
             range.endDate
         );

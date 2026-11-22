@@ -10,12 +10,11 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import { AnalyticTermPolicyAcceptanceRateCacheSchema } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticTermPolicyRepository } from '@modules/analytic/repositories/analytic.term-policy.repository';
 import { AnalyticTermPolicyService } from '@modules/analytic/services/analytic.term-policy.service';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
+import { AnalyticTermPolicyAcceptanceRateCacheSchema } from '@modules/analytic/dtos/analytic.term-policy-acceptance-rate-cache.dto';
 
 describe('AnalyticTermPolicyService', () => {
     const dashboardTtlInMs = 1800000;
@@ -35,7 +34,8 @@ describe('AnalyticTermPolicyService', () => {
 
     beforeEach(async () => {
         analyticCache.buildDashboardKey.mockImplementation(
-            (metric, start, end) => `${metric}:${start}:${end}`
+            (metric, start, end) =>
+                `${metric}:${start?.toISOString() ?? '_'}:${end?.toISOString() ?? '_'}`
         );
         cacheService.readThrough.mockImplementation(
             async (_key, _schema, _ttlInMs, loader) => loader()
@@ -46,14 +46,11 @@ describe('AnalyticTermPolicyService', () => {
                 AnalyticTermPolicyService,
                 { provide: AnalyticCache, useValue: analyticCache },
                 { provide: CacheService, useValue: cacheService },
-                AnalyticDateUtil,
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
                         ...TestUnitKitConfigValues,
-                        'analytic.cache.windowTokenPattern':
-                            'Window:{start}:{end}',
                     }),
                 },
                 {
@@ -66,13 +63,13 @@ describe('AnalyticTermPolicyService', () => {
         service = module.get(AnalyticTermPolicyService);
     });
 
-    describe('termPoliciesAcceptanceRate', () => {
+    describe('getTermPolicyAcceptanceRate', () => {
         it('answers the rate from one repository call for the required types and the given dates', async () => {
             analyticTermPolicyRepository.findAcceptanceCounts.mockResolvedValue(
                 { published: 2, acceptances: 40, users: 20 }
             );
 
-            const result = await service.termPoliciesAcceptanceRate(
+            const result = await service.getTermPolicyAcceptanceRate(
                 startDate,
                 endDate
             );
@@ -94,7 +91,7 @@ describe('AnalyticTermPolicyService', () => {
                 endDate
             );
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.termPoliciesAcceptance}:${startToken}:${endToken}`,
+                `${EnumAnalyticDashboardMetric.termPolicyAcceptanceRate}:${startToken}:${endToken}`,
                 AnalyticTermPolicyAcceptanceRateCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)
@@ -106,7 +103,10 @@ describe('AnalyticTermPolicyService', () => {
                 { published: 0, acceptances: 0, users: 20 }
             );
 
-            const result = await service.termPoliciesAcceptanceRate(null, null);
+            const result = await service.getTermPolicyAcceptanceRate(
+                null,
+                null
+            );
 
             expect(result).toEqual({
                 acceptances: 0,
@@ -118,7 +118,7 @@ describe('AnalyticTermPolicyService', () => {
                 analyticTermPolicyRepository.findAcceptanceCounts
             ).toHaveBeenCalledWith(TermPolicyDefaultRequiredTypes, null, null);
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.termPoliciesAcceptance}:_:_`,
+                `${EnumAnalyticDashboardMetric.termPolicyAcceptanceRate}:_:_`,
                 AnalyticTermPolicyAcceptanceRateCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)

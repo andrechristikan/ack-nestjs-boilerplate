@@ -1,10 +1,8 @@
 import { CacheService } from '@common/cache/services/cache.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
-import { AnalyticProjectCreationCacheSchema } from '@modules/analytic/constants/analytic.constant';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import { AnalyticProjectRepository } from '@modules/analytic/repositories/analytic.project.repository';
 import { AnalyticProjectService } from '@modules/analytic/services/analytic.project.service';
-import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -15,6 +13,7 @@ import {
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AnalyticProjectCreationCacheSchema } from '@modules/analytic/dtos/analytic.project-creation-cache.dto';
 
 describe('AnalyticProjectService', () => {
     const dashboardTtlInMs = 1800000;
@@ -36,7 +35,8 @@ describe('AnalyticProjectService', () => {
 
     beforeEach(async () => {
         analyticCache.buildDashboardKey.mockImplementation(
-            (metric, start, end) => `${metric}:${start}:${end}`
+            (metric, start, end) =>
+                `${metric}:${start?.toISOString() ?? '_'}:${end?.toISOString() ?? '_'}`
         );
         cacheService.readThrough.mockImplementation(
             async (_key, _schema, _ttlInMs, loader) => loader()
@@ -54,7 +54,6 @@ describe('AnalyticProjectService', () => {
                         'analytic.project.perWorkspaceLimit': perWorkspaceLimit,
                     }),
                 },
-                AnalyticDateUtil,
                 ...TestUnitKitProviders,
                 {
                     provide: AnalyticProjectRepository,
@@ -66,7 +65,7 @@ describe('AnalyticProjectService', () => {
         service = module.get(AnalyticProjectService);
     });
 
-    describe('projectsCreation', () => {
+    describe('getProjectCreation', () => {
         it('passes the range and the configured limit to one repository method', async () => {
             const creation = {
                 created: 2,
@@ -74,7 +73,7 @@ describe('AnalyticProjectService', () => {
             };
             analyticProjectRepository.findCreation.mockResolvedValue(creation);
 
-            const result = await service.projectsCreation(startDate, endDate);
+            const result = await service.getProjectCreation(startDate, endDate);
 
             expect(result).toBe(creation);
             expect(
@@ -90,10 +89,10 @@ describe('AnalyticProjectService', () => {
         it('reads through with the dashboard key, AnalyticProjectCreationCacheSchema, and the dashboard TTL', async () => {
             cacheService.readThrough.mockResolvedValue(cachedValue);
 
-            await service.projectsCreation(startDate, endDate);
+            await service.getProjectCreation(startDate, endDate);
 
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                `${EnumAnalyticDashboardMetric.projectsCreation}:${startToken}:${endToken}`,
+                `${EnumAnalyticDashboardMetric.projectCreation}:${startToken}:${endToken}`,
                 AnalyticProjectCreationCacheSchema,
                 dashboardTtlInMs,
                 expect.any(Function)

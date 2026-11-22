@@ -17,7 +17,7 @@ export class AnalyticDeviceProliferationSummaryUseCase implements IAppUseCase<
         IResponseReturn<IAnalyticAnomalyDeviceProliferationSummary>
     > {
         const data =
-            await this.analyticAnomalyService.deviceProliferationSummary();
+            await this.analyticAnomalyService.getDeviceProliferationSummary();
 
         return { data };
     }

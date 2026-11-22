@@ -50,7 +50,7 @@ describe('AnalyticInviteFunnelUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticWorkspaceService.inviteFunnel.mockResolvedValue([
+            analyticWorkspaceService.getInviteFunnel.mockResolvedValue([
                 { status: 'pending', count: 2 },
             ]);
 
@@ -62,11 +62,9 @@ describe('AnalyticInviteFunnelUseCase', () => {
             expect(result).toEqual({
                 data: { statuses: [{ status: 'pending', count: 2 }] },
             });
-            expect(analyticWorkspaceService.inviteFunnel).toHaveBeenCalledWith(
-                'workspace-1',
-                startDate,
-                endDate
-            );
+            expect(
+                analyticWorkspaceService.getInviteFunnel
+            ).toHaveBeenCalledWith('workspace-1', startDate, endDate);
         });
 
         it('passes the query dates to the range check', async () => {
@@ -74,7 +72,7 @@ describe('AnalyticInviteFunnelUseCase', () => {
                 startDate,
                 endDate,
             });
-            analyticWorkspaceService.inviteFunnel.mockResolvedValue([]);
+            analyticWorkspaceService.getInviteFunnel.mockResolvedValue([]);
 
             await useCase.execute(workspaceContext, { startDate, endDate });
 

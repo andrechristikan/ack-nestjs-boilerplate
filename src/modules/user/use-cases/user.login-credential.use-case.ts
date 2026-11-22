@@ -23,7 +23,7 @@ import { UserVerificationService } from '@modules/user/services/user.verificatio
 import type { UserLoginRequestDto } from '@modules/user/dtos/request/user.login.request.dto';
 import type {
     IUser,
-    IUserLoginOutcome,
+    IUserAuthOutcome,
 } from '@modules/user/interfaces/user.interface';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -35,7 +35,7 @@ import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interfa
 @Injectable()
 export class UserLoginCredentialUseCase implements IAppUseCase<
     [IRequestContext, IApiKeyContext, UserLoginRequestDto],
-    IResponseReturn<IUserLoginOutcome>
+    IResponseReturn<IUserAuthOutcome>
 > {
     constructor(
         private readonly userAuthService: UserAuthService,
@@ -62,7 +62,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
         loginAt: Date
-    ): Promise<IUserLoginOutcome> {
+    ): Promise<IUserAuthOutcome> {
         const { lastWorkspaceChangedAt } = user;
         // Sequential by design: a write after its checks
         const [lastWorkspaceId, isMfaEnabled] = await Promise.all([
@@ -185,7 +185,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         { email, password, from, device }: UserLoginRequestDto
-    ): Promise<IResponseReturn<IUserLoginOutcome>> {
+    ): Promise<IResponseReturn<IUserAuthOutcome>> {
         const deviceIdentity = this.deviceUtil.toIdentity(device);
         const credential =
             await this.userAuthService.getOneForCredentialLogin(email);

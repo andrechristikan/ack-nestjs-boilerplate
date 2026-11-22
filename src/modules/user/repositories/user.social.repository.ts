@@ -33,10 +33,11 @@ export class UserSocialRepository implements IUserSocialRepository {
         tx: IDatabaseTransactionClient,
         userId: string,
         provider: EnumUserLoginWith,
-        subject: string
+        subject: string,
+        createdBy: string
     ): Promise<void> {
         await tx.userSocial.create({
-            data: { userId, provider, subject },
+            data: { userId, provider, subject, createdBy },
         });
     }
 

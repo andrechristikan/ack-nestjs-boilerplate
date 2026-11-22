@@ -40,7 +40,7 @@ describe('AnalyticDeviceProliferationSummaryUseCase', () => {
                 computedAt,
                 metadata: { avg: 2.5, stdDev: 0.5, zScoreThreshold: 3 },
             };
-            analyticAnomalyService.deviceProliferationSummary.mockResolvedValue(
+            analyticAnomalyService.getDeviceProliferationSummary.mockResolvedValue(
                 summary
             );
 
@@ -48,7 +48,7 @@ describe('AnalyticDeviceProliferationSummaryUseCase', () => {
 
             expect(result).toEqual({ data: summary });
             expect(
-                analyticAnomalyService.deviceProliferationSummary
+                analyticAnomalyService.getDeviceProliferationSummary
             ).toHaveBeenCalledWith();
         });
     });

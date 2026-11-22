@@ -20,6 +20,12 @@ Rule: `service.md`, Shared transactions.
 - A shared use case: a use case calling another use case brings the private-helper problem back one layer up.
 - In the service of the module that owns the subject, calling the other module's `*InTx`: a service then reaches a module on its own level, and two domains are coupled below the use case.
 
+### Join-request accept and reject, the two response interceptors' head, and the two term-policy prepares keep their copies as two subjects each
+
+Rule: `code-style.md`, Types and comments; `service.md`, Methods.
+
+- One body with a mode argument: the two rules of each pair change apart, and one body would branch on the mode at every line where they differ.
+
 ### Every use case implements `IAppUseCase` with its own argument and result types
 
 Rule: `use-case.md`, Shape.
@@ -152,6 +158,21 @@ Rule: `naming.md`, Files.
 Rule: `naming.md`, Identifiers.
 
 - Lower-casing the slug in the request schema: the slug stored would differ from the slug sent.
+
+### Every zod schema lives in a dto file with its `Dto` type
+
+Rule: `dto.md`; `naming.md`, Files.
+
+- A cache or pipeline schema in `<module>.constant.ts`: a constant file sits outside the coverage thresholds, so a schema there carries no DTO spec.
+- One sub-folder per schema kind (`dtos/cache/`): the kind already ends the file's noun (`-cache`, `-pipeline`), so the folder repeats it, and the sub-folders of `dtos/` name a transport direction.
+- One grouped file per kind: it rebuilds the constant file under another name, where a DTO file declares one schema and its type and its spec mirrors that one schema.
+- The `Dto` type replacing the `I*` interface: the schema is declared `satisfies z.ZodType<I*>`, so the interface is the contract it is checked against, and every service and repository signature would move onto a zod inference with no behaviour gained.
+
+### One name per analytic metric across route, enum, i18n key, method, and use case, its area singular
+
+Rule: `analytic.md`.
+
+- Singular routes over plural code names (`/user/churn` served by `usersChurn`): one metric then has two spellings, and a search for one misses the other.
 
 ## Lint and tests
 

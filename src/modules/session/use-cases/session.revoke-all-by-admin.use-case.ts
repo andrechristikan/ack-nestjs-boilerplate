@@ -43,14 +43,15 @@ export class SessionRevokeAllByAdminUseCase implements IAppUseCase<
         userContext: IUserContext,
         userId: string
     ): Promise<IResponseReturn<void>> {
-        this.sessionService.assertNotSelf(userId, authContext.userId);
+        this.userService.assertNotSelf(userId, authContext.userId);
 
         // Sequential by design: a write after its checks
-        const targetRole = await this.userService.getRoleById(userId);
+        const target = await this.userService.getOneWithRole(userId);
         this.roleService.assertActorOutranks(
             userContext.user.role.type,
-            targetRole.type
+            target.role.type
         );
+        this.userService.assertUnblocked(target);
 
         const revokedAt = this.helperDateService.create();
         try {

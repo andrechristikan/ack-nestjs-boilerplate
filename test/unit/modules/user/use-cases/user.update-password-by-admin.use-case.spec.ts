@@ -225,7 +225,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
 
                 return value as never;
             });
-            userService.updatePasswordInTx.mockImplementation(async () => {
+            userPasswordService.replaceInTx.mockImplementation(async () => {
                 calls.push('updatePassword');
 
                 return updatedRow;
@@ -235,11 +235,6 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
 
                 return passwordHistory;
             });
-            userPasswordService.markUnusedResetsUsedInTx.mockImplementation(
-                async () => {
-                    calls.push('markUnusedResetsUsed');
-                }
-            );
             deviceService.getNotificationTokens.mockImplementation(async () => {
                 calls.push('readTokens');
 
@@ -283,7 +278,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 'user-linden'
             );
             expect(sealSnapshot).toHaveBeenCalledWith(user, ['token-one']);
-            expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
+            expect(userPasswordService.replaceInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
                 password,
@@ -298,9 +293,6 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 password.passwordCreated,
                 'admin-linden'
             );
-            expect(
-                userPasswordService.markUnusedResetsUsedInTx
-            ).toHaveBeenCalledWith(tx, 'user-linden', 'admin-linden');
             expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -312,7 +304,6 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 'begin',
                 'updatePassword',
                 'createHistory',
-                'markUnusedResetsUsed',
                 'revokeSessions',
                 'addEffects',
                 'commit',
@@ -366,9 +357,9 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             ]);
         });
 
-        it('starts the history, the unused-reset mark, and the session revoke while the password update is pending', async () => {
+        it('starts the history and the session revoke while the password update is pending', async () => {
             const update = buildDeferred<User>();
-            userService.updatePasswordInTx.mockReturnValue(update.promise);
+            userPasswordService.replaceInTx.mockReturnValue(update.promise);
 
             const running = useCase.execute(
                 requestContext,
@@ -388,9 +379,6 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 password.passwordCreated,
                 'admin-linden'
             );
-            expect(
-                userPasswordService.markUnusedResetsUsedInTx
-            ).toHaveBeenCalledWith(tx, 'user-linden', 'admin-linden');
             expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -412,7 +400,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 'a',
                 'b',
             ]);
-            userService.updatePasswordInTx.mockResolvedValue(updatedRow);
+            userPasswordService.replaceInTx.mockResolvedValue(updatedRow);
             let encryptedTokens: string[] = [];
             notificationQueue.notify.mockImplementation((_kind, context) => {
                 if ('snapshot' in context) {
@@ -442,7 +430,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
         });
 
         it('reads the actor id from the context actorUserId', async () => {
-            userService.updatePasswordInTx.mockResolvedValue(updatedRow);
+            userPasswordService.replaceInTx.mockResolvedValue(updatedRow);
 
             await useCase.execute(
                 requestContext,
@@ -456,7 +444,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 'user-linden',
                 'admin-other'
             );
-            expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
+            expect(userPasswordService.replaceInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
                 password,

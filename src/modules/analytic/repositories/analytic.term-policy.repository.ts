@@ -4,7 +4,6 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
-import { AnalyticTermPolicyAcceptancePipelineSchema } from '@modules/analytic/constants/analytic.constant';
 import type { IAnalyticTermPolicyRepository } from '@modules/analytic/interfaces/analytic.term-policy-repository.interface';
 import type {
     IAnalyticPipelineDate,
@@ -12,6 +11,7 @@ import type {
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticPipelineUtil } from '@modules/analytic/utils/analytic.pipeline.util';
 import { Injectable } from '@nestjs/common';
+import { AnalyticTermPolicyAcceptancePipelineSchema } from '@modules/analytic/dtos/analytic.term-policy-acceptance-pipeline.dto';
 
 @Injectable()
 export class AnalyticTermPolicyRepository implements IAnalyticTermPolicyRepository {

@@ -27,7 +27,7 @@ describe('AnalyticForgotPasswordTokenAbuseSummaryUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope and passes no window to the service', async () => {
-            analyticFraudService.forgotPasswordTokenAbuseSummary.mockResolvedValue(
+            analyticFraudService.getForgotPasswordTokenAbuseSummary.mockResolvedValue(
                 {
                     count: 6,
                     windowStart: null,
@@ -47,7 +47,7 @@ describe('AnalyticForgotPasswordTokenAbuseSummaryUseCase', () => {
                 },
             });
             expect(
-                analyticFraudService.forgotPasswordTokenAbuseSummary
+                analyticFraudService.getForgotPasswordTokenAbuseSummary
             ).toHaveBeenCalledWith();
         });
     });

@@ -45,13 +45,13 @@ import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.e
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
-import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
     IUserImport,
     IUserImportByAdminPayload,
-    IUserSignUpWorkspacePersonal,
+    IUserCreateWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
 import { UserImportService } from '@modules/user/services/user.import.service';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
@@ -168,8 +168,8 @@ describe('UserProcessImportByAdminUseCase', () => {
         passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
         passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
     };
-    const personalContext: IUserSignUpWorkspacePersonal = {
-        type: EnumUserSignUpWorkspaceContextType.personal,
+    const personalContext: IUserCreateWorkspacePersonal = {
+        type: EnumUserCreateWorkspaceContextType.personal,
         workspaceId: 'workspace-bramble',
         slugCandidates: ['w-bramble', 'w-bramble-b'],
         name: "bramble2fox's Workspace",
@@ -359,7 +359,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             );
             expect(
                 notificationService.createDefaultsManyInTx
-            ).toHaveBeenCalledWith(tx, ['user-bramble']);
+            ).toHaveBeenCalledWith(tx, ['user-bramble'], 'admin-bramble');
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 mfaService.createInTx
             );

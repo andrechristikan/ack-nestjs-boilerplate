@@ -160,7 +160,7 @@ describe('RequestSchemaValidationPipe', () => {
                 { message: 'Required', path: [] },
             ];
 
-            const result = pipe['stampEmptyIssuePaths'](issues, undefined);
+            const result = pipe['stampEmptyIssuePaths'](issues, null);
 
             expect(result).toBe(issues);
         });

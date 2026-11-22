@@ -37,7 +37,7 @@ describe('AnalyticMemberRolesUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain result in the response envelope', async () => {
-            analyticWorkspaceService.memberRoles.mockResolvedValue([
+            analyticWorkspaceService.getMemberRoles.mockResolvedValue([
                 { role: 'admin', count: 2 },
             ]);
 
@@ -46,9 +46,9 @@ describe('AnalyticMemberRolesUseCase', () => {
             expect(result).toEqual({
                 data: { roles: [{ role: 'admin', count: 2 }] },
             });
-            expect(analyticWorkspaceService.memberRoles).toHaveBeenCalledWith(
-                'workspace-1'
-            );
+            expect(
+                analyticWorkspaceService.getMemberRoles
+            ).toHaveBeenCalledWith('workspace-1');
         });
     });
 });

@@ -3,7 +3,7 @@ import { SessionAdminListRequestSchema } from '@modules/session/dtos/request/ses
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     RequestContext,
-    RequestThrottle,
+    RequestThrottleProtected,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
@@ -59,7 +59,7 @@ export class SessionAdminController {
     ) {}
 
     @Doc({
-        summary: 'admin get all user Sessions',
+        summary: 'admin get all user sessions',
         description:
             'orderBy presets: latest (createdAt descending, default), recentlyUpdated (updatedAt descending).',
     })
@@ -77,7 +77,7 @@ export class SessionAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
@@ -90,7 +90,7 @@ export class SessionAdminController {
         return this.sessionGetListOffsetByAdminUseCase.execute(userId, query);
     }
 
-    @Doc({ summary: 'admin revoke user Session' })
+    @Doc({ summary: 'admin revoke user session' })
     @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
@@ -105,7 +105,7 @@ export class SessionAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/revoke/:sessionId')
@@ -129,7 +129,7 @@ export class SessionAdminController {
         );
     }
 
-    @Doc({ summary: 'admin revoke all user Sessions' })
+    @Doc({ summary: 'admin revoke all user sessions' })
     @Response('session.revokeAll')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
@@ -144,7 +144,7 @@ export class SessionAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
-    @RequestThrottle({ user: true })
+    @RequestThrottleProtected({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Delete('/revoke-all')

@@ -10,8 +10,12 @@
     "transferOwnership": "Workspace ownership transferred successfully",
     "leave": "You have left the workspace",
     "softDelete": "Workspace deletion queued successfully.",
+    "listByAdmin": "List of all workspaces",
+    "getByAdmin": "Workspace retrieved successfully",
+    "transferOwnershipByAdmin": "Workspace ownership transferred by admin",
     "member": {
         "list": "List of workspace members",
+        "listByAdmin": "List of workspace members",
         "updateRole": "Workspace member role updated successfully",
         "remove": "Workspace member removed successfully"
     },
@@ -28,14 +32,6 @@
         "create": "Workspace join request sent successfully",
         "accept": "Workspace join request accepted successfully",
         "reject": "Workspace join request rejected successfully"
-    },
-    "admin": {
-        "list": "List of all workspaces",
-        "get": "Workspace retrieved successfully",
-        "transferOwnership": "Workspace ownership transferred by admin",
-        "member": {
-            "list": "List of workspace members"
-        }
     },
     "queue": {
         "expireStaleInvites": "Processed stale workspace invite expiry sweep.",

@@ -4,11 +4,6 @@ import {
     EnumActivityLogAction,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import {
-    AnalyticUserActivePipelineSchema,
-    AnalyticUserBlockedPipelineSchema,
-    AnalyticUserChurnPipelineSchema,
-} from '@modules/analytic/constants/analytic.constant';
 import type {
     IAnalyticActiveUsersCount,
     IAnalyticBlockedUsers,
@@ -19,6 +14,9 @@ import type {
 import type { IAnalyticUserRepository } from '@modules/analytic/interfaces/analytic.user-repository.interface';
 import { AnalyticPipelineUtil } from '@modules/analytic/utils/analytic.pipeline.util';
 import { Injectable } from '@nestjs/common';
+import { AnalyticUserActivePipelineSchema } from '@modules/analytic/dtos/analytic.user-active-pipeline.dto';
+import { AnalyticUserBlockedPipelineSchema } from '@modules/analytic/dtos/analytic.user-blocked-pipeline.dto';
+import { AnalyticUserChurnPipelineSchema } from '@modules/analytic/dtos/analytic.user-churn-pipeline.dto';
 
 @Injectable()
 export class AnalyticUserRepository implements IAnalyticUserRepository {

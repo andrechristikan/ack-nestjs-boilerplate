@@ -78,7 +78,8 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         inputs: IUserCreateWithWorkspaceInput[],
         effects: IOutboxEffect[],
-        timeoutInMs: number
+        timeoutInMs: number,
+        createdBy: string
     ): Promise<IUser[]> {
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
         const termPolicyAcceptances =
@@ -109,7 +110,8 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
                             ),
                             this.notificationService.createDefaultsManyInTx(
                                 tx,
-                                userIds
+                                userIds,
+                                createdBy
                             ),
                         ]);
 
@@ -223,7 +225,8 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
             apiKeyContext,
             [input],
             effects,
-            this.timeoutInMs
+            this.timeoutInMs,
+            authContext.userId
         );
         const created = users[0]!;
 

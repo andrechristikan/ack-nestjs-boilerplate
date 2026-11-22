@@ -4,7 +4,7 @@ import { ResponseMetadataSchema } from '@common/response/dtos/response.metadata.
 describe('ResponseMetadataSchema', () => {
     const payload = {
         language: EnumMessageLanguage.en,
-        timestamp: 1660190937231,
+        timestamp: '2026-01-01T00:00:00.000Z',
         timezone: 'Asia/Jakarta',
         version: '1',
         repoVersion: '1.0.0',
@@ -95,6 +95,29 @@ describe('ResponseMetadataSchema', () => {
             expect.objectContaining({
                 path: ['language'],
                 code: 'invalid_value',
+            }),
+        ]);
+    });
+
+    it('accepts an ISO timestamp with an offset', () => {
+        const result = ResponseMetadataSchema.parse({
+            ...payload,
+            timestamp: '2026-01-01T07:00:00.000+07:00',
+        });
+
+        expect(result.timestamp).toBe('2026-01-01T07:00:00.000+07:00');
+    });
+
+    it('rejects a numeric timestamp', () => {
+        const result = ResponseMetadataSchema.safeParse({
+            ...payload,
+            timestamp: Date.UTC(2022, 7, 10),
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({
+                path: ['timestamp'],
+                code: 'invalid_type',
             }),
         ]);
     });

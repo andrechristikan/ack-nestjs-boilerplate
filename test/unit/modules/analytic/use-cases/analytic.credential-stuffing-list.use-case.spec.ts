@@ -68,7 +68,9 @@ describe('AnalyticCredentialStuffingListUseCase', () => {
                 ...offsetPage,
                 data: [{ ipAddress: '1.1.1.1', uniqueUsers: 2, failCount: 3 }],
             };
-            analyticFraudService.credentialStuffingList.mockResolvedValue(page);
+            analyticFraudService.getCredentialStuffingList.mockResolvedValue(
+                page
+            );
 
             const result = await useCase.execute({
                 page: 1,
@@ -77,7 +79,7 @@ describe('AnalyticCredentialStuffingListUseCase', () => {
 
             expect(result).toEqual(page);
             expect(
-                analyticFraudService.credentialStuffingList
+                analyticFraudService.getCredentialStuffingList
             ).toHaveBeenCalledWith(pagination);
         });
     });

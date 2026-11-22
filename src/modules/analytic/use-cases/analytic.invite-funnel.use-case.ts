@@ -22,7 +22,7 @@ export class AnalyticInviteFunnelUseCase implements IAppUseCase<
         { startDate, endDate }: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
         const range = this.analyticDateService.requireRange(startDate, endDate);
-        const statuses = await this.analyticWorkspaceService.inviteFunnel(
+        const statuses = await this.analyticWorkspaceService.getInviteFunnel(
             workspaceContext.workspace.id,
             range.startDate,
             range.endDate

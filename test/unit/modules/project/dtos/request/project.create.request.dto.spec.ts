@@ -13,6 +13,23 @@ describe('ProjectCreateRequestSchema', () => {
         });
     });
 
+    it('trims name and description', () => {
+        const result = ProjectCreateRequestSchema.parse({
+            name: '  Apollo  ',
+            description: '  Moon  ',
+        });
+
+        expect(result).toEqual({ name: 'Apollo', description: 'Moon' });
+    });
+
+    it('rejects a whitespace-only name', () => {
+        const result = ProjectCreateRequestSchema.safeParse({ name: '   ' });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: ['name'], code: 'too_small' }),
+        ]);
+    });
+
     it('parses with description omitted', () => {
         const result = ProjectCreateRequestSchema.parse({
             name: 'Website Revamp',

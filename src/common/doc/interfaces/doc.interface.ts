@@ -11,16 +11,10 @@ export interface IDocOptions {
 }
 
 /** @public */
-export interface IDocResponseErrorOptions<T = unknown> {
+export interface IDocResponseEntry<T = unknown> {
+    httpStatus: HttpStatus;
     statusCode: number;
     messagePath: string;
     schema?: z.ZodType<T>;
     baseSchema?: z.ZodObject;
-}
-
-/** @public */
-export interface IDocResponseEntry<
-    T = unknown,
-> extends IDocResponseErrorOptions<T> {
-    httpStatus: HttpStatus;
 }

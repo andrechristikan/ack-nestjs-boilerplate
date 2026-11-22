@@ -68,7 +68,7 @@ describe('AnalyticPasswordResetEnumerationListUseCase', () => {
                 ...offsetPage,
                 data: [{ key: 'example.com', count: 7 }],
             };
-            analyticFraudService.passwordResetEnumerationList.mockResolvedValue(
+            analyticFraudService.getPasswordResetEnumerationList.mockResolvedValue(
                 page
             );
 
@@ -79,7 +79,7 @@ describe('AnalyticPasswordResetEnumerationListUseCase', () => {
 
             expect(result).toEqual(page);
             expect(
-                analyticFraudService.passwordResetEnumerationList
+                analyticFraudService.getPasswordResetEnumerationList
             ).toHaveBeenCalledWith(pagination);
         });
     });

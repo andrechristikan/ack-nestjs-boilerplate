@@ -1,6 +1,5 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import { UserUsernameRegex } from '@modules/user/constants/user.constant';
 import type { IUser, IUserName } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -27,9 +26,8 @@ export class UserUtil {
         });
     }
 
-    /** True when the username does not match the allowed pattern, so true rejects it. */
-    isUsernamePatternInvalid(username: string): boolean {
-        return !!username.search(UserUsernameRegex);
+    normalizeEmail(email: string): string {
+        return email.trim().toLowerCase();
     }
 
     hasBadWord(str: string): boolean {

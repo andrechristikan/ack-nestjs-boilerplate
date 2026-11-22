@@ -18,13 +18,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
-    AnalyticFraudCredentialStuffingSummaryCacheSchema,
-    AnalyticFraudSummaryCacheSchema,
-    AnalyticRiskScoreSnapshotDataSchema,
-    AnalyticSharedFingerprintSnapshotDataSchema,
-    AnalyticSnapshotNullMetaSchema,
-} from '@modules/analytic/constants/analytic.constant';
-import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
@@ -40,6 +33,11 @@ import {
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { AnalyticFraudCredentialStuffingSummaryCacheSchema } from '@modules/analytic/dtos/analytic.fraud-credential-stuffing-summary-cache.dto';
+import { AnalyticFraudSummaryCacheSchema } from '@modules/analytic/dtos/analytic.fraud-summary-cache.dto';
+import { AnalyticRiskScoreSnapshotDataSchema } from '@modules/analytic/dtos/analytic.risk-score-snapshot-data.dto';
+import { AnalyticSharedFingerprintSnapshotDataSchema } from '@modules/analytic/dtos/analytic.shared-fingerprint-snapshot-data.dto';
+import { AnalyticSnapshotNullMetaSchema } from '@modules/analytic/dtos/analytic.snapshot-null-meta.dto';
 
 describe('AnalyticFraudService', () => {
     const liveSummaryTtlInMs = 60000;
@@ -92,7 +90,6 @@ describe('AnalyticFraudService', () => {
     const computedAt: Date = new Date('2026-03-01T00:15:00.000Z');
 
     const configValues: Record<string, number | string> = {
-        'analytic.cache.windowTokenPattern': 'Window:{start}:{end}',
         'analytic.fraud.nearLockoutOffset': 1,
         'analytic.fraud.credentialStuffing.windowInMs': 86400000,
         'analytic.fraud.credentialStuffing.minUniqueAccounts': 2,
@@ -171,8 +168,8 @@ describe('AnalyticFraudService', () => {
         service = module.get(AnalyticFraudService);
     });
 
-    describe('credentialStuffingSummary', () => {
-        it('reads through with the credential-stuffing key, the metadata cache schema, and the fraud summary TTL', async () => {
+    describe('getCredentialStuffingSummary', () => {
+        it('reads through with the credentialStuffing key, the metadata cache schema, and the fraud summary TTL', async () => {
             const cached = {
                 count: 4,
                 ...dayRequestWindow,
@@ -180,7 +177,7 @@ describe('AnalyticFraudService', () => {
             };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.credentialStuffingSummary();
+            const result = await service.getCredentialStuffingSummary();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -188,7 +185,7 @@ describe('AnalyticFraudService', () => {
                 '86400000'
             );
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                'credential-stuffing:86400000',
+                'credentialStuffing:86400000',
                 AnalyticFraudCredentialStuffingSummaryCacheSchema,
                 liveSummaryTtlInMs,
                 expect.any(Function)
@@ -200,7 +197,7 @@ describe('AnalyticFraudService', () => {
                 4
             );
 
-            const result = await service.credentialStuffingSummary();
+            const result = await service.getCredentialStuffingSummary();
 
             expect(
                 analyticFraudRepository.countCredentialStuffing
@@ -216,14 +213,14 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('credentialStuffingList', () => {
+    describe('getCredentialStuffingList', () => {
         it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findCredentialStuffingOffset.mockResolvedValue(
                 page
             );
 
-            const result = await service.credentialStuffingList(pagination);
+            const result = await service.getCredentialStuffingList(pagination);
 
             expect(result).toBe(page);
             expect(
@@ -235,12 +232,12 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('accountTakeoverSummary', () => {
-        it('reads through with the account-takeover key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
+    describe('getAccountTakeoverSummary', () => {
+        it('reads through with the accountTakeover key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
             const cached = { count: 1, ...dayRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.accountTakeoverSummary();
+            const result = await service.getAccountTakeoverSummary();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -248,7 +245,7 @@ describe('AnalyticFraudService', () => {
                 '3600000'
             );
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                'account-takeover:3600000',
+                'accountTakeover:3600000',
                 AnalyticFraudSummaryCacheSchema,
                 liveSummaryTtlInMs,
                 expect.any(Function)
@@ -258,7 +255,7 @@ describe('AnalyticFraudService', () => {
         it('counts once with the configured window on a cache miss and answers a null computedAt', async () => {
             analyticFraudRepository.countAccountTakeover.mockResolvedValue(3);
 
-            const result = await service.accountTakeoverSummary();
+            const result = await service.getAccountTakeoverSummary();
 
             expect(
                 analyticFraudRepository.countAccountTakeover
@@ -270,14 +267,14 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('accountTakeoverList', () => {
+    describe('getAccountTakeoverList', () => {
         it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findAccountTakeoverOffset.mockResolvedValue(
                 page
             );
 
-            const result = await service.accountTakeoverList(pagination);
+            const result = await service.getAccountTakeoverList(pagination);
 
             expect(result).toBe(page);
             expect(
@@ -289,12 +286,12 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('sessionAfterAdminSummary', () => {
-        it('reads through with the session-after-admin key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
+    describe('getSessionAfterAdminSummary', () => {
+        it('reads through with the sessionAfterAdmin key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
             const cached = { count: 1, ...hourRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.sessionAfterAdminSummary();
+            const result = await service.getSessionAfterAdminSummary();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -302,7 +299,7 @@ describe('AnalyticFraudService', () => {
                 '3600000'
             );
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                'session-after-admin:3600000',
+                'sessionAfterAdmin:3600000',
                 AnalyticFraudSummaryCacheSchema,
                 liveSummaryTtlInMs,
                 expect.any(Function)
@@ -312,7 +309,7 @@ describe('AnalyticFraudService', () => {
         it('counts once with the configured window on a cache miss and answers a null computedAt', async () => {
             analyticFraudRepository.countSessionAfterAdmin.mockResolvedValue(3);
 
-            const result = await service.sessionAfterAdminSummary();
+            const result = await service.getSessionAfterAdminSummary();
 
             expect(
                 analyticFraudRepository.countSessionAfterAdmin
@@ -324,14 +321,14 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('sessionAfterAdminList', () => {
+    describe('getSessionAfterAdminList', () => {
         it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findSessionAfterAdminOffset.mockResolvedValue(
                 page
             );
 
-            const result = await service.sessionAfterAdminList(pagination);
+            const result = await service.getSessionAfterAdminList(pagination);
 
             expect(result).toBe(page);
             expect(
@@ -343,12 +340,12 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('massRegistrationSummary', () => {
-        it('reads through with the mass-registration key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
+    describe('getMassRegistrationSummary', () => {
+        it('reads through with the massRegistration key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
             const cached = { count: 1, ...hourRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.massRegistrationSummary();
+            const result = await service.getMassRegistrationSummary();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -356,7 +353,7 @@ describe('AnalyticFraudService', () => {
                 '86400000'
             );
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                'mass-registration:86400000',
+                'massRegistration:86400000',
                 AnalyticFraudSummaryCacheSchema,
                 liveSummaryTtlInMs,
                 expect.any(Function)
@@ -366,7 +363,7 @@ describe('AnalyticFraudService', () => {
         it('counts once with the configured window and the minimum on a cache miss', async () => {
             analyticFraudRepository.countMassRegistration.mockResolvedValue(3);
 
-            const result = await service.massRegistrationSummary();
+            const result = await service.getMassRegistrationSummary();
             expect(
                 analyticFraudRepository.countMassRegistration
             ).toHaveBeenCalledTimes(1);
@@ -377,14 +374,14 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('massRegistrationList', () => {
+    describe('getMassRegistrationList', () => {
         it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findMassRegistrationOffset.mockResolvedValue(
                 page
             );
 
-            const result = await service.massRegistrationList(pagination);
+            const result = await service.getMassRegistrationList(pagination);
 
             expect(result).toBe(page);
             expect(
@@ -396,12 +393,12 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('passwordResetEnumerationSummary', () => {
-        it('reads through with the password-reset-enumeration key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
+    describe('getPasswordResetEnumerationSummary', () => {
+        it('reads through with the passwordResetEnumeration key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
             const cached = { count: 1, ...dayRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.passwordResetEnumerationSummary();
+            const result = await service.getPasswordResetEnumerationSummary();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -409,7 +406,7 @@ describe('AnalyticFraudService', () => {
                 '86400000'
             );
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                'password-reset-enumeration:86400000',
+                'passwordResetEnumeration:86400000',
                 AnalyticFraudSummaryCacheSchema,
                 liveSummaryTtlInMs,
                 expect.any(Function)
@@ -421,7 +418,7 @@ describe('AnalyticFraudService', () => {
                 3
             );
 
-            const result = await service.passwordResetEnumerationSummary();
+            const result = await service.getPasswordResetEnumerationSummary();
             expect(
                 analyticFraudRepository.countPasswordResetEnumeration
             ).toHaveBeenCalledTimes(1);
@@ -432,7 +429,7 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('passwordResetEnumerationList', () => {
+    describe('getPasswordResetEnumerationList', () => {
         it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findPasswordResetEnumerationOffset.mockResolvedValue(
@@ -440,7 +437,7 @@ describe('AnalyticFraudService', () => {
             );
 
             const result =
-                await service.passwordResetEnumerationList(pagination);
+                await service.getPasswordResetEnumerationList(pagination);
 
             expect(result).toBe(page);
             expect(
@@ -452,7 +449,7 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('sharedFingerprintSummary', () => {
+    describe('getSharedFingerprintSummary', () => {
         it('reads the stored summary and no repository', async () => {
             analyticSnapshotService.getSummary.mockResolvedValue({
                 count: 4,
@@ -462,7 +459,7 @@ describe('AnalyticFraudService', () => {
                 computedAt,
             });
 
-            const result = await service.sharedFingerprintSummary();
+            const result = await service.getSharedFingerprintSummary();
 
             expect(result).toEqual({
                 count: 4,
@@ -489,7 +486,7 @@ describe('AnalyticFraudService', () => {
                 computedAt: null,
             });
 
-            const result = await service.sharedFingerprintSummary();
+            const result = await service.getSharedFingerprintSummary();
 
             expect(result).toEqual({
                 count: 0,
@@ -500,7 +497,7 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('sharedFingerprintList', () => {
+    describe('getSharedFingerprintList', () => {
         it('returns the stored page and reads no repository', async () => {
             const page = {
                 ...offsetPage,
@@ -516,7 +513,7 @@ describe('AnalyticFraudService', () => {
             analyticSnapshotService.getListOffset.mockResolvedValue(page);
             const params = { skip: 1, limit: 1, orderBy };
 
-            const result = await service.sharedFingerprintList(params);
+            const result = await service.getSharedFingerprintList(params);
 
             expect(result).toBe(page);
             expect(analyticSnapshotService.getListOffset).toHaveBeenCalledWith(
@@ -589,12 +586,12 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('forgotPasswordTokenAbuseSummary', () => {
-        it('reads through with the forgot-password-token-abuse key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
+    describe('getForgotPasswordTokenAbuseSummary', () => {
+        it('reads through with the forgotPasswordTokenAbuse key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
             const cached = { count: 1, ...dayRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.forgotPasswordTokenAbuseSummary();
+            const result = await service.getForgotPasswordTokenAbuseSummary();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -602,7 +599,7 @@ describe('AnalyticFraudService', () => {
                 '86400000'
             );
             expect(cacheService.readThrough).toHaveBeenCalledWith(
-                'forgot-password-token-abuse:86400000',
+                'forgotPasswordTokenAbuse:86400000',
                 AnalyticFraudSummaryCacheSchema,
                 liveSummaryTtlInMs,
                 expect.any(Function)
@@ -614,7 +611,7 @@ describe('AnalyticFraudService', () => {
                 3
             );
 
-            const result = await service.forgotPasswordTokenAbuseSummary();
+            const result = await service.getForgotPasswordTokenAbuseSummary();
             expect(
                 analyticFraudRepository.countForgotPasswordAbuse
             ).toHaveBeenCalledTimes(1);
@@ -625,7 +622,7 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('forgotPasswordTokenAbuseList', () => {
+    describe('getForgotPasswordTokenAbuseList', () => {
         it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findForgotPasswordAbuseOffset.mockResolvedValue(
@@ -633,7 +630,7 @@ describe('AnalyticFraudService', () => {
             );
 
             const result =
-                await service.forgotPasswordTokenAbuseList(pagination);
+                await service.getForgotPasswordTokenAbuseList(pagination);
 
             expect(result).toBe(page);
             expect(
@@ -732,7 +729,7 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('riskScore', () => {
+    describe('getRiskScore', () => {
         const stored = {
             userId: 'user-1',
             score: 50,
@@ -751,7 +748,7 @@ describe('AnalyticFraudService', () => {
                 computedAt,
             });
 
-            const result = await service.riskScore('user-1');
+            const result = await service.getRiskScore('user-1');
 
             expect(result).toEqual({ ...stored, computedAt });
             expect(analyticSnapshotService.getOneByKey).toHaveBeenCalledWith(
@@ -769,7 +766,7 @@ describe('AnalyticFraudService', () => {
                 computedAt,
             });
 
-            const result = await service.riskScore('user-1');
+            const result = await service.getRiskScore('user-1');
 
             expect(result).toEqual({
                 userId: 'user-1',
@@ -791,7 +788,7 @@ describe('AnalyticFraudService', () => {
                 computedAt: null,
             });
 
-            const result = await service.riskScore('user-1');
+            const result = await service.getRiskScore('user-1');
 
             expect(result).toEqual({
                 userId: 'user-1',
@@ -809,10 +806,12 @@ describe('AnalyticFraudService', () => {
                 computedAt,
             });
 
-            await expect(service.riskScore('missing')).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-            });
+            await expect(service.getRiskScore('missing')).rejects.toMatchObject(
+                {
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.notFound,
+                }
+            );
         });
 
         it('reads the snapshot while the user check is still pending', async () => {
@@ -825,7 +824,7 @@ describe('AnalyticFraudService', () => {
                 computedAt,
             });
 
-            const pending = service.riskScore('user-1');
+            const pending = service.getRiskScore('user-1');
 
             expect(analyticSnapshotService.getOneByKey).toHaveBeenCalledTimes(
                 1
@@ -835,7 +834,7 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('riskScores', () => {
+    describe('getRiskScoreList', () => {
         const listed = {
             ...offsetPage,
             data: [
@@ -853,7 +852,7 @@ describe('AnalyticFraudService', () => {
         it('passes the minScore as a value filter and returns the stored page', async () => {
             analyticSnapshotService.getListOffset.mockResolvedValue(listed);
 
-            const result = await service.riskScores(30, pagination);
+            const result = await service.getRiskScoreList(30, pagination);
 
             expect(result).toBe(listed);
             expect(analyticSnapshotService.getListOffset).toHaveBeenCalledWith(
@@ -867,7 +866,7 @@ describe('AnalyticFraudService', () => {
         it('passes no filter for a null minScore', async () => {
             analyticSnapshotService.getListOffset.mockResolvedValue(listed);
 
-            await service.riskScores(null, pagination);
+            await service.getRiskScoreList(null, pagination);
 
             expect(analyticSnapshotService.getListOffset).toHaveBeenCalledWith(
                 EnumAnalyticSnapshotSignal.riskScore,

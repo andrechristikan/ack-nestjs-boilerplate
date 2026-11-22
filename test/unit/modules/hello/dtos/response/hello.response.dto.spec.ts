@@ -6,7 +6,6 @@ describe('HelloResponseSchema', () => {
     const payload = {
         date: {
             iso: '2022-08-10T07:22:17.231Z',
-            timestamp: 1660190937231,
         },
         app: {
             name: 'Ack NestJS Boilerplate',

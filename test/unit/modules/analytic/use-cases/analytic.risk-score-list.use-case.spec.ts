@@ -81,7 +81,7 @@ describe('AnalyticRiskScoreListUseCase', () => {
                     },
                 ],
             };
-            analyticFraudService.riskScores.mockResolvedValue(page);
+            analyticFraudService.getRiskScoreList.mockResolvedValue(page);
 
             const result = await useCase.execute({
                 minScore: 30,
@@ -90,7 +90,7 @@ describe('AnalyticRiskScoreListUseCase', () => {
             });
 
             expect(result).toEqual(page);
-            expect(analyticFraudService.riskScores).toHaveBeenCalledWith(
+            expect(analyticFraudService.getRiskScoreList).toHaveBeenCalledWith(
                 30,
                 pagination
             );
@@ -98,7 +98,7 @@ describe('AnalyticRiskScoreListUseCase', () => {
 
         it('passes null when minScore is omitted', async () => {
             const page = { ...offsetPage, data: [] };
-            analyticFraudService.riskScores.mockResolvedValue(page);
+            analyticFraudService.getRiskScoreList.mockResolvedValue(page);
 
             await useCase.execute({
                 minScore: undefined,
@@ -106,7 +106,7 @@ describe('AnalyticRiskScoreListUseCase', () => {
                 perPage: 20,
             });
 
-            expect(analyticFraudService.riskScores).toHaveBeenCalledWith(
+            expect(analyticFraudService.getRiskScoreList).toHaveBeenCalledWith(
                 null,
                 pagination
             );

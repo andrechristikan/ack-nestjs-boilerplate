@@ -24,7 +24,6 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
-import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
 import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
@@ -41,7 +40,6 @@ export class UserResetPasswordUseCase implements IAppUseCase<
     private readonly appName: string;
 
     constructor(
-        private readonly userService: UserService,
         private readonly userPasswordService: UserPasswordService,
         private readonly mfaService: MfaService,
         private readonly mfaChallengeService: MfaChallengeService,
@@ -159,7 +157,7 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                     reset.userId
                 );
                 await Promise.all([
-                    this.userService.updatePasswordInTx(
+                    this.userPasswordService.replaceInTx(
                         tx,
                         reset.userId,
                         password,
@@ -172,11 +170,6 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                         EnumPasswordHistoryType.forgot,
                         password.passwordPeriodExpired,
                         password.passwordCreated,
-                        reset.userId
-                    ),
-                    this.userPasswordService.markUnusedResetsUsedInTx(
-                        tx,
-                        reset.userId,
                         reset.userId
                     ),
                     this.sessionService.revokeActiveByUserInTx(
