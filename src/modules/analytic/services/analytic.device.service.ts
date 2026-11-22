@@ -107,7 +107,7 @@ export class AnalyticDeviceService {
 
     async getDevicePerUser(): Promise<IAnalyticSnapshotBucketsResult> {
         return this.analyticSnapshotService.getBuckets(
-            EnumAnalyticSnapshotSignal.devicesPerUser,
+            EnumAnalyticSnapshotSignal.devicePerUser,
             AnalyticDevicePerUserSnapshotDataSchema
         );
     }

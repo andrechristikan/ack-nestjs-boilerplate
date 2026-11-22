@@ -174,7 +174,7 @@ describe('AnalyticDeviceService', () => {
 
             expect(result).toBe(stored);
             expect(analyticSnapshotService.getBuckets).toHaveBeenCalledWith(
-                EnumAnalyticSnapshotSignal.devicesPerUser,
+                EnumAnalyticSnapshotSignal.devicePerUser,
                 AnalyticDevicePerUserSnapshotDataSchema
             );
             expect(cacheService.readThrough).not.toHaveBeenCalled();

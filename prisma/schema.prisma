@@ -1230,7 +1230,7 @@ enum EnumAnalyticSnapshotSignal {
   sharedFingerprint
   riskScore
   concurrentSessions
-  devicesPerUser
+  devicePerUser
   workspaceMembership
   mfaAdoption
 }

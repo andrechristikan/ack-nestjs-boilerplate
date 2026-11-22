@@ -387,7 +387,7 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
             });
         });
 
-        it('computes the devicesPerUser bucket rows, replaces the snapshot with them, and returns the row count', async () => {
+        it('computes the devicePerUser bucket rows, replaces the snapshot with them, and returns the row count', async () => {
             const snapshot = {
                 items: [
                     {
@@ -412,19 +412,19 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
             );
 
             const result = await useCase.execute({
-                signal: EnumAnalyticSnapshotSignal.devicesPerUser,
+                signal: EnumAnalyticSnapshotSignal.devicePerUser,
             });
 
             expect(
                 analyticDeviceService.computeDevicePerUser
             ).toHaveBeenCalledTimes(1);
             expect(analyticSnapshotService.replace).toHaveBeenCalledWith(
-                EnumAnalyticSnapshotSignal.devicesPerUser,
+                EnumAnalyticSnapshotSignal.devicePerUser,
                 snapshot
             );
             expect(result).toEqual({
                 message: 'analytic.queue.refreshSnapshot',
-                signal: EnumAnalyticSnapshotSignal.devicesPerUser,
+                signal: EnumAnalyticSnapshotSignal.devicePerUser,
                 count: 2,
             });
         });
