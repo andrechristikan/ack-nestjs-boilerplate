@@ -26,7 +26,7 @@
             "Agent(debugger)",
             "Agent(advisor)",
             "Bash",
-            "mcp__mongodb",
+            "mcp__postgres",
             "mcp__redis-cache",
             "mcp__redis-queue"
         ],
@@ -129,7 +129,6 @@
             "Read(/.env.harness)",
             "Read(/.env.docker)",
             "Edit(/.claude/settings.local.json)",
-            "mcp__mongodb__connect",
             "mcp__redis-cache__json_set",
             "mcp__redis-cache__json_del",
             "mcp__redis-cache__lpush",

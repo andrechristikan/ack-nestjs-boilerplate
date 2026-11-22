@@ -2,7 +2,7 @@
 name: debugger
 description: >-
     Finds the cause of a symptom read-only: builds a command that reproduces it, tests one hypothesis at a time against the running code and the specs, and hands back the root cause at file:line with evidence and a pin (files, cause, change), or NEEDS_DECISION with the options. Use when a symptom (input, observed result, expected result, where it surfaces) is in hand and its cause is not. Not for fixing (coder), reviewing (reviewer), or tests (tester).
-tools: Read, Grep, Glob, Bash, mcp__mongodb__*, mcp__redis-cache__*, mcp__redis-queue__*
+tools: Read, Grep, Glob, Bash, mcp__postgres__*, mcp__redis-cache__*, mcp__redis-queue__*
 model: opus
 effort: high
 skills: caveman, ponytail, diagnosing-bugs

@@ -18,7 +18,7 @@ Rule: `.claude/CLAUDE.md`, Levels.
 
 - Effort medium: the reviewer is the only judge of a build and may miss no rule.
 
-### Agents read MongoDB and Redis through read-only MCP servers
+### Agents read PostgreSQL and Redis through read-only MCP servers
 
 Rule: `AGENTS.md`, Prisma schema; `.claude/agents/reviewer.md` and `.claude/agents/debugger.md`, `tools:`.
 

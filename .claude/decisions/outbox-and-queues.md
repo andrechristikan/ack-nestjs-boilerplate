@@ -47,7 +47,7 @@ Rule: `outbox.md`.
 
 Rule: `effects.md`, Writing.
 
-- A non-transactional add after the statement: a crash or a MongoDB failure between the two loses the effect the outbox exists to keep.
+- A non-transactional add after the statement: a crash or a PostgreSQL failure between the two loses the effect the outbox exists to keep.
 - Only the use case dispatches, the ids returned through every layer: every `*InTx` signature and callback carries outbox ids, and a dropped return leaves the row to the sweep.
 - The opener keeps its `tx` and asks `OutboxService` to dispatch after the commit: every opener holds `tx` outside its callback, and a forgotten call fails silently.
 

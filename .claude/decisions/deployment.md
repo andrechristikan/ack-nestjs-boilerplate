@@ -9,12 +9,12 @@ Rule: `workflows.md`.
 - An SSH workflow: a stored private key and registry password, and an open SSH port.
 - An ECS workflow or task-definition example: every container runs on one instance, and an orchestrator is the deployment's.
 
-### A release applies the schema with `prisma db push` before it replaces the application
+### A release applies the committed migrations with `prisma migrate deploy` before it replaces the application
 
 Rule: `workflows.md`; `docker-production.md`.
 
-- A manual push by the owner: a release that needs an index ships without it.
-- `--accept-data-loss`: a destructive change needs a person.
+- A manual migrate by the owner: a release that needs an index ships without it.
+- `prisma db push`: it keeps no history, so a production schema change has no reviewed migration file.
 
 ### Workflows deploy through GitHub environments and OIDC
 
@@ -57,7 +57,7 @@ Rule: `docker.md`, Credentials and variables.
 - One `.env` for the application and Compose: the container and Vault receive credentials the application never reads.
 - `COMPOSE_ENV_FILES` in each developer's shell: the setting lives outside the repository.
 - Production left on `--env-file .env`: two environments would follow two rules.
-- Default credentials in production: a forgotten file starts MongoDB and Redis open.
+- Default credentials in production: a forgotten file starts PostgreSQL and Redis with known credentials.
 - Compose secrets for the passwords: the same passwords stay in the application's URLs.
 
 ### Vault ships in the production compose file only
@@ -77,17 +77,17 @@ Rule: `docker-production.md`.
 - A bind-address variable: the compose file serves one host with a proxy in front, and a public deployment adds its own layer.
 - A Caddy service in the compose file: the boilerplate knows neither the domain nor the certificate.
 
-### The application has its own MongoDB account
+### The application has its own PostgreSQL credentials
 
 Rule: `docker.md`, Credentials and variables.
 
-- Connecting as root: a leaked `DATABASE_URL` hands out every database and every user.
+- The image's default `postgres` user and database: a leaked default hands out the whole server.
 
 ### Connections inside the compose network stay unencrypted
 
 Rule: `docker-production.md`.
 
-- An internal certificate authority for MongoDB, Redis, and the JWKS server: the traffic never leaves the bridge network of one host.
+- An internal certificate authority for PostgreSQL, Redis, and the JWKS server: the traffic never leaves the bridge network of one host.
 
 ### The encryption roots have no rotation path
 

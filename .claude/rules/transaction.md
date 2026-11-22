@@ -14,7 +14,7 @@ Statements, audit stamping, and the schema: `repository.md`. The kit: `database.
 ## Access
 
 - Inject `DatabaseService` (`src/common/database/services/database.service.ts`), never `PrismaClient`. It exposes `client`, the audited extended Prisma client, and `withTransaction`.
-- `DatabaseUtil` (`src/common/database/utils/database.util.ts`) holds the kit's pure database helpers. Prisma error codes are named constants in `src/common/database/constants/database.constant.ts`; a code literal outside that file is the defect. Services and use cases pass `string` ids; the ObjectId dialect stays in the repository.
+- `DatabaseUtil` (`src/common/database/utils/database.util.ts`) holds the kit's pure database helpers. Prisma error codes are named constants in `src/common/database/constants/database.constant.ts`; a code literal outside that file is the defect. Services and use cases pass `string` ids; ids are UUID strings.
 
 ## Queries
 

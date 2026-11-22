@@ -64,4 +64,4 @@ The hand-back is the reply text. Write no report file.
 - No `docs/`, root people files, `.claude/**`, or `.github/**` outside the run surface.
 - No spec beyond the specs the ticket's behaviours need: coverage of existing code is `tester`.
 - No `--no-verify`, no commit, no staging.
-- No owner database command: `db:migrate`, `migration:*`, `db:studio`, `mongosh`, `redis-cli`.
+- No owner database command: `db:migrate`, `migration:*`, `db:studio`, `psql`, `redis-cli`.

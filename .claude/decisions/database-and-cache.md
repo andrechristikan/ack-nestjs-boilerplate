@@ -49,22 +49,22 @@ Rule: `effects.md`, Cache invalidation.
 
 - A synchronous delete that fails the request: a failed delete after commit fails a request whose write already committed.
 
-### MongoDB is the only authority; Redis is a cache
+### PostgreSQL is the only authority; Redis is a cache
 
 Rule: `cache.md`.
 
 - Redis as the session authority: a Redis error after a login or refresh commit revokes the committed session or signs the user out.
 - Write-through as the consistency mechanism: a failed write-through leaves old data, while a failed delete leaves it only until the TTL.
 
-### Redis and MongoDB are both required
+### Redis and PostgreSQL are both required
 
 Rule: `cache.md` and `database.md`.
 
-- Fail-open on an outage: Redis and MongoDB are always on, so an outage of either answers an error, fast.
-- Mongo-based rate limiting: it costs one write per request on every route.
-- Booting while Redis or MongoDB is down: the half-booted app answers errors until restarted.
-- 500 for an enqueue's connection error or a MongoDB server-selection timeout: each is an outage the client can retry.
-- The driver's default server-selection timeout: a request waits 30 seconds before it fails.
+- Fail-open on an outage: Redis and PostgreSQL are always on, so an outage of either answers an error, fast.
+- PostgreSQL-based rate limiting: it costs one write per request on every route.
+- Booting while Redis or PostgreSQL is down: the half-booted app answers errors until restarted.
+- 500 for an enqueue's connection error or a PostgreSQL connection timeout: each is an outage the client can retry.
+- Prisma's default pool timeout: a request waits 10 seconds before it fails.
 
 ### ioredis directly, for the cache and BullMQ
 
@@ -109,7 +109,7 @@ Rule: `guards.md`, Guards.
 
 ## Outage logging
 
-### A Redis or MongoDB outage is logged once per window
+### A Redis or PostgreSQL outage is logged once per window
 
 Rule: `exceptions.md`, The hierarchy.
 

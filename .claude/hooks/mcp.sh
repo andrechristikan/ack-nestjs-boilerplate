@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Run by .mcp.json, never by an agent and never as a hook: bash .claude/hooks/mcp.sh mongodb|redis-cache|redis-queue
-# Starts one MCP server for the local compose containers with its URL read from the root .env.harness (MCP_MONGODB_URL,
+# Run by .mcp.json, never by an agent and never as a hook: bash .claude/hooks/mcp.sh postgres|redis-cache|redis-queue
+# Starts one MCP server for the local compose containers with its URL read from the root .env.harness (MCP_POSTGRES_URL,
 # MCP_REDIS_CACHE_URL, MCP_REDIS_QUEUE_URL), so no URL or password is written in a tracked file or reaches the session.
-# The MongoDB server runs read-only; the Redis server has no such mode, and .claude/settings.json denies its writing
+# The PostgreSQL server runs in restricted mode, which holds every statement in a read-only transaction; the Redis server has no such mode, and .claude/settings.json denies its writing
 # tools by name.
 set -euo pipefail
 
@@ -13,9 +13,8 @@ value() {
 }
 
 case "${1:-}" in
-    mongodb)
-        MDB_MCP_CONNECTION_STRING="$(value MCP_MONGODB_URL)" MDB_MCP_TELEMETRY=disabled MDB_MCP_DISABLED_TOOLS=atlas \
-            exec npx -y mongodb-mcp-server@latest --readOnly
+    postgres)
+        DATABASE_URI="$(value MCP_POSTGRES_URL)" exec uvx postgres-mcp@latest --access-mode=restricted
         ;;
     redis-cache)
         exec uvx --from redis-mcp-server@latest redis-mcp-server --url "$(value MCP_REDIS_CACHE_URL)"
@@ -24,7 +23,7 @@ case "${1:-}" in
         exec uvx --from redis-mcp-server@latest redis-mcp-server --url "$(value MCP_REDIS_QUEUE_URL)"
         ;;
     *)
-        echo "usage: mcp.sh mongodb|redis-cache|redis-queue" >&2
+        echo "usage: mcp.sh postgres|redis-cache|redis-queue" >&2
         exit 2
         ;;
 esac
