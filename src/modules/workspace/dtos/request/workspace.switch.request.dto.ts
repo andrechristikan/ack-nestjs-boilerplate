@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 
-/**
- * Validates the body for switching the active workspace.
- * @public
- */
+/** @public */
 export const WorkspaceSwitchRequestSchema = z.strictObject({
     workspaceId: RequestUuidSchema.meta({
         description:
@@ -14,10 +11,7 @@ export const WorkspaceSwitchRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Body for switching the active workspace.
- * @public
- */
+/** @public */
 export type WorkspaceSwitchRequestDto = z.infer<
     typeof WorkspaceSwitchRequestSchema
 >;

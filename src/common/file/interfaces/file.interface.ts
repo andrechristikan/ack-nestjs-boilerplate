@@ -30,3 +30,7 @@ export interface IFileRandomFilenameOptions {
 export interface IFileCsvValidationOptions {
     maxDataImportConfigKey?: string;
 }
+
+export type IFileExtensionContracts = Readonly<
+    Record<EnumFileExtension, readonly string[]>
+>;

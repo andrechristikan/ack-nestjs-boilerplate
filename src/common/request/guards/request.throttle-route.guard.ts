@@ -4,25 +4,19 @@ import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import type { Response } from 'express';
 import { RequestThrottleOptionsMetaKey } from '@common/request/constants/request.constant';
-import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
+import { EnumRequestThrottleName } from '@common/request/enums/request.enum';
 import type {
     IRequestApp,
     IRequestThrottleOptions,
-    IRequestThrottlePolicy,
+    IRequestThrottleRoutePolicies,
 } from '@common/request/interfaces/request.interface';
 import { RequestThrottleService } from '@common/request/services/request.throttle.service';
 import { RequestUtil } from '@common/request/utils/request.util';
 
-/**
- * Enforces the per-route limiter of `@RequestThrottle` before any route-level guard runs.
- */
 @Injectable()
 export class RequestThrottleRouteGuard implements CanActivate {
-    private readonly name = 'route';
-    private readonly policies: Record<
-        EnumRequestThrottleRoute,
-        IRequestThrottlePolicy
-    >;
+    private readonly name = EnumRequestThrottleName.route;
+    private readonly throttleRoute: IRequestThrottleRoutePolicies;
 
     constructor(
         private readonly reflector: Reflector,
@@ -30,9 +24,10 @@ export class RequestThrottleRouteGuard implements CanActivate {
         private readonly requestUtil: RequestUtil,
         private readonly requestThrottleService: RequestThrottleService
     ) {
-        this.policies = this.configService.get<
-            Record<EnumRequestThrottleRoute, IRequestThrottlePolicy>
-        >('request.throttle.route')!;
+        this.throttleRoute =
+            this.configService.get<IRequestThrottleRoutePolicies>(
+                'request.throttle.route'
+            )!;
     }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -45,10 +40,10 @@ export class RequestThrottleRouteGuard implements CanActivate {
             return true;
         }
 
-        const policy = this.policies[options.route];
+        const policy = this.throttleRoute[options.route];
         const request = context.switchToHttp().getRequest<IRequestApp>();
         const response = context.switchToHttp().getResponse<Response>();
-        const ip = this.requestUtil.resolveThrottleTrackerIp(request);
+        const ip = this.requestUtil.getClientIp(request);
         const tracker = `${options.route}:${context.getClass().name}.${context.getHandler().name}:${ip}`;
 
         await this.requestThrottleService.evaluate(

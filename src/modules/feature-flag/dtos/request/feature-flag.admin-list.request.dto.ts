@@ -6,32 +6,30 @@ import {
     FeatureFlagDefaultAvailableSearch,
 } from '@modules/feature-flag/constants/feature-flag.list.constant';
 
-/**
- * Feature Flag Admin List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const FeatureFlagAdminListRequestSchema =
     PaginationOffsetQuerySchema.extend({
-        search: z
-            .string()
-            .optional()
-            .meta({
-                description: `Search query, available fields: ${FeatureFlagDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
-                example: '',
-            }),
+        search: PaginationOffsetQuerySchema.shape.search.meta({
+            description: `Search query, available fields: ${FeatureFlagDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
+            example: '',
+        }),
         orderBy: z
-            .union([z.string(), z.array(z.string())])
+            .union([
+                z.templateLiteral([
+                    z.enum(FeatureFlagDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ]),
+                z.literal(''),
+            ])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${FeatureFlagDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                description: `Order by field in \`field:direction\` format (e.g. \`${FeatureFlagDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${FeatureFlagDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                 example: `${FeatureFlagDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
     });
 
-/**
- * Inferred DTO for FeatureFlagAdminListRequestSchema.
- * @public
- */
+/** @public */
 export type FeatureFlagAdminListRequestDto = z.infer<
     typeof FeatureFlagAdminListRequestSchema
 >;

@@ -1,18 +1,16 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { CacheService } from '@common/cache/services/cache.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { MigrationRoleData } from '@migration/data/migration.role.data';
 import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
+import type { IMigrationRoleData } from '@migration/interfaces/migration.interface';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Seeds the superadmin, admin, and user roles. The policy rows each role grants are seeded by
- * `MigrationPolicySeed`, which runs after this one.
- */
 @Command({
     name: 'role',
     description: 'Seed/Remove Roles',
@@ -25,14 +23,15 @@ export class MigrationRoleSeed
     private readonly logger = new Logger(MigrationRoleSeed.name);
 
     private readonly env: EnumAppEnvironment;
-    private readonly roles: Prisma.RoleCreateInput[] = [];
+    private readonly roles: IMigrationRoleData[] = [];
     private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
+        protected readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService
     ) {
-        super();
+        super(cacheService);
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.roles = MigrationRoleData[this.env];
@@ -57,6 +56,7 @@ export class MigrationRoleSeed
                                 name: role.name.toLowerCase(),
                                 description: role.description,
                                 type: role.type,
+                                isImmutable: role.isImmutable,
                                 createdBy: MigrationUserSuperAdminId,
                                 updatedBy: MigrationUserSuperAdminId,
                             },
@@ -69,8 +69,7 @@ export class MigrationRoleSeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding roles');
-            throw error;
+            throw new AppUnknownException(error, 'Seeding roles failed');
         }
 
         this.logger.log('Roles seeded successfully.');
@@ -84,8 +83,7 @@ export class MigrationRoleSeed
         try {
             await this.databaseService.client.role.deleteMany({});
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing roles');
-            throw error;
+            throw new AppUnknownException(error, 'Removing roles failed');
         }
 
         this.logger.log('Roles removed successfully.');

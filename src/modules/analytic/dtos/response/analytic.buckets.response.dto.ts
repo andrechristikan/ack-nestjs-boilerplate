@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes a distribution as counted buckets keyed by a label.
- * @public
- */
+/** @public */
 export const AnalyticBucketsResponseSchema = z.object({
     buckets: z
         .array(
@@ -25,10 +22,7 @@ export const AnalyticBucketsResponseSchema = z.object({
         }),
 });
 
-/**
- * Distribution expressed as counted buckets.
- * @public
- */
+/** @public */
 export type AnalyticBucketsResponseDto = z.infer<
     typeof AnalyticBucketsResponseSchema
 >;

@@ -1,15 +1,27 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@generated/prisma-client/client';
-import type { IDatabaseClientOptions } from '@common/database/interfaces/database.client.interface';
-import { DatabaseExtensionUtil } from '@common/database/utils/database.extension.util';
+import type {
+    IDatabaseClient,
+    IDatabaseClientOptions,
+} from '@common/database/interfaces/database.client.interface';
+import { DatabaseExtensionFactory } from '@common/database/factories/database.extension.factory';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 
 @Injectable()
 export class DatabaseClientFactory extends PrismaClient<
     IDatabaseClientOptions,
     'query' | 'error' | 'warn' | 'info'
 > {
-    constructor(private readonly databaseExtensionUtil: DatabaseExtensionUtil) {
+    constructor(
+        protected readonly configService: ConfigService,
+        protected readonly databaseUtil: DatabaseUtil,
+        private readonly databaseExtensionFactory: DatabaseExtensionFactory
+    ) {
         super({
+            datasourceUrl: databaseUtil.buildClientUrl(
+                configService.get<string>('database.url')!
+            ),
             log: [
                 { emit: 'event', level: 'query' },
                 { emit: 'event', level: 'error' },
@@ -20,13 +32,8 @@ export class DatabaseClientFactory extends PrismaClient<
         });
     }
 
-    /**
-     * Applies the audit extension to this connection. The return type stays inferred because
-     * annotating it erases the softDelete and restore model methods, so `IDatabaseClient` reads it
-     * back with `ReturnType`; the lint exception is `ts/database-inferred-client` in `eslint.config.mjs`.
-     */
-    create() {
-        const extension = this.databaseExtensionUtil.build();
+    create(): IDatabaseClient {
+        const extension = this.databaseExtensionFactory.build();
 
         return this.$extends(extension);
     }

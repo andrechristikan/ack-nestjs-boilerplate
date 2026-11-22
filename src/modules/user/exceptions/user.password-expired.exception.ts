@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
-/**
- * Raised when the user password has expired.
- * @public
- */
+/** @public */
 export class UserPasswordExpiredException extends AppBaseException {
     readonly module = 'user';
     readonly statusCode = EnumUserStatusCodeError.passwordExpired;
@@ -13,6 +10,6 @@ export class UserPasswordExpiredException extends AppBaseException {
     readonly httpStatus = HttpStatus.FORBIDDEN;
 
     constructor() {
-        super('auth.error.passwordExpired');
+        super('user.error.passwordExpired');
     }
 }

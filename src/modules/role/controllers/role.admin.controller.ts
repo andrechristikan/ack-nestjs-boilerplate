@@ -12,22 +12,34 @@ import {
     Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContext,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleHttpService } from '@modules/role/services/role.http.service';
+import { RoleGetListOffsetByAdminUseCase } from '@modules/role/use-cases/role.get-list-offset-by-admin.use-case';
+import { RoleGetOneUseCase } from '@modules/role/use-cases/role.get-one.use-case';
+import { RoleCreateByAdminUseCase } from '@modules/role/use-cases/role.create-by-admin.use-case';
+import { RoleUpdateByAdminUseCase } from '@modules/role/use-cases/role.update-by-admin.use-case';
+import { RoleDeleteByAdminUseCase } from '@modules/role/use-cases/role.delete-by-admin.use-case';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import { RoleCreateRequestSchema } from '@modules/role/dtos/request/role.create.request.dto';
 import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestSchema } from '@modules/role/dtos/request/role.update.request.dto';
@@ -38,14 +50,18 @@ import {
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import {
+    UserContext,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
 import { RoleSchema } from '@modules/role/dtos/role.dto';
 import type { RoleDto } from '@modules/role/dtos/role.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-
 import { RoleListResponseSchema } from '@modules/role/dtos/response/role.list.response.dto';
 import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.response.dto';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
 @ApiTags('modules.admin.role')
 @Controller({
@@ -53,7 +69,13 @@ import type { RoleListResponseDto } from '@modules/role/dtos/response/role.list.
     path: '/role',
 })
 export class RoleAdminController {
-    constructor(private readonly roleHttpService: RoleHttpService) {}
+    constructor(
+        private readonly roleGetListOffsetByAdminUseCase: RoleGetListOffsetByAdminUseCase,
+        private readonly roleGetOneUseCase: RoleGetOneUseCase,
+        private readonly roleCreateByAdminUseCase: RoleCreateByAdminUseCase,
+        private readonly roleUpdateByAdminUseCase: RoleUpdateByAdminUseCase,
+        private readonly roleDeleteByAdminUseCase: RoleDeleteByAdminUseCase
+    ) {}
 
     @Doc({ summary: 'get list of roles' })
     @ResponsePagination('role.list', { schema: RoleListResponseSchema })
@@ -64,15 +86,15 @@ export class RoleAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @Query({ schema: RoleAdminListRequestSchema })
         query: RoleAdminListRequestDto
     ): Promise<IResponsePaginationReturn<RoleListResponseDto>> {
-        return this.roleHttpService.getListOffsetByAdmin(query);
+        return this.roleGetListOffsetByAdminUseCase.execute(query);
     }
 
     @Doc({ summary: 'get detail a role' })
@@ -84,15 +106,15 @@ export class RoleAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/get/:roleId')
     async get(
         @Param('roleId', { schema: RequestUuidSchema })
         roleId: string
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleHttpService.getOne(roleId);
+        return this.roleGetOneUseCase.execute(roleId);
     }
 
     @Doc({ summary: 'create a role' })
@@ -104,15 +126,25 @@ export class RoleAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Post('/create')
     async create(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Body({ schema: RoleCreateRequestSchema })
         body: RoleCreateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleHttpService.createByAdmin(body);
+        return this.roleCreateByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            body
+        );
     }
 
     @Doc({ summary: 'update data a role' })
@@ -124,17 +156,28 @@ export class RoleAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/update/:roleId')
     async update(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
         @Body({ schema: RoleUpdateRequestSchema })
         body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
-        return this.roleHttpService.updateByAdmin(roleId, body);
+        return this.roleUpdateByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            roleId,
+            body
+        );
     }
 
     @Doc({ summary: 'delete data a role' })
@@ -146,14 +189,24 @@ export class RoleAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/delete/:roleId')
     async delete(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('roleId', { schema: RequestUuidSchema })
         roleId: string
     ): Promise<IResponseReturn<void>> {
-        return this.roleHttpService.deleteByAdmin(roleId);
+        return this.roleDeleteByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            roleId
+        );
     }
 }

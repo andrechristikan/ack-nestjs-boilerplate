@@ -6,8 +6,10 @@ import {
 } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes } from '@nestjs/swagger';
 import {
+    FileImportDocErrors,
     FileMaxMultiple,
     FileSizeInBytes,
+    FileUploadDocErrors,
 } from '@common/file/constants/file.constant';
 import { FileUploadErrorInterceptor } from '@common/file/interceptors/file.upload-error.interceptor';
 import type {
@@ -16,13 +18,9 @@ import type {
     IFileUploadMultipleFieldOptions,
     IFileUploadSingle,
 } from '@common/file/interfaces/file.interface';
-import { DocFileErrorResponses } from '@common/doc/constants/doc.constant';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 
-/**
- * Accepts one file under a single multipart field, with a size limit.
- * Emits multipart OpenAPI (`ApiConsumes` + binary `ApiBody`) and the upload error kit.
- * @public
- */
+/** @public */
 export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
     const field = options?.field ?? 'file';
 
@@ -36,13 +34,7 @@ export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
                 },
             },
         }),
-        DocFileErrorResponses.extensionInvalid,
-        DocFileErrorResponses.required,
-        DocFileErrorResponses.requiredExtractFirst,
-        DocFileErrorResponses.exceedMaxSizeUpload,
-        DocFileErrorResponses.exceedMaxFiles,
-        DocFileErrorResponses.fieldUnexpected,
-        DocFileErrorResponses.multipartInvalid,
+        DocErrors(...FileUploadDocErrors),
         UseInterceptors(
             FileUploadErrorInterceptor,
             FileInterceptor(field, {
@@ -55,11 +47,15 @@ export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
     );
 }
 
-/**
- * Accepts several files under one multipart field, with size and count limits.
- * Emits multipart OpenAPI (`ApiConsumes` + binary `ApiBody`) and the upload error kit.
- * @public
- */
+/** @public */
+export function FileImportSingle(options?: IFileUploadSingle): MethodDecorator {
+    return applyDecorators(
+        FileUploadSingle(options),
+        DocErrors(...FileImportDocErrors)
+    );
+}
+
+/** @public */
 export function FileUploadMultiple(
     options?: IFileUploadMultiple
 ): MethodDecorator {
@@ -75,13 +71,7 @@ export function FileUploadMultiple(
                 },
             },
         }),
-        DocFileErrorResponses.extensionInvalid,
-        DocFileErrorResponses.required,
-        DocFileErrorResponses.requiredExtractFirst,
-        DocFileErrorResponses.exceedMaxSizeUpload,
-        DocFileErrorResponses.exceedMaxFiles,
-        DocFileErrorResponses.fieldUnexpected,
-        DocFileErrorResponses.multipartInvalid,
+        DocErrors(...FileUploadDocErrors),
         UseInterceptors(
             FileUploadErrorInterceptor,
             FilesInterceptor(field, options?.maxFiles ?? FileMaxMultiple, {
@@ -93,11 +83,7 @@ export function FileUploadMultiple(
     );
 }
 
-/**
- * Accepts files under several named multipart fields, each with its own count limit.
- * Emits multipart OpenAPI (`ApiConsumes` + binary `ApiBody`) and the upload error kit.
- * @public
- */
+/** @public */
 export function FileUploadMultipleFields(
     fields: IFileUploadMultipleField[],
     options?: IFileUploadMultipleFieldOptions
@@ -117,13 +103,7 @@ export function FileUploadMultipleFields(
                 properties,
             },
         }),
-        DocFileErrorResponses.extensionInvalid,
-        DocFileErrorResponses.required,
-        DocFileErrorResponses.requiredExtractFirst,
-        DocFileErrorResponses.exceedMaxSizeUpload,
-        DocFileErrorResponses.exceedMaxFiles,
-        DocFileErrorResponses.fieldUnexpected,
-        DocFileErrorResponses.multipartInvalid,
+        DocErrors(...FileUploadDocErrors),
         UseInterceptors(
             FileUploadErrorInterceptor,
             FileFieldsInterceptor(

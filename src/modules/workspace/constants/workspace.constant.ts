@@ -1,51 +1,17 @@
 import { Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
-import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
+import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
-/**
- * Request-store key holding the workspace the workspace guard resolved.
- * @public
- */
-export const WorkspaceStoreKey = 'WorkspaceStore';
-
-/**
- * Request-store key holding the caller's workspace membership.
- * @public
- */
-export const WorkspaceMemberStoreKey = 'WorkspaceMemberStore';
-
-/**
- * Route metadata key holding the workspace roles `@WorkspaceMemberProtected` requires.
- * @public
- */
+/** @public */
 export const WorkspaceRoleMetaKey = 'WorkspaceRoleMetaKey';
 
-/**
- * Workspace guard error kit for `@WorkspaceProtected`.
- * @public
- */
-export const DocWorkspaceErrorResponses = {
-    notFound: DocResponseError(HttpStatus.NOT_FOUND, {
-        statusCode: EnumWorkspaceStatusCodeError.notFound,
-        messagePath: 'workspace.error.notFound',
-    }),
-    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-        messagePath: 'workspace.error.memberForbidden',
-    }),
-} as const;
+/** @public */
+export const WorkspaceIdStoreKey = 'WorkspaceIdStoreKey';
 
-/**
- * Workspace role guard error kit for role-gated `@WorkspaceMemberProtected`.
- * @public
- */
-export const DocWorkspaceRoleErrorResponses = {
-    forbidden: DocResponseError(HttpStatus.FORBIDDEN, {
-        statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
-        messagePath: 'workspace.error.roleForbidden',
-    }),
-} as const;
+/** @public */
+export const WorkspaceContextStoreKey = 'WorkspaceContextStoreKey';
 
 /**
  * Matches a `Workspace` that is not soft-deleted; spread it or list it under `AND` in an active-only read.
@@ -54,11 +20,13 @@ export const DocWorkspaceRoleErrorResponses = {
 export const WorkspaceActiveFilter = {
     deletedAt: null,
 } as const satisfies Prisma.WorkspaceWhereInput;
+/** @public */
+export const WorkspaceInviteNoncePattern = '{workspaceId}:{email}';
 
-/**
- * Columns a user-scope workspace invite list read returns; the invite token is never among them.
- * @public
- */
+/** @public */
+export const WorkspaceJoinRequestNoncePattern = '{workspaceId}:{userId}';
+
+/** @public */
 export const WorkspaceInviteUserListSelect = {
     id: true,
     workspaceId: true,
@@ -77,3 +45,65 @@ export const WorkspaceInviteUserListSelect = {
     updatedAt: true,
     updatedBy: true,
 } satisfies Prisma.WorkspaceInviteSelect;
+
+/** @public */
+export const WorkspaceProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumWorkspaceStatusCodeError.headerMissing,
+        messagePath: 'workspace.error.headerMissing',
+    },
+    {
+        httpStatus: HttpStatus.NOT_FOUND,
+        statusCode: EnumWorkspaceStatusCodeError.notFound,
+        messagePath: 'workspace.error.notFound',
+    },
+];
+
+/** @public */
+export const WorkspaceMemberProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumUserStatusCodeError.guardMissing,
+        messagePath: 'user.error.guardMissing',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumWorkspaceStatusCodeError.guardMissing,
+        messagePath: 'workspace.error.guardMissing',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
+        messagePath: 'workspace.error.memberForbidden',
+    },
+];
+
+/** @public */
+export const WorkspaceRoleProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumUserStatusCodeError.guardMissing,
+        messagePath: 'user.error.guardMissing',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumWorkspaceStatusCodeError.guardMissing,
+        messagePath: 'workspace.error.guardMissing',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
+        messagePath: 'workspace.error.memberGuardMissing',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
+        messagePath: 'workspace.error.memberForbidden',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
+        messagePath: 'workspace.error.roleForbidden',
+    },
+];

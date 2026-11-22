@@ -1,3 +1,5 @@
+import type { Options } from 'pino-http';
+
 export interface ILoggerDebugInfo {
     memory: {
         rss: number;
@@ -5,3 +7,17 @@ export interface ILoggerDebugInfo {
     };
     uptime: number;
 }
+
+export interface ILoggerError extends Error {
+    status?: number;
+    response?: { statusCode?: number };
+}
+
+export interface ILoggerMixin {
+    level: number;
+    requestId: string | null;
+    correlationId: string | null;
+    userId: string | null;
+}
+
+export type ILoggerTransport = NonNullable<Options['transport']>;

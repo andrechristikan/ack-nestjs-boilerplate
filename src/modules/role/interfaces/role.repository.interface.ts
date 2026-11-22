@@ -1,3 +1,4 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -11,31 +12,43 @@ import type {
     IRoleWithPolicies,
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
-import { Prisma } from '@generated/prisma-client/client';
-import type { Role } from '@generated/prisma-client/client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 
 export interface IRoleRepository {
     findWithPaginationOffsetByAdmin(
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.RoleWhereInput>,
-        type?: Record<string, IPaginationIn>
+        { where, ...params }: IPaginationQueryOffsetParams,
+        type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>>;
     findWithPaginationCursorBySystem(
-        {
-            where,
-            ...params
-        }: IPaginationQueryCursorParams<Prisma.RoleWhereInput>,
-        type?: Record<string, IPaginationIn>
+        { where, ...params }: IPaginationQueryCursorParams,
+        type: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>>;
     findOneWithPoliciesById(id: string): Promise<IRoleWithPolicies | null>;
     findOneById(id: string): Promise<IRole | null>;
     findOneByName(name: string): Promise<IRole | null>;
+    findOneByUserId(userId: string): Promise<IRole | null>;
     existsById(id: string): Promise<boolean>;
-    existsByName(name: string): Promise<boolean>;
-    isUsedById(id: string): Promise<boolean>;
-    create(roleId: string, data: IRoleCreate): Promise<IRoleWithPolicies>;
-    update(id: string, data: IRoleUpdate): Promise<IRoleWithPolicies>;
-    delete(id: string): Promise<Role>;
+    findOneByIdInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<IRole | null>;
+    findOneWithPolicyCountByIdInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<IRoleWithPolicyCount | null>;
+    createInTx(
+        tx: IDatabaseTransactionClient,
+        roleId: string,
+        data: IRoleCreate
+    ): Promise<IRoleWithPolicies>;
+    updateInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        expectedType: EnumRoleType,
+        data: IRoleUpdate
+    ): Promise<IRoleWithPolicies | null>;
+    deleteUnusedInTx(
+        tx: IDatabaseTransactionClient,
+        id: string
+    ): Promise<boolean>;
 }

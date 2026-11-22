@@ -1,94 +1,48 @@
-import { CacheMainProvider } from '@common/cache/constants/cache.constant';
-import { FeatureFlagRepository } from '@modules/feature-flag/repositories/feature-flag.repository';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { IFeatureFlagWithTargetUsers } from '@modules/feature-flag/interfaces/feature-flag.interface';
-import type { Cache } from 'cache-manager';
+import type { ICacheLease } from '@common/cache/interfaces/cache.interface';
 
-/** Read-through cache over the feature flag record. */
 @Injectable()
 export class FeatureFlagCache {
-    private readonly logger = new Logger(FeatureFlagCache.name);
     private readonly keyPattern: string;
-    private readonly cacheTtlInMs: number;
+    readonly cacheTtlInMs: number;
+    private readonly leaseKeyPattern: string;
+    private readonly leaseTtlInMs: number;
 
-    constructor(
-        @Inject(CacheMainProvider) private readonly cacheManager: Cache,
-        private readonly featureFlagRepository: FeatureFlagRepository,
-        private readonly configService: ConfigService
-    ) {
+    constructor(private readonly configService: ConfigService) {
         this.keyPattern = this.configService.get<string>(
             'featureFlag.keyPattern'
         )!;
         this.cacheTtlInMs = this.configService.get<number>(
             'featureFlag.cacheTtlInMs'
         )!;
+        this.leaseKeyPattern = this.configService.get<string>(
+            'featureFlag.leaseKeyPattern'
+        )!;
+        this.leaseTtlInMs = this.configService.get<number>(
+            'featureFlag.leaseTtlInMs'
+        )!;
     }
 
-    async getCacheByKey(
-        key: string
-    ): Promise<IFeatureFlagWithTargetUsers | null> {
-        const cacheKey = this.keyPattern.replace('{key}', () => key);
-        try {
-            const cachedFeatureFlag =
-                await this.cacheManager.get<IFeatureFlagWithTargetUsers>(
-                    cacheKey
-                );
-            return cachedFeatureFlag ?? null;
-        } catch (error: unknown) {
-            this.logger.error(error, 'Feature flag cache read failed');
-            return null;
-        }
+    private buildFeatureFlagLeaseKey(key: string): string {
+        return this.leaseKeyPattern.replace('{key}', () => key);
     }
 
-    async setCacheByKey(
-        key: string,
-        featureFlag: IFeatureFlagWithTargetUsers
-    ): Promise<void> {
-        const cacheKey = this.keyPattern.replace('{key}', () => key);
-        try {
-            await this.cacheManager.set(
-                cacheKey,
-                featureFlag,
-                this.cacheTtlInMs
-            );
-        } catch (error: unknown) {
-            this.logger.error(error, 'Feature flag cache write failed');
-        }
+    buildFeatureFlagKey(key: string): string {
+        return this.keyPattern.replace('{key}', () => key);
     }
 
-    async deleteCacheByKey(key: string): Promise<void> {
-        const cacheKey = this.keyPattern.replace('{key}', () => key);
-        try {
-            await this.cacheManager.del(cacheKey);
-        } catch (error: unknown) {
-            this.logger.error(error, 'Feature flag cache delete failed');
-        }
+    buildFeatureFlagLease(key: string): ICacheLease {
+        const leaseKey = this.buildFeatureFlagLeaseKey(key);
+
+        return { key: leaseKey, ttlInMs: this.leaseTtlInMs };
     }
 
-    /** Read-through cache: returns the cached flag or loads from the repository and caches it. */
-    async getByKeyAndCache(
-        key: string
-    ): Promise<IFeatureFlagWithTargetUsers | null> {
-        const cached = await this.getCacheByKey(key);
-        if (cached) {
-            return cached;
-        }
-
-        const featureFlag = await this.featureFlagRepository.findOneByKey(key);
-        if (featureFlag) {
-            await this.setCacheByKey(key, featureFlag);
-        }
-
-        return featureFlag;
-    }
-
-    async getMetadataByKeyAndCache<T>(key: string): Promise<T | null> {
-        const cached = await this.getByKeyAndCache(key);
-        if (cached && cached.metadata) {
-            return cached.metadata as T;
-        }
-
-        return null;
+    /** The entry key and its lease key. */
+    buildFeatureFlagKeys(key: string): string[] {
+        return [
+            this.buildFeatureFlagKey(key),
+            this.buildFeatureFlagLeaseKey(key),
+        ];
     }
 }

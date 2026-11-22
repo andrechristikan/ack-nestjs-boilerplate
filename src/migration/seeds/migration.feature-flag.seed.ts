@@ -1,3 +1,4 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
@@ -8,10 +9,8 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@generated/prisma-client/client';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Seeds feature flag toggles for the current environment.
- */
 @Command({
     name: 'featureFlag',
     description: 'Seed/Remove Feature Flags',
@@ -28,10 +27,11 @@ export class MigrationFeatureFlagSeed
     private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
+        protected readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService
     ) {
-        super();
+        super(cacheService);
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.featureFlags = MigrationFeatureFlagData[this.env];
@@ -68,8 +68,10 @@ export class MigrationFeatureFlagSeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding feature flags');
-            throw error;
+            throw new AppUnknownException(
+                error,
+                'Seeding feature flags failed'
+            );
         }
 
         this.logger.log('Feature Flags seeded successfully.');
@@ -83,8 +85,10 @@ export class MigrationFeatureFlagSeed
         try {
             await this.databaseService.client.featureFlag.deleteMany({});
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing feature flags');
-            throw error;
+            throw new AppUnknownException(
+                error,
+                'Removing feature flags failed'
+            );
         }
 
         this.logger.log('Feature Flags removed successfully.');

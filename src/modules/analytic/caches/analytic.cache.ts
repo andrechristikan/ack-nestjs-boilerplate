@@ -1,37 +1,45 @@
-import { CacheMainProvider } from '@common/cache/constants/cache.constant';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import type {
+    EnumAnalyticAnomalySignal,
+    EnumAnalyticFraudSignal,
+} from '@modules/analytic/enums/analytic.enum';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Cache } from 'cache-manager';
 
 @Injectable()
 export class AnalyticCache {
-    private readonly logger = new Logger(AnalyticCache.name);
     private readonly dashboardKeyPattern: string;
-    private readonly anomalyKeyPattern: string;
-    private readonly fraudKeyPattern: string;
+    private readonly dashboardPageKeyPattern: string;
+    private readonly workspaceSummaryKeyPattern: string;
+    private readonly anomalySummaryKeyPattern: string;
+    private readonly fraudSummaryKeyPattern: string;
     private readonly riskScoreKeyPattern: string;
-    private readonly dashboardTtlInMs: number;
-    private readonly anomalySummaryTtlInMs: number;
-    private readonly fraudSummaryTtlInMs: number;
-    private readonly riskScoreTtlInMs: number;
+    readonly dashboardTtlInMs: number;
+    readonly anomalySummaryTtlInMs: number;
+    readonly fraudSummaryTtlInMs: number;
+    readonly riskScoreTtlInMs: number;
 
     constructor(
-        @Inject(CacheMainProvider) private readonly cacheManager: Cache,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService
     ) {
         this.dashboardKeyPattern = this.configService.get<string>(
-            'analytic.cache.keyPatterns.dashboard'
+            'analytic.cache.dashboardKeyPattern'
         )!;
-        this.anomalyKeyPattern = this.configService.get<string>(
-            'analytic.cache.keyPatterns.anomaly'
+        this.dashboardPageKeyPattern = this.configService.get<string>(
+            'analytic.cache.dashboardPageKeyPattern'
         )!;
-        this.fraudKeyPattern = this.configService.get<string>(
-            'analytic.cache.keyPatterns.fraud'
+        this.workspaceSummaryKeyPattern = this.configService.get<string>(
+            'analytic.cache.workspaceSummaryKeyPattern'
+        )!;
+        this.anomalySummaryKeyPattern = this.configService.get<string>(
+            'analytic.cache.anomalySummaryKeyPattern'
+        )!;
+        this.fraudSummaryKeyPattern = this.configService.get<string>(
+            'analytic.cache.fraudSummaryKeyPattern'
         )!;
         this.riskScoreKeyPattern = this.configService.get<string>(
-            'analytic.cache.keyPatterns.riskScore'
+            'analytic.cache.riskScoreKeyPattern'
         )!;
         this.dashboardTtlInMs = this.configService.get<number>(
             'analytic.cache.dashboardTtlInMs'
@@ -47,104 +55,71 @@ export class AnalyticCache {
         )!;
     }
 
-    private buildKey(pattern: string, tokens: Record<string, string>): string {
-        return this.helperStringService.fillPattern(pattern, tokens);
+    buildAnomalySummaryKey(
+        signal: EnumAnalyticAnomalySignal,
+        window: string
+    ): string {
+        return this.helperStringService.fillPattern(
+            this.anomalySummaryKeyPattern,
+            {
+                signal,
+                window,
+            }
+        );
     }
 
-    private async get<T>(cacheKey: string): Promise<T | null> {
-        try {
-            const cached = await this.cacheManager.get<T>(cacheKey);
-            return cached ?? null;
-        } catch (error: unknown) {
-            this.logger.error(error, 'Analytic cache read failed');
-            return null;
-        }
+    buildFraudSummaryKey(
+        signal: EnumAnalyticFraudSignal,
+        window: string
+    ): string {
+        return this.helperStringService.fillPattern(
+            this.fraudSummaryKeyPattern,
+            {
+                signal,
+                window,
+            }
+        );
     }
 
-    private async set<T>(
-        cacheKey: string,
-        value: T,
-        ttl: number
-    ): Promise<void> {
-        try {
-            await this.cacheManager.set(cacheKey, value, ttl);
-        } catch (error: unknown) {
-            this.logger.error(error, 'Analytic cache write failed');
-        }
+    buildRiskScoreKey(userId: string): string {
+        return this.riskScoreKeyPattern.replace('{userId}', () => userId);
     }
 
-    async getDashboard<T>(
-        metric: string,
-        start: string,
-        end: string
-    ): Promise<T | null> {
-        const key = this.buildKey(this.dashboardKeyPattern, {
+    buildDashboardKey(metric: string, start: string, end: string): string {
+        return this.helperStringService.fillPattern(this.dashboardKeyPattern, {
             metric,
             start,
             end,
         });
-
-        return this.get<T>(key);
     }
 
-    async setDashboard<T>(
+    buildDashboardPageKey(
         metric: string,
         start: string,
         end: string,
-        value: T
-    ): Promise<void> {
-        const key = this.buildKey(this.dashboardKeyPattern, {
-            metric,
-            start,
-            end,
-        });
-        await this.set(key, value, this.dashboardTtlInMs);
+        page: number,
+        perPage: number
+    ): string {
+        return this.helperStringService.fillPattern(
+            this.dashboardPageKeyPattern,
+            {
+                metric,
+                start,
+                end,
+                page: String(page),
+                perPage: String(perPage),
+            }
+        );
     }
 
-    async getAnomalySummary<T>(
-        signal: string,
-        window: string
-    ): Promise<T | null> {
-        const key = this.buildKey(this.anomalyKeyPattern, { signal, window });
-
-        return this.get<T>(key);
-    }
-
-    async setAnomalySummary<T>(
-        signal: string,
-        window: string,
-        value: T
-    ): Promise<void> {
-        const key = this.buildKey(this.anomalyKeyPattern, { signal, window });
-        await this.set(key, value, this.anomalySummaryTtlInMs);
-    }
-
-    async getFraudSummary<T>(
-        signal: string,
-        window: string
-    ): Promise<T | null> {
-        const key = this.buildKey(this.fraudKeyPattern, { signal, window });
-
-        return this.get<T>(key);
-    }
-
-    async setFraudSummary<T>(
-        signal: string,
-        window: string,
-        value: T
-    ): Promise<void> {
-        const key = this.buildKey(this.fraudKeyPattern, { signal, window });
-        await this.set(key, value, this.fraudSummaryTtlInMs);
-    }
-
-    async getRiskScore<T>(userId: string): Promise<T | null> {
-        const key = this.buildKey(this.riskScoreKeyPattern, { userId });
-
-        return this.get<T>(key);
-    }
-
-    async setRiskScore<T>(userId: string, value: T): Promise<void> {
-        const key = this.buildKey(this.riskScoreKeyPattern, { userId });
-        await this.set(key, value, this.riskScoreTtlInMs);
+    buildWorkspaceSummaryKey(
+        workspaceId: string,
+        start: string,
+        end: string
+    ): string {
+        return this.helperStringService.fillPattern(
+            this.workspaceSummaryKeyPattern,
+            { workspaceId, start, end }
+        );
     }
 }

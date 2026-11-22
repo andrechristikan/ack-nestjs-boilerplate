@@ -1,23 +1,20 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { RequestPasswordStrengthRegex } from '@common/request/constants/request.constant';
 import { EnumUserSignUpFrom } from '@generated/prisma-client/client';
 import { UserCreateRequestSchema } from '@modules/user/dtos/request/user.create.request.dto';
+import {
+    UserPasswordMaxLength,
+    UserPasswordMinLength,
+} from '@modules/user/constants/user.constant';
 
-/**
- * Validates the body for signing up with email and password.
- * @public
- */
+/** @public */
 export const UserSignUpRequestSchema = UserCreateRequestSchema.omit({
     roleId: true,
 }).extend({
     password: z
         .string()
-        .min(8)
-        .max(50)
-        .regex(RequestPasswordStrengthRegex, {
-            error: () => 'request.error.isPassword.strong',
-        })
+        .min(UserPasswordMinLength)
+        .max(UserPasswordMaxLength)
         .meta({
             description: 'string password',
             example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string
@@ -39,16 +36,14 @@ export const UserSignUpRequestSchema = UserCreateRequestSchema.omit({
     inviteToken: z
         .string()
         .min(1)
+        .max(200)
         .optional()
         .meta({
             description:
-                'Optional plain workspace invite token. When provided, the account joins the invited workspace instead of getting a personal one',
+                'Optional plain workspace invite token. When provided, the account joins the invited workspace instead of getting a personal one. At most 200 characters',
             example: faker.string.alphanumeric(100),
         }),
 });
 
-/**
- * Body for signing up with email and password.
- * @public
- */
+/** @public */
 export type UserSignUpRequestDto = z.infer<typeof UserSignUpRequestSchema>;

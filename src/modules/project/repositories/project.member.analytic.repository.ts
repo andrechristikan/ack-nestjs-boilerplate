@@ -1,7 +1,7 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { PaginationService } from '@common/pagination/services/pagination.service';
+import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type {
@@ -15,14 +15,17 @@ import { Injectable } from '@nestjs/common';
 export class ProjectMemberAnalyticRepository implements IProjectMemberAnalyticRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationOffsetUtil: PaginationOffsetUtil
     ) {}
 
-    async membershipDistributionOffset(
-        params: IPaginationQueryOffsetParams<Prisma.ProjectMemberWhereInput>
+    async groupMembershipDistributionOffset(
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticProjectCount>> {
         const { where, skip, limit } = params;
-        const scopedWhere = where ?? {};
+        const scopedWhere: Prisma.ProjectMemberWhereInput = {
+            ...where,
+            project: { deletedAt: null },
+        };
 
         const [rows, groups] = await Promise.all([
             this.databaseService.client.projectMember.groupBy({
@@ -51,7 +54,7 @@ export class ProjectMemberAnalyticRepository implements IProjectMemberAnalyticRe
             count: row._count._all,
         }));
 
-        return this.paginationService.offsetPage(data, groups.length, {
+        return this.paginationOffsetUtil.page(data, groups.length, {
             skip,
             limit,
         });
@@ -60,6 +63,7 @@ export class ProjectMemberAnalyticRepository implements IProjectMemberAnalyticRe
     async groupByRole(): Promise<IAnalyticRoleCount[]> {
         const rows = await this.databaseService.client.projectMember.groupBy({
             by: ['role'],
+            where: { project: { deletedAt: null } },
             _count: { _all: true },
         });
         return rows.map(r => ({ role: r.role, count: r._count._all }));

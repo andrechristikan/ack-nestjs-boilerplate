@@ -5,46 +5,30 @@ import cors from 'cors';
 import type { CorsOptions } from 'cors';
 import { ConfigService } from '@nestjs/config';
 
-/**
- * Applies CORS with configured origin validation and credential handling.
- */
 @Injectable()
 export class RequestCorsMiddleware implements NestMiddleware {
-    private readonly allowedOrigin: string | boolean | string[];
-    private readonly allowedMethod: string[];
-    private readonly allowedHeader: string[];
-    private readonly exposedHeader: string[];
+    private readonly allowedOrigins: string[];
+    private readonly allowedMethods: string[];
+    private readonly allowedHeaders: string[];
+    private readonly exposedHeaders: string[];
+    private readonly maxAgeInSeconds: number;
 
     constructor(private readonly configService: ConfigService) {
-        this.allowedOrigin = this.configService.get<
-            string | boolean | string[]
-        >('request.cors.allowedOrigin')!;
-        this.allowedMethod = this.configService.get<string[]>(
-            'request.cors.allowedMethod'
+        this.allowedOrigins = this.configService.get<string[]>(
+            'request.cors.allowedOrigins'
         )!;
-        this.allowedHeader = this.configService.get<string[]>(
-            'request.cors.allowedHeader'
+        this.allowedMethods = this.configService.get<string[]>(
+            'request.cors.allowedMethods'
         )!;
-        this.exposedHeader = this.configService.get<string[]>(
-            'request.cors.exposedHeader'
+        this.allowedHeaders = this.configService.get<string[]>(
+            'request.cors.allowedHeaders'
         )!;
-    }
-
-    use(req: Request, res: Response, next: NextFunction): void {
-        const isCredentialsAllowed = this.shouldAllowCredentials();
-        const corsOptions: CorsOptions = {
-            origin: (origin, callback) =>
-                this.originValidator(origin, callback),
-            methods: this.allowedMethod,
-            allowedHeaders: this.allowedHeader,
-            exposedHeaders: this.exposedHeader,
-            preflightContinue: false,
-            credentials: isCredentialsAllowed,
-            optionsSuccessStatus: HttpStatus.NO_CONTENT,
-            maxAge: 86400,
-        };
-
-        cors(corsOptions)(req, res, next);
+        this.exposedHeaders = this.configService.get<string[]>(
+            'request.cors.exposedHeaders'
+        )!;
+        this.maxAgeInSeconds = this.configService.get<number>(
+            'request.cors.maxAgeInSeconds'
+        )!;
     }
 
     private originValidator(
@@ -55,77 +39,57 @@ export class RequestCorsMiddleware implements NestMiddleware {
             return callback(null, true);
         }
 
-        if (typeof this.allowedOrigin === 'boolean') {
-            return callback(null, this.allowedOrigin);
+        const hasWildcardOrigin = this.allowedOrigins.includes('*');
+        if (hasWildcardOrigin) {
+            return callback(null, true);
         }
 
-        if (typeof this.allowedOrigin === 'string') {
-            if (this.allowedOrigin === '*') {
-                return callback(null, true);
-            }
-
-            const allowed = this.isOriginAllowed(origin, [this.allowedOrigin]);
-            return callback(null, allowed);
-        }
-
-        if (Array.isArray(this.allowedOrigin)) {
-            const hasWildcardOrigin = this.allowedOrigin.includes('*');
-            if (hasWildcardOrigin) {
-                return callback(null, true);
-            }
-
-            const allowed = this.isOriginAllowed(origin, this.allowedOrigin);
-            return callback(null, allowed);
-        }
-
-        callback(null, false);
+        const allowed = this.isOriginAllowed(origin, this.allowedOrigins);
+        callback(null, allowed);
     }
 
-    /**
-     * Credentials are disabled for wildcard origins, per the CORS security spec.
-     */
     private shouldAllowCredentials(): boolean {
-        if (typeof this.allowedOrigin === 'string') {
-            return this.allowedOrigin !== '*';
-        }
-        if (Array.isArray(this.allowedOrigin)) {
-            const hasWildcardOrigin = this.allowedOrigin.includes('*');
+        const hasWildcardOrigin = this.allowedOrigins.includes('*');
 
-            return !hasWildcardOrigin;
-        }
-        return true;
+        return !hasWildcardOrigin;
     }
 
-    /**
-     * Matches an origin against patterns by exact hostname/port or wildcard subdomain.
-     */
     private isOriginAllowed(origin: string, patterns: string[]): boolean {
         const isValidOrigin = this.isValidOrigin(origin);
         if (!isValidOrigin) {
             return false;
         }
 
-        const { hostname, port } = this.parseOrigin(origin);
-
-        for (const pattern of patterns) {
-            const exactMatch = this.parsePattern(pattern);
-            if (hostname === exactMatch.hostname && port === exactMatch.port) {
-                return true;
-            }
-        }
+        const parsedOrigin = this.parseOrigin(origin);
 
         return patterns.some(pattern => {
-            if (!pattern.includes('*')) {
+            const parsedPattern = this.parsePattern(pattern);
+            if (
+                parsedPattern.protocol !== null &&
+                parsedPattern.protocol !== parsedOrigin.protocol
+            ) {
                 return false;
             }
 
-            return this.matchWildcardOrigin(hostname, port, pattern);
+            const port = this.normalizePort(
+                parsedPattern.protocol ?? parsedOrigin.protocol,
+                parsedPattern.port
+            );
+            if (port !== parsedOrigin.port) {
+                return false;
+            }
+
+            if (!parsedPattern.hostname.includes('*')) {
+                return parsedPattern.hostname === parsedOrigin.hostname;
+            }
+
+            return this.matchWildcardHostname(
+                parsedOrigin.hostname,
+                parsedPattern.hostname
+            );
         });
     }
 
-    /**
-     * Accepts only well-formed http(s) origins with no path, query, or hash.
-     */
     private isValidOrigin(origin: string): boolean {
         try {
             const url = new URL(origin);
@@ -144,53 +108,78 @@ export class RequestCorsMiddleware implements NestMiddleware {
         }
     }
 
-    private parseOrigin(origin: string): { hostname: string; port: string } {
+    private parseOrigin(origin: string): {
+        protocol: string;
+        hostname: string;
+        port: string;
+    } {
         try {
             const url = new URL(origin);
             return {
+                protocol: url.protocol,
                 hostname: url.hostname,
-                port: url.port ?? '',
+                port: url.port,
             };
         } catch {
-            return { hostname: '', port: '' };
+            return { protocol: '', hostname: '', port: '' };
         }
     }
 
-    private parsePattern(pattern: string): { hostname: string; port: string } {
-        const [hostname, port] = pattern.split(':');
+    private parsePattern(pattern: string): {
+        protocol: string | null;
+        hostname: string;
+        port: string;
+    } {
+        const scheme = /^(https?):\/\//i.exec(pattern);
+        const authority =
+            scheme === null ? pattern : pattern.slice(scheme[0].length);
+        const parts = authority.split(':');
+
         return {
-            hostname,
-            port: port ?? '',
+            protocol: scheme === null ? null : `${scheme[1]!.toLowerCase()}:`,
+            hostname: parts[0]!.toLowerCase(),
+            port: parts[1] ?? '',
         };
     }
 
-    /**
-     * Matches `*.example.com`-style wildcards; port must match exactly (no port wildcard).
-     */
-    private matchWildcardOrigin(
+    private normalizePort(protocol: string, port: string): string {
+        if (
+            (protocol === 'http:' && port === '80') ||
+            (protocol === 'https:' && port === '443')
+        ) {
+            return '';
+        }
+
+        return port;
+    }
+
+    private matchWildcardHostname(
         hostname: string,
-        port: string,
-        pattern: string
+        patternHostname: string
     ): boolean {
-        const { hostname: patternHostname, port: patternPort } =
-            this.parsePattern(pattern);
-
-        if (port !== patternPort) {
+        if (!patternHostname.startsWith('*.')) {
             return false;
         }
 
-        if (patternHostname.startsWith('*.')) {
-            const baseDomain = patternHostname.slice(2);
+        const baseDomain = patternHostname.slice(2);
 
-            return (
-                hostname.endsWith(`.${baseDomain}`) || hostname === baseDomain
-            );
-        }
+        return hostname.endsWith(`.${baseDomain}`) || hostname === baseDomain;
+    }
 
-        if (patternHostname.includes('*')) {
-            return false;
-        }
+    use(req: Request, res: Response, next: NextFunction): void {
+        const isCredentialsAllowed = this.shouldAllowCredentials();
+        const corsOptions: CorsOptions = {
+            origin: (origin, callback) =>
+                this.originValidator(origin, callback),
+            methods: this.allowedMethods,
+            allowedHeaders: this.allowedHeaders,
+            exposedHeaders: this.exposedHeaders,
+            preflightContinue: false,
+            credentials: isCredentialsAllowed,
+            optionsSuccessStatus: HttpStatus.NO_CONTENT,
+            maxAge: this.maxAgeInSeconds,
+        };
 
-        return false;
+        cors(corsOptions)(req, res, next);
     }
 }

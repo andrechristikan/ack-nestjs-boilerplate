@@ -1,3 +1,4 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import type {
     IPaginationQueryCursorParams,
@@ -5,12 +6,12 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
-import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
-import type { IFeatureFlagWithTargetUsers } from '@modules/feature-flag/interfaces/feature-flag.interface';
+import type {
+    IFeatureFlagUpdateMetadata,
+    IFeatureFlagUpdateStatus,
+} from '@modules/feature-flag/interfaces/feature-flag.interface';
 import type { IFeatureFlagRepository } from '@modules/feature-flag/interfaces/feature-flag.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 
 @Injectable()
@@ -21,32 +22,27 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
     ) {}
 
     async findWithPaginationOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
+        pagination: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
-        return this.paginationService.offset<
-            FeatureFlag,
-            Prisma.FeatureFlagWhereInput
-        >(this.databaseService.client.featureFlag, pagination);
+        return this.paginationService.offset(
+            this.databaseService.client.featureFlag,
+            pagination
+        );
     }
 
     async findWithPaginationCursor(
-        pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
+        pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
-        return this.paginationService.cursor<
-            FeatureFlag,
-            Prisma.FeatureFlagWhereInput
-        >(this.databaseService.client.featureFlag, pagination);
+        return this.paginationService.cursor(
+            this.databaseService.client.featureFlag,
+            pagination
+        );
     }
 
-    async findOneByKey(
-        key: string
-    ): Promise<IFeatureFlagWithTargetUsers | null> {
+    async findOneByKey(key: string): Promise<FeatureFlag | null> {
         return this.databaseService.client.featureFlag.findUnique({
             where: {
                 key,
-            },
-            include: {
-                targetUsers: true,
             },
         });
     }
@@ -59,26 +55,38 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
         });
     }
 
-    async updateStatus(
+    async updateStatusInTx(
+        tx: IDatabaseTransactionClient,
         id: string,
-        { isEnable, rolloutPercent }: FeatureFlagUpdateStatusRequestDto
-    ): Promise<FeatureFlag> {
-        return this.databaseService.client.featureFlag.update({
+        { isEnable, rolloutPercent, targetUserIds }: IFeatureFlagUpdateStatus
+    ): Promise<FeatureFlag | null> {
+        const { count } = await tx.featureFlag.updateMany({
             where: {
                 id,
             },
             data: {
                 isEnable,
                 rolloutPercent,
+                targetUserIds,
+            },
+        });
+        if (count === 0) {
+            return null;
+        }
+
+        return tx.featureFlag.findFirst({
+            where: {
+                id,
             },
         });
     }
 
-    async updateMetadata(
+    async updateMetadataInTx(
+        tx: IDatabaseTransactionClient,
         id: string,
-        { metadata }: FeatureFlagUpdateMetadataRequestDto
+        { metadata }: IFeatureFlagUpdateMetadata
     ): Promise<FeatureFlag> {
-        return this.databaseService.client.featureFlag.update({
+        return tx.featureFlag.update({
             where: {
                 id,
             },

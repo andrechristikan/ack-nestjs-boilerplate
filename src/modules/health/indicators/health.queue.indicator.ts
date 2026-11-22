@@ -1,25 +1,43 @@
+import {
+    EnumHealthIndicatorKey,
+    EnumHealthQueue,
+} from '@modules/health/enums/health.enum';
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
-import { EnumQueue } from '@queues/enums/queue.enum';
 import { Queue } from 'bullmq';
+import { CacheService } from '@common/cache/services/cache.service';
 
-/**
- * Reports BullMQ Redis client readiness as a Terminus health indicator.
- */
 @Injectable()
 export class HealthQueueIndicator {
-    constructor(
-        @InjectQueue(EnumQueue.notification)
-        private readonly queue: Queue,
-        private readonly healthIndicatorService: HealthIndicatorService
-    ) {}
+    private readonly logger = new Logger(HealthQueueIndicator.name);
 
-    /**
-     * Down unless the notification queue Redis client status is ready.
-     */
-    async isHealthy(key: string): Promise<HealthIndicatorResult> {
+    constructor(
+        @InjectQueue(EnumHealthQueue.health)
+        private readonly queue: Queue,
+        private readonly healthIndicatorService: HealthIndicatorService,
+        private readonly cacheService: CacheService
+    ) {
+        this.registerErrorListener();
+    }
+
+    private registerErrorListener(): void {
+        this.queue.on('error', (error: Error) => this.onError(error));
+    }
+
+    private onError(error: Error): void {
+        const isConnection = this.cacheService.isConnectionError(error);
+        if (isConnection) {
+            return;
+        }
+
+        this.logger.warn(error, 'Health queue error');
+    }
+
+    async isHealthy(
+        key: EnumHealthIndicatorKey
+    ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
 
         try {
@@ -30,10 +48,10 @@ export class HealthQueueIndicator {
             }
 
             return indicator.up();
-        } catch {
-            return indicator.down(
-                'HealthQueueIndicator Failed - Unknown error'
-            );
+        } catch (err: unknown) {
+            this.logger.error(err, 'Queue health check failed');
+
+            return indicator.down('BullMQ queue is unreachable');
         }
     }
 }

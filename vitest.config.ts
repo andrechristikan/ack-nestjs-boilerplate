@@ -6,6 +6,14 @@ export default defineConfig({
         swc.vite({
             module: { type: 'nodenext' },
         }),
+        {
+            // The Vitest VS Code extension forces `importDurations.limit: Infinity`,
+            // which grows its end-of-run message past the 100 MiB WebSocket limit.
+            name: 'no-import-durations',
+            configureVitest({ project }) {
+                project.config.experimental.importDurations.limit = 0;
+            },
+        },
     ],
     resolve: {
         tsconfigPaths: true,
@@ -13,13 +21,8 @@ export default defineConfig({
     test: {
         globals: true,
         environment: 'node',
-        setupFiles: ['test/setup.ts'],
-        isolate: false,
-        mockReset: true,
         fsModuleCache: true,
-        testTimeout: 5000,
         passWithNoTests: true,
-        include: ['test/**/*.spec.ts'],
         coverage: {
             enabled: false,
             provider: 'v8',
@@ -35,7 +38,6 @@ export default defineConfig({
                 'src/**/*.controller.ts',
                 'src/**/*.processor.ts',
                 'src/**/*.repository.ts',
-                'src/**/*.doc.ts',
                 'src/generated/**',
                 'src/migration/**',
                 'src/router/**',
@@ -50,5 +52,18 @@ export default defineConfig({
                 statements: 100,
             },
         },
+        projects: [
+            {
+                extends: true,
+                test: {
+                    name: 'unit',
+                    include: ['test/unit/**/*.spec.ts'],
+                    setupFiles: ['test/helpers/test.logger.helper.ts'],
+                    isolate: false,
+                    testTimeout: 5000,
+                    sequence: { groupOrder: 0 },
+                },
+            },
+        ],
     },
 });

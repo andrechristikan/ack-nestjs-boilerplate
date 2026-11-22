@@ -1,14 +1,16 @@
 import type { ActivityLogAdminListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
 import { ActivityLogAdminListRequestSchema } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
+import type { ActivityLogAdminWorkspaceListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-workspace-list.request.dto';
+import { ActivityLogAdminWorkspaceListRequestSchema } from '@modules/activity-log/dtos/request/activity-log.admin-workspace-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { ResponsePagination } from '@common/response/decorators/response.decorator';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
-import { ActivityLogHttpService } from '@modules/activity-log/services/activity-log.http.service';
+import { ActivityLogGetListOffsetByUserUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-offset-by-user.use-case';
+import { ActivityLogGetListOffsetByWorkspaceUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-offset-by-workspace.use-case';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
@@ -30,7 +32,8 @@ import {
 })
 export class ActivityLogAdminController {
     constructor(
-        private readonly activityLogHttpService: ActivityLogHttpService
+        private readonly activityLogGetListOffsetByUserUseCase: ActivityLogGetListOffsetByUserUseCase,
+        private readonly activityLogGetListOffsetByWorkspaceUseCase: ActivityLogGetListOffsetByWorkspaceUseCase
     ) {}
 
     @Doc({ summary: 'get all activity logs of a user' })
@@ -50,17 +53,20 @@ export class ActivityLogAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/user/:userId/list')
     async listByUser(
-        @Query({ schema: ActivityLogAdminListRequestSchema })
-        query: ActivityLogAdminListRequestDto,
         @Param('userId', { schema: RequestUuidSchema })
-        userId: string
+        userId: string,
+        @Query({ schema: ActivityLogAdminListRequestSchema })
+        query: ActivityLogAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        return this.activityLogHttpService.getListOffsetByUser(userId, query);
+        return this.activityLogGetListOffsetByUserUseCase.execute(
+            userId,
+            query
+        );
     }
 
     @Doc({ summary: 'get all activity logs of a workspace' })
@@ -80,21 +86,18 @@ export class ActivityLogAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspace/:workspaceId/list')
     async listByWorkspace(
-        @Query({ schema: ActivityLogAdminListRequestSchema })
-        query: ActivityLogAdminListRequestDto,
         @Param('workspaceId', { schema: RequestUuidSchema })
         workspaceId: string,
-        @Query('userId', { schema: RequestUuidSchema.optional() })
-        userId?: string
+        @Query({ schema: ActivityLogAdminWorkspaceListRequestSchema })
+        query: ActivityLogAdminWorkspaceListRequestDto
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        return this.activityLogHttpService.getListOffsetByWorkspace(
+        return this.activityLogGetListOffsetByWorkspaceUseCase.execute(
             workspaceId,
-            userId ?? null,
             query
         );
     }

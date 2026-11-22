@@ -1,40 +1,49 @@
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import { DeviceAdminListRequestSchema } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContext,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessContext,
     AuthJwtAccessProtected,
-    AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/device.ownership.response.dto';
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
-import { DeviceHttpService } from '@modules/device/services/device.http.service';
+import { DeviceGetListOffsetByAdminUseCase } from '@modules/device/use-cases/device.get-list-offset-by-admin.use-case';
+import { DeviceRemoveByAdminUseCase } from '@modules/device/use-cases/device.remove-by-admin.use-case';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import {
+    UserContext,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
 @ApiTags('modules.admin.user.device')
 @Controller({
@@ -42,7 +51,10 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user/:userId/device',
 })
 export class DeviceAdminController {
-    constructor(private readonly deviceHttpService: DeviceHttpService) {}
+    constructor(
+        private readonly deviceGetListOffsetByAdminUseCase: DeviceGetListOffsetByAdminUseCase,
+        private readonly deviceRemoveByAdminUseCase: DeviceRemoveByAdminUseCase
+    ) {}
 
     @Doc({ summary: 'admin get all user Devices' })
     @ResponsePagination('device.list', {
@@ -61,17 +73,17 @@ export class DeviceAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @Query({ schema: DeviceAdminListRequestSchema })
-        query: DeviceAdminListRequestDto,
         @Param('userId', { schema: RequestUuidSchema })
-        userId: string
+        userId: string,
+        @Query({ schema: DeviceAdminListRequestSchema })
+        query: DeviceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
-        return this.deviceHttpService.getListOffsetByAdmin(userId, query);
+        return this.deviceGetListOffsetByAdminUseCase.execute(userId, query);
     }
 
     @Doc({ summary: 'admin remove user Device' })
@@ -89,21 +101,27 @@ export class DeviceAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/remove/:deviceOwnershipId')
     async remove(
-        @AuthJwtPayload('userId') removedBy: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @Param('deviceOwnershipId', { schema: RequestUuidSchema })
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
-        return this.deviceHttpService.removeByAdmin(
+        return this.deviceRemoveByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
             userId,
-            deviceOwnershipId,
-            removedBy
+            deviceOwnershipId
         );
     }
 }

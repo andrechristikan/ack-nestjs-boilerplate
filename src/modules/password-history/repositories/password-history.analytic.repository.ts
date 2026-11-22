@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { PasswordHistoryAnalyticSelect } from '@modules/password-history/constants/password-history.constant';
 import type { IPasswordHistoryAnalyticRepository } from '@modules/password-history/interfaces/password-history.analytic-repository.interface';
 import type { IPasswordHistoryAnalytic } from '@modules/password-history/interfaces/password-history.interface';
 import { Injectable } from '@nestjs/common';
@@ -31,7 +32,7 @@ export class PasswordHistoryAnalyticRepository implements IPasswordHistoryAnalyt
                 type,
                 createdAt: { gte: startDate, lt: endDate },
             },
-            select: { id: true, userId: true, type: true, createdAt: true },
+            select: PasswordHistoryAnalyticSelect,
         });
     }
 }

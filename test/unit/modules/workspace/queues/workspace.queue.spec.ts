@@ -1,0 +1,141 @@
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { getQueueToken } from '@nestjs/bullmq';
+import { ConfigService } from '@nestjs/config';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import type { Queue } from 'bullmq';
+import { CacheService } from '@common/cache/services/cache.service';
+import { EnumWorkspaceQueue } from '@modules/workspace/enums/workspace.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
+import { WorkspaceQueue } from '@modules/workspace/queues/workspace.queue';
+import { MessageService } from '@common/message/services/message.service';
+
+describe('WorkspaceQueue', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const configGet = vi.fn<(key: string) => unknown>();
+    const configService: MockProxy<ConfigService> = mock<ConfigService>({
+        get: configGet as ConfigService['get'],
+    });
+    const workspaceQueue: MockProxy<Queue> = mock<Queue>();
+    const cacheService: MockProxy<CacheService> = mock<CacheService>();
+    let queue: WorkspaceQueue;
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
+        configGet.mockImplementation((key: string) => {
+            const values: Record<string, string> = {
+                'app.timezone': 'UTC',
+                'workspace.invite.expirySweepCron': '0 * * * *',
+            };
+
+            return values[key];
+        });
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                { provide: MessageService, useValue: messageService },
+                WorkspaceQueue,
+                {
+                    provide: getQueueToken(EnumWorkspaceQueue.workspace),
+                    useValue: workspaceQueue,
+                },
+                { provide: CacheService, useValue: cacheService },
+                { provide: ConfigService, useValue: configService },
+            ],
+        }).compile();
+
+        queue = module.get(WorkspaceQueue);
+    });
+
+    describe('onModuleInit', () => {
+        it('schedules the invite and join-request expiry sweeps', async () => {
+            await queue.onModuleInit();
+
+            expect(workspaceQueue.upsertJobScheduler).toHaveBeenCalledTimes(2);
+            expect(workspaceQueue.upsertJobScheduler).toHaveBeenCalledWith(
+                EnumWorkspaceProcess.expireStaleInvites,
+                {
+                    pattern: '0 * * * *',
+                    tz: 'UTC',
+                    immediately: true,
+                },
+                {
+                    name: EnumWorkspaceProcess.expireStaleInvites,
+                    data: {},
+                    opts: {
+                        priority: EnumQueuePriority.low,
+                    },
+                }
+            );
+            expect(workspaceQueue.upsertJobScheduler).toHaveBeenCalledWith(
+                EnumWorkspaceProcess.expireStaleJoinRequests,
+                {
+                    pattern: '0 * * * *',
+                    tz: 'UTC',
+                    immediately: true,
+                },
+                {
+                    name: EnumWorkspaceProcess.expireStaleJoinRequests,
+                    data: {},
+                    opts: {
+                        priority: EnumQueuePriority.low,
+                    },
+                }
+            );
+        });
+    });
+
+    describe('scheduleJoinRequestExpirySweep', () => {
+        it('schedules the join-request expiry-sweep job on the invite sweep cron', async () => {
+            await queue.scheduleJoinRequestExpirySweep();
+
+            expect(workspaceQueue.upsertJobScheduler).toHaveBeenCalledWith(
+                EnumWorkspaceProcess.expireStaleJoinRequests,
+                {
+                    pattern: '0 * * * *',
+                    tz: 'UTC',
+                    immediately: true,
+                },
+                {
+                    name: EnumWorkspaceProcess.expireStaleJoinRequests,
+                    data: {},
+                    opts: {
+                        priority: EnumQueuePriority.low,
+                    },
+                }
+            );
+        });
+    });
+
+    describe('scheduleInviteExpirySweep', () => {
+        it('schedules the hourly expiry-sweep job', async () => {
+            await queue.scheduleInviteExpirySweep();
+
+            expect(workspaceQueue.upsertJobScheduler).toHaveBeenCalledWith(
+                EnumWorkspaceProcess.expireStaleInvites,
+                {
+                    pattern: '0 * * * *',
+                    tz: 'UTC',
+                    immediately: true,
+                },
+                {
+                    name: EnumWorkspaceProcess.expireStaleInvites,
+                    data: {},
+                    opts: {
+                        priority: EnumQueuePriority.low,
+                    },
+                }
+            );
+        });
+
+        it('rejects when the scheduler upsert rejects', async () => {
+            const error = new Error('redis down');
+            workspaceQueue.upsertJobScheduler.mockRejectedValue(error);
+
+            await expect(queue.scheduleInviteExpirySweep()).rejects.toBe(error);
+        });
+    });
+});

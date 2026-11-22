@@ -2,12 +2,17 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestApplication } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { writeFileSync } from 'fs';
+import { mkdirSync, writeFileSync } from 'fs';
 import { createSchema } from 'zod-openapi';
 import { z } from 'zod';
+import helmet from 'helmet';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { RequestHelmetCspDocDirectives } from '@common/request/constants/request.constant';
 import { MessageService } from '@common/message/services/message.service';
-import { ApiKeyDocSecurityName } from '@modules/api-key/constants/api-key.constant';
+import {
+    ApiKeyDocSecurityName,
+    ApiKeyHeaderName,
+} from '@modules/api-key/constants/api-key.constant';
 import {
     AuthJwtAccessDocSecurityName,
     AuthJwtRefreshDocSecurityName,
@@ -25,8 +30,9 @@ export default async function (app: NestApplication): Promise<void> {
     const appUrl: string = configService.get<string>('app.url')!;
 
     const appAuthorName: string = configService.get<string>('app.author.name')!;
-    const appAuthorEmail: string =
-        configService.get<string>('app.author.email')!;
+    const appAuthorEmailAddress: string = configService.get<string>(
+        'app.author.emailAddress'
+    )!;
 
     const docName: string = configService.get<string>('doc.name')!;
     const docVersion: string = configService.get<string>('doc.version')!;
@@ -48,7 +54,7 @@ export default async function (app: NestApplication): Promise<void> {
                     },
                 })
             )
-            .setContact(appAuthorName, appUrl, appAuthorEmail)
+            .setContact(appAuthorName, appUrl, appAuthorEmailAddress)
             .addServer('/')
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
@@ -67,7 +73,7 @@ export default async function (app: NestApplication): Promise<void> {
                 AuthSocialAppleDocSecurityName
             )
             .addApiKey(
-                { type: 'apiKey', in: 'header', name: 'x-api-key' },
+                { type: 'apiKey', in: 'header', name: ApiKeyHeaderName },
                 ApiKeyDocSecurityName
             )
             .build();
@@ -79,10 +85,20 @@ export default async function (app: NestApplication): Promise<void> {
         });
 
         try {
+            mkdirSync('generated', { recursive: true });
             writeFileSync('generated/swagger.json', JSON.stringify(document));
         } catch (err: unknown) {
             logger.warn(err, 'Failed to write swagger.json');
         }
+
+        app.use(
+            docPrefix,
+            helmet.contentSecurityPolicy({
+                useDefaults: false,
+                directives: RequestHelmetCspDocDirectives,
+            })
+        );
+        app.use(docPrefix, helmet.referrerPolicy({ policy: 'no-referrer' }));
 
         SwaggerModule.setup(docPrefix, app, document, {
             jsonDocumentUrl: docJsonUrlPattern.replace(

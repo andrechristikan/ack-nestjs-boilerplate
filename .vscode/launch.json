@@ -7,12 +7,7 @@
             "name": "Debug Nest Framework",
             "preLaunchTask": "Build Project",
             "program": "${workspaceFolder}/dist/main.js",
-            "runtimeArgs": [
-                "--nolazy",
-                "--enable-source-maps",
-                "--import",
-                "./dist/instrument.js"
-            ],
+            "runtimeArgs": ["--nolazy", "--enable-source-maps"],
             "sourceMaps": true,
             "outFiles": ["${workspaceFolder}/dist/**/*.js"],
             "envFile": "${workspaceFolder}/.env",

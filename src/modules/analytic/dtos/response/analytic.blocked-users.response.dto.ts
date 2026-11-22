@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes the blocked user counts of a window against the standing total.
- * @public
- */
+/** @public */
 export const AnalyticBlockedUsersResponseSchema = z.object({
     trend: z.number().meta({
         description: 'Users blocked inside the requested window',
@@ -16,10 +13,7 @@ export const AnalyticBlockedUsersResponseSchema = z.object({
     }),
 });
 
-/**
- * Blocked user counts of a window against the standing total.
- * @public
- */
+/** @public */
 export type AnalyticBlockedUsersResponseDto = z.infer<
     typeof AnalyticBlockedUsersResponseSchema
 >;

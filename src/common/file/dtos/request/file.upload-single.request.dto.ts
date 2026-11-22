@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import type { IFile } from '@common/file/interfaces/file.interface';
 
-/**
- * Multipart body shape for endpoints accepting a single file upload.
- * @public
- */
+/** @public */
 export const FileUploadSingleRequestSchema = z.strictObject({
     file: z.custom<IFile>().meta({
         type: 'string',
@@ -13,10 +10,7 @@ export const FileUploadSingleRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Multipart body carrying a single uploaded file.
- * @public
- */
+/** @public */
 export type FileUploadSingleRequestDto = z.infer<
     typeof FileUploadSingleRequestSchema
 >;

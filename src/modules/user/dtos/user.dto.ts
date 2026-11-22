@@ -11,13 +11,8 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import { RoleSchema } from '@modules/role/dtos/role.dto';
-import { UserTermPolicySchema } from '@modules/user/dtos/user.term-policy.dto';
-import { UserTwoFactorSchema } from '@modules/user/dtos/user.two-factor.dto';
 
-/**
- * Base user shape: the stored user row with its role, term-policy flags, photo and two-factor state.
- * @public
- */
+/** @public */
 export const UserSchema = DatabaseResponseSchema.extend({
     name: z.string().min(1).max(100).nullable().meta({
         description: 'Display name of the user',
@@ -54,7 +49,7 @@ export const UserSchema = DatabaseResponseSchema.extend({
         description: 'When the current password was created',
         example: faker.date.past(),
     }),
-    passwordAttempt: z.number().min(0).nullable().meta({
+    passwordAttempt: z.number().min(0).meta({
         description: 'Count of consecutive failed password attempts',
         example: 0,
     }),
@@ -98,17 +93,10 @@ export const UserSchema = DatabaseResponseSchema.extend({
         description: 'Credential method of the last login',
         example: EnumUserLoginWith.credential,
     }),
-    ...UserTermPolicySchema.shape,
     photo: AwsS3ResponseSchema.omit({ size: true }).nullable().meta({
         description: 'Profile photo stored in S3',
     }),
-    twoFactor: UserTwoFactorSchema.nullable().meta({
-        description: 'Two-factor authentication state of the user',
-    }),
 });
 
-/**
- * Base user shape without credentials.
- * @public
- */
+/** @public */
 export type UserDto = z.infer<typeof UserSchema>;

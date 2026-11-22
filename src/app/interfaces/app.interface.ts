@@ -4,5 +4,4 @@ export interface IAppBaseExceptionOptions {
     messageProperties?: IMessageProperties;
     metadata?: Record<string, unknown>;
     rawError?: unknown;
-    data?: unknown;
 }

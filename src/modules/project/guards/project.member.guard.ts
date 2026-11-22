@@ -1,37 +1,51 @@
+import { UserContextStoreKey } from '@modules/user/constants/user.constant';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
+import { ProjectContextStoreKey } from '@modules/project/constants/project.constant';
+import type {
+    IProjectContext,
+    IProjectContextPatch,
+} from '@modules/project/interfaces/project.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import type { Project } from '@generated/prisma-client/client';
-import type { IUser } from '@modules/user/interfaces/user.interface';
-import { UserStoreKey } from '@modules/user/constants/user.constant';
-import {
-    ProjectMemberStoreKey,
-    ProjectStoreKey,
-} from '@modules/project/constants/project.constant';
-import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
+import { UserGuardMissingException } from '@modules/user/exceptions/user.guard-missing.exception';
+import { ProjectGuardMissingException } from '@modules/project/exceptions/project.guard-missing.exception';
+import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
-/**
- * Confirms the already-authenticated user (loaded by `UserGuard`) is a member of the project
- * resolved by `ProjectGuard`, which must run before this guard.
- */
 @Injectable()
 export class ProjectMemberGuard implements CanActivate {
     constructor(
-        private readonly projectMemberDomain: ProjectMemberDomain,
+        private readonly projectMemberService: ProjectMemberService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
     async canActivate(_context: ExecutionContext): Promise<boolean> {
-        const project = this.requestStoreService.get<Project>(ProjectStoreKey);
-        const user = this.requestStoreService.get<IUser>(UserStoreKey);
+        const userContext =
+            this.requestStoreService.get<IUserContext>(UserContextStoreKey);
+        const user = userContext?.user ?? null;
+        if (user === null) {
+            throw new UserGuardMissingException();
+        }
+
+        const projectContext =
+            this.requestStoreService.get<IProjectContextPatch>(
+                ProjectContextStoreKey
+            );
+        const project = projectContext?.project ?? null;
+        if (project === null) {
+            throw new ProjectGuardMissingException();
+        }
 
         const member =
-            await this.projectMemberDomain.validateProjectMemberGuard(
-                project?.id ?? null,
-                user?.id ?? null
+            await this.projectMemberService.validateProjectMemberGuard(
+                project.id,
+                user.id
             );
 
-        this.requestStoreService.set(ProjectMemberStoreKey, member);
+        this.requestStoreService.merge<IProjectContext>(
+            ProjectContextStoreKey,
+            { projectMember: member }
+        );
 
         return true;
     }

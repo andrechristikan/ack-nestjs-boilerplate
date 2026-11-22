@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
 
-/**
- * Validates the body for accepting the latest term policy of a type.
- * @public
- */
+/** @public */
 export const TermPolicyAcceptRequestSchema = z.strictObject({
     type: z.enum(EnumTermPolicyType).meta({
         description: 'Type of the terms policy',
@@ -12,10 +9,7 @@ export const TermPolicyAcceptRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Body for accepting the latest term policy of a type.
- * @public
- */
+/** @public */
 export type TermPolicyAcceptRequestDto = z.infer<
     typeof TermPolicyAcceptRequestSchema
 >;

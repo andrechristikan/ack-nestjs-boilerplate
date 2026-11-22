@@ -3,12 +3,22 @@ import ms from 'ms';
 
 export interface IConfigDatabase {
     url: string;
-    debug: boolean;
+    debugEnabled: boolean;
     seedTransactionTimeoutInMs: number;
+    seedBatchSize: number;
+    connectTimeoutInMs: number;
+    slowQueryThresholdInMs: number;
+    warnWindowInMs: number;
 }
 
-export default registerAs('database', (): IConfigDatabase => ({
-    url: process.env.DATABASE_URL!,
-    debug: process.env.DATABASE_DEBUG === 'true',
-    seedTransactionTimeoutInMs: ms('60s'),
-}));
+export default registerAs('database', (): IConfigDatabase => {
+    return {
+        url: process.env.DATABASE_URL!,
+        debugEnabled: process.env.DATABASE_DEBUG_ENABLED === 'true',
+        seedTransactionTimeoutInMs: ms('60s'),
+        seedBatchSize: 1000,
+        connectTimeoutInMs: ms('5s'),
+        slowQueryThresholdInMs: ms('500ms'),
+        warnWindowInMs: ms('1m'),
+    };
+});

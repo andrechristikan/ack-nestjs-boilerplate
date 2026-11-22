@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { AwsS3PresignRequestSchema } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
 
-/**
- * Validates the body for adding or updating one term policy content.
- * @public
- */
+/** @public */
 export const TermPolicyContentRequestSchema =
     TermPolicyContentPresignRequestSchema.pick({
         language: true,
@@ -17,10 +14,7 @@ export const TermPolicyContentRequestSchema =
         }),
     });
 
-/**
- * Body for adding or updating one term policy content.
- * @public
- */
+/** @public */
 export type TermPolicyContentRequestDto = z.infer<
     typeof TermPolicyContentRequestSchema
 >;

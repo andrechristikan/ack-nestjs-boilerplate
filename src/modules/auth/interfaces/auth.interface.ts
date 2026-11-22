@@ -1,5 +1,3 @@
-import { EnumAuthTwoFactorMethod } from '@modules/auth/enums/auth.enum';
-import type { DeviceRequestDto } from '@modules/device/dtos/request/device.request.dto';
 import {
     EnumRoleType,
     EnumUserLoginFrom,
@@ -16,13 +14,17 @@ export interface IAuthToken {
 
 export interface IAuthPassword {
     passwordHash: string;
-    passwordExpired: Date;
+    passwordExpired: Date | null;
     passwordCreated: Date;
     passwordPeriodExpired: Date;
 }
 
+export interface IAuthPasswordTemporary extends IAuthPassword {
+    passwordExpired: Date;
+}
+
 export interface IAuthPasswordOptions {
-    temporary: boolean;
+    temporary: true;
 }
 
 export interface IAuthJwtAccessTokenPayload {
@@ -47,14 +49,33 @@ export interface IAuthJwtAccessTokenPayload {
 
 export type IAuthJwtRefreshTokenPayload = Omit<
     IAuthJwtAccessTokenPayload,
-    'type' | 'roleId' | 'username' | 'email' | 'termPolicy' | 'verification'
+    'type' | 'roleId' | 'username' | 'email' | 'verification'
 >;
 
-export interface IAuthSocialPayload extends Pick<
-    IAuthJwtAccessTokenPayload,
-    'email'
-> {
+export type IAuthJwtPayloadIdentified<
+    T extends { sub?: string; jti?: string },
+> = T & { sub: string; jti: string };
+
+export interface IAuthJwtAccessContext {
+    userId: string;
+    sessionId: string;
+    deviceOwnershipId: string;
+    loginWith: EnumUserLoginWith;
+}
+
+export interface IAuthJwtRefreshContext extends IAuthJwtAccessContext {
+    token: string;
+}
+
+export interface IAuthSocialContext {
+    email: string;
     emailVerified: boolean;
+    subject: string;
+}
+
+export interface IAuthSocialNonce {
+    nonce: string;
+    expiredAt: Date;
 }
 
 export interface IAuthAccessTokenGenerate {
@@ -63,46 +84,12 @@ export interface IAuthAccessTokenGenerate {
     sessionId: string;
 }
 
-export interface IAuthRefreshTokenGenerate extends IAuthAccessTokenGenerate {
-    expiredInMs: number;
+export interface IAuthLoginIdentifiers {
+    sessionId: string;
+    jti: string;
 }
 
-export interface IAuthTwoFactorBackupCodes {
-    codes: string[];
-    hashes: string[];
-}
-
-export interface IAuthTwoFactorBackupCodesVerifyResult {
-    isValid: boolean;
-    index: number;
-}
-
-export interface IAuthTwoFactorChallenge {
-    challengeToken: string;
-    expiresInMs: number;
-}
-
-export interface IAuthTwoFactorChallengeCache {
-    userId: string;
-    device: DeviceRequestDto;
-    loginFrom: EnumUserLoginFrom;
-    loginWith: EnumUserLoginWith;
-}
-
-export interface IAuthTwoFactorVerify {
-    method?: EnumAuthTwoFactorMethod;
-    code?: string;
-    backupCode?: string;
-}
-
-export interface IAuthTwoFactorVerifyResult {
-    isValid: boolean;
-    method: EnumAuthTwoFactorMethod;
-    usedBackupCodeHash?: string;
-}
-
-export interface IAuthTwoFactorSetup {
-    secret: string;
-    otpauthUrl: string;
-    encryptedSecret: string;
+export interface IAuthTokenSignInput extends IAuthLoginIdentifiers {
+    deviceOwnershipId: string;
+    loginAt: Date;
 }

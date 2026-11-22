@@ -3,10 +3,7 @@ import { MessageValidationErrorSchema } from '@common/message/dtos/message.valid
 import { MessageValidationImportErrorSchema } from '@common/message/dtos/message.validation-import-error.dto';
 import { ResponseSchema } from '@common/response/dtos/response.dto';
 
-/**
- * Error response envelope adding an optional list of validation errors.
- * @public
- */
+/** @public */
 export const ResponseErrorSchema = ResponseSchema.extend({
     data: z.unknown().optional(),
     module: z.string().optional().meta({
@@ -29,8 +26,5 @@ export const ResponseErrorSchema = ResponseSchema.extend({
         }),
 });
 
-/**
- * Error response envelope with module, status code key and field errors.
- * @public
- */
+/** @public */
 export type ResponseErrorDto = z.infer<typeof ResponseErrorSchema>;

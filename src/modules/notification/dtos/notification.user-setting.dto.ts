@@ -6,10 +6,7 @@ import {
     EnumNotificationType,
 } from '@generated/prisma-client/client';
 
-/**
- * Base notification-user-setting shape: one stored channel/type toggle of a user.
- * @public
- */
+/** @public */
 export const NotificationUserSettingSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -33,10 +30,7 @@ export const NotificationUserSettingSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * One stored channel and type notification toggle of a user.
- * @public
- */
+/** @public */
 export type NotificationUserSettingDto = z.infer<
     typeof NotificationUserSettingSchema
 >;

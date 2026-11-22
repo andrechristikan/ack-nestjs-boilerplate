@@ -1,8 +1,11 @@
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type {
+    IPaginationCursorReturn,
     IPaginationEqual,
     IPaginationIn,
     IPaginationQueryOffsetParams,
@@ -10,25 +13,28 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { UserClaimUsernameRequestDto } from '@modules/user/dtos/request/user.claim-username.request.dto';
-import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
-import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import {
+    UserActiveRecipientCursorScope,
     UserAdminListSelect,
+    UserNameSelect,
+    UserNotDeletedWhere,
+    UserRecipientSelect,
     UserWithRoleInclude,
 } from '@modules/user/constants/user.constant';
-import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import type {
     IUser,
-    IUserContact,
     IUserCreateWithWorkspaceInput,
-    IUserExport,
+    IUserDeletedIdentity,
     IUserList,
+    IUserName,
     IUserProfile,
+    IUserRecipient,
+    IUserUpdateProfile,
+    IUserUpdateStatus,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserRepository } from '@modules/user/interfaces/user.repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
-    EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserStatus,
@@ -36,12 +42,12 @@ import {
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
-import type { IWorkspaceInviteInviter } from '@modules/workspace/interfaces/workspace.interface';
 
 @Injectable()
 export class UserRepository implements IUserRepository {
     constructor(
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -61,14 +67,10 @@ export class UserRepository implements IUserRepository {
             signUpWith: input.signUpWith,
             username: input.username,
             isVerified: input.isVerified,
+            verifiedAt: input.verifiedAt,
             status: EnumUserStatus.active,
             lastWorkspaceId: input.workspaceContext.workspaceId,
             lastWorkspaceChangedAt,
-            termsOfServiceAccepted:
-                input.termPolicy[EnumTermPolicyType.termsOfService],
-            privacyAccepted: input.termPolicy[EnumTermPolicyType.privacy],
-            cookiesAccepted: input.termPolicy[EnumTermPolicyType.cookies],
-            marketingAccepted: input.termPolicy[EnumTermPolicyType.marketing],
             createdBy: input.createdBy,
             deletedAt: null,
             ...(input.password
@@ -83,41 +85,55 @@ export class UserRepository implements IUserRepository {
     }
 
     async findWithPaginationOffset(
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        { where, ...params }: IPaginationQueryOffsetParams,
+        status: Record<string, IPaginationIn> | null,
+        roleId: Record<string, IPaginationEqual> | null,
+        countryId: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<IUserList>> {
-        return this.paginationService.offset<IUserList, Prisma.UserWhereInput>(
-            this.databaseService.client.user,
-            {
-                ...params,
-                where: {
-                    ...where,
-                    ...status,
-                    ...countryId,
-                    ...roleId,
-                    deletedAt: null,
-                },
-                select: UserAdminListSelect,
-            }
-        );
-    }
-
-    async findActive(): Promise<IUserContact[]> {
-        return this.databaseService.client.user.findMany({
+        return this.paginationService.offset(this.databaseService.client.user, {
+            ...params,
             where: {
-                status: EnumUserStatus.active,
+                ...where,
+                ...status,
+                ...countryId,
+                ...roleId,
                 deletedAt: null,
             },
-            select: {
-                id: true,
-                username: true,
-                email: true,
+            select: UserAdminListSelect,
+        });
+    }
+
+    async findActiveRecipientsCursor(
+        cursor: string | null,
+        limit: number,
+        createdBefore: Date
+    ): Promise<IPaginationCursorReturn<IUserRecipient>> {
+        return this.paginationService.cursor(this.databaseService.client.user, {
+            where: {
+                ...UserNotDeletedWhere,
+                status: EnumUserStatus.active,
+                createdAt: { lte: createdBefore },
             },
+            orderBy: [{ id: EnumPaginationOrderDirectionType.asc }],
+            limit,
+            fingerprint: UserActiveRecipientCursorScope,
+            select: UserRecipientSelect,
+            ...(cursor !== null && { cursor }),
+        });
+    }
+
+    async findActiveRecipientsByIds(
+        ids: string[],
+        createdBefore: Date
+    ): Promise<IUserRecipient[]> {
+        return this.databaseService.client.user.findMany({
+            where: {
+                ...UserNotDeletedWhere,
+                status: EnumUserStatus.active,
+                id: { in: ids },
+                createdAt: { lte: createdBefore },
+            },
+            select: UserRecipientSelect,
         });
     }
 
@@ -139,13 +155,23 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async findNameById(
-        userId: string
-    ): Promise<IWorkspaceInviteInviter | null> {
+    async findNameById(userId: string): Promise<IUserName | null> {
         return this.databaseService.client.user.findUnique({
-            where: { id: userId },
-            select: { name: true, username: true },
+            where: { id: userId, deletedAt: null },
+            select: UserNameSelect,
         });
+    }
+
+    async findEmailByIdInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<string | null> {
+        const user = await tx.user.findUnique({
+            where: { id: userId, deletedAt: null },
+            select: { email: true },
+        });
+
+        return user?.email ?? null;
     }
 
     async findOneWithRoleByEmail(email: string): Promise<IUser | null> {
@@ -161,7 +187,6 @@ export class UserRepository implements IUserRepository {
             include: {
                 ...UserWithRoleInclude,
                 country: true,
-                photo: true,
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -177,7 +202,6 @@ export class UserRepository implements IUserRepository {
             include: {
                 ...UserWithRoleInclude,
                 country: true,
-                photo: true,
                 mobileNumbers: {
                     include: {
                         country: true,
@@ -217,7 +241,7 @@ export class UserRepository implements IUserRepository {
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null,
         take: number
-    ): Promise<IUserExport[]> {
+    ): Promise<IUser[]> {
         return this.databaseService.client.user.findMany({
             where: {
                 ...status,
@@ -225,10 +249,7 @@ export class UserRepository implements IUserRepository {
                 ...roleId,
                 deletedAt: null,
             },
-            include: {
-                role: { select: { name: true } },
-                photo: true,
-            },
+            include: UserWithRoleInclude,
             take,
         });
     }
@@ -256,64 +277,69 @@ export class UserRepository implements IUserRepository {
         const createData = this.buildUserCreateData(input);
         const user = await tx.user.create({
             data: createData,
-            include: {
-                role: { include: { policies: true } },
-            },
+            include: UserWithRoleInclude,
         });
 
-        return { ...user, twoFactor: null };
+        return user;
     }
 
     async createManyInTx(
         tx: IDatabaseTransactionClient,
         inputs: IUserCreateWithWorkspaceInput[]
     ): Promise<IUser[]> {
-        return Promise.all(inputs.map(input => this.createInTx(tx, input)));
+        const users: IUser[] = [];
+
+        for (const input of inputs) {
+            const user = await this.createInTx(tx, input);
+            users.push(user);
+        }
+
+        return users;
     }
 
     async updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        { status }: UserUpdateStatusRequestDto
-    ): Promise<User> {
-        return tx.user.update({
-            where: { id, deletedAt: null },
+        currentStatus: EnumUserStatus,
+        { status, passwordAttempt, passwordLockedUntil }: IUserUpdateStatus
+    ): Promise<User | null> {
+        const { count } = await tx.user.updateMany({
+            where: { id, status: currentStatus, deletedAt: null },
             data: {
                 status,
+                passwordAttempt,
+                passwordLockedUntil,
             },
         });
+        if (count === 0) {
+            return null;
+        }
+
+        return tx.user.findUnique({ where: { id } });
     }
 
-    async updateProfile(
+    async updateProfileInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
-        { countryId, ...data }: UserUpdateProfileRequestDto
+        { countryId, gender, name }: IUserUpdateProfile
     ): Promise<User> {
-        return this.databaseService.client.user.update({
+        return tx.user.update({
             where: { id: userId, deletedAt: null },
-            data: {
-                ...data,
-                countryId,
-            },
+            data: { name, gender, countryId },
         });
     }
 
-    async updatePhotoProfile(userId: string, photo: IAwsS3): Promise<User> {
-        const photoData: Prisma.UserPhotoUncheckedCreateWithoutUserInput = {
-            bucket: photo.bucket,
-            key: photo.key,
-            cdnUrl: photo.cdnUrl,
-            completedUrl: photo.completedUrl,
-            mime: photo.mime,
-            extension: photo.extension,
-            access: photo.access,
-        };
+    async updatePhotoProfileInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        photo: IAwsS3
+    ): Promise<User> {
+        const plainPhoto = this.databaseUtil.toPlainObject(photo);
 
-        return this.databaseService.client.user.update({
+        return tx.user.update({
             where: { id: userId, deletedAt: null },
             data: {
-                photo: {
-                    upsert: { create: photoData, update: photoData },
-                },
+                photo: plainPhoto,
             },
         });
     }
@@ -321,37 +347,41 @@ export class UserRepository implements IUserRepository {
     async deleteSelfInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
+        { email, username }: IUserDeletedIdentity,
         deletedAt: Date
-    ): Promise<User> {
-        return tx.user.softDelete({
+    ): Promise<void> {
+        await tx.user.softDelete({
             where: { id: userId, deletedAt: null },
             data: {
+                email,
+                username,
                 deletedAt,
                 status: EnumUserStatus.inactive,
-            },
-        }) as Promise<User>;
-    }
-
-    async claimUsername(
-        userId: string,
-        { username }: UserClaimUsernameRequestDto
-    ): Promise<User> {
-        return this.databaseService.client.user.update({
-            where: { id: userId, deletedAt: null },
-            data: {
-                username,
+                password: null,
+                passwordCreated: null,
+                passwordExpired: null,
+                passwordAttempt: 0,
+                passwordLockedUntil: null,
+                name: null,
+                gender: null,
+                photo: Prisma.DbNull,
+                lastIPAddress: null,
+                lastLoginAt: null,
+                lastLoginFrom: null,
+                lastLoginWith: null,
             },
         });
     }
 
-    async setLastWorkspace(userId: string, workspaceId: string): Promise<void> {
-        const today = this.helperDateService.create();
-
-        await this.databaseService.client.user.update({
-            where: { id: userId },
+    async claimUsernameInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        { username }: UserClaimUsernameRequestDto
+    ): Promise<User> {
+        return tx.user.update({
+            where: { id: userId, deletedAt: null },
             data: {
-                lastWorkspaceId: workspaceId,
-                lastWorkspaceChangedAt: today,
+                username,
             },
         });
     }
@@ -372,6 +402,22 @@ export class UserRepository implements IUserRepository {
         });
     }
 
+    async clearLastWorkspaceInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        workspaceId: string
+    ): Promise<void> {
+        const today = this.helperDateService.create();
+
+        await tx.user.updateMany({
+            where: { id: userId, lastWorkspaceId: workspaceId },
+            data: {
+                lastWorkspaceId: null,
+                lastWorkspaceChangedAt: today,
+            },
+        });
+    }
+
     async updatePasswordInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -385,50 +431,59 @@ export class UserRepository implements IUserRepository {
                 passwordCreated,
                 passwordExpired,
                 passwordAttempt: 0,
+                passwordLockedUntil: null,
                 updatedBy,
             },
         });
     }
 
-    async increasePasswordAttempt(userId: string): Promise<User> {
-        return this.databaseService.client.user.update({
-            where: { id: userId, deletedAt: null },
-            data: {
-                passwordAttempt: {
-                    increment: 1,
-                },
-            },
-        });
-    }
-
-    async resetPasswordAttempt(userId: string): Promise<User> {
-        return this.databaseService.client.user.update({
-            where: { id: userId, deletedAt: null },
-            data: {
-                passwordAttempt: 0,
-            },
-        });
-    }
-
-    async deactivateForMaxPasswordAttemptInTx(
+    async incrementPasswordAttemptInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
-    ): Promise<void> {
+        userId: string,
+        maxAttempt: number,
+        lockedUntil: Date
+    ): Promise<boolean> {
+        const { passwordAttempt } = await tx.user.update({
+            where: { id: userId, deletedAt: null },
+            data: { passwordAttempt: { increment: 1 } },
+            select: { passwordAttempt: true },
+        });
+        if (passwordAttempt < maxAttempt) {
+            return false;
+        }
+
         await tx.user.update({
             where: { id: userId, deletedAt: null },
-            data: {
-                status: EnumUserStatus.inactive,
-                updatedBy: userId,
-            },
+            data: { passwordAttempt: 0, passwordLockedUntil: lockedUntil },
+        });
+
+        return true;
+    }
+
+    async resetPasswordAttemptInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<User> {
+        return tx.user.update({
+            where: { id: userId, deletedAt: null },
+            data: { passwordAttempt: 0, passwordLockedUntil: null },
         });
     }
 
-    async markVerified(userId: string, verifiedAt: Date): Promise<User> {
-        return this.databaseService.client.user.update({
+    async markVerifiedBySocialInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        verifiedAt: Date
+    ): Promise<User> {
+        return tx.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 isVerified: true,
                 verifiedAt,
+                password: null,
+                passwordCreated: null,
+                passwordExpired: null,
+                passwordAttempt: 0,
                 updatedBy: userId,
             },
         });
@@ -465,38 +520,6 @@ export class UserRepository implements IUserRepository {
                 lastLoginFrom: loginFrom,
                 lastLoginWith: loginWith,
                 updatedBy: userId,
-            },
-        });
-    }
-
-    async acceptTermPolicyInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        type: EnumTermPolicyType
-    ): Promise<void> {
-        await tx.user.update({
-            where: {
-                id: userId,
-                deletedAt: null,
-                status: EnumUserStatus.active,
-            },
-            data: {
-                [UserTermPolicyContract.columns[type]]: true,
-            },
-        });
-    }
-
-    async resetTermPolicyForActiveUsersInTx(
-        tx: IDatabaseTransactionClient,
-        type: EnumTermPolicyType
-    ): Promise<void> {
-        await tx.user.updateMany({
-            where: {
-                deletedAt: null,
-                status: EnumUserStatus.active,
-            },
-            data: {
-                [UserTermPolicyContract.columns[type]]: false,
             },
         });
     }

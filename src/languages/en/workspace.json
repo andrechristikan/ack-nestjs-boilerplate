@@ -27,13 +27,22 @@
         "list": "List of workspace join requests",
         "create": "Workspace join request sent successfully",
         "accept": "Workspace join request accepted successfully",
-        "reject": "Workspace join request rejected successfully"
+        "reject": "Workspace join request rejected successfully",
+        "requesterFallbackName": "A user"
     },
     "admin": {
         "list": "List of all workspaces",
         "get": "Workspace retrieved successfully",
+        "transferOwnership": "Workspace ownership transferred by admin",
         "member": {
             "list": "List of workspace members"
+        }
+    },
+    "queue": {
+        "expireStaleInvites": "Processed stale workspace invite expiry sweep.",
+        "expireStaleJoinRequests": "Processed stale workspace join request expiry sweep.",
+        "error": {
+            "unknownProcess": "No {process} job handler exists."
         }
     },
     "error": {
@@ -57,6 +66,12 @@
         "joinRequestNotFound": "Sorry, we couldn't find that workspace join request.",
         "joinRequestAlreadyProcessed": "This workspace join request is no longer pending.",
         "selfTransfer": "You cannot transfer ownership to yourself.",
-        "slugInvalid": "This workspace slug is not allowed; use letters, digits and hyphens only, within the allowed length."
+        "slugInvalid": "This workspace slug is not allowed; use lower-case letters, digits and hyphens only, within the allowed length.",
+        "headerMissing": "The x-workspace-id header is required.",
+        "guardMissing": "The workspace could not be verified for this request.",
+        "memberGuardMissing": "Your workspace membership could not be verified for this request.",
+        "memberAlreadyExists": "This user is already a member of this workspace.",
+        "ownerTransferRequired": "You own a workspace with other members; transfer ownership before deleting your account.",
+        "transferTargetInactive": "Ownership can only be transferred to a member whose account is active."
     }
 }

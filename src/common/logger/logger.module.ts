@@ -3,11 +3,8 @@ import type { DynamicModule } from '@nestjs/common';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import { LoggerOptionService } from '@common/logger/services/logger.option.service';
 import { LoggerUtil } from '@common/logger/utils/logger.util';
+import { LoggerUrlUtil } from '@common/logger/utils/logger.url.util';
 
-/**
- * Wires the Pino logger for app-wide structured logging: `LoggerOptionService` assembles the
- * pino options and `LoggerUtil` shapes and redacts every record.
- */
 @Module({})
 export class LoggerModule {
     static forRoot(): DynamicModule {
@@ -15,7 +12,7 @@ export class LoggerModule {
             module: LoggerModule,
             imports: [
                 PinoLoggerModule.forRootAsync({
-                    providers: [LoggerOptionService, LoggerUtil],
+                    providers: [LoggerOptionService, LoggerUtil, LoggerUrlUtil],
                     inject: [LoggerOptionService],
                     useFactory: async (
                         loggerOptionService: LoggerOptionService

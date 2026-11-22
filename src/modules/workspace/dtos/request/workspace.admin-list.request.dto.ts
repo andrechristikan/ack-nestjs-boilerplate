@@ -7,24 +7,25 @@ import {
     WorkspaceDefaultAvailableSearch,
 } from '@modules/workspace/constants/workspace.list.constant';
 
-/**
- * Offset list query for admin workspace listing.
- * @public
- */
+/** @public */
 export const WorkspaceAdminListRequestSchema =
     PaginationOffsetQuerySchema.extend({
-        search: z
-            .string()
-            .optional()
-            .meta({
-                description: `Search query, available fields: ${WorkspaceDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
-                example: '',
-            }),
+        search: PaginationOffsetQuerySchema.shape.search.meta({
+            description: `Search query, available fields: ${WorkspaceDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
+            example: '',
+        }),
         orderBy: z
-            .union([z.string(), z.array(z.string())])
+            .union([
+                z.templateLiteral([
+                    z.enum(WorkspaceDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ]),
+                z.literal(''),
+            ])
             .optional()
             .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${WorkspaceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+                description: `Order by field in \`field:direction\` format (e.g. \`${WorkspaceDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${WorkspaceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
                 example: `${WorkspaceDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
             }),
         isPublic: RequestBooleanStringSchema.optional().meta({
@@ -33,10 +34,7 @@ export const WorkspaceAdminListRequestSchema =
         }),
     });
 
-/**
- * Inferred DTO for WorkspaceAdminListRequestSchema.
- * @public
- */
+/** @public */
 export type WorkspaceAdminListRequestDto = z.infer<
     typeof WorkspaceAdminListRequestSchema
 >;

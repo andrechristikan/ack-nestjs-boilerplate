@@ -3,21 +3,18 @@ import { ConfigService } from '@nestjs/config';
 import type {
     IAuthPassword,
     IAuthPasswordOptions,
+    IAuthPasswordTemporary,
 } from '@modules/auth/interfaces/auth.interface';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import type { PasswordHistory, User } from '@generated/prisma-client/client';
+import type { PasswordHistory } from '@generated/prisma-client/client';
 
-/** Hashes passwords and evaluates password dates. See docs/authentication.md. */
 @Injectable()
 export class AuthPasswordUtil {
-    private readonly passwordExpiredInMs: number;
-    private readonly passwordExpiredTemporaryInMs: number;
-    private readonly passwordSaltLength: number;
-    private readonly passwordPeriodInDays: number;
-    private readonly passwordAttempt: boolean;
-    private readonly passwordMaxAttempt: number;
+    private readonly temporaryExpiresInMs: number;
+    private readonly periodInDays: number;
+    private readonly temporaryLength: number;
 
     constructor(
         private readonly helperHashService: HelperHashService,
@@ -25,61 +22,51 @@ export class AuthPasswordUtil {
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
-        this.passwordExpiredInMs = this.configService.get<number>(
-            'auth.password.expiredInMs'
+        this.temporaryExpiresInMs = this.configService.get<number>(
+            'auth.password.temporaryExpiresInMs'
         )!;
-        this.passwordExpiredTemporaryInMs = this.configService.get<number>(
-            'auth.password.expiredTemporaryInMs'
-        )!;
-        this.passwordSaltLength = this.configService.get<number>(
-            'auth.password.saltLength'
-        )!;
-        this.passwordPeriodInDays = this.configService.get<number>(
+        this.periodInDays = this.configService.get<number>(
             'auth.password.periodInDays'
         )!;
-        this.passwordAttempt = this.configService.get<boolean>(
-            'auth.password.attempt'
-        )!;
-        this.passwordMaxAttempt = this.configService.get<number>(
-            'auth.password.maxAttempt'
+        this.temporaryLength = this.configService.get<number>(
+            'auth.password.temporaryLength'
         )!;
     }
 
-    validatePassword(passwordString: string, passwordHash: string): boolean {
-        return this.helperHashService.bcryptCompare(
+    async isPasswordMatched(
+        passwordString: string,
+        passwordHash: string
+    ): Promise<boolean> {
+        return this.helperHashService.argon2Compare(
             passwordString,
             passwordHash
         );
     }
 
-    /** True when the user exceeded the max password attempts; always false if attempt tracking is off. */
-    checkPasswordAttempt(user: User): boolean {
-        return this.passwordAttempt
-            ? (user.passwordAttempt ?? 0) >= this.passwordMaxAttempt
-            : false;
-    }
-
-    /** Builds the bcrypt hash plus expiry and period dates; temporary uses a shorter expiry. */
-    createPassword(
+    async createPassword(
+        password: string,
+        options: IAuthPasswordOptions
+    ): Promise<IAuthPasswordTemporary>;
+    async createPassword(password: string): Promise<IAuthPassword>;
+    async createPassword(
         password: string,
         options?: IAuthPasswordOptions
-    ): IAuthPassword {
+    ): Promise<IAuthPassword> {
         const today = this.helperDateService.create();
-        const salt: string = this.helperHashService.bcryptGenerateSalt(
-            this.passwordSaltLength
-        );
-        const passwordExpiredDuration = this.helperDateService.createDuration({
-            milliseconds: options?.temporary
-                ? this.passwordExpiredTemporaryInMs
-                : this.passwordExpiredInMs,
-        });
-        const passwordExpired: Date = this.helperDateService.forward(
-            today,
-            passwordExpiredDuration
-        );
-        const passwordHash = this.helperHashService.bcryptHash(password, salt);
+        let passwordExpired: Date | null = null;
+        if (options?.temporary) {
+            const passwordExpiredDuration =
+                this.helperDateService.createDuration({
+                    milliseconds: this.temporaryExpiresInMs,
+                });
+            passwordExpired = this.helperDateService.forward(
+                today,
+                passwordExpiredDuration
+            );
+        }
+        const passwordHash = await this.helperHashService.argon2Hash(password);
         const passwordPeriodDuration = this.helperDateService.createDuration({
-            days: this.passwordPeriodInDays,
+            days: this.periodInDays,
         });
         const passwordPeriodExpired: Date = this.helperDateService.forward(
             today,
@@ -95,11 +82,11 @@ export class AuthPasswordUtil {
     }
 
     createPasswordRandom(): string {
-        return this.helperStringService.random(10);
+        return this.helperStringService.random(this.temporaryLength);
     }
 
     /** True when the expiry date has passed; false when no expiry is set. */
-    checkPasswordExpired(passwordExpired?: Date | null): boolean {
+    isPasswordExpired(passwordExpired: Date | null): boolean {
         if (!passwordExpired) {
             return false;
         }
@@ -108,17 +95,18 @@ export class AuthPasswordUtil {
         return today > passwordExpired;
     }
 
-    /** Returns the matching history record if the password was used before, blocking recent reuse. */
-    checkPasswordPeriod(
+    /** Returns the first of the given histories the password matches, null when it matches none. */
+    async checkPasswordPeriod(
         histories: PasswordHistory[],
         password: string
-    ): PasswordHistory | null {
+    ): Promise<PasswordHistory | null> {
+        // Sequential by design: an argon2id compare over several hashes, stopping at the first match.
         for (const history of histories) {
-            const isPasswordMatch = this.helperHashService.bcryptCompare(
+            const matched = await this.helperHashService.argon2Compare(
                 password,
                 history.password
             );
-            if (isPasswordMatch) {
+            if (matched) {
                 return history;
             }
         }
@@ -126,7 +114,25 @@ export class AuthPasswordUtil {
         return null;
     }
 
+    createContextWords(
+        appName: string,
+        email: string,
+        username: string | null,
+        name: string | null
+    ): string[] {
+        const localPart = email.slice(0, email.indexOf('@'));
+        const words = [appName, localPart];
+        if (username !== null) {
+            words.push(username);
+        }
+        if (name !== null) {
+            words.push(name);
+        }
+
+        return words;
+    }
+
     getPasswordPeriodInDays(): number {
-        return this.passwordPeriodInDays;
+        return this.periodInDays;
     }
 }

@@ -21,6 +21,14 @@
             "title": "Email Verification",
             "body": "Hi {username}, please verify your email address to activate your account."
         },
+        "verificationMobileNumber": {
+            "title": "Mobile Number Verification",
+            "body": "Hi {username}, a verification code was sent to your mobile number."
+        },
+        "reauthenticationOtp": {
+            "title": "Confirmation Code",
+            "body": "Hi {username}, a one-time code was sent to confirm a sensitive action on your account."
+        },
         "verifiedEmail": {
             "title": "Email Verified",
             "body": "Hi {username}, your email address has been verified successfully."
@@ -41,13 +49,21 @@
             "title": "Term Policy Update",
             "body": "A new {type} term policy version {version} has been published. Please review it."
         },
+        "userImportResult": {
+            "title": "User import result",
+            "body": "Hi {username}, your user import has finished. The result is in your email."
+        },
+        "loginLocked": {
+            "title": "Sign-in Locked",
+            "body": "Hi {username}, {methodLabel} sign-in to your account is locked until {lockedUntil}."
+        },
         "newDeviceLogin": {
             "title": "New Device Login",
             "body": "Hi {username}, there is a new device login from {device} in {city} at {loginAt}."
         },
-        "resetTwoFactorByAdmin": {
-            "title": "Two-Factor Authentication Reset",
-            "body": "Hi {username}, your two-factor authentication has been reset by admin."
+        "resetMfaByAdmin": {
+            "title": "Multi-Factor Authentication Reset",
+            "body": "Hi {username}, your multi-factor authentication has been reset by admin."
         },
         "temporaryPasswordByAdmin": {
             "title": "Temporary Password",
@@ -78,6 +94,13 @@
             "body": "Hi {username}, your request to join the workspace {workspaceName} has been rejected. Reason: {rejectReasonLabel}."
         }
     },
+    "sms": {
+        "verificationMobileNumber": "Your verification code is {otp}. Reference {reference}. It expires in {expiredInMinutes} minutes."
+    },
+    "loginLockedMethod": {
+        "password": "Password",
+        "mfa": "Multi-factor authentication"
+    },
     "rejectReason": {
         "notAFit": "Not a good fit",
         "incompleteProfile": "Incomplete profile",
@@ -87,10 +110,49 @@
         "memberLimitReached": "Member limit reached",
         "other": "Other"
     },
+    "queue": {
+        "error": {
+            "noChannel": "Notification {process} skipped, no channel enabled.",
+            "unknownProcess": "No {process} job handler exists.",
+            "noRecipient": "Notification {process} skipped, no active recipient.",
+            "outboxIdMissing": "Notification job has no outbox row."
+        },
+        "notify": "Notification {process} processed.",
+        "email": {
+            "publishTermPolicy": "Publish term policy email processed.",
+            "error": {
+                "unknownProcess": "No {process} job handler exists.",
+                "sesNotInitialized": "Email not sent: AWS SES is not configured.",
+                "batchFailed": "Term policy email batch {batchId} failed for {failedCount} of {claimedCount} recipients.",
+                "deliveryUnknown": "Email batch {batchId} has {unknownCount} recipients with an unknown delivery outcome."
+            },
+            "send": "Email notification {process} sent.",
+            "sendUnregistered": "Email invitation for an unregistered invitee sent."
+        },
+        "push": {
+            "cleanupTokens": "Processed token cleanup for invalid tokens.",
+            "cleanupStaleTokens": "Processed stale token cleanup.",
+            "error": {
+                "firebaseNotInitialized": "Firebase not initialized, skipping {process} notification.",
+                "unknownProcess": "No {process} job handler exists.",
+                "deliveryNotFound": "Push delivery for {process} notification not found.",
+                "tokensPending": "{count} push tokens pending retry.",
+                "stepsFailed": "Notification steps failed: {steps}"
+            },
+            "send": "Push notification {process} sent."
+        },
+        "sms": {
+            "send": "SMS notification {process} sent.",
+            "error": {
+                "unknownProcess": "No {process} job handler exists."
+            }
+        }
+    },
     "error": {
         "notFound": "Notification not found.",
         "alreadyRead": "Notification is already marked as read.",
         "invalidType": "Invalid notification type.",
-        "invalidChannel": "Invalid notification channel."
+        "invalidChannel": "Invalid notification channel.",
+        "settingInvalid": "Notification setting cannot be updated."
     }
 }

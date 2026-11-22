@@ -6,31 +6,61 @@ Activity Log lives in `src/modules/activity-log`.
 
 Activity Log records audited user actions:
 
-- During the request, a domain builds each event with `ActivityLogDomain.prepare` and queues it with `ActivityLogDomain.stagePrepared`.
-- The always-on `ActivityLogInterceptor` (registered from `ActivityLogDomainModule`) flushes after the handler settles: success flushes every staged event; an error path flushes only events prepared with `onError: true`.
-- Flushed rows go through `ActivityLogRepository.createMany`, which opens `DatabaseService.withTransaction` itself.
-- An action one user takes on another user writes two rows: one owned by the actor and one owned by the affected user. See [Actor and target rows](#actor-and-target-rows).
+- During the request, a use case builds each activity log with `ActivityLogService.prepare` and queues it with `ActivityLogService.stagePrepared`.
+- The always-on `ActivityLogInterceptor` (registered from `ActivityLogModule`) flushes after an HTTP handler settles, and success and error each flush every staged activity log.
+- A flush draws the id of each row with `DatabaseUtil.createId()`, stamps every row with one `createdAt`, and enqueues one `createMany` job on the `activityLog` queue through `ActivityLogQueue`.
+- `ActivityLogProcessor` runs the job: `ActivityLogProcessCreateManyUseCase` calls `ActivityLogService.createMany`, which calls `ActivityLogRepository.createMany`.
+- `ActivityLogRepository.createMany` reads which row ids already exist and inserts only the absent ones in one transaction, so a retried job writes no row twice.
+- The activity log is HTTP-only: a job stages no entry, and the interceptor passes any other context through.
+- An action one user takes on another user writes two rows: one owned by the actor and one owned by the affected user. See [Actor and target rows](#actor-and-target-rows). The exception is a sign-in that signs other users out of its device: it writes target rows only (see Device sign-in under that section).
 
 **Failed credential logins**
 
-Both paths answer an error; `onError: true` is what writes the rows. All three contracts in `ActivityLogActionContract` are `user = target`, `workspace = none`, metadata `ActivityLogEmptyMetadataSchema`. Login path: [Authentication](authentication.md). Analytic failed-login and lockout metrics count these rows: [Analytic](analytic.md).
+Both paths answer an error and still write their rows, because the error path flushes every staged activity log.
 
-- **Password mismatch.** `UserAuthDomain` calls `UserLoginDomain.recordLoginFailed`, which prepares `EnumActivityLogAction.userLoginFailed` with `onError: true` and with `userId` and `createdBy` set to the target user, increments the password-attempt counter, then stages the event. i18n: `activityLog.userLoginFailed` ("Login failed with invalid credentials").
-- **Attempt limit already reached.** `UserAuthDomain` calls `UserPasswordDomain.reachMaxPasswordAttempt` instead. It prepares `userRevokeAllSessions` and `userReachMaxPasswordAttempt` the same way, runs the lockout transaction (user `inactive`, sessions and device ownerships revoked), purges the user's session keys, then stages `userRevokeAllSessions` followed by `userReachMaxPasswordAttempt`. i18n: `activityLog.userReachMaxPasswordAttempt` ("Maximum password attempts has been reached").
+- All three contracts in `ActivityLogActionContract` share one shape:
+    - `user = target`
+    - `workspace = none`
+    - metadata `ActivityLogEmptyMetadataSchema`
+- Login path: [Authentication](authentication.md).
+- Analytic failed-login and lockout metrics count these rows: [Analytic](analytic.md).
+
+Password mismatch:
+
+1. `UserLoginCredentialUseCase` calls `UserAuthService.countCredentialAttempt`, which counts one password attempt before the password is compared.
+2. `UserAuthService.verifyCredential` compares the password.
+3. On a mismatch the use case prepares `EnumActivityLogAction.userLoginFailed` with `userId` and `createdBy` set to the target user, and stages it.
+4. The use case then throws `UserCredentialInvalidException`.
+
+The i18n key is `activityLog.userLoginFailed` ("Login failed with invalid credentials").
+
+Attempt limit already reached:
+
+1. `UserPasswordService.countPasswordAttempt` finds the budget spent, enqueues a `lockout` job on the user queue, and returns the lockout stages (`userRevokeAllSessions`, then `userReachMaxPasswordAttempt`).
+2. `UserLoginCredentialUseCase` prepares those stages and stages them before it asserts the counted attempt.
+3. The use case throws `UserPasswordAttemptMaxException`.
+4. `UserProcessLockoutUseCase` runs the lockout transaction (user `inactive`, sessions and device ownerships revoked).
+5. It enqueues the purge of the session logins the transaction revoked (see [Cache][ref-doc-cache]).
+
+The i18n key is `activityLog.userReachMaxPasswordAttempt` ("Maximum password attempts has been reached").
 
 **Notes:**
 
-- Flush failures are logged and do not change the handler outcome.
-- Metadata carries no secrets (password, token, API key) and no large objects; each action's metadata schema in `ActivityLogActionContract` declares what it holds. Metadata is returned to the client through a typed response schema.
+- A failed enqueue is logged and reported to Sentry by `ActivityLogQueue.createMany` (`QueueBase.addSideEffect`), and the handler outcome is unchanged.
+- Any other flush failure is logged by the interceptor and does not change the handler outcome.
+- An error that is neither an `AppBaseException` nor an `HttpException` leaves the interceptor wrapped in `AppUnknownException`.
+- Metadata carries no secrets (password, token, API key) and no large objects.
+- Each action's metadata schema in `ActivityLogActionContract` declares what it holds.
+- Metadata is returned to the client through a typed response schema.
 
 ## Related Documents
 
-- [Authentication Documentation][ref-doc-authentication] - User context (`request.user`)
-- [Authorization Documentation][ref-doc-authorization] - Guards and policy abilities
-- [Response Documentation][ref-doc-response] - List response serialization
-- [Language Message Documentation][ref-doc-message] - i18n description source
-- [Pagination Documentation][ref-doc-pagination] - List endpoints
-- [Analytic Documentation][ref-doc-analytic] - Metrics that count activity-log actions
+- [Authentication Documentation][ref-doc-authentication]: User context (`request.user`)
+- [Authorization Documentation][ref-doc-authorization]: Guards and policy abilities
+- [Response Documentation][ref-doc-response]: List response serialization
+- [Language Message Documentation][ref-doc-message]: i18n description source
+- [Pagination Documentation][ref-doc-pagination]: List endpoints
+- [Analytic Documentation][ref-doc-analytic]: Metrics that count activity-log actions
 
 ## Table of Contents
 
@@ -46,33 +76,57 @@ Both paths answer an error; `onError: true` is what writes the rows. All three c
 ## Architecture
 
 | Component | Responsibility |
-|---|---|
-| `ActivityLogDomain.prepare` | Validates contract and metadata, returns an `IActivityLogStagedEvent`; stages nothing |
-| `ActivityLogDomain.stagePrepared` | Pushes prepared events onto the request-store stage list |
-| `ActivityLogInterceptor` | After the handler settles, calls `ActivityLogDomain.flushStaged` (all staged on success; `onError: true` only on error) |
-| `RequestStoreService` | Per-request carrier for staged events (`ActivityLogStageStoreKey`), request log, and workspace |
-| `ActivityLogDomain.flushStaged` | Builds rows and writes them via `ActivityLogRepository.createMany` |
-| `ActivityLogHttpService` | Transport layer for the four list routes; the page it returns is serialized against `ActivityLogResponseSchema` declared on the route |
-| `ActivityLogRepository` | Data access (Prisma), including `createMany`, which runs the insert in its own transaction |
+| --- | --- |
+| `ActivityLogService.prepare` | Validates contract and metadata, returns an `IActivityLogStaged`; stages nothing |
+| `ActivityLogService.stagePrepared` | Pushes prepared activity logs onto the request-store stage list |
+| `ActivityLogInterceptor` | After the handler settles, calls `ActivityLogService.flushStaged` (every staged activity log, on success and on error) |
+| `RequestStoreService` | Per-request carrier for staged activity logs (`ActivityLogStageStoreKey`, value `'ActivityLogStageStoreKey'`), request log, and workspace |
+| `ActivityLogService.flushStaged` | Builds the rows with their ids and `createdAt`, and enqueues them through `ActivityLogQueue.createMany` |
+| `ActivityLogQueue` | Holds the `activityLog` queue and adds one `createMany` job per flush under a fresh job id (`{process}-{nonce}`) |
+| `ActivityLogProcessor`, `ActivityLogProcessCreateManyUseCase` | Consume the `createMany` job and write the rows through `ActivityLogService.createMany` |
+| `ActivityLogGetList*UseCase` | One use case per list route, by user or workspace and offset or cursor; the page it returns is serialized against `ActivityLogResponseSchema` declared on the route |
+| `ActivityLogRepository` | Data access (Prisma), including `createMany`, which inserts the rows whose id is absent in one transaction |
 | `ActivityLogUtil` | Builds the i18n description (`getDescription`) |
+| `ActivityLogAnalyticService` | Read-only aggregates the analytic module consumes: counts and groupings by action or workspace, and the action-range rows |
+| `ActivityLogAnalyticRepository` | Reads the `ActivityLog` model and writes nothing; the action-range read returns `IActivityLogAnalyticList` rows |
 | `ActivityLogActionContract` | Per-action contract: how `userId` and `workspaceId` resolve, and the metadata schema |
 | `ActivityLogWorkspaceVolumeContract` | Target-side workspace and project actions left out of workspace volume metrics |
+
+Analytic reads:
+
+- `ActivityLogAnalyticService` is exported from `ActivityLogModule` and read by the services of the analytic module.
+- `ActivityLogAnalyticListSelect` pins the columns of an action-range read to `id`, `userId`, `action`, `ipAddress`, `createdAt`, `userAgent`, and `workspaceId`, oldest first.
+- A grouping returns `IActivityLogAnalyticActionCount` rows, an action and its count.
+- Workspace volume reads leave out the actions in `ActivityLogWorkspaceVolumeContract`.
 
 ## List Endpoints
 
 | Method | Path | Scope |
-|--------|------|-------|
+| --- | --- | --- |
 | `GET` | `/shared/user/activity-log/list` | Authenticated user lists own logs (cursor) |
-| `GET` | `/shared/user/activity-log/workspace/list` | Authenticated user lists own logs in the workspace from `x-workspace-id` (cursor) |
+| `GET` | `/shared/user/activity-log/workspace/list` | Workspace member lists own logs in the workspace from `x-workspace-id`, behind the `workspace` feature flag (cursor) |
 | `GET` | `/admin/activity-log/user/:userId/list` | Admin lists a user's logs (offset) |
 | `GET` | `/admin/activity-log/workspace/:workspaceId/list` | Admin lists a workspace's logs, optionally narrowed by a `userId` query param (offset) |
 
 Global prefix `/api` and version `v1` apply as elsewhere.
 
+Every list takes the pagination query without `search`, and the order is validated per request schema:
+
+- `orderBy` accepts `createdAt`, written `createdAt:asc` or `createdAt:desc`, once or repeated.
+- A field or direction outside that list answers `422` with status code `50300` (`request.error.validation`).
+- The response metadata names the accepted fields in `availableOrderBy`.
+
+The admin workspace list:
+
+- Its list schema is `ActivityLogAdminWorkspaceListRequestSchema`.
+- Its `userId` query param is a Mongo id.
+
 List scope:
 
 - **User-scoped lists** return every row whose `userId` is that user, with or without a workspace: the actions the user performed and the target rows written when someone else acted on the user.
-- **Workspace-scoped lists** return the rows of one workspace. The shared one is narrowed to the caller's rows; the admin one is narrowed only when `userId` is passed, so a paired workspace action appears there twice, once for each party.
+- **Workspace-scoped lists** return the rows of one workspace.
+    - The shared one is narrowed to the caller's rows.
+    - The admin one is narrowed only when `userId` is passed, so a paired workspace action appears there twice, once for each party.
 
 ## Flow
 
@@ -80,113 +134,150 @@ List scope:
 sequenceDiagram
     participant Client
     participant Controller
-    participant Domain
+    participant UseCase as Use case
+    participant Log as ActivityLogService
     participant Storage as RequestStoreService
     participant Interceptor as ActivityLogInterceptor
+    participant Queue as ActivityLogQueue
+    participant Processor as ActivityLogProcessor
     participant Repo as ActivityLogRepository
 
     Client->>Controller: HTTP Request
-    Controller->>Domain: business logic
-    Note over Domain: prepare({ action, userId?, createdBy?, workspaceId?, metadata?, onError? })<br/>validates before the audited write
-    Domain->>Domain: audited write
-    Domain->>Storage: stagePrepared(events)
+    Controller->>UseCase: execute
+    UseCase->>Log: prepare({ action, userId?, createdBy?, workspaceId?, metadata? })
+    Note over Log: validates before the audited write
+    UseCase->>UseCase: audited write through the subject service
+    UseCase->>Log: stagePrepared(activityLogs)
+    Log->>Storage: push to the stage list
     alt Success
-        Domain-->>Interceptor: result
-        Interceptor->>Domain: flushStaged({ isError: false })
-        Domain->>Repo: createMany(rows)
-        Repo-->>Client: Success Response
+        UseCase-->>Interceptor: result
+        Interceptor->>Log: flushStaged
+        Log->>Queue: createMany(rows)
+        Interceptor-->>Client: Success Response
     else Failure
-        Domain-->>Interceptor: throws
-        Interceptor->>Domain: flushStaged({ isError: true })
-        Note over Domain: Only events with onError true
-        Domain->>Repo: createMany(rows) when any qualify
-        Repo-->>Client: Error Response
+        UseCase-->>Interceptor: throws
+        Interceptor->>Log: flushStaged
+        Note over Log: Every staged activity log
+        Log->>Queue: createMany(rows) when any are staged
+        Interceptor-->>Client: Error Response
     end
+    Queue-->>Processor: createMany job
+    Processor->>Log: createMany(rows) through the process use case
+    Log->>Repo: createMany(rows)
+    Note over Repo: Inserts only the absent row ids
 ```
 
 ## Staging an activity
 
 Every caller follows one order:
 
-1. Prepare and validate every event (`prepare` checks metadata against `ActivityLogActionContract[action].metadata` and the user and workspace fields).
-2. Write (a contract failure throws before anything commits; a failed write stages nothing).
-3. Stage the prepared events.
+1. Prepare and validate every activity log (`prepare` checks metadata against `ActivityLogActionContract[action].metadata` and the user and workspace fields).
+2. Write.
+    - A contract failure throws before anything commits.
+    - A failed write stages nothing.
+3. Stage the prepared activity logs.
 
-A session or device path commits, then writes or purges the session cache, then stages. An id the metadata needs before the row exists is drawn first with `DatabaseUtil.createId()`, and a metadata `timestamp` is the domain's pre-write time. Example from `RoleDomain.createByAdmin`, whose private `prepareActivityLog` wraps `ActivityLogDomain.prepare`:
+Ordering and values:
+
+- A session or device path commits, then enqueues the session cache purge, then stages.
+- An id the metadata needs before the row exists is drawn first with `DatabaseUtil.createId()`.
+- A metadata `timestamp` is the use case's pre-write time.
+
+Example from `RoleCreateByAdminUseCase`, whose private `prepareActivityLog` wraps `ActivityLogService.prepare`:
 
 ```typescript
 const roleId = this.databaseUtil.createId();
-const events = [
-    this.prepareActivityLog(
-        EnumActivityLogAction.adminRoleCreate,
-        { id: roleId, name: data.name, type: data.type },
-        this.helperDateService.create()
-    ),
-];
-const created = await this.roleRepository.create(roleId, data);
-
-this.activityLogDomain.stagePrepared(events);
-```
-
-`userLoginFailed` is prepared with an explicit target `userId`, the same user as `createdBy`, empty metadata, and `onError: true`:
-
-```typescript
-const events = [
-    this.activityLogDomain.prepare({
-        action: EnumActivityLogAction.userLoginFailed,
-        userId,
-        createdBy: userId,
-        onError: true,
+const activityLogs = [
+    this.prepareActivityLog(EnumActivityLogAction.adminRoleCreate, {
+        id: roleId,
+        name: body.name,
+        type: body.type,
+        isImmutable: false,
     }),
 ];
-await this.userRepository.increasePasswordAttempt(userId);
+const created = await this.roleService.createByAdmin(
+    roleId,
+    {
+        name: body.name,
+        description: body.description ?? null,
+        type: body.type,
+    },
+    { roleId: user.roleId, roleType: user.role.type }
+);
 
-this.activityLogDomain.stagePrepared(events);
+this.activityLogService.stagePrepared(activityLogs);
 ```
 
-Events prepared inside a transaction callback, after a write whose returned row the metadata needs, are returned from the callback and staged after the commit. `SessionDomain.revokeAllByAdmin` prepares its pair after the commit, because `sessionCount` exists only once the revoke has run.
+`userLoginFailed` is prepared with an explicit target `userId`, the same user as `createdBy`, and empty metadata:
 
-`onError: true` is set on:
+```typescript
+const failedLogs = [
+    this.activityLogService.prepare({
+        action: EnumActivityLogAction.userLoginFailed,
+        userId: attempt.user.id,
+        createdBy: attempt.user.id,
+    }),
+];
 
-- `userLoginFailed`
-- `userReachMaxPasswordAttempt` and `userRevokeAllSessions` on the lockout path
-- the five API key admin writes (status, name, dates, reset, delete)
+this.activityLogService.stagePrepared(failedLogs);
+```
 
-An API key admin write stages its row after the database write and before the cache delete, so a cache delete that fails and answers 500 still records the change. Every other event is success-only.
+Activity logs prepared inside a transaction callback, after a write whose returned row the metadata needs, are returned from the callback and staged after the commit.
+
+`SessionRevokeAllByAdminUseCase` prepares its pair after the revoke write, because `sessionCount` exists only once the revoke has run.
+
+The error path writes every staged row:
+
+- A row is staged after its write succeeded, so a failed write stages nothing.
+- A row staged before a later failure is still written. `userLoginFailed`, the lockout pair, and the five API key admin writes (status, name, dates, reset, delete) rely on it.
+- An API key admin write stages its row after the database write and before the cache delete, so a cache delete that fails and answers 500 still records the change.
 
 The contract's `user` value decides which user fields `prepare` accepts:
 
 | `user` | Row owner (`userId`) | `createdBy` | What `prepare` carries |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `payload` | The JWT user (`request.user.userId`), read by `ActivityLogInterceptor` and resolved at flush | The row owner | Neither `userId` nor `createdBy` |
 | `target` | The `userId` passed to `prepare` | The `createdBy` passed to `prepare`: the acting user, or the row's own user on a self or public path | Both `userId` and `createdBy` |
 
-A missing required field, or a user field passed to a `payload` action, throws `ActivityLogContractInvalidException`. The contract's `workspace` value works the same way: `payload` reads the current workspace from the request store, `target` takes the staged `workspaceId`, and `none` stores `null`.
+A missing required field, or a user field passed to a `payload` action, throws `ActivityLogContractInvalidException`.
 
-Request context (IP, user agent, geo) is read at flush from `RequestLogStoreKey`, filled once per request by `RequestRequestLogMiddleware`. See [Security and Middleware][ref-doc-security-and-middleware].
+The contract's `workspace` value works the same way:
+
+- `payload` reads the current workspace from the request store.
+- `target` takes the staged `workspaceId`.
+- `none` stores `null`.
+
+Request context (IP, user agent, geo) is read at flush from `RequestLogStoreKey`, filled once per request by `RequestRequestLogMiddleware`.
+
+See [Security and Middleware][ref-doc-security-and-middleware].
 
 ## Actor and target rows
 
-When one user acts on another user, the domain prepares two rows:
+When one user acts on another user, the use case prepares two rows:
 
 - **Actor row.** Uses the action the actor performed and belongs to the actor.
 - **Target row.** Uses the paired `…ByAdmin`, `…ByOwner`, or `…ByInvitee` action (or `userBlocked` / `userUpdateStatus` for a status change), has contract `user = target`, and belongs to the affected user, with `createdBy` set to the actor.
 
-When the actor and the affected user are the same person, the domain prepares the actor row only; each call site makes that comparison itself.
+A sign-in on a device other users hold is the one action that writes a target row with no actor row (see Device sign-in below).
+
+When the actor and the affected user are the same person:
+
+- The use case prepares the actor row only.
+- Each use case makes that comparison itself.
 
 ```mermaid
 flowchart TD
-    A[Domain handles a mutation on another user] --> B["prepare actor row<br/>plain action, metadata.targetUserId"]
+    A[Use case handles a mutation on another user] --> B["prepare actor row<br/>plain action, metadata.targetUserId"]
     B --> C{"affected user<br/>= actor?"}
     C -->|yes| E[Actor row only]
     C -->|no| D["prepare target row<br/>paired action, userId = affected user,<br/>createdBy = actor, metadata.actorUserId"]
     D --> G[write, then stagePrepared]
     E --> G
-    G --> F[ActivityLogInterceptor flushes every staged row in one transaction]
+    G --> F[ActivityLogInterceptor flushes every staged row as one createMany job]
 ```
 
 | Actor action (row of the actor) | Target action (row of the affected user) | Affected user |
-|---|---|---|
+| --- | --- | --- |
 | `adminUserCreate` | `userCreatedByAdmin` | The new user |
 | `adminUserImport` | `userCreatedByAdmin`, one row per imported user | Each new user |
 | `adminUserUpdateStatus` | `userBlocked` (status `blocked`), `userUpdateStatus` (any other status) | The updated user |
@@ -199,6 +290,7 @@ flowchart TD
 | `workspaceMemberRemoved` | `workspaceMemberRemovedByAdmin` | The removed member |
 | `workspaceOwnershipTransferred` | `workspaceOwnershipTransferredByOwner` | The new owner |
 | `workspaceInviteCreated` | `workspaceInviteCreatedByAdmin` | The active account whose email matches the invite |
+| `workspaceInviteResent` | `workspaceInviteResentByAdmin` | The active account whose email matches the invite |
 | `workspaceInviteRevoked` | `workspaceInviteRevokedByAdmin` | The active account whose email matches the invite |
 | `workspaceInviteAccepted` | `workspaceInviteAcceptedByInvitee` | The inviter |
 | `workspaceJoinAccepted` | `workspaceJoinAcceptedByAdmin` | The requester |
@@ -207,28 +299,84 @@ flowchart TD
 | `projectMemberRoleUpdated` | `projectMemberRoleUpdatedByAdmin` | The target member |
 | `projectMemberRemoved` | `projectMemberRemovedByAdmin` | The removed member |
 
-- **Invites:** The invite actor row is written whether or not the email has an account. The target row is written only when the email belongs to an active account.
-- **Admin onboarding:** Admin create and admin import also write `userSendVerificationEmail` and `workspaceCreatedByAdmin` (the personal workspace) for each new user. Every per-user row belongs to the new user and has `createdBy` set to the admin; only `adminUserCreate` / `adminUserImport` belongs to the admin. Sign-up writes `userSignedUp` and `userSendVerificationEmail`, social sign-up writes `userCreated`, and both write `workspaceCreated` for a personal workspace or the `workspaceInviteAccepted` pair for an invite token, with the new user as `createdBy`.
-- **Self targets:** The admin single-session revoke and the admin device removal accept the admin's own account and then write the actor row only. Status change, temporary password, two-factor reset, and revoke-all reject the admin's own account with `UserNotSelfException` (400, `51001`) and write no row.
-- **Single-row actions:** An action whose actor is the affected user writes one row under its plain name: every self-service `user…` action, `userRemoveDevice`, `userRevokeSession`, `workspaceCreated`, `workspaceUpdated`, `workspaceVisibilityUpdated`, `workspaceDeleted`, `workspaceSwitched`, `workspaceJoinRequested`, `workspaceMemberLeft`, `projectCreated`, `projectUpdated`, `projectDeleted`, and `projectMemberLeft`. An invite resend writes no row.
-- **Revoke rows first:** An admin status change to `blocked` or `inactive` stages the revoke-all pair (`adminSessionRevokeAll` / `userRevokeAllSessionsByAdmin`, only when at least one session was revoked) before the status pair. Account self-deletion stages `userRevokeAllSessions` and then `userDeleteSelf`; the credential lockout stages `userRevokeAllSessions` and then `userReachMaxPasswordAttempt`. Both paths write both rows every time, including when no session was revoked. The password and two-factor paths that revoke every session write no revoke-all row.
-- **Counting:** `ActivityLogWorkspaceVolumeContract` lists the eleven workspace and project target actions. Workspace volume metrics leave them out, so each paired workspace event counts once. `workspaceCreatedByAdmin` is not on the list, because the admin's row for the same event carries no workspace. See [Analytic][ref-doc-analytic].
+**Invites**
+
+- The invite actor row is written whether or not the email has an account.
+- The target row is written only when the email belongs to an active account.
+
+**Admin onboarding**
+
+- Admin create and admin import also write `workspaceCreatedByAdmin` (the personal workspace) for each new user.
+- Every per-user row belongs to the new user and has `createdBy` set to the admin.
+- Only `adminUserCreate` / `adminUserImport` belongs to the admin.
+- Sign-up writes `userSignedUp` and `userSendVerificationEmail`.
+- Social sign-up writes `userCreated`.
+- Both sign-up paths write `workspaceCreated` for a personal workspace, or the `workspaceInviteAccepted` pair for an invite token, with the new user as `createdBy`.
+
+**Self targets**
+
+- The admin single-session revoke and the admin device removal accept the admin's own account and then write the actor row only.
+- Status change, temporary password, two-factor reset, and revoke-all reject the admin's own account with `UserNotSelfException` (400, `51001`) and write no row.
+
+**Single-row actions**
+
+An action whose actor is the affected user writes one row under its plain name:
+
+- every self-service `user…` action
+- `userRemoveDevice`, `userRevokeSession`
+- `workspaceCreated`, `workspaceUpdated`, `workspaceVisibilityUpdated`, `workspaceDeleted`, `workspaceSwitched`
+- `workspaceJoinRequested`, `workspaceMemberLeft`
+- `projectCreated`, `projectUpdated`, `projectDeleted`, `projectMemberLeft`
+
+A credential login with the right password on an unverified account writes `userSendVerificationEmail` for that user, only when the email is sent. The row is written although the login answers `UserEmailNotVerifiedException` (403).
+
+**Revoke rows first**
+
+- An admin status change to `blocked` or `inactive` stages the revoke-all pair (`adminSessionRevokeAll` / `userRevokeAllSessionsByAdmin`, only when at least one session was revoked) before the status pair.
+- Account self-deletion stages `userRevokeAllSessions`, then `userDeleteSelf`.
+- The credential lockout stages `userRevokeAllSessions`, then `userReachMaxPasswordAttempt`.
+- The two-factor lockout stages `userRevokeAllSessions`, then `userReachMaxTwoFactorAttempt`.
+- Self-deletion and each lockout write both rows every time, including when no session was revoked.
+- The password and two-factor paths that revoke every session write no revoke-all row.
+
+**Device sign-in**
+
+- A sign-in on a device revokes the live sessions of every other user whose ownership of that device is not revoked. The device can have several such users.
+- The sign-in writes target rows only. It has no actor row for the revocation, so `userRevokeSessionByDeviceLogin` has no entry in the actor and target table. The signing-in user keeps the login row of the sign-in itself (credential or social login, or the row staged after two-factor verification), which does not mention the revocation.
+- Each affected user gets one `userRevokeSessionByDeviceLogin` row, and only when the sign-in revoked at least one live session of that user. An owner with no live session gets no row and no purge job.
+- The row fields:
+    - `userId`: the affected user
+    - `createdBy`: the signing-in user
+    - `metadata.actorUserId`: the signing-in user's id
+    - `metadata.sessionCount`: the number of that user's sessions this sign-in revoked
+    - workspace: none (`workspaceId` is `null`), because the contract sets `user = target` and `workspace = none`
+- The rows are staged after the purge jobs are enqueued, and the interceptor flushes them with the request.
+
+**Counting**
+
+- `ActivityLogWorkspaceVolumeContract` lists the twelve workspace and project target actions.
+- Workspace volume metrics leave them out, so each paired workspace action counts once.
+- `workspaceCreatedByAdmin` is not on the list, because the admin's row for the same action carries no workspace.
+- See [Analytic][ref-doc-analytic].
 
 ## Data
 
 Each flushed log contains:
 
-- **userId** - the user the entry belongs to: the JWT user for a `payload` action, the staged `userId` for a `target` action
-- **user** - the same user as `userId`, embedded on read
-- **createdBy** - the user who performed the action (see [Actor and target rows](#actor-and-target-rows)); nullable in the response
-- **action** - `EnumActivityLogAction`, a Prisma enum; a new member reaches PostgreSQL through `pnpm db:migrate`
-- **description** - localized text from `ActivityLogUtil.getDescription` (`activityLog.<action>`)
-- **ipAddress** - from the request store `IRequestLog` (may be null)
-- **userAgent** - from the request store `IRequestLog` (JSON)
-- **geoLocation** - from the request store `IRequestLog` (JSON, may be null)
-- **metadata** - prepared metadata (JSON, null when empty)
-- **workspaceId** - from the staged value, the current workspace store, or null when the contract is `workspace = none` (as with `userLoginFailed`)
-- **createdAt** - timestamp
+- **userId**: the user the entry belongs to: the JWT user for a `payload` action, the staged `userId` for a `target` action
+- **user**: the same user as `userId`, embedded on read
+- **createdBy**: the user who performed the action (see [Actor and target rows](#actor-and-target-rows))
+    - Nullable in the response
+- **action**: `EnumActivityLogAction`, a Prisma enum
+    - A new member reaches MongoDB through `pnpm db:migrate`
+- **description**: localized text from `ActivityLogUtil.getDescription` (`activityLog.<action>`)
+- **ipAddress**: from the request store `IRequestLog` (may be null)
+- **userAgent**: from the request store `IRequestLog` (JSON)
+- **geoLocation**: from the request store `IRequestLog` (JSON, may be null)
+- **metadata**: prepared metadata (JSON, null when empty)
+- **workspaceId**: from the staged value, the current workspace store, or null when the contract is `workspace = none` (as with `userLoginFailed`)
+- **id**: drawn at flush with `DatabaseUtil.createId()`, so a retried job recognises a row it already wrote
+- **createdAt**: one timestamp per flush, shared by its rows
 
 ### Metadata
 
@@ -236,32 +384,44 @@ Each flushed log contains:
 type IActivityLogMetadata = Record<string, string | number | boolean | Date>;
 ```
 
-Stored as `null` when empty. Each action's schema is a strict zod object, so a key the schema does not declare fails the contract when the event is prepared. Every id in the schemas below is required.
+- Stored as `null` when empty.
+- Each action's schema is a strict zod object, so a key the schema does not declare fails the contract when the activity log is prepared.
+- Every id in the schemas below is required.
 
 | Actions | Keys |
-|---|---|
+| --- | --- |
 | `workspaceMemberRoleUpdated`, `workspaceMemberRemoved`, `workspaceOwnershipTransferred`, `workspaceInviteAccepted`, `workspaceJoinAccepted`, `workspaceJoinRejected`, `projectMemberAssigned`, `projectMemberRoleUpdated`, `projectMemberRemoved` | `targetUserId` |
-| `workspaceInviteCreated`, `workspaceInviteRevoked` | `workspaceInviteId`, plus `targetUserId` when the email belongs to an active account |
-| The eleven workspace and project target actions, `workspaceCreatedByAdmin` | `actorUserId` |
+| `workspaceInviteCreated`, `workspaceInviteResent`, `workspaceInviteRevoked` | `workspaceInviteId`, plus `targetUserId` when the email belongs to an active account |
+| The twelve workspace and project target actions, `workspaceCreatedByAdmin` | `actorUserId` |
 | `adminUserCreate`, `adminUserUpdateStatus`, `adminUserUpdatePassword`, `adminUserResetTwoFactor` | `targetUserId`, `targetUsername`, `timestamp` |
 | `userCreatedByAdmin`, `userBlocked`, `userUpdateStatus`, `userUpdatePasswordByAdmin`, `userResetTwoFactorByAdmin` | `actorUserId`, `timestamp` |
 | `adminUserImport` | `userCount` |
 | `adminSessionRevoke` | `targetUserId`, `targetUsername`, `timestamp`, `sessionId` |
 | `userRevokeSessionByAdmin` | `actorUserId`, `timestamp`, `sessionId` |
 | `adminSessionRevokeAll` | `targetUserId`, `sessionCount` |
-| `userRevokeAllSessionsByAdmin` | `actorUserId`, `sessionCount` |
+| `userRevokeAllSessionsByAdmin`, `userRevokeSessionByDeviceLogin` | `actorUserId`, `sessionCount` |
 | `adminDeviceRemove` | `targetUserId`, `targetUsername`, `timestamp`, `deviceOwnershipId`, `deviceId`, `sessionCount` |
 | `userRemoveDeviceByAdmin` | `actorUserId`, `timestamp`, `deviceOwnershipId`, `deviceId`, `sessionCount` |
 | `userRemoveDevice` | `deviceOwnershipId`, `deviceId`, `sessionCount` |
 | API key, role, term policy, and notification setting actions | Their own schemas; every key optional |
 | Every other action | None |
 
-The response returns `metadata` through `ActivityLogMetadataResponseSchema`, which declares every key above as optional, types `timestamp` as a string, and is `null` when nothing was stored. A stored key the schema does not declare is stripped from the response. The schema lives in `dtos/response/activity-log.metadata.response.dto.ts`.
+The response returns `metadata` through `ActivityLogMetadataResponseSchema` (`dtos/response/activity-log.metadata.response.dto.ts`):
+
+- It declares every key above as optional.
+- It types `timestamp` as a string.
+- It is `null` when nothing was stored.
+- It strips a stored key the schema does not declare.
 
 ### Description
 
-Built by `ActivityLogUtil.getDescription`, which resolves `activityLog.<action>` via `MessageService.setMessage`, passing the prepared metadata for placeholder interpolation. The text is rendered at flush and stored on the row. Strings live in `src/languages/<lang>/activityLog.json`. Target rows use fixed text with no placeholder ("Your workspace role has been updated"); the admin actor rows that carry `targetUsername` interpolate it ("Status of user {targetUsername} has been updated").
+`ActivityLogUtil.getDescription` builds it:
 
+- It resolves `activityLog.<action>` via `MessageService.setMessage`, passing the prepared metadata for placeholder interpolation.
+- The text is rendered at flush and stored on the row.
+- Strings live in `src/languages/<lang>/activityLog.json`.
+- Target rows use fixed text with no placeholder ("Your workspace role has been updated").
+- The admin actor rows that carry `targetUsername` interpolate it ("Status of user {targetUsername} has been updated").
 
 <!-- REFERENCES -->
 
@@ -272,3 +432,4 @@ Built by `ActivityLogUtil.getDescription`, which resolves `activityLog.<action>`
 [ref-doc-pagination]: pagination.md
 [ref-doc-security-and-middleware]: security-and-middleware.md
 [ref-doc-analytic]: analytic.md
+[ref-doc-cache]: cache.md

@@ -1,31 +1,21 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
-import { validateEmail } from '@common/request/validations/request.custom-email.validation';
+import { RequestEmailSchema } from '@common/request/validations/request.email.validation';
 import {
     EnumProjectMemberRole,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 
-/**
- * Validates the body for inviting an email to the workspace.
- * @public
- */
+/** @public */
 export const WorkspaceInviteCreateRequestSchema = z.strictObject({
     email: z
         .string()
         .trim()
         .toLowerCase()
-        .superRefine((value, ctx) => {
-            const validation = validateEmail(value);
-            if (!validation.validated) {
-                ctx.addIssue({
-                    code: 'custom',
-                    message: validation.messagePath,
-                });
-            }
-        })
+        .max(100)
+        .pipe(RequestEmailSchema)
         .meta({
             description: 'Email of the person being invited',
             example: faker.internet.email(),
@@ -55,10 +45,7 @@ export const WorkspaceInviteCreateRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Body for inviting an email to the workspace.
- * @public
- */
+/** @public */
 export type WorkspaceInviteCreateRequestDto = z.infer<
     typeof WorkspaceInviteCreateRequestSchema
 >;

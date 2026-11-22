@@ -4,21 +4,19 @@ import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { ResponsePagination } from '@common/response/decorators/response.decorator';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
+    AuthJwtAccessContext,
     AuthJwtAccessProtected,
-    AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import { PasswordHistoryResponseSchema } from '@modules/password-history/dtos/response/password-history.response.dto';
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
-import { PasswordHistoryHttpService } from '@modules/password-history/services/password-history.http.service';
+import { PasswordHistoryGetListCursorUseCase } from '@modules/password-history/use-cases/password-history.get-list-cursor.use-case';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Query } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.shared.user.passwordHistory')
 @Controller({
@@ -27,7 +25,7 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class PasswordHistorySharedController {
     constructor(
-        private readonly passwordHistoryHttpService: PasswordHistoryHttpService
+        private readonly passwordHistoryGetListCursorUseCase: PasswordHistoryGetListCursorUseCase
     ) {}
 
     @Doc({ summary: 'get all user password histories' })
@@ -36,15 +34,18 @@ export class PasswordHistorySharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Query({ schema: PasswordHistorySharedListRequestSchema })
-        query: PasswordHistorySharedListRequestDto,
-        @AuthJwtPayload('userId') userId: string
+        query: PasswordHistorySharedListRequestDto
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
-        return this.passwordHistoryHttpService.getListCursor(userId, query);
+        return this.passwordHistoryGetListCursorUseCase.execute(
+            authContext,
+            query
+        );
     }
 }

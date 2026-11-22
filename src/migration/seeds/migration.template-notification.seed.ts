@@ -1,16 +1,13 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { NotificationTemplateAccountDomain } from '@modules/notification/domains/notification.template.account.domain';
-import { NotificationTemplateSecurityDomain } from '@modules/notification/domains/notification.template.security.domain';
-import { NotificationTemplateTermPolicyDomain } from '@modules/notification/domains/notification.template.term-policy.domain';
-import { NotificationTemplateWorkspaceDomain } from '@modules/notification/domains/notification.template.workspace.domain';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import { NotificationTemplateService } from '@modules/notification/services/notification.template.service';
 import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Imports email notification templates into AWS SES, skipping any already present. Throws if SES is uninitialized.
- */
 @Command({
     name: 'templateEmailNotification',
     description: 'Seed/Remove Emails',
@@ -25,13 +22,11 @@ export class MigrationTemplateEmailNotificationSeed
     );
 
     constructor(
-        private readonly notificationTemplateAccountDomain: NotificationTemplateAccountDomain,
-        private readonly notificationTemplateSecurityDomain: NotificationTemplateSecurityDomain,
-        private readonly notificationTemplateTermPolicyDomain: NotificationTemplateTermPolicyDomain,
-        private readonly notificationTemplateWorkspaceDomain: NotificationTemplateWorkspaceDomain,
+        protected readonly cacheService: CacheService,
+        private readonly notificationTemplateService: NotificationTemplateService,
         private readonly awsSESService: AwsSESService
     ) {
-        super();
+        super(cacheService);
     }
 
     async seed(): Promise<void> {
@@ -39,11 +34,11 @@ export class MigrationTemplateEmailNotificationSeed
 
         const isSESInitialized = this.awsSESService.isInitialized();
         if (!isSESInitialized) {
-            this.logger.error(
-                'AWS SES is not initialized. Cannot seed email templates.'
+            this.logger.warn(
+                'AWS SES is not configured. Skipping email template seed.'
             );
 
-            throw new Error('AWS SES is not initialized');
+            return;
         }
 
         const [
@@ -56,41 +51,89 @@ export class MigrationTemplateEmailNotificationSeed
             tempPasswordEmail,
             verificationEmail,
             welcomeEmail,
-            resetTwoFactorByAdminEmail,
+            resetMfaByAdminEmail,
             newDeviceLoginEmail,
+            loginLockedEmail,
             publishTermPolicyEmail,
+            userImportResultEmail,
             resetPasswordEmail,
             workspaceInviteEmail,
             workspaceJoinRequestEmail,
             workspaceJoinAcceptedEmail,
             workspaceJoinRejectedEmail,
+            reauthenticationOtpEmail,
         ] = await Promise.all([
-            this.notificationTemplateSecurityDomain.emailGetChangePassword(),
-            this.notificationTemplateAccountDomain.emailGetWelcomeSocial(),
-            this.notificationTemplateAccountDomain.emailGetWelcomeByAdmin(),
-            this.notificationTemplateAccountDomain.emailGetVerifiedEmail(),
-            this.notificationTemplateSecurityDomain.emailGetForgotPassword(),
-            this.notificationTemplateAccountDomain.emailGetVerifiedMobileNumber(),
-            this.notificationTemplateSecurityDomain.emailGetTemporaryPasswordByAdmin(),
-            this.notificationTemplateAccountDomain.emailGetVerificationEmail(),
-            this.notificationTemplateAccountDomain.emailGetWelcome(),
-            this.notificationTemplateSecurityDomain.emailGetResetTwoFactorByAdmin(),
-            this.notificationTemplateSecurityDomain.emailGetNewDeviceLogin(),
-            this.notificationTemplateTermPolicyDomain.emailGetPublishTermPolicy(),
-            this.notificationTemplateSecurityDomain.emailGetResetPassword(),
-            this.notificationTemplateWorkspaceDomain.emailGetWorkspaceInvite(),
-            this.notificationTemplateWorkspaceDomain.emailGetWorkspaceJoinRequest(),
-            this.notificationTemplateWorkspaceDomain.emailGetWorkspaceJoinAccepted(),
-            this.notificationTemplateWorkspaceDomain.emailGetWorkspaceJoinRejected(),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.changePassword
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.welcomeSocial
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.welcomeByAdmin
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.verifiedEmail
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.forgotPassword
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.verifiedMobileNumber
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.temporaryPasswordByAdmin
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.verificationEmail
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.welcome
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.resetMfaByAdmin
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.newDeviceLogin
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.loginLocked
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.publishTermPolicy
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.userImportResult
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.resetPassword
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.workspaceInvite
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.workspaceJoinRequest
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.workspaceJoinAccepted
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.workspaceJoinRejected
+            ),
+            this.notificationTemplateService.emailGet(
+                EnumNotificationKind.reauthenticationOtp
+            ),
         ]);
 
-        const promises: Promise<boolean>[] = [];
+        const promises: Promise<void>[] = [];
         if (!changePasswordEmail) {
             this.logger.log(
                 'Change Password Email template missing, importing...'
             );
             const changePasswordEmailImport =
-                this.notificationTemplateSecurityDomain.emailImportChangePassword();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.changePassword
+                );
             promises.push(changePasswordEmailImport);
         }
 
@@ -99,7 +142,9 @@ export class MigrationTemplateEmailNotificationSeed
                 'Welcome Social Email template missing, importing...'
             );
             const welcomeSocialEmailImport =
-                this.notificationTemplateAccountDomain.emailImportWelcomeSocial();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.welcomeSocial
+                );
             promises.push(welcomeSocialEmailImport);
         }
 
@@ -108,7 +153,9 @@ export class MigrationTemplateEmailNotificationSeed
                 'Welcome By Admin Email template missing, importing...'
             );
             const welcomeByAdminEmailImport =
-                this.notificationTemplateAccountDomain.emailImportWelcomeByAdmin();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.welcomeByAdmin
+                );
             promises.push(welcomeByAdminEmailImport);
         }
 
@@ -117,7 +164,9 @@ export class MigrationTemplateEmailNotificationSeed
                 'Email Verified Email template missing, importing...'
             );
             const emailVerifiedEmailImport =
-                this.notificationTemplateAccountDomain.emailImportVerifiedEmail();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.verifiedEmail
+                );
             promises.push(emailVerifiedEmailImport);
         }
 
@@ -126,7 +175,9 @@ export class MigrationTemplateEmailNotificationSeed
                 'Forgot Password Email template missing, importing...'
             );
             const forgotPasswordEmailImport =
-                this.notificationTemplateSecurityDomain.emailImportForgotPassword();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.forgotPassword
+                );
             promises.push(forgotPasswordEmailImport);
         }
 
@@ -135,7 +186,9 @@ export class MigrationTemplateEmailNotificationSeed
                 'Mobile Number Verified Email template missing, importing...'
             );
             const mobileNumberVerifiedEmailImport =
-                this.notificationTemplateAccountDomain.emailImportVerifiedMobileNumber();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.verifiedMobileNumber
+                );
             promises.push(mobileNumberVerifiedEmailImport);
         }
 
@@ -144,7 +197,9 @@ export class MigrationTemplateEmailNotificationSeed
                 'Temporary Password Email template missing, importing...'
             );
             const tempPasswordEmailImport =
-                this.notificationTemplateSecurityDomain.emailImportTemporaryPasswordByAdmin();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.temporaryPasswordByAdmin
+                );
             promises.push(tempPasswordEmailImport);
         }
 
@@ -153,24 +208,41 @@ export class MigrationTemplateEmailNotificationSeed
                 'Verification Email template missing, importing...'
             );
             const verificationEmailImport =
-                this.notificationTemplateAccountDomain.emailImportVerificationEmail();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.verificationEmail
+                );
             promises.push(verificationEmailImport);
         }
 
         if (!welcomeEmail) {
             this.logger.log('Welcome Email template missing, importing...');
             const welcomeEmailImport =
-                this.notificationTemplateAccountDomain.emailImportWelcome();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.welcome
+                );
             promises.push(welcomeEmailImport);
         }
 
-        if (!resetTwoFactorByAdminEmail) {
+        if (!resetMfaByAdminEmail) {
             this.logger.log(
                 'Reset Two Factor By Admin Email template missing, importing...'
             );
-            const resetTwoFactorByAdminEmailImport =
-                this.notificationTemplateSecurityDomain.emailImportResetTwoFactorByAdmin();
-            promises.push(resetTwoFactorByAdminEmailImport);
+            const resetMfaByAdminEmailImport =
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.resetMfaByAdmin
+                );
+            promises.push(resetMfaByAdminEmailImport);
+        }
+
+        if (!loginLockedEmail) {
+            this.logger.log(
+                'Login Locked Email template missing, importing...'
+            );
+            const loginLockedEmailImport =
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.loginLocked
+                );
+            promises.push(loginLockedEmailImport);
         }
 
         if (!newDeviceLoginEmail) {
@@ -178,7 +250,9 @@ export class MigrationTemplateEmailNotificationSeed
                 'New Device Login Email template missing, importing...'
             );
             const newDeviceLoginEmailImport =
-                this.notificationTemplateSecurityDomain.emailImportNewDeviceLogin();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.newDeviceLogin
+                );
             promises.push(newDeviceLoginEmailImport);
         }
 
@@ -187,8 +261,21 @@ export class MigrationTemplateEmailNotificationSeed
                 'Publish Term Policy Email template missing, importing...'
             );
             const publishTermPolicyEmailImport =
-                this.notificationTemplateTermPolicyDomain.emailImportPublishTermPolicy();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.publishTermPolicy
+                );
             promises.push(publishTermPolicyEmailImport);
+        }
+
+        if (!userImportResultEmail) {
+            this.logger.log(
+                'User Import Result Email template missing, importing...'
+            );
+            const userImportResultEmailImport =
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.userImportResult
+                );
+            promises.push(userImportResultEmailImport);
         }
 
         if (!resetPasswordEmail) {
@@ -196,7 +283,9 @@ export class MigrationTemplateEmailNotificationSeed
                 'Reset Password Email template missing, importing...'
             );
             const resetPasswordEmailImport =
-                this.notificationTemplateSecurityDomain.emailImportResetPassword();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.resetPassword
+                );
             promises.push(resetPasswordEmailImport);
         }
 
@@ -205,7 +294,9 @@ export class MigrationTemplateEmailNotificationSeed
                 'Workspace Invite Email template missing, importing...'
             );
             const workspaceInviteEmailImport =
-                this.notificationTemplateWorkspaceDomain.emailImportWorkspaceInvite();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.workspaceInvite
+                );
             promises.push(workspaceInviteEmailImport);
         }
 
@@ -214,7 +305,9 @@ export class MigrationTemplateEmailNotificationSeed
                 'Workspace Join Request Email template missing, importing...'
             );
             const workspaceJoinRequestEmailImport =
-                this.notificationTemplateWorkspaceDomain.emailImportWorkspaceJoinRequest();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.workspaceJoinRequest
+                );
             promises.push(workspaceJoinRequestEmailImport);
         }
 
@@ -223,7 +316,9 @@ export class MigrationTemplateEmailNotificationSeed
                 'Workspace Join Accepted Email template missing, importing...'
             );
             const workspaceJoinAcceptedEmailImport =
-                this.notificationTemplateWorkspaceDomain.emailImportWorkspaceJoinAccepted();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.workspaceJoinAccepted
+                );
             promises.push(workspaceJoinAcceptedEmailImport);
         }
 
@@ -232,16 +327,31 @@ export class MigrationTemplateEmailNotificationSeed
                 'Workspace Join Rejected Email template missing, importing...'
             );
             const workspaceJoinRejectedEmailImport =
-                this.notificationTemplateWorkspaceDomain.emailImportWorkspaceJoinRejected();
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.workspaceJoinRejected
+                );
             promises.push(workspaceJoinRejectedEmailImport);
+        }
+
+        if (!reauthenticationOtpEmail) {
+            this.logger.log(
+                'Reauthentication Otp Email template missing, importing...'
+            );
+            const reauthenticationOtpEmailImport =
+                this.notificationTemplateService.emailImport(
+                    EnumNotificationKind.reauthenticationOtp
+                );
+            promises.push(reauthenticationOtpEmailImport);
         }
 
         if (promises.length > 0) {
             try {
                 await Promise.all(promises);
             } catch (error: unknown) {
-                this.logger.error(error, 'Error seeding emails');
-                throw error;
+                throw new AppUnknownException(
+                    error,
+                    'Seeding email templates failed'
+                );
             }
         }
 
@@ -255,27 +365,72 @@ export class MigrationTemplateEmailNotificationSeed
 
         try {
             await Promise.all([
-                this.notificationTemplateSecurityDomain.emailDeleteChangePassword(),
-                this.notificationTemplateAccountDomain.emailDeleteWelcomeSocial(),
-                this.notificationTemplateAccountDomain.emailDeleteWelcomeByAdmin(),
-                this.notificationTemplateAccountDomain.emailDeleteVerifiedEmail(),
-                this.notificationTemplateSecurityDomain.emailDeleteForgotPassword(),
-                this.notificationTemplateAccountDomain.emailDeleteVerifiedMobileNumber(),
-                this.notificationTemplateSecurityDomain.emailDeleteTemporaryPasswordByAdmin(),
-                this.notificationTemplateAccountDomain.emailDeleteVerificationEmail(),
-                this.notificationTemplateAccountDomain.emailDeleteWelcome(),
-                this.notificationTemplateSecurityDomain.emailDeleteResetTwoFactorByAdmin(),
-                this.notificationTemplateSecurityDomain.emailDeleteNewDeviceLogin(),
-                this.notificationTemplateTermPolicyDomain.emailDeletePublishTermPolicy(),
-                this.notificationTemplateSecurityDomain.emailDeleteResetPassword(),
-                this.notificationTemplateWorkspaceDomain.emailDeleteWorkspaceInvite(),
-                this.notificationTemplateWorkspaceDomain.emailDeleteWorkspaceJoinRequest(),
-                this.notificationTemplateWorkspaceDomain.emailDeleteWorkspaceJoinAccepted(),
-                this.notificationTemplateWorkspaceDomain.emailDeleteWorkspaceJoinRejected(),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.changePassword
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.welcomeSocial
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.welcomeByAdmin
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.verifiedEmail
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.forgotPassword
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.verifiedMobileNumber
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.temporaryPasswordByAdmin
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.verificationEmail
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.welcome
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.resetMfaByAdmin
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.newDeviceLogin
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.loginLocked
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.publishTermPolicy
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.userImportResult
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.resetPassword
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.workspaceInvite
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.workspaceJoinRequest
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.workspaceJoinAccepted
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.workspaceJoinRejected
+                ),
+                this.notificationTemplateService.emailDelete(
+                    EnumNotificationKind.reauthenticationOtp
+                ),
             ]);
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing emails');
-            throw error;
+            throw new AppUnknownException(
+                error,
+                'Removing email templates failed'
+            );
         }
 
         this.logger.log('Emails removed successfully.');

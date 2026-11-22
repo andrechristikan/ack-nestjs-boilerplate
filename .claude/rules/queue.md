@@ -1,100 +1,46 @@
-# Queues — BullMQ
+---
+paths:
+    - '**/processors/**'
+    - '**/*.processor*.ts'
+    - 'src/common/queue/**'
+    - '**/queues/**'
+    - '**/*.process-*.use-case.ts'
+    - 'src/modules/notification/**'
+---
 
-Redis `db:1` carries BullMQ; `db:0` carries the cache (`rules/cache.md`). **One Redis
-connection, shared** — never open a second. Flow narrative: `docs/queue.md` — explorer or
-planner.
+# Queues
+
+BullMQ runs on two clients `RedisModule.forRoot()` owns on `redis.queue.url` (`cache.md`); never open another Redis client. Every queue inherits `QueueModule.forRoot()`'s producer client (`RedisQueueClient`, `<app>-<env>:queue`): `enableOfflineQueue: false`, `redis.queue.connectTimeoutInMs`, `redis.queue.maxRetriesPerRequest`, no `keyPrefix`; an enqueue against a down Redis rejects fast. Every worker runs on `RedisQueueWorkerClient` (`<app>-<env>:processor`), which keeps the offline queue on and `maxRetriesPerRequest: null`.
 
 ## Where things live
 
-- **Framework layer** — `src/queues/`: `EnumQueue` + `EnumQueuePriority`, `@QueueProcessor()` decorator, `QueueProcessorBase`, `QueueException`, `IQueueResponse`. It holds no module that provides a processor.
-- **`queue.module.ts`** — `QueueModule.forRoot()` in `common.module.ts`. Holds the two
-  `BullModule.forRootAsync` connections (`QueueConfigKey` producer, `QueueProcessorConfigKey`
-  worker). A feature never calls `forRoot` and never passes `connection` to
-  `registerQueueAsync`.
-- **`<feature>.domain.module.ts`** — `BullModule.registerQueueAsync({ name: EnumQueue.<member>,
-  configKey: QueueConfigKey, useClass: <Feature>[<Concern>]QueueFactory })` in `imports`, and
-  `BullModule` in `exports`. Queue tokens are the `name` values. The factory lives at
-  `factories/<module>[.<concern>].queue.factory.ts` and implements `RegisterQueueOptionsFactory`;
-  it sets job defaults (`attempts`, `backoff`, `keepLogs`, remove ages) and never sets
-  `connection`.
-- **`<module>/queues/<module>[.<concern>].queue.ts`** — one `@Injectable()` queue class per registered queue, holding the `@InjectQueue` for it. Provided and exported by `<feature>.domain.module.ts`. No header interface — unlike a repository (`rules/architecture.md`).
-- **`<feature>.processor.module.ts`** — the feature's own module, providing its processor classes beside the `*.processor.service.ts` they dispatch to. It imports `<Feature>DomainModule` when that feature is not `@Global()` (`rules/nest-wiring.md`).
-- **`src/router/processor/router.processor.module.ts`** — imports every `<Feature>ProcessorModule` and provides nothing itself. Do not invent a second aggregation site (`rules/router.md`).
-- **Processor FILES live in their owning feature module** (`<module>/processors/<module>.<concern>.processor.ts`), and so does their registration. A `processors/` folder under `src/queues/` is drift.
-
-## Writing a processor
-
-```ts
-@QueueProcessor(EnumQueue.notificationEmail, { limiter: { … } })
-export class NotificationEmailProcessor extends QueueProcessorBase {
-    constructor(
-        private readonly notificationEmailProcessorService: NotificationEmailProcessorService,
-        sentryService: SentryService
-    ) {
-        super(sentryService);
-    }
-
-    protected async handle(job: Job): Promise<IQueueResponse> { … }
-}
-```
-
-- Always `extends QueueProcessorBase`. Its constructor takes `SentryService`, so every processor declares a `sentryService: SentryService` parameter (no access modifier, value import) and passes it to `super(sentryService)`. A processor extending `WorkerHost` directly loses the base `process` template and the `failed` hook.
-- **`QueueProcessorBase` owns the concrete `process(job)`.** It is the template: try, await `handle`, catch. Subclasses implement `protected abstract handle(job): Promise<IQueueResponse>` and never override `process`.
-- **`handle` is the dispatcher only.** It switches on `job.name` and awaits a `*.processor.service.ts` method. Real work stays in that service, the same way a controller stays a dispatcher (`rules/architecture.md`).
-- Always return `IQueueResponse` from `handle`. An ad-hoc `{ ok: false }` or `{ applied: true }` shape breaks the contract the base and the board rely on.
-- **Every service call inside `handle` is awaited** (`return await this.service.x(…)` or await into a `const` then return). A bare `return this.service.x()` is forbidden — rejection must settle under `handle` so feature remaps in that method run (`rules/code-style.md`).
-- **Feature remaps stay inside `handle`.** `NotificationEmailProcessor` maps `HelperDecryptFailedException` to BullMQ's `UnrecoverableError`: a payload that does not decrypt never will. Mapping is not logging; `handle` does not log-and-rethrow (`rules/logging.md`).
-- **The processor service owns no business rule.** It translates the payload and calls a domain, exactly as an HTTP service translates a DTO (`rules/architecture.md`). A rule written here is a rule the HTTP path does not apply.
-- Mark a non-fatal failure with `QueueException`'s fatal flag so a retryable error does not page anyone.
-- **A failure that no retry can fix is thrown as BullMQ's `UnrecoverableError`**, so BullMQ stops retrying and the base reports it at once.
-
-## Job logs (`job.log`)
-
-`QueueProcessorBase.process` writes BullMQ job logs (string lines) by default:
-
-- **Start** — process beginning.
-- **Input** — metadata only: `job.id`, `job.name`, `attemptsMade`, and `maxAttempts` from `job.opts.attempts`. **Never `job.data`.**
-- **Success** — finish line plus `JSON.stringify` of the returned `IQueueResponse`.
-- **Failure** — one failure line in the catch, before rethrow.
-
-If `job.log` itself throws, the base swallows that error (warn at most) and does not fail the job for a logging fault.
-
-Queue factories set `keepLogs` on `defaultJobOptions` so those lines are retained for the retention window.
-
-## Payloads
-
-- Payload interfaces are `I<Module><Action>Payload`, in `<module>/interfaces/<module>.interface.ts`. The kind word goes LAST. The envelope a job actually carries as `job.data` names its kind `Queue` — `INotificationEmailQueuePayload` — while the content shape it wraps keeps its own descriptive suffix (`rules/notification.md`).
-- Fields are camelCase, like everything else on a wire here.
-- **Rename freely, but drain first.** A queue name, job name, or payload field rename is safe to make and unsafe to deploy blind: jobs already sitting in Redis survive the deploy and reach a processor that no longer matches them. **Drain the queue before deploying the rename**, and say so in your hand-back (`rules/naming.md`).
+- `src/common/queue/`, the kit, holds `QueueModule.forRoot()` (`queue.module.ts`), whose one `BullModule.forRootAsync`, no config key, carries the producer client, `prefix`, and the shared `defaultJobOptions`; `@QueueProcessor()`; `QueueWorkerFactory` (`factories/queue.worker.factory.ts`); `QueueBase`, `QueueProcessorBase`, and `QueueWorkerBase` (`bases/`); `QueueException`, `IQueueResponse`; `EnumQueuePriority` and `EnumQueueJobState` (`enums/queue.enum.ts`).
+- The owning feature names each queue in `Enum<Module>Queue` (`<module>.enum.ts`, its value the Redis queue name) and registers them in `<module>.module.ts`: `imports: [BullModule.registerQueueAsync({ name: Enum<Module>Queue.<member>, useClass: <Module>[<Concern>]QueueFactory })]`, one call per module, run once however many modules import it. A queue registered in the kit or a direct `BullModule.registerQueue` is the defect, the cache kit's `cache` and the outbox kit's `outbox` queues aside (`cache.md`, `outbox.md`).
+- Each queue has its own factory, `factories/<module>[.<concern>].queue.factory.ts` in the owning module, no shared base, returning `defaultJobOptions` alone, from `queue.job.*`: `attempts`, `keepLogs`, `removeOnCompleteAgeInSeconds`, `removeOnFailAgeInSeconds`, and its own `<name>BackoffDelayInMs` (exponential `backoff`).
+- `queues/<module>[.<concern>].queue.ts` exists only for a queue that schedules a recurring job: one class, extending `QueueBase`. `@InjectQueue`, the BullMQ `Queue` type, and `upsertJobScheduler` appear under `src/modules/` only there and in `HealthQueueIndicator`, which checks health's own queue (`EnumHealthQueue.health`) has a ready client; no job enters it. `OutboxService` reaches every queue through `ModuleRef.get(getQueueToken(...))` for `addBulk` and `getJob`.
 
 ## Enqueuing
 
-- **Every enqueue happens inside a queue class** — `<module>/queues/<module>[.<concern>].queue.ts`, one per registered queue. The ENQUEUE surface belongs to that class alone: `@InjectQueue`, the BullMQ `Queue` type, `EnumQueuePriority`, `jobId`, `deduplication`, `add` and `upsertJobScheduler` appear there and nowhere else under `src/modules/`, the health indicator's read-only `@InjectQueue` aside. `EnumQueue` and the job-name enum each reach one step further, in the processor's own shapes: `@QueueProcessor(EnumQueue.<member>)` names the queue a processor consumes, and the `job.name` switch matches the job-name members the queue class enqueued.
-- **The queue class is thick.** Its method takes domain arguments, builds the typed payload, and calls `add` or `upsertJobScheduler` with the job name, priority and options it owns. A caller passes domain values, never a job option.
-- **A domain or a processor service injects the queue class and calls a named method**, from its own feature or from another one, importing `<Feature>DomainModule` where the owner is not `@Global()` (`rules/cross-module.md`). **A controller and an HTTP service never enqueue** — whether to enqueue is a business rule, and the domain is the layer that owns it (`rules/architecture.md`).
-- The queue class reads `ConfigService` for job mechanics: a cron pattern, a timezone, a deduplication TTL (`rules/config.md`).
-- **A sensitive payload field is encrypted by the queue class before `add`** — a generated password, a verification, reset, invite or review link. The job data sits in Redis for the retention window and is readable in BullBoard, so plaintext never reaches it. The consumer that renders the value decrypts it; a job for a channel that does not need the value (push) carries none (`rules/notification.md`).
-- Priority comes from `EnumQueuePriority` (`high` / `medium` / `low`), not a raw number.
-- **A queue injected to READ depth, counts or health belongs to a health indicator**, which enqueues nothing (`src/modules/health/indicators/health.queue.indicator.ts`).
-- One moment, one mechanism: do not enqueue a job AND emit an event for the same thing. Pick the one that matches whether the caller needs the result.
+A side effect is an outbox effect (`effects.md`). A queue-class method serves a scheduler only: it owns the job name and options and calls `upsertJobScheduler`, which throws.
 
-## Retries make a job repeatable
+- A recurring job (`expireStaleInvites`, `cleanupStaleTokens`) is scheduled from the queue class's own `onModuleInit`.
+- A sweep whose cutoff is now-relative (`expireStaleInvites`, `cleanupStaleTokens`) is live by design.
+- The `user` queue's daily `purgeExpired` job (`UserQueue`, `user.purgeExpiredCron`) is the one purge of the identity modules' expiring rows: its use case calls each owning service's `purgeExpired`. A new expiring identity model joins it; never a job of its own or a delete on issue or consume (`AuthSocialNonce` aside, `login.md`).
 
-The owning queue factory's `createRegisterQueueOptions` sets `attempts`, an exponential
-`backoff`, and `keepLogs` per queue from config, so a processor's work runs again on failure
-and `job.log` lines survive the retention window. A handler that is not safe to repeat needs
-the repeat to be harmless — a conditional write, an upsert, a state check
-(`rules/concurrency.md`).
+## Messages
 
-## Fatal failures and Sentry
+Paths, the `[<channel>.]` segment, and language: `i18n.md`.
 
-`QueueProcessorBase.onFailed` reports through `SentryService` once, and only when the error is
-fatal: on the final attempt — `job.attemptsMade` already counts the failed attempt when BullMQ
-fires `failed`, so the check is `attemptsMade >= maxAttempts` — or immediately for an
-`UnrecoverableError` / `QueueException.isFatal`. Before `captureException`, the base enriches
-the scope with job `id`, `name`, `attemptsMade`, and `maxAttempts` via `withScope` (or
-equivalent). A processor extending `WorkerHost` directly loses that gate and double-reports
-across retries (`rules/logging.md`).
+- Text for an internal reader (a job return value, a job failure, a side-effect description) resolves in `message.defaultLanguage`: `setMessage(path, { properties })` with no `customLanguage`.
+- `IQueueResponse.message` is `setMessage('<module>.queue.[<channel>.]<process>', { properties })`, built by the use case the processor calls, or by a kit processor itself.
+- A `QueueException` message is built by its thrower: `exceptions.md`, Messages.
 
-In the `process` catch, the base may call Nest `Logger.error` once (object-first) for Pino,
-then rethrow. Per-processor log-and-rethrow is forbidden (`rules/logging.md`).
+## Processors
+
+A processor carries `@QueueProcessor(Enum<Module>Queue.<member>, options?)` and extends `QueueProcessorBase` (`src/common/queue/bases/queue.processor.base.ts`). The base owns `process(job)`: the job-log lines (never `job.data`) and the try/await/catch. Its catch writes the failure line and the one error log, rethrows `QueueException`, `AppBaseException`, or `UnrecoverableError` as is, and throws anything else through the protected `throwUnknownException(error): never`: a `QueueException` with the `queue.error.unknown` message, `isFatal` `true`, and the error as `rawError`. Subclasses implement `handle(job, data, outboxId)`, `data` and `outboxId` read as `outbox.md`, Processing, states: switch on `job.name` against `Enum<Module>[<Channel>]Process` (`<module>.enum.ts`), await one use case's `execute` (never a bare `return this.<x>UseCase.execute()`), map a hopeless failure to `UnrecoverableError`. `default` calls the base's `this.throwUnknownProcess('<module>.queue.[<channel>.]error.unknownProcess', job.name)`, which throws the fatal `QueueException` with property `process`, never a use-case or service method, returning no `IQueueResponse`; a payload the processor rejects (a missing `outboxId`) throws through the base's `this.throwUnrecoverable('<module>.queue.error.<descriptor>')`. A processor's constructor takes its own feature's use cases only and calls `super()`; `QueueProcessorBase` takes `SentryService`, `MessageService`, `CacheService`, and `OutboxService` itself, by property injection (`injectable.md`), and a kit processor declares no constructor and reads the base's `cacheService` or `outboxService`. `onFailed` reports to Sentry once, on the last attempt (`attemptsMade >= maxAttempts` or `UnrecoverableError`), skipping a `QueueException` whose `isFatal` is false; retries run either way. Neither processor nor use case adds a logger or log-and-rethrow. A job may run again (retry, BullBoard, operator re-run): its handler is idempotent, deciding the same every attempt. A job with no per-step state whose handler commits once (the admin import, `UserProcessImportByAdminUseCase`) records its result on its outbox row in that transaction and, on a later run, returns the recorded result and writes nothing.
+
+In `<module>/interfaces/`, the envelope is `I<Module>[<Channel>][Bulk]QueuePayload<T>` and the data is `I<Module><Action>Payload`, `I<Module><Action>EncryptedPayload` once a field is encrypted. A queue, job-name, or payload-field rename changes every producer, processor, and payload type at once. Procedure: `.claude/skills/ack-build/references/add-queue.md`.
+
+## Notifications
+
+Channels, producers, recipients, fan-out, and the term-policy broadcast: `notification.md`.

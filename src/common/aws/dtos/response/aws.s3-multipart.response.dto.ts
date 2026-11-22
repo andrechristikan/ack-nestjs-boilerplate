@@ -3,10 +3,7 @@ import { faker } from '@faker-js/faker';
 import { AwsS3MultipartPartResponseSchema } from '@common/aws/dtos/response/aws.s3-multipart-part.response.dto';
 import { AwsS3ResponseSchema } from '@common/aws/dtos/response/aws.s3.response.dto';
 
-/**
- * Response shape for an AWS S3 multipart upload session.
- * @public
- */
+/** @public */
 export const AwsS3MultipartResponseSchema = AwsS3ResponseSchema.extend({
     uploadId: z.string().meta({
         description: 'Upload id from aws after init multipart',
@@ -26,10 +23,7 @@ export const AwsS3MultipartResponseSchema = AwsS3ResponseSchema.extend({
     }),
 });
 
-/**
- * S3 multipart upload session with its parts.
- * @public
- */
+/** @public */
 export type AwsS3MultipartResponseDto = z.infer<
     typeof AwsS3MultipartResponseSchema
 >;

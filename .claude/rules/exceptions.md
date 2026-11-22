@@ -1,91 +1,39 @@
-# Exceptions, status codes, and messages
+---
+paths:
+    - '**/exceptions/**'
+    - '**/guards/**'
+    - '**/*.status-code.enum.ts'
+    - 'src/app/**'
+    - 'src/modules/*/services/**'
+    - 'src/modules/*/use-cases/**'
+    - 'test/unit/modules/*/services/**'
+    - 'test/unit/modules/*/use-cases/**'
+    - 'src/common/firebase/**'
+    - 'src/common/database/utils/**'
+    - 'src/common/redis/**'
+---
 
-This file is the rule set. Flow narrative: `docs/handling-error.md`, `docs/language-message.md` —
-explorer or planner.
+# Exceptions
+
+The class shape, status codes, and `messagePath`: `exception-class.md`. The filter chain: `filter.md`. Side effects: `effects.md`.
 
 ## The hierarchy
 
-Every typed error is a dedicated class extending `AppBaseException` (`src/app/exceptions/app.base.exception.ts`):
+- `AppUnknownException` (`src/app/exceptions/app.unknown.exception.ts`) keeps HTTP 500 and `EnumAppStatusCodeError.unknown`. Every runtime failure that answers no HTTP request and is no job failure (boot, config parse, decoration time, a seed, a logged best-effort failure) is an `AppUnknownException` subclass that names the failure through `description` and allocates no status code: `FirebaseInitializationFailedException`, `AuthJwtConfigInvalidException`, the `*Protected` decorator exceptions (`guards.md`). A failure that answers an HTTP request extends `AppBaseException` with its own member.
+- A job failure no subject's exception names, wherever the processor side throws it (processor, use case, service), is a `QueueException` (`src/common/queue/exceptions/queue.exception.ts`), which extends `Error` and carries `message`, `isFatal`, and `rawError` (Messages), or a subclass in the failing module's `exceptions/` (`NotificationEmailDeliveryUnknownException`).
+- A caught error is wrapped, never swallowed: `throw new AppUnknownException(err)`, a util's `toException(err) ?? new AppUnknownException(err)`, in a processor `this.throwUnknownException(err);` (protected on `QueueProcessorBase`, `queue.md`, Processors), or in a use case or service `throw new QueueException(<its own setMessage>, true, err)` or its module subclass. A bare `throw err` sits only inside an `instanceof` guard of our own `*Exception`, or of BullMQ's `UnrecoverableError` in a processor. The cause rides in `rawError` and never reaches the response body. A best-effort side effect a rule names (an outbox dispatch, `outbox.md`; a job-log line) logs the failure and continues. A Redis connection error answers 503, from the cache (`CacheService`, the throttle storage); any other error behind `CacheService` or the throttle storage logs one `warn` per window and continues (`cache.md`).
+- `httpStatus` is the wire status and the Sentry switch: only 5xx is logged at `error` and reported; a refusal leaves one `warn` (`filter.md`). `RedisUnavailableException` and `DatabaseUnavailableException` are logged and reported once per window (`redis.warnWindowInMs`, `database.warnWindowInMs`). 500 is an unknown error or a bug we detect (`RequestContextMissingException`, `FeatureFlagNotConfiguredException`); 503 an unreachable database, Redis, or auth provider (`AuthProviderUnavailableException` for JWKS, Google, and Apple, `AuthService.toProviderUnavailableException` in `src/modules/auth/services/auth.service.ts`); 409 a write conflict; 404 a request needing an optional integration whose credentials are unset (`config.md`): `AwsS3NotConfiguredException`, `AuthSocialGoogleNotConfiguredException`, `AuthSocialAppleNotConfiguredException`.
 
-```ts
-export abstract class AppBaseException extends Error {
-    abstract readonly module: string;
-    abstract readonly statusCode: number;
-    abstract readonly statusCodeKey: string;
-    abstract readonly httpStatus: HttpStatus;
+## Who throws
 
-    readonly messageProperties?: IMessageProperties;
-    readonly metadata?: Record<string, unknown>;
-    readonly rawError?: unknown;
-    readonly data?: unknown;
+- A service throws the typed exception of the subject that failed, never a Nest `BadRequestException` / `NotFoundException`.
+- A guard, a `*Protected` decorator, and a param decorator throw what `guards.md` states.
+- A controller catches no `AppBaseException` (the filter chain maps it). What a use case originates: `use-case.md`, Shape.
+- A service throws a `QueueException` or its module's subclass for a job failure no subject's exception names (`NotificationEmailDeliveryService.assertSettled`). `isFatal` (default `false`) decides only the Sentry report; when it reports and how retries run: `queue.md`, Processors.
+- A util maps an error and returns it (`layering.md`, `UserCreateUtil.mapCreateCollision` in `src/modules/user/utils/user.create.util.ts`); `DatabaseUtil.toException` returns `null` for an error it does not know. `PaginationQueryUtil` and `PaginationFilterUtil` are the utils that throw, and only their own `pagination` exceptions.
+- The retry's owner throws `DatabaseUniqueValueGenerationFailedException` (`transaction.md`, Generated unique values): a repository (its one typed exception), a service, a use case, or a seed.
+- Framework `HttpException`s (route 404, throttler 429) are the framework's to throw and `AppHttpFilter`'s to handle; multipart limits are the one surface the kit maps onto typed `file` exceptions first.
 
-    constructor(readonly messagePath: string, options?: IAppBaseExceptionOptions) { … }
-}
-```
+## Messages
 
-**One exception per file**, in the `exceptions/` folder of the module owning its status-code enum:
-
-```ts
-export class UserNotFoundException extends AppBaseException {
-    readonly module = 'user';
-    readonly statusCode = EnumUserStatusCodeError.notFound;
-    readonly statusCodeKey = EnumUserStatusCodeError[this.statusCode];
-    readonly httpStatus = HttpStatus.NOT_FOUND;
-
-    constructor() {
-        super('user.error.notFound');
-    }
-}
-```
-
-- `statusCodeKey` is always the reverse lookup on the same member — hardcoding the string lets the key and the number describe different things while `tsc` stays green.
-- Interpolated messages take explicit named constructor params and map them into `messageProperties`: `super('user.error.passwordMustNew', { messageProperties: { period } })`.
-- A caught error is wrapped, never swallowed: `throw new AppUnknownException(err)`. The cause rides in `rawError`, reaches Sentry for 5xx, and is never serialized into the response body.
-
-## Throwing rules
-
-- **The domain throws the typed exception of whatever SUBJECT failed.** Never a bare `throw new Error(...)`, never a raw NestJS `BadRequestException` / `NotFoundException` from feature code — the filter chain maps `AppBaseException`, and a framework exception bypasses the module and status-code fields entirely.
-- **The subject decides which module's exception is thrown, not the caller.** A domain raises another module's exception when that module owns the entity the caller asked about — `WorkspaceNotFoundException` from a project domain when the workspace is missing, `CountryNotFoundException` from a user domain when the country id does not resolve. `module` and `statusCode` then tell the client WHICH thing was not found, which is the point of both fields. Never allocate a duplicate code in your own block for another module's entity (`rules/cross-module.md`).
-- **An HTTP service and a processor service throw nothing of their own.** They translate a DTO or a job payload and let the domain's exception travel out; a business exception raised in either is a rule the other transport never applies (`rules/architecture.md`).
-- **A util MAPS an error to the module's exception and RETURNS it; the caller throws. A util raises nothing itself.** `UserOnboardingUtil.mapCreateCollision` turns a unique collision on `username` or `email` into the matching exception and hands back anything else untouched, so the caller's `catch` reads `const exception = this.userOnboardingUtil.mapCreateCollision(error); throw exception;` — the `throw` is visible where the flow actually stops (`rules/code-style.md`). A util that throws hides that decision inside a call the reader has to open. A rejection that RAISES belongs to the domain, whatever it rests on: `NotificationDomain.validateUserSetting` checks a type-and-channel pair against the allowed combinations and throws, in the same layer that reads for a quota, a membership or a status transition (`rules/architecture.md`).
-- **A param decorator throws the kit's own exception.** A store or payload decorator whose value or requested field is missing throws `RequestContextMissingException` (`50304`, HTTP 500) from its factory, never a feature exception and never `null` (`rules/security.md`).
-- **Repositories do not throw HTTP-shaped errors.** A data-access failure stays a data-access failure; a business conflict is the domain's call.
-- **Controllers do not catch module exceptions (`AppBaseException`).** The global filter chain owns the mapping. A `try/catch` in a controller that reshapes an exception is duplicating the filter and will drift from it.
-- Framework `HttpException`s (route 404, throttler 429) are the framework's to throw and `AppHttpFilter`'s to handle. Feature code does not raise them. Multipart upload limits are the one surface the kit claims back: `FileUploadErrorInterceptor` maps every multer and busboy limit failure onto the typed `file` exception for it before the filter chain sees it (`rules/file.md`).
-
-## Status codes
-
-Detail and the full procedure (tables): `rules/status-code.md`. Summary:
-
-| Rule | Detail |
-|---|---|
-| Location | `<module>/enums/<module>.status-code.enum.ts` — `Enum<Module>StatusCodeError` |
-| Values | **5 digits** for every status code |
-| Keys | camelCase descriptors (`notFound`) |
-| Reference | By enum member name — never a numeric literal |
-| Procedure | Follow `rules/status-code.md` |
-| Docs | Quoted numbers in `docs/*.md` are updated from `generated/docs/report-coder-<feature>.md` |
-
-- **Reuse before adding.** Duplicate near-synonyms make the error surface unreadable.
-- **The number is a client-visible contract.** Removing a member and shifting survivors changes what a frontend keying on the integer matches. Prefer `module` + `statusCodeKey`.
-
-## The filter chain
-
-`app.module.ts` registers the `APP_FILTER` providers in this array order — general → base-exception → http → validation → validation-import. NestJS evaluates them in reverse, so the most specific catch runs first:
-
-- `app.validation-import.filter.ts` — `@Catch(FileImportException)`, row-level CSV import errors. No Sentry.
-- `app.validation.filter.ts` — `@Catch(RequestValidationException)`, request-schema failures. No Sentry.
-- `app.http.filter.ts` — `@Catch(HttpException)`, framework errors only. Sentry at 500+.
-- `app.base-exception.filter.ts` — `@Catch(AppBaseException)`, every `AppBaseException`. Sentry only when `httpStatus >= 500`.
-- `app.general.filter.ts` — `@Catch()`, the fallback. Always 500, always Sentry.
-
-`AppBaseException` does not extend `HttpException`, so the relative position of those two is inert today — but the array order is the fact; do not reorder it to match a doc.
-
-**`httpStatus` is also the alerting switch.** Choosing it on an exception chooses whether that failure pages anyone. Treat it as both the wire status and the Sentry predicate.
-
-Response shape is `ResponseErrorDto`: `{ statusCode, statusCodeKey, module, message, metadata, data?, errors? }`, plus the `x-*` headers the filters set.
-
-## i18n messages
-
-`messagePath` is a nested JSON key whose FIRST segment is the language filename, and every new
-exception needs its key in every language file. The full rule set is `rules/i18n.md`.
+A `QueueException` message is `setMessage('<module>.queue.[<channel>.]error.<descriptor>', { properties })` (channel segment: `i18n.md`), built by its thrower (a use case or service injecting `MessageService`; a processor's `default` through the base's `throwUnknownProcess`: `queue.md`, Processors), never a literal or a template literal. The unknown-error wrap's message is `queue.error.unknown` (`src/languages/<lang>/queue.json`), built by `throwUnknownException`.

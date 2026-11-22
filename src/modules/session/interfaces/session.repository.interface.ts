@@ -9,41 +9,43 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type {
     ISession,
     ISessionList,
+    ISessionLogin,
     ISessionRef,
+    ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 
 export interface ISessionRepository {
     findWithPaginationOffsetByAdmin(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>
+        { where, ...others }: IPaginationQueryOffsetParams,
+        isRevoked: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<ISessionList>>;
     findActiveWithPaginationCursor(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.SessionWhereInput>
+        { where, ...others }: IPaginationQueryCursorParams,
+        idleSince: Date
     ): Promise<IResponsePaginationReturn<ISessionList>>;
-    findOneActive(userId: string, sessionId: string): Promise<ISession | null>;
+    findLoginById(
+        userId: string,
+        sessionId: string,
+        idleSince: Date
+    ): Promise<ISessionLogin | null>;
     createInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         sessionId: string,
         deviceOwnershipId: string,
-        jti: string,
+        jtiDigest: string,
         expiredAt: Date,
         { ipAddress, userAgent, geoLocation }: IRequestLog
     ): Promise<Session>;
     updateJtiInTx(
         tx: IDatabaseTransactionClient,
         sessionId: string,
-        jti: string
+        oldJtiDigest: string,
+        newJtiDigest: string,
+        idleSince: Date
     ): Promise<boolean>;
     revokeInTx(
         tx: IDatabaseTransactionClient,
@@ -52,25 +54,25 @@ export interface ISessionRepository {
         revokedBy: string,
         revokedAt: Date
     ): Promise<boolean>;
-    revoke(
+    revokeLiveInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        sessionId: string,
+        revokedBy: string,
+        revokedAt: Date,
+        idleSince: Date
+    ): Promise<boolean>;
+    revokeByAdminInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
-    ): Promise<boolean>;
-    revokeByAdmin(
-        sessionId: string,
-        revokedBy: string,
-        revokedAt: Date
-    ): Promise<boolean>;
-    revokeActiveByUser(
-        userId: string,
-        revokedBy: string,
-        revokedAt: Date
-    ): Promise<ISessionRef[]>;
+    ): Promise<ISession | null>;
     revokeActiveByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
+        exceptSessionId: string | null,
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISessionRef[]>;
@@ -81,4 +83,11 @@ export interface ISessionRepository {
         revokedBy: string,
         revokedAt: Date
     ): Promise<ISessionRef[]>;
+    revokeByDeviceOwnershipIdsInTx(
+        tx: IDatabaseTransactionClient,
+        deviceOwnershipIds: string[],
+        revokedBy: string,
+        revokedAt: Date
+    ): Promise<ISessionUserRef[]>;
+    deleteExpiredBefore(threshold: Date): Promise<number>;
 }

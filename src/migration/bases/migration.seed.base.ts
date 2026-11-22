@@ -1,27 +1,31 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumMigrationType } from '@migration/enums/migration.enum';
 import type { IMigrationOptions } from '@migration/interfaces/migration.interface';
 import { Logger } from '@nestjs/common';
 import { CommandRunner, Option } from 'nest-commander';
 
-/**
- * Base seed command: dispatches to `seed()` or `remove()` based on the required `--type` flag.
- */
 export abstract class MigrationSeedBase extends CommandRunner {
-    private readonly _logger: Logger = new Logger(MigrationSeedBase.name);
+    private readonly baseLogger: Logger = new Logger(MigrationSeedBase.name);
+
+    constructor(protected readonly cacheService: CacheService) {
+        super();
+    }
 
     async run(
         _passedParam: string[],
         options?: IMigrationOptions
     ): Promise<void> {
-        this._logger.log(`Running ${MigrationSeedBase.name} migration...`);
+        this.baseLogger.log(`Running ${MigrationSeedBase.name} migration...`);
 
         if (options?.type === EnumMigrationType.remove) {
             await this.remove();
+            await this.cacheService.flush();
         } else if (options?.type === EnumMigrationType.seed) {
             await this.seed();
+            await this.cacheService.flush();
         } else {
-            this._logger.warn(
-                `Please specify --type ${EnumMigrationType.seed} or ${EnumMigrationType.seed}`
+            this.baseLogger.warn(
+                `Please specify --type ${EnumMigrationType.seed} or ${EnumMigrationType.remove}`
             );
         }
     }
@@ -31,7 +35,7 @@ export abstract class MigrationSeedBase extends CommandRunner {
         choices: [EnumMigrationType.seed, EnumMigrationType.remove],
         required: true,
         name: 'type',
-        description: `Migration type: ${EnumMigrationType.seed} or ${EnumMigrationType.seed}`,
+        description: `Migration type: ${EnumMigrationType.seed} or ${EnumMigrationType.remove}`,
     })
     parseType(val: EnumMigrationType): EnumMigrationType | null {
         return val;

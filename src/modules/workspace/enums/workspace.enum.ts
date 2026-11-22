@@ -1,15 +1,15 @@
-/**
- * Job names on the workspace queue.
- * @public
- */
-export enum EnumWorkspaceProcess {
-    expireStaleInvites = 'expireStaleInvites',
+/** @public */
+export enum EnumWorkspaceQueue {
+    workspace = 'workspace',
 }
 
-/**
- * Workspace invite lifetimes, valued in days.
- * @public
- */
+/** @public */
+export enum EnumWorkspaceProcess {
+    expireStaleInvites = 'expireStaleInvites',
+    expireStaleJoinRequests = 'expireStaleJoinRequests',
+}
+
+/** @public */
 export enum EnumWorkspaceInviteExpiry {
     threeDays = 3,
     sevenDays = 7,

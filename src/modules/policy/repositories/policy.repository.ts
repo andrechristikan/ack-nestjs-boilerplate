@@ -1,5 +1,5 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { EnumPolicySubject } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
@@ -16,39 +16,61 @@ export class PolicyRepository implements IPolicyRepository {
         });
     }
 
-    async existsByRoleIdAndSubject(
+    async findOneByRoleIdAndId(
         roleId: string,
-        subject: EnumPolicySubject
-    ): Promise<boolean> {
-        const count = await this.databaseService.client.policy.count({
-            where: { roleId, subject },
-        });
-
-        return count > 0;
-    }
-
-    async existsByRoleIdAndId(roleId: string, id: string): Promise<boolean> {
-        const count = await this.databaseService.client.policy.count({
+        id: string
+    ): Promise<Policy | null> {
+        return this.databaseService.client.policy.findFirst({
             where: { id, roleId },
         });
-
-        return count > 0;
     }
 
-    async create(roleId: string, data: PolicyRequestDto): Promise<Policy> {
-        return this.databaseService.client.policy.create({
+    async findOneByRoleIdAndIdInTx(
+        tx: IDatabaseTransactionClient,
+        roleId: string,
+        id: string
+    ): Promise<Policy | null> {
+        return tx.policy.findFirst({
+            where: { id, roleId },
+        });
+    }
+
+    async createInTx(
+        tx: IDatabaseTransactionClient,
+        roleId: string,
+        data: PolicyRequestDto
+    ): Promise<Policy> {
+        return tx.policy.create({
             data: { ...data, roleId },
         });
     }
 
-    async update(id: string, data: PolicyUpdateRequestDto): Promise<Policy> {
-        return this.databaseService.client.policy.update({
-            where: { id },
+    async updateInTx(
+        tx: IDatabaseTransactionClient,
+        roleId: string,
+        id: string,
+        data: PolicyUpdateRequestDto
+    ): Promise<Policy | null> {
+        const { count } = await tx.policy.updateMany({
+            where: { id, roleId },
             data,
         });
+        if (count === 0) {
+            return null;
+        }
+
+        return this.findOneByRoleIdAndIdInTx(tx, roleId, id);
     }
 
-    async delete(id: string): Promise<Policy> {
-        return this.databaseService.client.policy.delete({ where: { id } });
+    async deleteInTx(
+        tx: IDatabaseTransactionClient,
+        roleId: string,
+        id: string
+    ): Promise<boolean> {
+        const { count } = await tx.policy.deleteMany({
+            where: { id, roleId },
+        });
+
+        return count > 0;
     }
 }

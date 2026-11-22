@@ -1,18 +1,8 @@
-import {
-    EnumFileExtension,
-    EnumFileExtensionTemplate,
-} from '@common/file/enums/file.enum';
+import { EnumFileExtension } from '@common/file/enums/file.enum';
+import type { IFileExtensionContracts } from '@common/file/interfaces/file.interface';
 
-/**
- * Sniffed file types accepted for each declared upload extension; an empty list marks an extension with no magic-byte signature.
- * @public
- */
-export const FileExtensionContract: Readonly<
-    Record<
-        Exclude<EnumFileExtension, EnumFileExtensionTemplate>,
-        readonly string[]
-    >
-> = {
+/** @public */
+export const FileExtensionContract: IFileExtensionContracts = {
     [EnumFileExtension.jpg]: ['jpg'],
     [EnumFileExtension.jpeg]: ['jpg'],
     [EnumFileExtension.png]: ['png'],
@@ -22,4 +12,5 @@ export const FileExtensionContract: Readonly<
     [EnumFileExtension.mp4]: ['mp4'],
     [EnumFileExtension.mpeg]: ['mp3'],
     [EnumFileExtension.csv]: [],
+    [EnumFileExtension.hbs]: [],
 };

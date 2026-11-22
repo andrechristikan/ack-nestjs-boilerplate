@@ -1,0 +1,400 @@
+import { HttpStatus } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    EnumRoleType,
+    EnumUserGender,
+    EnumUserSignUpFrom,
+    EnumUserSignUpWith,
+    EnumUserStatus,
+} from '@generated/prisma-client/client';
+import type { Policy } from '@generated/prisma-client/client';
+import { PolicyService } from '@modules/policy/services/policy.service';
+import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
+import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
+import type { IUser } from '@modules/user/interfaces/user.interface';
+
+describe('PolicyService', () => {
+    const policyAbilityFactory: MockProxy<PolicyAbilityFactory> =
+        mock<PolicyAbilityFactory>();
+    const policyRepository: MockProxy<PolicyRepository> =
+        mock<PolicyRepository>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+    const tx: MockProxy<IDatabaseTransactionClient> =
+        mock<IDatabaseTransactionClient>();
+
+    let service: PolicyService;
+
+    const policy: Policy = {
+        id: 'policy-1',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+        roleId: 'role-1',
+        subject: EnumPolicySubject.user,
+        action: [EnumPolicyAction.manage],
+    };
+
+    const baseUser: IUser = {
+        id: 'user-1',
+        name: 'Andre Christi',
+        username: 'johnSmith123',
+        isVerified: true,
+        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
+        email: 'andre@example.com',
+        roleId: 'role-1',
+        password: 'hashed-password',
+        passwordExpired: null,
+        passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
+        passwordAttempt: 0,
+        passwordLockedUntil: null,
+        signUpAt: new Date('2026-01-01T00:00:00.000Z'),
+        signUpFrom: EnumUserSignUpFrom.website,
+        signUpWith: EnumUserSignUpWith.credential,
+        status: EnumUserStatus.active,
+        gender: EnumUserGender.male,
+        countryId: 'country-1',
+        lastLoginAt: null,
+        lastIPAddress: null,
+        lastLoginFrom: null,
+        lastLoginWith: null,
+        lastWorkspaceId: null,
+        lastWorkspaceChangedAt: null,
+        photo: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+        deletedAt: null,
+        deletedBy: null,
+        role: {
+            id: 'role-1',
+            name: 'Admin',
+            description: null,
+            type: EnumRoleType.admin,
+            isImmutable: false,
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdBy: null,
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+            updatedBy: null,
+            policies: [policy],
+        },
+    };
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                PolicyService,
+                {
+                    provide: PolicyAbilityFactory,
+                    useValue: policyAbilityFactory,
+                },
+                { provide: PolicyRepository, useValue: policyRepository },
+                { provide: DatabaseUtil, useValue: databaseUtil },
+            ],
+        }).compile();
+
+        service = module.get(PolicyService);
+    });
+
+    describe('validatePolicyGuard', () => {
+        it('returns true for a superAdmin without checking required policies', () => {
+            const user = {
+                ...baseUser,
+                role: { ...baseUser.role, type: EnumRoleType.superAdmin },
+            };
+
+            const result = service.validatePolicyGuard(user, [], []);
+
+            expect(result).toBe(true);
+            expect(policyAbilityFactory.createByUser).not.toHaveBeenCalled();
+        });
+
+        it('throws PolicyForbiddenException when the built ability lacks a required policy', () => {
+            const user = baseUser;
+            const required: PolicyRequestDto[] = [
+                {
+                    subject: EnumPolicySubject.user,
+                    action: [EnumPolicyAction.manage],
+                },
+            ];
+            const ability = { can: vi.fn() };
+            policyAbilityFactory.createByUser.mockReturnValue(ability as never);
+            policyAbilityFactory.handlerPolicies.mockReturnValue(false);
+
+            let thrown: unknown;
+            try {
+                service.validatePolicyGuard(user, [policy], required);
+            } catch (error) {
+                thrown = error;
+            }
+
+            expect(thrown).toMatchObject({
+                module: 'policy',
+                statusCode: EnumPolicyStatusCodeError.forbidden,
+                statusCodeKey:
+                    EnumPolicyStatusCodeError[
+                        EnumPolicyStatusCodeError.forbidden
+                    ],
+                httpStatus: HttpStatus.FORBIDDEN,
+                messagePath: 'policy.error.forbidden',
+            });
+            expect(policyAbilityFactory.createByUser).toHaveBeenCalledWith([
+                policy,
+            ]);
+            expect(policyAbilityFactory.handlerPolicies).toHaveBeenCalledWith(
+                ability,
+                required
+            );
+        });
+
+        it('returns true when the built ability holds every required policy', () => {
+            const user = baseUser;
+            const required: PolicyRequestDto[] = [
+                {
+                    subject: EnumPolicySubject.user,
+                    action: [EnumPolicyAction.manage],
+                },
+            ];
+            const ability = { can: vi.fn() };
+            policyAbilityFactory.createByUser.mockReturnValue(ability as never);
+            policyAbilityFactory.handlerPolicies.mockReturnValue(true);
+
+            const result = service.validatePolicyGuard(
+                user,
+                [policy],
+                required
+            );
+
+            expect(result).toBe(true);
+        });
+    });
+
+    describe('assertRoleTypeAllowed', () => {
+        it('throws PolicyRoleTypeInvalidException for a user role', () => {
+            expect(() =>
+                service.assertRoleTypeAllowed(EnumRoleType.user)
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'policy',
+                    statusCode: EnumPolicyStatusCodeError.roleTypeInvalid,
+                    statusCodeKey:
+                        EnumPolicyStatusCodeError[
+                            EnumPolicyStatusCodeError.roleTypeInvalid
+                        ],
+                    httpStatus: HttpStatus.BAD_REQUEST,
+                    messagePath: 'policy.error.roleTypeInvalid',
+                })
+            );
+        });
+
+        it.each([EnumRoleType.admin, EnumRoleType.superAdmin])(
+            'passes a %s role',
+            roleType => {
+                expect(() =>
+                    service.assertRoleTypeAllowed(roleType)
+                ).not.toThrow();
+            }
+        );
+    });
+
+    describe('getManyByRole', () => {
+        it('returns the policies of the role', async () => {
+            policyRepository.findManyByRoleId.mockResolvedValue([policy]);
+
+            const result = await service.getManyByRole('role-1');
+
+            expect(result).toEqual([policy]);
+            expect(policyRepository.findManyByRoleId).toHaveBeenCalledWith(
+                'role-1'
+            );
+        });
+    });
+
+    describe('createByAdminInTx', () => {
+        const body: PolicyRequestDto = {
+            subject: EnumPolicySubject.user,
+            action: [EnumPolicyAction.manage],
+        };
+
+        it('throws PolicyExistException when the create collides on the subject index, with no read before the write', async () => {
+            const collision = new Error('subject collision');
+            policyRepository.createInTx.mockRejectedValue(collision);
+            databaseUtil.isUniqueCollision.mockReturnValue(true);
+
+            const promise = service.createByAdminInTx(tx, 'role-1', body);
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'policy',
+                statusCode: EnumPolicyStatusCodeError.exist,
+                statusCodeKey:
+                    EnumPolicyStatusCodeError[EnumPolicyStatusCodeError.exist],
+                httpStatus: HttpStatus.CONFLICT,
+                messagePath: 'policy.error.exist',
+            });
+            expect(databaseUtil.isUniqueCollision).toHaveBeenCalledWith(
+                collision,
+                'subject'
+            );
+        });
+
+        it('wraps a non-collision create error in AppUnknownException', async () => {
+            const otherError = new Error('unexpected');
+            policyRepository.createInTx.mockRejectedValue(otherError);
+            databaseUtil.isUniqueCollision.mockReturnValue(false);
+
+            await expect(
+                service.createByAdminInTx(tx, 'role-1', body)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: otherError,
+            });
+        });
+
+        it('creates the policy for the role', async () => {
+            policyRepository.createInTx.mockResolvedValue(policy);
+
+            const result = await service.createByAdminInTx(tx, 'role-1', body);
+
+            expect(result).toBe(policy);
+            expect(policyRepository.createInTx).toHaveBeenCalledWith(
+                tx,
+                'role-1',
+                body
+            );
+        });
+    });
+
+    describe('updateByAdminInTx', () => {
+        const body: PolicyUpdateRequestDto = {
+            action: [EnumPolicyAction.read],
+        };
+
+        it('throws PolicyNotFoundException when the statement misses', async () => {
+            policyRepository.updateInTx.mockResolvedValue(null);
+
+            const promise = service.updateByAdminInTx(
+                tx,
+                'role-1',
+                'policy-1',
+                body
+            );
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'policy',
+                statusCode: EnumPolicyStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumPolicyStatusCodeError[
+                        EnumPolicyStatusCodeError.notFound
+                    ],
+                httpStatus: HttpStatus.NOT_FOUND,
+                messagePath: 'policy.error.notFound',
+            });
+            expect(policyRepository.updateInTx).toHaveBeenCalledWith(
+                tx,
+                'role-1',
+                'policy-1',
+                body
+            );
+        });
+
+        it('updates the policy with no gate read', async () => {
+            policyRepository.updateInTx.mockResolvedValue(policy);
+
+            const result = await service.updateByAdminInTx(
+                tx,
+                'role-1',
+                'policy-1',
+                body
+            );
+
+            expect(result).toBe(policy);
+            expect(policyRepository.updateInTx).toHaveBeenCalledWith(
+                tx,
+                'role-1',
+                'policy-1',
+                body
+            );
+            expect(
+                policyRepository.findOneByRoleIdAndIdInTx
+            ).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('deleteByAdminInTx', () => {
+        it('throws PolicyNotFoundException when the row is absent', async () => {
+            policyRepository.findOneByRoleIdAndIdInTx.mockResolvedValue(null);
+
+            const promise = service.deleteByAdminInTx(tx, 'role-1', 'policy-1');
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'policy',
+                statusCode: EnumPolicyStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumPolicyStatusCodeError[
+                        EnumPolicyStatusCodeError.notFound
+                    ],
+                httpStatus: HttpStatus.NOT_FOUND,
+                messagePath: 'policy.error.notFound',
+            });
+            expect(
+                policyRepository.findOneByRoleIdAndIdInTx
+            ).toHaveBeenCalledWith(tx, 'role-1', 'policy-1');
+            expect(policyRepository.deleteInTx).not.toHaveBeenCalled();
+        });
+
+        it('throws PolicyNotFoundException when the statement misses', async () => {
+            policyRepository.findOneByRoleIdAndIdInTx.mockResolvedValue(policy);
+            policyRepository.deleteInTx.mockResolvedValue(false);
+
+            const promise = service.deleteByAdminInTx(tx, 'role-1', 'policy-1');
+
+            await expect(promise).rejects.toMatchObject({
+                module: 'policy',
+                statusCode: EnumPolicyStatusCodeError.notFound,
+                statusCodeKey:
+                    EnumPolicyStatusCodeError[
+                        EnumPolicyStatusCodeError.notFound
+                    ],
+                httpStatus: HttpStatus.NOT_FOUND,
+                messagePath: 'policy.error.notFound',
+            });
+            expect(policyRepository.deleteInTx).toHaveBeenCalledWith(
+                tx,
+                'role-1',
+                'policy-1'
+            );
+        });
+
+        it('deletes the policy and returns the row it read', async () => {
+            policyRepository.findOneByRoleIdAndIdInTx.mockResolvedValue(policy);
+            policyRepository.deleteInTx.mockResolvedValue(true);
+
+            const result = await service.deleteByAdminInTx(
+                tx,
+                'role-1',
+                'policy-1'
+            );
+
+            expect(result).toBe(policy);
+            expect(policyRepository.deleteInTx).toHaveBeenCalledWith(
+                tx,
+                'role-1',
+                'policy-1'
+            );
+        });
+    });
+});

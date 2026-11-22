@@ -1,20 +1,28 @@
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
-import type { IRequestApp } from '@common/request/interfaces/request.interface';
-import { UserDomain } from '@modules/user/domains/user.domain';
+import { UserService } from '@modules/user/services/user.service';
 import { Reflector } from '@nestjs/core';
 import {
+    UserContextStoreKey,
     UserGuardIsVerifiedMetaKey,
-    UserStoreKey,
 } from '@modules/user/constants/user.constant';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
+import {
+    AuthJwtAccessContextStoreKey,
+    AuthJwtRefreshContextStoreKey,
+} from '@modules/auth/constants/auth.constant';
+import { AuthJwtGuardMissingException } from '@modules/auth/exceptions/auth.jwt-guard-missing.exception';
+import type {
+    IAuthJwtAccessContext,
+    IAuthJwtRefreshContext,
+} from '@modules/auth/interfaces/auth.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
-/** Validates the authenticated user and stores it in the request context for `UserCurrent`. */
 @Injectable()
 export class UserGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly userDomain: UserDomain,
+        private readonly userService: UserService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -25,14 +33,27 @@ export class UserGuard implements CanActivate {
         );
         const isVerified = isVerifiedRequired ?? false;
 
-        const request = context.switchToHttp().getRequest<IRequestApp>();
+        const accessContext =
+            this.requestStoreService.get<IAuthJwtAccessContext>(
+                AuthJwtAccessContextStoreKey
+            );
+        const refreshContext =
+            this.requestStoreService.get<IAuthJwtRefreshContext>(
+                AuthJwtRefreshContextStoreKey
+            );
+        const authContext = accessContext ?? refreshContext;
+        if (authContext === null) {
+            throw new AuthJwtGuardMissingException();
+        }
 
-        const user = await this.userDomain.validateUserGuard(
-            request.user?.userId ?? null,
+        const user = await this.userService.validateUserGuard(
+            authContext,
             isVerified
         );
 
-        this.requestStoreService.set(UserStoreKey, user);
+        this.requestStoreService.set<IUserContext>(UserContextStoreKey, {
+            user,
+        });
 
         return true;
     }

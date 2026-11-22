@@ -71,6 +71,8 @@ import type {
 import type {
     IAwsS3,
     IAwsS3ConfigBucket,
+    IAwsS3ConfigBucketSource,
+    IAwsS3ConfigBuckets,
     IAwsS3CopyItemOptions,
     IAwsS3CreateMultiplePart,
     IAwsS3DeleteDirOptions,
@@ -87,16 +89,19 @@ import type {
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
 } from '@common/aws/interfaces/aws.interface';
-import {
-    AwsS3MaxFetchItems,
-    AwsS3MaxPartNumber,
-} from '@common/aws/constants/aws.constant';
+import { AwsS3MaxPartNumber } from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import type { AwsS3PresignPartRequestDto } from '@common/aws/dtos/request/aws.s3-presign-part.request.dto';
 import type { AwsS3PresignRequestDto } from '@common/aws/dtos/request/aws.s3-presign.request.dto';
 import { FileService } from '@common/file/services/file.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { AwsS3FileRequiredException } from '@common/aws/exceptions/aws.s3-file-required.exception';
+import { AwsS3IterationLimitExceededException } from '@common/aws/exceptions/aws.s3-iteration-limit-exceeded.exception';
+import { AwsS3KeyInvalidException } from '@common/aws/exceptions/aws.s3-key-invalid.exception';
+import { AwsS3MaxPartNumberExceededException } from '@common/aws/exceptions/aws.s3-max-part-number-exceeded.exception';
+import { AwsS3ObjectExistException } from '@common/aws/exceptions/aws.s3-object-exist.exception';
 
 @Injectable()
 export class AwsS3Service implements OnModuleInit {
@@ -105,22 +110,25 @@ export class AwsS3Service implements OnModuleInit {
     private readonly accessKeyId: string | null;
     private readonly secretAccessKey: string | null;
     private readonly region: string | null;
+    private readonly endpoint: string | null;
     private readonly maxAttempts: number;
     private readonly timeoutInMs: number;
+    private readonly deleteDirMaxIterations: number;
+    private readonly listMaxKeys: number;
 
-    private readonly presignExpiredInSeconds: number;
-    private readonly multipartExpiredInDays: number;
+    private readonly presignExpiresInSeconds: number;
+    private readonly multipartExpiresInDays: number;
     private readonly corsMaxAgeLongInSeconds: number;
     private readonly corsMaxAgeShortInSeconds: number;
 
+    private readonly baseUrlPattern: string;
     private readonly objectUrlPattern: string;
     private readonly cdnUrlPattern: string;
 
-    private readonly iamArn: string | null;
-    private readonly corsAllowedOrigin: string[];
+    private readonly iamPrincipalArn: string | null;
+    private readonly allowedOrigins: string[];
 
-    private readonly config: Map<EnumAwsS3Accessibility, IAwsS3ConfigBucket> =
-        new Map<EnumAwsS3Accessibility, IAwsS3ConfigBucket>();
+    private readonly config: IAwsS3ConfigBuckets;
 
     private s3Client: S3Client;
 
@@ -129,39 +137,60 @@ export class AwsS3Service implements OnModuleInit {
         private readonly fileService: FileService,
         private readonly helperStringService: HelperStringService
     ) {
-        this.accessKeyId = this.configService.get<string | null>(
-            'aws.s3.iam.key'
-        )!;
-        this.secretAccessKey = this.configService.get<string | null>(
-            'aws.s3.iam.secret'
-        )!;
-        this.region = this.configService.get<string | null>('aws.s3.region')!;
+        const accessKeyId = this.configService.get<string | null>(
+            'aws.s3.accessKeyId'
+        );
+        this.accessKeyId = accessKeyId ?? null;
+        const secretAccessKey = this.configService.get<string | null>(
+            'aws.s3.secretAccessKey'
+        );
+        this.secretAccessKey = secretAccessKey ?? null;
+        const region = this.configService.get<string | null>('aws.s3.region');
+        this.region = region ?? null;
+        const endpoint = this.configService.get<string | null>(
+            'aws.s3.endpoint'
+        );
+        this.endpoint = endpoint ?? null;
         this.maxAttempts =
             this.configService.get<number>('aws.s3.maxAttempts')!;
         this.timeoutInMs =
             this.configService.get<number>('aws.s3.timeoutInMs')!;
-
-        const publicBucketConfig = this.configService.get<IAwsS3ConfigBucket>(
-            'aws.s3.config.public'
+        this.deleteDirMaxIterations = this.configService.get<number>(
+            'aws.s3.deleteDirMaxIterations'
         )!;
-        this.config.set(EnumAwsS3Accessibility.public, {
-            ...publicBucketConfig,
-            access: EnumAwsS3Accessibility.public,
-        } as IAwsS3ConfigBucket);
 
-        const privateBucketConfig = this.configService.get<IAwsS3ConfigBucket>(
-            'aws.s3.config.private'
-        )!;
-        this.config.set(EnumAwsS3Accessibility.private, {
-            ...privateBucketConfig,
-            access: EnumAwsS3Accessibility.private,
-        } as IAwsS3ConfigBucket);
+        this.listMaxKeys =
+            this.configService.get<number>('aws.s3.listMaxKeys')!;
 
-        this.presignExpiredInSeconds = this.configService.get<number>(
-            'aws.s3.presignExpiredInSeconds'
+        this.baseUrlPattern = this.configService.get<string>(
+            'aws.s3.baseUrlPattern'
         )!;
-        this.multipartExpiredInDays = this.configService.get<number>(
-            'aws.s3.multipartExpiredInDays'
+
+        const s3Public =
+            this.configService.get<IAwsS3ConfigBucketSource>('aws.s3.public')!;
+        const s3Private =
+            this.configService.get<IAwsS3ConfigBucketSource>('aws.s3.private')!;
+        const publicBaseUrl = this.buildBaseUrl(s3Public.bucket);
+        const privateBaseUrl = this.buildBaseUrl(s3Private.bucket);
+
+        this.config = {
+            [EnumAwsS3Accessibility.public]: {
+                ...s3Public,
+                baseUrl: publicBaseUrl,
+                access: EnumAwsS3Accessibility.public,
+            },
+            [EnumAwsS3Accessibility.private]: {
+                ...s3Private,
+                baseUrl: privateBaseUrl,
+                access: EnumAwsS3Accessibility.private,
+            },
+        };
+
+        this.presignExpiresInSeconds = this.configService.get<number>(
+            'aws.s3.presignExpiresInSeconds'
+        )!;
+        this.multipartExpiresInDays = this.configService.get<number>(
+            'aws.s3.multipartExpiresInDays'
         )!;
         this.corsMaxAgeLongInSeconds = this.configService.get<number>(
             'aws.s3.corsMaxAgeLongInSeconds'
@@ -177,9 +206,12 @@ export class AwsS3Service implements OnModuleInit {
             'aws.s3.cdnUrlPattern'
         )!;
 
-        this.iamArn = this.configService.get<string | null>('aws.s3.iam.arn')!;
-        this.corsAllowedOrigin = this.configService.get<string[]>(
-            'request.cors.allowedOrigin'
+        const iamPrincipalArn = this.configService.get<string | null>(
+            'aws.s3.iamPrincipalArn'
+        );
+        this.iamPrincipalArn = iamPrincipalArn ?? null;
+        this.allowedOrigins = this.configService.get<string[]>(
+            'request.cors.allowedOrigins'
         )!;
     }
 
@@ -199,16 +231,103 @@ export class AwsS3Service implements OnModuleInit {
         return { pathWithFilename, filename, extension, mime };
     }
 
-    private getConfig(access: EnumAwsS3Accessibility): IAwsS3ConfigBucket {
-        const config = this.config.get(access);
-
-        if (!config) {
-            throw new Error(
-                `AWS S3 configuration for access level ${access} is missing.`
-            );
+    private buildBaseUrl(bucket: string | null): string | null {
+        if (!bucket || (!this.endpoint && !this.region)) {
+            return null;
         }
 
-        return config;
+        const baseUrl = this.helperStringService.fillPattern(
+            this.baseUrlPattern,
+            {
+                endpoint: this.endpoint ?? '',
+                bucket,
+                region: this.region ?? '',
+            }
+        );
+
+        return baseUrl;
+    }
+
+    private getConfig(access: EnumAwsS3Accessibility): IAwsS3ConfigBucket {
+        return this.config[access];
+    }
+
+    private buildUrls(
+        config: IAwsS3ConfigBucket,
+        key: string
+    ): { completedUrl: string; cdnUrl: string | null } {
+        const { cdnUrl } = config;
+        const baseUrl = config.baseUrl ?? '';
+        const completedUrl = this.helperStringService.fillPattern(
+            this.objectUrlPattern,
+            { baseUrl, key }
+        );
+
+        if (!cdnUrl) {
+            return { completedUrl, cdnUrl: null };
+        }
+
+        const cdnObjectUrl = this.helperStringService.fillPattern(
+            this.cdnUrlPattern,
+            { cdnUrl, key }
+        );
+
+        return {
+            completedUrl,
+            cdnUrl: cdnObjectUrl,
+        };
+    }
+
+    private async copyItemInitialized(
+        source: IAwsS3,
+        destination: string,
+        options: IAwsS3CopyItemOptions
+    ): Promise<IAwsS3> {
+        if (source.key.startsWith('/')) {
+            throw new AwsS3KeyInvalidException();
+        }
+
+        if (destination.startsWith('/')) {
+            throw new AwsS3KeyInvalidException();
+        }
+
+        const configTo = this.getConfig(options.accessTo);
+        const configFrom = this.getConfig(options.accessFrom);
+
+        const destinationKey = `${destination}/${source.key.split('/').pop()}`;
+        const encodedSourceKey = source.key
+            .split('/')
+            .map(segment => encodeURIComponent(segment))
+            .join('/');
+        const copyCommand = new CopyObjectCommand({
+            Bucket: configTo.bucket,
+            Key: destinationKey,
+            CopySource: `${configFrom.bucket}/${encodedSourceKey}`,
+            MetadataDirective: 'COPY',
+            ServerSideEncryption: 'AES256',
+        });
+
+        await this.s3Client.send<
+            CopyObjectCommandInput,
+            CopyObjectCommandOutput
+        >(copyCommand);
+
+        const { extension, mime } = this.getFileInfoFromKey(destinationKey);
+        const { completedUrl, cdnUrl } = this.buildUrls(
+            configTo,
+            destinationKey
+        );
+
+        return {
+            bucket: configTo.bucket,
+            key: destinationKey,
+            completedUrl,
+            cdnUrl,
+            extension,
+            size: source.size,
+            mime,
+            access: configTo.access,
+        };
     }
 
     onModuleInit(): void {
@@ -230,36 +349,14 @@ export class AwsS3Service implements OnModuleInit {
             requestHandler: {
                 requestTimeout: this.timeoutInMs,
             },
+            ...(this.endpoint
+                ? { endpoint: this.endpoint, forcePathStyle: true }
+                : {}),
         });
     }
 
     isInitialized(): boolean {
         return !!this.s3Client;
-    }
-
-    private buildUrls(
-        config: IAwsS3ConfigBucket,
-        key: string
-    ): { completedUrl: string; cdnUrl: string | null } {
-        const { baseUrl, cdnUrl } = config;
-        const completedUrl = this.helperStringService.fillPattern(
-            this.objectUrlPattern,
-            { baseUrl, key }
-        );
-
-        if (!cdnUrl) {
-            return { completedUrl, cdnUrl: null };
-        }
-
-        const cdnObjectUrl = this.helperStringService.fillPattern(
-            this.cdnUrlPattern,
-            { cdnUrl, key }
-        );
-
-        return {
-            completedUrl,
-            cdnUrl: cdnObjectUrl,
-        };
     }
 
     async checkConnection(): Promise<boolean> {
@@ -317,7 +414,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const accessibility = options.access;
@@ -360,7 +457,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (path.startsWith('/')) {
-            throw new Error('Path should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const accessibility = options.access;
@@ -374,8 +471,10 @@ export class AwsS3Service implements OnModuleInit {
             const command: ListObjectsV2Command = new ListObjectsV2Command({
                 Bucket: config.bucket,
                 Prefix: path,
-                MaxKeys: AwsS3MaxFetchItems,
-                ContinuationToken: continuationToken ?? undefined,
+                MaxKeys: this.listMaxKeys,
+                ...(continuationToken !== null && {
+                    ContinuationToken: continuationToken,
+                }),
             });
 
             const listItems: ListObjectsV2Output = await this.s3Client.send<
@@ -418,6 +517,41 @@ export class AwsS3Service implements OnModuleInit {
         return allItems;
     }
 
+    /** Reads the first `length` bytes of an object; `null` when S3 is not configured. */
+    async getItemBytes(
+        key: string,
+        length: number,
+        options: IAwsS3Options
+    ): Promise<Buffer | null> {
+        const isInitialized = this.isInitialized();
+        if (!isInitialized) {
+            this.logger.warn(
+                'AWS S3 credentials not configured. S3 functionalities will be disabled.'
+            );
+
+            return null;
+        }
+
+        if (key.startsWith('/')) {
+            throw new AwsS3KeyInvalidException();
+        }
+
+        const config = this.getConfig(options.access);
+        const command: GetObjectCommand = new GetObjectCommand({
+            Bucket: config.bucket,
+            Key: key,
+            Range: `bytes=0-${length - 1}`,
+        });
+        const item: GetObjectCommandOutput = await this.s3Client.send<
+            GetObjectCommandInput,
+            GetObjectCommandOutput
+        >(command);
+
+        return item.Body
+            ? Buffer.from(await item.Body.transformToByteArray())
+            : Buffer.alloc(0);
+    }
+
     async getItem(key: string, options: IAwsS3Options): Promise<IAwsS3 | null> {
         const isInitialized = this.isInitialized();
         if (!isInitialized) {
@@ -429,7 +563,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const accessibility = options.access;
@@ -444,6 +578,7 @@ export class AwsS3Service implements OnModuleInit {
         >(command);
         const { extension, mime } = this.getFileInfoFromKey(key);
         const { completedUrl, cdnUrl } = this.buildUrls(config, key);
+        const body = item.Body ?? null;
 
         return {
             bucket: config.bucket,
@@ -451,7 +586,7 @@ export class AwsS3Service implements OnModuleInit {
             completedUrl,
             cdnUrl,
             extension,
-            data: item.Body,
+            ...(body !== null && { data: body }),
             size: item.ContentLength ?? 0,
             mime,
             access: accessibility,
@@ -472,15 +607,15 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (file.key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         if (!file.file) {
-            throw new Error('File is required');
+            throw new AwsS3FileRequiredException();
         }
 
         if (file.key.includes('..') || file.key.includes('//')) {
-            throw new Error('Invalid key: path traversal detected');
+            throw new AwsS3KeyInvalidException();
         }
 
         const accessibility = options.access;
@@ -493,15 +628,20 @@ export class AwsS3Service implements OnModuleInit {
             });
 
             try {
+                // Sequential by design: write must not run if an earlier step throws
                 await this.s3Client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
                 >(headCommand);
 
-                throw new Error(`Key ${file.key} is already exist.`);
+                throw new AwsS3ObjectExistException();
             } catch (error: unknown) {
-                if (!(error instanceof NotFound)) {
+                if (error instanceof AwsS3ObjectExistException) {
                     throw error;
+                }
+
+                if (!(error instanceof NotFound)) {
+                    throw new AppUnknownException(error);
                 }
             }
         }
@@ -545,7 +685,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const config = this.getConfig(options.access);
@@ -571,7 +711,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (keys.some(e => e.startsWith('/'))) {
-            throw new Error('Keys should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const config = this.getConfig(options.access);
@@ -603,27 +743,27 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (path.startsWith('/')) {
-            throw new Error('Path should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const config = this.getConfig(options.access);
+        const prefix = path.endsWith('/') ? path : `${path}/`;
         let continuationToken: string | null = null;
 
-        const maxIterations = 100;
         let iterations = 0;
 
         do {
-            if (iterations >= maxIterations) {
-                throw new Error(
-                    `DeleteDir exceeded max iterations (${maxIterations}). Too many objects.`
-                );
+            if (iterations >= this.deleteDirMaxIterations) {
+                throw new AwsS3IterationLimitExceededException();
             }
 
             const listCommand: ListObjectsV2Command = new ListObjectsV2Command({
                 Bucket: config.bucket,
-                Prefix: path,
-                MaxKeys: AwsS3MaxFetchItems,
-                ContinuationToken: continuationToken ?? undefined,
+                Prefix: prefix,
+                MaxKeys: this.listMaxKeys,
+                ...(continuationToken !== null && {
+                    ContinuationToken: continuationToken,
+                }),
             });
 
             const listItems: ListObjectsV2Output = await this.s3Client.send<
@@ -669,11 +809,9 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (file.key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         } else if (maxPartNumber > AwsS3MaxPartNumber) {
-            throw new Error(
-                `Max part number is greater than ${AwsS3MaxPartNumber}`
-            );
+            throw new AwsS3MaxPartNumberExceededException();
         }
 
         const accessibility = options.access;
@@ -686,15 +824,20 @@ export class AwsS3Service implements OnModuleInit {
             });
 
             try {
+                // Sequential by design: write must not run if an earlier step throws
                 await this.s3Client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
                 >(headCommand);
 
-                throw new Error(`Key ${file.key} is already exist.`);
+                throw new AwsS3ObjectExistException();
             } catch (error: unknown) {
-                if (!(error instanceof NotFound)) {
+                if (error instanceof AwsS3ObjectExistException) {
                     throw error;
+                }
+
+                if (!(error instanceof NotFound)) {
+                    throw new AppUnknownException(error);
                 }
             }
         }
@@ -860,26 +1003,10 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const config = this.getConfig(options.access);
-
-        const headCommand = new HeadObjectCommand({
-            Bucket: config.bucket,
-            Key: key,
-        });
-
-        try {
-            await this.s3Client.send<
-                HeadObjectCommandInput,
-                HeadObjectCommandOutput
-            >(headCommand);
-        } catch (error: unknown) {
-            if (!(error instanceof NotFound)) {
-                throw error;
-            }
-        }
 
         const { extension, mime } = this.getFileInfoFromKey(key);
         const command: GetObjectCommand = new GetObjectCommand({
@@ -887,7 +1014,7 @@ export class AwsS3Service implements OnModuleInit {
             Key: key,
         });
         const expiresIn =
-            options.expiredInSeconds ?? this.presignExpiredInSeconds;
+            options.expiredInSeconds ?? this.presignExpiresInSeconds;
 
         const presignUrl = await getSignedUrl(this.s3Client, command, {
             expiresIn,
@@ -916,7 +1043,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const config = this.getConfig(options.access);
@@ -928,15 +1055,20 @@ export class AwsS3Service implements OnModuleInit {
             });
 
             try {
+                // Sequential by design: gate before the work it guards
                 await this.s3Client.send<
                     HeadObjectCommandInput,
                     HeadObjectCommandOutput
                 >(headCommand);
 
-                throw new Error(`Key ${key} is already exists.`);
+                throw new AwsS3ObjectExistException();
             } catch (error: unknown) {
-                if (!(error instanceof NotFound)) {
+                if (error instanceof AwsS3ObjectExistException) {
                     throw error;
+                }
+
+                if (!(error instanceof NotFound)) {
+                    throw new AppUnknownException(error);
                 }
             }
         }
@@ -952,10 +1084,11 @@ export class AwsS3Service implements OnModuleInit {
             ContentDisposition: 'inline',
         });
         const expiresIn =
-            options.expiredInSeconds ?? this.presignExpiredInSeconds;
+            options.expiredInSeconds ?? this.presignExpiresInSeconds;
 
         const presignUrl = await getSignedUrl(this.s3Client, command, {
             expiresIn,
+            signableHeaders: new Set(['content-type']),
         });
 
         return {
@@ -981,7 +1114,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const config = this.getConfig(options.access);
@@ -995,7 +1128,7 @@ export class AwsS3Service implements OnModuleInit {
 
         const { extension, mime } = this.getFileInfoFromKey(key);
         const expiresIn =
-            options.expiredInSeconds ?? this.presignExpiredInSeconds;
+            options.expiredInSeconds ?? this.presignExpiresInSeconds;
         const presignUrl = await getSignedUrl(
             this.s3Client,
             uploadPartCommand,
@@ -1020,7 +1153,7 @@ export class AwsS3Service implements OnModuleInit {
         options: IAwsS3Options
     ): IAwsS3 {
         if (key.startsWith('/')) {
-            throw new Error('Key should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         const accessibility = options.access;
@@ -1054,47 +1187,13 @@ export class AwsS3Service implements OnModuleInit {
             return null;
         }
 
-        if (source.key.startsWith('/')) {
-            throw new Error('Source key should not start with "/"');
-        }
-
-        if (destination.startsWith('/')) {
-            throw new Error('Destination should not start with "/"');
-        }
-
-        const configTo = this.getConfig(options.accessTo);
-        const configFrom = this.getConfig(options.accessFrom);
-
-        const destinationKey = `${destination}/${source.key.split('/').pop()}`;
-        const copyCommand = new CopyObjectCommand({
-            Bucket: configTo.bucket,
-            Key: destinationKey,
-            CopySource: `${configFrom.bucket}/${source.key}`,
-            MetadataDirective: 'COPY',
-            ServerSideEncryption: 'AES256',
-        });
-
-        await this.s3Client.send<
-            CopyObjectCommandInput,
-            CopyObjectCommandOutput
-        >(copyCommand);
-
-        const { extension, mime } = this.getFileInfoFromKey(destinationKey);
-        const { completedUrl, cdnUrl } = this.buildUrls(
-            configTo,
-            destinationKey
+        const copiedItem = this.copyItemInitialized(
+            source,
+            destination,
+            options
         );
 
-        return {
-            bucket: configTo.bucket,
-            key: destinationKey,
-            completedUrl,
-            cdnUrl,
-            extension,
-            size: source.size,
-            mime,
-            access: configTo.access,
-        };
+        return copiedItem;
     }
 
     async copyItems(
@@ -1112,28 +1211,21 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         if (sources.some(e => e.key.startsWith('/'))) {
-            throw new Error('Source keys should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
         if (destination.startsWith('/')) {
-            throw new Error('Destination should not start with "/"');
+            throw new AwsS3KeyInvalidException();
         }
 
-        const promises = [];
-
-        const accessibility = options.access;
-        for (const source of sources) {
-            const copiedItem = this.copyItem(source, destination, {
-                accessTo: accessibility,
-                accessFrom: source.access,
-            });
-            promises.push(copiedItem);
-        }
-
-        const copiedItems = await Promise.allSettled(promises);
-        return copiedItems
-            .filter(item => item.status === 'fulfilled' && item.value !== null)
-            .map(item => (item as PromiseFulfilledResult<IAwsS3>).value!);
+        return Promise.all(
+            sources.map(source =>
+                this.copyItemInitialized(source, destination, {
+                    accessTo: options.access,
+                    accessFrom: source.access,
+                })
+            )
+        );
     }
 
     async settingBucketExpiredObjectLifecycle(
@@ -1163,7 +1255,7 @@ export class AwsS3Service implements OnModuleInit {
                             },
                             AbortIncompleteMultipartUpload: {
                                 DaysAfterInitiation:
-                                    this.multipartExpiredInDays,
+                                    this.multipartExpiresInDays,
                             },
                             Expiration: {
                                 ExpiredObjectDeleteMarker: true,
@@ -1210,7 +1302,7 @@ export class AwsS3Service implements OnModuleInit {
                         Sid: 'IAMUserFullAccess',
                         Effect: 'Allow',
                         Principal: {
-                            AWS: this.iamArn,
+                            AWS: this.iamPrincipalArn,
                         },
                         Action: 's3:*',
                         Resource: resources,
@@ -1272,14 +1364,10 @@ export class AwsS3Service implements OnModuleInit {
                             MaxAgeSeconds: this.corsMaxAgeLongInSeconds,
                         },
                         {
-                            AllowedOrigins: this.corsAllowedOrigin,
+                            AllowedOrigins: this.allowedOrigins,
                             AllowedMethods: ['PUT', 'POST', 'DELETE'],
                             AllowedHeaders: ['*'],
-                            ExposeHeaders: [
-                                'ETag',
-                                'Content-Length',
-                                'x-amz-version-id',
-                            ],
+                            ExposeHeaders: ['ETag', 'Content-Length'],
                             MaxAgeSeconds: this.corsMaxAgeShortInSeconds,
                         },
                     ],
@@ -1291,7 +1379,7 @@ export class AwsS3Service implements OnModuleInit {
                 CORSConfiguration: {
                     CORSRules: [
                         {
-                            AllowedOrigins: this.corsAllowedOrigin,
+                            AllowedOrigins: this.allowedOrigins,
                             AllowedMethods: [
                                 'GET',
                                 'HEAD',
@@ -1310,8 +1398,6 @@ export class AwsS3Service implements OnModuleInit {
                                 'x-amz-server-side-encryption',
                                 'x-amz-request-id',
                                 'x-amz-id-2',
-                                'x-amz-version-id',
-                                'x-amz-delete-marker',
                             ],
                             MaxAgeSeconds: this.corsMaxAgeShortInSeconds,
                         },

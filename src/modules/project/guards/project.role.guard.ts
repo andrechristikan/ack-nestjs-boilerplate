@@ -1,28 +1,27 @@
+import { WorkspaceContextStoreKey } from '@modules/workspace/constants/workspace.constant';
+import type { IWorkspaceContextPatch } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IProjectContext,
+    IProjectContextPatch,
+} from '@modules/project/interfaces/project.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import {
+    ProjectContextStoreKey,
     ProjectRoleMetaKey,
-    ProjectStoreKey,
-    ProjectWorkspaceOwnerStoreKey,
 } from '@modules/project/constants/project.constant';
-import { ProjectMemberDomain } from '@modules/project/domains/project.member.domain';
-import { WorkspaceMemberStoreKey } from '@modules/workspace/constants/workspace.constant';
+import { ProjectGuardMissingException } from '@modules/project/exceptions/project.guard-missing.exception';
+import { ProjectMemberService } from '@modules/project/services/project.member.service';
+import { WorkspaceMemberGuardMissingException } from '@modules/workspace/exceptions/workspace.member-guard-missing.exception';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-/**
- * Enforces the roles declared by `@ProjectMemberProtected(...roles)` against the project resolved by
- * `ProjectGuard` and the workspace membership resolved by `WorkspaceMemberGuard`, both of which must
- * run before this guard. A workspace owner passes without a `ProjectMember` row, and that bypass is
- * published to the request context.
- */
 @Injectable()
 export class ProjectRoleGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly projectMemberDomain: ProjectMemberDomain,
+        private readonly projectMemberService: ProjectMemberService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -33,21 +32,33 @@ export class ProjectRoleGuard implements CanActivate {
         );
         const allowedRoles = requiredRoles ?? [];
 
-        const project = this.requestStoreService.get<Project>(ProjectStoreKey);
-        const workspaceMember = this.requestStoreService.get<WorkspaceMember>(
-            WorkspaceMemberStoreKey
+        const projectContext =
+            this.requestStoreService.get<IProjectContextPatch>(
+                ProjectContextStoreKey
+            );
+        const project = projectContext?.project ?? null;
+        if (project === null) {
+            throw new ProjectGuardMissingException();
+        }
+
+        const workspaceContext =
+            this.requestStoreService.get<IWorkspaceContextPatch>(
+                WorkspaceContextStoreKey
+            );
+        const workspaceMember = workspaceContext?.workspaceMember ?? null;
+        if (workspaceMember === null) {
+            throw new WorkspaceMemberGuardMissingException();
+        }
+
+        const member = await this.projectMemberService.validateProjectRoleGuard(
+            project.id,
+            workspaceMember,
+            allowedRoles
         );
 
-        const isWorkspaceOwner =
-            await this.projectMemberDomain.validateProjectRoleGuard(
-                project?.id ?? null,
-                workspaceMember,
-                allowedRoles
-            );
-
-        this.requestStoreService.set(
-            ProjectWorkspaceOwnerStoreKey,
-            isWorkspaceOwner
+        this.requestStoreService.merge<IProjectContext>(
+            ProjectContextStoreKey,
+            { projectMember: member }
         );
 
         return true;

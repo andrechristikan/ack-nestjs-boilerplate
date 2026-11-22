@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PaginationMaxFilterLength } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import {
@@ -6,36 +7,38 @@ import {
     WorkspaceInviteDefaultAvailableSearch,
 } from '@modules/workspace/constants/workspace.list.constant';
 
-/**
- * Workspace Invite List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const WorkspaceInviteListRequestSchema =
     PaginationCursorQuerySchema.extend({
-        search: z
-            .string()
-            .optional()
-            .meta({
-                description: `Search query, available fields: ${WorkspaceInviteDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
-                example: '',
-            }),
-        orderBy: z
-            .union([z.string(), z.array(z.string())])
-            .optional()
-            .meta({
-                description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${WorkspaceInviteDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-                example: `${WorkspaceInviteDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-            }),
-        status: z.string().optional().meta({
-            description: 'Filter by status, comma-delimited',
+        search: PaginationCursorQuerySchema.shape.search.meta({
+            description: `Search query, available fields: ${WorkspaceInviteDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
             example: '',
         }),
+        orderBy: z
+            .union([
+                z.templateLiteral([
+                    z.enum(WorkspaceInviteDefaultAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ]),
+                z.literal(''),
+            ])
+            .optional()
+            .meta({
+                description: `Order by field in \`field:direction\` format (e.g. \`${WorkspaceInviteDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${WorkspaceInviteDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
+                example: `${WorkspaceInviteDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            }),
+        status: z
+            .string()
+            .max(PaginationMaxFilterLength)
+            .optional()
+            .meta({
+                description: `Filter by status, comma-delimited, at most ${PaginationMaxFilterLength} characters`,
+                example: '',
+            }),
     });
 
-/**
- * Inferred DTO for WorkspaceInviteListRequestSchema.
- * @public
- */
+/** @public */
 export type WorkspaceInviteListRequestDto = z.infer<
     typeof WorkspaceInviteListRequestSchema
 >;

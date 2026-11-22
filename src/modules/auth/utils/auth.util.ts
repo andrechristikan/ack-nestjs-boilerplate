@@ -1,63 +1,29 @@
 import { Injectable } from '@nestjs/common';
-import type {
-    IAuthJwtAccessTokenPayload,
-    IAuthJwtRefreshTokenPayload,
-} from '@modules/auth/interfaces/auth.interface';
+import { ConfigService } from '@nestjs/config';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import type { IAuthLoginIdentifiers } from '@modules/auth/interfaces/auth.interface';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import {
-    EnumUserLoginFrom,
-    EnumUserLoginWith,
-} from '@generated/prisma-client/client';
-import type { User } from '@generated/prisma-client/client';
 
-/** Auth utility: shapes the JWT payloads and the jti. See docs/authentication.md. */
 @Injectable()
 export class AuthUtil {
-    constructor(private readonly helperStringService: HelperStringService) {}
+    private readonly jtiLength: number;
 
-    /** Assembles the access token payload from the user and login context. */
-    createPayloadAccessToken(
-        data: User,
-        sessionId: string,
-        deviceOwnershipId: string,
-        loginAt: Date,
-        loginFrom: EnumUserLoginFrom,
-        loginWith: EnumUserLoginWith
-    ): IAuthJwtAccessTokenPayload {
-        return {
-            userId: data.id,
-            roleId: data.roleId,
-            username: data.username,
-            email: data.email,
-            sessionId,
-            deviceOwnershipId,
-            loginAt,
-            loginFrom,
-            loginWith,
-        };
+    constructor(
+        private readonly helperStringService: HelperStringService,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.jtiLength = this.configService.get<number>('auth.jwt.jtiLength')!;
     }
 
-    /** Derives the minimal refresh token payload from an access token payload. */
-    createPayloadRefreshToken({
-        sessionId,
-        userId,
-        deviceOwnershipId,
-        loginFrom,
-        loginAt,
-        loginWith,
-    }: IAuthJwtAccessTokenPayload): IAuthJwtRefreshTokenPayload {
-        return {
-            loginAt,
-            loginFrom,
-            loginWith,
-            sessionId,
-            deviceOwnershipId,
-            userId,
-        };
-    }
-
-    /** Generates a random 32-character jti used to bind a token to its session. */
     generateJti(): string {
-        return this.helperStringService.random(32);
+        return this.helperStringService.random(this.jtiLength);
+    }
+
+    createLoginIdentifiers(): IAuthLoginIdentifiers {
+        const sessionId = this.databaseUtil.createId();
+        const jti = this.generateJti();
+
+        return { sessionId, jti };
     }
 }

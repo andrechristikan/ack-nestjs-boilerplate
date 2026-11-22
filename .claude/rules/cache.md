@@ -1,89 +1,34 @@
+---
+paths:
+    - '**/caches/**'
+    - 'src/common/cache/**'
+    - 'src/common/redis/**'
+    - 'src/common/request/services/request.throttle-storage.service.ts'
+---
+
 # Cache
 
-This file is the rule set. Flow narrative: `docs/cache.md` — explorer or planner.
+- MongoDB is the authority; Redis `db:0` holds caches, their lease keys included, and throttle counters, nothing else. A cache entry is never an invariant. A short-lived or one-time value that gates a flow (a one-time code, a verification or reset token, the login challenge, the social nonce) is a database row, deleted or marked on use, and no value is written to both stores.
+- `RedisModule.forRoot()` (`src/common/redis/redis.module.ts`) owns every Redis client, all ioredis: the cache client (`RedisCacheClient`), the queue producer (`RedisQueueClient`), and the queue worker (`RedisQueueWorkerClient`, `queue.md`), all three exported. `RedisClientFactory` (`src/common/redis/factories/redis.client.factory.ts`) builds the three clients (`createCache`, `createQueue`, `createQueueWorker`) with `lazyConnect`, attaches each client's `error` listener (one `warn` when the client leaves `ready`, one `log` when it is back), and awaits `connect()`, so the app does not boot while Redis is down; on shutdown it runs `quit()` on a ready client, else `disconnect()`. Every BullMQ `Worker` and `Queue` carries an `error` listener (`QueueProcessorBase.onError`, the `QueueBase` and `HealthQueueIndicator` constructors) that drops a connection error (`CacheService.isConnectionError`), which the factory already logs, and warns on any other.
+- The cache client, on `redis.cache.url`: `enableOfflineQueue: false`, the command timeout `redis.commandTimeoutInMs`, the connect timeout `redis.connectTimeoutInMs`, `keyPrefix` `Cache:` from `redis.cache.namespace`, which prefixes every key, Lua `KEYS` included; code passes unprefixed keys.
+- `CacheModule.forRoot()` provides `CacheService` (`src/common/cache/services/cache.service.ts`) over that client. `readThrough` is the one method taking a loader.
+- A Redis error falls in one of two classes, decided by `CacheService.isConnectionError`:
+    - a connection error, Redis not answering (an `Error` whose message is in `RedisConnectionErrorMessages`, whose `name` is in `RedisConnectionErrorNames`, or whose `code` is in `RedisConnectionErrorCodes`, `src/common/redis/constants/redis.constant.ts`), throws `RedisUnavailableException`: the request answers 503 fast;
+    - any other error (an entry failing `JSON.parse` or its schema, a Lua or type error) is a miss: `warnOnce` logs it at `warn` once per key per `redis.warnWindowInMs`, and the read goes on to the database.
+- `readThrough(key, schema, ttlInMs, loader, options?)`: every value is plain JSON written with `PX`; a value passing `JSON.parse` and `schema.safeParse` is the hit; a missing entry, a schema failure (the key is deleted), or a non-connection error runs `loader()` and sets its result, a set error classed as above. A `null` result is not stored. The schema revives what JSON drops (`z.coerce.date()`).
+- `options.lease`, for a shared hot key (`ApiKeyCache`, `FeatureFlagCache`, `RoleCache`), holds no stale entry past a delete: the invalidate job removes the entry and its lease.
+- A write that changes or deletes a cached row invalidates through an effect: `effects.md`, Cache invalidation.
+- `CacheService.flush` runs `flushdb` on the cache client; `MigrationSeedBase` is its one caller.
+- `CacheModule.forRoot()` registers the `cache` queue with `CacheQueueFactory` (`queue.job.cacheBackoffDelayInMs`); `CacheProcessor` (`src/common/cache/processors/`), provided by `router.processor.module.ts`, awaits `CacheService.invalidate(data.keys)`, and a connection error retries the job; its messages are `cache.queue.*` in `src/languages/<lang>/cache.json`.
+- The session login entry and its purge: `session.md`, Session invalidation. `RoleCache`: `role.md`.
 
-## One Redis connection, two databases
+## Class shape
 
-Redis `db:0` is the cache, `db:1` is BullMQ. Both go through the modules that already own the
-connection — `RedisCacheModule.forRoot()` provides the shared Keyv client,
-`CacheMainModule.forRoot()` wires `@nestjs/cache-manager` on top of it, and
-`QueueModule.forRoot()` owns the two BullMQ connections (`rules/queue.md`). Cache modules are
-global. `QueueModule` carries no `@Global()`; `BullModule.forRootAsync` is already `global: true`.
+Every `caches/*.cache.ts` has one shape:
 
-**Never open a second Redis connection.** Not in a feature module, not in a util, not "just for
-this one lock".
-
-## A module's cache reads and writes live in a cache class
-
-A feature that caches gets a cache class at
-`src/modules/<feature>/caches/<module>[.<concern>].cache.ts` — `SessionCache`,
-`ApiKeyCache`, `FeatureFlagCache`, `AuthCache`, `AnalyticCache`. It holds the cache manager and the
-`keyPattern` it reads from config. It is not a service: no `Service` in the class or file
-name, and it has no header interface (`rules/architecture.md`). `<feature>.domain.module.ts` still
-provides it (`rules/nest-wiring.md`). Every get, set and delete for that module goes
-through it, so one class owns the key shape and the invalidation path for a given pattern.
-
-**A util never touches the cache.** It shapes data and does no IO (`rules/architecture.md`), so
-the cached value reaches it as an argument.
-
-## Caching a response
-
-Caching is decorator-driven on the route:
-
-```typescript
-@Response('user.profile', { cache: true })
-@Response('user.profile', { cache: { key: '…', ttl: … } })
-```
-
-`@Response` / `@ResponsePagination` push `CacheKey` and `CacheTTL` and mount
-`ResponseCacheInterceptor` when `options.cache` is present. A hand-mounted
-`@UseInterceptors(CacheInterceptor)` on a route is the wrong path.
-
-- **A cached route's response schema declares only shapes that survive a JSON round trip** — no
-  `z.date()`, no `Map`, no `Set`, no class instance. `ResponseCacheInterceptor` is mounted INSIDE
-  `ResponseInterceptor`, so Redis holds the handler's raw return and `ResponseInterceptor`
-  validates what comes back out of it against the route's schema; a value JSON cannot reproduce
-  is rejected on every cache hit. A cached route that carries a date declares it as a string or a
-  number.
-- **The TTL default is config, not a literal.** `redis.cache.ttlInMs` is the app-wide default,
-  and a per-route `ttl` comes from a config key of its own. cache-manager takes milliseconds, so
-  both keys carry the `InMs` suffix and the route passes the value straight through
-  (`rules/config.md`).
-- **Never cache a response that varies by caller without the caller in the key.** A cached
-  route whose body depends on `request.user`, on the workspace header, or on a role will serve
-  one caller's data to another. If the key cannot express the variation, the route is not
-  cacheable.
-- **Never cache a response that carries a credential** (`rules/security.md`).
-
-## Cache is best-effort, except where it carries authority
-
-A cache read that fails falls through to the database. Nothing about correctness may depend on
-a cache hit, and a cache entry is never a lock (`rules/concurrency.md`).
-
-Writes and deletes are not uniformly best-effort. The Keyv store runs with `throwOnErrors`, so
-a Redis failure rejects instead of passing silently, and each caller decides what that means:
-
-- **It fails the request** when the entry IS the authority for what follows: the session cache
-  write on login and on refresh rotation, and the two-factor challenge write. A token the guards
-  cannot read is worse than a failed login.
-- **It fails the request** when a stale entry would keep a revoked credential working: the API
-  key cache delete runs after the database write, sequentially, so the change is audited and the
-  failure is visible.
-- **It is caught and logged** where the entry expires on its own and the database still holds
-  the truth: every session purge after a commit, the challenge and lock clears, and the API key
-  read-through write.
-
-A whole-user session purge scans the user's key pattern (`SCAN` plus `UNLINK`, batched); a
-partial revoke deletes exactly the ids it revoked (`rules/security.md`).
-
-## Invalidation is part of the write
-
-A write that makes a cached read stale invalidates it in the same operation. A cached value
-with no invalidation path is a bug with a delay on it — say which key a new write invalidates,
-or say why nothing caches that read.
-
-## Keys
-
-A cache or lock key is a `keyPattern` string in a config file. The shape of that string —
-`PascalCase` segments, `{placeholder}` tokens, no prefix-append — is `rules/naming.md`
-→ "Redis keys", and it is not restated here.
+- Constructor: `ConfigService`, then the helpers it uses.
+- Fields: one `private readonly` key pattern field and one `readonly` TTL field per key, a lease adding its lease key pattern and lease TTL fields, read from config in the constructor and named by `injectable.md`, Config (`ApiKeyCache.cacheTtlInMs`); the TTL is public for the service's `readThrough`.
+- Key building: one `build<Subject>Key(...)` per key, public when a service reads through it, filled as `code-style.md`, Composed strings, gives. A leased cache adds `build<Subject>Lease(...)`, the `ICacheLease` for `readThrough`, and `build<Subject>Keys(...)`, public, the entry and lease keys the service passes to `invalidateEffect`.
+- Schema: `<Subject>CacheSchema` in the module's `<module>.constant.ts`, any zod schema declared `satisfies z.ZodType<T>` (`z.object({...})`, `z.array(...)`); a cache serving several shapes has one per shape (`Analytic<Shape>CacheSchema`).
+- Methods: a read-through cache holds key builders only: no read or delete method, no loader, no try/catch, no logger, and no Lua script. `<Subject>` is the entry's full name, one word across the key builder and every method, and it keeps a segment the class name carries: `ApiKeyCache` has `buildApiKeyKey`, `buildApiKeyLease`, `buildApiKeyKeys`, never `buildKey`.
+- A cache injects no repository: the service calls `CacheService.readThrough` with the cache's key, TTL, and lease, the schema constant, and a concise arrow over its repository read (`FeatureFlagService.getByKey`, `src/modules/feature-flag/services/feature-flag.service.ts`).

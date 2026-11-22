@@ -9,4 +9,5 @@ export interface IFirebasePushResult {
     successCount: number;
     failureCount: number;
     failureTokens: string[];
+    retryTokens: string[];
 }

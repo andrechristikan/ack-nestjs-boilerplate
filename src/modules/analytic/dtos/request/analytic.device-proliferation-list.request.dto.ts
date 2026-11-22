@@ -1,0 +1,28 @@
+import { z } from 'zod';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
+import { AnalyticDeviceProliferationAvailableOrderBy } from '@modules/analytic/constants/analytic.list.constant';
+
+/** @public */
+export const AnalyticDeviceProliferationListRequestSchema =
+    PaginationOffsetQuerySchema.omit({ search: true }).extend({
+        orderBy: z
+            .union([
+                z.templateLiteral([
+                    z.enum(AnalyticDeviceProliferationAvailableOrderBy),
+                    ':',
+                    z.enum(EnumPaginationOrderDirectionType),
+                ]),
+                z.literal(''),
+            ])
+            .optional()
+            .meta({
+                description: `Order by field in \`field:direction\` format (e.g. \`${AnalyticDeviceProliferationAvailableOrderBy[0]}:desc\`). Available fields: ${AnalyticDeviceProliferationAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
+                example: `${AnalyticDeviceProliferationAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            }),
+    });
+
+/** @public */
+export type AnalyticDeviceProliferationListRequestDto = z.infer<
+    typeof AnalyticDeviceProliferationListRequestSchema
+>;

@@ -1,5 +1,8 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import {
@@ -12,14 +15,11 @@ import {
     EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
-import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Seeds one default personal workspace (owner membership, no project) per seeded user. Requires users to already be seeded, and aborts otherwise.
- */
 @Command({
     name: 'workspace',
     description: 'Seed/Remove Default Workspaces',
@@ -39,12 +39,13 @@ export class MigrationWorkspaceSeed
     private readonly users: IMigrationUserData[] = [];
 
     constructor(
+        protected readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService,
-        private readonly helperStringService: HelperStringService,
-        private readonly workspaceMemberRepository: WorkspaceMemberRepository
+        private readonly helperStringService: HelperStringService
     ) {
-        super();
+        super(cacheService);
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.users = MigrationUserData[this.env];
@@ -72,6 +73,56 @@ export class MigrationWorkspaceSeed
         );
     }
 
+    private async createDefaultWorkspace(user: {
+        id: string;
+        username: string;
+    }): Promise<void> {
+        const slugCandidates = this.drawSlugCandidates();
+
+        for (const slug of slugCandidates) {
+            try {
+                await this.databaseService.withTransaction(
+                    async tx => {
+                        const workspace = await tx.workspace.create({
+                            data: {
+                                name: `${user.username}'s Workspace`,
+                                slug,
+                                deletedAt: null,
+                                createdBy: MigrationUserSuperAdminId,
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                        });
+                        await tx.workspaceMember.create({
+                            data: {
+                                workspaceId: workspace.id,
+                                userId: user.id,
+                                role: EnumWorkspaceMemberRole.owner,
+                                createdBy: MigrationUserSuperAdminId,
+                                updatedBy: MigrationUserSuperAdminId,
+                            },
+                        });
+                    },
+                    { timeout: this.seedTransactionTimeoutInMs }
+                );
+
+                return;
+            } catch (error: unknown) {
+                const isSlugCollision = this.databaseUtil.isUniqueCollision(
+                    error,
+                    'slug'
+                );
+                if (!isSlugCollision) {
+                    throw new AppUnknownException(
+                        error,
+                        'Creating the default workspace failed'
+                    );
+                }
+            }
+        }
+
+        throw new DatabaseUniqueValueGenerationFailedException();
+    }
+
     async seed(): Promise<void> {
         this.logger.log('Seeding Workspaces...');
 
@@ -89,7 +140,9 @@ export class MigrationWorkspaceSeed
         });
 
         if (seededUsers.length !== emails.length) {
-            this.logger.warn('Seeded users not found, cannot seed workspaces.');
+            this.logger.error(
+                'Seeded users not found, cannot seed workspaces.'
+            );
             return;
         }
 
@@ -101,39 +154,26 @@ export class MigrationWorkspaceSeed
             await Promise.all(
                 seededUsers.map(async user => {
                     const ownedCount =
-                        await this.workspaceMemberRepository.countOwnedActiveByUser(
-                            user.id
+                        await this.databaseService.client.workspaceMember.count(
+                            {
+                                where: {
+                                    userId: user.id,
+                                    role: EnumWorkspaceMemberRole.owner,
+                                    workspace: {
+                                        deletedAt: null,
+                                    },
+                                },
+                            }
                         );
                     if (ownedCount > 0) {
                         return;
                     }
 
-                    await this.databaseService.withTransaction(
-                        async tx => {
-                            const slugCandidates = this.drawSlugCandidates();
-                            const workspace = await tx.workspace.create({
-                                data: {
-                                    name: `${user.username}'s Workspace`,
-                                    slug: slugCandidates[0],
-                                    createdBy: MigrationUserSuperAdminId,
-                                    updatedBy: MigrationUserSuperAdminId,
-                                },
-                            });
-                            await this.workspaceMemberRepository.createInTx(
-                                tx,
-                                workspace.id,
-                                user.id,
-                                EnumWorkspaceMemberRole.owner,
-                                MigrationUserSuperAdminId
-                            );
-                        },
-                        { timeout: this.seedTransactionTimeoutInMs }
-                    );
+                    await this.createDefaultWorkspace(user);
                 })
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding workspaces');
-            throw error;
+            throw new AppUnknownException(error, 'Seeding workspaces failed');
         }
 
         this.logger.log('Workspaces seeded successfully.');
@@ -195,16 +235,76 @@ export class MigrationWorkspaceSeed
                 return;
             }
 
-            await this.databaseService.client.workspace.deleteMany({
-                where: {
-                    id: {
-                        in: workspaceIds,
-                    },
+            await this.databaseService.withTransaction(
+                async tx => {
+                    const seededProjects = await tx.project.findMany({
+                        where: {
+                            workspaceId: {
+                                in: workspaceIds,
+                            },
+                        },
+                        select: {
+                            id: true,
+                        },
+                    });
+                    const projectIds = seededProjects.map(
+                        project => project.id
+                    );
+
+                    await tx.projectMember.deleteMany({
+                        where: {
+                            projectId: {
+                                in: projectIds,
+                            },
+                        },
+                    });
+                    await tx.workspaceInvite.deleteMany({
+                        where: {
+                            workspaceId: {
+                                in: workspaceIds,
+                            },
+                        },
+                    });
+                    await tx.workspaceJoinRequest.deleteMany({
+                        where: {
+                            workspaceId: {
+                                in: workspaceIds,
+                            },
+                        },
+                    });
+                    await tx.project.deleteMany({
+                        where: {
+                            workspaceId: {
+                                in: workspaceIds,
+                            },
+                        },
+                    });
+                    await tx.activityLog.deleteMany({
+                        where: {
+                            workspaceId: {
+                                in: workspaceIds,
+                            },
+                        },
+                    });
+                    await tx.workspaceMember.deleteMany({
+                        where: {
+                            workspaceId: {
+                                in: workspaceIds,
+                            },
+                        },
+                    });
+                    await tx.workspace.deleteMany({
+                        where: {
+                            id: {
+                                in: workspaceIds,
+                            },
+                        },
+                    });
                 },
-            });
+                { timeout: this.seedTransactionTimeoutInMs }
+            );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing workspaces');
-            throw error;
+            throw new AppUnknownException(error, 'Removing workspaces failed');
         }
 
         this.logger.log('Workspaces removed completed.');

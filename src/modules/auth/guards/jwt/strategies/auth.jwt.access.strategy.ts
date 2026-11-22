@@ -5,35 +5,43 @@ import { ConfigService } from '@nestjs/config';
 import { passportJwtSecret } from 'jwks-rsa';
 import type { Algorithm } from 'jsonwebtoken';
 import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthJwtAccessGuardKey } from '@modules/auth/constants/auth.constant';
-import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import {
+    AuthBearerScheme,
+    AuthJwtAccessGuardKey,
+} from '@modules/auth/constants/auth.constant';
+import { AuthService } from '@modules/auth/services/auth.service';
+import { SessionService } from '@modules/session/services/session.service';
 
-/** Passport strategy validating access tokens via JWKS, default algorithm ES256. */
 @Injectable()
 export class AuthJwtAccessStrategy extends PassportStrategy(
     Strategy,
     AuthJwtAccessGuardKey
 ) {
     constructor(
-        private readonly authDomain: AuthDomain,
-        configService: ConfigService
+        protected readonly configService: ConfigService,
+        private readonly authService: AuthService,
+        private readonly sessionService: SessionService
     ) {
         // jti is not validated here.
         super({
-            jwtFromRequest: ExtractJwt.fromAuthHeaderWithScheme(
-                configService.get<string>('auth.jwt.prefix')!
-            ),
+            jwtFromRequest:
+                ExtractJwt.fromAuthHeaderWithScheme(AuthBearerScheme),
             ignoreExpiration: false,
             passReqToCallback: false,
+            audience: configService.get<string>('auth.jwt.audience')!,
+            issuer: configService.get<string>('auth.jwt.issuer')!,
             jsonWebTokenOptions: {
                 ignoreNotBefore: false,
-                audience: configService.get<string>('auth.jwt.audience')!,
-                issuer: configService.get<string>('auth.jwt.issuer')!,
             },
             secretOrKeyProvider: passportJwtSecret({
                 cache: true,
                 rateLimit: true,
-                jwksRequestsPerMinute: 5,
+                jwksRequestsPerMinute: configService.get<number>(
+                    'auth.jwks.requestsPerMinute'
+                )!,
+                cacheMaxAge: configService.get<number>(
+                    'auth.jwks.cacheMaxAgeInMs'
+                )!,
                 jwksUri: configService.get<string>(
                     'auth.jwt.accessToken.jwksUri'
                 )!,
@@ -44,10 +52,16 @@ export class AuthJwtAccessStrategy extends PassportStrategy(
         });
     }
 
-    /** Runs after signature verification; delegates session/payload checks to AuthDomain. */
     async validate(
         data: IAuthJwtAccessTokenPayload
     ): Promise<IAuthJwtAccessTokenPayload> {
-        return this.authDomain.validateJwtAccessStrategy(data);
+        const payload = this.authService.validateJwtAccessStrategy(data);
+        const isActive = await this.sessionService.isLoginActive(
+            payload.sub,
+            payload.sessionId,
+            payload.jti
+        );
+
+        return this.authService.validateJwtAccessSession(payload, isActive);
     }
 }

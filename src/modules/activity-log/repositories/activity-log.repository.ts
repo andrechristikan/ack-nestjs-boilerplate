@@ -47,113 +47,12 @@ export class ActivityLogRepository implements IActivityLogRepository {
         };
     }
 
-    async findUserScopedWithPaginationOffset(
-        userId: string,
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        const scopedWhere = this.buildUserScopedWhere(userId, where);
-
-        return this.paginationService.offset<
-            IActivityLog,
-            Prisma.ActivityLogWhereInput
-        >(this.databaseService.client.activityLog, {
-            ...params,
-            where: scopedWhere,
-            include: {
-                user: {
-                    select: UserRefSelect,
-                },
-            },
-        });
-    }
-
-    async findUserScopedWithPaginationCursor(
-        userId: string,
-        {
-            where,
-            ...params
-        }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IPaginationCursorReturn<IActivityLog>> {
-        const scopedWhere = this.buildUserScopedWhere(userId, where);
-
-        return this.paginationService.cursor<
-            IActivityLog,
-            Prisma.ActivityLogWhereInput
-        >(this.databaseService.client.activityLog, {
-            ...params,
-            where: scopedWhere,
-            include: {
-                user: {
-                    select: UserRefSelect,
-                },
-            },
-        });
-    }
-
-    async findByWorkspaceWithPaginationOffset(
-        workspaceId: string,
-        userId: string | null,
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        const scopedWhere = this.buildWorkspaceScopedWhere(
-            workspaceId,
-            userId,
-            where
-        );
-
-        return this.paginationService.offset<
-            IActivityLog,
-            Prisma.ActivityLogWhereInput
-        >(this.databaseService.client.activityLog, {
-            ...params,
-            where: scopedWhere,
-            include: {
-                user: {
-                    select: UserRefSelect,
-                },
-            },
-        });
-    }
-
-    async findByWorkspaceWithPaginationCursor(
-        workspaceId: string,
-        userId: string | null,
-        {
-            where,
-            ...params
-        }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IPaginationCursorReturn<IActivityLog>> {
-        const scopedWhere = this.buildWorkspaceScopedWhere(
-            workspaceId,
-            userId,
-            where
-        );
-
-        return this.paginationService.cursor<
-            IActivityLog,
-            Prisma.ActivityLogWhereInput
-        >(this.databaseService.client.activityLog, {
-            ...params,
-            where: scopedWhere,
-            include: {
-                user: {
-                    select: UserRefSelect,
-                },
-            },
-        });
-    }
-
     private mapCreateManyData(
         rows: IActivityLogCreate[]
     ): Prisma.ActivityLogCreateManyInput[] {
         return rows.map(
             ({
+                id,
                 userId,
                 createdBy,
                 workspaceId,
@@ -161,6 +60,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
                 description,
                 requestLog: { ipAddress, userAgent, geoLocation },
                 metadata,
+                createdAt,
             }) => {
                 const plainUserAgent =
                     this.databaseUtil.toPlainObject(userAgent);
@@ -168,6 +68,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
                     this.databaseUtil.toPlainObject(geoLocation);
 
                 return {
+                    id,
                     userId,
                     workspaceId,
                     action,
@@ -180,18 +81,118 @@ export class ActivityLogRepository implements IActivityLogRepository {
                             ? (metadata as Prisma.InputJsonValue)
                             : Prisma.DbNull,
                     createdBy,
+                    createdAt,
                 };
             }
         );
     }
 
-    async createMany(rows: IActivityLogCreate[]): Promise<Prisma.BatchPayload> {
-        const createManyData = this.mapCreateManyData(rows);
+    async findUserScopedWithPaginationOffset(
+        userId: string,
+        { where, ...params }: IPaginationQueryOffsetParams
+    ): Promise<IResponsePaginationReturn<IActivityLog>> {
+        const scopedWhere = this.buildUserScopedWhere(userId, where);
 
-        return this.databaseService.withTransaction(async tx =>
-            tx.activityLog.createMany({
-                data: createManyData,
-            })
+        return this.paginationService.offset(
+            this.databaseService.client.activityLog,
+            {
+                ...params,
+                where: scopedWhere,
+                include: {
+                    user: {
+                        select: UserRefSelect,
+                    },
+                },
+            }
         );
+    }
+
+    async findUserScopedWithPaginationCursor(
+        userId: string,
+        { where, ...params }: IPaginationQueryCursorParams
+    ): Promise<IPaginationCursorReturn<IActivityLog>> {
+        const scopedWhere = this.buildUserScopedWhere(userId, where);
+
+        return this.paginationService.cursor(
+            this.databaseService.client.activityLog,
+            {
+                ...params,
+                where: scopedWhere,
+                include: {
+                    user: {
+                        select: UserRefSelect,
+                    },
+                },
+            }
+        );
+    }
+
+    async findByWorkspaceWithPaginationOffset(
+        workspaceId: string,
+        userId: string | null,
+        { where, ...params }: IPaginationQueryOffsetParams
+    ): Promise<IResponsePaginationReturn<IActivityLog>> {
+        const scopedWhere = this.buildWorkspaceScopedWhere(
+            workspaceId,
+            userId,
+            where
+        );
+
+        return this.paginationService.offset(
+            this.databaseService.client.activityLog,
+            {
+                ...params,
+                where: scopedWhere,
+                include: {
+                    user: {
+                        select: UserRefSelect,
+                    },
+                },
+            }
+        );
+    }
+
+    async findByWorkspaceWithPaginationCursor(
+        workspaceId: string,
+        userId: string | null,
+        { where, ...params }: IPaginationQueryCursorParams
+    ): Promise<IPaginationCursorReturn<IActivityLog>> {
+        const scopedWhere = this.buildWorkspaceScopedWhere(
+            workspaceId,
+            userId,
+            where
+        );
+
+        return this.paginationService.cursor(
+            this.databaseService.client.activityLog,
+            {
+                ...params,
+                where: scopedWhere,
+                include: {
+                    user: {
+                        select: UserRefSelect,
+                    },
+                },
+            }
+        );
+    }
+
+    async createMany(rows: IActivityLogCreate[]): Promise<void> {
+        const ids = rows.map(({ id }) => id);
+
+        await this.databaseService.withTransaction(async tx => {
+            const existing = await tx.activityLog.findMany({
+                where: { id: { in: ids } },
+                select: { id: true },
+            });
+            const existingIds = new Set(existing.map(row => row.id));
+            const absentRows = rows.filter(({ id }) => !existingIds.has(id));
+            if (absentRows.length === 0) {
+                return;
+            }
+
+            const data = this.mapCreateManyData(absentRows);
+            await tx.activityLog.createMany({ data });
+        });
     }
 }

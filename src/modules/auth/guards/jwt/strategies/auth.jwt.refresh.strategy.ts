@@ -5,35 +5,41 @@ import { ConfigService } from '@nestjs/config';
 import { passportJwtSecret } from 'jwks-rsa';
 import type { Algorithm } from 'jsonwebtoken';
 import type { IAuthJwtRefreshTokenPayload } from '@modules/auth/interfaces/auth.interface';
-import { AuthJwtRefreshGuardKey } from '@modules/auth/constants/auth.constant';
-import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import {
+    AuthBearerScheme,
+    AuthJwtRefreshGuardKey,
+} from '@modules/auth/constants/auth.constant';
+import { AuthService } from '@modules/auth/services/auth.service';
 
-/** Passport strategy validating refresh tokens via JWKS, default algorithm ES512. */
 @Injectable()
 export class AuthJwtRefreshStrategy extends PassportStrategy(
     Strategy,
     AuthJwtRefreshGuardKey
 ) {
     constructor(
-        private readonly authDomain: AuthDomain,
-        configService: ConfigService
+        protected readonly configService: ConfigService,
+        private readonly authService: AuthService
     ) {
         // jti is not validated here.
         super({
-            jwtFromRequest: ExtractJwt.fromAuthHeaderWithScheme(
-                configService.get<string>('auth.jwt.prefix')!
-            ),
+            jwtFromRequest:
+                ExtractJwt.fromAuthHeaderWithScheme(AuthBearerScheme),
             ignoreExpiration: false,
             passReqToCallback: false,
+            audience: configService.get<string>('auth.jwt.audience')!,
+            issuer: configService.get<string>('auth.jwt.issuer')!,
             jsonWebTokenOptions: {
                 ignoreNotBefore: false,
-                audience: configService.get<string>('auth.jwt.audience')!,
-                issuer: configService.get<string>('auth.jwt.issuer')!,
             },
             secretOrKeyProvider: passportJwtSecret({
                 cache: true,
                 rateLimit: true,
-                jwksRequestsPerMinute: 5,
+                jwksRequestsPerMinute: configService.get<number>(
+                    'auth.jwks.requestsPerMinute'
+                )!,
+                cacheMaxAge: configService.get<number>(
+                    'auth.jwks.cacheMaxAgeInMs'
+                )!,
                 jwksUri: configService.get<string>(
                     'auth.jwt.refreshToken.jwksUri'
                 )!,
@@ -46,10 +52,9 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
         });
     }
 
-    /** Runs after signature verification; delegates session/payload checks to AuthDomain. */
     async validate(
         data: IAuthJwtRefreshTokenPayload
     ): Promise<IAuthJwtRefreshTokenPayload> {
-        return this.authDomain.validateJwtRefreshStrategy(data);
+        return this.authService.validateJwtRefreshStrategy(data);
     }
 }

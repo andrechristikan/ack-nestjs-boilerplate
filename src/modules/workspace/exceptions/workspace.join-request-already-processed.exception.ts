@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
-/**
- * Raised when a workspace join request is no longer pending.
- * @public
- */
+/** @public */
 export class WorkspaceJoinRequestAlreadyProcessedException extends AppBaseException {
     readonly module = 'workspace';
     readonly statusCode =

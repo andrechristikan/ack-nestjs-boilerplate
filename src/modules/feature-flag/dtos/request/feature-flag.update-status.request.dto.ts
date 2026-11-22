@@ -1,9 +1,8 @@
 import { z } from 'zod';
+import { faker } from '@faker-js/faker';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 
-/**
- * Validates the body for toggling a feature flag and its rollout.
- * @public
- */
+/** @public */
 export const FeatureFlagUpdateStatusRequestSchema = z.strictObject({
     isEnable: z.boolean().meta({
         description: 'Status of the feature flag',
@@ -13,12 +12,17 @@ export const FeatureFlagUpdateStatusRequestSchema = z.strictObject({
         description: 'Feature flag rollout percentage (0-100)',
         example: 50,
     }),
+    targetUserIds: z
+        .array(RequestUuidSchema)
+        .max(1000)
+        .meta({
+            description:
+                'Target user ids allow-list, at most 1000; [] clears it',
+            example: [faker.string.uuid()],
+        }),
 });
 
-/**
- * Body for toggling a feature flag and its rollout.
- * @public
- */
+/** @public */
 export type FeatureFlagUpdateStatusRequestDto = z.infer<
     typeof FeatureFlagUpdateStatusRequestSchema
 >;

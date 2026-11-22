@@ -27,8 +27,9 @@ model ApiKey {
 
   @@unique(fields: [key])
   @@unique(fields: [hash])
-  @@index(fields: [isActive, type, createdAt(sort: Desc)])
-  @@index(fields: [name])
+  @@index(fields: [isActive, type, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [name, id])
   @@map("api_keys")
 }
 
@@ -37,6 +38,7 @@ model Role {
   name        String
   description String?
   type        EnumRoleType @default(user)
+  isImmutable Boolean      @default(false)
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
@@ -47,7 +49,7 @@ model Role {
   users    User[]   @relation("UserRole")
 
   @@unique(fields: [name])
-  @@index(fields: [type, createdAt(sort: Desc)])
+  @@index(fields: [type, createdAt(sort: Desc), id(sort: Desc)])
   @@map("roles")
 }
 
@@ -76,7 +78,7 @@ model Country {
   continent  String
   timezone   String
 
-  phoneCodes    String[]
+  phoneCode     String[]
   mobileNumbers UserMobileNumber[] @relation("UserMobileNumberCountry")
   users         User[]             @relation("UserCountry")
 
@@ -87,7 +89,6 @@ model Country {
 
   @@unique(fields: [alpha2Code])
   @@unique(fields: [alpha3Code])
-  @@index(fields: [continent])
   @@index(fields: [name])
   @@map("countries")
 }
@@ -106,13 +107,28 @@ model UserMobileNumber {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.Uuid
 
-  country       Country        @relation("UserMobileNumberCountry", fields: [countryId], references: [id])
+  country       Country        @relation("UserMobileNumberCountry", fields: [countryId], references: [id], onDelete: Cascade)
   user          User           @relation("UserMobileNumberUser", fields: [userId], references: [id], onDelete: Cascade)
   verifications Verification[] @relation("UserMobileNumberVerification")
 
   @@unique(fields: [userId, countryId, phoneCode, number])
-  @@index(fields: [userId, isVerified])
   @@map("user_mobile_numbers")
+}
+
+model UserSocial {
+  id       String            @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId   String            @db.Uuid
+  provider EnumUserLoginWith
+  subject  String
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.Uuid
+
+  user User @relation("UserSocialUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique(fields: [provider, subject])
+  @@unique(fields: [userId, provider])
+  @@map("user_socials")
 }
 
 model User {
@@ -126,7 +142,8 @@ model User {
   password               String?
   passwordExpired        DateTime?
   passwordCreated        DateTime?
-  passwordAttempt        Int?
+  passwordAttempt        Int                @default(0)
+  passwordLockedUntil    DateTime?
   signUpAt               DateTime           @default(now())
   signUpFrom             EnumUserSignUpFrom
   signUpWith             EnumUserSignUpWith
@@ -147,85 +164,78 @@ model User {
   deletedAt DateTime?
   deletedBy String?   @db.Uuid
 
-  termsOfServiceAccepted Boolean @default(false)
-  privacyAccepted        Boolean @default(false)
-  cookiesAccepted        Boolean @default(false)
-  marketingAccepted      Boolean @default(false)
-
-  mobileNumbers            UserMobileNumber[]         @relation("UserMobileNumberUser")
-  verifications            Verification[]             @relation("UserVerifications")
-  passwordHistories        PasswordHistory[]          @relation("UserPasswordHistories")
-  activityLogs             ActivityLog[]              @relation("UserActivityLogs")
-  role                     Role                       @relation("UserRole", fields: [roleId], references: [id])
-  country                  Country                    @relation("UserCountry", fields: [countryId], references: [id])
-  sessions                 Session[]                  @relation("UserSessions")
-  acceptances              TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
-  forgotPasswords          ForgotPassword[]           @relation("UserForgotPassword")
-  twoFactor                TwoFactor?                 @relation("UserTwoFactor")
-  photo                    UserPhoto?                 @relation("UserPhoto")
-  notifications            Notification[]             @relation("UserNotifications")
-  notificationSettings     NotificationUserSetting[]  @relation("UserNotificationSettings")
-  deviceOwnerships         DeviceOwnership[]          @relation("DeviceOwnershipUser")
-  featureFlagUsers         FeatureFlagUser[]          @relation("FeatureFlagUserUser")
-  revokedSessions          Session[]                  @relation("SessionRevokedByUser")
-  revokedDeviceOwnerships  DeviceOwnership[]          @relation("DeviceOwnershipRevokedByUser")
-  workspaceMembers         WorkspaceMember[]          @relation("UserWorkspaceMembers")
-  workspaceJoinRequests    WorkspaceJoinRequest[]     @relation("UserWorkspaceJoinRequests")
-  reviewedWorkspaceRequests WorkspaceJoinRequest[]    @relation("WorkspaceJoinRequestReviewedBy")
-  sentWorkspaceInvites      WorkspaceInvite[]         @relation("WorkspaceInviteInvitedBy")
-  acceptedWorkspaceInvites  WorkspaceInvite[]         @relation("WorkspaceInviteAcceptedBy")
-  projectMembers           ProjectMember[]            @relation("UserProjectMembers")
-  lastWorkspace            Workspace?                 @relation("UserLastWorkspace", fields: [lastWorkspaceId], references: [id], onDelete: SetNull)
+  mobileNumbers             UserMobileNumber[]         @relation("UserMobileNumberUser")
+  socials                   UserSocial[]               @relation("UserSocialUser")
+  verifications             Verification[]             @relation("UserVerifications")
+  passwordHistories         PasswordHistory[]          @relation("UserPasswordHistories")
+  activityLogs              ActivityLog[]              @relation("UserActivityLogs")
+  role                      Role                       @relation("UserRole", fields: [roleId], references: [id], onDelete: Cascade)
+  country                   Country                    @relation("UserCountry", fields: [countryId], references: [id], onDelete: Cascade)
+  sessions                  Session[]                  @relation("UserSessions")
+  acceptances               TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceUser")
+  forgotPasswords           ForgotPassword[]           @relation("UserForgotPassword")
+  mfa                       Mfa?                       @relation("UserMfa")
+  mfaTotp                   MfaTotp?                   @relation("UserMfaTotp")
+  mfaPasskeys               MfaPasskey[]               @relation("UserMfaPasskeys")
+  mfaChallenges             MfaChallenge[]             @relation("UserMfaChallenges")
+  notifications             Notification[]             @relation("UserNotifications")
+  notificationSettings      NotificationUserSetting[]  @relation("UserNotificationSettings")
+  deviceOwnerships          DeviceOwnership[]          @relation("DeviceOwnershipUser")
+  revokedSessions           Session[]                  @relation("SessionRevokedByUser")
+  revokedDeviceOwnerships   DeviceOwnership[]          @relation("DeviceOwnershipRevokedByUser")
+  workspaceMembers          WorkspaceMember[]          @relation("UserWorkspaceMembers")
+  workspaceJoinRequests     WorkspaceJoinRequest[]     @relation("UserWorkspaceJoinRequests")
+  projectMembers            ProjectMember[]            @relation("UserProjectMembers")
+  termPolicyRecipients      TermPolicyRecipient[]      @relation("UserTermPolicyRecipients")
+  photo                     Json?
+  reviewedWorkspaceRequests WorkspaceJoinRequest[]     @relation("WorkspaceJoinRequestReviewedBy")
+  sentWorkspaceInvites      WorkspaceInvite[]          @relation("WorkspaceInviteInvitedBy")
+  acceptedWorkspaceInvites  WorkspaceInvite[]          @relation("WorkspaceInviteAcceptedBy")
+  lastWorkspace             Workspace?                 @relation("UserLastWorkspace", fields: [lastWorkspaceId], references: [id], onDelete: SetNull)
 
   @@unique(fields: [username])
   @@unique(fields: [email])
-  @@index(fields: [id, deletedAt])
-  @@index(fields: [email, deletedAt])
-  @@index(fields: [status, deletedAt, createdAt(sort: Desc)])
-  @@index(fields: [roleId, status, deletedAt])
-  @@index(fields: [countryId, status, signUpAt(sort: Desc)])
+  @@index(fields: [deletedAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [deletedAt, name, id])
+  @@index(fields: [status, deletedAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [roleId, deletedAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [countryId, deletedAt, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [signUpAt(sort: Desc)])
   @@index(fields: [deletedAt, signUpAt(sort: Desc)])
+  @@index(fields: [deletedAt, passwordAttempt])
+  @@index(fields: [deletedAt, passwordLockedUntil])
+  @@index(fields: [deletedAt, lastLoginAt(sort: Desc)])
   @@map("users")
 }
 
-model UserPhoto {
-  id           String  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  userId       String  @unique @db.Uuid
-  bucket       String
-  key          String
-  cdnUrl       String?
-  completedUrl String
-  mime         String
-  extension    String
-  access       String
-
-  user User @relation("UserPhoto", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_photos")
-}
-
 model Verification {
-  id             String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  userId         String               @db.Uuid
-  mobileNumberId String?              @db.Uuid
+  id             String                          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId         String                          @db.Uuid
+  mobileNumberId String?                         @db.Uuid
   to             String
   type           EnumVerificationType
+  action         EnumUserReauthenticationAction?
   token          String
   expiredAt      DateTime
   verifiedAt     DateTime?
-  isUsed         Boolean              @default(false)
+  isUsed         Boolean                         @default(false)
   reference      String
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.Uuid
 
   user         User              @relation("UserVerifications", fields: [userId], references: [id], onDelete: Cascade)
   mobileNumber UserMobileNumber? @relation("UserMobileNumberVerification", fields: [mobileNumberId], references: [id], onDelete: Cascade)
 
   @@unique(fields: [reference])
-  @@index(fields: [token, expiredAt, isUsed, type])
-  @@index(fields: [userId, type, isUsed])
+  @@index(fields: [token])
+  @@index(fields: [userId, type, createdAt(sort: Desc)])
+  @@index(fields: [userId, type, action, createdAt(sort: Desc)])
+  @@index(fields: [mobileNumberId])
+  @@index(fields: [type, createdAt])
+  @@index(fields: [expiredAt])
   @@map("verifications")
 }
 
@@ -241,10 +251,34 @@ model PasswordHistory {
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
 
-  @@index(fields: [userId, expiredAt(sort: Desc)])
+  @@index(fields: [userId, expiredAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [userId, type, createdAt(sort: Desc)])
+  @@index(fields: [type, createdAt(sort: Desc)])
+  @@index(fields: [expiredAt])
   @@map("password_histories")
+}
+
+model CommonPassword {
+  id    String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  value String @unique
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.Uuid
+
+  @@map("common_passwords")
+}
+
+model AuthSocialNonce {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  nonceHash String
+  expiredAt DateTime
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.Uuid
+
+  @@index(fields: [nonceHash])
+  @@index(fields: [expiredAt])
+  @@map("auth_social_nonces")
 }
 
 model ActivityLog {
@@ -268,9 +302,9 @@ model ActivityLog {
 
   @@index(fields: [userId, workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [workspaceId, createdAt(sort: Desc)])
-  @@index(fields: [action, createdAt(sort: Desc)])
-  @@index(fields: [userId, action, createdAt(sort: Desc)])
+  @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [action, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [createdAt(sort: Desc), workspaceId])
   @@map("activity_logs")
 }
 
@@ -278,11 +312,12 @@ model Session {
   id                String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
   userId            String    @db.Uuid
   deviceOwnershipId String    @db.Uuid
-  jti               String
+  jtiDigest         String
   ipAddress         String?   @db.Inet
   userAgent         Json
   geoLocation       Json?
   expiredAt         DateTime
+  lastActiveAt      DateTime  @default(now())
   revokedAt         DateTime?
   isRevoked         Boolean   @default(false)
   revokedById       String?   @db.Uuid
@@ -296,24 +331,22 @@ model Session {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.Uuid
 
-  @@unique(fields: [userId, jti])
-  @@index(fields: [userId, expiredAt(sort: Desc), isRevoked])
+  @@unique(fields: [userId, jtiDigest])
   @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [isRevoked, expiredAt(sort: Asc)])
-  @@index(fields: [userId, deviceOwnershipId, isRevoked])
-  @@index(fields: [deviceOwnershipId])
+  @@index(fields: [userId, isRevoked, expiredAt])
+  @@index(fields: [deviceOwnershipId, isRevoked, expiredAt])
+  @@index(fields: [isRevoked, expiredAt])
+  @@index(fields: [expiredAt])
   @@index(fields: [createdAt(sort: Desc)])
   @@map("sessions")
 }
 
 model Device {
-  id                   String                          @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  fingerprint          String
-  name                 String?
-  platform             EnumDevicePlatform
-  lastActiveAt         DateTime                        @default(now())
-  notificationToken    String?
-  notificationProvider EnumDeviceNotificationProvider?
+  id           String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  fingerprint  String
+  name         String?
+  platform     EnumDevicePlatform
+  lastActiveAt DateTime           @default(now())
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
@@ -328,18 +361,15 @@ model Device {
 }
 
 model DeviceOwnership {
-  id           String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  deviceId     String    @db.Uuid
-  userId       String    @db.Uuid
-  revokedAt    DateTime?
-  isRevoked    Boolean   @default(false)
-  revokedById  String?   @db.Uuid
-  lastActiveAt DateTime  @default(now())
-
-  biometricEnabled   Boolean            @default(false)
-  biometricToken     String?
-  biometricType      EnumBiometricType?
-  biometricEnabledAt DateTime?
+  id                   String                          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  deviceId             String                          @db.Uuid
+  userId               String                          @db.Uuid
+  revokedAt            DateTime?
+  isRevoked            Boolean                         @default(false)
+  revokedById          String?                         @db.Uuid
+  lastActiveAt         DateTime                        @default(now())
+  notificationToken    String?
+  notificationProvider EnumDeviceNotificationProvider?
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
@@ -351,55 +381,104 @@ model DeviceOwnership {
   user      User      @relation("DeviceOwnershipUser", fields: [userId], references: [id], onDelete: Cascade)
   sessions  Session[] @relation("DeviceOwnershipSessions")
 
-  @@index(fields: [deviceId, revokedAt])
+  @@unique(fields: [deviceId, userId])
   @@index(fields: [userId, isRevoked, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [userId, revokedAt])
-  @@index(fields: [deviceId, userId, revokedAt])
-  @@index(fields: [userId, lastActiveAt(sort: Desc)])
+  @@index(fields: [userId, lastActiveAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [isRevoked, lastActiveAt])
+  @@index(fields: [notificationToken, lastActiveAt])
   @@map("device_ownerships")
 }
 
-model TwoFactor {
-  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  userId        String    @db.Uuid
-  secret        String?
-  pendingSecret String?
-  enabled       Boolean   @default(false)
-  requiredSetup Boolean   @default(false)
-  confirmedAt   DateTime?
-  lastUsedAt    DateTime?
-  attempt       Int       @default(0)
+model Mfa {
+  id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId      String    @db.Uuid
+  backupCodes String[]  @default([])
+  attempt     Int       @default(0)
+  lockedUntil DateTime?
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.Uuid
 
-  user        User                  @relation("UserTwoFactor", fields: [userId], references: [id], onDelete: Cascade)
-  backupCodes TwoFactorBackupCode[]
+  user User @relation("UserMfa", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique(fields: [userId])
-  @@map("two_factors")
+  @@map("mfas")
 }
 
-model TwoFactorBackupCode {
-  id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  twoFactorId String    @db.Uuid
-  codeHash    String
-  usedAt      DateTime?
-  createdAt   DateTime  @default(now())
+model MfaTotp {
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId        String    @db.Uuid
+  secret        String?
+  pendingSecret String?
+  confirmedAt   DateTime?
+  lastUsedAt    DateTime?
+  lastUsedStep  Int?
 
-  twoFactor TwoFactor @relation(fields: [twoFactorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  createdBy String?  @db.Uuid
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.Uuid
 
-  @@unique(fields: [twoFactorId, codeHash])
-  @@index(fields: [twoFactorId, usedAt])
-  @@map("two_factor_backup_codes")
+  user User @relation("UserMfaTotp", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique(fields: [userId])
+  @@map("mfa_totps")
+}
+
+model MfaPasskey {
+  id           String                   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId       String                   @db.Uuid
+  credentialId String
+  publicKey    String
+  counter      Int
+  transports   String[]                 @default([])
+  deviceType   EnumMfaPasskeyDeviceType
+  backedUp     Boolean
+  name         String
+  lastUsedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.Uuid
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.Uuid
+
+  user User @relation("UserMfaPasskeys", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique(fields: [credentialId])
+  @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
+  @@map("mfa_passkeys")
+}
+
+model MfaChallenge {
+  id                String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId            String?                 @db.Uuid
+  purpose           EnumMfaChallengePurpose
+  tokenHash         String
+  webAuthnChallenge String?
+  device            Json?
+  loginFrom         EnumUserLoginFrom?
+  loginWith         EnumUserLoginWith?
+  expiredAt         DateTime
+  consumedAt        DateTime?
+
+  user User? @relation("UserMfaChallenges", fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.Uuid
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.Uuid
+
+  @@unique(fields: [tokenHash])
+  @@index(fields: [expiredAt])
+  @@map("mfa_challenges")
 }
 
 model TermPolicy {
   id          String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
   type        EnumTermPolicyType
-  contents    TermPolicyContent[]
+  contents    Json                 @default("[]")
   version     Int                  @default(1)
   status      EnumTermPolicyStatus @default(draft)
   publishedAt DateTime?
@@ -412,27 +491,31 @@ model TermPolicy {
   userAcceptances TermPolicyUserAcceptance[] @relation("TermPolicyUserAcceptanceTermPolicy")
 
   @@unique(fields: [type, version])
-  @@index(fields: [type, status, publishedAt(sort: Desc)])
+  @@index(fields: [type, status, version(sort: Desc)])
   @@map("term_policies")
 }
 
-model TermPolicyContent {
-  id           String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  termPolicyId String                 @db.Uuid
-  language     EnumMessageLanguage
-  bucket       String
-  key          String
-  cdnUrl       String?
-  completedUrl String
-  mime         String
-  extension    String
-  access       EnumAwsS3Accessibility
-  size         Int
+model TermPolicyRecipient {
+  id             String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  termPolicyId   String    @db.Uuid
+  userId         String    @db.Uuid
+  notificationId String    @db.Uuid
+  batchId        String    @db.Uuid
+  sentAt         DateTime?
+  claimedAt      DateTime?
+  claimNonce     String?   @db.Uuid
 
-  termPolicy TermPolicy @relation(fields: [termPolicyId], references: [id], onDelete: Cascade)
+  user User @relation("UserTermPolicyRecipients", fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique(fields: [termPolicyId, language])
-  @@map("term_policy_contents")
+  createdAt DateTime @default(now())
+  createdBy String?  @db.Uuid
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.Uuid
+
+  @@unique(fields: [termPolicyId, userId])
+  @@index(fields: [termPolicyId, batchId, userId])
+  @@index(fields: [userId])
+  @@map("term_policy_recipients")
 }
 
 model TermPolicyUserAcceptance {
@@ -442,7 +525,7 @@ model TermPolicyUserAcceptance {
   acceptedAt   DateTime @default(now())
 
   user       User       @relation("TermPolicyUserAcceptanceUser", fields: [userId], references: [id], onDelete: Cascade)
-  termPolicy TermPolicy @relation("TermPolicyUserAcceptanceTermPolicy", fields: [termPolicyId], references: [id])
+  termPolicy TermPolicy @relation("TermPolicyUserAcceptanceTermPolicy", fields: [termPolicyId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
@@ -450,6 +533,7 @@ model TermPolicyUserAcceptance {
   @@unique(fields: [userId, termPolicyId])
   @@index(fields: [termPolicyId, acceptedAt(sort: Desc)])
   @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [acceptedAt])
   @@map("term_policy_user_acceptances")
 }
 
@@ -466,24 +550,10 @@ model FeatureFlag {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.Uuid
 
-  targetUsers FeatureFlagUser[] @relation("FeatureFlagUserFeatureFlag")
+  targetUserIds String[] @default([]) @db.Uuid
 
   @@unique(fields: [key])
-  @@index(fields: [isEnable])
   @@map("feature_flags")
-}
-
-model FeatureFlagUser {
-  id            String @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  featureFlagId String @db.Uuid
-  userId        String @db.Uuid
-
-  featureFlag FeatureFlag @relation("FeatureFlagUserFeatureFlag", fields: [featureFlagId], references: [id], onDelete: Cascade)
-  user        User        @relation("FeatureFlagUserUser", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique(fields: [featureFlagId, userId])
-  @@index(fields: [userId])
-  @@map("feature_flag_users")
 }
 
 model ForgotPassword {
@@ -498,12 +568,16 @@ model ForgotPassword {
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.Uuid
 
   user User @relation("UserForgotPassword", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique(fields: [reference])
-  @@index(fields: [token, expiredAt, isUsed])
-  @@index(fields: [isUsed, createdAt(sort: Desc)])
+  @@index(fields: [token])
+  @@index(fields: [userId, createdAt(sort: Desc)])
+  @@index(fields: [createdAt(sort: Desc)])
+  @@index(fields: [expiredAt])
   @@map("forgot_passwords")
 }
 
@@ -527,9 +601,7 @@ model Notification {
   updatedBy String?  @db.Uuid
 
   @@index(fields: [userId, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [userId, isRead, createdAt(sort: Desc)])
-  @@index(fields: [userId, type, createdAt(sort: Desc)])
-  @@index(fields: [userId, priority, isRead, createdAt(sort: Desc)])
+  @@index(fields: [userId, isRead, createdAt(sort: Desc), id(sort: Desc)])
   @@map("notifications")
 }
 
@@ -544,10 +616,11 @@ model NotificationDelivery {
   notification Notification @relation("NotificationDeliveries", fields: [notificationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+  createdBy String?  @db.Uuid
   updatedAt DateTime @updatedAt
+  updatedBy String?  @db.Uuid
 
   @@unique(fields: [notificationId, channel])
-  @@index(fields: [channel, createdAt(sort: Desc)])
   @@map("notification_deliveries")
 }
 
@@ -566,7 +639,6 @@ model NotificationUserSetting {
   updatedBy String?  @db.Uuid
 
   @@unique(fields: [userId, channel, type])
-  @@index(fields: [userId, isActive])
   @@map("notification_user_settings")
 }
 
@@ -592,9 +664,10 @@ model Workspace {
   deletedBy String?   @db.Uuid
 
   @@unique(fields: [slug])
-  @@index(fields: [isPublic, deletedAt, createdAt(sort: Desc)])
+  @@index(fields: [isPublic, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [deletedAt, createdAt(sort: Desc), id(sort: Desc)])
-  @@index(fields: [deletedAt, name])
+  @@index(fields: [name, id])
+  @@index(fields: [createdAt(sort: Desc), id(sort: Desc)])
   @@map("workspaces")
 }
 
@@ -614,7 +687,7 @@ model WorkspaceMember {
   updatedBy String?  @db.Uuid
 
   @@unique(fields: [workspaceId, userId])
-  @@index(fields: [userId])
+  @@index(fields: [userId, role])
   @@index(fields: [workspaceId, role, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, joinedAt, id])
@@ -632,13 +705,14 @@ model WorkspaceInvite {
   reference        String
   expiredAt        DateTime
   status           EnumWorkspaceInviteStatus @default(pending)
-  invitedByUserId  String?                   @db.Uuid
+  invitedByUserId  String                    @db.Uuid
   acceptedAt       DateTime?
   acceptedByUserId String?                   @db.Uuid
+  nonce            String
 
   workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project    Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  invitedBy  User?     @relation("WorkspaceInviteInvitedBy", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+  invitedBy  User      @relation("WorkspaceInviteInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
   acceptedBy User?     @relation("WorkspaceInviteAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
@@ -648,11 +722,12 @@ model WorkspaceInvite {
 
   @@unique(fields: [token])
   @@unique(fields: [reference])
+  @@unique(fields: [nonce])
   @@index(fields: [workspaceId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [email, status])
-  @@index(fields: [token, expiredAt, status])
-  @@index(fields: [workspaceId, expiredAt])
+  @@index(fields: [status, expiredAt])
+  @@index(fields: [projectId])
   @@map("workspace_invites")
 }
 
@@ -665,6 +740,8 @@ model WorkspaceJoinRequest {
   rejectReasonCode EnumWorkspaceJoinRejectReason?
   reviewedByUserId String?                        @db.Uuid
   reviewedAt       DateTime?
+  expiredAt        DateTime
+  nonce            String
 
   workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user       User      @relation("UserWorkspaceJoinRequests", fields: [userId], references: [id], onDelete: Cascade)
@@ -675,9 +752,11 @@ model WorkspaceJoinRequest {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.Uuid
 
+  @@unique(fields: [nonce])
   @@index(fields: [workspaceId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [userId, status])
+  @@index(fields: [status, expiredAt])
   @@map("workspace_join_requests")
 }
 
@@ -701,6 +780,7 @@ model Project {
 
   @@unique(fields: [workspaceId, slug])
   @@index(fields: [workspaceId, deletedAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [createdAt(sort: Desc), id(sort: Desc)])
   @@map("projects")
 }
 
@@ -725,6 +805,37 @@ model ProjectMember {
   @@index(fields: [projectId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [projectId, joinedAt, id])
   @@map("project_members")
+}
+
+model Outbox {
+  id             String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  queue          String
+  name           String
+  data           Json
+  priority       Int
+  idempotencyKey String
+  status         EnumOutboxStatus
+  attempts       Int              @default(0)
+  lastError      String?
+  enqueuedAt     DateTime?
+  sweptAt        DateTime?
+  completedAt    DateTime?
+  failedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.Uuid
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.Uuid
+
+  @@unique(fields: [queue, name, idempotencyKey])
+  @@index(fields: [status, sweptAt, createdAt])
+  @@index(fields: [status, sweptAt, enqueuedAt])
+  @@map("outboxes")
+}
+
+enum EnumAwsS3Accessibility {
+  public
+  private
 }
 
 enum EnumUserGender {
@@ -760,6 +871,7 @@ enum EnumUserLoginWith {
   credential
   socialGoogle
   socialApple
+  passkey
 }
 
 enum EnumRoleType {
@@ -804,23 +916,32 @@ enum EnumTermPolicyType {
   marketing
 }
 
-enum EnumMessageLanguage {
-  en
-}
-
-enum EnumAwsS3Accessibility {
-  public
-  private
-}
-
 enum EnumTermPolicyStatus {
   draft
   published
+  archived
 }
 
 enum EnumVerificationType {
   mobileNumber
   email
+  reauthentication
+}
+
+enum EnumUserReauthenticationAction {
+  deleteSelf
+  changePassword
+  mfaTotpSetup
+  mfaTotpEnable
+  mfaTotpDisable
+  mfaBackupCodeRegenerate
+  mfaPasskeyRegister
+  mfaPasskeyDelete
+  mobileNumberAdd
+  mobileNumberUpdate
+  mobileNumberDelete
+  sessionRevoke
+  deviceRemove
 }
 
 enum EnumPasswordHistoryType {
@@ -848,25 +969,35 @@ enum EnumActivityLogAction {
   userLoginFailed
   userLoginGoogle
   userLoginApple
+  userLoginPasskey
   userRefreshToken
   userVerifiedEmail
   userSendVerificationEmail
+  userVerifiedMobileNumber
+  userSendVerificationMobileNumber
+  userSendReauthenticationOtp
   userSignedUp
   userResetPassword
   userRevokeSession
   userRevokeSessionByAdmin
   userRevokeAllSessions
   userRevokeAllSessionsByAdmin
+  userRevokeSessionByDeviceLogin
   userRemoveDevice
   userAcceptTermPolicy
   userForgotPassword
   userReachMaxPasswordAttempt
-  userSetupTwoFactor
-  userEnableTwoFactor
-  userDisableTwoFactor
-  userResetTwoFactorByAdmin
-  userVerifyTwoFactor
-  userRegenerateTwoFactorBackupCodes
+  userReachMaxMfaAttempt
+  userSetupMfaTotp
+  userEnableMfaTotp
+  userDisableMfaTotp
+  userResetMfaByAdmin
+  userVerifyMfa
+  userVerifyMfaFailed
+  userRegenerateMfaBackupCodes
+  userRegisterMfaPasskey
+  userUpdateMfaPasskey
+  userDeleteMfaPasskey
   userDeviceRefresh
   userLogout
   userCreatedByAdmin
@@ -891,13 +1022,15 @@ enum EnumActivityLogAction {
   adminTermPolicyAddContent
   adminTermPolicyRemoveContent
   adminTermPolicyPublish
+  adminTermPolicyResendEmail
   adminUserCreate
   adminUserUpdateStatus
   adminUserUpdatePassword
-  adminUserResetTwoFactor
+  adminUserResetMfa
   adminUserImport
   adminDeviceRemove
   adminSessionRevokeAll
+  adminWorkspaceOwnershipTransfer
 
   workspaceCreated
   workspaceUpdated
@@ -909,6 +1042,7 @@ enum EnumActivityLogAction {
   workspaceMemberLeft
   workspaceOwnershipTransferred
   workspaceInviteCreated
+  workspaceInviteResent
   workspaceInviteAccepted
   workspaceInviteRevoked
   workspaceJoinRequested
@@ -918,7 +1052,10 @@ enum EnumActivityLogAction {
   workspaceMemberRoleUpdatedByAdmin
   workspaceMemberRemovedByAdmin
   workspaceOwnershipTransferredByOwner
+  workspaceOwnershipTransferredByAdmin
+  workspaceOwnershipRemovedByAdmin
   workspaceInviteCreatedByAdmin
+  workspaceInviteResentByAdmin
   workspaceInviteAcceptedByInvitee
   workspaceInviteRevokedByAdmin
   workspaceJoinAcceptedByAdmin
@@ -957,6 +1094,7 @@ enum EnumNotificationType {
 enum EnumNotificationChannel {
   push
   email
+  sms
   inApp
   silent
 }
@@ -968,9 +1106,17 @@ enum EnumNotificationPriority {
   critical
 }
 
-enum EnumBiometricType {
-  fingerprint
-  faceId
+enum EnumMfaPasskeyDeviceType {
+  singleDevice
+  multiDevice
+}
+
+enum EnumMfaChallengePurpose {
+  login
+  passwordless
+  registration
+  reauthentication
+  resetPassword
 }
 
 enum EnumWorkspaceMemberRole {
@@ -991,6 +1137,7 @@ enum EnumWorkspaceJoinRequestStatus {
   accepted
   rejected
   cancelled
+  expired
 }
 
 enum EnumWorkspaceJoinRejectReason {
@@ -1007,4 +1154,11 @@ enum EnumProjectMemberRole {
   admin
   member
   viewer
+}
+
+enum EnumOutboxStatus {
+  pending
+  enqueued
+  completed
+  failed
 }

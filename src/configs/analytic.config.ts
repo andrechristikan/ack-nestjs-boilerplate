@@ -7,16 +7,19 @@ export interface IConfigAnalytic {
         anomalySummaryTtlInMs: number;
         fraudSummaryTtlInMs: number;
         riskScoreTtlInMs: number;
-        keyPatterns: {
-            dashboard: string;
-            anomaly: string;
-            fraud: string;
-            riskScore: string;
-        };
+        dashboardKeyPattern: string;
+        dashboardPageKeyPattern: string;
+        workspaceSummaryKeyPattern: string;
+        anomalySummaryKeyPattern: string;
+        fraudSummaryKeyPattern: string;
+        riskScoreKeyPattern: string;
         windowTokenPattern: string;
-        workspaceWindowTokenPattern: string;
     };
+    maxWindowInMs: number;
     anomaly: {
+        minSample: number;
+        lookbackInMs: number;
+        concurrency: number;
         impossibleTravel: {
             minDistanceKm: number;
             maxDeltaInMs: number;
@@ -25,15 +28,16 @@ export interface IConfigAnalytic {
             windowInMs: number;
             minUniqueAccounts: number;
         };
-        failedLoginSpike: {
-            nearLockoutOffset: number;
-        };
         deviceProliferation: {
             zScoreThreshold: number;
         };
         loginTimeAnomaly: {
             historicalFrequencyPercent: number;
+            historyLimit: number;
         };
+    };
+    device: {
+        inactivityInMs: number;
     };
     fraud: {
         credentialStuffing: {
@@ -63,14 +67,15 @@ export interface IConfigAnalytic {
         };
         refreshSpike: {
             windowInMs: number;
-            minEvents: number;
+            minCount: number;
         };
         backupCodeNewDevice: {
             windowInMs: number;
+            newDeviceAfterInMs: number;
         };
         apiKeyBurst: {
             windowInMs: number;
-            minEvents: number;
+            minCount: number;
         };
         weights: {
             sessionAfterAdmin: number;
@@ -87,31 +92,39 @@ export interface IConfigAnalytic {
             reviewMax: number;
             elevateMax: number;
         };
-        bandLabels: {
-            monitor: string;
-            review: string;
-            elevate: string;
-            critical: string;
+        riskScore: {
+            candidateLimit: number;
+            lookbackInMs: number;
         };
+        nearLockoutOffset: number;
+        concurrency: number;
+    };
+    project: {
+        perWorkspaceLimit: number;
     };
 }
 
 export default registerAs('analytic', (): IConfigAnalytic => ({
     cache: {
-        dashboardTtlInMs: ms('1h'),
-        anomalySummaryTtlInMs: ms('5m'),
-        fraudSummaryTtlInMs: ms('5m'),
-        riskScoreTtlInMs: ms('10m'),
-        keyPatterns: {
-            dashboard: 'Analytic:dashboard:{metric}:{start}:{end}',
-            anomaly: 'Analytic:anomaly:{signal}:{window}',
-            fraud: 'Analytic:fraud:{signal}:{window}',
-            riskScore: 'Analytic:fraud:risk:{userId}',
-        },
+        dashboardTtlInMs: ms('30m'),
+        anomalySummaryTtlInMs: ms('15m'),
+        fraudSummaryTtlInMs: ms('15m'),
+        riskScoreTtlInMs: ms('15m'),
+        dashboardKeyPattern: 'Analytic:Dashboard:{metric}:{start}:{end}',
+        dashboardPageKeyPattern:
+            'Analytic:Dashboard:{metric}:{start}:{end}:{page}:{perPage}',
+        workspaceSummaryKeyPattern:
+            'Analytic:Workspace:{workspaceId}:Summary:{start}:{end}',
+        anomalySummaryKeyPattern: 'Analytic:Anomaly:{signal}:{window}',
+        fraudSummaryKeyPattern: 'Analytic:Fraud:{signal}:{window}',
+        riskScoreKeyPattern: 'Analytic:Fraud:Risk:{userId}',
         windowTokenPattern: '{start}:{end}',
-        workspaceWindowTokenPattern: '{workspaceId}:{start}:{end}',
     },
+    maxWindowInMs: ms('90d'),
     anomaly: {
+        minSample: 5,
+        lookbackInMs: ms('30d'),
+        concurrency: 10,
         impossibleTravel: {
             minDistanceKm: 500,
             maxDeltaInMs: ms('1h'),
@@ -120,15 +133,16 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
             windowInMs: ms('10m'),
             minUniqueAccounts: 5,
         },
-        failedLoginSpike: {
-            nearLockoutOffset: 1,
-        },
         deviceProliferation: {
             zScoreThreshold: 3,
         },
         loginTimeAnomaly: {
             historicalFrequencyPercent: 5,
+            historyLimit: 1000,
         },
+    },
+    device: {
+        inactivityInMs: ms('30d'),
     },
     fraud: {
         credentialStuffing: {
@@ -158,14 +172,15 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
         },
         refreshSpike: {
             windowInMs: ms('10m'),
-            minEvents: 20,
+            minCount: 20,
         },
         backupCodeNewDevice: {
             windowInMs: ms('1h'),
+            newDeviceAfterInMs: ms('1h'),
         },
         apiKeyBurst: {
             windowInMs: ms('10m'),
-            minEvents: 5,
+            minCount: 5,
         },
         weights: {
             sessionAfterAdmin: 50,
@@ -182,11 +197,14 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
             reviewMax: 60,
             elevateMax: 90,
         },
-        bandLabels: {
-            monitor: 'monitor',
-            review: 'review',
-            elevate: 'elevate',
-            critical: 'critical',
+        riskScore: {
+            candidateLimit: 100,
+            lookbackInMs: ms('24h'),
         },
+        concurrency: 10,
+        nearLockoutOffset: 1,
+    },
+    project: {
+        perWorkspaceLimit: 100,
     },
 }));

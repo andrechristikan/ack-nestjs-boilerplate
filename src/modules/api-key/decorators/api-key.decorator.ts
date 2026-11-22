@@ -4,79 +4,51 @@ import {
     applyDecorators,
     createParamDecorator,
 } from '@nestjs/common';
-import { ApiSecurity } from '@nestjs/swagger';
 import { ClsServiceManager } from 'nestjs-cls';
-import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import { ApiSecurity } from '@nestjs/swagger';
 import {
+    ApiKeyContextStoreKey,
     ApiKeyDocSecurityName,
-    ApiKeyStoreKey,
+    ApiKeyProtectedDocErrors,
+    ApiKeySystemProtectedDocErrors,
     ApiKeyXTypeMetaKey,
-    DocApiKeyErrorResponses,
 } from '@modules/api-key/constants/api-key.constant';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 import { ApiKeyXApiKeyGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { ApiKeyXApiKeyTypeGuard } from '@modules/api-key/guards/x-api-key/api-key.x-api-key.type.guard';
+import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
-import type { ApiKey } from '@generated/prisma-client/client';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
-/**
- * Reads the authenticated `ApiKey`, or one of its fields, that `@ApiKeyProtected()` or `@ApiKeySystemProtected()` stored; throws when either is absent.
- * @public
- */
-export const ApiKeyPayload = createParamDecorator<
-    Extract<keyof ApiKey, string> | undefined,
-    ApiKey | NonNullable<ApiKey[Extract<keyof ApiKey, string>]>
->(
-    (
-        field: Extract<keyof ApiKey, string> | undefined
-    ): ApiKey | NonNullable<ApiKey[Extract<keyof ApiKey, string>]> => {
-        const apiKey = ClsServiceManager.getClsService().get<
-            ApiKey | undefined
-        >(ApiKeyStoreKey);
-        if (apiKey === undefined || apiKey === null) {
-            throw new RequestContextMissingException(ApiKeyStoreKey);
-        }
-
-        if (field === undefined || field === null) {
-            return apiKey;
-        }
-
-        const value = apiKey[field];
-        if (value === undefined || value === null) {
-            throw new RequestContextMissingException(
-                `${ApiKeyStoreKey}.${field}`
-            );
-        }
-
-        return value;
+/** @public */
+export const ApiKeyContext = createParamDecorator((): IApiKeyContext => {
+    const apiKeyContext =
+        ClsServiceManager.getClsService().get<IApiKeyContext | null>(
+            ApiKeyContextStoreKey
+        ) ?? null;
+    if (apiKeyContext === null) {
+        throw new RequestContextMissingException(ApiKeyContextStoreKey);
     }
-);
 
-/**
- * Requires a valid X-API-Key and restricts the route to system-type API keys.
- * @public
- */
+    return apiKeyContext;
+});
+
+/** @public */
 export function ApiKeySystemProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(ApiKeyXApiKeyGuard, ApiKeyXApiKeyTypeGuard),
         SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.system]),
         ApiSecurity(ApiKeyDocSecurityName),
-        DocApiKeyErrorResponses.unauthorized,
-        DocApiKeyErrorResponses.forbidden,
-        DocApiKeyErrorResponses.predefinedNotFound
+        DocErrors(...ApiKeySystemProtectedDocErrors)
     );
 }
 
-/**
- * Requires a valid X-API-Key and restricts the route to default-type API keys.
- * @public
- */
+/** @public */
 export function ApiKeyProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(ApiKeyXApiKeyGuard, ApiKeyXApiKeyTypeGuard),
         SetMetadata(ApiKeyXTypeMetaKey, [EnumApiKeyType.default]),
         ApiSecurity(ApiKeyDocSecurityName),
-        DocApiKeyErrorResponses.unauthorized,
-        DocApiKeyErrorResponses.forbidden,
-        DocApiKeyErrorResponses.predefinedNotFound
+        DocErrors(...ApiKeyProtectedDocErrors)
     );
 }

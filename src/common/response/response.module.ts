@@ -1,18 +1,18 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 
-/**
- * Global module exposing response-layer utilities (metadata mapping).
- */
+/** Shared module: ResponseMetadataService for the response interceptors and the exception filters in src/app/filters/. */
+@Global()
 @Module({})
 export class ResponseModule {
     static forRoot(): DynamicModule {
         return {
             module: ResponseModule,
-            global: true,
+            controllers: [],
             providers: [ResponseMetadataService],
             exports: [ResponseMetadataService],
+            imports: [],
         };
     }
 }

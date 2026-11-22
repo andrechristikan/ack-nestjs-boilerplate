@@ -1,0 +1,552 @@
+import { CacheService } from '@common/cache/services/cache.service';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperNumberService } from '@common/helper/services/helper.number.service';
+import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
+import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { ActivityLogAnalyticService } from '@modules/activity-log/services/activity-log.analytic.service';
+import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
+import {
+    AnalyticAnomalyDeviceProliferationSummaryCacheSchema,
+    AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema,
+    AnalyticAnomalyImpossibleTravelSummaryCacheSchema,
+    AnalyticAnomalyLoginSpikeIpSummaryCacheSchema,
+    AnalyticAnomalySummaryCacheSchema,
+    AnalyticCacheEmptyToken,
+} from '@modules/analytic/constants/analytic.constant';
+import {
+    AnalyticDeviceProliferationAvailableOrderBy,
+    AnalyticImpossibleTravelAvailableOrderBy,
+    AnalyticLoginSpikeIpAvailableOrderBy,
+    AnalyticLoginTimeAnomalyAvailableOrderBy,
+} from '@modules/analytic/constants/analytic.list.constant';
+import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
+import { EnumAnalyticAnomalySignal } from '@modules/analytic/enums/analytic.enum';
+import type {
+    IAnalyticAnomalyDeviceProliferationSummary,
+    IAnalyticAnomalyFailedLoginSpikeSummary,
+    IAnalyticAnomalyImpossibleTravelSummary,
+    IAnalyticAnomalyLoginSpikeIpSummary,
+    IAnalyticAnomalySummary,
+    IAnalyticDeviceProliferation,
+    IAnalyticImpossibleTravel,
+    IAnalyticLoginSpikeIp,
+    IAnalyticLoginTimeAnomaly,
+    IAnalyticNearLockout,
+} from '@modules/analytic/interfaces/analytic.interface';
+import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
+import { AnalyticAnomalyUtil } from '@modules/analytic/utils/analytic.anomaly.util';
+import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
+import { AnalyticSortUtil } from '@modules/analytic/utils/analytic.sort.util';
+import { DeviceAnalyticService } from '@modules/device/services/device.analytic.service';
+import type { ISessionAnalyticSession } from '@modules/session/interfaces/session.interface';
+import { SessionAnalyticService } from '@modules/session/services/session.analytic.service';
+import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
+import { UserAnalyticService } from '@modules/user/services/user.analytic.service';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Duration } from 'luxon';
+
+@Injectable()
+export class AnalyticAnomalyService {
+    private readonly impossibleTravelMinDistanceKm: number;
+    private readonly impossibleTravelMaxDeltaInMs: number;
+    private readonly loginSpikeIpMinUniqueAccounts: number;
+    private readonly loginSpikeIpWindowInMs: number;
+    private readonly loginTimeAnomalyHistoricalFrequencyPercent: number;
+    private readonly loginTimeAnomalyHistoryLimit: number;
+    private readonly minSample: number;
+    private readonly lookbackInMs: number;
+    private readonly concurrency: number;
+    private readonly deviceProliferationZScoreThreshold: number;
+
+    constructor(
+        private readonly analyticCache: AnalyticCache,
+        private readonly cacheService: CacheService,
+        private readonly analyticDateService: AnalyticDateService,
+        private readonly analyticDateUtil: AnalyticDateUtil,
+        private readonly analyticAnomalyUtil: AnalyticAnomalyUtil,
+        private readonly analyticSortUtil: AnalyticSortUtil,
+        private readonly analyticFraudUtil: AnalyticFraudUtil,
+        private readonly paginationOffsetUtil: PaginationOffsetUtil,
+        private readonly configService: ConfigService,
+        private readonly helperArrayService: HelperArrayService,
+        private readonly helperDateService: HelperDateService,
+        private readonly helperNumberService: HelperNumberService,
+        private readonly sessionAnalyticService: SessionAnalyticService,
+        private readonly userAnalyticService: UserAnalyticService,
+        private readonly activityLogAnalyticService: ActivityLogAnalyticService,
+        private readonly deviceAnalyticService: DeviceAnalyticService
+    ) {
+        this.impossibleTravelMinDistanceKm = this.configService.get<number>(
+            'analytic.anomaly.impossibleTravel.minDistanceKm'
+        )!;
+        this.impossibleTravelMaxDeltaInMs = this.configService.get<number>(
+            'analytic.anomaly.impossibleTravel.maxDeltaInMs'
+        )!;
+        this.loginSpikeIpMinUniqueAccounts = this.configService.get<number>(
+            'analytic.anomaly.loginSpikeIp.minUniqueAccounts'
+        )!;
+        this.loginSpikeIpWindowInMs = this.configService.get<number>(
+            'analytic.anomaly.loginSpikeIp.windowInMs'
+        )!;
+        this.loginTimeAnomalyHistoricalFrequencyPercent =
+            this.configService.get<number>(
+                'analytic.anomaly.loginTimeAnomaly.historicalFrequencyPercent'
+            )!;
+        this.loginTimeAnomalyHistoryLimit = this.configService.get<number>(
+            'analytic.anomaly.loginTimeAnomaly.historyLimit'
+        )!;
+        this.minSample = this.configService.get<number>(
+            'analytic.anomaly.minSample'
+        )!;
+        this.lookbackInMs = this.configService.get<number>(
+            'analytic.anomaly.lookbackInMs'
+        )!;
+        this.concurrency = this.configService.get<number>(
+            'analytic.anomaly.concurrency'
+        )!;
+        this.deviceProliferationZScoreThreshold =
+            this.configService.get<number>(
+                'analytic.anomaly.deviceProliferation.zScoreThreshold'
+            )!;
+    }
+
+    private distanceKm(
+        lat1: number,
+        lng1: number,
+        lat2: number,
+        lng2: number
+    ): number {
+        const toRad = (degree: number): number => (degree * Math.PI) / 180;
+        const earthRadiusKm = 6371;
+        const dLat = toRad(lat2 - lat1);
+        const dLng = toRad(lng2 - lng1);
+        const a =
+            Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(lat1)) *
+                Math.cos(toRad(lat2)) *
+                Math.sin(dLng / 2) ** 2;
+
+        return 2 * earthRadiusKm * Math.asin(Math.sqrt(a));
+    }
+
+    private findImpossibleTravel(
+        sessions: ISessionAnalyticSession[],
+        minDistanceKm: number,
+        maxDeltaInMs: number
+    ): IAnalyticImpossibleTravel[] {
+        const byUser = new Map<string, ISessionAnalyticSession[]>();
+        for (const session of sessions) {
+            const list = byUser.get(session.userId) ?? [];
+            list.push(session);
+            byUser.set(session.userId, list);
+        }
+
+        const flagged: IAnalyticImpossibleTravel[] = [];
+        for (const [userId, list] of byUser) {
+            for (let i = 1; i < list.length; i++) {
+                const prev = list[i - 1]!;
+                const curr = list[i]!;
+                if (!prev.geoLocation || !curr.geoLocation) {
+                    continue;
+                }
+                const distanceKm = this.distanceKm(
+                    prev.geoLocation.latitude,
+                    prev.geoLocation.longitude,
+                    curr.geoLocation.latitude,
+                    curr.geoLocation.longitude
+                );
+                const deltaMs =
+                    curr.createdAt.getTime() - prev.createdAt.getTime();
+                if (distanceKm > minDistanceKm && deltaMs < maxDeltaInMs) {
+                    flagged.push({
+                        userId,
+                        fromSessionId: prev.id,
+                        toSessionId: curr.id,
+                        distanceKm,
+                        deltaMs,
+                    });
+                }
+            }
+        }
+
+        return flagged;
+    }
+
+    private findLoginTimeAnomaly(
+        userId: string,
+        loginDates: Date[],
+        thresholdPercent: number
+    ): IAnalyticLoginTimeAnomaly | null {
+        const hours = loginDates.map(loginDate =>
+            this.helperDateService.getHour(loginDate)
+        );
+        const lastHour = hours[hours.length - 1]!;
+        const history = hours.slice(0, -1);
+        const histogram = new Array<number>(24).fill(0);
+        for (const hour of history) {
+            histogram[hour]!++;
+        }
+        const frequency = this.helperNumberService.percent(
+            histogram[lastHour]!,
+            history.length
+        );
+        if (frequency >= thresholdPercent) {
+            return null;
+        }
+
+        return { userId, lastHour, historicalFrequencyPercent: frequency };
+    }
+
+    private async computeImpossibleTravel(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<IAnalyticImpossibleTravel[]> {
+        const now = this.helperDateService.create();
+        const sessions =
+            await this.sessionAnalyticService.getActiveWithGeoInRange(
+                startDate,
+                endDate,
+                now
+            );
+
+        return this.findImpossibleTravel(
+            sessions,
+            this.impossibleTravelMinDistanceKm,
+            this.impossibleTravelMaxDeltaInMs
+        );
+    }
+
+    private async computeLoginSpikeIp(
+        windowMs: number
+    ): Promise<IAnalyticLoginSpikeIp[]> {
+        const { startDate, endDate } =
+            this.analyticDateUtil.windowRange(windowMs);
+        const pairs =
+            await this.activityLogAnalyticService.getGroupIpUserByActions(
+                UserLoginAnalyticActions,
+                startDate,
+                endDate
+            );
+        const groups = this.analyticAnomalyUtil.groupByIp(pairs);
+
+        return [...groups.entries()]
+            .filter(
+                ([, group]) =>
+                    group.users.size >= this.loginSpikeIpMinUniqueAccounts
+            )
+            .map(([ipAddress, group]) => ({
+                ipAddress,
+                uniqueUsers: group.users.size,
+                attempts: group.count,
+            }))
+            .sort((a, b) => b.uniqueUsers - a.uniqueUsers);
+    }
+
+    private async computeLoginTimeAnomalies(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<IAnalyticLoginTimeAnomaly[]> {
+        const now = this.helperDateService.create();
+        const end = endDate ?? now;
+        const defaultStart = this.helperDateService.backward(
+            end,
+            Duration.fromMillis(this.lookbackInMs)
+        );
+        const start = startDate ?? defaultStart;
+        const users =
+            await this.activityLogAnalyticService.getGroupUserByActions(
+                UserLoginAnalyticActions,
+                start,
+                end,
+                this.minSample
+            );
+        const anomalous: IAnalyticLoginTimeAnomaly[] = [];
+        const batches = this.helperArrayService.chunk(users, this.concurrency);
+        for (const batch of batches) {
+            // Sequential by design: bounded chunks, concurrent within a chunk
+            const historyPromises = batch.map(user =>
+                this.activityLogAnalyticService.getCreatedAtByUserActionsInRange(
+                    user.userId,
+                    UserLoginAnalyticActions,
+                    start,
+                    end,
+                    this.loginTimeAnomalyHistoryLimit
+                )
+            );
+            const historyPerUser = await Promise.all(historyPromises);
+            for (const [index, user] of batch.entries()) {
+                const anomaly = this.findLoginTimeAnomaly(
+                    user.userId,
+                    historyPerUser[index]!,
+                    this.loginTimeAnomalyHistoricalFrequencyPercent
+                );
+                if (anomaly) {
+                    anomalous.push(anomaly);
+                }
+            }
+        }
+
+        return anomalous;
+    }
+
+    async getImpossibleTravelUserIds(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<string[]> {
+        const rows = await this.computeImpossibleTravel(startDate, endDate);
+        return [...new Set(rows.map(row => row.userId))];
+    }
+
+    async impossibleTravelSummary(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<IAnalyticAnomalyImpossibleTravelSummary> {
+        const window = this.analyticDateUtil.windowToken(startDate, endDate);
+        const key = this.analyticCache.buildAnomalySummaryKey(
+            EnumAnalyticAnomalySignal.impossibleTravel,
+            window
+        );
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticAnomalyImpossibleTravelSummaryCacheSchema,
+            this.analyticCache.anomalySummaryTtlInMs,
+            async () => {
+                const rows = await this.computeImpossibleTravel(
+                    startDate,
+                    endDate
+                );
+
+                return {
+                    count: rows.length,
+                    window,
+                    meta: {
+                        minDistanceKm: this.impossibleTravelMinDistanceKm,
+                        maxDeltaInMs: this.impossibleTravelMaxDeltaInMs,
+                    },
+                };
+            }
+        );
+    }
+
+    async impossibleTravelList(
+        startDate: Date | null,
+        endDate: Date | null,
+        params: IPaginationQueryOffsetParams
+    ): Promise<IResponsePaginationReturn<IAnalyticImpossibleTravel>> {
+        const rows = await this.computeImpossibleTravel(startDate, endDate);
+        const { data, total } = this.analyticSortUtil.sortPage(
+            rows,
+            params,
+            AnalyticImpossibleTravelAvailableOrderBy
+        );
+
+        return this.paginationOffsetUtil.page(data, total, {
+            skip: params.skip,
+            limit: params.limit,
+        });
+    }
+
+    async loginSpikeIpSummary(
+        windowMs: number | null
+    ): Promise<IAnalyticAnomalyLoginSpikeIpSummary> {
+        const window = this.analyticDateService.resolveWindow(
+            windowMs,
+            this.loginSpikeIpWindowInMs
+        );
+        const key = this.analyticCache.buildAnomalySummaryKey(
+            EnumAnalyticAnomalySignal.loginSpikeIp,
+            String(window)
+        );
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticAnomalyLoginSpikeIpSummaryCacheSchema,
+            this.analyticCache.anomalySummaryTtlInMs,
+            async () => {
+                const rows = await this.computeLoginSpikeIp(window);
+
+                return {
+                    count: rows.length,
+                    window: String(window),
+                    meta: {
+                        minUniqueAccounts: this.loginSpikeIpMinUniqueAccounts,
+                    },
+                };
+            }
+        );
+    }
+
+    async loginSpikeIpList(
+        windowMs: number | null,
+        params: IPaginationQueryOffsetParams
+    ): Promise<IResponsePaginationReturn<IAnalyticLoginSpikeIp>> {
+        const window = this.analyticDateService.resolveWindow(
+            windowMs,
+            this.loginSpikeIpWindowInMs
+        );
+        const rows = await this.computeLoginSpikeIp(window);
+        const { data, total } = this.analyticSortUtil.sortPage(
+            rows,
+            params,
+            AnalyticLoginSpikeIpAvailableOrderBy
+        );
+
+        return this.paginationOffsetUtil.page(data, total, {
+            skip: params.skip,
+            limit: params.limit,
+        });
+    }
+
+    async failedLoginSpikeSummary(): Promise<IAnalyticAnomalyFailedLoginSpikeSummary> {
+        const key = this.analyticCache.buildAnomalySummaryKey(
+            EnumAnalyticAnomalySignal.failedLoginSpike,
+            AnalyticCacheEmptyToken
+        );
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema,
+            this.analyticCache.anomalySummaryTtlInMs,
+            async () => {
+                const now = this.helperDateService.create();
+                const passwordMaxAttempt =
+                    await this.userAnalyticService.getPasswordMaxAttempts();
+                const nearLockoutMinAttempt =
+                    this.analyticFraudUtil.nearLockoutThreshold(
+                        passwordMaxAttempt
+                    );
+                const [buckets, nearCount] = await Promise.all([
+                    this.userAnalyticService.getGroupPasswordAttemptBuckets(
+                        passwordMaxAttempt,
+                        now
+                    ),
+                    this.userAnalyticService.getCountNearLockout(
+                        nearLockoutMinAttempt,
+                        now
+                    ),
+                ]);
+
+                return {
+                    count: nearCount,
+                    window: null,
+                    meta: {
+                        nearLockoutMinAttempt,
+                        bucketCount: buckets.length,
+                    },
+                };
+            }
+        );
+    }
+
+    async failedLoginSpikeList(
+        params: IPaginationQueryOffsetParams
+    ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
+        const now = this.helperDateService.create();
+        const passwordMaxAttempt =
+            await this.userAnalyticService.getPasswordMaxAttempts();
+        const nearLockoutMinAttempt =
+            this.analyticFraudUtil.nearLockoutThreshold(passwordMaxAttempt);
+
+        return this.userAnalyticService.getListNearLockoutOffset(
+            nearLockoutMinAttempt,
+            now,
+            params
+        );
+    }
+
+    async deviceProliferationSummary(): Promise<IAnalyticAnomalyDeviceProliferationSummary> {
+        const key = this.analyticCache.buildAnomalySummaryKey(
+            EnumAnalyticAnomalySignal.deviceProliferation,
+            AnalyticCacheEmptyToken
+        );
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticAnomalyDeviceProliferationSummaryCacheSchema,
+            this.analyticCache.anomalySummaryTtlInMs,
+            async () => {
+                const result =
+                    await this.deviceAnalyticService.getProliferationOutliers(
+                        this.deviceProliferationZScoreThreshold
+                    );
+
+                return {
+                    count: result.count,
+                    window: null,
+                    meta: {
+                        avg: result.avg,
+                        stdDev: result.stdDev,
+                        zScoreThreshold:
+                            this.deviceProliferationZScoreThreshold,
+                    },
+                };
+            }
+        );
+    }
+
+    async deviceProliferationList(
+        params: IPaginationQueryOffsetParams
+    ): Promise<IResponsePaginationReturn<IAnalyticDeviceProliferation>> {
+        const result =
+            await this.deviceAnalyticService.getProliferationOutliers(
+                this.deviceProliferationZScoreThreshold
+            );
+        const { data, total } = this.analyticSortUtil.sortPage(
+            result.rows,
+            params,
+            AnalyticDeviceProliferationAvailableOrderBy
+        );
+
+        return this.paginationOffsetUtil.page(data, total, {
+            skip: params.skip,
+            limit: params.limit,
+        });
+    }
+
+    async loginTimeSummary(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<IAnalyticAnomalySummary> {
+        const window = this.analyticDateUtil.windowToken(startDate, endDate);
+        const key = this.analyticCache.buildAnomalySummaryKey(
+            EnumAnalyticAnomalySignal.loginTime,
+            window
+        );
+
+        return this.cacheService.readThrough(
+            key,
+            AnalyticAnomalySummaryCacheSchema,
+            this.analyticCache.anomalySummaryTtlInMs,
+            async () => {
+                const rows = await this.computeLoginTimeAnomalies(
+                    startDate,
+                    endDate
+                );
+
+                return { count: rows.length, window };
+            }
+        );
+    }
+
+    async loginTimeList(
+        startDate: Date | null,
+        endDate: Date | null,
+        params: IPaginationQueryOffsetParams
+    ): Promise<IResponsePaginationReturn<IAnalyticLoginTimeAnomaly>> {
+        const rows = await this.computeLoginTimeAnomalies(startDate, endDate);
+        const { data, total } = this.analyticSortUtil.sortPage(
+            rows,
+            params,
+            AnalyticLoginTimeAnomalyAvailableOrderBy
+        );
+
+        return this.paginationOffsetUtil.page(data, total, {
+            skip: params.skip,
+            limit: params.limit,
+        });
+    }
+}

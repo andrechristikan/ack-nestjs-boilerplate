@@ -8,12 +8,12 @@ export class HelperNumberService {
         return regex.test(number);
     }
 
-    /** An n-digit decimal string with a non-zero first digit; valid for 1 to 14 digits. */
     randomDigits(length: number): string {
-        return this.randomInRange(10 ** (length - 1), 10 ** length).toString();
+        const value = this.randomInRange(10 ** (length - 1), 10 ** length);
+
+        return value.toString();
     }
 
-    /** Integer in [ceil(min), floor(max)); throws RangeError when the range is empty or reaches 2^48. */
     randomInRange(min: number, max: number): number {
         return randomInt(Math.ceil(min), Math.floor(max));
     }
@@ -25,5 +25,9 @@ export class HelperNumberService {
         }
 
         return Number.parseFloat((tValue * 100).toFixed(2));
+    }
+
+    percent(part: number, total: number): number {
+        return total === 0 ? 0 : (part / total) * 100;
     }
 }

@@ -10,11 +10,11 @@ export class NotificationQueueFactory implements RegisterQueueOptionsFactory {
     constructor(private readonly configService: ConfigService) {}
 
     createRegisterQueueOptions(): RegisterQueueOptions {
-        const attempts = this.configService.get<number>('queue.job.attempts');
+        const attempts = this.configService.get<number>('queue.job.attempts')!;
         const keepLogs = this.configService.get<number>('queue.job.keepLogs')!;
         const backoffDelayInMs = this.configService.get<number>(
             'queue.job.notificationBackoffDelayInMs'
-        );
+        )!;
         const removeOnCompleteAgeInSeconds = this.configService.get<number>(
             'queue.job.removeOnCompleteAgeInSeconds'
         )!;

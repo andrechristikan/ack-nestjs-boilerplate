@@ -19,32 +19,13 @@ export class NotificationUserSettingRepository implements INotificationUserSetti
         });
     }
 
-    async findActiveUserSettingByType(
-        userIds: string[],
-        type: EnumNotificationType,
-        channels: EnumNotificationChannel[]
-    ): Promise<NotificationUserSetting[]> {
-        return this.databaseService.client.notificationUserSetting.findMany({
-            where: {
-                userId: {
-                    in: userIds,
-                },
-                type,
-                channel: {
-                    in: channels,
-                },
-                isActive: true,
-            },
-        });
-    }
-
-    async createDefaultsInTx(
+    async createDefaultsManyInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        userIds: string[]
     ): Promise<void> {
         await tx.notificationUserSetting.createMany({
-            data: Object.values(EnumNotificationChannel)
-                .map(channel =>
+            data: userIds.flatMap(userId =>
+                Object.values(EnumNotificationChannel).flatMap(channel =>
                     Object.values(EnumNotificationType).map(type => ({
                         userId,
                         channel,
@@ -52,7 +33,7 @@ export class NotificationUserSettingRepository implements INotificationUserSetti
                         isActive: true,
                     }))
                 )
-                .flat(),
+            ),
         });
     }
 
@@ -60,14 +41,14 @@ export class NotificationUserSettingRepository implements INotificationUserSetti
         tx: IDatabaseTransactionClient,
         userId: string,
         { channel, type, isActive }: INotificationUserSettingUpdate
-    ): Promise<NotificationUserSetting> {
-        return tx.notificationUserSetting.update({
-            where: {
-                userId_channel_type: { userId, channel, type },
-            },
+    ): Promise<boolean> {
+        const { count } = await tx.notificationUserSetting.updateMany({
+            where: { userId, channel, type },
             data: {
                 isActive,
             },
         });
+
+        return count > 0;
     }
 }

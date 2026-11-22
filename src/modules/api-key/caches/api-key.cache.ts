@@ -1,46 +1,45 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Cache } from 'cache-manager';
-import type { ApiKey } from '@generated/prisma-client/client';
-import { CacheMainProvider } from '@common/cache/constants/cache.constant';
+import type { ICacheLease } from '@common/cache/interfaces/cache.interface';
 
-/** Reads and writes the cached API key record. */
 @Injectable()
 export class ApiKeyCache {
-    private readonly logger = new Logger(ApiKeyCache.name);
     private readonly keyPattern: string;
+    readonly cacheTtlInMs: number;
+    private readonly leaseKeyPattern: string;
+    private readonly leaseTtlInMs: number;
 
-    constructor(
-        @Inject(CacheMainProvider) private cacheManager: Cache,
-        private readonly configService: ConfigService
-    ) {
+    constructor(private readonly configService: ConfigService) {
         this.keyPattern = this.configService.get<string>(
             'auth.xApiKey.keyPattern'
         )!;
+        this.cacheTtlInMs = this.configService.get<number>(
+            'auth.xApiKey.cacheTtlInMs'
+        )!;
+        this.leaseKeyPattern = this.configService.get<string>(
+            'auth.xApiKey.leaseKeyPattern'
+        )!;
+        this.leaseTtlInMs = this.configService.get<number>(
+            'auth.xApiKey.leaseTtlInMs'
+        )!;
     }
 
-    async getCacheByKey(key: string): Promise<ApiKey | null> {
-        const cacheKey = this.keyPattern.replace('{key}', () => key);
-        const cachedApiKey = await this.cacheManager.get<ApiKey>(cacheKey);
-        if (cachedApiKey) {
-            return cachedApiKey;
-        }
-
-        return null;
+    private buildApiKeyLeaseKey(key: string): string {
+        return this.leaseKeyPattern.replace('{key}', () => key);
     }
 
-    async setCacheByKey(key: string, apiKey: ApiKey): Promise<void> {
-        const cacheKey = this.keyPattern.replace('{key}', () => key);
-        try {
-            await this.cacheManager.set(cacheKey, apiKey);
-        } catch (error: unknown) {
-            this.logger.error(error, 'API key cache write failed');
-        }
+    buildApiKeyKey(key: string): string {
+        return this.keyPattern.replace('{key}', () => key);
     }
 
-    async deleteCacheByKey(key: string): Promise<void> {
-        const cacheKey = this.keyPattern.replace('{key}', () => key);
-        await this.cacheManager.del(cacheKey);
-        return;
+    buildApiKeyLease(key: string): ICacheLease {
+        const leaseKey = this.buildApiKeyLeaseKey(key);
+
+        return { key: leaseKey, ttlInMs: this.leaseTtlInMs };
+    }
+
+    /** The entry key and its lease key. */
+    buildApiKeyKeys(key: string): string[] {
+        return [this.buildApiKeyKey(key), this.buildApiKeyLeaseKey(key)];
     }
 }

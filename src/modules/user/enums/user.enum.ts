@@ -1,18 +1,17 @@
-/**
- * Workspace a new user lands in: a personal one or an invited one.
- * @public
- */
+/** @public */
+export enum EnumUserQueue {
+    user = 'user',
+}
+
+/** @public */
 export enum EnumUserSignUpWorkspaceContextType {
     personal = 'personal',
     invite = 'invite',
 }
 
-/**
- * Ways a user account is created: sign-up, social sign-in or by an admin.
- * @public
- */
-export enum EnumUserCreateMode {
-    signUp = 'signUp',
-    social = 'social',
-    admin = 'admin',
+/** @public */
+export enum EnumUserProcess {
+    deletePhoto = 'deletePhoto',
+    importByAdmin = 'importByAdmin',
+    purgeExpired = 'purgeExpired',
 }

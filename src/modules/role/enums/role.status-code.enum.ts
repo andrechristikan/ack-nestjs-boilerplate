@@ -1,11 +1,11 @@
-/**
- * Status codes raised by the `role` module.
- * @public
- */
+/** @public */
 export enum EnumRoleStatusCodeError {
     notFound = 50500,
     exist = 50501,
-    predefinedNotFound = 50502,
-    forbidden = 50503,
-    used = 50504,
+    forbidden = 50502,
+    used = 50503,
+    rankForbidden = 50504,
+    selfForbidden = 50505,
+    immutable = 50506,
+    hasPolicies = 50507,
 }

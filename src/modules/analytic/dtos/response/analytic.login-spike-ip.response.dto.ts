@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes one IP address driving a login spike.
- * @public
- */
+/** @public */
 export const AnalyticLoginSpikeIpResponseSchema = z.object({
     ipAddress: z.string().meta({
         description: 'IP address the login attempts came from',
@@ -20,10 +17,7 @@ export const AnalyticLoginSpikeIpResponseSchema = z.object({
     }),
 });
 
-/**
- * One IP address driving a login spike.
- * @public
- */
+/** @public */
 export type AnalyticLoginSpikeIpResponseDto = z.infer<
     typeof AnalyticLoginSpikeIpResponseSchema
 >;

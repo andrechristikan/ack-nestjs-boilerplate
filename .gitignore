@@ -2,7 +2,7 @@
 dist/
 node_modules/
 .warmup/
-# Prisma client, swagger, vault init, and agent reports under generated/docs/
+# Prisma client, swagger, vault init, the sweep log, and the owner's notes
 generated/
 swagger.json
 /src/metadata.ts
@@ -24,7 +24,6 @@ $RECYCLE.BIN/
 
 # Tests
 /coverage
-/coverage-e2e
 /.nyc_output
 /.vitest
 
@@ -55,7 +54,6 @@ pnpm-debug.log*
 # environment
 .env*
 !.env.example
-!.env.e2e.example
 config.yaml
 config.yml
 !.github/ISSUE_TEMPLATE/config.yml
@@ -87,11 +85,9 @@ tmp/
 .claude/todos.json
 .claude/scheduled-tasks/
 
-## Superpowers skill output (specs, plans, sdd notes) — never docs/
+## Work artifacts of the ack-* skills (spec, tickets, plan index per feature), never docs/
+.scratch/
 .superpowers/
-
-## Graphify knowledge graph
-graphify-out/
 
 ## Cursor
 .cursorignore
@@ -106,3 +102,6 @@ graphify-out/
 
 ## AI generated files
 plan.md
+
+## SBOM
+sbom.cdx.json

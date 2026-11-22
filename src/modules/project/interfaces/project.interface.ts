@@ -1,16 +1,29 @@
-import type { ProjectMember } from '@generated/prisma-client/client';
+import type { Project, ProjectMember } from '@generated/prisma-client/client';
+import type { IRequestStorePatch } from '@common/request/interfaces/request.interface';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
+
+export interface IProjectContext {
+    project: Project;
+    projectMember: ProjectMember | null;
+}
+
+export type IProjectContextPatch = IRequestStorePatch<IProjectContext>;
 
 export interface IProjectMember extends ProjectMember {
     user: IUserRef;
 }
 
+export interface IProjectMemberActor {
+    userId: string;
+    hasWorkspaceBypass: boolean;
+}
+
 export interface IProjectCreate {
     name: string;
-    description?: string;
+    description: string | null;
 }
 
 export interface IProjectUpdate {
-    name?: string;
-    description?: string;
+    name: string;
+    description: string | null;
 }

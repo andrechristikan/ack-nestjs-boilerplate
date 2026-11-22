@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes the member, project and activity counts of a workspace.
- * @public
- */
+/** @public */
 export const AnalyticWorkspaceSummaryResponseSchema = z.object({
     memberCount: z.number().meta({
         description: 'Members of the workspace',
@@ -20,10 +17,7 @@ export const AnalyticWorkspaceSummaryResponseSchema = z.object({
     }),
 });
 
-/**
- * Member, project and activity counts of a workspace.
- * @public
- */
+/** @public */
 export type AnalyticWorkspaceSummaryResponseDto = z.infer<
     typeof AnalyticWorkspaceSummaryResponseSchema
 >;

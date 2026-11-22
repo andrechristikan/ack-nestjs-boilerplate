@@ -1,46 +1,24 @@
-import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
+import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
-import {
-    CACHE_MANAGER,
-    CacheModule as CacheManagerModule,
-} from '@nestjs/cache-manager';
-import type { CacheOptions } from '@nestjs/cache-manager';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
-import KeyvRedis from '@keyv/redis';
-import { CacheMainProvider } from '@common/cache/constants/cache.constant';
+import { EnumCacheQueue } from '@common/cache/enums/cache.enum';
+import { CacheQueueFactory } from '@common/cache/factories/cache.queue.factory';
+import { CacheService } from '@common/cache/services/cache.service';
 
-/**
- * Global cache module backed by Redis, exposing the cache manager app-wide with TTL from config.
- */
+/** Shared module: CacheService for every service and cache class reading through Redis, and for the cache invalidation processor. */
+@Global()
 @Module({})
-export class CacheMainModule {
+export class CacheModule {
     static forRoot(): DynamicModule {
-        const provider = {
-            provide: CacheMainProvider,
-            useExisting: CACHE_MANAGER,
-        };
-
         return {
-            module: CacheMainModule,
-            global: true,
-            providers: [provider],
-            exports: [provider],
+            module: CacheModule,
+            controllers: [],
+            providers: [CacheService],
+            exports: [CacheService],
             imports: [
-                CacheManagerModule.registerAsync({
-                    imports: [ConfigModule],
-                    inject: [ConfigService, RedisClientCachedProvider],
-                    useFactory: (
-                        configService: ConfigService,
-                        redisClient: KeyvRedis<unknown>
-                    ): CacheOptions => {
-                        return {
-                            stores: [redisClient],
-                            ttl: configService.get<number>(
-                                'redis.cache.ttlInMs'
-                            ),
-                        };
-                    },
+                BullModule.registerQueueAsync({
+                    name: EnumCacheQueue.cache,
+                    useClass: CacheQueueFactory,
                 }),
             ],
         };

@@ -7,37 +7,41 @@ import { WorkspaceMemberListRequestSchema } from '@modules/workspace/dtos/reques
 import type { WorkspaceUserListRequestDto } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
 import { WorkspaceUserListRequestSchema } from '@modules/workspace/dtos/request/workspace.user-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContext,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
-
 import type {
     Workspace,
     WorkspaceInvite,
     WorkspaceJoinRequest,
-    WorkspaceMember,
 } from '@generated/prisma-client/client';
-
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessContext,
     AuthJwtAccessProtected,
-    AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
-
+import {
+    UserContext,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
 import { WorkspaceCreateRequestSchema } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import { WorkspaceInviteClaimRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
@@ -67,21 +71,37 @@ import { WorkspaceJoinRequestResponseSchema } from '@modules/workspace/dtos/resp
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
 import type {
+    IWorkspaceContext,
     IWorkspaceInviteList,
     IWorkspaceMember,
 } from '@modules/workspace/interfaces/workspace.interface';
-
 import {
-    WorkspaceCurrent,
-    WorkspaceMemberCurrent,
+    WorkspaceContext,
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
-
-import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
-import { WorkspaceInviteHttpService } from '@modules/workspace/services/workspace.invite.http.service';
-import { WorkspaceJoinRequestHttpService } from '@modules/workspace/services/workspace.join-request.http.service';
-import { WorkspaceMemberHttpService } from '@modules/workspace/services/workspace.member.http.service';
+import { WorkspaceGetListCursorByMemberUseCase } from '@modules/workspace/use-cases/workspace.get-list-cursor-by-member.use-case';
+import { WorkspaceCreateUseCase } from '@modules/workspace/use-cases/workspace.create.use-case';
+import { WorkspaceGetCurrentUseCase } from '@modules/workspace/use-cases/workspace.get-current.use-case';
+import { WorkspaceUpdateUseCase } from '@modules/workspace/use-cases/workspace.update.use-case';
+import { WorkspaceUpdateIsPublicUseCase } from '@modules/workspace/use-cases/workspace.update-is-public.use-case';
+import { WorkspaceUpdateSlugUseCase } from '@modules/workspace/use-cases/workspace.update-slug.use-case';
+import { WorkspaceSwitchUseCase } from '@modules/workspace/use-cases/workspace.switch.use-case';
+import { WorkspaceTransferOwnershipUseCase } from '@modules/workspace/use-cases/workspace.transfer-ownership.use-case';
+import { WorkspaceLeaveUseCase } from '@modules/workspace/use-cases/workspace.leave.use-case';
+import { WorkspaceSoftDeleteUseCase } from '@modules/workspace/use-cases/workspace.soft-delete.use-case';
+import { WorkspaceGetMembersListUseCase } from '@modules/workspace/use-cases/workspace.get-members-list.use-case';
+import { WorkspaceUpdateMemberRoleUseCase } from '@modules/workspace/use-cases/workspace.update-member-role.use-case';
+import { WorkspaceRemoveMemberUseCase } from '@modules/workspace/use-cases/workspace.remove-member.use-case';
+import { WorkspaceGetInvitesListUseCase } from '@modules/workspace/use-cases/workspace.get-invites-list.use-case';
+import { WorkspaceCreateInviteUseCase } from '@modules/workspace/use-cases/workspace.create-invite.use-case';
+import { WorkspaceResendInviteUseCase } from '@modules/workspace/use-cases/workspace.resend-invite.use-case';
+import { WorkspaceRevokeInviteUseCase } from '@modules/workspace/use-cases/workspace.revoke-invite.use-case';
+import { WorkspaceClaimInviteUseCase } from '@modules/workspace/use-cases/workspace.claim-invite.use-case';
+import { WorkspaceCreateJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.create-join-request.use-case';
+import { WorkspaceGetJoinRequestsListUseCase } from '@modules/workspace/use-cases/workspace.get-join-requests-list.use-case';
+import { WorkspaceAcceptJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.accept-join-request.use-case';
+import { WorkspaceRejectJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.reject-join-request.use-case';
 import {
     Body,
     Controller,
@@ -95,8 +115,10 @@ import {
     Put,
     Query,
 } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
 @ApiTags('modules.user.workspace')
 @Controller({
@@ -105,10 +127,28 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class WorkspaceUserController {
     constructor(
-        private readonly workspaceHttpService: WorkspaceHttpService,
-        private readonly workspaceMemberHttpService: WorkspaceMemberHttpService,
-        private readonly workspaceInviteHttpService: WorkspaceInviteHttpService,
-        private readonly workspaceJoinRequestHttpService: WorkspaceJoinRequestHttpService
+        private readonly workspaceGetListCursorByMemberUseCase: WorkspaceGetListCursorByMemberUseCase,
+        private readonly workspaceCreateUseCase: WorkspaceCreateUseCase,
+        private readonly workspaceGetCurrentUseCase: WorkspaceGetCurrentUseCase,
+        private readonly workspaceUpdateUseCase: WorkspaceUpdateUseCase,
+        private readonly workspaceUpdateIsPublicUseCase: WorkspaceUpdateIsPublicUseCase,
+        private readonly workspaceUpdateSlugUseCase: WorkspaceUpdateSlugUseCase,
+        private readonly workspaceSwitchUseCase: WorkspaceSwitchUseCase,
+        private readonly workspaceTransferOwnershipUseCase: WorkspaceTransferOwnershipUseCase,
+        private readonly workspaceLeaveUseCase: WorkspaceLeaveUseCase,
+        private readonly workspaceSoftDeleteUseCase: WorkspaceSoftDeleteUseCase,
+        private readonly workspaceGetMembersListUseCase: WorkspaceGetMembersListUseCase,
+        private readonly workspaceUpdateMemberRoleUseCase: WorkspaceUpdateMemberRoleUseCase,
+        private readonly workspaceRemoveMemberUseCase: WorkspaceRemoveMemberUseCase,
+        private readonly workspaceGetInvitesListUseCase: WorkspaceGetInvitesListUseCase,
+        private readonly workspaceCreateInviteUseCase: WorkspaceCreateInviteUseCase,
+        private readonly workspaceResendInviteUseCase: WorkspaceResendInviteUseCase,
+        private readonly workspaceRevokeInviteUseCase: WorkspaceRevokeInviteUseCase,
+        private readonly workspaceClaimInviteUseCase: WorkspaceClaimInviteUseCase,
+        private readonly workspaceCreateJoinRequestUseCase: WorkspaceCreateJoinRequestUseCase,
+        private readonly workspaceGetJoinRequestsListUseCase: WorkspaceGetJoinRequestsListUseCase,
+        private readonly workspaceAcceptJoinRequestUseCase: WorkspaceAcceptJoinRequestUseCase,
+        private readonly workspaceRejectJoinRequestUseCase: WorkspaceRejectJoinRequestUseCase
     ) {}
 
     @Doc({ summary: 'list workspaces the caller is a member of' })
@@ -117,34 +157,44 @@ export class WorkspaceUserController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Query({ schema: WorkspaceUserListRequestSchema })
-        query: WorkspaceUserListRequestDto,
-        @AuthJwtPayload('userId') userId: string
+        query: WorkspaceUserListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        return this.workspaceHttpService.getListForMember(userId, query);
+        return this.workspaceGetListCursorByMemberUseCase.execute(
+            authContext,
+            query
+        );
     }
 
     @Doc({ summary: 'create a new workspace; caller becomes owner' })
     @Response('workspace.create', { schema: WorkspaceResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Post('/create')
     async create(
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: WorkspaceCreateRequestSchema })
         body: WorkspaceCreateRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.createWorkspace(userId, body);
+        return this.workspaceCreateUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            body
+        );
     }
 
     @Doc({ summary: 'get the current workspace (`x-workspace-id`)' })
@@ -155,15 +205,15 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/get')
     async get(
-        @WorkspaceCurrent() workspace: Workspace
+        @WorkspaceContext() workspaceContext: IWorkspaceContext
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.getCurrentWorkspace(workspace);
+        return this.workspaceGetCurrentUseCase.execute(workspaceContext);
     }
 
     @Doc({ summary: 'update the current workspace name/description' })
@@ -174,20 +224,24 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/update')
     async update(
-        @WorkspaceCurrent() workspace: Workspace,
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Body({ schema: WorkspaceUpdateRequestSchema })
         body: WorkspaceUpdateRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.updateWorkspace(
-            workspace.id,
-            userId,
+        return this.workspaceUpdateUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             body
         );
     }
@@ -203,20 +257,24 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Patch('/update/is-public')
     async updateIsPublic(
-        @WorkspaceCurrent() workspace: Workspace,
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Body({ schema: WorkspaceUpdateIsPublicRequestSchema })
         body: WorkspaceUpdateIsPublicRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.updateWorkspaceIsPublic(
-            workspace.id,
-            userId,
+        return this.workspaceUpdateIsPublicUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             body
         );
     }
@@ -229,20 +287,24 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Patch('/update/slug')
     async updateSlug(
-        @WorkspaceCurrent() workspace: Workspace,
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Body({ schema: WorkspaceUpdateSlugRequestSchema })
         body: WorkspaceUpdateSlugRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.updateWorkspaceSlug(
-            workspace.id,
-            userId,
+        return this.workspaceUpdateSlugUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             body
         );
     }
@@ -254,18 +316,25 @@ export class WorkspaceUserController {
     @Response('workspace.switch')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/switch')
     async switch(
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: WorkspaceSwitchRequestSchema })
         body: WorkspaceSwitchRequestDto
-    ): Promise<void> {
-        await this.workspaceHttpService.switchWorkspace(userId, body);
+    ): Promise<IResponseReturn<void>> {
+        return this.workspaceSwitchUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            body
+        );
     }
 
     @Doc({ summary: 'transfer workspace ownership to another member' })
@@ -274,21 +343,25 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.owner)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/ownership/transfer')
     async ownershipTransfer(
-        @WorkspaceCurrent() workspace: Workspace,
-        @WorkspaceMemberCurrent() member: WorkspaceMember,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Body({ schema: WorkspaceTransferOwnershipRequestSchema })
         body: WorkspaceTransferOwnershipRequestDto
-    ): Promise<void> {
-        await this.workspaceMemberHttpService.transferOwnership(
-            workspace.id,
-            member,
+    ): Promise<IResponseReturn<void>> {
+        return this.workspaceTransferOwnershipUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             body
         );
     }
@@ -299,19 +372,23 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/leave')
     async leave(
-        @WorkspaceCurrent() workspace: Workspace,
-        @WorkspaceMemberCurrent() member: WorkspaceMember
-    ): Promise<void> {
-        await this.workspaceMemberHttpService.leaveWorkspace(
-            workspace.id,
-            member
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext
+    ): Promise<IResponseReturn<void>> {
+        return this.workspaceLeaveUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext
         );
     }
 
@@ -321,18 +398,22 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.owner)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/delete')
     async softDelete(
-        @WorkspaceCurrent() workspace: Workspace,
-        @AuthJwtPayload('userId') userId: string
-    ): Promise<void> {
-        await this.workspaceHttpService.softDeleteWorkspace(
-            workspace.id,
-            userId
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext
+    ): Promise<IResponseReturn<void>> {
+        return this.workspaceSoftDeleteUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext
         );
     }
 
@@ -344,18 +425,18 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/member/list')
     async memberList(
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Query({ schema: WorkspaceMemberListRequestSchema })
-        query: WorkspaceMemberListRequestDto,
-        @WorkspaceCurrent() workspace: Workspace
+        query: WorkspaceMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
-        return this.workspaceMemberHttpService.getMembersList(
-            workspace.id,
+        return this.workspaceGetMembersListUseCase.execute(
+            workspaceContext,
             query
         );
     }
@@ -366,22 +447,26 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Patch('/member/:workspaceMemberId/role/update')
     async memberUpdateRole(
-        @WorkspaceCurrent() workspace: Workspace,
-        @WorkspaceMemberCurrent() actorMember: WorkspaceMember,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Param('workspaceMemberId', { schema: RequestUuidSchema })
         workspaceMemberId: string,
         @Body({ schema: WorkspaceMemberUpdateRoleRequestSchema })
         body: WorkspaceMemberUpdateRoleRequestDto
-    ): Promise<void> {
-        await this.workspaceMemberHttpService.updateMemberRole(
-            workspace.id,
-            actorMember,
+    ): Promise<IResponseReturn<void>> {
+        return this.workspaceUpdateMemberRoleUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             workspaceMemberId,
             body
         );
@@ -393,20 +478,24 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/member/:workspaceMemberId/remove')
     async memberRemove(
-        @WorkspaceCurrent() workspace: Workspace,
-        @WorkspaceMemberCurrent() actorMember: WorkspaceMember,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Param('workspaceMemberId', { schema: RequestUuidSchema })
         workspaceMemberId: string
-    ): Promise<void> {
-        await this.workspaceMemberHttpService.removeMember(
-            workspace.id,
-            actorMember,
+    ): Promise<IResponseReturn<void>> {
+        return this.workspaceRemoveMemberUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             workspaceMemberId
         );
     }
@@ -419,18 +508,18 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/invite/list')
     async inviteList(
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Query({ schema: WorkspaceInviteListRequestSchema })
-        query: WorkspaceInviteListRequestDto,
-        @WorkspaceCurrent() workspace: Workspace
+        query: WorkspaceInviteListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
-        return this.workspaceInviteHttpService.getInvitesList(
-            workspace.id,
+        return this.workspaceGetInvitesListUseCase.execute(
+            workspaceContext,
             query
         );
     }
@@ -446,27 +535,31 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Post('/invite/create')
     async inviteCreate(
-        @WorkspaceCurrent() workspace: Workspace,
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Body({ schema: WorkspaceInviteCreateRequestSchema })
         body: WorkspaceInviteCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceInvite>> {
-        return this.workspaceInviteHttpService.createInvite(
-            workspace,
-            userId,
+        return this.workspaceCreateInviteUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             body
         );
     }
 
     @Doc({
         summary:
-            'rotate the token and expiry of a pending invite and resend it; the old link stops working',
+            'rotate the token and expiry of an unexpired pending invite and resend it; the old link stops working',
     })
     @Response('workspace.invite.resend', {
         schema: WorkspaceInviteResponseSchema,
@@ -475,23 +568,27 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/invite/:workspaceInviteId/resend')
     async inviteResend(
-        @WorkspaceCurrent() workspace: Workspace,
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Param('workspaceInviteId', { schema: RequestUuidSchema })
         workspaceInviteId: string,
         @Body({ schema: WorkspaceInviteResendRequestSchema })
         body: WorkspaceInviteResendRequestDto
     ): Promise<IResponseReturn<WorkspaceInvite>> {
-        return this.workspaceInviteHttpService.resendInvite(
-            workspace,
-            userId,
+        return this.workspaceResendInviteUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             workspaceInviteId,
             body
         );
@@ -503,20 +600,24 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/invite/:workspaceInviteId/revoke')
     async inviteRevoke(
-        @WorkspaceCurrent() workspace: Workspace,
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Param('workspaceInviteId', { schema: RequestUuidSchema })
         workspaceInviteId: string
-    ): Promise<void> {
-        await this.workspaceInviteHttpService.revokeInvite(
-            workspace.id,
-            userId,
+    ): Promise<IResponseReturn<void>> {
+        return this.workspaceRevokeInviteUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             workspaceInviteId
         );
     }
@@ -528,19 +629,27 @@ export class WorkspaceUserController {
     @Response('workspace.invite.claim')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/invite/claim')
     async inviteClaim(
-        @AuthJwtPayload('userId') userId: string,
-        @AuthJwtPayload('email') email: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Body({ schema: WorkspaceInviteClaimRequestSchema })
         body: WorkspaceInviteClaimRequestDto
-    ): Promise<void> {
-        await this.workspaceInviteHttpService.claimInvite(userId, email, body);
+    ): Promise<IResponseReturn<void>> {
+        return this.workspaceClaimInviteUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            body
+        );
     }
 
     @Doc({
@@ -552,18 +661,22 @@ export class WorkspaceUserController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Post('/join-request/create')
     async joinRequestCreate(
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: WorkspaceJoinRequestCreateRequestSchema })
         body: WorkspaceJoinRequestCreateRequestDto
     ): Promise<IResponseReturn<WorkspaceJoinRequest>> {
-        return this.workspaceJoinRequestHttpService.createJoinRequest(
-            userId,
+        return this.workspaceCreateJoinRequestUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
             body
         );
     }
@@ -576,18 +689,18 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/join-request/list')
     async joinRequestList(
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Query({ schema: WorkspaceJoinRequestListRequestSchema })
-        query: WorkspaceJoinRequestListRequestDto,
-        @WorkspaceCurrent() workspace: Workspace
+        query: WorkspaceJoinRequestListRequestDto
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
-        return this.workspaceJoinRequestHttpService.getJoinRequestsList(
-            workspace.id,
+        return this.workspaceGetJoinRequestsListUseCase.execute(
+            workspaceContext,
             query
         );
     }
@@ -601,21 +714,25 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/join-request/:workspaceJoinRequestId/accept')
     async joinRequestAccept(
-        @WorkspaceCurrent() workspace: Workspace,
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Param('workspaceJoinRequestId', { schema: RequestUuidSchema })
         workspaceJoinRequestId: string
-    ): Promise<void> {
-        await this.workspaceJoinRequestHttpService.acceptJoinRequest(
-            workspace,
-            userId,
+    ): Promise<IResponseReturn<void>> {
+        return this.workspaceAcceptJoinRequestUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             workspaceJoinRequestId
         );
     }
@@ -626,23 +743,27 @@ export class WorkspaceUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/join-request/:workspaceJoinRequestId/reject')
     async joinRequestReject(
-        @WorkspaceCurrent() workspace: Workspace,
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Param('workspaceJoinRequestId', { schema: RequestUuidSchema })
         workspaceJoinRequestId: string,
         @Body({ schema: WorkspaceJoinRequestRejectRequestSchema })
         body: WorkspaceJoinRequestRejectRequestDto
-    ): Promise<void> {
-        await this.workspaceJoinRequestHttpService.rejectJoinRequest(
-            workspace,
-            userId,
+    ): Promise<IResponseReturn<void>> {
+        return this.workspaceRejectJoinRequestUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext,
             workspaceJoinRequestId,
             body
         );

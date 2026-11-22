@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes one counted row of a per-workspace distribution.
- * @public
- */
+/** @public */
 export const AnalyticWorkspaceCountResponseSchema = z.object({
     workspaceId: z.string().meta({
         description: 'Identifier of the counted workspace',
@@ -16,10 +13,7 @@ export const AnalyticWorkspaceCountResponseSchema = z.object({
     }),
 });
 
-/**
- * One counted row of a per-workspace distribution.
- * @public
- */
+/** @public */
 export type AnalyticWorkspaceCountResponseDto = z.infer<
     typeof AnalyticWorkspaceCountResponseSchema
 >;

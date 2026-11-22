@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes one counted row of a per-project distribution.
- * @public
- */
+/** @public */
 export const AnalyticProjectCountResponseSchema = z.object({
     projectId: z.string().meta({
         description: 'Identifier of the counted project',
@@ -16,10 +13,7 @@ export const AnalyticProjectCountResponseSchema = z.object({
     }),
 });
 
-/**
- * One counted row of a per-project distribution.
- * @public
- */
+/** @public */
 export type AnalyticProjectCountResponseDto = z.infer<
     typeof AnalyticProjectCountResponseSchema
 >;

@@ -15,20 +15,32 @@ import {
 } from '@common/request/constants/request.constant';
 import { RequestTimeoutException } from '@common/request/exceptions/request.timeout.exception';
 
-/**
- * Applies the global request timeout, or a per-route override from `@RequestTimeout`.
- */
 @Injectable()
 export class RequestTimeoutInterceptor implements NestInterceptor {
-    private readonly maxTimeoutInMs: number;
+    private readonly timeoutInMs: number;
 
     constructor(
         private readonly configService: ConfigService,
         private readonly reflector: Reflector
     ) {
-        this.maxTimeoutInMs = this.configService.get<number>(
+        this.timeoutInMs = this.configService.get<number>(
             'request.timeoutInMs'
         )!;
+    }
+
+    private handleTimeoutRequest(
+        next: CallHandler,
+        timeoutMs: number
+    ): Observable<unknown> {
+        return next.handle().pipe(
+            timeout(timeoutMs),
+            catchError(err => {
+                if (err instanceof TimeoutError) {
+                    throw new RequestTimeoutException();
+                }
+                return throwError(() => err);
+            })
+        );
     }
 
     intercept(
@@ -53,25 +65,10 @@ export class RequestTimeoutInterceptor implements NestInterceptor {
                     ms(timeoutValue as ms.StringValue)
                 );
             } else {
-                return this.handleTimeoutRequest(next, this.maxTimeoutInMs);
+                return this.handleTimeoutRequest(next, this.timeoutInMs);
             }
         }
 
         return next.handle();
-    }
-
-    private handleTimeoutRequest(
-        next: CallHandler,
-        timeoutMs: number
-    ): Observable<unknown> {
-        return next.handle().pipe(
-            timeout(timeoutMs),
-            catchError(err => {
-                if (err instanceof TimeoutError) {
-                    throw new RequestTimeoutException();
-                }
-                return throwError(() => err);
-            })
-        );
     }
 }

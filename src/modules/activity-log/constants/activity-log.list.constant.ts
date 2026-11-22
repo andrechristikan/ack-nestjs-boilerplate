@@ -1,9 +1,14 @@
 import { Prisma } from '@generated/prisma-client/client';
 
-/**
- * Sort fields the activity-log lists accept.
- * @public
- */
+/** @public */
 export const ActivityLogDefaultAvailableOrderBy = [
     Prisma.ActivityLogScalarFieldEnum.createdAt,
 ] as const satisfies ReadonlyArray<Prisma.ActivityLogScalarFieldEnum>;
+
+/** @public */
+export const ActivityLogSharedUserListCursorScope =
+    'ActivityLogSharedUserListCursorScope';
+
+/** @public */
+export const ActivityLogSharedWorkspaceListCursorScope =
+    'ActivityLogSharedWorkspaceListCursorScope';

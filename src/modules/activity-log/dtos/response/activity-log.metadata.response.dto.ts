@@ -8,10 +8,7 @@ import {
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
 
-/**
- * Metadata recorded with an activity-log entry; which keys are present depends on the action.
- * @public
- */
+/** @public */
 export const ActivityLogMetadataResponseSchema = z.object({
     targetUserId: z.string().optional().meta({
         description: 'Identifier of the user the action was performed on',
@@ -28,6 +25,15 @@ export const ActivityLogMetadataResponseSchema = z.object({
     timestamp: z.string().optional().meta({
         description: 'Time of the affected record when the action was recorded',
         example: faker.date.recent().toISOString(),
+    }),
+    workspaceId: z.string().optional().meta({
+        description: 'Identifier of the affected workspace',
+        example: faker.string.uuid(),
+    }),
+    previousOwnerUserId: z.string().optional().meta({
+        description:
+            'Identifier of the user who owned the workspace before the transfer',
+        example: faker.string.uuid(),
     }),
     sessionId: z.string().optional().meta({
         description: 'Identifier of the affected session',
@@ -103,10 +109,7 @@ export const ActivityLogMetadataResponseSchema = z.object({
     }),
 });
 
-/**
- * Metadata recorded with an activity-log entry.
- * @public
- */
+/** @public */
 export type ActivityLogMetadataResponseDto = z.infer<
     typeof ActivityLogMetadataResponseSchema
 >;

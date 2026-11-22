@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import { RequestGeoLocationResponseSchema } from '@common/request/dtos/response/request.geo-location.response.dto';
 import { RequestUserAgentResponseSchema } from '@common/request/dtos/response/request.user-agent.response.dto';
@@ -8,10 +8,7 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogMetadataResponseSchema } from '@modules/activity-log/dtos/response/activity-log.metadata.response.dto';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
-/**
- * Base activity-log shape: one recorded action with the user who owns the entry embedded.
- * @public
- */
+/** @public */
 export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
     updatedAt: true,
     updatedBy: true,
@@ -19,7 +16,8 @@ export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
     deletedBy: true,
 }).extend({
     createdBy: z.string().nullable().meta({
-        description: 'Identifier of the user who performed the action',
+        description:
+            'Identifier of the user who performed the action; `null` on the shared scope for an entry another actor created.',
         example: faker.string.uuid(),
     }),
     userId: z.string().meta({
@@ -61,11 +59,13 @@ export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
         example: 'User login with credential',
     }),
     ipAddress: z.string().nullable().meta({
-        description: 'IP address of the user performing the action',
+        description:
+            'The request IP address of the actor; `null` on the shared scope for an entry another actor created.',
         example: faker.internet.ipv4(),
     }),
-    userAgent: RequestUserAgentResponseSchema.meta({
-        description: 'Parsed user agent of the request that produced the log',
+    userAgent: RequestUserAgentResponseSchema.nullable().meta({
+        description:
+            'Parsed user agent of the request that produced the log; `null` on the shared scope for an entry another actor created.',
         example: {
             ua: faker.internet.userAgent(),
             browser: {
@@ -93,7 +93,8 @@ export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
         },
     }),
     geoLocation: RequestGeoLocationResponseSchema.nullable().meta({
-        description: 'Geo-location of the request that produced the log',
+        description:
+            'Geo-location of the request that produced the log; `null` when unresolved, and on the shared scope for an entry another actor created.',
         example: {
             latitude: faker.location.latitude(),
             longitude: faker.location.longitude(),
@@ -113,8 +114,5 @@ export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * One recorded activity-log action with the user who owns the entry.
- * @public
- */
+/** @public */
 export type ActivityLogResponseDto = z.infer<typeof ActivityLogResponseSchema>;

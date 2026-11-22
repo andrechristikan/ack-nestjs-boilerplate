@@ -1,0 +1,165 @@
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { OutboxService } from '@common/outbox/services/outbox.service';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { UserMobileNumberAlreadyVerifiedException } from '@modules/user/exceptions/user.mobile-number-already-verified.exception';
+import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
+import type { IUserMobileNumberSummary } from '@modules/user/interfaces/user.interface';
+import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
+import { UserVerificationService } from '@modules/user/services/user.verification.service';
+import { UserSendVerificationMobileNumberUseCase } from '@modules/user/use-cases/user.send-verification-mobile-number.use-case';
+import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
+import {
+    buildApiKeyContext,
+    buildAuthJwtAccessContext,
+    buildRequestContext,
+} from '@test/unit/helpers/test.unit.request.helper';
+
+describe('UserSendVerificationMobileNumberUseCase', () => {
+    const userMobileNumberService: MockProxy<UserMobileNumberService> =
+        mock<UserMobileNumberService>();
+    const userVerificationService: MockProxy<UserVerificationService> =
+        mock<UserVerificationService>();
+    const activityLogService: MockProxy<ActivityLogService> =
+        mock<ActivityLogService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
+
+    let useCase: UserSendVerificationMobileNumberUseCase;
+
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const authContext = buildAuthJwtAccessContext('user-swift');
+    const tx = {} as IDatabaseTransactionClient;
+    const entry = buildActivityLogCreateManyEffect('activityLog');
+    const mobileNumber: IUserMobileNumberSummary = {
+        id: 'mobile-swift',
+        number: '81234567890',
+        phoneCode: '62',
+        isVerified: false,
+    };
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+        outboxService.withTransaction.mockImplementation(
+            async fn => fn(tx) as never
+        );
+        activityLogService.recordEffect.mockReturnValue(entry);
+        userMobileNumberService.getOneUnverifiedMobileNumber.mockResolvedValue(
+            mobileNumber
+        );
+        userMobileNumberService.toDialableNumber.mockReturnValue(
+            '+6281234567890'
+        );
+        userVerificationService.isMobileResendable.mockResolvedValue(true);
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                UserSendVerificationMobileNumberUseCase,
+                {
+                    provide: UserMobileNumberService,
+                    useValue: userMobileNumberService,
+                },
+                {
+                    provide: UserVerificationService,
+                    useValue: userVerificationService,
+                },
+                { provide: ActivityLogService, useValue: activityLogService },
+                { provide: OutboxService, useValue: outboxService },
+            ],
+        }).compile();
+        useCase = module.get(UserSendVerificationMobileNumberUseCase);
+    });
+
+    describe('execute', () => {
+        it('adds the verificationMobileNumber effect and the entry in one transaction', async () => {
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'mobile-swift'
+            );
+
+            expect(
+                userMobileNumberService.getOneUnverifiedMobileNumber
+            ).toHaveBeenCalledWith('user-swift', 'mobile-swift');
+            expect(
+                userVerificationService.isMobileResendable
+            ).toHaveBeenCalledWith('user-swift', 'mobile-swift');
+            expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(userVerificationService.sendMobileInTx).toHaveBeenCalledWith(
+                tx,
+                'user-swift',
+                'mobile-swift',
+                '+6281234567890'
+            );
+            expect(activityLogService.recordEffect).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.userSendVerificationMobileNumber,
+                }
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
+            expect(result).toEqual({});
+        });
+
+        it('answers 200, adds no effect and no entry for a send inside the resend window', async () => {
+            userVerificationService.isMobileResendable.mockResolvedValue(false);
+
+            const result = await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'mobile-swift'
+            );
+
+            expect(result).toEqual({});
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(
+                userVerificationService.sendMobileInTx
+            ).not.toHaveBeenCalled();
+            expect(activityLogService.recordEffect).not.toHaveBeenCalled();
+        });
+
+        it('throws UserMobileNumberNotFoundException for a number that is not the caller and reads nothing else', async () => {
+            userMobileNumberService.getOneUnverifiedMobileNumber.mockRejectedValue(
+                new UserMobileNumberNotFoundException()
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'mobile-other'
+                )
+            ).rejects.toBeInstanceOf(UserMobileNumberNotFoundException);
+            expect(
+                userVerificationService.isMobileResendable
+            ).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('throws UserMobileNumberAlreadyVerifiedException for a verified number and writes nothing', async () => {
+            userMobileNumberService.getOneUnverifiedMobileNumber.mockRejectedValue(
+                new UserMobileNumberAlreadyVerifiedException()
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'mobile-swift'
+                )
+            ).rejects.toBeInstanceOf(UserMobileNumberAlreadyVerifiedException);
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+        });
+    });
+});

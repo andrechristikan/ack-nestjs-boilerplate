@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumNotificationStatusCodeError } from '@modules/notification/enums/notification.status-code.enum';
 
-/**
- * Raised when the requested notification does not exist.
- * @public
- */
+/** @public */
 export class NotificationNotFoundException extends AppBaseException {
     readonly module = 'notification';
     readonly statusCode = EnumNotificationStatusCodeError.notFound;

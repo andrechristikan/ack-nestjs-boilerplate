@@ -1,10 +1,8 @@
-/**
- * Status codes raised by the `notification` module.
- * @public
- */
+/** @public */
 export enum EnumNotificationStatusCodeError {
     notFound = 51200,
     alreadyRead = 51201,
     invalidType = 51202,
     invalidChannel = 51203,
+    settingInvalid = 51204,
 }

@@ -1,84 +1,63 @@
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import type {
-    IUserTwoFactor,
-    IUserTwoFactorStatus,
-} from '@modules/user/interfaces/user.interface';
+import { UserUsernameRegex } from '@modules/user/constants/user.constant';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-    EnumActivityLogAction,
-    EnumUserLoginWith,
-} from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
 import { Profanity } from '@2toad/profanity';
+import { Duration } from 'luxon';
 
-/** Username checks, two-factor mapping, and activity-log mapping. */
 @Injectable()
 export class UserUtil {
-    private readonly usernamePattern: RegExp;
-
     private readonly profanity: Profanity;
 
-    constructor(private readonly configService: ConfigService) {
-        this.usernamePattern = this.configService.get<RegExp>(
-            'user.usernamePattern'
-        )!;
-
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly helperDateService: HelperDateService
+    ) {
         const availableLanguages = this.configService.get<string[]>(
-            'message.availableLanguage'
-        );
+            'message.availableLanguages'
+        )!;
         this.profanity = new Profanity({
             languages: availableLanguages,
-            wholeWord: false,
+            wholeWord: true,
             grawlix: '*****',
             grawlixChar: '*',
         });
     }
 
-    /** True when the username does NOT match the allowed pattern (i.e. should be rejected). */
-    checkUsernamePattern(username: string): boolean {
-        return !!username.search(this.usernamePattern);
+    /** True when the username does not match the allowed pattern, so true rejects it. */
+    isUsernamePatternInvalid(username: string): boolean {
+        return !!username.search(UserUsernameRegex);
     }
 
-    async checkBadWord(str: string): Promise<boolean> {
-        return this.profanity.exists(str);
+    hasBadWord(str: string): boolean {
+        return this.profanity.exists(str.replace(/[^a-zA-Z]+/g, ' '));
     }
 
-    /** Maps a two-factor record to status, deriving the pending-confirmation flag. */
-    mapTwoFactor(twoFactor: IUserTwoFactor): IUserTwoFactorStatus {
-        return {
-            isEnabled: twoFactor.enabled,
-            isPendingConfirmation: !!twoFactor.pendingSecret,
-            backupCodesRemaining: twoFactor.backupCodes.length,
-            confirmedAt: twoFactor.confirmedAt,
-            lastUsedAt: twoFactor.lastUsedAt,
-        };
+    isUnverified(user: IUser): boolean {
+        return !user.isVerified;
     }
 
-    checkMobileNumber(phoneCodes: string[], phoneCode: string): boolean {
-        return phoneCodes.includes(phoneCode);
-    }
+    isInsideResendWindow(
+        lastCreatedAt: Date,
+        resendInMinutes: number
+    ): boolean {
+        const now = this.helperDateService.create();
+        const canResendAt = this.helperDateService.forward(
+            lastCreatedAt,
+            Duration.fromObject({ minutes: resendInMinutes })
+        );
 
-    /** Maps the login method onto the activity-log action that records it. */
-    resolveLoginActivityLogAction(
-        loginWith: EnumUserLoginWith
-    ): EnumActivityLogAction {
-        switch (loginWith) {
-            case EnumUserLoginWith.socialApple:
-                return EnumActivityLogAction.userLoginApple;
-            case EnumUserLoginWith.socialGoogle:
-                return EnumActivityLogAction.userLoginGoogle;
-            case EnumUserLoginWith.credential:
-            default:
-                return EnumActivityLogAction.userLoginCredential;
-        }
+        return now < canResendAt;
     }
 
     mapActivityLogActorMetadata(user: User): IActivityLogMetadata {
         return {
             targetUserId: user.id,
             targetUsername: user.username,
-            timestamp: user.updatedAt ?? user.createdAt,
+            timestamp: user.updatedAt,
         };
     }
 
@@ -88,7 +67,7 @@ export class UserUtil {
     ): IActivityLogMetadata {
         return {
             actorUserId,
-            timestamp: user.updatedAt ?? user.createdAt,
+            timestamp: user.updatedAt,
         };
     }
 }

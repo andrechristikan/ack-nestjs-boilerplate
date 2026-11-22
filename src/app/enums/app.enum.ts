@@ -1,7 +1,4 @@
-/**
- * Deployment environments the application runs in.
- * @public
- */
+/** @public */
 export enum EnumAppEnvironment {
     production = 'production',
     staging = 'staging',

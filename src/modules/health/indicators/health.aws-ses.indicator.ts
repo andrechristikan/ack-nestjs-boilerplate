@@ -1,39 +1,40 @@
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
-import { Injectable } from '@nestjs/common';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
+import { Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 
-/**
- * Reports AWS SES reachability as a Terminus health indicator.
- */
 @Injectable()
 export class HealthAwsSESIndicator {
+    private readonly logger = new Logger(HealthAwsSESIndicator.name);
+
     constructor(
         private readonly awsSESService: AwsSESService,
         private readonly healthIndicatorService: HealthIndicatorService
     ) {}
 
-    /**
-     * Down when the SES connection check fails or throws.
-     */
-    async isHealthy(key: string): Promise<HealthIndicatorResult> {
+    async isHealthy(
+        key: EnumHealthIndicatorKey
+    ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
+
+        const isInitialized = this.awsSESService.isInitialized();
+        if (!isInitialized) {
+            return indicator.down('AWS SES is not configured');
+        }
 
         try {
             const connection = await this.awsSESService.checkConnection();
 
             if (!connection) {
-                return indicator.down(
-                    `HealthAwsSESIndicator Failed - Connection to AWS SES failed`
-                );
+                return indicator.down('AWS SES connection failed');
             }
 
             return indicator.up();
         } catch (err: unknown) {
-            const message =
-                err instanceof Error ? err.message : 'Unknown error';
+            this.logger.error(err, 'AWS SES health check failed');
 
-            return indicator.down(`HealthAwsSESIndicator Failed - ${message}`);
+            return indicator.down('AWS SES connection failed');
         }
     }
 }

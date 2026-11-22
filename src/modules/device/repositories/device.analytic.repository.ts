@@ -21,12 +21,6 @@ export class DeviceAnalyticRepository implements IDeviceAnalyticRepository {
         return rows.map(r => ({ key: r.platform, count: r._count._all }));
     }
 
-    async countWithPushToken(): Promise<number> {
-        return this.databaseService.client.device.count({
-            where: { notificationToken: { not: null } },
-        });
-    }
-
     async countDevices(): Promise<number> {
         return this.databaseService.client.device.count();
     }

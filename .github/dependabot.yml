@@ -3,7 +3,7 @@ updates:
     - package-ecosystem: 'github-actions'
       directory: '/'
       schedule:
-          interval: 'monthly'
+          interval: 'weekly'
           day: tuesday
           time: '00:00'
       open-pull-requests-limit: 3
@@ -18,10 +18,44 @@ updates:
               patterns:
                   - '*'
 
+    - package-ecosystem: 'docker'
+      directory: '/ci'
+      target-branch: 'development'
+      schedule:
+          interval: 'weekly'
+          day: tuesday
+          time: '00:00'
+      open-pull-requests-limit: 3
+      commit-message:
+          prefix: 'ci'
+          include: 'scope'
+      labels:
+          - dependabot
+      ignore:
+          - dependency-name: 'node'
+            update-types: ['version-update:semver-major']
+
+    - package-ecosystem: 'docker-compose'
+      directory: '/ci'
+      target-branch: 'development'
+      schedule:
+          interval: 'weekly'
+          day: tuesday
+          time: '00:00'
+      open-pull-requests-limit: 3
+      commit-message:
+          prefix: 'ci'
+          include: 'scope'
+      labels:
+          - dependabot
+      ignore:
+          - dependency-name: '*'
+            update-types: ['version-update:semver-major']
+
     - package-ecosystem: 'npm'
       directory: '/'
       schedule:
-          interval: 'monthly'
+          interval: 'weekly'
           day: monday
           time: '00:00'
       open-pull-requests-limit: 3

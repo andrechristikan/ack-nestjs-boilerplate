@@ -11,36 +11,42 @@ import {
     Post,
     Query,
 } from '@nestjs/common';
-
+import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
-    UserCurrent,
-    UserProtected,
-} from '@modules/user/decorators/user.decorator';
-
-import {
+    AuthJwtAccessContext,
     AuthJwtAccessProtected,
-    AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
-import { TermPolicyAcceptanceHttpService } from '@modules/term-policy/services/term-policy.acceptance.http.service';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { TermPolicyGetListUserAcceptedUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-user-accepted.use-case';
+import { TermPolicyGetListUserPendingUseCase } from '@modules/term-policy/use-cases/term-policy.get-list-user-pending.use-case';
+import { TermPolicyUserAcceptUseCase } from '@modules/term-policy/use-cases/term-policy.user-accept.use-case';
+import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    RequestContext,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import { TermPolicyUserAcceptanceResponseSchema } from '@modules/term-policy/dtos/response/term-policy.user-acceptance.response.dto';
 import { TermPolicyAcceptRequestSchema } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import type { TermPolicyAcceptRequestDto } from '@modules/term-policy/dtos/request/term-policy.accept.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import type { ITermPolicyUserAcceptance } from '@modules/term-policy/interfaces/term-policy.interface';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import { TermPolicyPendingResponseSchema } from '@modules/term-policy/dtos/response/term-policy.pending.response.dto';
+import type {
+    ITermPolicyPending,
+    ITermPolicyUserAcceptance,
+} from '@modules/term-policy/interfaces/term-policy.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @ApiTags('modules.shared.user.termPolicy')
 @Controller({
@@ -49,44 +55,70 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 })
 export class TermPolicySharedController {
     constructor(
-        private readonly termPolicyAcceptanceHttpService: TermPolicyAcceptanceHttpService
+        private readonly termPolicyGetListUserAcceptedUseCase: TermPolicyGetListUserAcceptedUseCase,
+        private readonly termPolicyGetListUserPendingUseCase: TermPolicyGetListUserPendingUseCase,
+        private readonly termPolicyUserAcceptUseCase: TermPolicyUserAcceptUseCase
     ) {}
 
-    @Doc({ summary: 'List of terms or policies accepted by the user' })
+    @Doc({ summary: 'list of terms or policies accepted by the user' })
     @ResponsePagination('termPolicy.listAccepted', {
         schema: TermPolicyUserAcceptanceResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/acceptance/list')
     async listAccepted(
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Query({ schema: TermPolicyAcceptedListRequestSchema })
-        query: TermPolicyAcceptedListRequestDto,
-        @AuthJwtPayload('userId') userId: string
+        query: TermPolicyAcceptedListRequestDto
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>> {
-        return this.termPolicyAcceptanceHttpService.getListUserAccepted(
-            userId,
+        return this.termPolicyGetListUserAcceptedUseCase.execute(
+            authContext,
             query
         );
     }
 
-    @Doc({ summary: 'User accepts term or policy' })
-    @Response('termPolicy.accept')
-    @TermPolicyAcceptanceProtected()
+    @Doc({
+        summary:
+            'list of required terms or policies the user has not accepted yet',
+    })
+    @Response('termPolicy.listPending', {
+        schema: TermPolicyPendingResponseSchema,
+    })
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
+    @Get('/pending/list')
+    async listPending(
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext
+    ): Promise<IResponseReturn<ITermPolicyPending>> {
+        return this.termPolicyGetListUserPendingUseCase.execute(authContext);
+    }
+
+    @Doc({ summary: 'user accepts term or policy' })
+    @Response('termPolicy.accept')
+    @UserProtected()
     @RequestThrottle({ user: true })
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/accept')
     async accept(
-        @UserCurrent() user: IUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: TermPolicyAcceptRequestSchema })
         body: TermPolicyAcceptRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.termPolicyAcceptanceHttpService.userAccept(user, body);
+        return this.termPolicyUserAcceptUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            body
+        );
     }
 }

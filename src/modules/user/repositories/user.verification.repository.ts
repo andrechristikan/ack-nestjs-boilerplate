@@ -3,14 +3,13 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
+    EnumUserReauthenticationAction,
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { Verification } from '@generated/prisma-client/client';
-import type {
-    IUserOnboardingVerification,
-    IUserVerificationCreate,
-} from '@modules/user/interfaces/user.interface';
+import type { IUserVerificationEmailCreate } from '@modules/user/interfaces/user.interface';
+import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import type { IUserVerificationRepository } from '@modules/user/interfaces/user.verification-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -60,32 +59,164 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         });
     }
 
-    async markUsedInTx(
-        tx: IDatabaseTransactionClient,
-        id: string,
-        verifiedAt: Date
-    ): Promise<Verification> {
-        return tx.verification.update({
-            where: { id },
-            data: {
-                isUsed: true,
-                verifiedAt,
+    async findOneLatestReauthentication(
+        userId: string,
+        action: EnumUserReauthenticationAction
+    ): Promise<Verification | null> {
+        return this.databaseService.client.verification.findFirst({
+            where: {
+                userId,
+                type: EnumVerificationType.reauthentication,
+                action,
+            },
+            orderBy: {
+                createdAt: EnumPaginationOrderDirectionType.desc,
             },
         });
     }
 
-    async createFromOnboardingInTx(
+    async findOneActiveReauthentication(
+        userId: string,
+        action: EnumUserReauthenticationAction,
+        token: string
+    ): Promise<Verification | null> {
+        const today = this.helperDateService.create();
+
+        return this.databaseService.client.verification.findFirst({
+            where: {
+                userId,
+                type: EnumVerificationType.reauthentication,
+                action,
+                token,
+                isUsed: false,
+                expiredAt: {
+                    gt: today,
+                },
+            },
+        });
+    }
+
+    async markUnusedReauthenticationUsedInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        action: EnumUserReauthenticationAction
+    ): Promise<void> {
+        await tx.verification.updateMany({
+            where: {
+                userId,
+                type: EnumVerificationType.reauthentication,
+                action,
+                isUsed: false,
+            },
+            data: {
+                isUsed: true,
+                updatedBy: userId,
+            },
+        });
+    }
+
+    async findOneLatestByMobileNumber(
+        userId: string,
+        mobileNumberId: string
+    ): Promise<Verification | null> {
+        return this.databaseService.client.verification.findFirst({
+            where: {
+                userId,
+                mobileNumberId,
+                type: EnumVerificationType.mobileNumber,
+            },
+            orderBy: {
+                createdAt: EnumPaginationOrderDirectionType.desc,
+            },
+        });
+    }
+
+    async findOneActiveByMobileOtp(
+        userId: string,
+        mobileNumberId: string,
+        token: string
+    ): Promise<Verification | null> {
+        const today = this.helperDateService.create();
+
+        return this.databaseService.client.verification.findFirst({
+            where: {
+                userId,
+                mobileNumberId,
+                type: EnumVerificationType.mobileNumber,
+                token,
+                isUsed: false,
+                expiredAt: {
+                    gt: today,
+                },
+            },
+        });
+    }
+
+    async findOneActiveMobileById(
+        verificationId: string
+    ): Promise<Verification | null> {
+        const today = this.helperDateService.create();
+
+        return this.databaseService.client.verification.findFirst({
+            where: {
+                id: verificationId,
+                type: EnumVerificationType.mobileNumber,
+                isUsed: false,
+                expiredAt: {
+                    gt: today,
+                },
+            },
+        });
+    }
+
+    async markUnusedMobileUsedInTx(
+        tx: IDatabaseTransactionClient,
+        mobileNumberId: string
+    ): Promise<void> {
+        await tx.verification.updateMany({
+            where: {
+                mobileNumberId,
+                type: EnumVerificationType.mobileNumber,
+                isUsed: false,
+            },
+            data: {
+                isUsed: true,
+            },
+        });
+    }
+
+    async markUsedInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        verifiedAt: Date,
+        updatedBy: string
+    ): Promise<boolean> {
+        const { count } = await tx.verification.updateMany({
+            where: { id, isUsed: false, expiredAt: { gt: verifiedAt } },
+            data: {
+                isUsed: true,
+                verifiedAt,
+                updatedBy,
+            },
+        });
+
+        return count > 0;
+    }
+
+    async createInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         {
             reference,
             token,
             type,
+            action,
+            mobileNumberId,
             to,
             expiredAt,
             verifiedAt,
             isUsed,
-        }: IUserOnboardingVerification,
+        }: IUserCreateVerification,
         createdBy: string
     ): Promise<Verification> {
         return tx.verification.create({
@@ -94,6 +225,8 @@ export class UserVerificationRepository implements IUserVerificationRepository {
                 reference,
                 token,
                 type,
+                action,
+                mobileNumberId,
                 to,
                 expiredAt,
                 verifiedAt,
@@ -103,39 +236,54 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         });
     }
 
-    async createReplacingActive(
+    async createReplacingActiveInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         userEmail: string,
-        { expiredAt, reference, hashedToken, type }: IUserVerificationCreate,
+        {
+            expiredAt,
+            reference,
+            hashedToken,
+            type,
+        }: IUserVerificationEmailCreate,
         createdAt: Date
     ): Promise<Verification> {
-        return this.databaseService.withTransaction(async tx => {
-            await tx.verification.updateMany({
-                where: {
-                    userId,
-                    type,
-                    isUsed: false,
-                    expiredAt: {
-                        gt: createdAt,
-                    },
+        await tx.verification.updateMany({
+            where: {
+                userId,
+                type,
+                isUsed: false,
+                expiredAt: {
+                    gt: createdAt,
                 },
-                data: {
-                    expiredAt: createdAt,
-                },
+            },
+            data: {
+                expiredAt: createdAt,
+                updatedBy: userId,
+            },
+        });
+
+        return tx.verification.create({
+            data: {
+                userId,
+                expiredAt,
+                reference,
+                token: hashedToken,
+                type,
+                action: null,
+                to: userEmail,
+                createdBy: userId,
+                createdAt,
+            },
+        });
+    }
+
+    async deleteExpiredBefore(threshold: Date): Promise<number> {
+        const { count } =
+            await this.databaseService.client.verification.deleteMany({
+                where: { expiredAt: { lt: threshold } },
             });
 
-            return tx.verification.create({
-                data: {
-                    userId,
-                    expiredAt,
-                    reference,
-                    token: hashedToken,
-                    type,
-                    to: userEmail,
-                    createdBy: userId,
-                    createdAt,
-                },
-            });
-        });
+        return count;
     }
 }

@@ -1,22 +1,33 @@
-import { Injectable } from '@nestjs/common';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 import * as Sentry from '@sentry/nestjs';
 
-/**
- * Reports Sentry client readiness as a Terminus health indicator.
- */
 @Injectable()
 export class HealthSentryIndicator {
-    constructor(
-        private readonly healthIndicatorService: HealthIndicatorService
-    ) {}
+    private readonly logger = new Logger(HealthSentryIndicator.name);
 
-    /**
-     * Down unless the client is initialized, has a DSN, and is enabled.
-     */
-    async isHealthy(key: string): Promise<HealthIndicatorResult> {
+    private readonly dsn: string | null;
+
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly healthIndicatorService: HealthIndicatorService
+    ) {
+        const dsn = this.configService.get<string | null>('sentry.dsn');
+
+        this.dsn = dsn ?? null;
+    }
+
+    async isHealthy(
+        key: EnumHealthIndicatorKey
+    ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
+
+        if (!this.dsn) {
+            return indicator.down('Sentry is not configured');
+        }
 
         try {
             const client = Sentry.getClient();
@@ -24,21 +35,15 @@ export class HealthSentryIndicator {
                 return indicator.down('Sentry client not initialized');
             }
 
-            const options = client.getOptions();
-            if (!options.dsn) {
-                return indicator.down('Sentry DSN not configured');
-            }
-
-            if (options.enabled === false) {
+            if (client.getOptions().enabled === false) {
                 return indicator.down('Sentry is disabled');
             }
 
             return indicator.up();
         } catch (err: unknown) {
-            const message =
-                err instanceof Error ? err.message : 'Unknown error';
+            this.logger.error(err, 'Sentry health check failed');
 
-            return indicator.down(`HealthSentryIndicator Failed - ${message}`);
+            return indicator.down('Sentry check failed');
         }
     }
 }

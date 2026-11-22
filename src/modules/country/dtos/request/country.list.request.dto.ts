@@ -6,29 +6,27 @@ import {
     CountryDefaultAvailableSearch,
 } from '@modules/country/constants/country.list.constant';
 
-/**
- * Country List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const CountryListRequestSchema = PaginationCursorQuerySchema.extend({
-    search: z
-        .string()
-        .optional()
-        .meta({
-            description: `Search query, available fields: ${CountryDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
-            example: '',
-        }),
+    search: PaginationCursorQuerySchema.shape.search.meta({
+        description: `Search query, available fields: ${CountryDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
+        example: '',
+    }),
     orderBy: z
-        .union([z.string(), z.array(z.string())])
+        .union([
+            z.templateLiteral([
+                z.enum(CountryDefaultAvailableOrderBy),
+                ':',
+                z.enum(EnumPaginationOrderDirectionType),
+            ]),
+            z.literal(''),
+        ])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${CountryDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            description: `Order by field in \`field:direction\` format (e.g. \`${CountryDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${CountryDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
             example: `${CountryDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
         }),
 });
 
-/**
- * Inferred DTO for CountryListRequestSchema.
- * @public
- */
+/** @public */
 export type CountryListRequestDto = z.infer<typeof CountryListRequestSchema>;

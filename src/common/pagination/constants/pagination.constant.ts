@@ -1,48 +1,56 @@
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
 
-/**
- * Page size used when a list request sends no `perPage`.
- * @public
- */
+/** @public */
 export const PaginationDefaultPerPage = 20;
 
-/**
- * Largest `perPage` a list request may send.
- * @public
- */
+/** @public */
 export const PaginationDefaultMaxPerPage = 100;
 
-/**
- * Largest `page` an offset list request may send.
- * @public
- */
+/** @public */
+export const PaginationDefaultMaxSearchLength = 100;
+
+/** @public */
 export const PaginationDefaultMaxPage = 20;
 
-/**
- * Field a cursor is keyed on when a list names no cursor field.
- * @public
- */
+/** @public */
 export const PaginationDefaultCursorField = 'id';
 
-/**
- * Longest cursor string a cursor list request may send.
- * @public
- */
-export const PaginationMaxCursorLength = 256;
+/** @public */
+export const PaginationMaxCursorLength = 2560;
 
-/**
- * Hex width of the cursor fingerprint — the leading 64 bits of the sha256 over the
- * canonicalized `{ where, orderBy }` the cursor was issued for.
- * @public
- */
+/** @public */
+export const PaginationMaxFilterLength = 256;
+
+/** @public */
+export const PaginationCursorEncryptionPurpose = 'PaginationCursor';
+
+/** @public */
+export const PaginationCursorEncryptionContext = 'PaginationCursorContext';
+
+/** @public */
+export const PaginationCursorDateKey = '$date';
+
+/** @public */
 export const PaginationCursorFingerprintLength = 16;
 
-/**
- * Default ordering when no `orderBy` is provided: newest `createdAt` first. Frozen, because an
- * in-place mutation of a shared default reorders every list in the process.
- * @public
- */
+/** @public */
+export const PaginationCursorFormatRegex = /^[A-Za-z0-9_.-]+$/;
+
+/** @public */
+export const PaginationFingerprintExcludedFields: readonly string[] = [
+    'cursor',
+    'perPage',
+    'orderBy',
+];
+
+/** @public */
+export const PaginationFilterValueSeparator = ',';
+
+/** @public */
+export const PaginationOrderBySeparator = ':';
+
+/** @public */
 export const PaginationDefaultOrderBy: readonly IPaginationOrderBy[] =
     Object.freeze([
         Object.freeze({
@@ -50,18 +58,5 @@ export const PaginationDefaultOrderBy: readonly IPaginationOrderBy[] =
         }),
     ]);
 
-/**
- * Order directions a list request may send.
- * @public
- */
-export const PaginationAllowedOrderDirections: EnumPaginationOrderDirectionType[] =
-    [
-        EnumPaginationOrderDirectionType.asc,
-        EnumPaginationOrderDirectionType.desc,
-    ];
-
-/**
- * Request-store key holding the parsed pagination, search and filter state of a list request.
- * @public
- */
-export const PaginationStoreKey = 'PaginationStore';
+/** @public */
+export const PaginationStoreKey = 'PaginationStoreKey';

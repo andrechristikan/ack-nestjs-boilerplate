@@ -1,26 +1,25 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
-import { DatabaseClientToken } from '@common/database/constants/database.constant';
+import { DatabaseClient } from '@common/database/constants/database.constant';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
 import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseExtensionUtil } from '@common/database/utils/database.extension.util';
+import { DatabaseExtensionFactory } from '@common/database/factories/database.extension.factory';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 
-/**
- * Global module exposing `DatabaseService` and `DatabaseUtil` app-wide.
- */
+/** Shared module: DatabaseService for every repository's statements and `withTransaction`, DatabaseUtil and DatabaseExtensionFactory for every repository and service. */
+@Global()
 @Module({})
 export class DatabaseModule {
     static forRoot(): DynamicModule {
         return {
             module: DatabaseModule,
-            global: true,
+            controllers: [],
             providers: [
-                DatabaseExtensionUtil,
+                DatabaseExtensionFactory,
                 DatabaseClientFactory,
                 {
-                    provide: DatabaseClientToken,
+                    provide: DatabaseClient,
                     useFactory: (
                         databaseClientFactory: DatabaseClientFactory
                     ): IDatabaseClient => databaseClientFactory.create(),
@@ -29,9 +28,8 @@ export class DatabaseModule {
                 DatabaseService,
                 DatabaseUtil,
             ],
-            exports: [DatabaseService, DatabaseUtil, DatabaseExtensionUtil],
+            exports: [DatabaseService, DatabaseUtil, DatabaseExtensionFactory],
             imports: [],
-            controllers: [],
         };
     }
 }

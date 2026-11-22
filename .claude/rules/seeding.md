@@ -1,57 +1,62 @@
-# Seeding — initial data only
+---
+paths:
+    - 'src/migration/**'
+---
 
-This file is the rule set. Despite the folder name, `src/migration/` holds SEEDS, not
-schema migrations — the schema is `rules/prisma-schema.md`. Flow narrative:
-`docs/database.md` — explorer or planner.
+# Seeding
 
-## What `src/migration/` is — and is NOT
+`src/migration/` holds seeds, not schema migrations: the reference and bootstrap rows an empty database needs (roles, countries, the seed API key, feature flags, term policies, templates, the S3 config, the seed user). A one-off production write, a column re-compute, or a historical import does not belong here, and a seed holds no business logic. Procedure for a new seed: `.claude/skills/ack-build/references/add-seed.md`.
 
-`src/migration/` seeds **initial data only**: the reference and bootstrap rows an empty database needs to boot and be usable — roles, countries, the seed api-key, feature flags, term policies, notification/term templates, the aws-s3 config, and the seed user.
-
-- **`prisma/migrations/` holds the schema migration files; `src/migration/` does not.** Schema migrations are generated and applied together by the owner running `db:migrate` (`prisma migrate dev`), which writes a new file under `prisma/migrations/` and applies it in one step (`rules/prisma-schema.md`). So there is no "write a migration" task inside `src/migration/` — there is only "seed initial data".
-- **A seed is re-runnable bootstrap.** It populates the baseline an empty install starts from.
-  A one-off production write, a column re-compute, or a historical import does not belong here.
-- **Not a place for business logic.** A seed writes rows; it does not compute business decisions.
-
-## Anatomy of a seed
+## Anatomy
 
 ```
 src/migration/
-├── bases/migration.seed.base.ts   # MigrationSeedBase (extends nest-commander CommandRunner)
-├── data/                          # static seed rows — <module>.<concern>.data.ts, PascalCase const
-├── seeds/                         # <module>.<concern>.seed.ts — one @Command per module
+├── bases/migration.seed.base.ts   MigrationSeedBase, extends nest-commander CommandRunner
+├── data/                          migration.<concern>.data.ts, PascalCase consts
+├── seeds/                         migration.<concern>.seed.ts, one @Command per concern
 ├── enums/ · interfaces/
-└── migration.module.ts            # registers every seed command as a provider
+└── migration.module.ts            its own composition root; provides every seed
 ```
 
-- A seed is `<module>.<concern>.seed.ts`, class `Migration<Module>Seed`, decorated `@Command({ name })`, and **extends `MigrationSeedBase`** — never `CommandRunner` directly. The base owns the `--type seed|remove` dispatch; a seed only implements `seed()` and `remove()`.
-- **`@Command` `name` is camelCase** matching the module or concern — `apiKey`, `featureFlag`, `termPolicy`, `templateEmailNotification`, `templateTermPolicy`, `awsS3Config`. Never kebab-case and never a mixed dash form (`template-email-notification`, `template-termPolicy`, `aws-s3-config`).
-- **Every `seed()` has a matching `remove()`.** Seeding without a clean teardown leaves `migration:remove` unable to undo it. The pair is mandatory, not optional.
-- **Static seed rows live in `data/` as a PascalCase const** (`<module>.<concern>.data.ts`), imported by the seed. Every const in that tree is PascalCase, exported or not. A seed whose data is built inline (no external key/reference) needs no `data/` file — do not invent one to be symmetric.
-- **A seed writes its audit fields explicitly.** There is no request actor in a command, so `createdBy` and `updatedBy` on every seeded row — including the update branch of an upsert and every nested row — carry `MigrationUserSuperAdminId`, the fixed id the user seed gives the superadmin. A seeded activity row follows the same contracts a request does (`rules/security.md`): a row one user creates for another writes the pair, and an action with no metadata writes `{}`.
-- **A seed that finds its fixed id taken by a different row stops.** The user seed aborts with a message naming the email, the id it found and the id it expects, because writing around it would leave activity rows pointing at a user that does not exist. Realigning is the owner's `migration:remove` then `migration:seed`.
-- Registration is a provider entry in `migration.module.ts`. Seeds may inject **`DatabaseService`** (sanctioned — most data seeds do this today), a feature's **repository** (with its `<Feature>RepositoryModule` in `migration.module.ts` `imports`), or a feature **domain** (template / notification seeds) or shared kit service (`AwsSESService`, `AwsS3Service`). Prefer the existing pattern in the sibling seed you are extending; do not invent a second access path for the same table. A seed that needs a transaction opens it with `this.databaseService.withTransaction` (`rules/database.md`), in callback form, passing `database.seedTransactionTimeoutInMs` — seed batches outlive Prisma's 5 s default. Work that is not a write (hashing a password, drawing a key, building rows) happens BEFORE the callback, so the transaction holds only statements.
-- **`MigrationModule` is its own composition root, and the repository-privacy rule does not reach it.** A seed writes baseline rows rather than serving a request, so importing another feature's repository module here is correct, not a boundary crossing (`rules/cross-module.md`).
+- A seed is `Migration<Concern>Seed`, decorated `@Command({ name, description, allowUnknownOptions: false })`, extending `MigrationSeedBase` (`src/migration/bases/migration.seed.base.ts`), whose `run` owns the `--type seed|remove` dispatch, and implementing `IMigrationSeed` (`src/migration/interfaces/migration.seed.interface.ts`): `seed()` and `remove()`, both.
+- `@Command` `name` is camelCase for the concern: `apiKey`, `featureFlag`, `termPolicy`, `templateEmailNotification`, `awsS3Config`.
+- A seed whose data has no external key needs no data file.
+- A bulk list shared by every environment exports one PascalCase `string[]` const, its file listed in `cspell.json` `ignorePaths` (`MigrationCommonPasswordData`, the `commonPassword` seed). Any other data file exports a `Record<EnumAppEnvironment, ...>` const; a seed reads its rows, the seeded passwords and API key credentials included, as `Migration<Concern>Data[app.env]` (the `MigrationUserSeed` constructor, `src/migration/seeds/migration.user.seed.ts`).
+- Every environment seeds the super admin, the admin, and the user. A literal credential (a user password, an API key) sits under `local` only, and no environment key carries a seed password. A deployed environment's user carries `password: null`: `MigrationUserSeed` draws it with `AuthPasswordUtil.createPasswordRandom()` and, after the commit, prints each new user's password once on `process.stdout`, never through the logger.
+- A seed writes its audit fields explicitly: `createdBy` on every seeded row, and `updatedBy` on every row whose model carries it, including the update branch of an upsert and every nested row, carry `MigrationUserSuperAdminId` from `src/migration/data/migration.user.data.ts`.
+- A seed's create writes `null` into each nullable column a read filters by `null` (`repository.md`).
+- A missing data prerequisite (roles, countries, term policies, seeded users) logs an error and returns.
+- A seed whose integration is unset logs a `warn` and returns: it checks `isInitialized()` first (`MigrationTemplateEmailNotificationSeed.seed`, `src/migration/seeds/migration.template-notification.seed.ts`), and `awsS3Config` also needs `AWS_S3_IAM_PRINCIPAL_ARN`. A failed write is wrapped and thrown with no log before it: `throw new AppUnknownException(error)` (`exceptions.md`, `logging.md`).
+- A transaction opens through `this.databaseService.withTransaction` with `database.seedTransactionTimeoutInMs`; hashing, key drawing, and row building happen before the callback so the transaction holds only statements.
 
-## Order is in the script, not the module
+## Outside the layering
 
-The run order is defined by the **`package.json` scripts**, not by the `providers` array in `migration.module.ts`. Quote the live scripts when editing — they are the source of truth.
+`layering.md`, `cross-module.md` (repository ownership and the one `ActivityLog` writer included), and the activity-log contract and side-effect rules (`effects.md`) do not bind a seed.
 
-Bundled today:
+- A seed writes every model it seeds, `ActivityLog` included, through `this.databaseService.client` or the `tx` of `withTransaction`; never through a feature repository or a feature service method that writes the database.
+- A seed injects `DatabaseService`, `ConfigService`, and `src/common/` kit services (`DatabaseUtil`, `HelperHashService`, `AwsS3Service`, `AwsSESService`).
+- A seed injects a feature service for one use only: a non-database integration, the SES templates (`NotificationTemplateService`). A seed injects no feature repository.
+- A seed may inject any module's util and read any contract (`ApiKeyCredentialUtil`, `AuthPasswordUtil`, `ActivityLogUtil`, `UserTermPolicyContract`). The seeded user's email verification comes from `UserVerificationUtil.createVerified(email)`.
+- A seed injects no queue class and adds no request side effect.
+- `MigrationModule` imports `CommonModule` and the kit modules its seeds use (`AwsModule`), and a feature `<Module>Module` only for an injection allowed above (`NotificationModule` for the SES templates); it imports no use-case module.
+- What binds a seed: `naming.md`, `code-style.md`, `injectable.md`, `null-safety.md`, `concurrency.md`, and this file.
 
-- `migration:seed` — `apiKey → country → featureFlag → role → policy → termPolicy → user → workspace`
-- `migration:remove` — `workspace → user → apiKey → featureFlag → country → policy → role → termPolicy` (**not** a strict reverse of seed; do not invent a reverse that is not in the script)
+## Term policies
 
-Extra seeds exist and are registered (`templateEmailNotification`, `templateTermPolicy`, `awsS3Config`, …) but are **not** part of `migration:seed` / `migration:remove` — run them as separate `migration` commands when needed.
+The `termPolicy` seed publishes version 1 of every `EnumTermPolicyType`, `publishedAt` set, each with an `en` content at key `term-policies/<type>/v1/en-<random>.hbs` (`termPolicy.uploadContentPathPattern`, `TermPolicyUtil.getContentKey`).
 
-Adding a seed with a dependency means placing it correctly in **both** bundled scripts when it belongs in the bundled flow. The `providers` array order is irrelevant to execution.
+- When `AwsS3Service.isInitialized()`, it uploads the content to the private bucket and copies it to the public one; otherwise it logs a `warn` and still writes the complete row.
+- It fails when a required type (`termsOfService`, `privacy`) is not published after the run.
+- `nest-cli.json` `assets` (`**/**/templates/*`) copies the term-policy templates to `dist/modules/term-policy/templates/`; the seed runs from `dist/migration/seeds/` and reads `join(import.meta.dirname, '../../modules/term-policy/templates', <file>)`.
 
-## Idempotency
+## Order is in the script
 
-- `seed()` MUST be safe to run against a database that may already hold its rows — guard with an existence check or an upsert, never a blind `create` that throws on the second run. `migration:seed` is run repeatedly across environments.
-- `remove()` is a RESET of the tables its `seed()` owns, not a scoped undo. `migration:remove` exists to bring an environment back to a known-empty baseline before `migration:seed`, so a seed clears its tables outright — the user seed takes the user-owned tables with it. The command is destructive by design and the owner runs it knowing that.
+`package.json` `migration:seed` and `migration:remove` define the run order; the `providers` array does not. Quote the live scripts when editing them. `migration:remove` is not a strict reverse of `migration:seed`. Seeds registered but outside both scripts (`templateEmailNotification`, `awsS3Config`) run as separate `migration` commands on purpose. A new seed with a dependency lands in both scripts.
 
-## Off-limits (inherits the mandatory schema rule)
+## Idempotency and reset
 
-- **`migration:fresh` is a DB-reset command** — it resets the database before seeding. It is one of the commands the owner runs (`rules/prisma-schema.md`): describe the intent and let the owner run it.
-- `migration:seed`, `migration:remove`, and every `migration:*` command are the owner's to run — you write the seed, you do not execute the seeder against a database.
+`seed()` is safe against a database that already holds its rows: an `upsert` on a unique key, or an existence check (`findMany` on the keys, then `createMany` of the missing rows), never a blind `create`. A seed is seed-once: an upsert `update` writes `updatedBy` only, so changed seed data reaches the database through `migration:fresh`. Prisma on MongoDB has no `skipDuplicates` on `createMany`. `remove()` resets the collections its `seed()` owns outright. `MigrationSeedBase` ends every run with `CacheService.flush()` after `seed()` or `remove()`; a seed invalidates no cache key itself.
+
+## Off-limits
+
+`migration:fresh` resets the database before it seeds. `migration:build` compiles `dist/migration.js` and the other scripts build nothing: a host run builds first, and the `apis` container runs them on the `dist/` its watcher compiled. Write the seed; hand back the command.

@@ -1,18 +1,36 @@
-export interface IAnalyticFraudSummaryMeta {
-    minUniqueAccounts?: number;
-}
+import type {
+    EnumAnalyticFraudBand,
+    EnumAnalyticFraudContributingSignal,
+} from '@modules/analytic/enums/analytic.enum';
 
 export interface IAnalyticFraudSummary {
     count: number;
-    window?: string;
-    meta?: IAnalyticFraudSummaryMeta;
+    window: string | null;
+}
+
+export interface IAnalyticFraudCredentialStuffingSummaryMeta {
+    minUniqueAccounts: number;
+}
+
+export interface IAnalyticFraudCredentialStuffingSummary extends IAnalyticFraudSummary {
+    meta: IAnalyticFraudCredentialStuffingSummaryMeta;
 }
 
 export interface IAnalyticFraudRiskScore {
     userId: string;
     score: number;
-    band: string;
-    contributingSignalCodes: string[];
+    band: EnumAnalyticFraudBand;
+    contributingSignalCodes: EnumAnalyticFraudContributingSignal[];
+}
+
+export interface IAnalyticFraudSignalUsers {
+    sessionAfterAdmin: Set<string>;
+    impossibleTravel: Set<string>;
+    newDeviceAfterPasswordChange: Set<string>;
+    credentialStuffingIp: Set<string>;
+    sharedFingerprint: Set<string>;
+    massRegistrationIp: Set<string>;
+    forgotPasswordAbuse: Set<string>;
 }
 
 export interface IAnalyticCredentialStuffing {
@@ -23,7 +41,7 @@ export interface IAnalyticCredentialStuffing {
 
 export interface IAnalyticAccountTakeover {
     userId: string;
-    indicatorCodes: string[];
+    indicatorCodes: EnumAnalyticFraudContributingSignal[];
     passwordChangedAt: Date;
 }
 
@@ -67,4 +85,14 @@ export interface IAnalyticBackupCodeNewDevice {
 export interface IAnalyticApiKeyBurst {
     userId: string;
     count: number;
+}
+
+export interface IAnalyticFraudSignalRows {
+    sessionAfterAdmin: IAnalyticSessionAfterAdmin[];
+    impossibleTravelUserIds: string[];
+    accountTakeover: IAnalyticAccountTakeover[];
+    credentialStuffingUserIds: Set<string>;
+    sharedFingerprint: IAnalyticSharedFingerprint[];
+    massRegistrationUserIds: Set<string>;
+    forgotPasswordAbuse: IAnalyticForgotPasswordAbuse[];
 }

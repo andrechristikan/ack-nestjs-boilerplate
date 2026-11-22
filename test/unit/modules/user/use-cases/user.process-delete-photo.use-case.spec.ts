@@ -1,0 +1,62 @@
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
+import { UserProfileService } from '@modules/user/services/user.profile.service';
+import type { IUserDeletePhotoPayload } from '@modules/user/interfaces/user.interface';
+import { MessageService } from '@common/message/services/message.service';
+import { UserProcessDeletePhotoUseCase } from '@modules/user/use-cases/user.process-delete-photo.use-case';
+
+describe('UserProcessDeletePhotoUseCase', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const userProfileService: MockProxy<UserProfileService> =
+        mock<UserProfileService>();
+
+    let useCase: UserProcessDeletePhotoUseCase;
+
+    const payload: IUserDeletePhotoPayload = {
+        userId: 'user-1',
+        key: 'photo-profile/user-1/old.png',
+        access: EnumAwsS3Accessibility.public,
+    };
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+        messageService.setMessage.mockImplementation((path: string) => path);
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                { provide: MessageService, useValue: messageService },
+                UserProcessDeletePhotoUseCase,
+                { provide: UserProfileService, useValue: userProfileService },
+            ],
+        }).compile();
+
+        useCase = module.get(UserProcessDeletePhotoUseCase);
+    });
+
+    describe('execute', () => {
+        it('hands the photo key and its bucket access to the user profile domain and reports the key', async () => {
+            const result = await useCase.execute(payload);
+
+            expect(userProfileService.deletePhotoObject).toHaveBeenCalledWith(
+                'photo-profile/user-1/old.png',
+                EnumAwsS3Accessibility.public
+            );
+            expect(result).toEqual({
+                message: 'user.queue.deletePhoto',
+                key: 'photo-profile/user-1/old.png',
+            });
+        });
+
+        it('rethrows the domain failure so BullMQ retries the job', async () => {
+            const failure = new Error('s3 down');
+            userProfileService.deletePhotoObject.mockRejectedValue(failure);
+
+            const rejection = useCase.execute(payload);
+
+            await expect(rejection).rejects.toBe(failure);
+        });
+    });
+});

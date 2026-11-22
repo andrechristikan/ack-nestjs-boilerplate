@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
-/**
- * Response shape of the public hello endpoint.
- * @public
- */
+/** @public */
 export const HelloResponseSchema = z.object({
     date: z
         .object({
@@ -69,8 +66,5 @@ export const HelloResponseSchema = z.object({
         }),
 });
 
-/**
- * Public hello payload: app identity, language and server time.
- * @public
- */
+/** @public */
 export type HelloResponseDto = z.infer<typeof HelloResponseSchema>;

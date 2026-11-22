@@ -3,10 +3,7 @@ import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 import { CountryResponseSchema } from '@modules/country/dtos/response/country.response.dto';
 
-/**
- * Mobile number registered to a user, with the country that owns its calling code.
- * @public
- */
+/** @public */
 export const UserMobileNumberResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -35,10 +32,7 @@ export const UserMobileNumberResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Mobile number of a user with its country.
- * @public
- */
+/** @public */
 export type UserMobileNumberResponseDto = z.infer<
     typeof UserMobileNumberResponseSchema
 >;

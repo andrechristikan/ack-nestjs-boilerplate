@@ -6,160 +6,149 @@ import { z } from 'zod';
 import type {
     IDocOptions,
     IDocResponseEntry,
-    IDocResponseErrorOptions,
 } from '@common/doc/interfaces/doc.interface';
 import { ResponseSchema } from '@common/response/dtos/response.dto';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
-    DocGlobalErrorResponses,
+    DocGlobalErrors,
     DocResponseEntryMetaKey,
 } from '@common/doc/constants/doc.constant';
+import {
+    RequestCorrelationIdHeaderName,
+    RequestCustomLangHeaderName,
+    RequestIdHeaderName,
+} from '@common/request/constants/request.constant';
 import { faker } from '@faker-js/faker';
 
-/**
- * Documents the responses a status may return, composed with every other entry at that status
- * so a later decorator cannot erase an earlier one. Dedupes by
- * `httpStatus:statusCode:messagePath`. One entry emits a plain schema with field examples;
- * two or more emit one shared envelope schema plus named OpenAPI `examples` keyed by
- * `messagePath`.
- * @public
- */
-export function DocResponseError(
-    httpStatus: HttpStatus,
-    ...entries: IDocResponseErrorOptions[]
-): MethodDecorator {
-    return (target, propertyKey, descriptor): void => {
-        if (entries.length === 0) {
-            return;
-        }
+/** @public */
+export function DocErrors(...entries: IDocResponseEntry[]): MethodDecorator {
+    return applyDecorators(
+        ...entries.map(
+            ({ httpStatus, ...entry }): MethodDecorator =>
+                (target, propertyKey, descriptor): void => {
+                    const incoming: IDocResponseEntry[] = [
+                        { ...entry, httpStatus },
+                    ];
 
-        const incoming: IDocResponseEntry[] = entries.map(entry => ({
-            ...entry,
-            httpStatus,
-        }));
+                    const method = descriptor.value as object;
+                    const stored =
+                        (Reflect.getMetadata(
+                            DocResponseEntryMetaKey,
+                            method
+                        ) as IDocResponseEntry[] | undefined) ?? [];
 
-        const method = descriptor.value as object;
-        const stored =
-            (Reflect.getMetadata(DocResponseEntryMetaKey, method) as
-                IDocResponseEntry[] | undefined) ?? [];
+                    const combined: IDocResponseEntry[] = [...stored];
+                    const seen = new Set<string>(
+                        stored.map(
+                            entry =>
+                                `${entry.httpStatus}:${entry.statusCode}:${entry.messagePath}`
+                        )
+                    );
 
-        const combined: IDocResponseEntry[] = [...stored];
-        const seen = new Set<string>(
-            stored.map(
-                entry =>
-                    `${entry.httpStatus}:${entry.statusCode}:${entry.messagePath}`
-            )
-        );
+                    for (const entry of incoming) {
+                        const key = `${entry.httpStatus}:${entry.statusCode}:${entry.messagePath}`;
 
-        for (const entry of incoming) {
-            const key = `${entry.httpStatus}:${entry.statusCode}:${entry.messagePath}`;
+                        if (seen.has(key)) {
+                            continue;
+                        }
 
-            if (seen.has(key)) {
-                continue;
-            }
+                        seen.add(key);
+                        combined.push(entry);
+                    }
 
-            seen.add(key);
-            combined.push(entry);
-        }
+                    Reflect.defineMetadata(
+                        DocResponseEntryMetaKey,
+                        combined,
+                        method
+                    );
 
-        Reflect.defineMetadata(DocResponseEntryMetaKey, combined, method);
+                    const described = new Set<HttpStatus>(
+                        stored.map(entry => entry.httpStatus)
+                    );
+                    const statusEntries = combined.filter(
+                        entry => entry.httpStatus === httpStatus
+                    );
 
-        const described = new Set<HttpStatus>(
-            stored.map(entry => entry.httpStatus)
-        );
-        const statusEntries = combined.filter(
-            entry => entry.httpStatus === httpStatus
-        );
+                    const schemas: SchemaObject[] = statusEntries.map(entry => {
+                        const baseSchema: z.ZodObject =
+                            entry.baseSchema ?? ResponseSchema;
+                        const withData: z.ZodObject = entry.schema
+                            ? baseSchema.extend({ data: entry.schema })
+                            : baseSchema;
+                        const documented = withData.extend({
+                            message: withData.shape.message.meta({
+                                example: entry.messagePath,
+                            }),
+                            statusCode: withData.shape.statusCode.meta({
+                                example: entry.statusCode,
+                            }),
+                        });
 
-        if (statusEntries.length === 0) {
-            return;
-        }
+                        return createSchema(documented, { io: 'output' })
+                            .schema as SchemaObject;
+                    });
 
-        const schemas: SchemaObject[] = statusEntries.map(entry => {
-            const baseSchema: z.ZodObject = entry.baseSchema ?? ResponseSchema;
-            const withData: z.ZodObject = entry.schema
-                ? baseSchema.extend({ data: entry.schema })
-                : baseSchema;
-            const documented = withData.extend({
-                message: withData.shape.message.meta({
-                    example: entry.messagePath,
-                }),
-                statusCode: withData.shape.statusCode.meta({
-                    example: entry.statusCode ?? HttpStatus.OK,
-                }),
-            });
+                    const schema: SchemaObject =
+                        schemas.length > 1
+                            ? (createSchema(
+                                  statusEntries[0]?.baseSchema ??
+                                      ResponseSchema,
+                                  { io: 'output' }
+                              ).schema as SchemaObject)
+                            : schemas[0]!;
+                    const description = described.has(httpStatus)
+                        ? ''
+                        : httpStatus.toString();
+                    const metadataExample = (
+                        schema.properties as
+                            Record<string, SchemaObject> | undefined
+                    )?.metadata?.example;
+                    const examples =
+                        schemas.length > 1
+                            ? Object.fromEntries(
+                                  statusEntries.map(entry => [
+                                      entry.messagePath,
+                                      {
+                                          summary: `${entry.statusCode} — ${entry.messagePath}`,
+                                          value: {
+                                              statusCode: entry.statusCode,
+                                              message: entry.messagePath,
+                                              metadata: metadataExample,
+                                          },
+                                      },
+                                  ])
+                              )
+                            : null;
 
-            return createSchema(documented, { io: 'output' })
-                .schema as SchemaObject;
-        });
-
-        const schema: SchemaObject =
-            schemas.length > 1
-                ? (createSchema(
-                      statusEntries[0]?.baseSchema ?? ResponseSchema,
-                      { io: 'output' }
-                  ).schema as SchemaObject)
-                : schemas[0];
-        const description = described.has(httpStatus)
-            ? ''
-            : httpStatus.toString();
-        const metadataExample = (
-            schema.properties as Record<string, SchemaObject> | undefined
-        )?.metadata?.example;
-        const examples =
-            schemas.length > 1
-                ? Object.fromEntries(
-                      statusEntries.map(entry => [
-                          entry.messagePath,
-                          {
-                              summary: `${entry.statusCode ?? httpStatus} — ${entry.messagePath}`,
-                              value: {
-                                  statusCode: entry.statusCode ?? httpStatus,
-                                  message: entry.messagePath,
-                                  metadata: metadataExample,
-                              },
-                          },
-                      ])
-                  )
-                : undefined;
-
-        ApiResponse({
-            description,
-            status: httpStatus,
-            schema,
-            ...(examples ? { examples } : {}),
-        })(target, propertyKey, descriptor);
-    };
+                    ApiResponse({
+                        description,
+                        status: httpStatus,
+                        schema,
+                        ...(examples !== null && { examples }),
+                    })(target, propertyKey, descriptor);
+                }
+        )
+    );
 }
 
-/**
- * Public escape hatch for endpoint-specific module-flow errors.
- * Controllers must not call `DocResponseError` directly — use this.
- * @public
- */
-export function DocErrors(
-    httpStatus: HttpStatus,
-    ...entries: IDocResponseErrorOptions[]
-): MethodDecorator {
-    return DocResponseError(httpStatus, ...entries);
-}
-
-/**
- * Base endpoint doc: operation metadata, language/correlation headers, and the global error
- * responses every endpoint can return.
- * @public
- */
+/** @public */
 export function Doc(options?: IDocOptions): MethodDecorator {
+    const summary = options?.summary ?? null;
+    const deprecated = options?.deprecated ?? null;
+    const description = options?.description ?? null;
+    const operationId = options?.operation ?? null;
+    const errors = options?.errors ?? [];
+
     return applyDecorators(
         ApiOperation({
-            summary: options?.summary,
-            deprecated: options?.deprecated,
-            description: options?.description,
-            operationId: options?.operation,
+            ...(summary !== null && { summary }),
+            ...(deprecated !== null && { deprecated }),
+            ...(description !== null && { description }),
+            ...(operationId !== null && { operationId }),
         }),
         ApiHeaders([
             {
-                name: 'x-custom-lang',
+                name: RequestCustomLangHeaderName,
                 description: 'Custom language header',
                 required: false,
                 schema: {
@@ -169,7 +158,17 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                 },
             },
             {
-                name: 'x-correlation-id',
+                name: RequestIdHeaderName,
+                description:
+                    'Request identifier; a valid value is kept, otherwise the server generates one',
+                required: false,
+                schema: {
+                    example: faker.string.uuid(),
+                    type: 'string',
+                },
+            },
+            {
+                name: RequestCorrelationIdHeaderName,
                 description:
                     'Correlation identifier for tracking requests across services',
                 required: false,
@@ -179,16 +178,6 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                 },
             },
         ]),
-        DocGlobalErrorResponses.internalServerError,
-        DocGlobalErrorResponses.requestTimeout,
-        DocGlobalErrorResponses.validationError,
-        DocGlobalErrorResponses.tooManyRequests,
-        DocGlobalErrorResponses.decryptFailed,
-        DocGlobalErrorResponses.encryptionSecretInvalid,
-        DocGlobalErrorResponses.patternTokenMissing,
-        DocGlobalErrorResponses.schemaMissing,
-        DocGlobalErrorResponses.contextMissing,
-        DocGlobalErrorResponses.uniqueValueGenerationFailed,
-        DocGlobalErrorResponses.serviceUnavailable
+        DocErrors(...DocGlobalErrors, ...errors)
     );
 }

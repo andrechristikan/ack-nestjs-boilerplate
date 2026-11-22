@@ -6,12 +6,9 @@ import type { IMessageValidationImportErrorParam } from '@common/message/interfa
 import { FileImportException } from '@common/file/exceptions/file.import.exception';
 import { FileRequiredExtractFirstException } from '@common/file/exceptions/file.required-extract-first.exception';
 import { FileExceedMaxDataImportException } from '@common/file/exceptions/file.exceed-max-data-import.exception';
+import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import type { IFileCsvValidationOptions } from '@common/file/interfaces/file.interface';
 
-/**
- * Builds a pipe that validates every parsed CSV row against `schema`,
- * collecting per-row failures into a `FileImportException`.
- */
 export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
     schema: TSchema,
     options?: IFileCsvValidationOptions
@@ -19,37 +16,53 @@ export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
     @Injectable()
     class MixinFileCsvValidationPipe implements PipeTransform {
         private readonly maxDataImport: number;
+        private readonly importValidationConcurrency: number;
 
-        constructor(private readonly configService: ConfigService) {
+        constructor(
+            private readonly configService: ConfigService,
+            private readonly helperArrayService: HelperArrayService
+        ) {
             // Takes the config KEY, not the value: a pipe factory runs at
             // decoration time, before config is resolved.
             this.maxDataImport = this.configService.get<number>(
                 options?.maxDataImportConfigKey ?? 'file.maxDataImport'
             )!;
+            this.importValidationConcurrency = this.configService.get<number>(
+                'file.importValidationConcurrency'
+            )!;
         }
 
-        /**
-         * Validates each row against `schema`; throws `FileImportException` with row indexes on any failure.
-         */
         private async validateRows(
             data: unknown[]
         ): Promise<StandardSchemaV1.InferOutput<TSchema>[]> {
             const rows: StandardSchemaV1.InferOutput<TSchema>[] = [];
             const errors: IMessageValidationImportErrorParam[] = [];
 
-            for (let i = 0; i < data.length; i++) {
-                const result = await schema['~standard'].validate(data[i]);
+            const batches = this.helperArrayService.chunk(
+                data,
+                this.importValidationConcurrency
+            );
 
-                if (result.issues) {
-                    errors.push({
-                        row: i,
-                        errors: result.issues,
-                    });
+            let offset = 0;
+            // Sequential by design: bounded chunks, concurrent within a chunk
+            for (const batch of batches) {
+                const results = await Promise.all(
+                    batch.map(async row => schema['~standard'].validate(row))
+                );
 
-                    continue;
+                for (const [index, result] of results.entries()) {
+                    if (result.issues) {
+                        errors.push({
+                            row: offset + index,
+                            errors: result.issues,
+                        });
+
+                        continue;
+                    }
+
+                    rows.push(result.value);
                 }
-
-                rows.push(result.value);
+                offset += batch.length;
             }
 
             if (errors.length > 0) {
@@ -59,10 +72,6 @@ export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
             return rows;
         }
 
-        /**
-         * Throws when rows are empty or exceed the configured row cap,
-         * then forwards to row validation.
-         */
         private async parse(
             value: unknown[]
         ): Promise<StandardSchemaV1.InferOutput<TSchema>[]> {
@@ -77,9 +86,9 @@ export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
 
         async transform(
             value: unknown[]
-        ): Promise<StandardSchemaV1.InferOutput<TSchema>[] | undefined> {
+        ): Promise<StandardSchemaV1.InferOutput<TSchema>[] | null> {
             if (!value) {
-                return undefined;
+                return null;
             }
 
             return this.parse(value);

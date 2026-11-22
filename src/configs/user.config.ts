@@ -1,32 +1,51 @@
 import { registerAs } from '@nestjs/config';
+import bytes from 'bytes';
 import ms from 'ms';
 
-export interface IUserConfig {
-    usernamePattern: RegExp;
-    uploadPhotoProfilePath: string;
+export interface IConfigUser {
+    uploadPhotoProfilePathPattern: string;
+    photo: {
+        maxSizeInBytes: number;
+        filenameRandomLength: number;
+    };
+    purgeExpiredCron: string;
     maxDataImport: number;
     maxDataExport: number;
     default: {
         role: string;
         country: string;
     };
-    onboarding: {
-        createTimeoutInMs: number;
-        createBulkTimeoutInMs: number;
+    create: {
+        timeoutInMs: number;
+        bulkTimeoutInMs: number;
+    };
+    deleteSelf: {
+        timeoutInMs: number;
+        emailPattern: string;
+        usernamePattern: string;
     };
 }
 
-export default registerAs('user', (): IUserConfig => ({
-    usernamePattern: /^[a-zA-Z0-9-_]+$/,
-    uploadPhotoProfilePath: 'users/{userId}/profile',
+export default registerAs('user', (): IConfigUser => ({
+    uploadPhotoProfilePathPattern: 'users/{userId}/profile',
+    photo: {
+        maxSizeInBytes: bytes('2mb') ?? 0,
+        filenameRandomLength: 20,
+    },
+    purgeExpiredCron: '0 3 * * *',
     maxDataImport: 50,
     maxDataExport: 500,
     default: {
         role: 'user',
         country: 'ID',
     },
-    onboarding: {
-        createTimeoutInMs: ms('10s'),
-        createBulkTimeoutInMs: ms('30s'),
+    create: {
+        timeoutInMs: ms('10s'),
+        bulkTimeoutInMs: ms('30s'),
+    },
+    deleteSelf: {
+        timeoutInMs: ms('30s'),
+        emailPattern: 'deleted.{id}',
+        usernamePattern: 'deleted.{id}',
     },
 }));

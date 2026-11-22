@@ -1,7 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumProjectMemberRole, Prisma } from '@generated/prisma-client/client';
+import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import type { ProjectMember } from '@generated/prisma-client/client';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 
@@ -16,17 +16,8 @@ export interface IProjectMemberRepository {
     ): Promise<ProjectMember | null>;
     findWithPaginationCursor(
         projectId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
+        { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<IProjectMember>>;
-    create(
-        projectId: string,
-        userId: string,
-        role: EnumProjectMemberRole,
-        createdBy: string
-    ): Promise<IProjectMember>;
     createInTx(
         tx: IDatabaseTransactionClient,
         projectId: string,
@@ -34,9 +25,28 @@ export interface IProjectMemberRepository {
         role: EnumProjectMemberRole,
         createdBy: string
     ): Promise<IProjectMember>;
-    updateRole(
+    updateRoleInTx(
+        tx: IDatabaseTransactionClient,
         targetMemberId: string,
+        expectedRole: EnumProjectMemberRole,
         newRole: EnumProjectMemberRole
-    ): Promise<void>;
-    removeMember(targetMemberId: string): Promise<void>;
+    ): Promise<boolean>;
+    removeMemberInTx(
+        tx: IDatabaseTransactionClient,
+        targetMemberId: string,
+        expectedRole: EnumProjectMemberRole
+    ): Promise<boolean>;
+    removeByIdInTx(
+        tx: IDatabaseTransactionClient,
+        memberId: string
+    ): Promise<boolean>;
+    removeByWorkspaceAndUserInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        userId: string
+    ): Promise<number>;
+    removeByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number>;
 }

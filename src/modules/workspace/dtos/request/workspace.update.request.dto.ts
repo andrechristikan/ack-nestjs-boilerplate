@@ -1,24 +1,18 @@
 import { z } from 'zod';
 
-/**
- * Validates the body for updating a workspace name and description.
- * @public
- */
+/** @public */
 export const WorkspaceUpdateRequestSchema = z.strictObject({
-    name: z.string().max(150).optional().meta({
+    name: z.string().min(1).max(150).meta({
         description: 'Workspace name',
         example: 'Acme',
     }),
-    description: z.string().max(500).optional().meta({
-        description: 'Workspace description',
+    description: z.string().max(500).nullable().meta({
+        description: 'Workspace description; null clears it',
         example: 'Our team workspace',
     }),
 });
 
-/**
- * Body for updating a workspace name and description.
- * @public
- */
+/** @public */
 export type WorkspaceUpdateRequestDto = z.infer<
     typeof WorkspaceUpdateRequestSchema
 >;

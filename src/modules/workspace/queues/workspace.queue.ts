@@ -1,45 +1,69 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
+import type { OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
-import { EnumQueue, EnumQueuePriority } from '@queues/enums/queue.enum';
+import { QueueBase } from '@common/queue/bases/queue.base';
+import { EnumWorkspaceQueue } from '@modules/workspace/enums/workspace.enum';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 
-/**
- * Owns the workspace queue connection; schedules the recurring invite-expiry sweep.
- */
 @Injectable()
-export class WorkspaceQueue {
-    private readonly defTz: string;
+export class WorkspaceQueue extends QueueBase implements OnModuleInit {
+    private readonly timezone: string;
     private readonly expirySweepCron: string;
 
     constructor(
-        @InjectQueue(EnumQueue.workspace)
-        private readonly workspaceQueue: Queue,
+        @InjectQueue(EnumWorkspaceQueue.workspace)
+        protected readonly queue: Queue,
+        protected readonly cacheService: CacheService,
         private readonly configService: ConfigService
     ) {
-        this.defTz = this.configService.get<string>('app.timezone')!;
+        super(queue, cacheService);
+        this.timezone = this.configService.get<string>('app.timezone')!;
         this.expirySweepCron = this.configService.get<string>(
             'workspace.invite.expirySweepCron'
         )!;
     }
 
-    /**
-     * Schedules the recurring stale-invite expiry sweep (daily at midnight, in the
-     * configured timezone). `immediately: true` is BullMQ's native scheduler option
-     * to also run the job right now, at every call — safe to re-run on every app
-     * bootstrap since the sweep is idempotent (it only flips already-past-due rows).
-     */
+    async onModuleInit(): Promise<void> {
+        await Promise.all([
+            this.scheduleInviteExpirySweep(),
+            this.scheduleJoinRequestExpirySweep(),
+        ]);
+    }
+
+    /** Creates or replaces the stale-invite expiry scheduler on the configured cron and timezone, and runs the sweep at once on every call. */
     async scheduleInviteExpirySweep(): Promise<void> {
-        await this.workspaceQueue.upsertJobScheduler(
+        await this.queue.upsertJobScheduler(
             EnumWorkspaceProcess.expireStaleInvites,
             {
                 pattern: this.expirySweepCron,
-                tz: this.defTz,
+                tz: this.timezone,
                 immediately: true,
             },
             {
                 name: EnumWorkspaceProcess.expireStaleInvites,
+                data: {},
+                opts: {
+                    priority: EnumQueuePriority.low,
+                },
+            }
+        );
+    }
+
+    /** Creates or replaces the stale-join-request expiry scheduler on the invite sweep cron and timezone, and runs the sweep at once on every call. */
+    async scheduleJoinRequestExpirySweep(): Promise<void> {
+        await this.queue.upsertJobScheduler(
+            EnumWorkspaceProcess.expireStaleJoinRequests,
+            {
+                pattern: this.expirySweepCron,
+                tz: this.timezone,
+                immediately: true,
+            },
+            {
+                name: EnumWorkspaceProcess.expireStaleJoinRequests,
                 data: {},
                 opts: {
                     priority: EnumQueuePriority.low,

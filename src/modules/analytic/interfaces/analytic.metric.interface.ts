@@ -8,9 +8,24 @@ export interface IAnalyticOptionalDateRange {
     endDate: Date | null;
 }
 
+export interface IAnalyticCounted {
+    count: number;
+}
+
 export interface IAnalyticCountBucket {
     key: string;
     count: number;
+}
+
+export interface IAnalyticSortedPage<T> {
+    data: T[];
+    total: number;
+}
+
+export interface IAnalyticCountRange {
+    key: string;
+    min: number;
+    max: number | null;
 }
 
 export interface IAnalyticBucketsResult {
@@ -37,26 +52,19 @@ export interface IAnalyticLockoutMetrics {
     maxAttempt: number;
 }
 
-export interface IAnalyticPasswordExpiry {
-    expired: number;
-    total: number;
-    compliant: number;
-    rate: number;
-}
-
 export interface IAnalyticForgotPasswordConversion {
     created: number;
     used: number;
     rate: number;
 }
 
-export interface IAnalyticTwoFactorAdoption {
+export interface IAnalyticMfaAdoption {
     enabled: number;
     total: number;
     rate: number;
 }
 
-export interface IAnalyticTwoFactorAttemptSnapshot {
+export interface IAnalyticMfaAttemptSnapshot {
     usersWithAttempts: number;
     totalAttempts: number;
 }
@@ -95,6 +103,7 @@ export interface IAnalyticApiKeyLifecycle {
 export interface IAnalyticApiKeyActiveExpired {
     active: number;
     expired: number;
+    inactive: number;
 }
 
 export interface IAnalyticTermPolicyAcceptanceRate {

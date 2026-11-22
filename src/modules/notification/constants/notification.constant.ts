@@ -1,5 +1,9 @@
-/**
- * HKDF purpose that seals secrets inside queued notification jobs.
- * @public
- */
+import { Prisma } from '@generated/prisma-client/client';
+
+/** @public */
 export const NotificationPayloadEncryptionPurpose = 'notification.payload';
+
+/** @public */
+export const NotificationReadStateSelect = {
+    isRead: true,
+} satisfies Prisma.NotificationSelect;

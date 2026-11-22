@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes a status distribution as counted rows inside a declared object.
- * @public
- */
+/** @public */
 export const AnalyticStatusCountResponseSchema = z.object({
     statuses: z
         .array(
@@ -24,10 +21,7 @@ export const AnalyticStatusCountResponseSchema = z.object({
         }),
 });
 
-/**
- * Status distribution carried as counted rows inside a declared object.
- * @public
- */
+/** @public */
 export type AnalyticStatusCountResponseDto = z.infer<
     typeof AnalyticStatusCountResponseSchema
 >;

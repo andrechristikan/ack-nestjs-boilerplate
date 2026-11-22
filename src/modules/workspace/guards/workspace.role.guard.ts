@@ -1,24 +1,21 @@
-import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
-import type { WorkspaceMember } from '@generated/prisma-client/client';
 import {
-    WorkspaceMemberStoreKey,
+    WorkspaceContextStoreKey,
     WorkspaceRoleMetaKey,
 } from '@modules/workspace/constants/workspace.constant';
-import { WorkspaceMemberDomain } from '@modules/workspace/domains/workspace.member.domain';
+import type { IWorkspaceContextPatch } from '@modules/workspace/interfaces/workspace.interface';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
+import { WorkspaceMemberGuardMissingException } from '@modules/workspace/exceptions/workspace.member-guard-missing.exception';
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-/**
- * Enforces the roles declared by `@WorkspaceMemberProtected(...roles)` against the membership
- * resolved by `WorkspaceMemberGuard`, which must run before this guard.
- */
 @Injectable()
 export class WorkspaceRoleGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly workspaceMemberDomain: WorkspaceMemberDomain,
+        private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly requestStoreService: RequestStoreService
     ) {}
 
@@ -29,11 +26,16 @@ export class WorkspaceRoleGuard implements CanActivate {
         );
         const allowedRoles = requiredRoles ?? [];
 
-        const member = this.requestStoreService.get<WorkspaceMember>(
-            WorkspaceMemberStoreKey
-        );
+        const workspaceContext =
+            this.requestStoreService.get<IWorkspaceContextPatch>(
+                WorkspaceContextStoreKey
+            );
+        const member = workspaceContext?.workspaceMember ?? null;
+        if (member === null) {
+            throw new WorkspaceMemberGuardMissingException();
+        }
 
-        this.workspaceMemberDomain.validateWorkspaceRoleGuard(
+        this.workspaceMemberService.validateWorkspaceRoleGuard(
             member,
             allowedRoles
         );

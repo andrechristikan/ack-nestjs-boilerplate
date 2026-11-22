@@ -1,4 +1,5 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { CacheService } from '@common/cache/services/cache.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { MigrationPolicyData } from '@migration/data/migration.policy.data';
@@ -8,11 +9,8 @@ import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.reque
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Seeds the policy rows each seeded role grants. Requires roles to already be seeded, and
- * aborts otherwise.
- */
 @Command({
     name: 'policy',
     description: 'Seed/Remove Policies',
@@ -32,10 +30,11 @@ export class MigrationPolicySeed
     private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
+        protected readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService
     ) {
-        super();
+        super(cacheService);
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.rolePolicies = MigrationPolicyData[this.env];
@@ -100,8 +99,7 @@ export class MigrationPolicySeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding policies');
-            throw error;
+            throw new AppUnknownException(error, 'Seeding policies failed');
         }
 
         this.logger.log('Policies seeded successfully.');
@@ -133,8 +131,7 @@ export class MigrationPolicySeed
                 },
             });
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing policies');
-            throw error;
+            throw new AppUnknownException(error, 'Removing policies failed');
         }
 
         this.logger.log('Policies removed successfully.');

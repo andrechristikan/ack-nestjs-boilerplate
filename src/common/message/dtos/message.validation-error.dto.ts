@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * One failed validation issue on one request field.
- * @public
- */
+/** @public */
 export const MessageValidationErrorSchema = z.object({
     key: z.string().meta({
         description: 'Zod issue code of the failure',
@@ -20,10 +17,7 @@ export const MessageValidationErrorSchema = z.object({
     }),
 });
 
-/**
- * One localized validation failure on one request field.
- * @public
- */
+/** @public */
 export type MessageValidationErrorDto = z.infer<
     typeof MessageValidationErrorSchema
 >;

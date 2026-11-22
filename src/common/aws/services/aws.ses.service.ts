@@ -34,27 +34,51 @@ import type {
     IAwsSESSendBulk,
     IAwsSESTemplate,
 } from '@common/aws/interfaces/aws.ses.interface';
+import { AwsSesTemplateBodyRequiredException } from '@common/aws/exceptions/aws.ses-template-body-required.exception';
 
 @Injectable()
 export class AwsSESService implements OnModuleInit {
     private readonly logger = new Logger(AwsSESService.name);
 
-    private readonly iamKey: string | null;
-    private readonly iamSecret: string | null;
+    private readonly accessKeyId: string | null;
+    private readonly secretAccessKey: string | null;
+    private readonly identityArn: string | null;
     private readonly region: string | null;
+    private readonly endpoint: string | null;
+    private readonly maxAttempts: number;
+    private readonly timeoutInMs: number;
 
     private sesClient: SESClient;
 
     constructor(private readonly configService: ConfigService) {
-        this.iamKey = this.configService.get<string | null>('aws.ses.iam.key')!;
-        this.iamSecret = this.configService.get<string | null>(
-            'aws.ses.iam.secret'
+        const accessKeyId = this.configService.get<string | null>(
+            'aws.ses.accessKeyId'
+        );
+        this.accessKeyId = accessKeyId ?? null;
+        const secretAccessKey = this.configService.get<string | null>(
+            'aws.ses.secretAccessKey'
+        );
+        this.secretAccessKey = secretAccessKey ?? null;
+        const identityArn = this.configService.get<string | null>(
+            'aws.ses.identityArn'
+        );
+        this.identityArn = identityArn ?? null;
+        const region = this.configService.get<string | null>('aws.ses.region');
+        this.region = region ?? null;
+        const endpoint = this.configService.get<string | null>(
+            'aws.ses.endpoint'
+        );
+        this.endpoint = endpoint ?? null;
+        this.maxAttempts = this.configService.get<number>(
+            'aws.ses.maxAttempts'
         )!;
-        this.region = this.configService.get<string | null>('aws.ses.region')!;
+        this.timeoutInMs = this.configService.get<number>(
+            'aws.ses.timeoutInMs'
+        )!;
     }
 
     onModuleInit(): void {
-        if (!this.iamKey || !this.iamSecret || !this.region) {
+        if (!this.accessKeyId || !this.secretAccessKey || !this.region) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
@@ -64,10 +88,15 @@ export class AwsSESService implements OnModuleInit {
 
         this.sesClient = new SESClient({
             credentials: {
-                accessKeyId: this.iamKey,
-                secretAccessKey: this.iamSecret,
+                accessKeyId: this.accessKeyId,
+                secretAccessKey: this.secretAccessKey,
             },
             region: this.region,
+            maxAttempts: this.maxAttempts,
+            requestHandler: {
+                requestTimeout: this.timeoutInMs,
+            },
+            ...(this.endpoint ? { endpoint: this.endpoint } : {}),
         });
     }
 
@@ -134,10 +163,7 @@ export class AwsSESService implements OnModuleInit {
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
 
-            return {
-                $metadata: {},
-                Template: undefined,
-            } as GetTemplateCommandOutput;
+            return { $metadata: {} } as GetTemplateCommandOutput;
         }
 
         const command: GetTemplateCommand = new GetTemplateCommand({
@@ -168,7 +194,7 @@ export class AwsSESService implements OnModuleInit {
         }
 
         if (!htmlBody && !plainTextBody) {
-            throw new Error('body is null');
+            throw new AwsSesTemplateBodyRequiredException();
         }
 
         const command: CreateTemplateCommand = new CreateTemplateCommand({
@@ -204,7 +230,7 @@ export class AwsSESService implements OnModuleInit {
         }
 
         if (!htmlBody && !plainTextBody) {
-            throw new Error('body is null');
+            throw new AwsSesTemplateBodyRequiredException();
         }
 
         const command: UpdateTemplateCommand = new UpdateTemplateCommand({
@@ -263,10 +289,7 @@ export class AwsSESService implements OnModuleInit {
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
 
-            return {
-                MessageId: undefined,
-                $metadata: {},
-            } as SendTemplatedEmailCommandOutput;
+            return { $metadata: {} } as SendTemplatedEmailCommandOutput;
         }
 
         const command: SendTemplatedEmailCommand =
@@ -278,7 +301,8 @@ export class AwsSESService implements OnModuleInit {
                     CcAddresses: cc ?? [],
                 },
                 Source: sender,
-                TemplateData: JSON.stringify(templateData ?? ''),
+                ...(this.identityArn ? { SourceArn: this.identityArn } : {}),
+                TemplateData: JSON.stringify(templateData ?? {}),
                 ReplyToAddresses: [replyTo ?? sender],
             });
 
@@ -322,10 +346,11 @@ export class AwsSESService implements OnModuleInit {
                         CcAddresses: cc ?? [],
                     },
                     ReplacementTemplateData: JSON.stringify(
-                        e.templateData ?? ''
+                        e.templateData ?? {}
                     ),
                 })),
                 Source: sender,
+                ...(this.identityArn ? { SourceArn: this.identityArn } : {}),
                 DefaultTemplateData: JSON.stringify(defaultTemplateData ?? {}),
                 ReplyToAddresses: [replyTo ?? sender],
             });

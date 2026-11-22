@@ -1,4 +1,4 @@
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import type { StreamingBlobTypes } from '@smithy/types';
 
 export interface IAwsS3 {
@@ -86,11 +86,16 @@ export interface IAwsS3PutItem extends IAwsS3CreateMultiplePart {
 export interface IAwsS3ConfigBucket {
     region: string;
     bucket: string;
-    baseUrl: string;
+    baseUrl: string | null;
     access: EnumAwsS3Accessibility;
     arn: string;
     cdnUrl: string | null;
 }
+
+export type IAwsS3ConfigBucketSource = Omit<
+    IAwsS3ConfigBucket,
+    'baseUrl' | 'access'
+>;
 
 export interface IAwsS3FileInfo {
     pathWithFilename: string;
@@ -98,3 +103,8 @@ export interface IAwsS3FileInfo {
     extension: string;
     mime: string;
 }
+
+export type IAwsS3ConfigBuckets = Record<
+    EnumAwsS3Accessibility,
+    IAwsS3ConfigBucket
+>;

@@ -1,20 +1,20 @@
+import { AuthPublicController } from '@modules/auth/controllers/auth.public.controller';
+import { AuthUseCaseModule } from '@modules/auth/auth.use-case.module';
 import { CountryPublicController } from '@modules/country/controllers/country.public.controller';
-import { CountryHttpModule } from '@modules/country/country.http.module';
+import { CountryUseCaseModule } from '@modules/country/country.use-case.module';
 import { HelloPublicController } from '@modules/hello/controllers/hello.public.controller';
-import { HelloHttpModule } from '@modules/hello/hello.http.module';
+import { HelloUseCaseModule } from '@modules/hello/hello.use-case.module';
 import { TermPolicyPublicController } from '@modules/term-policy/controllers/term-policy.public.controller';
-import { TermPolicyHttpModule } from '@modules/term-policy/term-policy.http.module';
+import { TermPolicyUseCaseModule } from '@modules/term-policy/term-policy.use-case.module';
 import { UserPublicController } from '@modules/user/controllers/user.public.controller';
-import { UserHttpModule } from '@modules/user/user.http.module';
+import { UserUseCaseModule } from '@modules/user/user.use-case.module';
 import { WorkspacePublicController } from '@modules/workspace/controllers/workspace.public.controller';
-import { WorkspaceHttpModule } from '@modules/workspace/workspace.http.module';
+import { WorkspaceUseCaseModule } from '@modules/workspace/workspace.use-case.module';
 import { Module } from '@nestjs/common';
 
-/**
- * Mounts unauthenticated public controllers: country, hello, user, term policy, and workspace.
- */
 @Module({
     controllers: [
+        AuthPublicController,
         CountryPublicController,
         HelloPublicController,
         UserPublicController,
@@ -24,11 +24,12 @@ import { Module } from '@nestjs/common';
     providers: [],
     exports: [],
     imports: [
-        CountryHttpModule,
-        HelloHttpModule,
-        TermPolicyHttpModule,
-        UserHttpModule,
-        WorkspaceHttpModule,
+        AuthUseCaseModule,
+        CountryUseCaseModule,
+        HelloUseCaseModule,
+        TermPolicyUseCaseModule,
+        UserUseCaseModule,
+        WorkspaceUseCaseModule,
     ],
 })
 export class RouterHttpPublicModule {}

@@ -13,13 +13,16 @@ import {
     Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import {
+    RequestContext,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
 import { ApiKeyCreateRequestSchema } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import type { ApiKeyCreateRequestDto } from '@modules/api-key/dtos/request/api-key.create.request.dto';
 import { ApiKeyUpdateDateRequestSchema } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
@@ -28,29 +31,42 @@ import { ApiKeyUpdateRequestSchema } from '@modules/api-key/dtos/request/api-key
 import type { ApiKeyUpdateRequestDto } from '@modules/api-key/dtos/request/api-key.update.request.dto';
 import { ApiKeyCreateResponseSchema } from '@modules/api-key/dtos/response/api-key.create.response.dto';
 import type { ApiKeyCreateResponseDto } from '@modules/api-key/dtos/response/api-key.create.response.dto';
-import { ApiKeyHttpService } from '@modules/api-key/services/api-key.http.service';
+import { ApiKeyGetListByAdminUseCase } from '@modules/api-key/use-cases/api-key.get-list-by-admin.use-case';
+import { ApiKeyCreateByAdminUseCase } from '@modules/api-key/use-cases/api-key.create-by-admin.use-case';
+import { ApiKeyResetByAdminUseCase } from '@modules/api-key/use-cases/api-key.reset-by-admin.use-case';
+import { ApiKeyUpdateByAdminUseCase } from '@modules/api-key/use-cases/api-key.update-by-admin.use-case';
+import { ApiKeyUpdateDatesByAdminUseCase } from '@modules/api-key/use-cases/api-key.update-dates-by-admin.use-case';
+import { ApiKeyUpdateStatusByAdminUseCase } from '@modules/api-key/use-cases/api-key.update-status-by-admin.use-case';
+import { ApiKeyDeleteByAdminUseCase } from '@modules/api-key/use-cases/api-key.delete-by-admin.use-case';
 import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
+import {
+    AuthJwtAccessContext,
+    AuthJwtAccessProtected,
+} from '@modules/auth/decorators/auth.jwt.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-
-import type { ApiKey } from '@generated/prisma-client/client';
-import type { IApiKeyList } from '@modules/api-key/interfaces/api-key.interface';
+import type {
+    IApiKey,
+    IApiKeyContext,
+} from '@modules/api-key/interfaces/api-key.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { ApiKeyUpdateStatusRequestSchema } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import type { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { ApiKeyResponseSchema } from '@modules/api-key/dtos/response/api-key.response.dto';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.admin.apiKey')
 @Controller({
@@ -58,7 +74,15 @@ import { ApiKeyResponseSchema } from '@modules/api-key/dtos/response/api-key.res
     path: '/api-key',
 })
 export class ApiKeyAdminController {
-    constructor(private readonly apiKeyHttpService: ApiKeyHttpService) {}
+    constructor(
+        private readonly apiKeyGetListByAdminUseCase: ApiKeyGetListByAdminUseCase,
+        private readonly apiKeyCreateByAdminUseCase: ApiKeyCreateByAdminUseCase,
+        private readonly apiKeyResetByAdminUseCase: ApiKeyResetByAdminUseCase,
+        private readonly apiKeyUpdateByAdminUseCase: ApiKeyUpdateByAdminUseCase,
+        private readonly apiKeyUpdateDatesByAdminUseCase: ApiKeyUpdateDatesByAdminUseCase,
+        private readonly apiKeyUpdateStatusByAdminUseCase: ApiKeyUpdateStatusByAdminUseCase,
+        private readonly apiKeyDeleteByAdminUseCase: ApiKeyDeleteByAdminUseCase
+    ) {}
 
     @Doc({ summary: 'get list of api keys' })
     @ResponsePagination('apiKey.list', {
@@ -71,14 +95,14 @@ export class ApiKeyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @Query({ schema: ApiKeyListRequestSchema }) query: ApiKeyListRequestDto
-    ): Promise<IResponsePaginationReturn<IApiKeyList>> {
-        return this.apiKeyHttpService.getListByAdmin(query);
+    ): Promise<IResponsePaginationReturn<IApiKey>> {
+        return this.apiKeyGetListByAdminUseCase.execute(query);
     }
 
     @Doc({ summary: 'create an api key' })
@@ -90,15 +114,23 @@ export class ApiKeyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Post('/create')
     async create(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: ApiKeyCreateRequestSchema })
         body: ApiKeyCreateRequestDto
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        return this.apiKeyHttpService.createByAdmin(body);
+        return this.apiKeyCreateByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            body
+        );
     }
 
     @Doc({ summary: 'reset secret an api key' })
@@ -112,15 +144,23 @@ export class ApiKeyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Patch('/reset/:apiKeyId')
     async reset(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
-        return this.apiKeyHttpService.resetByAdmin(apiKeyId);
+        return this.apiKeyResetByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            apiKeyId
+        );
     }
 
     @Doc({ summary: 'update data an api key' })
@@ -134,17 +174,26 @@ export class ApiKeyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/update/:apiKeyId')
     async update(
-        @Body({ schema: ApiKeyUpdateRequestSchema })
-        body: ApiKeyUpdateRequestDto,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('apiKeyId', { schema: RequestUuidSchema })
-        apiKeyId: string
-    ): Promise<IResponseReturn<ApiKey>> {
-        return this.apiKeyHttpService.updateByAdmin(apiKeyId, body);
+        apiKeyId: string,
+        @Body({ schema: ApiKeyUpdateRequestSchema })
+        body: ApiKeyUpdateRequestDto
+    ): Promise<IResponseReturn<IApiKey>> {
+        return this.apiKeyUpdateByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            apiKeyId,
+            body
+        );
     }
 
     @Doc({ summary: 'update date of api key' })
@@ -158,17 +207,26 @@ export class ApiKeyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/update/:apiKeyId/date')
     async updateDate(
-        @Body({ schema: ApiKeyUpdateDateRequestSchema })
-        body: ApiKeyUpdateDateRequestDto,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('apiKeyId', { schema: RequestUuidSchema })
-        apiKeyId: string
-    ): Promise<IResponseReturn<ApiKey>> {
-        return this.apiKeyHttpService.updateDatesByAdmin(apiKeyId, body);
+        apiKeyId: string,
+        @Body({ schema: ApiKeyUpdateDateRequestSchema })
+        body: ApiKeyUpdateDateRequestDto
+    ): Promise<IResponseReturn<IApiKey>> {
+        return this.apiKeyUpdateDatesByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            apiKeyId,
+            body
+        );
     }
 
     @Doc({ summary: 'update status of an api key' })
@@ -182,17 +240,26 @@ export class ApiKeyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Patch('/update/:apiKeyId/status')
     async updateStatus(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateStatusRequestSchema })
         body: ApiKeyUpdateStatusRequestDto
-    ): Promise<IResponseReturn<ApiKey>> {
-        return this.apiKeyHttpService.updateStatusByAdmin(apiKeyId, body);
+    ): Promise<IResponseReturn<IApiKey>> {
+        return this.apiKeyUpdateStatusByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            apiKeyId,
+            body
+        );
     }
 
     @Doc({ summary: 'delete an api key' })
@@ -206,14 +273,22 @@ export class ApiKeyAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Delete('/delete/:apiKeyId')
     async delete(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
-    ): Promise<IResponseReturn<ApiKey>> {
-        return this.apiKeyHttpService.deleteByAdmin(apiKeyId);
+    ): Promise<IResponseReturn<IApiKey>> {
+        return this.apiKeyDeleteByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            apiKeyId
+        );
     }
 }

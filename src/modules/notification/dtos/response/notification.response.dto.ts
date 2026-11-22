@@ -6,10 +6,7 @@ import {
     EnumNotificationType,
 } from '@generated/prisma-client/client';
 
-/**
- * Base notification shape: one stored in-app notification of a user.
- * @public
- */
+/** @public */
 export const NotificationResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -48,10 +45,7 @@ export const NotificationResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Stored in-app notification of a user.
- * @public
- */
+/** @public */
 export type NotificationResponseDto = z.infer<
     typeof NotificationResponseSchema
 >;

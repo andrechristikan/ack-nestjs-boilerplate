@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 
-/**
- * Validates the body for transferring workspace ownership.
- * @public
- */
+/** @public */
 export const WorkspaceTransferOwnershipRequestSchema = z.strictObject({
     targetUserId: RequestUuidSchema.meta({
         description:
@@ -14,10 +11,7 @@ export const WorkspaceTransferOwnershipRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Body for transferring workspace ownership.
- * @public
- */
+/** @public */
 export type WorkspaceTransferOwnershipRequestDto = z.infer<
     typeof WorkspaceTransferOwnershipRequestSchema
 >;

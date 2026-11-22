@@ -4,19 +4,21 @@ import ms from 'ms';
 export interface IConfigFeatureFlag {
     keyPattern: string;
     cacheTtlInMs: number;
+    leaseKeyPattern: string;
+    leaseTtlInMs: number;
     anonymous: {
-        headerName: string;
         idMaxLength: number;
-        idPattern: RegExp;
+        idRegex: RegExp;
     };
 }
 
 export default registerAs('featureFlag', (): IConfigFeatureFlag => ({
     keyPattern: 'FeatureFlag:{key}',
     cacheTtlInMs: ms('1h'),
+    leaseKeyPattern: 'FeatureFlag:Lease:{key}',
+    leaseTtlInMs: ms('10s'),
     anonymous: {
-        headerName: 'x-anonymous-id',
         idMaxLength: 100,
-        idPattern: /^[a-zA-Z0-9-_]+$/,
+        idRegex: /^[a-zA-Z0-9-_]+$/,
     },
 }));

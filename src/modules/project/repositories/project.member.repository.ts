@@ -3,7 +3,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumProjectMemberRole, Prisma } from '@generated/prisma-client/client';
+import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import type { ProjectMember } from '@generated/prisma-client/client';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
@@ -43,47 +43,23 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
 
     async findWithPaginationCursor(
         projectId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.ProjectMemberWhereInput>
+        { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
-        return this.paginationService.cursor<
-            IProjectMember,
-            Prisma.ProjectMemberWhereInput
-        >(this.databaseService.client.projectMember, {
-            ...others,
-            where: {
-                ...where,
-                projectId,
-            },
-            include: {
-                user: {
-                    select: UserRefSelect,
+        return this.paginationService.cursor(
+            this.databaseService.client.projectMember,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    projectId,
                 },
-            },
-        });
-    }
-
-    async create(
-        projectId: string,
-        userId: string,
-        role: EnumProjectMemberRole,
-        createdBy: string
-    ): Promise<IProjectMember> {
-        return this.databaseService.client.projectMember.create({
-            data: {
-                projectId,
-                userId,
-                role,
-                createdBy,
-            },
-            include: {
-                user: {
-                    select: UserRefSelect,
+                include: {
+                    user: {
+                        select: UserRefSelect,
+                    },
                 },
-            },
-        });
+            }
+        );
     }
 
     async createInTx(
@@ -108,21 +84,65 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
         });
     }
 
-    async updateRole(
+    async updateRoleInTx(
+        tx: IDatabaseTransactionClient,
         targetMemberId: string,
+        expectedRole: EnumProjectMemberRole,
         newRole: EnumProjectMemberRole
-    ): Promise<void> {
-        await this.databaseService.client.projectMember.update({
-            where: { id: targetMemberId },
+    ): Promise<boolean> {
+        const { count } = await tx.projectMember.updateMany({
+            where: { id: targetMemberId, role: expectedRole },
             data: {
                 role: newRole,
             },
         });
+
+        return count > 0;
     }
 
-    async removeMember(targetMemberId: string): Promise<void> {
-        await this.databaseService.client.projectMember.delete({
-            where: { id: targetMemberId },
+    async removeMemberInTx(
+        tx: IDatabaseTransactionClient,
+        targetMemberId: string,
+        expectedRole: EnumProjectMemberRole
+    ): Promise<boolean> {
+        const { count } = await tx.projectMember.deleteMany({
+            where: { id: targetMemberId, role: expectedRole },
         });
+
+        return count > 0;
+    }
+
+    async removeByIdInTx(
+        tx: IDatabaseTransactionClient,
+        memberId: string
+    ): Promise<boolean> {
+        const { count } = await tx.projectMember.deleteMany({
+            where: { id: memberId },
+        });
+
+        return count > 0;
+    }
+
+    async removeByWorkspaceAndUserInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        userId: string
+    ): Promise<number> {
+        const { count } = await tx.projectMember.deleteMany({
+            where: { userId, project: { workspaceId } },
+        });
+
+        return count;
+    }
+
+    async removeByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number> {
+        const { count } = await tx.projectMember.deleteMany({
+            where: { userId },
+        });
+
+        return count;
     }
 }

@@ -1,9 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IUserForgotPasswordAnalyticRepository } from '@modules/user/interfaces/user.forgot-password-analytic-repository.interface';
-import type {
-    IUserForgotPasswordAnalytic,
-    IUserForgotPasswordAnalyticUserCount,
-} from '@modules/user/interfaces/user.interface';
+import type { IUserForgotPasswordAnalyticUserCount } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -25,25 +22,10 @@ export class UserForgotPasswordAnalyticRepository implements IUserForgotPassword
         });
     }
 
-    async findCreatedInRange(
+    async groupUnusedTokenByUser(
         startDate: Date,
-        endDate: Date
-    ): Promise<IUserForgotPasswordAnalytic[]> {
-        return this.databaseService.client.forgotPassword.findMany({
-            where: { createdAt: { gte: startDate, lt: endDate } },
-            select: {
-                id: true,
-                userId: true,
-                isUsed: true,
-                createdAt: true,
-                to: true,
-            },
-        });
-    }
-
-    async unusedTokenCountsByUser(
-        startDate: Date,
-        endDate: Date
+        endDate: Date,
+        min: number
     ): Promise<IUserForgotPasswordAnalyticUserCount[]> {
         const rows = await this.databaseService.client.forgotPassword.groupBy({
             by: ['userId'],
@@ -52,6 +34,7 @@ export class UserForgotPasswordAnalyticRepository implements IUserForgotPassword
                 createdAt: { gte: startDate, lt: endDate },
             },
             _count: { _all: true },
+            having: { userId: { _count: { gte: min } } },
         });
         return rows.map(r => ({ userId: r.userId, count: r._count._all }));
     }

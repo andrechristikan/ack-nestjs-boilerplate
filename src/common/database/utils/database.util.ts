@@ -1,12 +1,44 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@generated/prisma-client/client';
 import { v7, validate } from 'uuid';
+import {
+    DatabaseIdInvalidCode,
+    DatabaseRawQueryFailedCode,
+    DatabaseTransactionExpiredCode,
+    DatabaseUnavailableCodes,
+    DatabaseUnavailableMessages,
+    DatabaseUniqueConstraintCode,
+    DatabaseUrlCensoredValue,
+    DatabaseWriteConflictCode,
+} from '@common/database/constants/database.constant';
+import type { AppBaseException } from '@app/exceptions/app.base.exception';
+import type { IDatabaseScalarField } from '@common/database/interfaces/database.interface';
+import { DatabaseIdInvalidException } from '@common/database/exceptions/database.id-invalid.exception';
+import { DatabaseTransactionExpiredException } from '@common/database/exceptions/database.transaction-expired.exception';
+import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
+import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 
 /**
- * UUID helpers and deep-clone casts to Prisma JSON input types.
+ * UUID helpers, database error mapping and deep-clone casts to Prisma JSON input types.
  */
 @Injectable()
 export class DatabaseUtil {
+    private readonly connectTimeoutInMs: number;
+
+    constructor(private readonly configService: ConfigService) {
+        this.connectTimeoutInMs = this.configService.get<number>(
+            'database.connectTimeoutInMs'
+        )!;
+    }
+
+    /** Appends the configured connect timeout, in seconds, to a connection url; the caller passes a url that does not carry `connect_timeout`. */
+    buildClientUrl(url: string): string {
+        const separator = url.includes('?') ? '&' : '?';
+
+        return `${url}${separator}connect_timeout=${Math.ceil(this.connectTimeoutInMs / 1000)}`;
+    }
+
     checkIdIsValid(id: string): boolean {
         return validate(id);
     }
@@ -15,14 +47,44 @@ export class DatabaseUtil {
         return v7();
     }
 
-    /**
-     * True when `error` is a Prisma unique-constraint violation naming `field`, so a caller can tell
-     * its own generated value apart from any other unique key on the same table.
-     */
-    isUniqueCollision(error: unknown, field: string): boolean {
+    /** Masks a connection url for a log line: the password and query are dropped, the username keeps its first letter, and a string without `scheme://` returns `DatabaseUrlCensoredValue`. */
+    censorUrl(url: string): string {
+        const schemeEnd = url.indexOf('://');
+        if (schemeEnd === -1) {
+            return DatabaseUrlCensoredValue;
+        }
+
+        const scheme = url.slice(0, schemeEnd + 3);
+        const rest = url.slice(schemeEnd + 3);
+        const queryStart = rest.indexOf('?');
+        const withoutQuery =
+            queryStart === -1 ? rest : rest.slice(0, queryStart);
+        const pathStart = withoutQuery.indexOf('/');
+        const authority =
+            pathStart === -1 ? withoutQuery : withoutQuery.slice(0, pathStart);
+        const path = pathStart === -1 ? '' : withoutQuery.slice(pathStart);
+        const credentialEnd = authority.lastIndexOf('@');
+        if (credentialEnd === -1) {
+            return `${scheme}${authority}${path}`;
+        }
+
+        const username = authority
+            .slice(0, credentialEnd)
+            .split(':', 1)
+            .join('');
+        const hosts = authority.slice(credentialEnd + 1);
+        const user =
+            username === ''
+                ? ''
+                : `${username.slice(0, 1)}${DatabaseUrlCensoredValue}@`;
+
+        return `${scheme}${user}${hosts}${path}`;
+    }
+
+    isUniqueCollision(error: unknown, field: IDatabaseScalarField): boolean {
         if (
             !(error instanceof Prisma.PrismaClientKnownRequestError) ||
-            error.code !== 'P2002'
+            error.code !== DatabaseUniqueConstraintCode
         ) {
             return false;
         }
@@ -35,6 +97,44 @@ export class DatabaseUtil {
                 typeof entry === 'string' &&
                 entry.toLowerCase().includes(field.toLowerCase())
         );
+    }
+
+    /** Maps a Prisma write conflict, malformed id, expired transaction, connection failure, or server-selection timeout to its exception; null for any other error. */
+    toException(error: unknown): AppBaseException | null {
+        if (error instanceof Prisma.PrismaClientInitializationError) {
+            return new DatabaseUnavailableException();
+        }
+
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+            return null;
+        }
+
+        if (error.code === DatabaseWriteConflictCode) {
+            return new DatabaseWriteConflictException();
+        }
+
+        if (error.code === DatabaseIdInvalidCode) {
+            return new DatabaseIdInvalidException();
+        }
+
+        if (error.code === DatabaseTransactionExpiredCode) {
+            return new DatabaseTransactionExpiredException();
+        }
+
+        if (DatabaseUnavailableCodes.includes(error.code)) {
+            return new DatabaseUnavailableException();
+        }
+
+        if (
+            error.code === DatabaseRawQueryFailedCode &&
+            DatabaseUnavailableMessages.some(message =>
+                error.message.includes(message)
+            )
+        ) {
+            return new DatabaseUnavailableException();
+        }
+
+        return null;
     }
 
     /**
@@ -50,9 +150,6 @@ export class DatabaseUtil {
         return structuredClone(data as unknown) as N;
     }
 
-    /**
-     * Deep-clones `data` and casts it to a Prisma-compatible plain array.
-     */
     toPlainArray<T, N = Prisma.JsonObject>(data: T): N[] {
         return structuredClone(data) as N[];
     }

@@ -2,27 +2,22 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { AwsS3ObjectKeyRegex } from '@common/aws/constants/aws.constant';
 
-/**
- * Validates the object key and size of an S3 presign request.
- * @public
- */
+/** @public */
 export const AwsS3PresignRequestSchema = z.strictObject({
-    key: z.string().min(1).regex(AwsS3ObjectKeyRegex).meta({
-        description: 'Object key to presign in S3',
+    key: z.string().min(1).max(1024).regex(AwsS3ObjectKeyRegex).meta({
+        description: 'Object key to presign in S3, at most 1024 characters',
         example:
             'users/507f1f77bcf86cd799439011/profile/aB3xY9zQ1mN7pR2sT4vW.jpg',
     }),
     size: z
         .number()
         .int()
+        .min(1)
         .meta({
             description: 'Object size in bytes',
             example: faker.number.int({ min: 1, max: 10_485_760 }),
         }),
 });
 
-/**
- * Object key and size of an S3 presign request.
- * @public
- */
+/** @public */
 export type AwsS3PresignRequestDto = z.infer<typeof AwsS3PresignRequestSchema>;

@@ -2,14 +2,11 @@ import { z } from 'zod';
 import {
     PaginationDefaultMaxPage,
     PaginationDefaultMaxPerPage,
+    PaginationDefaultMaxSearchLength,
     PaginationDefaultPerPage,
 } from '@common/pagination/constants/pagination.constant';
 
-/**
- * Offset list query kit: `page` and `perPage` only. Modules `.extend` `search` / `orderBy`
- * when their allow-lists are non-empty, plus any filter fields.
- * @public
- */
+/** @public */
 export const PaginationOffsetQuerySchema = z.strictObject({
     page: z.coerce
         .number()
@@ -27,12 +24,18 @@ export const PaginationOffsetQuerySchema = z.strictObject({
             description: `Data per page, max ${PaginationDefaultMaxPerPage}`,
             example: PaginationDefaultPerPage,
         }),
+    search: z
+        .string()
+        .trim()
+        .max(PaginationDefaultMaxSearchLength)
+        .optional()
+        .meta({
+            description: `Search query, case-insensitive, partial match, max ${PaginationDefaultMaxSearchLength} characters`,
+            example: '',
+        }),
 });
 
-/**
- * Inferred DTO for PaginationOffsetQuerySchema.
- * @public
- */
+/** @public */
 export type PaginationOffsetQueryDto = z.infer<
     typeof PaginationOffsetQuerySchema
 >;

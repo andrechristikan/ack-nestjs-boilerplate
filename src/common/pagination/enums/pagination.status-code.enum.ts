@@ -1,22 +1,15 @@
-/**
- * Status codes raised by the `pagination` kit.
- * @public
- */
+/** @public */
 export enum EnumPaginationStatusCodeError {
-    orderByNotAllowed = 50200,
-    filterInvalidValue = 50201,
-    invalidPerPage = 50202,
-    invalidCursorPaginationParams = 50203,
-    cursorTooLong = 50204,
-    invalidCursorFormat = 50205,
-    invalidOffsetPaginationParams = 50206,
-    invalidPage = 50207,
-    pageExceedsMaximum = 50208,
-    pageCannotBeLessThanOne = 50209,
-    perPageExceedsMaximum = 50210,
-    perPageCannotBeLessThanOne = 50211,
-    invalidCursorData = 50212,
-    failedToEncodeCursor = 50213,
-    failedToDecodeCursor = 50214,
-    orderDirectionNotAllowed = 50215,
+    filterInvalidValue = 50200,
+    invalidPerPage = 50201,
+    invalidCursorPaginationParams = 50202,
+    cursorTooLong = 50203,
+    invalidCursorFormat = 50204,
+    invalidPage = 50205,
+    pageExceedsMaximum = 50206,
+    pageCannotBeLessThanOne = 50207,
+    perPageExceedsMaximum = 50208,
+    perPageCannotBeLessThanOne = 50209,
+    invalidCursorData = 50210,
+    failedToDecodeCursor = 50211,
 }

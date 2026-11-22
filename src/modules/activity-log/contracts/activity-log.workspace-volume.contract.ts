@@ -1,18 +1,17 @@
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 
-/**
- * Target-side workspace and project actions left out of workspace volume metrics, so each paired action counts once.
- * @public
- */
+/** @public */
 export const ActivityLogWorkspaceVolumeContract: readonly EnumActivityLogAction[] =
     [
         EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
         EnumActivityLogAction.workspaceMemberRemovedByAdmin,
         EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
+        EnumActivityLogAction.workspaceOwnershipTransferredByAdmin,
         EnumActivityLogAction.workspaceJoinAcceptedByAdmin,
         EnumActivityLogAction.workspaceJoinRejectedByAdmin,
         EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
         EnumActivityLogAction.workspaceInviteCreatedByAdmin,
+        EnumActivityLogAction.workspaceInviteResentByAdmin,
         EnumActivityLogAction.workspaceInviteRevokedByAdmin,
         EnumActivityLogAction.projectMemberAssignedByAdmin,
         EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,

@@ -1,10 +1,11 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import type {
-    Country,
-    UserMobileNumber,
-} from '@generated/prisma-client/client';
+import { UserMobileNumberSummarySelect } from '@modules/user/constants/user.constant';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
+import type {
+    IUserMobileNumber,
+    IUserMobileNumberSummary,
+} from '@modules/user/interfaces/user.interface';
 import type { IUserMobileNumberRepository } from '@modules/user/interfaces/user.mobile-number-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -15,46 +16,28 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
     async findOneMobileNumber(
         userId: string,
         mobileNumberId: string
-    ): Promise<{
-        id: string;
-        number: string;
-        phoneCode: string;
-        isVerified: boolean;
-    } | null> {
+    ): Promise<IUserMobileNumberSummary | null> {
         return this.databaseService.client.userMobileNumber.findFirst({
             where: {
                 id: mobileNumberId,
-                user: {
-                    id: userId,
-                },
+                userId,
             },
-            select: {
-                id: true,
-                number: true,
-                phoneCode: true,
-                isVerified: true,
-            },
+            select: UserMobileNumberSummarySelect,
         });
     }
 
     async existsMobileNumber(
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
-        excludeId?: string
+        excludeId: string | null
     ): Promise<boolean> {
         const count = await this.databaseService.client.userMobileNumber.count({
             where: {
                 number,
                 countryId,
                 phoneCode,
-                user: {
-                    id: userId,
-                },
-                ...(excludeId
-                    ? {
-                          id: { not: excludeId },
-                      }
-                    : {}),
+                userId,
+                ...(excludeId !== null && { id: { not: excludeId } }),
             },
         });
 
@@ -65,7 +48,7 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
         tx: IDatabaseTransactionClient,
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
-    ): Promise<UserMobileNumber & { country: Country }> {
+    ): Promise<IUserMobileNumber> {
         return tx.userMobileNumber.create({
             data: {
                 userId,
@@ -81,38 +64,74 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
 
     async updateInTx(
         tx: IDatabaseTransactionClient,
+        userId: string,
         mobileNumberId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         isVerified: boolean
-    ): Promise<UserMobileNumber & { country: Country }> {
-        return tx.userMobileNumber.update({
-            where: { id: mobileNumberId },
+    ): Promise<IUserMobileNumber | null> {
+        const { count } = await tx.userMobileNumber.updateMany({
+            where: { id: mobileNumberId, userId },
             data: {
                 countryId,
                 number,
                 phoneCode,
                 isVerified,
             },
+        });
+        if (count === 0) {
+            return null;
+        }
+
+        return tx.userMobileNumber.findFirst({
+            where: { id: mobileNumberId, userId },
             include: {
                 country: true,
             },
         });
     }
 
+    async markVerifiedInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        mobileNumberId: string,
+        verifiedAt: Date
+    ): Promise<boolean> {
+        const { count } = await tx.userMobileNumber.updateMany({
+            where: { id: mobileNumberId, userId, isVerified: false },
+            data: { isVerified: true, verifiedAt },
+        });
+
+        return count > 0;
+    }
+
     async deleteInTx(
         tx: IDatabaseTransactionClient,
+        userId: string,
         mobileNumberId: string
-    ): Promise<UserMobileNumber & { country: Country }> {
-        const row = await tx.userMobileNumber.findUniqueOrThrow({
-            where: { id: mobileNumberId },
+    ): Promise<IUserMobileNumber | null> {
+        const row = await tx.userMobileNumber.findFirst({
+            where: { id: mobileNumberId, userId },
             include: {
                 country: true,
             },
         });
-        await tx.userMobileNumber.delete({
-            where: { id: mobileNumberId },
+        if (!row) {
+            return null;
+        }
+
+        const { count } = await tx.userMobileNumber.deleteMany({
+            where: { id: mobileNumberId, userId },
         });
 
-        return row;
+        return count > 0 ? row : null;
+    }
+
+    async deleteByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void> {
+        await tx.userMobileNumber.deleteMany({
+            where: { userId },
+        });
     }
 }

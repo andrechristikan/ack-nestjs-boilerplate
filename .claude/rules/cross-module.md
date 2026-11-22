@@ -1,128 +1,51 @@
 # Crossing a module boundary
 
-Wiring mechanics are `rules/nest-wiring.md`. This file is about what one feature module may
-reach for in another, and what it must not.
+## What you may reach for in another module
 
-## What a module exports
+A use case stays inside its feature: `<Module>UseCaseModule` exports it to `src/router/` only, and no service, use case, or module file of another feature reaches it.
 
-A feature module exports what other modules consume — normally its domain, sometimes a
-guard-backing class. **Internal helpers stay unexported.** An export is a contract; adding
-one because "someone might need it" is how a module's private shape becomes load-bearing
-elsewhere.
+| From another module | From a service | From a use case |
+| --- | --- | --- |
+| its exported service | yes, when your `<Module>Module` imports its `<Module>Module` or it is a lower `@Global()` module (`layering.md`, Dependency order) | yes, through its `<Module>Module` |
+| its exported util | yes, when your `<Module>Module` imports its `<Module>Module` or it is a lower `@Global()` module (`layering.md`, Dependency order) | yes, through its `<Module>Module` |
+| its cache or repository | no | no; ask the owning service |
+| its use case, controller, or processor | no | no |
+| its enums, interfaces, constants, schemas | yes, compile-time only | yes, compile-time only |
+| its exceptions | yes, when the failed subject is its entity | yes, when the failed subject is its entity |
+| its Prisma model through your own `DatabaseService` | no | no |
 
-## What you may reach for
+A guard, strategy, interceptor, or decorator injects the exported services and utils of a `@Global()` module (`module-files.md`, `@Global()`), and nothing else from another feature module.
 
-| From another module | Allowed? |
-|---|---|
-| its exported domain | yes — inject the class, import `<Feature>DomainModule` |
-| its exported queue class, from your domain or processor service | yes — import `<Feature>DomainModule`, which exports it; a domain or processor service enqueues, a controller never does (`rules/queue.md`) |
-| its exported util, from your domain, HTTP service, or processor service | yes — import `<Feature>DomainModule`, which provides utils too |
-| its exported util, from your REPOSITORY | **no** unless the owning module is `@Global()` — tier 3 stops at the domain (`rules/architecture.md`) |
-| its exported util, from YOUR util | **no**, `@Global()` or not — a util never injects another module's util, and what it needs arrives as an argument (`rules/architecture.md`) |
-| its repository | **no** — `<Feature>RepositoryModule` is private to its own feature |
-| its HTTP service or processor service | **no** — those are leaves the router consumes; you want the domain |
-| its enums, interfaces, constants, schemas | yes — compile-time only, no wiring needed |
-| its exceptions | yes — when the missing or invalid subject is ITS entity (`rules/exceptions.md`) |
-| a class it did not export | no |
-| its Prisma model through your own `DatabaseService` | **no** — the owning repository is the only class that issues a statement against that model |
+A repository reaches another module's util only when the owner is `@Global()`. A util injects no `src/modules/` util, its own module's or another module's; the value arrives as an argument. Anything a `@Global()` module exports is reachable with no import by the callers this table allows. `@Global()` removes the import, never the dependency order.
 
-## A repository owns only its own model (HARD)
+`src/modules/analytic/` aggregates every feature's analytics, so a feature's analytic repository, its port, and its analytic service import their shapes from `@modules/analytic/interfaces` (`src/modules/user/repositories/user.analytic.repository.ts:7`).
 
-A repository class issues reads and writes against the Prisma model it owns, and against
-satellite models that have no repository of their own. `NotificationRepository` owns
-`Notification` and its `NotificationDelivery` rows, which no other class writes.
-`UserPasswordRepository` does not own `User` — `UserRepository` does, and `DeviceRepository`
-owns `Device` while `DeviceOwnershipRepository` owns `DeviceOwnership`.
+## A repository owns its model
 
-Ownership binds writes. A read may `include`, `select` or filter on a related model
-(`deviceOwnership.findMany({ include: { device: true } })`), because a read changes nothing and
-the alternative is a second round trip for every row.
+A repository issues statements against the model it owns and satellite models with no repository of their own (`NotificationRepository` owns `Notification` and `NotificationDelivery`). Ownership is per class: `UserForgotPasswordRepository` does not write `User`. A nested write counts as a statement against the related model. A read may `include`, `select`, or filter on a relation. `ActivityLog` has one writer, `ActivityLogRepository`.
 
-Ownership is per class, not per feature. `WorkspaceInviteRepository` does not read
-`WorkspaceMember` or `User` or `Project`. Nested writes count as statements against the related
-model: `deviceOwnership.update({ user: { update: … } })` is a `User` write, and
-`workspace.update({ projects: { updateMany: … } })` is a `Project` write.
+Who opens a transaction spanning repositories or modules, and how the others join: `transaction.md`, Transactions. A method the owning service lacks is added there, even three lines long.
 
-`ActivityLog` has one owner: `ActivityLogRepository`. No other repository calls
-`client.activityLog` or nests `activityLogs` / `user.activityLogs`.
+## A repository stays inside its feature
 
-A repository never injects or calls another repository. When work spans more than one
-repository, the domain opens `this.databaseService.withTransaction` and calls each
-collaborator as `*InTx(tx, ...)` (`rules/database.md`). The other module is reached through
-its domain, which forwards `tx` to its own `*InTx` repository method. The other
-module's REPOSITORY class stays closed. A repository never opens that transaction and never
-issues a statement against another repository's model, including a nested write.
+`<Module>Module` provides its repositories and never exports them. `src/migration/` sits outside this file (`seeding.md`).
 
-A method the owning domain does not yet have is added there, even when it is three lines
-long.
+## Composition follows the dependency order
 
-## A repository module belongs to its own feature (HARD)
+Use cases compose features; services share downward. A service's cross-feature reach follows its own module file's `imports:`, `@Global()` features aside. A module import cycle is a broken boundary: the boot fails on one (`ReferenceError`), and `forwardRef` hides one and is lint-forbidden. When a service needs a higher module, the ways out:
 
-`<Feature>RepositoryModule` has exactly one importer: the `<feature>.domain.module.ts` beside it. Data
-that another module needs is reached through the owning domain, which is the layer that
-holds that feature's invariants — a caller holding the repository class skips every one of them,
-and the owning module can no longer change its own query shapes without hunting call sites in
-modules it does not know about. Importing the repository module to skip a three-line domain
-method is what this rule forbids.
+1. Orchestration: the sequence moves up into a use case, which injects both modules' services, one shared write transaction included.
+2. A shared piece: it moves down into the lower module's service, or into `src/common/` when module-agnostic (`layering.md`, Dependency order).
+3. A fire-and-forget hand-off: an outbox effect the use case adds in its transaction (`effects.md`), a notification included.
 
-**`src/migration/` is outside this rule.** The seeder CLI is its own composition root
-(`MigrationModule`), it writes baseline rows rather than serving a request, and it reaches any
-feature's repository module and repositories directly. A seed does not go through a domain
-service to get there (`rules/seeding.md`).
+## An exception names the subject that failed
 
-**Importing a feature module pulls in more than a repository module does, so it can CREATE a
-cycle.** The three ways out below apply exactly as they do to any other cycle; `forwardRef` is
-not one of them.
-
-**Everything a `@Global()` module exports is reachable with no import at all**, on the same
-terms as `src/common/`, including from a repository. That is tier 2 in
-`rules/architecture.md`, and it is the only way a util reaches another module's repository.
-When a util genuinely belongs in several modules' repositories, move it to the module that owns
-the concept and make that module global — do not inject it across a tier 3 boundary.
-
-**That reach runs one way.** `@Global()` decides who may inject the util; it never widens what
-the util may inject. A util injects no other module's util in either tier, and the value it
-would have asked for is passed in by the domain (or HTTP / processor service) that called it (`rules/architecture.md`).
-
-**An exception names the SUBJECT that failed, not the module that noticed.** The project module
-throwing `WorkspaceNotFoundException` when the workspace is what is missing is correct: the
-caller asked about a workspace, and the workspace module owns that answer, its status code and
-its i18n path (`rules/status-code.md`). It throws `ProjectNotFoundException` when the project is
-the missing one. What is wrong is a SECOND exception for another module's entity, allocated in
-your own block — one missing workspace with two status codes depending on which route hit it.
-
-## Never `forwardRef` between feature modules (HARD)
-
-A circular import between two feature modules is a broken boundary to re-architect, not a
-hazard to work around. `forwardRef` makes it boot; it does not make it correct, and it hides
-the cycle from every later reader.
-
-Three ways out, in order of preference:
-
-1. **One direction is wrong.** Usually only one module genuinely needs the other; the reverse
-   dependency is a convenience call that belongs on the caller's side.
-2. **The shared piece has a third owner.** Extract it into the module that actually owns the
-   concept, and let both import that.
-3. **The coupling is event-shaped.** A fire-and-forget hand-off is a queue job, not a direct
-   call (`rules/queue.md`).
-
-## The shared kit is not a boundary crossing
-
-`src/common/` is imported by everyone by design (`rules/common.md`). Reaching for
-`HelperDateService` or `PaginationService` is not a cross-module dependency and needs no import in
-the feature module — those modules are global.
+A missing workspace throws `WorkspaceNotFoundException` wherever the check runs: the workspace module owns that answer, its status code, and its i18n path. Do not allocate a second code in your own block for another module's entity.
 
 ## Registration lives outside the feature module
 
-A controller is registered by `src/router/http/router.http.<scope>.module.ts`
-(`rules/router.md`). A BullMQ processor is provided by its own feature's
-`<feature>.processor.module.ts`, which `src/router/processor/router.processor.module.ts`
-aggregates (`rules/queue.md`). The controller FILE lives in the feature module; only its
-registration is external, and a feature module that registers its own controller is drift.
+A controller file lives in its feature module; `src/router/http/router.http.<scope>.module.ts` declares it. A processor file lives in its feature module, a kit processor in its kit module's `processors/` (`src/common/cache/processors/`); `src/router/processor/router.processor.module.ts` provides it.
 
-## Workspace scoping crosses modules too
+## Workspace scoping follows the surface
 
-A workspace-scoped route in ANY module resolves its subject from the `x-workspace-id` header
-through the workspace guards, and carries `@FeatureFlagProtected('workspace')`
-(`rules/http.md`). That obligation follows the SURFACE, not the module — a project, user, or
-notification route that is workspace-scoped carries it exactly as a workspace route does.
+A workspace-scoped route in any module carries the workspace guards and flag: `guards.md`, Decorator order.

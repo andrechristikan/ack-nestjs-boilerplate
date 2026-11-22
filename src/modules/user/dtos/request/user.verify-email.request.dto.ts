@@ -1,24 +1,19 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Validates the body for verifying an email with a token.
- * @public
- */
+/** @public */
 export const UserVerifyEmailRequestSchema = z.strictObject({
     token: z
         .string()
         .min(1)
+        .max(200)
         .meta({
-            description: 'Verification token',
+            description: 'Verification token, at most 200 characters',
             example: faker.string.alphanumeric(20),
         }),
 });
 
-/**
- * Body for verifying an email with a token.
- * @public
- */
+/** @public */
 export type UserVerifyEmailRequestDto = z.infer<
     typeof UserVerifyEmailRequestSchema
 >;

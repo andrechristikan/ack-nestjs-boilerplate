@@ -1,12 +1,12 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import type { CountryRequestDto } from '@modules/country/dtos/request/country.request.dto';
+import type { Prisma } from '@generated/prisma-client/client';
 
 const CountryData = [
     {
         name: 'Indonesia',
         alpha2Code: 'ID',
         alpha3Code: 'IDN',
-        phoneCodes: ['62'],
+        phoneCode: ['62'],
         continent: 'Asia',
         timezone: 'Asia/Jakarta',
     },
@@ -14,7 +14,7 @@ const CountryData = [
 
 export const MigrationCountryData: Record<
     EnumAppEnvironment,
-    CountryRequestDto[]
+    Prisma.CountryCreateInput[]
 > = {
     [EnumAppEnvironment.local]: CountryData,
     [EnumAppEnvironment.test]: CountryData,

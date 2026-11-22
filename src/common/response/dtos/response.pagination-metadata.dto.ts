@@ -1,16 +1,12 @@
 import { faker } from '@faker-js/faker';
 import { z } from 'zod';
 import { ResponseMetadataSchema } from '@common/response/dtos/response.metadata.dto';
-import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 import {
     EnumPaginationOrderDirectionType,
     EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
 
-/**
- * Response metadata extended with pagination state (search, filters, order, page/cursor stats).
- * @public
- */
+/** @public */
 export const ResponsePaginationMetadataSchema = ResponseMetadataSchema.extend({
     search: z.string().optional().meta({
         description: 'Active search query string.',
@@ -103,11 +99,7 @@ export const ResponsePaginationMetadataSchema = ResponseMetadataSchema.extend({
     }),
 });
 
-/**
- * Extensible: carries additional metadata fields alongside the declared ones.
- * @public
- */
+/** @public */
 export type ResponsePaginationMetadataDto = z.infer<
     typeof ResponsePaginationMetadataSchema
-> &
-    ResponseMetadataDto;
+>;

@@ -1,4 +1,13 @@
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
+import type { SendTemplatedEmailCommandOutput } from '@aws-sdk/client-ses';
+import type {
+    EnumNotificationEmailProcess,
+    EnumNotificationProcess,
+    EnumNotificationPushProcess,
+    EnumNotificationQueue,
+    EnumNotificationSmsProcess,
+} from '@modules/notification/enums/notification.enum';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import {
     EnumNotificationChannel,
     EnumNotificationPriority,
@@ -6,19 +15,265 @@ import {
     EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    EnumUserReauthenticationAction,
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKeyPattern,
+    EnumNotificationKind,
+    EnumNotificationLoginLockedMethod,
+    EnumNotificationStep,
+} from '@modules/notification/enums/notification.enum';
+import type { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { NotificationReadStateSelect } from '@modules/notification/constants/notification.constant';
+import type { ITermPolicyPublishPayload } from '@modules/term-policy/interfaces/term-policy.interface';
+import type { NotificationUserSetting } from '@generated/prisma-client/client';
 
-export interface INotificationKindContract {
+export type INotificationReadState = Prisma.NotificationGetPayload<{
+    select: typeof NotificationReadStateSelect;
+}>;
+
+export interface INotificationContextBase {
+    userId: string;
+    proceedBy: string;
+}
+
+export interface INotificationPasswordContext extends INotificationContextBase {
+    password: string;
+    passwordExpiredAt: string;
+    passwordCreatedAt: string;
+}
+
+export type INotificationSnapshot = {
+    username: string;
+    encryptedEmail: string;
+    encryptedTokens: string[];
+};
+
+export interface INotificationSnapshotContext extends INotificationContextBase {
+    snapshot: INotificationSnapshot;
+}
+
+export interface INotificationTemporaryPasswordContext
+    extends INotificationPasswordContext, INotificationSnapshotContext {}
+
+export interface INotificationVerificationLinkContext extends INotificationContextBase {
+    link: string;
+    reference: string;
+    expiredAt: string;
+    expiredInMinutes: number;
+}
+
+export interface INotificationVerificationMobileNumberContext extends INotificationContextBase {
+    verificationId: string;
+    otp: string;
+    reference: string;
+    expiredInMinutes: number;
+}
+
+export interface INotificationReauthenticationOtpContext extends INotificationContextBase {
+    verificationId: string;
+    otp: string;
+    action: EnumUserReauthenticationAction;
+    expiredInMinutes: number;
+}
+
+export interface INotificationReferenceContext extends INotificationContextBase {
+    reference: string;
+}
+
+export interface INotificationVerifiedMobileNumberContext extends INotificationReferenceContext {
+    mobileNumber: string;
+}
+
+export interface INotificationUserAgentDisplay {
+    browser: string;
+    deviceDetail: string;
+    os: string;
+}
+
+export interface INotificationNewDeviceLoginContext
+    extends INotificationContextBase, INotificationUserAgentDisplay {
+    loginFrom: EnumUserLoginFrom;
+    loginWith: EnumUserLoginWith;
+    loginAt: string;
+    device: string;
+    city: string;
+    ipAddress: string;
+}
+
+export interface INotificationTermPolicyContext extends INotificationContextBase {
+    termPolicyId: string;
+    type: EnumTermPolicyType;
+    version: number;
+}
+
+export interface INotificationUserImportResultContext extends INotificationReferenceContext {
+    created: number;
+    failed: number;
+    reasons: string[];
+}
+
+export interface INotificationWorkspaceInviteFields {
+    workspaceId: string;
+    workspaceName: string;
+    inviterName: string;
+    reference: string;
+    workspaceMemberRole: EnumWorkspaceMemberRole;
+    expiredAt: string;
+    inviteAcceptLink: string;
+}
+
+export interface INotificationWorkspaceInviteContext
+    extends INotificationContextBase, INotificationWorkspaceInviteFields {}
+
+export interface INotificationWorkspaceJoinRequestContext extends INotificationContextBase {
+    workspaceId: string;
+    workspaceName: string;
+    requesterName: string;
+    joinRequestId: string;
+    joinRequestReviewLink: string;
+}
+
+export interface INotificationWorkspaceJoinAcceptedContext extends INotificationContextBase {
+    workspaceId: string;
+    workspaceName: string;
+    joinRequestId: string;
+}
+
+export interface INotificationWorkspaceJoinRejectedContext extends INotificationWorkspaceJoinAcceptedContext {
+    rejectReasonCode: EnumWorkspaceJoinRejectReason;
+    rejectReasonLabel: string;
+}
+
+export interface INotificationLoginLockedContext extends INotificationContextBase {
+    method: EnumNotificationLoginLockedMethod;
+    methodLabel: string;
+    lockedUntil: string;
+}
+
+export interface INotificationContextMap {
+    [EnumNotificationKind.welcome]: INotificationContextBase;
+    [EnumNotificationKind.welcomeSocial]: INotificationContextBase;
+    [EnumNotificationKind.welcomeByAdmin]: INotificationPasswordContext;
+    [EnumNotificationKind.verificationEmail]: INotificationVerificationLinkContext;
+    [EnumNotificationKind.verificationMobileNumber]: INotificationVerificationMobileNumberContext;
+    [EnumNotificationKind.reauthenticationOtp]: INotificationReauthenticationOtpContext;
+    [EnumNotificationKind.verifiedEmail]: INotificationReferenceContext;
+    [EnumNotificationKind.verifiedMobileNumber]: INotificationVerifiedMobileNumberContext;
+    [EnumNotificationKind.temporaryPasswordByAdmin]: INotificationTemporaryPasswordContext;
+    [EnumNotificationKind.changePassword]: INotificationContextBase;
+    [EnumNotificationKind.forgotPassword]: INotificationVerificationLinkContext;
+    [EnumNotificationKind.resetPassword]: INotificationSnapshotContext;
+    [EnumNotificationKind.resetMfaByAdmin]: INotificationSnapshotContext;
+    [EnumNotificationKind.loginLocked]: INotificationLoginLockedContext;
+    [EnumNotificationKind.newDeviceLogin]: INotificationNewDeviceLoginContext;
+    [EnumNotificationKind.publishTermPolicy]: INotificationTermPolicyContext;
+    [EnumNotificationKind.userAcceptTermPolicy]: INotificationTermPolicyContext;
+    [EnumNotificationKind.userImportResult]: INotificationUserImportResultContext;
+    [EnumNotificationKind.workspaceInvite]: INotificationWorkspaceInviteContext;
+    [EnumNotificationKind.workspaceJoinRequest]: INotificationWorkspaceJoinRequestContext;
+    [EnumNotificationKind.workspaceJoinAccepted]: INotificationWorkspaceJoinAcceptedContext;
+    [EnumNotificationKind.workspaceJoinRejected]: INotificationWorkspaceJoinRejectedContext;
+}
+
+export type INotificationContext =
+    INotificationContextMap[EnumNotificationKind];
+
+export type INotificationContextField<K extends EnumNotificationKind> = Extract<
+    keyof INotificationContextMap[K],
+    string
+>;
+
+export interface INotificationKindContract<
+    K extends EnumNotificationKind = EnumNotificationKind,
+> {
     type: EnumNotificationType;
     priority: EnumNotificationPriority;
+    isMandatory: boolean;
     title: string;
     body: string;
     pendingChannels: EnumNotificationChannel[];
     deliveredChannels: EnumNotificationChannel[];
+    queuePriority: EnumQueuePriority;
+    secrets: INotificationContextField<K>[];
+    keyPattern: EnumNotificationKeyPattern | null;
+    metadataFields: INotificationContextField<K>[];
+    templateFields: INotificationContextField<K>[];
+    dateFields: INotificationContextField<K>[];
+}
+
+export type INotificationKeyPatterns = Record<
+    EnumNotificationKeyPattern,
+    string
+>;
+
+export type INotificationSealedRecord = Record<string, Prisma.JsonValue>;
+
+export type INotificationSealedData = INotificationContextBase & {
+    snapshot: INotificationSnapshot | null;
+    verificationId: string | null;
+} & INotificationSealedRecord;
+
+export type INotificationRecipientRecord = {
+    userId: string;
+    username: string;
+    encryptedEmail: string;
+    encryptedTokens: string[];
+    encryptedMobileNumber: string | null;
+    channels: EnumNotificationChannel[];
+};
+
+export interface INotificationNotifyPayload {
+    kind: EnumNotificationKind;
+    context: INotificationSealedData;
+    recipient: INotificationRecipientRecord | null;
+    notificationId: string | null;
+}
+
+export interface INotificationEmailSendPayload {
+    kind: EnumNotificationKind;
+    notificationId: string;
+    userId: string;
+    username: string;
+    encryptedEmail: string;
+    context: INotificationSealedData;
+    completedSteps: EnumNotificationStep[];
+}
+
+export type INotificationSealedInviteContext = Pick<
+    INotificationWorkspaceInviteFields,
+    'reference'
+> &
+    INotificationSealedRecord;
+
+export interface INotificationSmsSendPayload {
+    kind: EnumNotificationKind;
+    notificationId: string;
+    userId: string;
+    username: string;
+    encryptedMobileNumber: string;
+    context: INotificationSealedData;
+    completedSteps: EnumNotificationStep[];
+}
+
+export interface INotificationEmailSendUnregisteredPayload {
+    encryptedEmail: string;
+    context: INotificationSealedInviteContext;
+}
+
+export interface INotificationPushSendPayload {
+    kind: EnumNotificationKind;
+    notificationId: string;
+    userId: string;
+    username: string;
+    encryptedTokens: string[];
+    context: INotificationSealedData;
+    completedSteps: EnumNotificationStep[];
+    encryptedPendingTokens: string[] | null;
+    encryptedFailureTokens: string[] | null;
 }
 
 export interface INotificationSettingContract {
@@ -31,11 +286,31 @@ export interface INotificationCreate {
     userId: string;
     metadata: Prisma.InputJsonValue;
     createdBy: string;
+    channels: EnumNotificationChannel[];
 }
 
 export interface INotificationCreateEntry {
     kind: EnumNotificationKind;
     payload: INotificationCreate;
+}
+
+export interface INotificationCreateRecipient {
+    userId: string;
+    notificationId: string;
+}
+
+export interface INotificationTermPolicyBatchRecipient {
+    userId: string;
+    notificationId: string;
+    email: string;
+    username: string;
+}
+
+export interface INotificationTermPolicyBatchRecipientEncryptedPayload {
+    userId: string;
+    notificationId: string;
+    encryptedEmail: string;
+    username: string;
 }
 
 export interface INotificationUserSettingUpdate {
@@ -44,192 +319,121 @@ export interface INotificationUserSettingUpdate {
     isActive: boolean;
 }
 
-export interface INotificationTemporaryPasswordPayload {
-    password: string;
-    passwordExpiredAt: string;
-    passwordCreatedAt: string;
+export interface INotificationPushCleanupTokenEncryptedPayload {
+    userId: string;
+    encryptedFailureTokens: string[];
 }
 
-export interface INotificationTemporaryPasswordEncryptedPayload extends Omit<
-    INotificationTemporaryPasswordPayload,
-    'password'
-> {
-    encryptedPassword: string;
-}
-
-export type INotificationTemporaryPasswordPushPayload = Omit<
-    INotificationTemporaryPasswordPayload,
-    'password'
->;
-
-export type INotificationWelcomeByAdminPayload =
-    INotificationTemporaryPasswordPayload;
-
-export type INotificationWelcomeByAdminEncryptedPayload =
-    INotificationTemporaryPasswordEncryptedPayload;
-
-export interface INotificationVerificationEmailPayload {
-    link: string;
-    expiredAt: string;
-    expiredInMinutes: number;
-    reference: string;
-}
-
-export interface INotificationVerificationEmailEncryptedPayload extends Omit<
-    INotificationVerificationEmailPayload,
-    'link'
-> {
-    encryptedLink: string;
-}
-
-export type INotificationVerifiedEmailPayload = Pick<
-    INotificationVerificationEmailPayload,
-    'reference'
->;
-
-export interface INotificationForgotPasswordPayload extends INotificationVerificationEmailPayload {
-    resendInMinutes: number;
-}
-
-export interface INotificationForgotPasswordEncryptedPayload extends INotificationVerificationEmailEncryptedPayload {
-    resendInMinutes: number;
-}
-
-export interface INotificationVerifiedMobileNumberPayload extends INotificationVerifiedEmailPayload {
-    resendInMinutes: number;
-    mobileNumber: string;
-}
-
-export interface INotificationNewDeviceLoginPayload {
-    loginFrom: EnumUserLoginFrom;
-    loginWith: EnumUserLoginWith;
-    loginAt: string;
-    requestLog: IRequestLog;
-}
-
-export interface INotificationPublishTermPolicyPayload {
-    type: EnumTermPolicyType;
-    version: number;
-}
-
-export interface INotificationAcceptTermPolicyPayload extends INotificationPublishTermPolicyPayload {
-    termPolicyId: string;
-}
-
-export interface INotificationWorkspaceInvitePayload {
-    workspaceId: string;
-    workspaceName: string;
-    inviterName: string;
-    workspaceMemberRole: EnumWorkspaceMemberRole;
-    inviteAcceptLink: string;
-    reference: string;
-    expiredAt: string;
-}
-
-export interface INotificationWorkspaceInviteEncryptedPayload extends Omit<
-    INotificationWorkspaceInvitePayload,
-    'inviteAcceptLink'
-> {
-    encryptedInviteAcceptLink: string;
-}
-
-export type INotificationWorkspaceInvitePushPayload = Omit<
-    INotificationWorkspaceInvitePayload,
-    'inviteAcceptLink'
->;
-
-export type INotificationWorkspaceInviteUnregisteredPayload =
-    INotificationWorkspaceInvitePayload;
-
-export type INotificationWorkspaceInviteUnregisteredEncryptedPayload =
-    INotificationWorkspaceInviteEncryptedPayload;
-
-export interface INotificationWorkspaceJoinRequestPayload {
-    workspaceId: string;
-    workspaceName: string;
-    requesterName: string;
-    joinRequestReviewLink: string;
-}
-
-export interface INotificationWorkspaceJoinRequestEncryptedPayload extends Omit<
-    INotificationWorkspaceJoinRequestPayload,
-    'joinRequestReviewLink'
-> {
-    encryptedJoinRequestReviewLink: string;
-}
-
-export type INotificationWorkspaceJoinRequestPushPayload = Omit<
-    INotificationWorkspaceJoinRequestPayload,
-    'joinRequestReviewLink'
->;
-
-export interface INotificationWorkspaceJoinAcceptedPayload {
-    workspaceId: string;
-    workspaceName: string;
-}
-
-export interface INotificationWorkspaceJoinRejectedPayload {
-    workspaceId: string;
-    workspaceName: string;
-    rejectReasonCode: EnumWorkspaceJoinRejectReason;
-}
-
-export interface INotificationBulkQueuePayload<T = unknown> {
+export interface INotificationEmailBulkQueuePayload<T = null> {
+    data: T;
+    batchId: string;
     proceedBy: string;
-    data?: T;
+    recipients: INotificationTermPolicyBatchRecipientEncryptedPayload[];
 }
 
-export interface INotificationQueuePayload<
-    T = unknown,
-> extends INotificationBulkQueuePayload<T> {
-    userId: string;
+export interface INotificationEmailBulkOutcome {
+    sentUserIds: string[];
+    failedUserIds: string[];
+    unknownCount: number;
 }
 
-export interface INotificationSendPushPayload {
-    userId: string;
-    notificationId: string;
-    notificationTokens: string[];
-    username: string;
+export interface INotificationStepFailure {
+    step: EnumNotificationStep;
+    rawError: Error;
 }
 
-export interface INotificationPushQueuePayload<T = unknown> {
-    send: INotificationSendPushPayload;
-    data?: T;
+export interface INotificationPushTokenPair {
+    encrypted: string;
+    token: string;
 }
 
-export interface INotificationPushCleanupTokenQueuePayload {
-    data: {
-        userId: string;
-        failureTokens: string[];
-    };
+export interface INotificationPushSendOutcome {
+    encryptedFailureTokens: string[] | null;
+    encryptedPendingTokens: string[] | null;
+    failure: INotificationStepFailure | null;
 }
 
-export interface INotificationEmailSendPayload {
-    userId: string;
-    notificationId: string;
-    email: string;
-    username: string;
-    cc?: string[];
-    bcc?: string[];
+export type INotificationUserSettingPreference = Pick<
+    NotificationUserSetting,
+    'channel' | 'type' | 'isActive'
+>;
+
+export type INotificationKindContracts = {
+    [K in EnumNotificationKind]: INotificationKindContract<K>;
+};
+
+export type INotificationEmailPublishTermPolicyResult = {
+    message: string;
+};
+
+export type INotificationPushCleanupTokensResult = {
+    message: string;
+    countRequestedTokens: number;
+    countRemovedTokens: number;
+};
+
+export type INotificationPushCleanupStaleTokensResult = {
+    message: string;
+    countRemovedTokens: number;
+};
+
+export type INotificationTemplateName = Exclude<
+    EnumNotificationKind,
+    | EnumNotificationKind.userAcceptTermPolicy
+    | EnumNotificationKind.verificationMobileNumber
+>;
+
+export type INotificationTemplateEmail = {
+    subject: string;
+    htmlBody: string;
+};
+
+export interface INotificationNotifyEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notification;
+    name: EnumNotificationProcess.notify;
+    data: INotificationNotifyPayload;
 }
 
-export interface INotificationEmailQueuePayload<T = unknown> {
-    send: INotificationEmailSendPayload;
-    data?: T;
+export interface INotificationEmailPublishTermPolicyEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notificationEmail;
+    name: EnumNotificationEmailProcess.publishTermPolicy;
+    data: INotificationEmailBulkQueuePayload<ITermPolicyPublishPayload>;
 }
 
-export interface INotificationEmailBulkQueuePayload<T = unknown> {
-    send: INotificationEmailSendPayload[];
-    data?: T;
+export interface INotificationEmailSendEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notificationEmail;
+    name: EnumNotificationEmailProcess.send;
+    data: INotificationEmailSendPayload;
 }
 
-export interface INotificationEmailSendUnregisteredPayload {
-    email: string;
-    cc?: string[];
-    bcc?: string[];
+export interface INotificationEmailSendUnregisteredEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notificationEmail;
+    name: EnumNotificationEmailProcess.sendUnregistered;
+    data: INotificationEmailSendUnregisteredPayload;
 }
 
-export interface INotificationEmailUnregisteredQueuePayload<T = unknown> {
-    send: INotificationEmailSendUnregisteredPayload;
-    data?: T;
+export interface INotificationPushSendEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notificationPush;
+    name: EnumNotificationPushProcess.send;
+    data: INotificationPushSendPayload;
+}
+
+export interface INotificationSmsSendEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notificationSms;
+    name: EnumNotificationSmsProcess.send;
+    data: INotificationSmsSendPayload;
+}
+
+export interface INotificationPushCleanupTokensEffect extends IOutboxEffect {
+    queue: EnumNotificationQueue.notificationPush;
+    name: EnumNotificationPushProcess.cleanupTokens;
+    data: INotificationPushCleanupTokenEncryptedPayload;
+}
+
+export interface INotificationEmailSendQueueResponse extends IQueueResponse {
+    result: SendTemplatedEmailCommandOutput | null;
+}
+
+export interface INotificationEmailSendUnregisteredQueueResponse extends IQueueResponse {
+    result: SendTemplatedEmailCommandOutput | null;
 }

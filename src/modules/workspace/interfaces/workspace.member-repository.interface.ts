@@ -6,10 +6,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumWorkspaceMemberRole,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 
@@ -18,30 +15,32 @@ export interface IWorkspaceMemberRepository {
         workspaceId: string,
         userId: string
     ): Promise<WorkspaceMember | null>;
+    findOneOwnerByWorkspace(
+        workspaceId: string
+    ): Promise<WorkspaceMember | null>;
     findByIdAndWorkspace(
         workspaceMemberId: string,
         workspaceId: string
     ): Promise<WorkspaceMember | null>;
-    countOwnedActiveByUser(userId: string): Promise<number>;
-    countOwners(workspaceId: string): Promise<number>;
-    findReviewersByWorkspace(
-        workspaceId: string
-    ): Promise<{ userId: string }[]>;
+    findReviewerUserIdsByWorkspace(workspaceId: string): Promise<string[]>;
+    findWorkspaceIdsByUser(
+        userId: string,
+        role: EnumWorkspaceMemberRole | null
+    ): Promise<string[]>;
+    findWorkspaceIdsByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        role: EnumWorkspaceMemberRole | null
+    ): Promise<string[]>;
     findWithPaginationOffset(
         workspaceId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>
+        { where, ...others }: IPaginationQueryOffsetParams,
+        role: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>>;
     findWithPaginationCursor(
         workspaceId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>
+        { where, ...others }: IPaginationQueryCursorParams,
+        role: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<IWorkspaceMember>>;
     createOwnerInTx(
         tx: IDatabaseTransactionClient,
@@ -55,10 +54,30 @@ export interface IWorkspaceMemberRepository {
         role: EnumWorkspaceMemberRole,
         actorId: string
     ): Promise<WorkspaceMember>;
-    updateRole(
+    updateRoleInTx(
+        tx: IDatabaseTransactionClient,
         targetMemberId: string,
+        expectedRole: EnumWorkspaceMemberRole,
         newRole: EnumWorkspaceMemberRole
-    ): Promise<void>;
-    removeMember(targetMemberId: string): Promise<void>;
-    transferOwnership(fromMemberId: string, toMemberId: string): Promise<void>;
+    ): Promise<boolean>;
+    removeMemberInTx(
+        tx: IDatabaseTransactionClient,
+        targetMemberId: string,
+        expectedRole: EnumWorkspaceMemberRole
+    ): Promise<boolean>;
+    removeByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number>;
+    promoteToOwnerInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        fromMemberId: string,
+        toMemberId: string
+    ): Promise<boolean>;
+    demoteOwnerInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        fromMemberId: string
+    ): Promise<boolean>;
 }

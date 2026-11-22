@@ -1,17 +1,10 @@
 import { z } from 'zod';
 import { PolicySchema } from '@modules/policy/dtos/policy.dto';
 
-/**
- * Request shape naming one stored `(subject, action[])` combination.
- * @public
- */
-export const PolicyRequestSchema = PolicySchema.pick({
-    subject: true,
-    action: true,
-}).strict();
+/** @public */
+export const PolicyRequestSchema = z.strictObject(
+    PolicySchema.pick({ subject: true, action: true }).shape
+);
 
-/**
- * Body naming one subject with its actions.
- * @public
- */
+/** @public */
 export type PolicyRequestDto = z.infer<typeof PolicyRequestSchema>;

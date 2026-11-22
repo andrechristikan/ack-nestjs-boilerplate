@@ -4,10 +4,7 @@ import { DatabaseResponseSchema } from '@common/database/dtos/response/database.
 import { EnumRoleType } from '@generated/prisma-client/client';
 import { PolicySchema } from '@modules/policy/dtos/policy.dto';
 
-/**
- * Base role shape: the stored role row with the policies it grants.
- * @public
- */
+/** @public */
 export const RoleSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -31,8 +28,5 @@ export const RoleSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Stored role with the policies it grants.
- * @public
- */
+/** @public */
 export type RoleDto = z.infer<typeof RoleSchema>;

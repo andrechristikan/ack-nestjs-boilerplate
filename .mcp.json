@@ -1,0 +1,16 @@
+{
+    "mcpServers": {
+        "mongodb": {
+            "command": "bash",
+            "args": [".claude/hooks/mcp.sh", "mongodb"]
+        },
+        "redis-cache": {
+            "command": "bash",
+            "args": [".claude/hooks/mcp.sh", "redis-cache"]
+        },
+        "redis-queue": {
+            "command": "bash",
+            "args": [".claude/hooks/mcp.sh", "redis-queue"]
+        }
+    }
+}

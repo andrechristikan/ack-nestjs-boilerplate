@@ -16,9 +16,6 @@ import { FileExceedMaxSizeUploadException } from '@common/file/exceptions/file.e
 import { FileFieldUnexpectedException } from '@common/file/exceptions/file.field-unexpected.exception';
 import { FileMultipartInvalidException } from '@common/file/exceptions/file.multipart-invalid.exception';
 
-/**
- * Maps the framework exceptions multer and busboy limit failures produce onto typed file exceptions.
- */
 @Injectable()
 export class FileUploadErrorInterceptor implements NestInterceptor {
     private readonly byFrameworkMessage: ReadonlyMap<
@@ -80,7 +77,7 @@ export class FileUploadErrorInterceptor implements NestInterceptor {
     ]);
 
     private extractBaseMessage(message: string): string {
-        return message.split(' - ')[0];
+        return message.split(' - ')[0]!;
     }
 
     private mapError(err: unknown): unknown {

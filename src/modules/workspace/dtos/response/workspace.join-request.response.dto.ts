@@ -6,10 +6,7 @@ import {
     EnumWorkspaceJoinRequestStatus,
 } from '@generated/prisma-client/client';
 
-/**
- * Base workspace-join-request shape: the stored join request row and its review outcome.
- * @public
- */
+/** @public */
 export const WorkspaceJoinRequestResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -42,12 +39,13 @@ export const WorkspaceJoinRequestResponseSchema = DatabaseResponseSchema.omit({
         description: 'When the join request was reviewed',
         example: faker.date.recent(),
     }),
+    expiredAt: z.date().meta({
+        description: 'When the pending join request expires',
+        example: faker.date.soon(),
+    }),
 });
 
-/**
- * Stored workspace join request with its review outcome.
- * @public
- */
+/** @public */
 export type WorkspaceJoinRequestResponseDto = z.infer<
     typeof WorkspaceJoinRequestResponseSchema
 >;

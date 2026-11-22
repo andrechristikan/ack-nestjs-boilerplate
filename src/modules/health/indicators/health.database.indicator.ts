@@ -1,5 +1,6 @@
 import { DatabaseService } from '@common/database/services/database.service';
-import { Injectable } from '@nestjs/common';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
+import { Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 
@@ -8,6 +9,8 @@ import type { HealthIndicatorResult } from '@nestjs/terminus';
  */
 @Injectable()
 export class HealthDatabaseIndicator {
+    private readonly logger = new Logger(HealthDatabaseIndicator.name);
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly healthIndicatorService: HealthIndicatorService
@@ -16,7 +19,9 @@ export class HealthDatabaseIndicator {
     /**
      * Down when the PostgreSQL health query fails or throws.
      */
-    async isHealthy(key: string): Promise<HealthIndicatorResult> {
+    async isHealthy(
+        key: EnumHealthIndicatorKey
+    ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
 
         try {
@@ -24,12 +29,9 @@ export class HealthDatabaseIndicator {
 
             return indicator.up();
         } catch (err: unknown) {
-            const message =
-                err instanceof Error ? err.message : 'Unknown error';
+            this.logger.error(err, 'Database health check failed');
 
-            return indicator.down(
-                `HealthDatabaseIndicator Failed - ${message}`
-            );
+            return indicator.down('Database is unreachable');
         }
     }
 }

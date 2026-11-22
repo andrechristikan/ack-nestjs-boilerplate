@@ -16,21 +16,26 @@ import type {
     IAnalyticStatusCountList,
     IAnalyticWorkspaceSummary,
 } from '@modules/analytic/interfaces/analytic.interface';
-import { AnalyticWorkspaceUserHttpService } from '@modules/analytic/services/analytic.workspace-user.http.service';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
-    WorkspaceCurrent,
+    WorkspaceContext,
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
-import type { Workspace } from '@generated/prisma-client/client';
+import { AnalyticSummaryUseCase } from '@modules/analytic/use-cases/analytic.summary.use-case';
+import { AnalyticInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.invite-funnel.use-case';
+import { AnalyticJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.join-outcomes.use-case';
+import { AnalyticMemberRolesUseCase } from '@modules/analytic/use-cases/analytic.member-roles.use-case';
+import { AnalyticActivityUseCase } from '@modules/analytic/use-cases/analytic.activity.use-case';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 
 @ApiTags('modules.user.analytic')
 @Controller({
@@ -39,7 +44,11 @@ import type { Workspace } from '@generated/prisma-client/client';
 })
 export class AnalyticUserController {
     constructor(
-        private readonly analyticWorkspaceUserHttpService: AnalyticWorkspaceUserHttpService
+        private readonly analyticSummaryUseCase: AnalyticSummaryUseCase,
+        private readonly analyticInviteFunnelUseCase: AnalyticInviteFunnelUseCase,
+        private readonly analyticJoinOutcomesUseCase: AnalyticJoinOutcomesUseCase,
+        private readonly analyticMemberRolesUseCase: AnalyticMemberRolesUseCase,
+        private readonly analyticActivityUseCase: AnalyticActivityUseCase
     ) {}
 
     @Doc({ summary: 'get current workspace analytic summary' })
@@ -47,24 +56,20 @@ export class AnalyticUserController {
         schema: AnalyticWorkspaceSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected()
+    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspace/summary')
     async workspaceSummary(
-        @WorkspaceCurrent() workspace: Workspace,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticWorkspaceSummary>> {
-        return this.analyticWorkspaceUserHttpService.summary(
-            workspace.id,
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticSummaryUseCase.execute(workspaceContext, query);
     }
 
     @Doc({ summary: 'get current workspace invite funnel by date range' })
@@ -75,20 +80,19 @@ export class AnalyticUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspace/invite-funnel')
     async inviteFunnel(
-        @WorkspaceCurrent() workspace: Workspace,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
-        return this.analyticWorkspaceUserHttpService.inviteFunnel(
-            workspace.id,
-            query.startDate,
-            query.endDate
+        return this.analyticInviteFunnelUseCase.execute(
+            workspaceContext,
+            query
         );
     }
 
@@ -102,20 +106,19 @@ export class AnalyticUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspace/join-outcomes')
     async joinOutcomes(
-        @WorkspaceCurrent() workspace: Workspace,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
-        return this.analyticWorkspaceUserHttpService.joinOutcomes(
-            workspace.id,
-            query.startDate,
-            query.endDate
+        return this.analyticJoinOutcomesUseCase.execute(
+            workspaceContext,
+            query
         );
     }
 
@@ -127,15 +130,15 @@ export class AnalyticUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspace/member-roles')
     async memberRoles(
-        @WorkspaceCurrent() workspace: Workspace
+        @WorkspaceContext() workspaceContext: IWorkspaceContext
     ): Promise<IResponseReturn<IAnalyticRoleCountList>> {
-        return this.analyticWorkspaceUserHttpService.memberRoles(workspace.id);
+        return this.analyticMemberRolesUseCase.execute(workspaceContext);
     }
 
     @Doc({ summary: 'get current workspace activity count by date range' })
@@ -146,20 +149,16 @@ export class AnalyticUserController {
     @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
     @WorkspaceProtected()
     @UserProtected()
-    @FeatureFlagProtected('workspace')
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/workspace/activity')
     async activity(
-        @WorkspaceCurrent() workspace: Workspace,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticWorkspaceUserHttpService.activity(
-            workspace.id,
-            query.startDate,
-            query.endDate
-        );
+        return this.analyticActivityUseCase.execute(workspaceContext, query);
     }
 }

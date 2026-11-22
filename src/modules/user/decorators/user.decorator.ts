@@ -1,10 +1,9 @@
 import {
-    DocUserErrorResponses,
+    UserContextStoreKey,
     UserGuardIsVerifiedMetaKey,
-    UserStoreKey,
+    UserProtectedDocErrors,
 } from '@modules/user/constants/user.constant';
 import { UserGuard } from '@modules/user/guards/user.guard';
-import type { IUser } from '@modules/user/interfaces/user.interface';
 import {
     SetMetadata,
     UseGuards,
@@ -12,51 +11,28 @@ import {
     createParamDecorator,
 } from '@nestjs/common';
 import { ClsServiceManager } from 'nestjs-cls';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 
-/**
- * Applies the user guard; pass `false` to skip the email-verified requirement.
- * Documents user kits without `auth.error.accessTokenUnauthorized`.
- * @public
- */
+/** @public */
+export const UserContext = createParamDecorator((): IUserContext => {
+    const userContext =
+        ClsServiceManager.getClsService().get<IUserContext | null>(
+            UserContextStoreKey
+        ) ?? null;
+    if (userContext === null) {
+        throw new RequestContextMissingException(UserContextStoreKey);
+    }
+
+    return userContext;
+});
+
+/** @public */
 export function UserProtected(isVerified: boolean = true): MethodDecorator {
     return applyDecorators(
         UseGuards(UserGuard),
         SetMetadata(UserGuardIsVerifiedMetaKey, isVerified),
-        DocUserErrorResponses.unauthorized,
-        DocUserErrorResponses.forbidden
+        DocErrors(...UserProtectedDocErrors)
     );
 }
-
-/**
- * Reads the current user, or one of its fields, that `UserGuard` stored; throws when either is absent.
- * @public
- */
-export const UserCurrent = createParamDecorator<
-    Extract<keyof IUser, string> | undefined,
-    IUser | NonNullable<IUser[Extract<keyof IUser, string>]>
->(
-    (
-        field: Extract<keyof IUser, string> | undefined
-    ): IUser | NonNullable<IUser[Extract<keyof IUser, string>]> => {
-        const user = ClsServiceManager.getClsService().get<IUser | undefined>(
-            UserStoreKey
-        );
-        if (user === undefined || user === null) {
-            throw new RequestContextMissingException(UserStoreKey);
-        }
-
-        if (field === undefined || field === null) {
-            return user;
-        }
-
-        const value = user[field];
-        if (value === undefined || value === null) {
-            throw new RequestContextMissingException(
-                `${UserStoreKey}.${field}`
-            );
-        }
-
-        return value;
-    }
-);

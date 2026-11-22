@@ -8,38 +8,25 @@ import type {
     IActivityLog,
     IActivityLogCreate,
 } from '@modules/activity-log/interfaces/activity-log.interface';
-import { Prisma } from '@generated/prisma-client/client';
 
 export interface IActivityLogRepository {
     findUserScopedWithPaginationOffset(
         userId: string,
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        { where, ...params }: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IActivityLog>>;
     findUserScopedWithPaginationCursor(
         userId: string,
-        {
-            where,
-            ...params
-        }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
+        { where, ...params }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<IActivityLog>>;
     findByWorkspaceWithPaginationOffset(
         workspaceId: string,
         userId: string | null,
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        { where, ...params }: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IActivityLog>>;
     findByWorkspaceWithPaginationCursor(
         workspaceId: string,
         userId: string | null,
-        {
-            where,
-            ...params
-        }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
+        { where, ...params }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<IActivityLog>>;
-    createMany(rows: IActivityLogCreate[]): Promise<Prisma.BatchPayload>;
+    createMany(rows: IActivityLogCreate[]): Promise<void>;
 }

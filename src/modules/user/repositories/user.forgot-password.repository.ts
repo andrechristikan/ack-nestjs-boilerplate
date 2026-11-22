@@ -1,0 +1,119 @@
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
+import { EnumUserStatus } from '@generated/prisma-client/client';
+import type { ForgotPassword } from '@generated/prisma-client/client';
+import type {
+    IUserForgotPassword,
+    IUserForgotPasswordCreate,
+} from '@modules/user/interfaces/user.interface';
+import type { IUserForgotPasswordRepository } from '@modules/user/interfaces/user.forgot-password-repository.interface';
+import { UserWithRoleInclude } from '@modules/user/constants/user.constant';
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class UserForgotPasswordRepository implements IUserForgotPasswordRepository {
+    constructor(
+        private readonly databaseService: DatabaseService,
+        private readonly helperDateService: HelperDateService
+    ) {}
+
+    async findOneActiveByForgotPasswordToken(
+        token: string
+    ): Promise<IUserForgotPassword | null> {
+        const today = this.helperDateService.create();
+
+        return this.databaseService.client.forgotPassword.findFirst({
+            where: {
+                token,
+                isUsed: false,
+                expiredAt: {
+                    gt: today,
+                },
+                user: {
+                    deletedAt: null,
+                    status: EnumUserStatus.active,
+                },
+            },
+            include: {
+                user: { include: UserWithRoleInclude },
+            },
+        });
+    }
+
+    async findOneLatestByForgotPassword(
+        userId: string
+    ): Promise<ForgotPassword | null> {
+        return this.databaseService.client.forgotPassword.findFirst({
+            where: {
+                userId,
+                user: {
+                    deletedAt: null,
+                    status: EnumUserStatus.active,
+                },
+            },
+            orderBy: {
+                createdAt: EnumPaginationOrderDirectionType.desc,
+            },
+        });
+    }
+
+    async createReplacingUnusedInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        email: string,
+        { expiredAt, reference, hashedToken }: IUserForgotPasswordCreate
+    ): Promise<ForgotPassword> {
+        await this.markUnusedUsedByUserInTx(tx, userId, userId);
+
+        return tx.forgotPassword.create({
+            data: {
+                userId,
+                expiredAt,
+                reference,
+                token: hashedToken,
+                createdBy: userId,
+                to: email,
+            },
+        });
+    }
+
+    async markUsedInTx(
+        tx: IDatabaseTransactionClient,
+        forgotPasswordId: string,
+        resetAt: Date,
+        updatedBy: string
+    ): Promise<boolean> {
+        const { count } = await tx.forgotPassword.updateMany({
+            where: { id: forgotPasswordId, isUsed: false },
+            data: {
+                isUsed: true,
+                resetAt,
+                updatedBy,
+            },
+        });
+
+        return count > 0;
+    }
+
+    async markUnusedUsedByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        updatedBy: string
+    ): Promise<void> {
+        await tx.forgotPassword.updateMany({
+            where: { userId, isUsed: false },
+            data: { isUsed: true, updatedBy },
+        });
+    }
+
+    async deleteExpiredBefore(threshold: Date): Promise<number> {
+        const { count } =
+            await this.databaseService.client.forgotPassword.deleteMany({
+                where: { expiredAt: { lt: threshold } },
+            });
+
+        return count;
+    }
+}

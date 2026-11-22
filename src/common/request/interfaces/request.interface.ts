@@ -1,63 +1,64 @@
 import type { Request } from 'express';
-import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 
-export interface IRequestGeoLocation {
+export type IRequestGeoLocation = {
     latitude: number;
     longitude: number;
     country: string;
     region: string;
     city: string;
-}
+};
 
-export interface IRequestUserAgentBrowser {
+export type IRequestUserAgentBrowser = {
     name: string | null;
     version: string | null;
     major: string | null;
     type: string | null;
-}
+};
 
-export interface IRequestUserAgentCpu {
+export type IRequestUserAgentCpu = {
     architecture: string | null;
-}
+};
 
-export interface IRequestUserAgentDevice {
+export type IRequestUserAgentDevice = {
     type: string | null;
     vendor: string | null;
     model: string | null;
-}
+};
 
-export interface IRequestUserAgentEngine {
+export type IRequestUserAgentEngine = {
     name: string | null;
     version: string | null;
-}
+};
 
-export interface IRequestUserAgentOs {
+export type IRequestUserAgentOs = {
     name: string | null;
     version: string | null;
-}
+};
 
-export interface IRequestUserAgent {
+export type IRequestUserAgent = {
     ua?: string | null;
     browser?: IRequestUserAgentBrowser | null;
     cpu?: IRequestUserAgentCpu | null;
     device?: IRequestUserAgentDevice | null;
     engine?: IRequestUserAgentEngine | null;
     os?: IRequestUserAgentOs | null;
-}
+};
 
-export interface IRequestApp<T = IAuthJwtAccessTokenPayload> extends Omit<
-    Request,
-    'user'
-> {
+export interface IRequestApp extends Omit<Request, 'user'> {
+    id: string;
     correlationId: string;
-    user?: T;
 }
 
 export interface IRequestLog {
     userAgent: IRequestUserAgent;
     ipAddress: string | null;
     geoLocation: IRequestGeoLocation | null;
+}
+
+export interface IRequestContext {
+    requestLog: IRequestLog;
+    language: string;
 }
 
 export interface IRequestThrottlePolicy {
@@ -70,3 +71,10 @@ export interface IRequestThrottleOptions {
     user?: boolean;
     route?: EnumRequestThrottleRoute;
 }
+
+export type IRequestThrottleRoutePolicies = Record<
+    EnumRequestThrottleRoute,
+    IRequestThrottlePolicy
+>;
+
+export type IRequestStorePatch<T extends object> = Partial<T>;

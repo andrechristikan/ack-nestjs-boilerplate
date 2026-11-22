@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes the email and mobile verification funnels of a window.
- * @public
- */
+/** @public */
 export const AnalyticVerificationFunnelResponseSchema = z.object({
     email: z
         .object({
@@ -21,17 +18,18 @@ export const AnalyticVerificationFunnelResponseSchema = z.object({
                 example: faker.number.int({ min: 0, max: 1000 }),
             }),
             rate: z.number().meta({
-                description: 'Used divided by total, between 0 and 1',
+                description:
+                    'Used divided by total, as a percentage between 0-100',
                 example: faker.number.float({
                     min: 0,
-                    max: 1,
+                    max: 100,
                     fractionDigits: 2,
                 }),
             }),
         })
         .meta({
             description: 'Email verification funnel of the window',
-            example: { used: 80, unused: 20, total: 100, rate: 0.8 },
+            example: { used: 80, unused: 20, total: 100, rate: 80 },
         }),
     mobile: z
         .object({
@@ -48,24 +46,22 @@ export const AnalyticVerificationFunnelResponseSchema = z.object({
                 example: faker.number.int({ min: 0, max: 1000 }),
             }),
             rate: z.number().meta({
-                description: 'Used divided by total, between 0 and 1',
+                description:
+                    'Used divided by total, as a percentage between 0-100',
                 example: faker.number.float({
                     min: 0,
-                    max: 1,
+                    max: 100,
                     fractionDigits: 2,
                 }),
             }),
         })
         .meta({
             description: 'Mobile verification funnel of the window',
-            example: { used: 40, unused: 60, total: 100, rate: 0.4 },
+            example: { used: 40, unused: 60, total: 100, rate: 40 },
         }),
 });
 
-/**
- * Email and mobile verification funnels of a window.
- * @public
- */
+/** @public */
 export type AnalyticVerificationFunnelResponseDto = z.infer<
     typeof AnalyticVerificationFunnelResponseSchema
 >;

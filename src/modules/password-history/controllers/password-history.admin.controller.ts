@@ -7,16 +7,14 @@ import { ResponsePagination } from '@common/response/decorators/response.decorat
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-
 import { PasswordHistoryResponseSchema } from '@modules/password-history/dtos/response/password-history.response.dto';
 import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
-import { PasswordHistoryHttpService } from '@modules/password-history/services/password-history.http.service';
+import { PasswordHistoryGetListOffsetByAdminUseCase } from '@modules/password-history/use-cases/password-history.get-list-offset-by-admin.use-case';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Param, Query } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
@@ -31,7 +29,7 @@ import {
 })
 export class PasswordHistoryAdminController {
     constructor(
-        private readonly passwordHistoryHttpService: PasswordHistoryHttpService
+        private readonly passwordHistoryGetListOffsetByAdminUseCase: PasswordHistoryGetListOffsetByAdminUseCase
     ) {}
 
     @Doc({ summary: 'get all user password histories' })
@@ -51,17 +49,17 @@ export class PasswordHistoryAdminController {
     )
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
-        @Query({ schema: PasswordHistoryAdminListRequestSchema })
-        query: PasswordHistoryAdminListRequestDto,
         @Param('userId', { schema: RequestUuidSchema })
-        userId: string
+        userId: string,
+        @Query({ schema: PasswordHistoryAdminListRequestSchema })
+        query: PasswordHistoryAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
-        return this.passwordHistoryHttpService.getListOffsetByAdmin(
+        return this.passwordHistoryGetListOffsetByAdminUseCase.execute(
             userId,
             query
         );

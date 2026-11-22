@@ -1,0 +1,20 @@
+{
+    "model": "jev-1.14.0",
+    "timeout_seconds": 1,
+    "max": { "model": "opus", "effort": "high" },
+    "thresholds": {
+        "effort_high": 1.8
+    },
+    "repository": "A NestJS API boilerplate. src/ holds the application in feature modules (auth, user, workspace, project, notification, and more). test/unit/ holds unit specs. docs/ holds documentation. .claude/ holds the Claude Code agents, skills, rules, hooks, and settings.",
+    "level_questions": {
+        "effort": {
+            "type": "score",
+            "instructions": "How much work does `request` need, given the files and modules in `location`?",
+            "criteria": [
+                "A lookup, a rename, or a one-line edit",
+                "A change inside one feature module, with its tests",
+                "Data-model, transaction, concurrency, or security work"
+            ]
+        }
+    }
+}

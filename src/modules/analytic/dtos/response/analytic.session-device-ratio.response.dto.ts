@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes how many sessions each registered device carries.
- * @public
- */
+/** @public */
 export const AnalyticSessionDeviceRatioResponseSchema = z.object({
     sessions: z.number().meta({
         description: 'Sessions measured',
@@ -20,10 +17,7 @@ export const AnalyticSessionDeviceRatioResponseSchema = z.object({
     }),
 });
 
-/**
- * How many sessions each registered device carries.
- * @public
- */
+/** @public */
 export type AnalyticSessionDeviceRatioResponseDto = z.infer<
     typeof AnalyticSessionDeviceRatioResponseSchema
 >;

@@ -1,0 +1,274 @@
+import type {
+    IRequestUserAgent,
+    IRequestGeoLocation,
+} from '@common/request/interfaces/request.interface';
+import { Test } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { MessageService } from '@common/message/services/message.service';
+import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+
+import { buildActivityLog } from '@test/unit/helpers/test.unit.activity-log.helper';
+import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
+import {
+    buildApiKeyContext,
+    buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildWorkspace,
+    buildWorkspaceContext,
+    buildWorkspaceMember,
+} from '@test/unit/helpers/test.unit.request.helper';
+
+describe('ActivityLogUtil', () => {
+    const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
+
+    let util: ActivityLogUtil;
+
+    beforeEach(async () => {
+        vi.resetAllMocks();
+
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                ActivityLogUtil,
+                { provide: MessageService, useValue: messageService },
+                { provide: DatabaseUtil, useValue: databaseUtil },
+            ],
+        }).compile();
+
+        util = module.get(ActivityLogUtil);
+    });
+
+    describe('getDescription', () => {
+        it('resolves the i18n key scoped to the action with metadata properties', () => {
+            messageService.setMessage.mockReturnValue('User logged in');
+            const metadata = { targetUserId: 'user-1' };
+
+            const result = util.getDescription(
+                EnumActivityLogAction.userLoginCredential,
+                metadata
+            );
+
+            expect(result).toBe('User logged in');
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                `activityLog.${EnumActivityLogAction.userLoginCredential}`,
+                { properties: metadata }
+            );
+        });
+
+        it('resolves the i18n key with no metadata', () => {
+            messageService.setMessage.mockReturnValue('User logged out');
+
+            const result = util.getDescription(
+                EnumActivityLogAction.userLogout,
+                null
+            );
+
+            expect(result).toBe('User logged out');
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                `activityLog.${EnumActivityLogAction.userLogout}`,
+                {}
+            );
+        });
+    });
+
+    describe('toPayload', () => {
+        const requestContext = buildRequestContext();
+        const apiKeyContext = buildApiKeyContext();
+
+        it('carries the ids and the request log of the four contexts', () => {
+            const authContext = buildAuthJwtAccessContext('user-1');
+            const workspace = buildWorkspace();
+            const workspaceContext = buildWorkspaceContext(
+                workspace,
+                buildWorkspaceMember('user-1')
+            );
+
+            const result = util.toPayload(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext
+            );
+
+            expect(result).toEqual({
+                apiKeyId: 'api-key-1',
+                actorUserId: 'user-1',
+                workspaceId: workspace.id,
+                requestLog: requestContext.requestLog,
+            });
+        });
+
+        it('carries a null actor and workspace when the route has none', () => {
+            const result = util.toPayload(
+                requestContext,
+                apiKeyContext,
+                null,
+                null
+            );
+
+            expect(result).toEqual({
+                apiKeyId: 'api-key-1',
+                actorUserId: null,
+                workspaceId: null,
+                requestLog: requestContext.requestLog,
+            });
+        });
+    });
+
+    describe('buildCreateManyUserData', () => {
+        it('builds the create-many-user row from the actor, request log, and metadata', () => {
+            const userAgent: IRequestUserAgent = {
+                ua: 'test-agent',
+                browser: null,
+                cpu: { architecture: null },
+                device: { type: null, vendor: null, model: null },
+                engine: { name: null, version: null },
+                os: { name: null, version: null },
+            };
+            const geoLocation: IRequestGeoLocation = {
+                latitude: 1,
+                longitude: 2,
+                country: 'US',
+                region: 'CA',
+                city: 'SF',
+            };
+            const requestLog: IRequestLog = {
+                userAgent,
+                ipAddress: '127.0.0.1',
+                geoLocation,
+            };
+            const metadata = { targetUserId: 'user-1' };
+            const plainUserAgent = { ua: 'test-agent' };
+            const plainGeoLocation = { country: 'US' };
+            messageService.setMessage.mockReturnValue('User logged in');
+            databaseUtil.toPlainObject.mockReturnValueOnce(plainUserAgent);
+            databaseUtil.toPlainObject.mockReturnValueOnce(plainGeoLocation);
+
+            const result = util.buildCreateManyUserData(
+                'user-1',
+                'workspace-1',
+                EnumActivityLogAction.userLoginCredential,
+                requestLog,
+                metadata
+            );
+
+            expect(result).toEqual({
+                workspaceId: 'workspace-1',
+                action: EnumActivityLogAction.userLoginCredential,
+                description: 'User logged in',
+                ipAddress: '127.0.0.1',
+                userAgent: plainUserAgent,
+                geoLocation: plainGeoLocation,
+                metadata,
+                createdBy: 'user-1',
+            });
+            expect(databaseUtil.toPlainObject).toHaveBeenNthCalledWith(
+                1,
+                userAgent
+            );
+            expect(databaseUtil.toPlainObject).toHaveBeenNthCalledWith(
+                2,
+                geoLocation
+            );
+        });
+
+        it('builds a row for a null workspace with no metadata', () => {
+            const requestLog: IRequestLog = {
+                userAgent: {
+                    ua: null,
+                    browser: null,
+                    cpu: { architecture: null },
+                    device: { type: null, vendor: null, model: null },
+                    engine: { name: null, version: null },
+                    os: { name: null, version: null },
+                },
+                ipAddress: null,
+                geoLocation: null,
+            };
+            messageService.setMessage.mockReturnValue('User logged out');
+            databaseUtil.toPlainObject.mockReturnValue(null);
+
+            const result = util.buildCreateManyUserData(
+                'user-1',
+                null,
+                EnumActivityLogAction.userLogout,
+                requestLog,
+                null
+            );
+
+            expect(result).toEqual({
+                workspaceId: null,
+                action: EnumActivityLogAction.userLogout,
+                description: 'User logged out',
+                ipAddress: null,
+                userAgent: null,
+                geoLocation: null,
+                createdBy: 'user-1',
+            });
+        });
+    });
+
+    describe('toMaskedList', () => {
+        const geoLocation: IRequestGeoLocation = {
+            latitude: 1,
+            longitude: 2,
+            country: 'ID',
+            region: 'Jakarta',
+            city: 'Jakarta',
+        };
+
+        it('hides the request details and actorUserId of another actor entry', () => {
+            const row = {
+                ...buildActivityLog('log-1', 'admin-1'),
+                geoLocation,
+                metadata: {
+                    actorUserId: 'admin-1',
+                    targetUserId: 'user-1',
+                },
+            };
+
+            const [result] = util.toMaskedList([row], 'user-1');
+
+            expect(result).toEqual({
+                ...row,
+                ipAddress: null,
+                userAgent: null,
+                geoLocation: null,
+                createdBy: null,
+                metadata: { targetUserId: 'user-1' },
+            });
+        });
+
+        it('returns an empty list for an empty page', () => {
+            expect(util.toMaskedList([], 'user-1')).toEqual([]);
+        });
+
+        it('returns the reader own entry unchanged', () => {
+            const row = {
+                ...buildActivityLog('log-1', 'user-1'),
+                metadata: { actorUserId: 'user-1' },
+            };
+
+            expect(util.toMaskedList([row], 'user-1')).toEqual([row]);
+        });
+
+        it('keeps null metadata null on another actor entry', () => {
+            const row = buildActivityLog('log-1', 'admin-1');
+
+            const [result] = util.toMaskedList([row], 'user-1');
+
+            expect(result).toEqual({
+                ...row,
+                ipAddress: null,
+                userAgent: null,
+                geoLocation: null,
+                createdBy: null,
+                metadata: null,
+            });
+        });
+    });
+});

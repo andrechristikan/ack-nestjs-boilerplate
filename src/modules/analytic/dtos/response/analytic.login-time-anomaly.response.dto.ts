@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes one user logging in at an hour they historically do not use.
- * @public
- */
+/** @public */
 export const AnalyticLoginTimeAnomalyResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the user who logged in',
@@ -20,10 +17,7 @@ export const AnalyticLoginTimeAnomalyResponseSchema = z.object({
     }),
 });
 
-/**
- * One user logging in at an hour they historically do not use.
- * @public
- */
+/** @public */
 export type AnalyticLoginTimeAnomalyResponseDto = z.infer<
     typeof AnalyticLoginTimeAnomalyResponseSchema
 >;

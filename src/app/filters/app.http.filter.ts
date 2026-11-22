@@ -2,16 +2,13 @@ import { Catch, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
 import Case from 'case';
+import { AppRefusalLogStatuses } from '@app/constants/app.constant';
 import { MessageService } from '@common/message/services/message.service';
 import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 import type { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 
-/**
- * Handles framework `HttpException`: builds the standard error envelope from the HTTP status
- * and reports 5xx to Sentry.
- */
 @Catch(HttpException)
 export class AppHttpFilter implements ExceptionFilter {
     private readonly logger = new Logger(AppHttpFilter.name);
@@ -43,7 +40,18 @@ export class AppHttpFilter implements ExceptionFilter {
         const extended =
             responseException && typeof responseException === 'object'
                 ? (responseException as Record<string, unknown>)
-                : undefined;
+                : null;
+
+        const statusCodeKey: string =
+            (extended?.statusCodeKey as string) ??
+            (statusName ? Case.camel(statusName) : statusHttp.toString());
+
+        if (AppRefusalLogStatuses.has(statusHttp)) {
+            this.logger.warn(
+                { statusCodeKey, httpStatus: statusHttp },
+                'A request was refused'
+            );
+        }
 
         const metadata: ResponseMetadataDto =
             this.responseMetadataService.create();
@@ -57,9 +65,7 @@ export class AppHttpFilter implements ExceptionFilter {
 
         const responseBody: ResponseErrorDto = {
             statusCode: statusHttp,
-            statusCodeKey:
-                (extended?.statusCodeKey as string) ??
-                (statusName ? Case.camel(statusName) : statusHttp.toString()),
+            statusCodeKey,
             module: (extended?.module as string) ?? 'http',
             message,
             metadata,

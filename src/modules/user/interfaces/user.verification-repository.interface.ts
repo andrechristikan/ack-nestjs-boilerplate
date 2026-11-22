@@ -1,9 +1,10 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { Verification } from '@generated/prisma-client/client';
 import type {
-    IUserOnboardingVerification,
-    IUserVerificationCreate,
-} from '@modules/user/interfaces/user.interface';
+    EnumUserReauthenticationAction,
+    Verification,
+} from '@generated/prisma-client/client';
+import type { IUserVerificationEmailCreate } from '@modules/user/interfaces/user.interface';
+import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 
 export interface IUserVerificationRepository {
     findOneActiveByVerificationEmailToken(
@@ -12,29 +13,69 @@ export interface IUserVerificationRepository {
     findOneLatestByVerificationEmail(
         userId: string
     ): Promise<Verification | null>;
+    findOneLatestReauthentication(
+        userId: string,
+        action: EnumUserReauthenticationAction
+    ): Promise<Verification | null>;
+    findOneActiveReauthentication(
+        userId: string,
+        action: EnumUserReauthenticationAction,
+        token: string
+    ): Promise<Verification | null>;
+    markUnusedReauthenticationUsedInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        action: EnumUserReauthenticationAction
+    ): Promise<void>;
+    findOneLatestByMobileNumber(
+        userId: string,
+        mobileNumberId: string
+    ): Promise<Verification | null>;
+    findOneActiveByMobileOtp(
+        userId: string,
+        mobileNumberId: string,
+        token: string
+    ): Promise<Verification | null>;
+    findOneActiveMobileById(
+        verificationId: string
+    ): Promise<Verification | null>;
+    markUnusedMobileUsedInTx(
+        tx: IDatabaseTransactionClient,
+        mobileNumberId: string
+    ): Promise<void>;
     markUsedInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        verifiedAt: Date
-    ): Promise<Verification>;
-    createFromOnboardingInTx(
+        verifiedAt: Date,
+        updatedBy: string
+    ): Promise<boolean>;
+    createInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         {
             reference,
             token,
             type,
+            action,
+            mobileNumberId,
             to,
             expiredAt,
             verifiedAt,
             isUsed,
-        }: IUserOnboardingVerification,
+        }: IUserCreateVerification,
         createdBy: string
     ): Promise<Verification>;
-    createReplacingActive(
+    createReplacingActiveInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         userEmail: string,
-        { expiredAt, reference, hashedToken, type }: IUserVerificationCreate,
+        {
+            expiredAt,
+            reference,
+            hashedToken,
+            type,
+        }: IUserVerificationEmailCreate,
         createdAt: Date
     ): Promise<Verification>;
+    deleteExpiredBefore(threshold: Date): Promise<number>;
 }

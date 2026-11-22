@@ -1,5 +1,5 @@
 # Dependencies & build output (reinstalled / regenerated inside the image)
-# generated/ also holds agent reports under generated/docs/ — not needed in the image
+# generated/ also holds the sweep log and the owner's notes, not needed in the image
 node_modules/
 dist/
 generated/
@@ -13,8 +13,10 @@ generated/
 # Generated artifacts
 swagger.json
 src/metadata.ts
+src/generated/
 
 # Tests & coverage
+test/
 coverage/
 .nyc_output/
 .vitest/
@@ -42,6 +44,7 @@ jwks.json
 .dockerignore
 docker-compose*.yml
 ci/
+dockerfile
 
 # CI / project meta
 .github/
@@ -54,7 +57,6 @@ ci/
 .commitlintrc
 cspell.json
 eslint.config.mjs
-nodemon.json
 
 # Docs
 docs/
@@ -85,9 +87,15 @@ tmp/
 
 # AI Tools
 .claude/
+.agents/
+.mcp.json
+.scratch/
+.superpowers/
+skills-lock.json
 .cursor/
 .cursorignore
 .cursorindexingignore
 .copilot/
 .windsurfrules
 plan.md
+sbom.cdx.json

@@ -15,7 +15,7 @@ jobs:
 
         steps:
             - name: Mark and close stale issues
-              uses: actions/stale@v11
+              uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
               with:
                   # Mark as stale after 14 days of inactivity
                   days-before-stale: 14
@@ -23,13 +23,9 @@ jobs:
                   days-before-close: 7
                   stale-issue-label: stale
                   stale-issue-message: >
-                      This issue has had no activity for 14 days and is now
-                      marked as stale. Remove the stale label or comment to keep
-                      it open, otherwise it will be closed in 7 days.
+                      This issue has had no activity for 14 days and is now marked as stale. Remove the stale label or comment to keep it open, otherwise it will be closed in 7 days.
                   close-issue-message: >
-                      This issue was closed because it has been stale for 7 days
-                      with no activity. Feel free to reopen if it is still
-                      relevant.
+                      This issue was closed because it has been stale for 7 days with no activity. Feel free to reopen if it is still relevant.
                   # Issues only — disable stale handling for pull requests
                   days-before-pr-stale: -1
                   days-before-pr-close: -1

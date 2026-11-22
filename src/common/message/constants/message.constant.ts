@@ -1,5 +1,2 @@
-/**
- * Message key used when an issue carries no code.
- * @public
- */
+/** @public */
 export const MessageValidationIssueFallbackKey = 'custom';

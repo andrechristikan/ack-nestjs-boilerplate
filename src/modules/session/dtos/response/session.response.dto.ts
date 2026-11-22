@@ -1,15 +1,12 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { RequestGeoLocationResponseSchema } from '@common/request/dtos/response/request.geo-location.response.dto';
 import { RequestUserAgentResponseSchema } from '@common/request/dtos/response/request.user-agent.response.dto';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
-/**
- * Base session shape: the stored session row without the JWT identifier.
- * @public
- */
+/** @public */
 export const SessionResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -130,8 +127,5 @@ export const SessionResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Stored session without the JWT identifier.
- * @public
- */
+/** @public */
 export type SessionResponseDto = z.infer<typeof SessionResponseSchema>;

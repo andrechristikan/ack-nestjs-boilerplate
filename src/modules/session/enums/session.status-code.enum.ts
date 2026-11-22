@@ -1,8 +1,5 @@
-/**
- * Status codes raised by the `session` module.
- * @public
- */
+/** @public */
 export enum EnumSessionStatusCodeError {
     notFound = 50400,
-    forbidden = 50401,
+    revoked = 50401,
 }

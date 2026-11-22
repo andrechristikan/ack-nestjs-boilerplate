@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Validates the body for creating a workspace.
- * @public
- */
+/** @public */
 export const WorkspaceCreateRequestSchema = z.strictObject({
     name: z.string().min(1).max(150).meta({
         description: 'Workspace name',
@@ -21,10 +18,7 @@ export const WorkspaceCreateRequestSchema = z.strictObject({
     }),
 });
 
-/**
- * Body for creating a workspace.
- * @public
- */
+/** @public */
 export type WorkspaceCreateRequestDto = z.infer<
     typeof WorkspaceCreateRequestSchema
 >;

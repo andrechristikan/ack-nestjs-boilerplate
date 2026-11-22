@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `auth` module.
- * @public
- */
+/** @public */
 export enum EnumAuthStatusCodeError {
     jwtAccessTokenInvalid = 50800,
     jwtRefreshTokenInvalid = 50801,
@@ -9,15 +6,11 @@ export enum EnumAuthStatusCodeError {
     socialGoogleInvalid = 50803,
     socialAppleRequired = 50804,
     socialAppleInvalid = 50805,
-    twoFactorInvalid = 50806,
-    twoFactorChallengeInvalid = 50807,
-    twoFactorNotEnabled = 50808,
-    twoFactorAlreadyEnabled = 50809,
-    twoFactorRequiredSetup = 50810,
-    twoFactorNotRequiredSetup = 50811,
-    twoFactorAttemptTemporaryLock = 50812,
-    twoFactorMethodRequired = 50813,
-    twoFactorSetupRequired = 50814,
-    twoFactorSecretUnavailable = 50815,
-    twoFactorBackupCodeRequired = 50816,
+    socialGoogleNotConfigured = 50806,
+    socialAppleNotConfigured = 50807,
+    providerUnavailable = 50808,
+    jwtGuardMissing = 50809,
+    passwordContextWord = 50810,
+    passwordCommon = 50811,
+    socialNonceInvalid = 50812,
 }

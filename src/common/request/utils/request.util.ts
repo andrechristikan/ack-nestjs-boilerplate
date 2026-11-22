@@ -1,11 +1,8 @@
-import { IncomingMessage } from 'http';
-import { isIP } from 'net';
 import { Injectable } from '@nestjs/common';
-import { getClientIp } from '@supercharge/request-ip';
+import type { Request } from 'express';
 import geoIp from 'geoip-lite';
 import { UAParser } from 'ua-parser-js';
 import type {
-    IRequestApp,
     IRequestGeoLocation,
     IRequestLog,
     IRequestUserAgent,
@@ -22,14 +19,12 @@ export class RequestUtil {
         return values.some(value => value !== null) ? group : null;
     }
 
-    resolveThrottleTrackerIp(req: IRequestApp): string {
-        const ip = req.ip ?? '';
-
-        return isIP(ip) ? ip : (req.socket.remoteAddress ?? '');
+    getClientIp(req: Request): string {
+        return req.ip ?? req.socket.remoteAddress ?? '';
     }
 
-    parseUserAgent(raw: string | undefined): IRequestUserAgent {
-        const result = UAParser(raw);
+    parseUserAgent(raw: string | null | undefined): IRequestUserAgent {
+        const result = UAParser(raw ?? '');
 
         const browser: IRequestUserAgentBrowser = {
             name: result.browser.name ?? null,
@@ -82,13 +77,12 @@ export class RequestUtil {
         };
     }
 
-    /**
-     * Build the request-log context (ua / ip / geo) from a raw request.
-     * Called once per HTTP request from the request-log middleware.
-     */
-    buildRequestLog(req: IncomingMessage): IRequestLog {
-        const userAgent = this.parseUserAgent(req.headers['user-agent']);
-        const ipAddress = getClientIp(req) ?? null;
+    buildRequestLog(req: Request): IRequestLog {
+        const userAgent = this.parseUserAgent(
+            req.headers['user-agent'] ?? null
+        );
+        const clientIp = this.getClientIp(req);
+        const ipAddress = clientIp === '' ? null : clientIp;
 
         let geoLocation: IRequestGeoLocation | null = null;
         if (ipAddress) {

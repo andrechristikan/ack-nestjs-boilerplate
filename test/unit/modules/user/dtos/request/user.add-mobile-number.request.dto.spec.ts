@@ -1,0 +1,76 @@
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { UserAddMobileNumberRequestSchema } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
+
+describe('UserAddMobileNumberRequestSchema', () => {
+    const payload = {
+        countryId: '01920000-0000-7000-8000-6cd799439012',
+        number: '81234567890',
+        phoneCode: '62',
+    };
+
+    it('parses a payload into exactly the declared fields', () => {
+        const result = UserAddMobileNumberRequestSchema.parse(payload);
+
+        expect(result).toEqual(payload);
+    });
+
+    it('parses the re-authentication fields beside the number', () => {
+        const full = {
+            ...payload,
+            password: 'Current-pass1',
+            method: EnumMfaMethod.totp,
+            code: '654321',
+            backupCode: 'ABCD1234EF',
+            otp: '123456',
+        };
+
+        const result = UserAddMobileNumberRequestSchema.parse(full);
+
+        expect(result).toEqual(full);
+    });
+
+    it('rejects a number shorter than 8 characters', () => {
+        expect(() =>
+            UserAddMobileNumberRequestSchema.parse({
+                ...payload,
+                number: '123',
+            })
+        ).toThrow();
+    });
+
+    it('rejects a number with a non-digit character', () => {
+        expect(() =>
+            UserAddMobileNumberRequestSchema.parse({
+                ...payload,
+                number: 'abcdefgh',
+            })
+        ).toThrow();
+    });
+
+    it('rejects a phone code with a non-digit character', () => {
+        expect(() =>
+            UserAddMobileNumberRequestSchema.parse({
+                ...payload,
+                phoneCode: '+62',
+            })
+        ).toThrow();
+    });
+
+    it('rejects an empty password', () => {
+        expect(() =>
+            UserAddMobileNumberRequestSchema.parse({
+                ...payload,
+                password: '',
+            })
+        ).toThrow();
+    });
+
+    it('rejects an undeclared key', () => {
+        expect(() =>
+            UserAddMobileNumberRequestSchema.parse({
+                ...payload,
+                username: 'johnSmith123',
+            })
+        ).toThrow();
+    });
+});

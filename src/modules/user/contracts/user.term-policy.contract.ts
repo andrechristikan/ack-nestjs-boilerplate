@@ -1,25 +1,7 @@
-import { EnumTermPolicyType } from '@generated/prisma-client/client';
+import { TermPolicyDefaultRequiredTypes } from '@modules/term-policy/constants/term-policy.constant';
 import type { IUserTermPolicyContract } from '@modules/user/interfaces/user.interface';
 
-/**
- * Term-policy acceptance a newly created user starts with: the per-type defaults written on the row, and the types every account must accept.
- * @public
- */
+/** @public */
 export const UserTermPolicyContract: IUserTermPolicyContract = {
-    defaults: {
-        [EnumTermPolicyType.cookies]: false,
-        [EnumTermPolicyType.marketing]: false,
-        [EnumTermPolicyType.privacy]: true,
-        [EnumTermPolicyType.termsOfService]: true,
-    },
-    columns: {
-        [EnumTermPolicyType.cookies]: 'cookiesAccepted',
-        [EnumTermPolicyType.marketing]: 'marketingAccepted',
-        [EnumTermPolicyType.privacy]: 'privacyAccepted',
-        [EnumTermPolicyType.termsOfService]: 'termsOfServiceAccepted',
-    },
-    requiredTypes: [
-        EnumTermPolicyType.termsOfService,
-        EnumTermPolicyType.privacy,
-    ],
+    requiredTypes: TermPolicyDefaultRequiredTypes,
 };

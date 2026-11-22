@@ -1,3 +1,4 @@
+import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import type {
@@ -14,7 +15,6 @@ import {
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
-import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import type { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member-repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -28,8 +28,8 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
 
     private buildWorkspaceScopedWhere(
         workspaceId: string,
-        where?: Prisma.WorkspaceMemberWhereInput,
-        role?: Record<string, IPaginationIn>
+        where: Prisma.WorkspaceMemberWhereInput | null,
+        role: Record<string, IPaginationIn> | null
     ): Prisma.WorkspaceMemberWhereInput {
         return {
             ...where,
@@ -50,6 +50,18 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         });
     }
 
+    async findOneOwnerByWorkspace(
+        workspaceId: string
+    ): Promise<WorkspaceMember | null> {
+        return this.databaseService.client.workspaceMember.findFirst({
+            where: {
+                workspaceId,
+                role: EnumWorkspaceMemberRole.owner,
+                workspace: WorkspaceActiveFilter,
+            },
+        });
+    }
+
     async findByIdAndWorkspace(
         workspaceMemberId: string,
         workspaceId: string
@@ -62,96 +74,100 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         });
     }
 
-    async countOwnedActiveByUser(userId: string): Promise<number> {
-        return this.databaseService.client.workspaceMember.count({
-            where: {
-                userId,
-                role: EnumWorkspaceMemberRole.owner,
-                workspace: WorkspaceActiveFilter,
-            },
-        });
-    }
-
-    async countOwners(workspaceId: string): Promise<number> {
-        return this.databaseService.client.workspaceMember.count({
-            where: {
-                workspaceId,
-                role: EnumWorkspaceMemberRole.owner,
-            },
-        });
-    }
-
-    async findReviewersByWorkspace(
+    async findReviewerUserIdsByWorkspace(
         workspaceId: string
-    ): Promise<{ userId: string }[]> {
-        return this.databaseService.client.workspaceMember.findMany({
-            where: {
-                workspaceId,
-                role: {
-                    in: [
-                        EnumWorkspaceMemberRole.owner,
-                        EnumWorkspaceMemberRole.admin,
-                    ],
+    ): Promise<string[]> {
+        const reviewers =
+            await this.databaseService.client.workspaceMember.findMany({
+                where: {
+                    workspaceId,
+                    role: {
+                        in: [
+                            EnumWorkspaceMemberRole.owner,
+                            EnumWorkspaceMemberRole.admin,
+                        ],
+                    },
                 },
-            },
-            select: { userId: true },
+                select: { userId: true },
+            });
+
+        return reviewers.map(reviewer => reviewer.userId);
+    }
+
+    async findWorkspaceIdsByUser(
+        userId: string,
+        role: EnumWorkspaceMemberRole | null
+    ): Promise<string[]> {
+        const members =
+            await this.databaseService.client.workspaceMember.findMany({
+                where: { userId, ...(role !== null && { role }) },
+                select: { workspaceId: true },
+            });
+
+        return members.map(member => member.workspaceId);
+    }
+
+    async findWorkspaceIdsByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string,
+        role: EnumWorkspaceMemberRole | null
+    ): Promise<string[]> {
+        const members = await tx.workspaceMember.findMany({
+            where: { userId, ...(role !== null && { role }) },
+            select: { workspaceId: true },
         });
+
+        return members.map(member => member.workspaceId);
     }
 
     async findWithPaginationOffset(
         workspaceId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>
+        { where, ...others }: IPaginationQueryOffsetParams,
+        role: Record<string, IPaginationIn> | null
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
-            where,
+            where ?? null,
             role
         );
 
-        return this.paginationService.offset<
-            IWorkspaceMember,
-            Prisma.WorkspaceMemberWhereInput
-        >(this.databaseService.client.workspaceMember, {
-            ...others,
-            where: scopedWhere,
-            include: {
-                user: {
-                    select: UserRefSelect,
+        return this.paginationService.offset(
+            this.databaseService.client.workspaceMember,
+            {
+                ...others,
+                where: scopedWhere,
+                include: {
+                    user: {
+                        select: UserRefSelect,
+                    },
                 },
-            },
-        });
+            }
+        );
     }
 
     async findWithPaginationCursor(
         workspaceId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.WorkspaceMemberWhereInput>,
-        role?: Record<string, IPaginationIn>
+        { where, ...others }: IPaginationQueryCursorParams,
+        role: Record<string, IPaginationIn> | null
     ): Promise<IPaginationCursorReturn<IWorkspaceMember>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
-            where,
+            where ?? null,
             role
         );
 
-        return this.paginationService.cursor<
-            IWorkspaceMember,
-            Prisma.WorkspaceMemberWhereInput
-        >(this.databaseService.client.workspaceMember, {
-            ...others,
-            where: scopedWhere,
-            include: {
-                user: {
-                    select: UserRefSelect,
+        return this.paginationService.cursor(
+            this.databaseService.client.workspaceMember,
+            {
+                ...others,
+                where: scopedWhere,
+                include: {
+                    user: {
+                        select: UserRefSelect,
+                    },
                 },
-            },
-        });
+            }
+        );
     }
 
     async createOwnerInTx(
@@ -188,41 +204,89 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         });
     }
 
-    async updateRole(
+    async updateRoleInTx(
+        tx: IDatabaseTransactionClient,
         targetMemberId: string,
+        expectedRole: EnumWorkspaceMemberRole,
         newRole: EnumWorkspaceMemberRole
-    ): Promise<void> {
-        await this.databaseService.client.workspaceMember.update({
-            where: { id: targetMemberId },
+    ): Promise<boolean> {
+        const { count } = await tx.workspaceMember.updateMany({
+            where: { id: targetMemberId, role: expectedRole },
             data: {
                 role: newRole,
             },
         });
+
+        return count > 0;
     }
 
-    async removeMember(targetMemberId: string): Promise<void> {
-        await this.databaseService.client.workspaceMember.delete({
-            where: { id: targetMemberId },
+    async removeMemberInTx(
+        tx: IDatabaseTransactionClient,
+        targetMemberId: string,
+        expectedRole: EnumWorkspaceMemberRole
+    ): Promise<boolean> {
+        const { count } = await tx.workspaceMember.deleteMany({
+            where: { id: targetMemberId, role: expectedRole },
         });
+
+        return count > 0;
     }
 
-    async transferOwnership(
+    async removeByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<number> {
+        const { count } = await tx.workspaceMember.deleteMany({
+            where: { userId },
+        });
+
+        return count;
+    }
+
+    async promoteToOwnerInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
         fromMemberId: string,
         toMemberId: string
-    ): Promise<void> {
-        await this.databaseService.withTransaction(async tx => {
-            await tx.workspaceMember.update({
-                where: { id: fromMemberId },
-                data: {
-                    role: EnumWorkspaceMemberRole.admin,
+    ): Promise<boolean> {
+        const { count } = await tx.workspaceMember.updateMany({
+            where: {
+                id: toMemberId,
+                workspaceId,
+                role: { not: EnumWorkspaceMemberRole.owner },
+                workspace: {
+                    members: {
+                        some: {
+                            id: fromMemberId,
+                            role: EnumWorkspaceMemberRole.owner,
+                        },
+                    },
                 },
-            });
-            await tx.workspaceMember.update({
-                where: { id: toMemberId },
-                data: {
-                    role: EnumWorkspaceMemberRole.owner,
-                },
-            });
+            },
+            data: {
+                role: EnumWorkspaceMemberRole.owner,
+            },
         });
+
+        return count > 0;
+    }
+
+    async demoteOwnerInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        fromMemberId: string
+    ): Promise<boolean> {
+        const { count } = await tx.workspaceMember.updateMany({
+            where: {
+                id: fromMemberId,
+                workspaceId,
+                role: EnumWorkspaceMemberRole.owner,
+            },
+            data: {
+                role: EnumWorkspaceMemberRole.admin,
+            },
+        });
+
+        return count > 0;
     }
 }

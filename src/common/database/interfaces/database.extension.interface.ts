@@ -2,50 +2,32 @@ import type { Prisma } from '@generated/prisma-client/client';
 
 export type IDatabaseData = Record<string, unknown>;
 
-export interface IDatabaseModelContext {
-    update: (args: { where: unknown; data: IDatabaseData }) => Promise<unknown>;
+export type IDatabaseSoftDeletable<T> = 'deletedAt' extends keyof Prisma.Args<
+    T,
+    'update'
+>['data']
+    ? T
+    : never;
+
+export interface IDatabaseSoftDeleteArgs<T> {
+    where: Prisma.Args<T, 'update'>['where'];
+    data?: Prisma.Args<T, 'update'>['data'];
 }
 
-export interface IDatabaseSoftDeleteData extends IDatabaseData {
-    deletedAt?: Date;
-    deletedBy?: string;
-    updatedBy?: string;
+export interface IDatabaseRestoreArgs<T> {
+    where: Prisma.Args<T, 'update'>['where'];
+    data?: Prisma.Args<T, 'update'>['data'];
 }
 
-export interface IDatabaseSoftDeleteArgs {
-    where: unknown;
-    data?: IDatabaseSoftDeleteData;
+export type IDatabaseSoftDeleteResult<T> = Prisma.Result<
+    T,
+    { where: object; data: object },
+    'update'
+>;
+
+export interface IDatabaseModelContext<T> {
+    update: (args: {
+        where: IDatabaseSoftDeleteArgs<T>['where'];
+        data: IDatabaseData;
+    }) => Promise<IDatabaseSoftDeleteResult<T>>;
 }
-
-export interface IDatabaseRestoreData extends IDatabaseData {
-    updatedBy?: string;
-}
-
-export interface IDatabaseRestoreArgs {
-    where: unknown;
-    data?: IDatabaseRestoreData;
-}
-
-type IDatabaseModelRelationPayloads<M extends Prisma.ModelName> =
-    Prisma.TypeMap['model'][M]['payload']['objects'];
-
-type IDatabaseModelRelationName<P> =
-    NonNullable<P> extends readonly (infer E)[]
-        ? IDatabaseModelRelationName<E>
-        : NonNullable<P> extends { name: infer N extends Prisma.ModelName }
-          ? N
-          : never;
-
-export type IDatabaseModelRelations = {
-    [
-        M in Prisma.ModelName
-    ]: keyof IDatabaseModelRelationPayloads<M> extends never
-        ? Record<string, never>
-        : {
-              [
-                  F in keyof IDatabaseModelRelationPayloads<M>
-              ]: IDatabaseModelRelationName<
-                  IDatabaseModelRelationPayloads<M>[F]
-              >;
-          };
-};

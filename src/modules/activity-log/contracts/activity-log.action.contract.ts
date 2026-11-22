@@ -8,6 +8,9 @@ import { ActivityLogEmptyMetadataSchema } from '@modules/activity-log/dtos/activ
 import { ActivityLogImportMetadataSchema } from '@modules/activity-log/dtos/activity-log.import-metadata.dto';
 import { ActivityLogInviteMetadataSchema } from '@modules/activity-log/dtos/activity-log.invite-metadata.dto';
 import { ActivityLogNotificationSettingMetadataSchema } from '@modules/activity-log/dtos/activity-log.notification-setting-metadata.dto';
+import { ActivityLogOwnershipActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.ownership-actor-metadata.dto';
+import { ActivityLogOwnershipTargetMetadataSchema } from '@modules/activity-log/dtos/activity-log.ownership-target-metadata.dto';
+import { ActivityLogPolicyMetadataSchema } from '@modules/activity-log/dtos/activity-log.policy-metadata.dto';
 import { ActivityLogRoleMetadataSchema } from '@modules/activity-log/dtos/activity-log.role-metadata.dto';
 import { ActivityLogSessionActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.session-actor-metadata.dto';
 import { ActivityLogSessionAllActorMetadataSchema } from '@modules/activity-log/dtos/activity-log.session-all-actor-metadata.dto';
@@ -21,17 +24,10 @@ import {
     EnumActivityLogUser,
     EnumActivityLogWorkspace,
 } from '@modules/activity-log/enums/activity-log.enum';
-import type { IActivityLogActionContract } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IActivityLogActionContracts } from '@modules/activity-log/interfaces/activity-log.interface';
 
-/**
- * Per-action contract of an activity-log event: how its user and workspace resolve and the schema its metadata must match.
- * @public
- */
-export const ActivityLogActionContract: Record<
-    EnumActivityLogAction,
-    IActivityLogActionContract
-> = {
-    // Pre-auth / subject-id without JWT / dual-feed subject rows
+/** @public */
+export const ActivityLogActionContract: IActivityLogActionContracts = {
     [EnumActivityLogAction.userCreated]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
@@ -52,7 +48,7 @@ export const ActivityLogActionContract: Record<
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogUserTargetMetadataSchema,
     },
-    [EnumActivityLogAction.userResetTwoFactorByAdmin]: {
+    [EnumActivityLogAction.userResetMfaByAdmin]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogUserTargetMetadataSchema,
@@ -73,6 +69,11 @@ export const ActivityLogActionContract: Record<
         metadata: ActivityLogEmptyMetadataSchema,
     },
     [EnumActivityLogAction.userLoginApple]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userLoginPasskey]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
@@ -102,7 +103,27 @@ export const ActivityLogActionContract: Record<
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
+    [EnumActivityLogAction.userVerifiedMobileNumber]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userSendVerificationMobileNumber]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userSendReauthenticationOtp]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
     [EnumActivityLogAction.userReachMaxPasswordAttempt]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userReachMaxMfaAttempt]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
@@ -113,6 +134,11 @@ export const ActivityLogActionContract: Record<
         metadata: ActivityLogSessionTargetMetadataSchema,
     },
     [EnumActivityLogAction.userRevokeAllSessionsByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogSessionAllTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.userRevokeSessionByDeviceLogin]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogSessionAllTargetMetadataSchema,
@@ -133,7 +159,6 @@ export const ActivityLogActionContract: Record<
         metadata: ActivityLogDeviceTargetMetadataSchema,
     },
 
-    // Authenticated self-service
     [EnumActivityLogAction.userUpdateProfile]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
@@ -199,27 +224,47 @@ export const ActivityLogActionContract: Record<
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
-    [EnumActivityLogAction.userSetupTwoFactor]: {
+    [EnumActivityLogAction.userSetupMfaTotp]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
-    [EnumActivityLogAction.userEnableTwoFactor]: {
-        user: EnumActivityLogUser.payload,
-        workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogEmptyMetadataSchema,
-    },
-    [EnumActivityLogAction.userDisableTwoFactor]: {
-        user: EnumActivityLogUser.payload,
-        workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogEmptyMetadataSchema,
-    },
-    [EnumActivityLogAction.userVerifyTwoFactor]: {
+    [EnumActivityLogAction.userEnableMfaTotp]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
     },
-    [EnumActivityLogAction.userRegenerateTwoFactorBackupCodes]: {
+    [EnumActivityLogAction.userDisableMfaTotp]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userVerifyMfa]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userVerifyMfaFailed]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userRegenerateMfaBackupCodes]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userRegisterMfaPasskey]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userUpdateMfaPasskey]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogEmptyMetadataSchema,
+    },
+    [EnumActivityLogAction.userDeleteMfaPasskey]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogEmptyMetadataSchema,
@@ -235,7 +280,6 @@ export const ActivityLogActionContract: Record<
         metadata: ActivityLogEmptyMetadataSchema,
     },
 
-    // Admin platform + admin dual-feed payload rows
     [EnumActivityLogAction.adminSessionRevoke]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
@@ -289,17 +333,17 @@ export const ActivityLogActionContract: Record<
     [EnumActivityLogAction.adminPolicyCreate]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogPolicyMetadataSchema,
     },
     [EnumActivityLogAction.adminPolicyUpdate]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogPolicyMetadataSchema,
     },
     [EnumActivityLogAction.adminPolicyDelete]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
-        metadata: ActivityLogEmptyMetadataSchema,
+        metadata: ActivityLogPolicyMetadataSchema,
     },
     [EnumActivityLogAction.adminTermPolicyCreate]: {
         user: EnumActivityLogUser.payload,
@@ -331,6 +375,11 @@ export const ActivityLogActionContract: Record<
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogTermPolicyMetadataSchema,
     },
+    [EnumActivityLogAction.adminTermPolicyResendEmail]: {
+        user: EnumActivityLogUser.payload,
+        workspace: EnumActivityLogWorkspace.none,
+        metadata: ActivityLogTermPolicyMetadataSchema,
+    },
     [EnumActivityLogAction.adminUserCreate]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
@@ -346,7 +395,7 @@ export const ActivityLogActionContract: Record<
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogUserActorMetadataSchema,
     },
-    [EnumActivityLogAction.adminUserResetTwoFactor]: {
+    [EnumActivityLogAction.adminUserResetMfa]: {
         user: EnumActivityLogUser.payload,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogUserActorMetadataSchema,
@@ -366,8 +415,12 @@ export const ActivityLogActionContract: Record<
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogSessionAllActorMetadataSchema,
     },
+    [EnumActivityLogAction.adminWorkspaceOwnershipTransfer]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogOwnershipActorMetadataSchema,
+    },
 
-    // Workspace / project — explicit workspaceId staged
     [EnumActivityLogAction.workspaceCreated]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
@@ -418,6 +471,11 @@ export const ActivityLogActionContract: Record<
         workspace: EnumActivityLogWorkspace.target,
         metadata: ActivityLogInviteMetadataSchema,
     },
+    [EnumActivityLogAction.workspaceInviteResent]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogInviteMetadataSchema,
+    },
     [EnumActivityLogAction.workspaceInviteAccepted]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
@@ -463,7 +521,22 @@ export const ActivityLogActionContract: Record<
         workspace: EnumActivityLogWorkspace.target,
         metadata: ActivityLogTargetMetadataSchema,
     },
+    [EnumActivityLogAction.workspaceOwnershipTransferredByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.workspaceOwnershipRemovedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogOwnershipTargetMetadataSchema,
+    },
     [EnumActivityLogAction.workspaceInviteCreatedByAdmin]: {
+        user: EnumActivityLogUser.target,
+        workspace: EnumActivityLogWorkspace.target,
+        metadata: ActivityLogTargetMetadataSchema,
+    },
+    [EnumActivityLogAction.workspaceInviteResentByAdmin]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.target,
         metadata: ActivityLogTargetMetadataSchema,

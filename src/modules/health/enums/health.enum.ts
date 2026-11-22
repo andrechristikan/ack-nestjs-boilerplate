@@ -1,7 +1,4 @@
-/**
- * Overall status of a health check; `shuttingDown` travels on the wire as `shutting_down`.
- * @public
- */
+/** @public */
 export enum EnumHealthStatus {
     error = 'error',
     ok = 'ok',
@@ -9,11 +6,32 @@ export enum EnumHealthStatus {
     shuttingDown = 'shutting_down',
 }
 
-/**
- * Status of a single Terminus indicator inside a check's info, error and details maps.
- * @public
- */
+/** @public */
 export enum EnumHealthIndicatorStatus {
     up = 'up',
     down = 'down',
+}
+
+/** @public */
+export enum EnumHealthIndicatorKey {
+    s3PublicBucket = 's3PublicBucket',
+    s3PrivateBucket = 's3PrivateBucket',
+    ses = 'ses',
+    database = 'database',
+    redis = 'redis',
+    queue = 'queue',
+    sentry = 'sentry',
+    firebase = 'firebase',
+    google = 'google',
+    apple = 'apple',
+    jwksAccessToken = 'jwksAccessToken',
+    jwksRefreshToken = 'jwksRefreshToken',
+    memoryRss = 'memoryRss',
+    memoryHeap = 'memoryHeap',
+    storage = 'storage',
+}
+
+/** @public */
+export enum EnumHealthQueue {
+    health = 'health',
 }

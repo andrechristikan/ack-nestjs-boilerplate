@@ -1,43 +1,65 @@
 import { AuthGuard } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 import type {
-    IAuthJwtAccessTokenPayload,
+    IAuthJwtRefreshContext,
     IAuthJwtRefreshTokenPayload,
 } from '@modules/auth/interfaces/auth.interface';
 import {
+    AuthJwtRefreshContextStoreKey,
     AuthJwtRefreshGuardKey,
-    AuthPayloadStoreKey,
 } from '@modules/auth/constants/auth.constant';
-import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import { AuthJwtRefreshTokenInvalidException } from '@modules/auth/exceptions/auth.jwt-refresh-token-invalid.exception';
+import { AuthService } from '@modules/auth/services/auth.service';
+import { RequestActorStoreKey } from '@common/request/constants/request.constant';
+import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
-/** Guard for JWT refresh token routes; stores the validated payload in the request store. */
 @Injectable()
 export class AuthJwtRefreshGuard extends AuthGuard(AuthJwtRefreshGuardKey) {
     constructor(
-        private readonly authDomain: AuthDomain,
+        private readonly authService: AuthService,
         private readonly requestStoreService: RequestStoreService
     ) {
         super();
     }
 
-    /** Validates the Passport result, then persists the payload to the request store. */
-    handleRequest<T = IAuthJwtRefreshTokenPayload>(
-        err: Error,
-        user: IAuthJwtRefreshTokenPayload,
-        info: Error
+    handleRequest<T = IAuthJwtRefreshContext>(
+        err: Error | null,
+        user: IAuthJwtRefreshTokenPayload | false,
+        info: Error | string | undefined,
+        context: ExecutionContext
     ): T {
-        const payload = this.authDomain.validateJwtRefreshGuard(
+        const payload = this.authService.validateJwtRefreshGuard(
             err,
-            user,
-            info
+            user === false ? null : user,
+            info instanceof Error ? info : null
         );
 
-        this.requestStoreService.set(
-            AuthPayloadStoreKey,
-            payload as IAuthJwtAccessTokenPayload
+        const { authorization } = context
+            .switchToHttp()
+            .getRequest<IRequestApp>().headers;
+        const bearer = authorization?.split(' ')[1] ?? null;
+        if (bearer === null) {
+            throw new AuthJwtRefreshTokenInvalidException();
+        }
+
+        const authContext: IAuthJwtRefreshContext = {
+            userId: payload.userId,
+            sessionId: payload.sessionId,
+            deviceOwnershipId: payload.deviceOwnershipId,
+            loginWith: payload.loginWith,
+            token: bearer,
+        };
+        this.requestStoreService.set<IAuthJwtRefreshContext>(
+            AuthJwtRefreshContextStoreKey,
+            authContext
+        );
+        this.requestStoreService.set<string>(
+            RequestActorStoreKey,
+            authContext.userId
         );
 
-        return payload as T;
+        return authContext as T;
     }
 }

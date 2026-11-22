@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumAwsS3Accessibility } from '@common/aws/enums/aws.enum';
+import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import {
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
@@ -9,16 +9,13 @@ import {
 import { DeviceResponseSchema } from '@modules/device/dtos/response/device.response.dto';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
-/**
- * Base device-ownership shape: the row binding a device to the user who owns it.
- * @public
- */
+/** @public */
 export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
 }).extend({
     deviceId: z.string().meta({
-        description: 'Device ownership ID',
+        description: 'Device ID',
         example: faker.string.uuid(),
     }),
     device: DeviceResponseSchema.meta({
@@ -32,9 +29,15 @@ export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
             name: faker.commerce.productName(),
             platform: EnumDevicePlatform.android,
             lastActiveAt: faker.date.recent(),
-            notificationProvider: EnumDeviceNotificationProvider.fcm,
         },
     }),
+    notificationProvider: z
+        .enum(EnumDeviceNotificationProvider)
+        .nullable()
+        .meta({
+            description: 'Notification provider of the ownership token',
+            example: EnumDeviceNotificationProvider.fcm,
+        }),
     userId: z.string().meta({
         description: 'User ID who owns the device',
         example: faker.string.uuid(),
@@ -85,10 +88,7 @@ export const DeviceOwnershipResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Device ownership of a user with its device.
- * @public
- */
+/** @public */
 export type DeviceOwnershipResponseDto = z.infer<
     typeof DeviceOwnershipResponseSchema
 >;

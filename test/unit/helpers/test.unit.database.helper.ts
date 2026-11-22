@@ -1,0 +1,80 @@
+import { ConfigService } from '@nestjs/config';
+import { Test } from '@nestjs/testing';
+import type { MockProxy } from 'vitest-mock-extended';
+import { DatabaseClient } from '@common/database/constants/database.constant';
+import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
+import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseService } from '@common/database/services/database.service';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import type { IDatabaseData } from '@common/database/interfaces/database.extension.interface';
+import type { DatabaseExtensionFactory } from '@common/database/factories/database.extension.factory';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+
+export interface IExtensionQueryArgs {
+    model: string;
+    args: IDatabaseData;
+    query: (args: IDatabaseData) => Promise<unknown>;
+}
+
+export interface IExtension {
+    query: {
+        $allModels: {
+            create: (input: IExtensionQueryArgs) => Promise<unknown>;
+            createMany: (input: IExtensionQueryArgs) => Promise<unknown>;
+            update: (input: IExtensionQueryArgs) => Promise<unknown>;
+            updateMany: (input: IExtensionQueryArgs) => Promise<unknown>;
+            upsert: (input: IExtensionQueryArgs) => Promise<unknown>;
+        };
+    };
+    model: {
+        $allModels: {
+            softDelete: (
+                this: { update: (args: IDatabaseData) => Promise<unknown> },
+                args: IDatabaseData
+            ) => Promise<unknown>;
+            restore: (
+                this: { update: (args: IDatabaseData) => Promise<unknown> },
+                args: IDatabaseData
+            ) => Promise<unknown>;
+        };
+    };
+}
+
+// `Prisma.defineExtension` wraps an object definition into `(client) => client.$extends(ext)`
+// (see the generated Prisma runtime); passing a stub client whose `$extends` returns its
+// argument unwraps `ext` itself, so every query/model hook can be invoked directly.
+export function extractDatabaseExtension(
+    factory: DatabaseExtensionFactory
+): IExtension {
+    const applyExtension = factory.build() as unknown as (client: {
+        $extends: (ext: unknown) => unknown;
+    }) => unknown;
+
+    return applyExtension({
+        $extends: (ext: unknown) => ext,
+    }) as IExtension;
+}
+
+export async function createDatabaseService(
+    configValues: Record<string, boolean | number>,
+    databaseClientFactory: MockProxy<DatabaseClientFactory>,
+    client: MockProxy<IDatabaseClient>,
+    helperDateService: MockProxy<HelperDateService>
+): Promise<DatabaseService> {
+    const configService = buildConfigService(configValues);
+
+    const module = await Test.createTestingModule({
+        providers: [
+            DatabaseService,
+            { provide: ConfigService, useValue: configService },
+            {
+                provide: DatabaseClientFactory,
+                useValue: databaseClientFactory,
+            },
+            { provide: DatabaseClient, useValue: client },
+            { provide: HelperDateService, useValue: helperDateService },
+        ],
+    }).compile();
+
+    return module.get(DatabaseService);
+}

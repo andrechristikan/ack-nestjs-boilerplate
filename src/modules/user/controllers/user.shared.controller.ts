@@ -7,29 +7,37 @@ import type { IFile } from '@common/file/interfaces/file.interface';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import { FileRequiredPipe } from '@common/file/pipes/file.required.pipe';
 import {
+    RequestContext,
     RequestThrottle,
     RequestTimeout,
 } from '@common/request/decorators/request.decorator';
+import { RequestUploadTimeout } from '@common/request/constants/request.constant';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessContext,
     AuthJwtAccessProtected,
-    AuthJwtPayload,
+    AuthJwtRefreshContext,
     AuthJwtRefreshProtected,
-    AuthJwtToken,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { AuthTokenResponseSchema } from '@modules/auth/dtos/response/auth.token.response.dto';
 import type {
-    IAuthJwtAccessTokenPayload,
+    IAuthJwtAccessContext,
+    IAuthJwtRefreshContext,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
-    UserCurrent,
+    UserContext,
     UserProtected,
 } from '@modules/user/decorators/user.decorator';
 import { UserChangePasswordRequestSchema } from '@modules/user/dtos/request/user.change-password.request.dto';
@@ -42,40 +50,41 @@ import { UserAddMobileNumberRequestSchema } from '@modules/user/dtos/request/use
 import { UserUpdateMobileNumberRequestSchema } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
 import type { UserUpdateMobileNumberRequestDto } from '@modules/user/dtos/request/user.update-mobile-number.request.dto';
+import { UserDeleteMobileNumberRequestSchema } from '@modules/user/dtos/request/user.delete-mobile-number.request.dto';
+import type { UserDeleteMobileNumberRequestDto } from '@modules/user/dtos/request/user.delete-mobile-number.request.dto';
+import { UserVerifyMobileNumberRequestSchema } from '@modules/user/dtos/request/user.verify-mobile-number.request.dto';
+import type { UserVerifyMobileNumberRequestDto } from '@modules/user/dtos/request/user.verify-mobile-number.request.dto';
+import { UserReauthenticationSendRequestSchema } from '@modules/user/dtos/request/user.reauthentication-send.request.dto';
+import type { UserReauthenticationSendRequestDto } from '@modules/user/dtos/request/user.reauthentication-send.request.dto';
 import { UserUpdateProfilePhotoRequestSchema } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
 import { UserUpdateProfileRequestSchema } from '@modules/user/dtos/request/user.update-profile.request.dto';
 import type { UserUpdateProfilePhotoRequestDto } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
 import type { UserUpdateProfileRequestDto } from '@modules/user/dtos/request/user.update-profile.request.dto';
-import { UserTwoFactorDisableRequestSchema } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
-import type { UserTwoFactorDisableRequestDto } from '@modules/user/dtos/request/user.two-factor-disable.request.dto';
-import { UserTwoFactorRegenerateBackupCodeRequestSchema } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
-import type { UserTwoFactorRegenerateBackupCodeRequestDto } from '@modules/user/dtos/request/user.two-factor-regenerate-backup-code.request.dto';
-import { UserTwoFactorEnableRequestSchema } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
-import type { UserTwoFactorEnableRequestDto } from '@modules/user/dtos/request/user.two-factor-enable.request.dto';
-import { UserTwoFactorSetupRequestSchema } from '@modules/user/dtos/request/user.two-factor-setup.request.dto';
-import type { UserTwoFactorSetupRequestDto } from '@modules/user/dtos/request/user.two-factor-setup.request.dto';
 import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
-import { UserTwoFactorEnableResponseSchema } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import type { UserTwoFactorEnableResponseDto } from '@modules/user/dtos/response/user.two-factor-enable.response.dto';
-import { UserTwoFactorSetupResponseSchema } from '@modules/user/dtos/response/user.two-factor-setup.response.dto';
-import { UserTwoFactorStatusResponseSchema } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
-import type { UserTwoFactorStatusResponseDto } from '@modules/user/dtos/response/user.two-factor-status.response.dto';
 import { UserMobileNumberResponseSchema } from '@modules/user/dtos/response/user.mobile-number.response.dto';
 import type {
-    IUser,
+    IUserContext,
     IUserMobileNumber,
     IUserProfile,
-    IUserTwoFactorSetup,
 } from '@modules/user/interfaces/user.interface';
-import { UserAuthHttpService } from '@modules/user/services/user.auth.http.service';
-import { UserMobileNumberHttpService } from '@modules/user/services/user.mobile-number.http.service';
-import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
-import { UserProfileHttpService } from '@modules/user/services/user.profile.http.service';
-import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
+import { UserRefreshUseCase } from '@modules/user/use-cases/user.refresh.use-case';
+import { UserGetProfileUseCase } from '@modules/user/use-cases/user.get-profile.use-case';
+import { UserUpdateProfileUseCase } from '@modules/user/use-cases/user.update-profile.use-case';
+import { UserGeneratePhotoProfilePresignUseCase } from '@modules/user/use-cases/user.generate-photo-profile-presign.use-case';
+import { UserUpdatePhotoProfileUseCase } from '@modules/user/use-cases/user.update-photo-profile.use-case';
+import { UserUploadPhotoProfileUseCase } from '@modules/user/use-cases/user.upload-photo-profile.use-case';
+import { UserChangePasswordUseCase } from '@modules/user/use-cases/user.change-password.use-case';
+import { UserAddMobileNumberUseCase } from '@modules/user/use-cases/user.add-mobile-number.use-case';
+import { UserUpdateMobileNumberUseCase } from '@modules/user/use-cases/user.update-mobile-number.use-case';
+import { UserDeleteMobileNumberUseCase } from '@modules/user/use-cases/user.delete-mobile-number.use-case';
+import { UserSendVerificationMobileNumberUseCase } from '@modules/user/use-cases/user.send-verification-mobile-number.use-case';
+import { UserVerifyMobileNumberUseCase } from '@modules/user/use-cases/user.verify-mobile-number.use-case';
+import { UserClaimUsernameUseCase } from '@modules/user/use-cases/user.claim-username.use-case';
+import { UserLogoutUseCase } from '@modules/user/use-cases/user.logout.use-case';
+import { UserSendReauthenticationOtpUseCase } from '@modules/user/use-cases/user.send-reauthentication-otp.use-case';
 import {
     Body,
     Controller,
-    Delete,
     Get,
     HttpCode,
     HttpStatus,
@@ -86,6 +95,7 @@ import {
     UploadedFile,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @ApiTags('modules.shared.user')
 @Controller({
@@ -94,59 +104,80 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class UserSharedController {
     constructor(
-        private readonly userAuthHttpService: UserAuthHttpService,
-        private readonly userProfileHttpService: UserProfileHttpService,
-        private readonly userPasswordHttpService: UserPasswordHttpService,
-        private readonly userMobileNumberHttpService: UserMobileNumberHttpService,
-        private readonly userTwoFactorHttpService: UserTwoFactorHttpService
+        private readonly userRefreshUseCase: UserRefreshUseCase,
+        private readonly userGetProfileUseCase: UserGetProfileUseCase,
+        private readonly userUpdateProfileUseCase: UserUpdateProfileUseCase,
+        private readonly userGeneratePhotoProfilePresignUseCase: UserGeneratePhotoProfilePresignUseCase,
+        private readonly userUpdatePhotoProfileUseCase: UserUpdatePhotoProfileUseCase,
+        private readonly userUploadPhotoProfileUseCase: UserUploadPhotoProfileUseCase,
+        private readonly userChangePasswordUseCase: UserChangePasswordUseCase,
+        private readonly userAddMobileNumberUseCase: UserAddMobileNumberUseCase,
+        private readonly userUpdateMobileNumberUseCase: UserUpdateMobileNumberUseCase,
+        private readonly userDeleteMobileNumberUseCase: UserDeleteMobileNumberUseCase,
+        private readonly userSendVerificationMobileNumberUseCase: UserSendVerificationMobileNumberUseCase,
+        private readonly userVerifyMobileNumberUseCase: UserVerifyMobileNumberUseCase,
+        private readonly userClaimUsernameUseCase: UserClaimUsernameUseCase,
+        private readonly userLogoutUseCase: UserLogoutUseCase,
+        private readonly userSendReauthenticationOtpUseCase: UserSendReauthenticationOtpUseCase
     ) {}
 
     @Doc({ summary: 'refresh token' })
     @Response('user.refresh', { schema: AuthTokenResponseSchema })
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.relaxed })
     @AuthJwtRefreshProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.relaxed })
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
     async refresh(
-        @UserCurrent() user: IUser,
-        @AuthJwtToken() refreshToken: string
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtRefreshContext() authContext: IAuthJwtRefreshContext,
+        @UserContext() userContext: IUserContext
     ): Promise<IResponseReturn<IAuthToken>> {
-        return this.userAuthHttpService.refresh(user, refreshToken);
+        return this.userRefreshUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext
+        );
     }
 
     @Doc({ summary: 'get profile' })
     @Response('user.profile', { schema: UserProfileResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/profile/get')
     async profile(
-        @AuthJwtPayload('userId')
-        userId: string
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext
     ): Promise<IResponseReturn<IUserProfile>> {
-        return this.userProfileHttpService.getProfile(userId);
+        return this.userGetProfileUseCase.execute(authContext);
     }
 
     @Doc({ summary: 'update profile' })
     @Response('user.updateProfile')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/profile/update')
     async updateProfile(
-        @AuthJwtPayload('userId')
-        userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: UserUpdateProfileRequestSchema })
         body: UserUpdateProfileRequestDto
-    ): Promise<void> {
-        await this.userProfileHttpService.updateProfile(userId, body);
+    ): Promise<IResponseReturn<void>> {
+        return this.userUpdateProfileUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            body
+        );
     }
 
     @Doc({ summary: 'generate upload photo profile presign' })
@@ -155,19 +186,18 @@ export class UserSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
     @HttpCode(HttpStatus.OK)
     @Post('/profile/photo/presign/generate')
     async generatePhotoProfilePresign(
-        @AuthJwtPayload('userId')
-        userId: string,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: UserGeneratePhotoProfileRequestSchema })
         body: UserGeneratePhotoProfileRequestDto
     ): Promise<IResponseReturn<IAwsS3Presign>> {
-        return this.userProfileHttpService.generatePhotoProfilePresign(
-            userId,
+        return this.userGeneratePhotoProfilePresignUseCase.execute(
+            authContext,
             body
         );
     }
@@ -176,33 +206,40 @@ export class UserSharedController {
     @Response('user.updatePhotoProfile')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/profile/photo/update')
     async updatePhotoProfile(
-        @AuthJwtPayload('userId')
-        userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: UserUpdateProfilePhotoRequestSchema })
         body: UserUpdateProfilePhotoRequestDto
-    ): Promise<void> {
-        await this.userProfileHttpService.updatePhotoProfile(userId, body);
+    ): Promise<IResponseReturn<void>> {
+        return this.userUpdatePhotoProfileUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            body
+        );
     }
 
     @Doc({ summary: 'upload photo profile' })
     @Response('user.uploadPhotoProfile')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @FileUploadSingle()
-    @RequestTimeout('1m')
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
+    @RequestTimeout(RequestUploadTimeout)
     @HttpCode(HttpStatus.OK)
     @Post('/profile/photo/upload')
     async uploadPhotoProfile(
-        @AuthJwtPayload('userId')
-        userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UploadedFile(
             FileRequiredPipe(),
             FileExtensionPipe([
@@ -212,25 +249,39 @@ export class UserSharedController {
             ])
         )
         file: IFile
-    ): Promise<void> {
-        await this.userProfileHttpService.uploadPhotoProfile(userId, file);
+    ): Promise<IResponseReturn<void>> {
+        return this.userUploadPhotoProfileUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            file
+        );
     }
 
     @Doc({ summary: 'change password' })
     @Response('user.changePassword')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
-    @FeatureFlagProtected('changePassword')
+    @FeatureFlagProtected(EnumFeatureFlagKey.changePassword)
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @Patch('/password/change')
     async changePassword(
-        @UserCurrent() user: IUser,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Body({ schema: UserChangePasswordRequestSchema })
         body: UserChangePasswordRequestDto
-    ): Promise<void> {
-        await this.userPasswordHttpService.changePassword(user, body);
+    ): Promise<IResponseReturn<void>> {
+        return this.userChangePasswordUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            body
+        );
     }
 
     @Doc({ summary: 'user add mobile number' })
@@ -239,16 +290,25 @@ export class UserSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @Post('/mobile-number/add')
     async addMobileNumber(
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Body({ schema: UserAddMobileNumberRequestSchema })
         body: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
-        return this.userMobileNumberHttpService.addMobileNumber(userId, body);
+        return this.userAddMobileNumberUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            body
+        );
     }
 
     @Doc({ summary: 'user update mobile number' })
@@ -257,19 +317,25 @@ export class UserSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/mobile-number/:mobileNumberId/update')
     async updateMobileNumber(
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('mobileNumberId', { schema: RequestUuidSchema })
         mobileNumberId: string,
         @Body({ schema: UserUpdateMobileNumberRequestSchema })
         body: UserUpdateMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
-        return this.userMobileNumberHttpService.updateMobileNumber(
-            userId,
+        return this.userUpdateMobileNumberUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
             mobileNumberId,
             body
         );
@@ -281,18 +347,107 @@ export class UserSharedController {
     })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
-    @Delete('/mobile-number/:mobileNumberId/delete')
+    @HttpCode(HttpStatus.OK)
+    @Post('/mobile-number/:mobileNumberId/delete')
     async deleteMobileNumber(
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
+        @Param('mobileNumberId', { schema: RequestUuidSchema })
+        mobileNumberId: string,
+        @Body({ schema: UserDeleteMobileNumberRequestSchema })
+        body: UserDeleteMobileNumberRequestDto
+    ): Promise<IResponseReturn<IUserMobileNumber>> {
+        return this.userDeleteMobileNumberUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            mobileNumberId,
+            body
+        );
+    }
+
+    @Doc({ summary: 'send a verification code to a user mobile number' })
+    @Response('user.sendVerificationMobileNumber')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/mobile-number/:mobileNumberId/verification/send')
+    async sendVerificationMobileNumber(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Param('mobileNumberId', { schema: RequestUuidSchema })
         mobileNumberId: string
-    ): Promise<IResponseReturn<IUserMobileNumber>> {
-        return this.userMobileNumberHttpService.deleteMobileNumber(
-            userId,
+    ): Promise<IResponseReturn<void>> {
+        return this.userSendVerificationMobileNumberUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
             mobileNumberId
+        );
+    }
+
+    @Doc({ summary: 'verify a user mobile number with its code' })
+    @Response('user.verifyMobileNumber')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Patch('/mobile-number/:mobileNumberId/verify')
+    async verifyMobileNumber(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @Param('mobileNumberId', { schema: RequestUuidSchema })
+        mobileNumberId: string,
+        @Body({ schema: UserVerifyMobileNumberRequestSchema })
+        body: UserVerifyMobileNumberRequestDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userVerifyMobileNumberUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            mobileNumberId,
+            body
+        );
+    }
+
+    @Doc({
+        summary:
+            'send a one-time code by email for one sensitive action; for an account with no password and no MFA',
+    })
+    @Response('user.sendReauthenticationOtp')
+    @TermPolicyAcceptanceProtected()
+    @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/reauthentication/send')
+    async sendReauthenticationOtp(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
+        @Body({ schema: UserReauthenticationSendRequestSchema })
+        body: UserReauthenticationSendRequestDto
+    ): Promise<IResponseReturn<void>> {
+        return this.userSendReauthenticationOtpUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            body
         );
     }
 
@@ -300,135 +455,46 @@ export class UserSharedController {
     @Response('user.claimUsername')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.moderate })
     @HttpCode(HttpStatus.OK)
     @Post('/username/claim')
     async claimUsername(
-        @AuthJwtPayload('userId') userId: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Body({ schema: UserClaimUsernameRequestSchema })
         body: UserClaimUsernameRequestDto
-    ): Promise<void> {
-        await this.userProfileHttpService.claimUsername(userId, body);
-    }
-
-    @Doc({ summary: 'Get current two-factor authentication status' })
-    @Response('user.twoFactor.status', {
-        schema: UserTwoFactorStatusResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @RequestThrottle({ user: true })
-    @Get('/2fa/status/get')
-    async getTwoFactorStatus(
-        @UserCurrent() user: IUser
-    ): Promise<IResponseReturn<UserTwoFactorStatusResponseDto>> {
-        return this.userTwoFactorHttpService.getTwoFactorStatus(user);
-    }
-
-    @Doc({
-        summary:
-            'Start two-factor setup and receive secret; requires an unused backup code while two-factor is enabled',
-    })
-    @Response('user.twoFactor.setup', {
-        schema: UserTwoFactorSetupResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
-    @HttpCode(HttpStatus.OK)
-    @Post('/2fa/setup')
-    async setupTwoFactor(
-        @UserCurrent() user: IUser,
-        @Body({ schema: UserTwoFactorSetupRequestSchema })
-        body: UserTwoFactorSetupRequestDto
-    ): Promise<IResponseReturn<IUserTwoFactorSetup>> {
-        return this.userTwoFactorHttpService.setupTwoFactor(user, body);
-    }
-
-    @Doc({ summary: 'Enable two-factor authentication' })
-    @Response('user.twoFactor.enable', {
-        schema: UserTwoFactorEnableResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
-    @HttpCode(HttpStatus.OK)
-    @Post('/2fa/enable')
-    async enableTwoFactor(
-        @UserCurrent() user: IUser,
-        @Body({ schema: UserTwoFactorEnableRequestSchema })
-        body: UserTwoFactorEnableRequestDto
-    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userTwoFactorHttpService.enableTwoFactor(user, body);
-    }
-
-    @Doc({ summary: 'Disable two-factor authentication' })
-    @Response('user.twoFactor.disable')
-    @TermPolicyAcceptanceProtected()
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
-    @Delete('/2fa/disable')
-    async disableTwoFactor(
-        @UserCurrent() user: IUser,
-        @Body({ schema: UserTwoFactorDisableRequestSchema })
-        body: UserTwoFactorDisableRequestDto
-    ): Promise<void> {
-        await this.userTwoFactorHttpService.disableTwoFactor(user, body);
-    }
-
-    @Doc({ summary: 'Regenerate two-factor backup codes' })
-    @Response('user.twoFactor.regenerateBackupCodes', {
-        schema: UserTwoFactorEnableResponseSchema,
-    })
-    @TermPolicyAcceptanceProtected()
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
-    @Post('/2fa/backup-code/regenerate')
-    async regenerateTwoFactorBackupCodes(
-        @UserCurrent() user: IUser,
-        @Body({ schema: UserTwoFactorRegenerateBackupCodeRequestSchema })
-        body: UserTwoFactorRegenerateBackupCodeRequestDto
-    ): Promise<IResponseReturn<UserTwoFactorEnableResponseDto>> {
-        return this.userTwoFactorHttpService.regenerateTwoFactorBackupCodes(
-            user,
+    ): Promise<IResponseReturn<void>> {
+        return this.userClaimUsernameUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
             body
         );
     }
 
     @Doc({
         summary:
-            'Logout from current session, invalidating the access token and deleting the session.',
+            'logout from current session, invalidating the access token and deleting the session.',
     })
     @Response('user.logout')
-    @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/logout')
     async logout(
-        @AuthJwtPayload()
-        { sessionId, userId, deviceOwnershipId }: IAuthJwtAccessTokenPayload
-    ): Promise<void> {
-        await this.userAuthHttpService.logout(
-            userId,
-            sessionId,
-            deviceOwnershipId
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext
+    ): Promise<IResponseReturn<void>> {
+        return this.userLogoutUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext
         );
     }
-
-    // TODO: Verify number implementation, but which provider?
 }

@@ -1,194 +1,64 @@
+---
+paths:
+    - 'src/**'
+    - 'test/**'
+    - 'eslint.config.mjs'
+---
+
 # Code style
 
-Mechanical style. Naming and casing are `rules/naming.md`. Layer placement is
-`rules/architecture.md`.
+## Lint
 
-## NestJS idiomatic — no hand-rolled substitutes
+A lint rule that cannot hold everywhere is the owner's to remove, for every file.
 
-Use the framework the Nest way: modules, DI, providers, guards, pipes, interceptors,
-decorators, lifecycle hooks. **If Nest already provides it, a hand-rolled version is a defect
-regardless of how well it works.** No service locator, no manual instantiation of an
-injectable, no bare `@UseGuards` where a `@<Feature>Protected()` decorator is the convention.
+- `pnpm spell` exits 1 on a misspelling.
+- `pnpm deadcode` is knip, every rule at `error`: an unused file, export, type, enum member, or dependency exits 1.
 
-One service locator call is sanctioned: a `createParamDecorator` factory runs outside the
-injection context, so a store-reading decorator reaches CLS through
-`ClsServiceManager.getClsService()` (`rules/security.md`). Everything else injects
-`RequestStoreService`.
+## Imports
 
-## Path aliases — a relative import is a defect
+- The config barrel is `@configs/index`, package fields `@generated/package/package`.
+- A class Nest injects is a value import: `import type` erases its constructor metadata; DI fails at boot, `tsc` green.
 
-The alias table is `tsconfig.json` `paths`, and it is the only one (Vitest and knip read it):
+## Composed strings
 
-```
-@app/*  @common/*  @configs/*  @modules/*  @router/*  @migration/*  @queues/*
-@test/*  @generated/*  @instrument  @swagger  @main  @migration
-```
+A string with placeholders is a `{token}` pattern (`naming.md`): one token is `String.prototype.replace` with a function replacement whenever the value is not a literal in the same file (the string form expands `$&` and `$1`); two or more tokens go through one pass of `HelperStringService.fillPattern` (`helper.string.service.ts`).
 
-- A `./` or `../` in an import is a defect, **including inside the same module**. The client
-  under `src/generated/**` is generated code, not project code.
-- An alias specifier carries no file extension (`@common/helper/services/helper.hash.service`).
-- The Prisma client is imported from `@generated/prisma-client/client` (or `/enums`,
-  `/models`, `/browser`, `/commonInputTypes`). `@generated/prisma-client/internal…` is never
-  imported (ESLint-enforced).
-- The config barrel is `@configs/index`; package fields come from
-  `@generated/package/package`. `src/` has no JSON module import.
+## Functions and parameters
 
-## Imports — native ESM
+Contexts run in the `http.md` order.
 
-- `verbatimModuleSyntax` is on: an import used only as a type is `import type`. A class that
-  Nest injects is a VALUE import, because a type-only import erases the constructor metadata
-  and DI fails at boot while `tsc` stays green.
-- Node built-ins use the `node:` specifier (`node:crypto`); a bare `'crypto'` is an ESLint error.
-- lodash is used only through named imports from `lodash-es`; `lodash`, `lodash/*` and a
-  default `lodash-es` import are ESLint errors.
-- `crypto-js` and `Math.random` are ESLint errors. Randomness goes through `node:crypto`
-  (`randomInt` / `randomBytes`) behind `HelperStringService` / `HelperNumberService`
-  (`rules/security.md`).
+## Utility types
 
-## Private methods sit above public ones
+- `Omit`, `Pick`, `Partial`, `Required`, `Readonly`, `Extract`, `Exclude`, `NonNullable`, `ReturnType`, `Parameters`, and `Record<Enum, T>` appear only in a declaration under `interfaces/`: a named `I*` type or a member of an `I*` interface.
+- A class field, a parameter, a return type, a local, a constant's annotation, and a type argument outside `interfaces/` name that `I*` (`naming.md`, Identifiers).
+- `Record<string, T>` for an open map (`messageProperties`, `metadata`, a tokens bag) and a bare generic type parameter (`get<T>(key)`, `set<T>(key, value: T)`) stay anywhere. Outside `interfaces/` a generic is never wrapped in `Partial<T>`, `Pick<T, …>`, `Omit<T, …>`, or `Exclude<T, …>`: `RequestStoreService.merge` takes a named `I*` patch shape from `src/common/request/interfaces/`.
 
-Inside a class, every `private` method is declared ABOVE the public methods, directly under
-the constructor. A reader meets the helpers before the code that calls them, and the public
-surface of the class stays in one uninterrupted block instead of being cut apart by helpers.
+## Literal strings
 
-This is a layout rule, not a visibility rule — it does not change what is private.
+- A string naming something this project declares is an enum member (`enum.md`, Literal unions).
+- A literal a third-party contract defines keeps that contract's type: BullMQ `backoff.type: 'exponential'` and the `'failed'` worker event, redis `'PX'`, `'XX'`, `'OK'`, Prisma log levels, `PromiseSettledResult.status`. So does the key list of a utility type under `interfaces/` (`Pick<ApiKey, 'id' | 'name'>`).
+- A log context line is a literal English sentence (`this.logger.error(error, 'Queue job failed')`, `injectable.md`, Logger). Queue text that leaves through `IQueueResponse`, `QueueException`, or a side-effect description is i18n (`queue.md`, Messages).
+- A regex holds the allowed characters and format, never the length of the whole value: that length is `.min()`, `.max()`, or `.length()` on the schema, or a `length` comparison against a constant where no schema reads the value (`RequestIdMaxLength`). A quantifier on part of a value (an email TLD, an ARN account id) is format.
 
-## A `this.` call lands in a `const` first (HARD)
+## Dates
 
-A call rooted at `this` — `this.method()`, `this.dependency.method()`, awaited or not — is
-assigned to a `const` before the value is used. The variable is what the next line reads. One
-call, one named value: the argument list of the line below says what is being passed instead of
-how it was computed, and a debugger stops on the result.
+- A date stored or passed inside the system (a Prisma column, a Redis value, a job or outbox payload, `Notification.metadata`, a response body) is a `Date` or an ISO 8601 string (`HelperDateService.formatToIso`).
+- RFC 2822 (`HelperDateService.formatToRFC2822`) appears only in text rendered for a person: an email template's data, a push or in-app notification title or body, a generated document. Clock and persistence: `transaction.md`, Dates.
 
-Restricted positions:
+## Types and comments
 
-- an argument of any call, including `new X(this.y())` and `throw new E(this.z())`
-- an object-literal property value
-- an `if` / `else if` / `while` condition, and a ternary test or branch
-- any compound expression containing the call — `!this.x()`, `a && this.x()`, `a ?? this.x()`,
-  arithmetic — including inside a `return`
-- a template literal, a spread, a `for…of` iterable, an element-access index
-- a `throw` operand: `const exception = this.util.mapCollision(error); throw exception;`
-- inside a callback's block body
+Import a shape that already has a name; a hand-written copy or structural subset is a mirror that drifts. Zero copy-paste logic (the `config.md` optional-env ternary excepted), one source per config value, connection, and constant; repeated declarative data (a doc error entry list, a decorator stack on a route) and a call repeated at two sites are not copy-paste logic; a body repeated is, and logic stays single-source (two subjects whose rule can change apart keep their own copy, `service.md`, Methods); duplication still beats the wrong abstraction. No helper taking a function parameter to share a loop: share the predicate, repeat the loop. No helper taking a function or a promise as a parameter to wrap its execution (try/catch, retry, cache-or-compute, a logging wrapper): the wrapping lives in the class that owns the call (`OutboxService.dispatch`). Three exceptions: `DatabaseService.withTransaction`; `OutboxService.withTransaction`, which wraps it (`effects.md`); and `CacheService.readThrough` (`cache.md`). Sentry scope data rides in `SentryService.captureException(exception, captureContext)`.
 
-Allowed, because the call is the whole expression and nothing reads it in place:
+No signature declares `asserts x is T` or `asserts x`. An assert that narrows a nullable input returns the narrowed value, `(value: T | null): T`, and the caller uses the return; a plain assert returns `void`.
 
-- `return this.x()` and `return await this.x()` — but `return this.x().y` is restricted
-- an arrow whose entire body IS the call: `rows.map(row => this.map(row))`
-- an array element, including `Promise.all([this.x(), this.y()])`
-- a method reference: `this.logQuery.bind(this)`
-- an assignment or an expression statement: `const row = await this.repo.find()`, `await this.flush()`
+Default zero comments; the one marker is `// Sequential by design: <case>` (`concurrency.md`). A comment states what the symbol is or does, present tense, no history. `TODO` and `FIXME` are work markers. Re-test every comment a change touched.
 
-`await`, `!`, `as`, `satisfies` and optional chaining around the call do not lift the
-restriction. A ternary branch becomes `if` / `else` over a typed `let`, so the call stays
-lazy — hoisting an IO or database call out of a branch that may not run is a behaviour change,
-while a pure synchronous call may be hoisted.
+JSDoc lives in five places only; a name, a signature, and `docs/` explain everything else:
 
-No linter enforces this: the positions are too many to express as selectors worth maintaining,
-and a violation costs readability rather than correctness. `reviewer` checks it on every diff.
+1. A `@Global()` module class: the one line `Shared module: <what it exports, for whom>.` (`module-files.md`, `@Global()`).
+2. Every export of `*.dto.ts`, `*.decorator.ts`, `*.enum.ts` (on the enum), `*.exception.ts`, `*.constant.ts`, `*.contract.ts`, `*.validation.ts`, and `src/common/doc/interfaces/doc.interface.ts`: the bare `/** @public */` (a knip directive), `/** @alias */` on an intentional alias, no description line. No other export carries it.
+3. A public service, util, cache, or queue method whose signature hides its contract: what `null` or `false` means, a side effect the name omits (a counter, an enqueue, a cache eviction), or a precondition the caller owns. One line, present tense.
+4. Nothing else, place 5 aside: no class line, constant, field, property, enum member, interface field, constructor, private method, or controller, repository, guard, or service method; no `@param`, `@returns`, `@throws`, `@example`.
+5. A piece kept until a named later change: `/** Temporary: <what replaces it>. */` on the method, private included, deleted with the piece.
 
-## A composed string is a template or a pattern (HARD)
-
-`+` never joins strings. Two fragments are a template literal; a string carrying placeholders is
-a `{token}` pattern, and how it is filled depends on how many tokens it has:
-
-- **One token** — `String.prototype.replace` with a FUNCTION replacement whenever the value is
-  not a literal in the same file (`rules/config.md` — the string form expands `$&`, `` $` ``,
-  `$'`, `$$` and `$1` inside the value). A literal replacement stays a plain string: `''` is
-  written `''`, never `() => ''`.
-- **Two or more** — `HelperStringService.fillPattern(pattern, values)`, one pass over every
-  token. Chained replaces fill left to right, so a value substituted first is rescanned by the
-  next call: a value carrying the literal text of a later token forges the result. One pass
-  reads the pattern before any substitution exists. A token the record does not supply throws
-  `HelperPatternTokenMissingException`, because a half-filled key reads fine and collides
-  silently.
-
-```ts
-const key = `${workspaceId}:${startToken}:${endToken}`;
-const url = CdnUrlPattern.replace('{key}', () => key);
-const sessionKey = this.helperStringService.fillPattern(SessionKeyPattern, {
-    userId,
-    sessionId,
-});
-```
-
-A pattern constant is named for what it is (`rules/naming.md` reserves the `Pattern` suffix for
-a placeholder string), so the token set is declared once and every filler reads the same name.
-
-## Independent awaits run concurrently (HARD)
-
-When two or more `await`s in the same scope do not depend on each other's result, they run in
-one `Promise.all([...])`. Sequential `await`s there are not a style choice — they add every
-call's latency together for no reason, and the cost is invisible in review because each line
-looks correct on its own.
-
-The exceptions are real, so name them when they apply: an await whose argument uses an earlier
-result, a write that must not happen if an earlier step throws, and anything already inside
-`DatabaseService.withTransaction` (which sequences by design). See `rules/concurrency.md`.
-
-## Never mirror a type that already has a name
-
-If a shape already exists as a named type, import it. A hand-written inline copy is a mirror:
-it drifts silently because nothing makes the two move together. A structural SUBSET is still a
-mirror — restating three fields of `IUser` inline means importing `IUser` and picking, not
-retyping.
-
-An inline object type is fine when it mirrors nothing. The test: does a named type for this
-shape already exist, or is this a structural subset of one? Yes → import it and delete the
-copy. No → inline is fine.
-
-## Duplication
-
-Zero copy-paste logic. Written twice is a signal, written three times is a defect. One source
-of truth per config value, connection, and constant. **Duplication still beats the wrong
-abstraction** — do not abstract to satisfy DRY against YAGNI (`rules/architecture.md`).
-
-## Comments
-
-**Default zero comments.** Types, names, and structure are the contract.
-
-Every comment states FINAL STATE only — what the symbol IS or DOES, present tense. No
-history, no decision, no changelog. Deprecation is the one exception, and only with a real
-`@deprecated` marker.
-
-`// @note:` is banned. Delete it on sight.
-
-JSDoc is where a written explanation belongs. Optional one-line class JSDoc when the class
-name does not say what the provider is. Method JSDoc is the exception. No JSDoc on
-interfaces, except the kit surface below. Banned tags: `@example` `@param` `@returns`
-`@template` `@throws` `@private` `@export` `@class` `@implements` `@constraint` `@remarks`.
-
-### Kit surface carries `@public` (HARD)
-
-`@public` and `@alias` are knip directives, not documentation. Every export of these files
-carries a JSDoc whose first line states what the symbol IS or DOES, followed by `@public`
-(and `@alias` for an intentional alias), in every tree under `src/`:
-
-- `*.dto.ts` — the schema const and its `Dto` type
-- `*.decorator.ts`
-- `*.enum.ts` — the tag sits on the enum
-- `*.exception.ts`
-- `*.constant.ts`
-- `*.contract.ts`
-- `src/common/doc/interfaces/doc.interface.ts`
-
-```ts
-/**
- * Validated application environment variables, inferred from `AppEnvSchema`.
- * @public
- */
-export type AppEnvDto = z.infer<typeof AppEnvSchema>;
-```
-
-No other export carries `@public`: modules, controllers, domains, repositories and their
-interfaces, services, utils, caches, queues, guards, pipes, interceptors, middlewares,
-factories, and the module doc factories under `docs/`. The tag keeps an unused export out of
-the knip report; it does nothing for an unimported file (`rules/architecture.md`).
-
-Inline `//` is rare: something a reader cannot see from that statement and that causes real
-damage when missed. Zero per file is normal. No trailing comments.
-
-`TODO` and `FIXME` are work markers and are allowed. `NOTE`, `XXX`, and `HACK` are not used.
-
-After a change lands, re-test every comment it touched. Delete the ones whose subject is
-gone.
+A JSDoc states what the body on disk does now: no history, no "now" or "new", no plan reference, the Temporary line (place 5) excepted. A body change re-tests its JSDoc; one that no longer matches is a defect. `reviewer` reports a JSDoc outside the five places or one that does not match its body.

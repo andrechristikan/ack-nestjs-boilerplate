@@ -1,11 +1,52 @@
 import type { Prisma } from '@generated/prisma-client/client';
-import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
+import type * as runtime from '@prisma/client/runtime/library';
+import type {
+    IDatabaseRestoreArgs,
+    IDatabaseSoftDeletable,
+    IDatabaseSoftDeleteArgs,
+    IDatabaseSoftDeleteResult,
+} from '@common/database/interfaces/database.extension.interface';
 
 export interface IDatabaseClientOptions extends Prisma.PrismaClientOptions {
     log: Prisma.LogDefinition[];
 }
 
-export type IDatabaseClient = ReturnType<DatabaseClientFactory['create']>;
+interface IDatabaseExtensionModel {
+    $allModels: {
+        softDelete<T>(
+            this: IDatabaseSoftDeletable<T>,
+            args: IDatabaseSoftDeleteArgs<T>
+        ): Promise<IDatabaseSoftDeleteResult<T>>;
+        restore<T>(
+            this: IDatabaseSoftDeletable<T>,
+            args: IDatabaseRestoreArgs<T>
+        ): Promise<IDatabaseSoftDeleteResult<T>>;
+    };
+}
+
+type IDatabaseExtensionArgs = runtime.Types.Extensions.InternalArgs<
+    Record<never, never>,
+    IDatabaseExtensionModel,
+    Record<never, never>,
+    Record<never, never>
+>;
+
+export type IDatabaseExtension = (client: unknown) => {
+    $extends: { extArgs: IDatabaseExtensionArgs };
+};
+
+type IDatabaseMergedArgs = runtime.Types.Extensions.MergeExtArgs<
+    Prisma.TypeMap,
+    runtime.Types.Extensions.DefaultArgs,
+    IDatabaseExtensionArgs
+>;
+
+export type IDatabaseClient =
+    runtime.Types.Extensions.DynamicClientExtensionThis<
+        Prisma.TypeMap<IDatabaseMergedArgs>,
+        Prisma.TypeMapCb,
+        IDatabaseMergedArgs
+    >;
 
 // Derived from IDatabaseClient: Prisma.TransactionClient does not carry this
 // client's extensions and will not match it.
@@ -16,3 +57,10 @@ export type IDatabaseTransactionClient = Parameters<
 export type IDatabaseTransactionOptions = NonNullable<
     Prisma.PrismaClientOptions['transactionOptions']
 >;
+
+export interface IDatabaseQueryLog {
+    model: string | null;
+    action: string | null;
+    duration: number;
+    isSlow: boolean;
+}

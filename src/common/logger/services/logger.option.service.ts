@@ -1,23 +1,32 @@
 import { Injectable, RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { IncomingMessage } from 'node:http';
 import type { Params } from 'nestjs-pino';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestContextService } from '@common/request/services/request.context.service';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import {
+    RequestActorStoreKey,
+    RequestCorrelationIdStoreKey,
+    RequestIdStoreKey,
+} from '@common/request/constants/request.constant';
 import {
     LoggerAutoContext,
-    LoggerExcludedRoutes,
     LoggerRedactedValue,
     LoggerSensitiveFields,
     LoggerSensitivePaths,
 } from '@common/logger/constants/logger.constant';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import type { Response } from 'express';
-import type { ILoggerDebugInfo } from '@common/logger/interfaces/logger.interface';
+import type {
+    ILoggerDebugInfo,
+    ILoggerMixin,
+    ILoggerTransport,
+} from '@common/logger/interfaces/logger.interface';
 import { EnumLoggerLevel } from '@common/logger/enums/logger.enum';
 import { LoggerUtil } from '@common/logger/utils/logger.util';
-import type { Options } from 'pino-http';
+import { LoggerUrlUtil } from '@common/logger/utils/logger.url.util';
 
 @Injectable()
 export class LoggerOptionService {
@@ -25,34 +34,44 @@ export class LoggerOptionService {
     private readonly name: string;
     private readonly version: string;
 
-    private readonly autoLogger: boolean;
+    private readonly accessLogEnabled: boolean;
+    private readonly excludedRoutes: string[];
 
-    private readonly enable: boolean;
+    private readonly enabled: boolean;
     private readonly level: EnumLoggerLevel;
-    private readonly intoFile: boolean;
+    private readonly fileEnabled: boolean;
     private readonly filePath: string;
-    private readonly prettier: boolean;
+    private readonly prettyEnabled: boolean;
 
     private readonly sensitivePaths: string[];
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperStringService: HelperStringService,
         private readonly helperDateService: HelperDateService,
         private readonly requestContextService: RequestContextService,
-        private readonly loggerUtil: LoggerUtil
+        private readonly requestStoreService: RequestStoreService,
+        private readonly loggerUtil: LoggerUtil,
+        private readonly loggerUrlUtil: LoggerUrlUtil
     ) {
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.name = this.configService.get<string>('app.name')!;
         this.version = this.configService.get<string>('app.version')!;
 
-        this.autoLogger = this.configService.get<boolean>('logger.auto')!;
+        this.accessLogEnabled = this.configService.get<boolean>(
+            'logger.accessLogEnabled'
+        )!;
+        this.excludedRoutes = this.configService.get<string[]>(
+            'logger.excludedRoutes'
+        )!;
 
-        this.enable = this.configService.get<boolean>('logger.enable')!;
+        this.enabled = this.configService.get<boolean>('logger.enabled')!;
         this.level = this.configService.get<EnumLoggerLevel>('logger.level')!;
-        this.intoFile = this.configService.get<boolean>('logger.intoFile')!;
+        this.fileEnabled =
+            this.configService.get<boolean>('logger.fileEnabled')!;
         this.filePath = this.configService.get<string>('logger.filePath')!;
-        this.prettier = this.configService.get<boolean>('logger.prettier')!;
+        this.prettyEnabled = this.configService.get<boolean>(
+            'logger.prettyEnabled'
+        )!;
 
         this.sensitivePaths = LoggerSensitivePaths.map(path =>
             LoggerSensitiveFields.map(field =>
@@ -61,7 +80,7 @@ export class LoggerOptionService {
         ).flat();
     }
 
-    private buildTransports(): Options['transport'] {
+    private buildTransports(): ILoggerTransport | null {
         const transport: {
             targets: {
                 target: string;
@@ -72,7 +91,7 @@ export class LoggerOptionService {
             targets: [],
         };
 
-        if (this.prettier) {
+        if (this.prettyEnabled) {
             transport.targets.push({
                 target: 'pino-pretty',
                 level: this.level,
@@ -87,7 +106,7 @@ export class LoggerOptionService {
             });
         }
 
-        if (this.intoFile) {
+        if (this.fileEnabled) {
             transport.targets.push({
                 target: 'pino-roll',
                 level: this.level,
@@ -100,9 +119,7 @@ export class LoggerOptionService {
             });
         }
 
-        return transport.targets.length > 0
-            ? (transport as unknown as Options['transport'])
-            : undefined;
+        return transport.targets.length > 0 ? transport : null;
     }
 
     private createLogFormatter(): (
@@ -117,6 +134,9 @@ export class LoggerOptionService {
                 time: _time,
                 responseTime: _responseTime,
                 level,
+                requestId,
+                correlationId,
+                userId,
                 req,
                 res,
                 err,
@@ -138,6 +158,9 @@ export class LoggerOptionService {
             const log: Record<string, unknown> = {
                 severity,
                 context: context ?? LoggerAutoContext,
+                requestId,
+                correlationId,
+                userId,
                 timestamp: today.valueOf(),
                 msg: sanitizedMessage,
                 service: {
@@ -159,10 +182,9 @@ export class LoggerOptionService {
                 });
             }
 
-            if (err) {
-                log.err = this.loggerUtil.serializeError(
-                    (error as Error) ?? (err as Error)
-                );
+            const caughtError = error ?? err ?? null;
+            if (caughtError !== null) {
+                log.err = this.loggerUtil.serializeError(caughtError as Error);
             }
 
             if (res) {
@@ -205,9 +227,9 @@ export class LoggerOptionService {
 
     private addDebugInfo(
         additionalParams: Record<string, unknown>
-    ): ILoggerDebugInfo | undefined {
+    ): ILoggerDebugInfo | null {
         if (this.env === EnumAppEnvironment.production) {
-            return undefined;
+            return null;
         }
 
         const memUsage = process.memoryUsage();
@@ -222,25 +244,34 @@ export class LoggerOptionService {
     }
 
     private createAutoLoggingConfig():
-        { ignore: (req: IRequestApp) => boolean } | boolean {
-        return this.autoLogger === true
+        { ignore: (req: IncomingMessage) => boolean } | boolean {
+        return this.accessLogEnabled === true
             ? {
-                  ignore: (req: IRequestApp) =>
-                      this.helperStringService.checkUrlMatchesPatterns(
-                          req.url,
-                          LoggerExcludedRoutes
+                  ignore: (req: IncomingMessage) =>
+                      this.loggerUrlUtil.matchesPatterns(
+                          req.url!,
+                          this.excludedRoutes
                       ),
               }
             : false;
     }
 
-    private createMixin(): (
-        _: Record<string, unknown>,
-        level: number
-    ) => Record<string, unknown> {
-        return (_: Record<string, unknown>, level: number) => {
+    private createMixin(): (_: object, level: number) => ILoggerMixin {
+        return (_: object, level: number) => {
+            const requestId =
+                this.requestStoreService.get<string>(RequestIdStoreKey);
+            const correlationId = this.requestStoreService.get<string>(
+                RequestCorrelationIdStoreKey
+            );
+
+            const userId =
+                this.requestStoreService.get<string>(RequestActorStoreKey);
+
             return {
-                level: level,
+                level,
+                requestId,
+                correlationId,
+                userId,
             };
         };
     }
@@ -256,8 +287,6 @@ export class LoggerOptionService {
         return {
             forRoutes: [{ path: '{*wildcard}', method: RequestMethod.ALL }],
             pinoHttp: {
-                genReqId: (request: IRequestApp) =>
-                    this.loggerUtil.getRequestId(request),
                 formatters: {
                     log: logFormatter,
                 },
@@ -266,12 +295,12 @@ export class LoggerOptionService {
                 timestamp: false,
                 wrapSerializers: false,
                 base: null,
-                transport: transports,
-                level: this.enable ? this.level : 'silent',
+                ...(transports !== null && { transport: transports }),
+                level: this.enabled ? this.level : 'silent',
                 redact: redactionConfig,
                 serializers,
                 autoLogging: autoLoggingConfig,
-            } as unknown as Params['pinoHttp'],
+            },
         };
     }
 }

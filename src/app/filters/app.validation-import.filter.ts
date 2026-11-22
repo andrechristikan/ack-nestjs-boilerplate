@@ -7,9 +7,6 @@ import { MessageService } from '@common/message/services/message.service';
 import type { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 
-/**
- * Formats `FileImportException` into the standard error envelope with localized per-row errors.
- */
 @Catch(FileImportException)
 export class AppValidationImportFilter implements ExceptionFilter {
     constructor(

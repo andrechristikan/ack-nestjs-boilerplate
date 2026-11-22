@@ -1,66 +1,21 @@
 import { HttpStatus } from '@nestjs/common';
-import { Prisma } from '@generated/prisma-client/client';
-import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import { z } from 'zod';
+import { EnumApiKeyType, Prisma } from '@generated/prisma-client/client';
+import type { ApiKey } from '@generated/prisma-client/client';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 
-/**
- * Route metadata key holding the API key types a handler accepts.
- * @public
- */
+/** @public */
 export const ApiKeyXTypeMetaKey = 'ApiKeyXTypeMetaKey';
 
-/**
- * Request-store key holding the validated API key.
- * @public
- */
-export const ApiKeyStoreKey = 'ApiKeyStore';
+/** @public */
+export const ApiKeyContextStoreKey = 'ApiKeyContextStoreKey';
 
-/**
- * OpenAPI apiKey scheme name for X-API-Key Protected routes.
- * @public
- */
+/** @public */
 export const ApiKeyDocSecurityName = 'xApiKey';
 
-/**
- * X-API-Key guard error kit for `@ApiKeyProtected` / `@ApiKeySystemProtected`.
- * Same shape as `DocFileErrorResponses` / `DocPaginationErrorResponses` — each value is a
- * `DocResponseError` MethodDecorator, not an `applyDecorators` blob.
- * @public
- */
-export const DocApiKeyErrorResponses = {
-    unauthorized: DocResponseError(
-        HttpStatus.UNAUTHORIZED,
-        {
-            statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
-            messagePath: 'apiKey.error.xApiKey.required',
-        },
-        {
-            statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
-            messagePath: 'apiKey.error.xApiKey.invalid',
-        }
-    ),
-    forbidden: DocResponseError(
-        HttpStatus.FORBIDDEN,
-        {
-            statusCode: EnumApiKeyStatusCodeError.xApiKeyNotFound,
-            messagePath: 'apiKey.error.xApiKey.notFound',
-        },
-        {
-            statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
-            messagePath: 'apiKey.error.xApiKey.forbidden',
-        }
-    ),
-    predefinedNotFound: DocResponseError(HttpStatus.INTERNAL_SERVER_ERROR, {
-        statusCode: EnumApiKeyStatusCodeError.xApiKeyPredefinedNotFound,
-        messagePath: 'apiKey.error.xApiKey.predefinedNotFound',
-    }),
-} as const;
-
-/**
- * Columns an admin api key list read returns; the credential hash is never among them.
- * @public
- */
-export const ApiKeyAdminListSelect = {
+/** @public */
+export const ApiKeySelect = {
     id: true,
     type: true,
     name: true,
@@ -73,3 +28,80 @@ export const ApiKeyAdminListSelect = {
     updatedAt: true,
     updatedBy: true,
 } satisfies Prisma.ApiKeySelect;
+
+/** @public */
+export const ApiKeyCacheSchema = z.object({
+    id: z.string(),
+    type: z.enum(EnumApiKeyType),
+    name: z.string(),
+    key: z.string(),
+    hash: z.string(),
+    isActive: z.boolean(),
+    startAt: z.coerce.date().nullable(),
+    endAt: z.coerce.date().nullable(),
+    createdAt: z.coerce.date(),
+    createdBy: z.string().nullable(),
+    updatedAt: z.coerce.date(),
+    updatedBy: z.string().nullable(),
+}) satisfies z.ZodType<ApiKey>;
+
+/** @public */
+export const ApiKeyHeaderName = 'x-api-key';
+
+/** @public */
+export const ApiKeySystemProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
+        messagePath: 'apiKey.error.xApiKey.required',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
+        messagePath: 'apiKey.error.xApiKey.invalid',
+    },
+    {
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumApiKeyStatusCodeError.expired,
+        messagePath: 'apiKey.error.expired',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
+        messagePath: 'apiKey.error.xApiKey.forbidden',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumApiKeyStatusCodeError.guardMissing,
+        messagePath: 'apiKey.error.guardMissing',
+    },
+];
+
+/** @public */
+export const ApiKeyProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumApiKeyStatusCodeError.xApiKeyRequired,
+        messagePath: 'apiKey.error.xApiKey.required',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumApiKeyStatusCodeError.xApiKeyInvalid,
+        messagePath: 'apiKey.error.xApiKey.invalid',
+    },
+    {
+        httpStatus: HttpStatus.BAD_REQUEST,
+        statusCode: EnumApiKeyStatusCodeError.expired,
+        messagePath: 'apiKey.error.expired',
+    },
+    {
+        httpStatus: HttpStatus.FORBIDDEN,
+        statusCode: EnumApiKeyStatusCodeError.xApiKeyForbidden,
+        messagePath: 'apiKey.error.xApiKey.forbidden',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumApiKeyStatusCodeError.guardMissing,
+        messagePath: 'apiKey.error.guardMissing',
+    },
+];

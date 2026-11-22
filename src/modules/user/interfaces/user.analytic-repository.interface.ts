@@ -1,47 +1,62 @@
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumUserLoginFrom,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { IAnalyticCountBucket } from '@modules/analytic/interfaces/analytic.interface';
 import type { IAnalyticNearLockout } from '@modules/analytic/interfaces/analytic.anomaly.interface';
 import type {
     IUserAnalyticGroupCount,
     IUserAnalyticRef,
-    IUserAnalyticSignUp,
 } from '@modules/user/interfaces/user.interface';
 
 export interface IUserAnalyticRepository {
     countRegistrations(startDate: Date, endDate: Date): Promise<number>;
     countDeletedInRange(startDate: Date, endDate: Date): Promise<number>;
-    countRegisteredUntil(endDate: Date): Promise<number>;
+    countAliveAt(date: Date): Promise<number>;
     countByStatus(status: EnumUserStatus): Promise<number>;
     groupBySignUpWith(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IUserAnalyticGroupCount<EnumUserSignUpWith>[]>;
     groupBySignUpFrom(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null
     ): Promise<IUserAnalyticGroupCount<EnumUserSignUpFrom>[]>;
+    groupLoginSource(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<IUserAnalyticGroupCount<EnumUserLoginFrom>[]>;
     groupByStatus(): Promise<IUserAnalyticGroupCount<EnumUserStatus>[]>;
     groupByCountry(): Promise<IAnalyticCountBucket[]>;
     groupByRole(): Promise<IAnalyticCountBucket[]>;
-    countVerifiedEmail(): Promise<number>;
+    countVerifiedEmail(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<number>;
+    countSignedUp(
+        startDate: Date | null,
+        endDate: Date | null
+    ): Promise<number>;
     countActive(): Promise<number>;
-    countPasswordExpired(now: Date): Promise<number>;
-    findNearLockout(minAttempt: number): Promise<IAnalyticNearLockout[]>;
-    groupPasswordAttemptBuckets(): Promise<IAnalyticCountBucket[]>;
-    findOneById(id: string): Promise<IUserAnalyticRef | null>;
-    listNearLockoutOffset(
+    findNearLockout(
         minAttempt: number,
-        params: IPaginationQueryOffsetParams<Prisma.UserWhereInput>
+        now: Date,
+        limit: number
+    ): Promise<IAnalyticNearLockout[]>;
+    countNearLockout(minAttempt: number, now: Date): Promise<number>;
+    groupPasswordAttemptBuckets(
+        maxAttempt: number,
+        now: Date
+    ): Promise<IAnalyticCountBucket[]>;
+    findOneById(id: string): Promise<IUserAnalyticRef | null>;
+    findManyByIds(ids: string[]): Promise<IUserAnalyticRef[]>;
+    findNearLockoutOffset(
+        minAttempt: number,
+        now: Date,
+        params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>>;
-    findSignUpsInRange(
-        startDate: Date,
-        endDate: Date
-    ): Promise<IUserAnalyticSignUp[]>;
 }

@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
 
-/**
- * Base country shape: the stored country row.
- * @public
- */
+/** @public */
 export const CountryResponseSchema = DatabaseResponseSchema.omit({
     deletedAt: true,
     deletedBy: true,
@@ -28,13 +25,21 @@ export const CountryResponseSchema = DatabaseResponseSchema.omit({
             description: 'Country code, Alpha 3 code version',
             example: faker.location.countryCode('alpha-3'),
         }),
-    phoneCodes: z.array(z.string()).meta({
+    phoneCode: z.array(z.string()).meta({
         description: 'Country phone code',
         example: [faker.helpers.arrayElement(['62', '65'])],
     }),
     continent: z.string().meta({
         description: 'Continent the country belongs to',
-        example: faker.location.country(),
+        example: faker.helpers.arrayElement([
+            'Africa',
+            'Antarctica',
+            'Asia',
+            'Europe',
+            'North America',
+            'Oceania',
+            'South America',
+        ]),
     }),
     timezone: z.string().meta({
         description: 'Timezone of the country',
@@ -42,8 +47,5 @@ export const CountryResponseSchema = DatabaseResponseSchema.omit({
     }),
 });
 
-/**
- * Stored country.
- * @public
- */
+/** @public */
 export type CountryResponseDto = z.infer<typeof CountryResponseSchema>;

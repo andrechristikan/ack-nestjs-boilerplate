@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes one backup code regeneration made from a new device.
- * @public
- */
+/** @public */
 export const AnalyticBackupCodeNewDeviceResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the user who regenerated the backup codes',
@@ -16,10 +13,7 @@ export const AnalyticBackupCodeNewDeviceResponseSchema = z.object({
     }),
 });
 
-/**
- * One backup code regeneration made from a new device.
- * @public
- */
+/** @public */
 export type AnalyticBackupCodeNewDeviceResponseDto = z.infer<
     typeof AnalyticBackupCodeNewDeviceResponseSchema
 >;

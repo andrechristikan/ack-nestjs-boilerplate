@@ -10,6 +10,6 @@
         "exceedMaxFiles": "The number of uploaded files exceeds the maximum allowed.",
         "fieldUnexpected": "The uploaded file was sent to a field this endpoint does not accept.",
         "multipartInvalid": "The multipart request body is malformed.",
-        "validationDto": "The imported data failed validation."
+        "importInvalid": "The imported data failed validation."
     }
 }

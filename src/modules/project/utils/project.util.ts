@@ -1,10 +1,17 @@
 import type { WorkspaceMember } from '@generated/prisma-client/client';
-import { ProjectWorkspaceBypassRole } from '@modules/project/constants/project.constant';
+import { ProjectBypassRoles } from '@modules/project/constants/project.constant';
+import type { IProjectMemberActor } from '@modules/project/interfaces/project.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ProjectUtil {
-    isWorkspaceOwner(workspaceMember: WorkspaceMember): boolean {
-        return workspaceMember.role === ProjectWorkspaceBypassRole;
+    hasWorkspaceBypass(workspaceMember: WorkspaceMember): boolean {
+        return ProjectBypassRoles.includes(workspaceMember.role);
+    }
+
+    mapMemberActor(workspaceMember: WorkspaceMember): IProjectMemberActor {
+        const hasWorkspaceBypass = this.hasWorkspaceBypass(workspaceMember);
+
+        return { userId: workspaceMember.userId, hasWorkspaceBypass };
     }
 }

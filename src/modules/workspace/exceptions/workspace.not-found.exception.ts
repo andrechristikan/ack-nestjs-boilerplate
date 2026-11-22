@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
-/**
- * Raised when the requested workspace does not exist.
- * @public
- */
+/** @public */
 export class WorkspaceNotFoundException extends AppBaseException {
     readonly module = 'workspace';
     readonly statusCode = EnumWorkspaceStatusCodeError.notFound;

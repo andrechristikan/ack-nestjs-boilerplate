@@ -1,6 +1,16 @@
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
+import type {
+    EnumActivityLogProcess,
+    EnumActivityLogQueue,
+} from '@modules/activity-log/enums/activity-log.enum';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import type { ActivityLog, Prisma } from '@generated/prisma-client/client';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
+import type { ActivityLogAnalyticListSelect } from '@modules/activity-log/constants/activity-log.constant';
+import type {
+    IRequestLog,
+    IRequestUserAgent,
+} from '@common/request/interfaces/request.interface';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import {
     EnumActivityLogUser,
@@ -12,19 +22,14 @@ export interface IActivityLog extends ActivityLog {
     user: IUserRef;
 }
 
+export interface IActivityLogMasked extends Omit<IActivityLog, 'userAgent'> {
+    userAgent: IRequestUserAgent | null;
+}
+
 export type IActivityLogMetadata = Record<
     string,
     string | number | boolean | Date
 >;
-
-export interface IActivityLogStagedEvent {
-    action: EnumActivityLogAction;
-    metadata: IActivityLogMetadata;
-    onError: boolean;
-    userId?: string;
-    createdBy?: string;
-    workspaceId?: string | null;
-}
 
 export interface IActivityLogActionContract {
     user: EnumActivityLogUser;
@@ -32,21 +37,30 @@ export interface IActivityLogActionContract {
     metadata: z.ZodType<IActivityLogMetadata>;
 }
 
-export interface IActivityLogFlushOptions {
-    payloadUserId: string | null;
-    isError: boolean;
-}
+export type IActivityLogMetadataParseResult =
+    z.ZodSafeParseResult<IActivityLogMetadata>;
 
-export type IActivityLogStageInput<A extends EnumActivityLogAction> = {
+export type IActivityLogInput<A extends EnumActivityLogAction> = {
     action: A;
     metadata?: IActivityLogMetadata;
-    onError?: boolean;
     userId?: string;
     createdBy?: string;
-    workspaceId?: string | null;
+    workspaceId?: string;
 };
 
+export interface IActivityLogContextPayload {
+    apiKeyId: string;
+    actorUserId: string | null;
+    workspaceId: string | null;
+    requestLog: IRequestLog;
+}
+
+export interface IActivityLogActorPayload extends IActivityLogContextPayload {
+    actorUserId: string;
+}
+
 export interface IActivityLogCreate {
+    id: string;
     userId: string;
     createdBy: string;
     workspaceId: string | null;
@@ -54,6 +68,18 @@ export interface IActivityLogCreate {
     description: string;
     requestLog: IRequestLog;
     metadata: IActivityLogMetadata;
+    createdAt: Date;
+}
+
+export interface IActivityLogCreatePayload extends Omit<
+    IActivityLogCreate,
+    'createdAt'
+> {
+    createdAt: string;
+}
+
+export interface IActivityLogCreateManyPayload {
+    rows: IActivityLogCreatePayload[];
 }
 
 export interface IActivityLogAnalyticActionCount {
@@ -61,12 +87,37 @@ export interface IActivityLogAnalyticActionCount {
     count: number;
 }
 
-export interface IActivityLogAnalyticEvent {
-    id: string;
+export interface IActivityLogIpGroup {
+    ipAddress: string;
+    count: number;
+}
+
+export interface IActivityLogUserGroup {
     userId: string;
-    action: EnumActivityLogAction;
+    count: number;
+}
+
+export interface IActivityLogIpUserGroup {
     ipAddress: string | null;
-    createdAt: Date;
-    userAgent?: Prisma.JsonValue;
-    workspaceId?: string | null;
+    userId: string;
+    count: number;
+}
+
+export type IActivityLogAnalyticList = Prisma.ActivityLogGetPayload<{
+    select: typeof ActivityLogAnalyticListSelect;
+}>;
+
+export type IActivityLogActionContracts = Record<
+    EnumActivityLogAction,
+    IActivityLogActionContract
+>;
+
+export interface IActivityLogCreateManyEffect extends IOutboxEffect {
+    queue: EnumActivityLogQueue.activityLog;
+    name: EnumActivityLogProcess.createMany;
+    data: IActivityLogCreateManyPayload;
+}
+
+export interface IActivityLogCreateManyQueueResponse extends IQueueResponse {
+    countRows: number;
 }

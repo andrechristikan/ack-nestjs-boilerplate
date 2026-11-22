@@ -17,24 +17,18 @@ import {
 import type { ResponsePaginationDto } from '@common/response/dtos/response.pagination.dto';
 import type { ResponsePaginationMetadataDto } from '@common/response/dtos/response.pagination-metadata.dto';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { IMessageProperties } from '@common/message/interfaces/message.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import type {
     IPaginationOrderBy,
-    IPaginationQuery,
+    IPaginationQueryPatch,
 } from '@common/pagination/interfaces/pagination.interface';
 import { ResponsePaginationShapeInvalidException } from '@common/response/exceptions/response.pagination-shape-invalid.exception';
 import { ResponsePaginationTypeInvalidException } from '@common/response/exceptions/response.pagination-type-invalid.exception';
 import { ResponseSerializationException } from '@common/response/exceptions/response.serialization.exception';
 
-/**
- * Wraps paginated handler results into the standard envelope, serializing every item against the
- * route's declared schema, merging pagination state from the per-request store into the metadata
- * and localizing the message.
- */
 @Injectable()
 export class ResponsePaginationInterceptor<T> implements NestInterceptor {
     constructor(
@@ -52,9 +46,6 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
         );
     }
 
-    /**
-     * Asserts the result is a pagination shape with a valid `type` and an array `data`.
-     */
     private validatePaginationResponse(
         responseData: IResponsePaginationReturn<T>
     ): void {
@@ -74,11 +65,8 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
         }
     }
 
-    /**
-     * A page without a declared item schema is a route that promised no data, so it fails closed.
-     */
     private async serialize(
-        schema: StandardSchemaV1 | undefined,
+        schema: StandardSchemaV1 | null,
         items: unknown[]
     ): Promise<T[]> {
         if (!schema) {
@@ -86,7 +74,7 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
         }
 
         const results = await Promise.all(
-            items.map(item => schema['~standard'].validate(item))
+            items.map(async item => schema['~standard'].validate(item))
         );
 
         const serialized: T[] = [];
@@ -103,16 +91,13 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
         return serialized;
     }
 
-    /**
-     * Cursor type contributes `nextCursor`; offset type contributes page fields.
-     */
     intercept(
         context: ExecutionContext,
         next: CallHandler
     ): Observable<Promise<ResponsePaginationDto<T>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (res: Promise<Response>) => {
+                map(async (res: Promise<IResponsePaginationReturn<T>>) => {
                     const ctx = context.switchToHttp();
                     const response: Response = ctx.getResponse();
 
@@ -120,16 +105,16 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                         ResponseMessagePathMetaKey,
                         context.getHandler()
                     );
-                    const schema = this.reflector.get<
+                    const reflectedSchema = this.reflector.get<
                         StandardSchemaV1 | undefined
                     >(ResponseSchemaMetaKey, context.getHandler());
+                    const schema = reflectedSchema ?? null;
 
                     let data: T[] = [];
 
                     const metadata = this.responseMetadataService.create();
 
-                    const responseData =
-                        (await res) as unknown as IResponsePaginationReturn<T>;
+                    const responseData = await res;
                     this.validatePaginationResponse(responseData);
 
                     const {
@@ -141,24 +126,25 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                         type,
                     } = responseData;
 
-                    let nextCursor: string | undefined;
-                    let previousCursor: string | undefined;
-
-                    let totalPage: number | undefined;
-                    let nextPage: number | undefined;
-                    let previousPage: number | undefined;
-                    let page: number | undefined;
-                    let hasPrevious: boolean = false;
-
-                    if (responseData.type === EnumPaginationType.cursor) {
-                        nextCursor = responseData.cursor;
-                    } else {
-                        totalPage = responseData.totalPage;
-                        nextPage = responseData.nextPage;
-                        previousPage = responseData.previousPage;
-                        page = responseData.page;
-                        hasPrevious = responseData.hasPrevious;
-                    }
+                    const pageMetadata =
+                        responseData.type === EnumPaginationType.cursor
+                            ? {
+                                  hasPrevious: false,
+                                  ...(responseData.cursor && {
+                                      nextCursor: responseData.cursor,
+                                  }),
+                              }
+                            : {
+                                  hasPrevious: responseData.hasPrevious,
+                                  totalPage: responseData.totalPage,
+                                  page: responseData.page,
+                                  ...(responseData.nextPage && {
+                                      nextPage: responseData.nextPage,
+                                  }),
+                                  ...(responseData.previousPage && {
+                                      previousPage: responseData.previousPage,
+                                  }),
+                              };
 
                     data = await this.serialize(schema, rData);
                     messagePath = rMetadata?.messagePath ?? messagePath;
@@ -167,8 +153,8 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                         rMetadata?.httpStatus ?? response.statusCode;
                     const statusCode =
                         rMetadata?.statusCode ?? response.statusCode;
-                    const messageProperties: IMessageProperties | undefined =
-                        rMetadata?.messageProperties;
+                    const messageProperties =
+                        rMetadata?.messageProperties ?? null;
 
                     if (rMetadata) {
                         delete rMetadata.httpStatus;
@@ -178,7 +164,7 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                     }
 
                     const storedPagination =
-                        this.requestStoreService.get<Partial<IPaginationQuery>>(
+                        this.requestStoreService.get<IPaginationQueryPatch>(
                             PaginationStoreKey
                         );
                     const pagination = storedPagination ?? {};
@@ -188,13 +174,7 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                         type,
                         count,
                         hasNext,
-                        hasPrevious,
-                        totalPage,
-                        nextCursor,
-                        previousCursor,
-                        nextPage,
-                        previousPage,
-                        page,
+                        ...pageMetadata,
                         perPage,
                         search: pagination.search,
                         filters: pagination.filters,
@@ -211,7 +191,9 @@ export class ResponsePaginationInterceptor<T> implements NestInterceptor {
                         messagePath,
                         {
                             customLanguage: metadata.language,
-                            properties: messageProperties,
+                            ...(messageProperties !== null && {
+                                properties: messageProperties,
+                            }),
                         }
                     );
 

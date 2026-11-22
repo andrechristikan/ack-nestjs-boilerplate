@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes a role distribution as counted rows inside a declared object.
- * @public
- */
+/** @public */
 export const AnalyticRoleCountResponseSchema = z.object({
     roles: z
         .array(
@@ -24,10 +21,7 @@ export const AnalyticRoleCountResponseSchema = z.object({
         }),
 });
 
-/**
- * Role distribution carried as counted rows inside a declared object.
- * @public
- */
+/** @public */
 export type AnalyticRoleCountResponseDto = z.infer<
     typeof AnalyticRoleCountResponseSchema
 >;

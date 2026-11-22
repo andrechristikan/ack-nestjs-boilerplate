@@ -16,18 +16,19 @@ import {
     Query,
     UploadedFile,
 } from '@nestjs/common';
-
 import { ApiTags } from '@nestjs/swagger';
 import {
     Response,
     ResponseFile,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
-import { UserHttpService } from '@modules/user/services/user.http.service';
-import { UserImportHttpService } from '@modules/user/services/user.import.http.service';
-import { UserPasswordHttpService } from '@modules/user/services/user.password.http.service';
-import { UserTwoFactorHttpService } from '@modules/user/services/user.two-factor.http.service';
+import { UserGetListOffsetByAdminUseCase } from '@modules/user/use-cases/user.get-list-offset-by-admin.use-case';
+import { UserGetOneUseCase } from '@modules/user/use-cases/user.get-one.use-case';
+import { UserCreateByAdminUseCase } from '@modules/user/use-cases/user.create-by-admin.use-case';
+import { UserUpdateStatusByAdminUseCase } from '@modules/user/use-cases/user.update-status-by-admin.use-case';
+import { UserUpdatePasswordByAdminUseCase } from '@modules/user/use-cases/user.update-password-by-admin.use-case';
+import { UserImportByAdminUseCase } from '@modules/user/use-cases/user.import-by-admin.use-case';
+import { UserExportByAdminUseCase } from '@modules/user/use-cases/user.export-by-admin.use-case';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
 import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import {
@@ -35,25 +36,28 @@ import {
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-
-import { UserProtected } from '@modules/user/decorators/user.decorator';
+import {
+    UserContext,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
 import type {
+    IUserContext,
     IUserList,
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
-
 import {
+    AuthJwtAccessContext,
     AuthJwtAccessProtected,
-    AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
 import type {
     IResponseFileReturn,
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-
 import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.response.dto';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
@@ -62,14 +66,16 @@ import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.creat
 import { DatabaseIdResponseSchema } from '@common/database/dtos/response/database.id.response.dto';
 import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import {
+    RequestContext,
     RequestThrottle,
     RequestTimeout,
 } from '@common/request/decorators/request.decorator';
-
+import { RequestUploadTimeout } from '@common/request/constants/request.constant';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { UserUpdateStatusRequestSchema } from '@modules/user/dtos/request/user.update-status.request.dto';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { FileUploadSingle } from '@common/file/decorators/file.decorator';
+import { FileImportSingle } from '@common/file/decorators/file.decorator';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import { FileRequiredPipe } from '@common/file/pipes/file.required.pipe';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
@@ -77,6 +83,10 @@ import { FileCsvParsePipe } from '@common/file/pipes/file.csv-parse.pipe';
 import { FileCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pipe';
 import { UserImportRequestSchema } from '@modules/user/dtos/request/user.import.request.dto';
 import type { UserImportRequestDto } from '@modules/user/dtos/request/user.import.request.dto';
+import { UserImportResponseSchema } from '@modules/user/dtos/response/user.import.response.dto';
+import type { UserImportResponseDto } from '@modules/user/dtos/response/user.import.response.dto';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -85,10 +95,13 @@ import type { UserImportRequestDto } from '@modules/user/dtos/request/user.impor
 })
 export class UserAdminController {
     constructor(
-        private readonly userHttpService: UserHttpService,
-        private readonly userPasswordHttpService: UserPasswordHttpService,
-        private readonly userTwoFactorHttpService: UserTwoFactorHttpService,
-        private readonly userImportHttpService: UserImportHttpService
+        private readonly userGetListOffsetByAdminUseCase: UserGetListOffsetByAdminUseCase,
+        private readonly userGetOneUseCase: UserGetOneUseCase,
+        private readonly userCreateByAdminUseCase: UserCreateByAdminUseCase,
+        private readonly userUpdateStatusByAdminUseCase: UserUpdateStatusByAdminUseCase,
+        private readonly userUpdatePasswordByAdminUseCase: UserUpdatePasswordByAdminUseCase,
+        private readonly userImportByAdminUseCase: UserImportByAdminUseCase,
+        private readonly userExportByAdminUseCase: UserExportByAdminUseCase
     ) {}
 
     @Doc({ summary: 'get all users' })
@@ -100,14 +113,14 @@ export class UserAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
         @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
     ): Promise<IResponsePaginationReturn<IUserList>> {
-        return this.userHttpService.getListOffsetByAdmin(query);
+        return this.userGetListOffsetByAdminUseCase.execute(query);
     }
 
     @Doc({ summary: 'get detail an user' })
@@ -119,15 +132,15 @@ export class UserAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/get/:userId')
     async get(
         @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponseReturn<IUserProfile>> {
-        return this.userHttpService.getOne(userId);
+        return this.userGetOneUseCase.execute(userId);
     }
 
     @Doc({ summary: 'create a user' })
@@ -139,16 +152,25 @@ export class UserAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Post('/create')
     async create(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Body({ schema: UserCreateRequestSchema })
-        body: UserCreateRequestDto,
-        @AuthJwtPayload('userId') createdBy: string
+        body: UserCreateRequestDto
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
-        return this.userHttpService.createByAdmin(body, createdBy);
+        return this.userCreateByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            body
+        );
     }
 
     @Doc({ summary: 'update status of user' })
@@ -160,21 +182,27 @@ export class UserAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Patch('/update/:userId/status')
     async updateStatus(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('userId', { schema: RequestUuidSchema })
         userId: string,
-        @AuthJwtPayload('userId') updatedBy: string,
         @Body({ schema: UserUpdateStatusRequestSchema })
         body: UserUpdateStatusRequestDto
     ): Promise<IResponseReturn<void>> {
-        return this.userHttpService.updateStatusByAdmin(
+        return this.userUpdateStatusByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
             userId,
-            body,
-            updatedBy
+            body
         );
     }
 
@@ -187,47 +215,29 @@ export class UserAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Put('/update/:userId/password')
     async updatePassword(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('userId', { schema: RequestUuidSchema })
-        userId: string,
-        @AuthJwtPayload('userId') updatedBy: string
+        userId: string
     ): Promise<IResponseReturn<void>> {
-        return this.userPasswordHttpService.updatePasswordByAdmin(
-            userId,
-            updatedBy
-        );
-    }
-
-    @Doc({ summary: 'Reset user' })
-    @Response('user.twoFactor.resetByAdmin')
-    @TermPolicyAcceptanceProtected()
-    @PolicyProtected({
-        subject: EnumPolicySubject.user,
-        action: [EnumPolicyAction.read, EnumPolicyAction.update],
-    })
-    @RoleProtected(EnumRoleType.admin)
-    @UserProtected()
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @RequestThrottle({ user: true })
-    @Patch('/2fa/:userId/reset')
-    async resetTwoFactorByAdmin(
-        @Param('userId', { schema: RequestUuidSchema })
-        userId: string,
-        @AuthJwtPayload('userId') updatedBy: string
-    ): Promise<void> {
-        await this.userTwoFactorHttpService.resetTwoFactorByAdmin(
-            userId,
-            updatedBy
+        return this.userUpdatePasswordByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            userId
         );
     }
 
     @Doc({ summary: 'import users via csv file' })
-    @Response('user.import')
+    @Response('user.import', { schema: UserImportResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.user,
@@ -235,16 +245,17 @@ export class UserAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @FileUploadSingle()
-    @RequestTimeout('1m')
-    @RequestThrottle({ user: true })
+    @FileImportSingle()
+    @RequestTimeout(RequestUploadTimeout)
     @HttpCode(HttpStatus.OK)
     @Post('/import')
     async import(
-        @AuthJwtPayload('userId')
-        createdBy: string,
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UploadedFile(
             FileRequiredPipe(),
             FileExtensionPipe([EnumFileExtensionDocument.csv]),
@@ -254,12 +265,17 @@ export class UserAdminController {
             })
         )
         data: UserImportRequestDto[]
-    ): Promise<void> {
-        await this.userImportHttpService.importByAdmin(data, createdBy);
+    ): Promise<IResponseReturn<UserImportResponseDto>> {
+        return this.userImportByAdminUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            data
+        );
     }
 
     @Doc({ summary: 'export users via csv file' })
-    @ResponseFile()
+    @ResponseFile({ maxDataExportConfigKey: 'user.maxDataExport' })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
         subject: EnumPolicySubject.user,
@@ -267,15 +283,15 @@ export class UserAdminController {
     })
     @RoleProtected(EnumRoleType.admin)
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @HttpCode(HttpStatus.OK)
     @Post('/export')
     async export(
         @Query({ schema: UserExportRequestSchema })
         query: UserExportRequestDto
     ): Promise<IResponseFileReturn> {
-        return this.userImportHttpService.exportByAdmin(query);
+        return this.userExportByAdminUseCase.execute(query);
     }
 }

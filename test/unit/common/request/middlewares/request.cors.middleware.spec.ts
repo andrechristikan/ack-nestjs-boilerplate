@@ -1,0 +1,588 @@
+import { HttpStatus } from '@nestjs/common';
+import type { NextFunction, Request, Response } from 'express';
+import type { RequestCorsMiddleware } from '@common/request/middlewares/request.cors.middleware';
+import {
+    createFreshRequestCorsMiddleware,
+    createRequestCorsMiddleware,
+} from '@test/unit/helpers/test.unit.request.helper';
+
+describe('RequestCorsMiddleware', () => {
+    let req: Request;
+    let res: Response;
+    let next: NextFunction;
+
+    beforeEach(() => {
+        vi.resetAllMocks();
+
+        req = {} as Request;
+        res = {} as Response;
+        next = vi.fn();
+    });
+
+    describe('use', () => {
+        it('applies cors with the configured options and delegates to the handler', async () => {
+            const { middleware, handler, captured } =
+                await createFreshRequestCorsMiddleware({
+                    allowedOrigins: ['https://example.com'],
+                    allowedMethods: ['GET', 'POST'],
+                    allowedHeaders: ['content-type'],
+                    exposedHeaders: ['x-request-id'],
+                    maxAgeInSeconds: 600,
+                });
+
+            middleware.use(req, res, next);
+
+            expect(captured.options).toMatchObject({
+                methods: ['GET', 'POST'],
+                allowedHeaders: ['content-type'],
+                exposedHeaders: ['x-request-id'],
+                preflightContinue: false,
+                credentials: true,
+                optionsSuccessStatus: HttpStatus.NO_CONTENT,
+                maxAge: 600,
+            });
+            expect(typeof captured.options.origin).toBe('function');
+            expect(handler).toHaveBeenCalledWith(req, res, next);
+        });
+
+        it('disables credentials for a wildcard origin', async () => {
+            const { middleware, captured } =
+                await createFreshRequestCorsMiddleware({
+                    allowedOrigins: ['*'],
+                    allowedMethods: [],
+                    allowedHeaders: [],
+                    exposedHeaders: [],
+                    maxAgeInSeconds: 86400,
+                });
+
+            middleware.use(req, res, next);
+
+            expect(captured.options.credentials).toBe(false);
+        });
+
+        it('allows any origin when the origin function is invoked with no origin header', async () => {
+            const { middleware, captured } =
+                await createFreshRequestCorsMiddleware({
+                    allowedOrigins: ['*'],
+                    allowedMethods: [],
+                    allowedHeaders: [],
+                    exposedHeaders: [],
+                    maxAgeInSeconds: 86400,
+                });
+
+            middleware.use(req, res, next);
+
+            const originFn = captured.options.origin as (
+                origin: string | undefined,
+                callback: (err: Error | null, allow?: boolean) => void
+            ) => void;
+            const callback = vi.fn();
+
+            originFn(undefined, callback);
+
+            expect(callback).toHaveBeenCalledWith(null, true);
+        });
+    });
+
+    describe('originValidator', () => {
+        it('allows a missing origin', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+            const callback = vi.fn();
+
+            middleware['originValidator'](undefined, callback);
+
+            expect(callback).toHaveBeenCalledWith(null, true);
+        });
+
+        it('allows every origin when the array allowedOrigins has a wildcard entry', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: ['*'],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+            const callback = vi.fn();
+
+            middleware['originValidator']('https://example.com', callback);
+
+            expect(callback).toHaveBeenCalledWith(null, true);
+        });
+
+        it('checks a non-wildcard array allowedOrigins against the origin', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: ['https://example.com'],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+            const callback = vi.fn();
+
+            middleware['originValidator']('https://other.com', callback);
+
+            expect(callback).toHaveBeenCalledWith(null, false);
+        });
+    });
+
+    describe('shouldAllowCredentials', () => {
+        it('disallows credentials for an array containing a wildcard', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: ['*'],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(middleware['shouldAllowCredentials']()).toBe(false);
+        });
+
+        it('allows credentials for an array with no wildcard', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: ['https://example.com'],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(middleware['shouldAllowCredentials']()).toBe(true);
+        });
+    });
+
+    describe('isOriginAllowed', () => {
+        it('rejects an invalid origin', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(
+                middleware['isOriginAllowed']('not-a-url', [
+                    'https://example.com',
+                ])
+            ).toBe(false);
+        });
+
+        it('matches an exact hostname and port', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(
+                middleware['isOriginAllowed']('https://example.com:4000', [
+                    'example.com:4000',
+                ])
+            ).toBe(true);
+        });
+
+        it('falls through to a wildcard pattern match', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(
+                middleware['isOriginAllowed']('https://sub.example.com', [
+                    '*.example.com',
+                ])
+            ).toBe(true);
+        });
+
+        it('accepts a scheme-bearing pattern for the same scheme', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(
+                middleware['isOriginAllowed']('https://example.com', [
+                    'https://example.com',
+                ])
+            ).toBe(true);
+        });
+
+        it('rejects a scheme-bearing pattern for the other scheme', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(
+                middleware['isOriginAllowed']('http://example.com', [
+                    'https://example.com',
+                ])
+            ).toBe(false);
+        });
+
+        it('rejects a scheme-bearing wildcard pattern for the other scheme', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(
+                middleware['isOriginAllowed']('http://sub.example.com', [
+                    'https://*.example.com',
+                ])
+            ).toBe(false);
+            expect(
+                middleware['isOriginAllowed']('https://sub.example.com', [
+                    'https://*.example.com',
+                ])
+            ).toBe(true);
+        });
+
+        it('accepts a pattern with no scheme for either scheme', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(
+                middleware['isOriginAllowed']('http://example.com', [
+                    'example.com',
+                ])
+            ).toBe(true);
+            expect(
+                middleware['isOriginAllowed']('https://example.com', [
+                    'example.com',
+                ])
+            ).toBe(true);
+        });
+
+        it('matches the default https port written in the pattern', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(
+                middleware['isOriginAllowed']('https://example.com', [
+                    'example.com:443',
+                ])
+            ).toBe(true);
+            expect(
+                middleware['isOriginAllowed']('https://example.com:443', [
+                    'https://example.com:443',
+                ])
+            ).toBe(true);
+        });
+
+        it('matches the default http port written in the pattern', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(
+                middleware['isOriginAllowed']('http://example.com', [
+                    'example.com:80',
+                ])
+            ).toBe(true);
+        });
+
+        it('rejects the default port of the other scheme', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(
+                middleware['isOriginAllowed']('http://example.com', [
+                    'example.com:443',
+                ])
+            ).toBe(false);
+        });
+
+        it('matches a pattern hostname written in another case', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(
+                middleware['isOriginAllowed']('https://example.com', [
+                    'Example.COM',
+                ])
+            ).toBe(true);
+        });
+
+        it('rejects an origin on another port than the pattern', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(
+                middleware['isOriginAllowed']('https://example.com:4001', [
+                    'example.com:4000',
+                ])
+            ).toBe(false);
+        });
+
+        it('rejects when no pattern matches, exact or wildcard', async () => {
+            const middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+
+            expect(
+                middleware['isOriginAllowed']('https://sub.example.com', [
+                    'other.com',
+                ])
+            ).toBe(false);
+        });
+    });
+
+    describe('isValidOrigin', () => {
+        let middleware: RequestCorsMiddleware;
+
+        beforeEach(async () => {
+            middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+        });
+
+        it('accepts a well-formed http(s) origin', () => {
+            expect(middleware['isValidOrigin']('https://example.com')).toBe(
+                true
+            );
+        });
+
+        it('rejects a non-http(s) protocol', () => {
+            expect(middleware['isValidOrigin']('ftp://example.com')).toBe(
+                false
+            );
+        });
+
+        it('rejects an origin carrying a path', () => {
+            expect(
+                middleware['isValidOrigin']('https://example.com/path')
+            ).toBe(false);
+        });
+
+        it('rejects an origin carrying a query string', () => {
+            expect(middleware['isValidOrigin']('https://example.com?a=1')).toBe(
+                false
+            );
+        });
+
+        it('rejects an origin carrying a hash', () => {
+            expect(
+                middleware['isValidOrigin']('https://example.com#section')
+            ).toBe(false);
+        });
+
+        it('rejects a malformed origin', () => {
+            expect(middleware['isValidOrigin']('not-a-url')).toBe(false);
+        });
+    });
+
+    describe('parseOrigin', () => {
+        let middleware: RequestCorsMiddleware;
+
+        beforeEach(async () => {
+            middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+        });
+
+        it('extracts protocol, hostname and port', () => {
+            expect(
+                middleware['parseOrigin']('https://example.com:4000')
+            ).toEqual({
+                protocol: 'https:',
+                hostname: 'example.com',
+                port: '4000',
+            });
+        });
+
+        it('defaults port to an empty string when absent', () => {
+            expect(middleware['parseOrigin']('https://example.com')).toEqual({
+                protocol: 'https:',
+                hostname: 'example.com',
+                port: '',
+            });
+        });
+
+        it('answers empty values for a malformed origin', () => {
+            expect(middleware['parseOrigin']('not-a-url')).toEqual({
+                protocol: '',
+                hostname: '',
+                port: '',
+            });
+        });
+    });
+
+    describe('parsePattern', () => {
+        let middleware: RequestCorsMiddleware;
+
+        beforeEach(async () => {
+            middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+        });
+
+        it('splits a pattern carrying a port', () => {
+            expect(middleware['parsePattern']('example.com:4000')).toEqual({
+                protocol: null,
+                hostname: 'example.com',
+                port: '4000',
+            });
+        });
+
+        it('defaults port to an empty string when the pattern has none', () => {
+            expect(middleware['parsePattern']('example.com')).toEqual({
+                protocol: null,
+                hostname: 'example.com',
+                port: '',
+            });
+        });
+
+        it('reads the scheme of a scheme-bearing pattern', () => {
+            expect(
+                middleware['parsePattern']('HTTPS://Example.com:8443')
+            ).toEqual({
+                protocol: 'https:',
+                hostname: 'example.com',
+                port: '8443',
+            });
+        });
+    });
+
+    describe('normalizePort', () => {
+        let middleware: RequestCorsMiddleware;
+
+        beforeEach(async () => {
+            middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+        });
+
+        it('empties the default port of its own scheme', () => {
+            expect(middleware['normalizePort']('http:', '80')).toBe('');
+            expect(middleware['normalizePort']('https:', '443')).toBe('');
+        });
+
+        it('keeps any other port', () => {
+            expect(middleware['normalizePort']('http:', '443')).toBe('443');
+            expect(middleware['normalizePort']('https:', '80')).toBe('80');
+            expect(middleware['normalizePort']('https:', '8443')).toBe('8443');
+            expect(middleware['normalizePort']('https:', '')).toBe('');
+        });
+    });
+
+    describe('matchWildcardHostname', () => {
+        let middleware: RequestCorsMiddleware;
+
+        beforeEach(async () => {
+            middleware = await createRequestCorsMiddleware({
+                allowedOrigins: [],
+                allowedMethods: [],
+                allowedHeaders: [],
+                exposedHeaders: [],
+                maxAgeInSeconds: 86400,
+            });
+        });
+
+        it('matches a subdomain against a *.domain pattern', () => {
+            expect(
+                middleware['matchWildcardHostname'](
+                    'sub.example.com',
+                    '*.example.com'
+                )
+            ).toBe(true);
+        });
+
+        it('matches the base domain itself against a *.domain pattern', () => {
+            expect(
+                middleware['matchWildcardHostname'](
+                    'example.com',
+                    '*.example.com'
+                )
+            ).toBe(true);
+        });
+
+        it('rejects an unrelated hostname against a *.domain pattern', () => {
+            expect(
+                middleware['matchWildcardHostname'](
+                    'other.com',
+                    '*.example.com'
+                )
+            ).toBe(false);
+        });
+
+        it('rejects a wildcard placed inside the hostname segment', () => {
+            expect(
+                middleware['matchWildcardHostname'](
+                    'example.com',
+                    'sub*.example.com'
+                )
+            ).toBe(false);
+        });
+    });
+});

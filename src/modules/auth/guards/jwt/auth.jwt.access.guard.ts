@@ -1,33 +1,52 @@
 import { AuthGuard } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
-import type { IAuthJwtAccessTokenPayload } from '@modules/auth/interfaces/auth.interface';
+import type {
+    IAuthJwtAccessContext,
+    IAuthJwtAccessTokenPayload,
+} from '@modules/auth/interfaces/auth.interface';
 import {
+    AuthJwtAccessContextStoreKey,
     AuthJwtAccessGuardKey,
-    AuthPayloadStoreKey,
 } from '@modules/auth/constants/auth.constant';
-import { AuthDomain } from '@modules/auth/domains/auth.domain';
+import { AuthService } from '@modules/auth/services/auth.service';
+import { RequestActorStoreKey } from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 
-/** Guard for JWT access token routes; stores the validated payload in the request store. */
 @Injectable()
 export class AuthJwtAccessGuard extends AuthGuard(AuthJwtAccessGuardKey) {
     constructor(
-        private readonly authDomain: AuthDomain,
+        private readonly authService: AuthService,
         private readonly requestStoreService: RequestStoreService
     ) {
         super();
     }
 
-    /** Validates the Passport result, then persists the payload to the request store. */
-    handleRequest<T = IAuthJwtAccessTokenPayload>(
-        err: Error,
-        user: IAuthJwtAccessTokenPayload,
-        info: Error
+    handleRequest<T = IAuthJwtAccessContext>(
+        err: Error | null,
+        user: IAuthJwtAccessTokenPayload | false,
+        info: Error | string | undefined
     ): T {
-        const payload = this.authDomain.validateJwtAccessGuard(err, user, info);
+        const payload = this.authService.validateJwtAccessGuard(
+            err,
+            user === false ? null : user,
+            info instanceof Error ? info : null
+        );
 
-        this.requestStoreService.set(AuthPayloadStoreKey, payload);
+        const authContext: IAuthJwtAccessContext = {
+            userId: payload.userId,
+            sessionId: payload.sessionId,
+            deviceOwnershipId: payload.deviceOwnershipId,
+            loginWith: payload.loginWith,
+        };
+        this.requestStoreService.set<IAuthJwtAccessContext>(
+            AuthJwtAccessContextStoreKey,
+            authContext
+        );
+        this.requestStoreService.set<string>(
+            RequestActorStoreKey,
+            authContext.userId
+        );
 
-        return payload as T;
+        return authContext as T;
     }
 }

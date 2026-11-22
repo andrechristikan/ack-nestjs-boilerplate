@@ -1,33 +1,47 @@
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
+import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
+    IPaginationEqual,
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
-import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
-import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
-import type { ProjectUpdateRequestDto } from '@modules/project/dtos/request/project.update.request.dto';
+import type {
+    IProjectCreate,
+    IProjectUpdate,
+} from '@modules/project/interfaces/project.interface';
 import type { IProjectRepository } from '@modules/project/interfaces/project.repository.interface';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ProjectRepository implements IProjectRepository {
+    private readonly deletedSlugPattern: string;
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.deletedSlugPattern = this.configService.get<string>(
+            'project.deletedSlugPattern'
+        )!;
+    }
 
     async findActiveByIdAndWorkspace(
         projectId: string,
         workspaceId: string
     ): Promise<Project | null> {
+        const isValidId = this.databaseUtil.checkIdIsValid(projectId);
+        if (!isValidId) {
+            return null;
+        }
+
         return this.databaseService.client.project.findFirst({
             where: {
                 id: projectId,
@@ -37,38 +51,18 @@ export class ProjectRepository implements IProjectRepository {
         });
     }
 
-    async findByIdForAdmin(projectId: string): Promise<Project | null> {
+    async findByIdByAdmin(projectId: string): Promise<Project | null> {
         return this.databaseService.client.project.findUnique({
             where: { id: projectId },
         });
     }
 
-    /** Counts slug holders across ALL rows including soft-deleted ones, matching the unique index, which has no `deletedAt` component. */
-    async existsBySlugInWorkspace(
-        workspaceId: string,
-        slug: string,
-        excludeProjectId?: string
-    ): Promise<boolean> {
-        const count = await this.databaseService.client.project.count({
-            where: {
-                workspaceId,
-                slug,
-                ...(excludeProjectId ? { id: { not: excludeProjectId } } : {}),
-            },
-        });
-
-        return count > 0;
-    }
-
     async findWithPaginationCursorForWorkspace(
         workspaceId: string,
         memberUserId: string | null,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
+        { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<Project>> {
-        return this.paginationService.cursor<Project, Prisma.ProjectWhereInput>(
+        return this.paginationService.cursor(
             this.databaseService.client.project,
             {
                 ...others,
@@ -86,70 +80,56 @@ export class ProjectRepository implements IProjectRepository {
         );
     }
 
-    async findWithPaginationOffsetForAdmin(
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string
+    async findWithPaginationOffsetByAdmin(
+        { where, ...others }: IPaginationQueryOffsetParams,
+        workspaceFilter: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<Project>> {
-        return this.paginationService.offset<Project, Prisma.ProjectWhereInput>(
+        return this.paginationService.offset(
             this.databaseService.client.project,
             {
                 ...others,
                 where: {
                     ...where,
-                    ...(workspaceId ? { workspaceId } : {}),
+                    ...workspaceFilter,
                 },
             }
         );
     }
 
-    async create(
+    async createInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
-        { name, description }: ProjectCreateRequestDto,
-        slugCandidates: string[]
+        { name, description }: IProjectCreate,
+        slug: string
     ): Promise<Project> {
-        for (const slug of slugCandidates) {
-            try {
-                return await this.databaseService.client.project.create({
-                    data: {
-                        workspaceId,
-                        name,
-                        slug,
-                        description,
-                        deletedAt: null,
-                    },
-                });
-            } catch (error: unknown) {
-                const isSlugCollision = this.databaseUtil.isUniqueCollision(
-                    error,
-                    'slug'
-                );
-                if (!isSlugCollision) {
-                    throw error;
-                }
-            }
-        }
-
-        throw new DatabaseUniqueValueGenerationFailedException();
-    }
-
-    async updateDetails(
-        projectId: string,
-        { name, description }: ProjectUpdateRequestDto
-    ): Promise<Project> {
-        return this.databaseService.client.project.update({
-            where: { id: projectId },
+        return tx.project.create({
             data: {
+                workspaceId,
                 name,
+                slug,
                 description,
+                deletedAt: null,
             },
         });
     }
 
-    async updateSlug(projectId: string, slug: string): Promise<Project> {
-        return this.databaseService.client.project.update({
+    async updateDetailsInTx(
+        tx: IDatabaseTransactionClient,
+        projectId: string,
+        { name, description }: IProjectUpdate
+    ): Promise<Project> {
+        return tx.project.update({
+            where: { id: projectId },
+            data: { name, description },
+        });
+    }
+
+    async updateSlugInTx(
+        tx: IDatabaseTransactionClient,
+        projectId: string,
+        slug: string
+    ): Promise<Project> {
+        return tx.project.update({
             where: { id: projectId },
             data: {
                 slug,
@@ -157,13 +137,26 @@ export class ProjectRepository implements IProjectRepository {
         });
     }
 
-    async softDelete(projectId: string, deletedAt: Date): Promise<void> {
-        await this.databaseService.client.project.softDelete({
-            where: { id: projectId },
+    async softDeleteInTx(
+        tx: IDatabaseTransactionClient,
+        projectId: string,
+        deletedAt: Date,
+        deletedBy: string
+    ): Promise<boolean> {
+        const deletedSlugPattern = this.deletedSlugPattern;
+        const { count } = await tx.project.updateMany({
+            where: {
+                id: projectId,
+                deletedAt: null,
+            },
             data: {
+                slug: deletedSlugPattern.replace('{id}', () => projectId),
                 deletedAt,
+                deletedBy,
             },
         });
+
+        return count > 0;
     }
 
     async softDeleteByWorkspaceInTx(
@@ -172,15 +165,24 @@ export class ProjectRepository implements IProjectRepository {
         deletedAt: Date,
         deletedBy: string
     ): Promise<void> {
-        await tx.project.updateMany({
+        const projects = await tx.project.findMany({
             where: {
                 workspaceId,
                 ...ProjectActiveFilter,
             },
-            data: {
-                deletedAt,
-                deletedBy,
-            },
+            select: { id: true },
         });
+
+        const deletedSlugPattern = this.deletedSlugPattern;
+        for (const { id } of projects) {
+            await tx.project.updateMany({
+                where: { id, deletedAt: null },
+                data: {
+                    slug: deletedSlugPattern.replace('{id}', () => id),
+                    deletedAt,
+                    deletedBy,
+                },
+            });
+        }
     }
 }

@@ -16,21 +16,22 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 @Injectable()
 export class MessageService {
     private readonly defaultLanguage: EnumMessageLanguage;
-    private readonly availableLanguage: EnumMessageLanguage[];
+    private readonly availableLanguages: EnumMessageLanguage[];
 
     constructor(
         private readonly i18n: I18nService,
         private readonly configService: ConfigService
     ) {
-        this.defaultLanguage =
-            this.configService.get<EnumMessageLanguage>('message.language')!;
-        this.availableLanguage = this.configService.get<EnumMessageLanguage[]>(
-            'message.availableLanguage'
+        this.defaultLanguage = this.configService.get<EnumMessageLanguage>(
+            'message.defaultLanguage'
+        )!;
+        this.availableLanguages = this.configService.get<EnumMessageLanguage[]>(
+            'message.availableLanguages'
         )!;
     }
 
     private resolveIssueKey(issue: StandardSchemaV1.Issue): string {
-        const code: unknown = 'code' in issue ? issue.code : undefined;
+        const code: unknown = 'code' in issue ? issue.code : null;
 
         if (typeof code !== 'string') {
             return MessageValidationIssueFallbackKey;
@@ -61,9 +62,10 @@ export class MessageService {
     ): IMessageValidationError {
         const key = this.resolveIssueKey(issue);
         const property = this.resolveIssueProperty(issue);
-        const lastProperty = property.split('.').pop() ?? 'Unknown';
+        const lastProperty = property.slice(property.lastIndexOf('.') + 1);
+        const customLanguage = options?.customLanguage ?? null;
         const properties: IMessageSetOptions = {
-            customLanguage: options?.customLanguage,
+            ...(customLanguage !== null && { customLanguage }),
             properties: { property: lastProperty },
         };
 
@@ -83,7 +85,11 @@ export class MessageService {
     }
 
     filterLanguage(customLanguage: string): string {
-        return this.availableLanguage.find(e => e === customLanguage)!;
+        const language = this.availableLanguages.find(
+            e => e === customLanguage
+        );
+
+        return language ?? this.defaultLanguage;
     }
 
     setMessage(path: string, options?: IMessageSetOptions): string {
@@ -94,9 +100,11 @@ export class MessageService {
             language = this.defaultLanguage;
         }
 
+        const args = options?.properties ?? null;
+
         return this.i18n.translate(path, {
             lang: language,
-            args: options?.properties,
+            ...(args !== null && { args }),
         }) as string;
     }
 

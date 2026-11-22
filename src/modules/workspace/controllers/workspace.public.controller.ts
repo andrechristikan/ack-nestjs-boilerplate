@@ -1,18 +1,30 @@
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
-import { RequestRequiredStringSchema } from '@common/request/validations/request.required-string.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { FeatureFlagProtected } from '@modules/feature-flag/decorators/feature-flag.decorator';
+import { EnumFeatureFlagKey } from '@modules/feature-flag/enums/feature-flag.enum';
+import { WorkspaceInvitePreviewRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-preview.request.dto';
+import type { WorkspaceInvitePreviewRequestDto } from '@modules/workspace/dtos/request/workspace.invite-preview.request.dto';
 import { WorkspaceInvitePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
+import { WorkspaceSlugRequestSchema } from '@modules/workspace/dtos/request/workspace.slug.request.dto';
+import type { WorkspaceSlugRequestDto } from '@modules/workspace/dtos/request/workspace.slug.request.dto';
 import { WorkspacePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.preview.response.dto';
-import { WorkspaceHttpService } from '@modules/workspace/services/workspace.http.service';
-import { WorkspaceInviteHttpService } from '@modules/workspace/services/workspace.invite.http.service';
-import { Controller, Get, Param } from '@nestjs/common';
+import { WorkspacePreviewInviteUseCase } from '@modules/workspace/use-cases/workspace.preview-invite.use-case';
+import { WorkspacePreviewUseCase } from '@modules/workspace/use-cases/workspace.preview.use-case';
+import {
+    Body,
+    Controller,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Param,
+    Post,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('modules.public.workspace')
@@ -22,8 +34,8 @@ import { ApiTags } from '@nestjs/swagger';
 })
 export class WorkspacePublicController {
     constructor(
-        private readonly workspaceHttpService: WorkspaceHttpService,
-        private readonly workspaceInviteHttpService: WorkspaceInviteHttpService
+        private readonly workspacePreviewInviteUseCase: WorkspacePreviewInviteUseCase,
+        private readonly workspacePreviewUseCase: WorkspacePreviewUseCase
     ) {}
 
     @Doc({
@@ -33,15 +45,16 @@ export class WorkspacePublicController {
     @Response('workspace.invite.preview', {
         schema: WorkspaceInvitePreviewResponseSchema,
     })
-    @FeatureFlagProtected('workspace')
-    @ApiKeyProtected()
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
-    @Get('/invite/:inviteToken/preview')
+    @ApiKeyProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/invite/preview')
     async invitePreview(
-        @Param('inviteToken', { schema: RequestRequiredStringSchema })
-        inviteToken: string
+        @Body({ schema: WorkspaceInvitePreviewRequestSchema })
+        body: WorkspaceInvitePreviewRequestDto
     ): Promise<IResponseReturn<WorkspaceInvitePreviewResponseDto>> {
-        return this.workspaceInviteHttpService.previewInvite(inviteToken);
+        return this.workspacePreviewInviteUseCase.execute(body);
     }
 
     @Doc({
@@ -51,14 +64,14 @@ export class WorkspacePublicController {
     @Response('workspace.preview', {
         schema: WorkspacePreviewResponseSchema,
     })
-    @FeatureFlagProtected('workspace')
-    @ApiKeyProtected()
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
     @RequestThrottle({ route: EnumRequestThrottleRoute.moderate })
+    @ApiKeyProtected()
     @Get('/preview/:slug')
     async preview(
-        @Param('slug', { schema: RequestRequiredStringSchema })
-        slug: string
+        @Param('slug', { schema: WorkspaceSlugRequestSchema })
+        slug: WorkspaceSlugRequestDto
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceHttpService.previewWorkspace(slug);
+        return this.workspacePreviewUseCase.execute(slug);
     }
 }

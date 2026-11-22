@@ -10,8 +10,9 @@ import EmailConfig from '@configs/email.config';
 import RedisConfig from '@configs/redis.config';
 import ForgotPasswordConfig from '@configs/forgot-password.config';
 import VerificationConfig from '@configs/verification.config';
-import HomeConfig from '@configs/home.config';
+import FrontendConfig from '@configs/frontend.config';
 import LoggerConfig from '@configs/logger.config';
+import SentryConfig from '@configs/sentry.config';
 import SessionConfig from '@configs/session.config';
 import TermPolicyConfig from '@configs/term-policy.config';
 import FeatureFlagConfig from '@configs/feature-flag.config';
@@ -24,6 +25,11 @@ import FileConfig from '@configs/file.config';
 import WorkspaceConfig from '@configs/workspace.config';
 import ProjectConfig from '@configs/project.config';
 import AnalyticConfig from '@configs/analytic.config';
+import ActivityLogConfig from '@configs/activity-log.config';
+import OutboxConfig from '@configs/outbox.config';
+import RoleConfig from '@configs/role.config';
+import HelperConfig from '@configs/helper.config';
+import MfaConfig from '@configs/mfa.config';
 
 export default [
     AppConfig,
@@ -37,9 +43,10 @@ export default [
     EmailConfig,
     RedisConfig,
     LoggerConfig,
+    SentryConfig,
     ForgotPasswordConfig,
     VerificationConfig,
-    HomeConfig,
+    FrontendConfig,
     SessionConfig,
     TermPolicyConfig,
     FeatureFlagConfig,
@@ -52,4 +59,9 @@ export default [
     WorkspaceConfig,
     ProjectConfig,
     AnalyticConfig,
+    ActivityLogConfig,
+    OutboxConfig,
+    RoleConfig,
+    HelperConfig,
+    MfaConfig,
 ];

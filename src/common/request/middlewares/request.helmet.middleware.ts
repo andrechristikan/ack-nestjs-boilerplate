@@ -3,37 +3,50 @@ import type { NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
+import {
+    RequestHelmetCacheControlHeaderName,
+    RequestHelmetCacheControlHeaderValue,
+    RequestHelmetCspDirectives,
+} from '@common/request/constants/request.constant';
 
-/**
- * Applies the non-documents Helmet profile to every request.
- */
 @Injectable()
 export class RequestHelmetMiddleware implements NestMiddleware {
-    constructor(private readonly configService: ConfigService) {}
+    private readonly maxAgeInSeconds: number;
+    private readonly includeSubDomainsEnabled: boolean;
+    private readonly preloadEnabled: boolean;
 
-    use(req: Request, res: Response, next: NextFunction): void {
-        const maxAgeInSeconds = this.configService.get<number>(
+    constructor(private readonly configService: ConfigService) {
+        this.maxAgeInSeconds = this.configService.get<number>(
             'request.helmet.maxAgeInSeconds'
         )!;
-        const includeSubDomains = this.configService.get<boolean>(
-            'request.helmet.includeSubDomains'
+        this.includeSubDomainsEnabled = this.configService.get<boolean>(
+            'request.helmet.includeSubDomainsEnabled'
         )!;
-        const preload = this.configService.get<boolean>(
-            'request.helmet.preload'
+        this.preloadEnabled = this.configService.get<boolean>(
+            'request.helmet.preloadEnabled'
         )!;
+    }
 
+    use(req: Request, res: Response, next: NextFunction): void {
+        res.setHeader(
+            RequestHelmetCacheControlHeaderName,
+            RequestHelmetCacheControlHeaderValue
+        );
         helmet({
-            contentSecurityPolicy: false,
+            contentSecurityPolicy: {
+                useDefaults: false,
+                directives: RequestHelmetCspDirectives,
+            },
             crossOriginOpenerPolicy: false,
             originAgentCluster: false,
-            referrerPolicy: false,
+            referrerPolicy: { policy: 'no-referrer' },
             xDnsPrefetchControl: false,
             xXssProtection: false,
             crossOriginResourcePolicy: { policy: 'same-origin' },
             strictTransportSecurity: {
-                maxAge: maxAgeInSeconds,
-                includeSubDomains,
-                preload,
+                maxAge: this.maxAgeInSeconds,
+                includeSubDomains: this.includeSubDomainsEnabled,
+                preload: this.preloadEnabled,
             },
             xContentTypeOptions: true,
             xDownloadOptions: true,

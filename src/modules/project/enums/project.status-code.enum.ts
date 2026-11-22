@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `project` module.
- * @public
- */
+/** @public */
 export enum EnumProjectStatusCodeError {
     notFound = 51700,
     memberForbidden = 51701,
@@ -11,4 +8,6 @@ export enum EnumProjectStatusCodeError {
     memberAlreadyAssigned = 51705,
     slugAlreadyExists = 51706,
     slugInvalid = 51707,
+    guardMissing = 51708,
+    memberGuardMissing = 51709,
 }

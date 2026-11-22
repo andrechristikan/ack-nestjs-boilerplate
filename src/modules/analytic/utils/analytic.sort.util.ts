@@ -1,5 +1,9 @@
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
-import type { IPaginationOrderBy } from '@common/pagination/interfaces/pagination.interface';
+import type {
+    IPaginationOrderBy,
+    IPaginationQueryOffsetParams,
+} from '@common/pagination/interfaces/pagination.interface';
+import type { IAnalyticSortedPage } from '@modules/analytic/interfaces/analytic.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -23,31 +27,28 @@ export class AnalyticSortUtil {
         return leftText < rightText ? -1 : 1;
     }
 
-    sortRows<T extends object>(
+    private sortRows<T extends object>(
         rows: T[],
-        orderBy: IPaginationOrderBy[] | undefined,
-        sortableKeys: (keyof T)[]
+        orderBy: IPaginationOrderBy[],
+        sortableKeys: readonly (keyof T)[]
     ): T[] {
         const allowedFields: string[] = sortableKeys.map(key => String(key));
-        const terms = (orderBy ?? []).filter(term => {
-            const field = Object.keys(term)[0];
-
-            return allowedFields.includes(field);
-        });
+        const terms = orderBy
+            .flatMap(term => Object.entries(term).slice(0, 1))
+            .filter(([field]) => allowedFields.includes(field));
 
         if (terms.length === 0) {
             return rows;
         }
 
         return [...rows].sort((left, right) => {
-            for (const term of terms) {
-                const field = Object.keys(term)[0];
+            for (const [field, direction] of terms) {
                 const leftValue: unknown = Reflect.get(left, field);
                 const rightValue: unknown = Reflect.get(right, field);
                 const compared = this.compareValues(leftValue, rightValue);
 
                 if (compared !== 0) {
-                    return term[field] === EnumPaginationOrderDirectionType.desc
+                    return direction === EnumPaginationOrderDirectionType.desc
                         ? -compared
                         : compared;
                 }
@@ -55,5 +56,16 @@ export class AnalyticSortUtil {
 
             return 0;
         });
+    }
+
+    sortPage<T extends object>(
+        rows: T[],
+        params: IPaginationQueryOffsetParams,
+        sortableKeys: readonly (keyof T)[]
+    ): IAnalyticSortedPage<T> {
+        const { skip, limit, orderBy } = params;
+        const sorted = this.sortRows(rows, orderBy, sortableKeys);
+
+        return { data: sorted.slice(skip, skip + limit), total: sorted.length };
     }
 }

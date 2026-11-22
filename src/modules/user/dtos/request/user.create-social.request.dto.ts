@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { UserLoginRequestSchema } from '@modules/user/dtos/request/user.login.request.dto';
 import { UserSignUpRequestSchema } from '@modules/user/dtos/request/user.sign-up.request.dto';
 
-/**
- * Validates the body for signing in with a social account.
- * @public
- */
+/** @public */
 export const UserCreateSocialRequestSchema = UserSignUpRequestSchema.omit({
     email: true,
     from: true,
@@ -15,10 +12,7 @@ export const UserCreateSocialRequestSchema = UserSignUpRequestSchema.omit({
     device: UserLoginRequestSchema.shape.device,
 });
 
-/**
- * Body for signing in with a social account.
- * @public
- */
+/** @public */
 export type UserCreateSocialRequestDto = z.infer<
     typeof UserCreateSocialRequestSchema
 >;

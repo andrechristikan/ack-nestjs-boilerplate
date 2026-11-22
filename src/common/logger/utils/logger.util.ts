@@ -5,22 +5,20 @@ import {
     LoggerRedactMaxArrayLength,
     LoggerRedactMaxDepth,
     LoggerRedactedValue,
-    LoggerRequestIdHeaders,
     LoggerSensitiveFields,
-    LoggerUrlStaticSegmentRegex,
 } from '@common/logger/constants/logger.constant';
+import { LoggerUrlUtil } from '@common/logger/utils/logger.url.util';
 import { EnumLoggerSeverity } from '@common/logger/enums/logger.enum';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
+import type { ILoggerError } from '@common/logger/interfaces/logger.interface';
 
-/**
- * Shapes pino log records: request, response and error serialization, message cleanup,
- * URL masking, and sensitive-key redaction.
- */
 @Injectable()
 export class LoggerUtil {
     private readonly sensitiveFields = new Set(
         LoggerSensitiveFields.map(field => field.toLowerCase())
     );
+
+    constructor(private readonly loggerUrlUtil: LoggerUrlUtil) {}
 
     private redactNested(value: unknown, depth: number): unknown {
         if (
@@ -76,17 +74,6 @@ export class LoggerUtil {
         );
     }
 
-    private maskPath(path: string): string {
-        return path
-            .split('/')
-            .map(segment =>
-                !segment || LoggerUrlStaticSegmentRegex.test(segment)
-                    ? segment
-                    : LoggerRedactedValue
-            )
-            .join('/');
-    }
-
     private extractClientIP(request: IRequestApp): string {
         if (request.ip) {
             return request.ip;
@@ -94,22 +81,6 @@ export class LoggerUtil {
 
         if (request.socket?.remoteAddress) {
             return request.socket.remoteAddress;
-        }
-
-        const headers = request.headers;
-        if (headers) {
-            const forwarded = headers['x-forwarded-for'] as string;
-            if (forwarded) {
-                const firstIP = forwarded.split(',')[0].trim();
-                if (firstIP) {
-                    return firstIP;
-                }
-            }
-
-            const realIP = headers['x-real-ip'] as string;
-            if (realIP) {
-                return realIP;
-            }
         }
 
         return 'unknown';
@@ -121,35 +92,15 @@ export class LoggerUtil {
             return `${request.baseUrl}${routePath}`;
         }
 
-        return this.maskUrl(request.originalUrl ?? request.url);
+        return this.loggerUrlUtil.maskUrl(request.originalUrl ?? request.url);
     }
 
     private serializeParams(
-        params: Record<string, string> | undefined
+        params: Record<string, string> | null
     ): Record<string, string> {
         return Object.fromEntries(
             Object.keys(params ?? {}).map(key => [key, LoggerRedactedValue])
         );
-    }
-
-    private serializeUser(request: IRequestApp): string | null {
-        return (request.user as unknown as { userId: string })?.userId ?? null;
-    }
-
-    getRequestId(request: IRequestApp): string {
-        const headers = request.headers;
-        if (!headers) {
-            return request.id as string;
-        }
-
-        for (const header of LoggerRequestIdHeaders) {
-            const value = headers[header];
-            if (value) {
-                return value as string;
-            }
-        }
-
-        return request.id as string;
     }
 
     sanitizeMessage(message: unknown): unknown {
@@ -164,53 +115,29 @@ export class LoggerUtil {
         return message;
     }
 
-    /**
-     * Replaces every `LoggerSensitiveFields` key at any depth with `LoggerRedactedValue`. A value
-     * nested `LoggerRedactMaxDepth` levels deep is replaced whole, so nothing past the cap is
-     * written without redaction.
-     */
+    /** Replaces every `LoggerSensitiveFields` key at any depth with `LoggerRedactedValue`; an object nested `LoggerRedactMaxDepth` levels deep is replaced whole, and an array is cut at `LoggerRedactMaxArrayLength` items. */
     redactValue(value: unknown): unknown {
         return this.redactNested(value, 0);
     }
 
-    maskUrl(url: string): string {
-        try {
-            const parsed = new URL(url);
-            const maskedPath = this.maskPath(parsed.pathname);
-
-            return `${parsed.origin}${maskedPath}`;
-        } catch {
-            return this.maskPath(url.split('?')[0].split('#')[0]);
-        }
-    }
-
     serializeRequest(request: IRequestApp): Record<string, unknown> {
         const route = this.serializeRoute(request);
-        let referer: string | undefined;
+        let referer: string | null = null;
         if (request.headers.referer) {
-            referer = this.maskUrl(request.headers.referer);
-        } else {
-            referer = undefined;
+            referer = this.loggerUrlUtil.maskUrl(request.headers.referer);
         }
         const clientIp = this.extractClientIP(request);
-        const user = this.serializeUser(request);
         const query = this.redactValue(request.query);
         const params = this.serializeParams(request.params);
         const headers = this.redactValue(request.headers);
 
         return {
-            id: request.id,
             method: request.method,
             route,
             userAgent: request.headers['user-agent'],
             contentType: request.headers?.['content-type'],
             referer,
-            remoteAddress: (request as unknown as { remoteAddress: string })
-                .remoteAddress,
-            remotePort: (request as unknown as { remotePort: number })
-                .remotePort,
             ip: clientIp,
-            user,
             query,
             params,
             headers,
@@ -228,26 +155,33 @@ export class LoggerUtil {
         };
     }
 
-    serializeError(error: Error): Record<string, unknown> {
+    serializeError(error: Error, depth = 0): Record<string, unknown> {
         const message = this.sanitizeMessage(error.message);
-        const defaultError = {
+        const loggerError = error as ILoggerError;
+        const defaultError: Record<string, unknown> = {
             type: error.name,
             message,
-            code: (error as unknown as { status?: number })?.status,
-            statusCode: (
-                error as unknown as { response?: { statusCode?: number } }
-            )?.response?.statusCode,
+            code: loggerError.status,
+            statusCode: loggerError.response?.statusCode,
             stack: error.stack,
         };
 
         if (error instanceof HttpException) {
             const response = error.getResponse() as { _error?: unknown };
-            return {
-                ...defaultError,
-                stack: response._error
-                    ? String(response._error)
-                    : defaultError.stack,
-            };
+            defaultError.stack = response._error
+                ? String(response._error)
+                : defaultError.stack;
+        }
+
+        if (error.cause !== undefined && depth < LoggerRedactMaxDepth) {
+            const cause: unknown = error.cause;
+            if (cause instanceof Error) {
+                const serializedCause = this.serializeError(cause, depth + 1);
+                defaultError.cause = serializedCause;
+            } else {
+                const redactedCause = this.redactValue(cause);
+                defaultError.cause = redactedCause;
+            }
         }
 
         return defaultError;

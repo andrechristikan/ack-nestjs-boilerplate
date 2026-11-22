@@ -1,9 +1,7 @@
+import { UserUsernameRegex } from '@modules/user/constants/user.constant';
 import { z } from 'zod';
 
-/**
- * Validates the body for claiming a username, lower-cased.
- * @public
- */
+/** @public */
 export const UserClaimUsernameRequestSchema = z.strictObject({
     username: z
         .string()
@@ -11,7 +9,7 @@ export const UserClaimUsernameRequestSchema = z.strictObject({
         .toLowerCase()
         .min(3)
         .max(50)
-        .regex(/^[a-zA-Z0-9]+$/)
+        .regex(UserUsernameRegex)
         .meta({
             description: 'username to claim',
             example: 'john_doe123',
@@ -19,10 +17,7 @@ export const UserClaimUsernameRequestSchema = z.strictObject({
         .transform(value => value as Lowercase<string>),
 });
 
-/**
- * Body for claiming a username.
- * @public
- */
+/** @public */
 export type UserClaimUsernameRequestDto = z.infer<
     typeof UserClaimUsernameRequestSchema
 >;

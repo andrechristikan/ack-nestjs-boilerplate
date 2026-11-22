@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PaginationMaxFilterLength } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import { RequestBooleanStringSchema } from '@common/request/validations/request.boolean-string.validation';
@@ -8,23 +9,24 @@ import {
 } from '@modules/api-key/constants/api-key.list.constant';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 
-/**
- * Offset list query for admin API key listing.
- * @public
- */
+/** @public */
 export const ApiKeyListRequestSchema = PaginationOffsetQuerySchema.extend({
-    search: z
-        .string()
-        .optional()
-        .meta({
-            description: `Search query, available fields: ${ApiKeyDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
-            example: '',
-        }),
+    search: PaginationOffsetQuerySchema.shape.search.meta({
+        description: `Search query, available fields: ${ApiKeyDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
+        example: '',
+    }),
     orderBy: z
-        .union([z.string(), z.array(z.string())])
+        .union([
+            z.templateLiteral([
+                z.enum(ApiKeyDefaultAvailableOrderBy),
+                ':',
+                z.enum(EnumPaginationOrderDirectionType),
+            ]),
+            z.literal(''),
+        ])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${ApiKeyDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            description: `Order by field in \`field:direction\` format (e.g. \`${ApiKeyDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${ApiKeyDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
             example: `${ApiKeyDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
         }),
     isActive: RequestBooleanStringSchema.optional().meta({
@@ -33,15 +35,13 @@ export const ApiKeyListRequestSchema = PaginationOffsetQuerySchema.extend({
     }),
     type: z
         .string()
+        .max(PaginationMaxFilterLength)
         .optional()
         .meta({
-            description: "value with ',' delimiter",
+            description: `value with ',' delimiter, at most ${PaginationMaxFilterLength} characters`,
             example: Object.values(EnumApiKeyType).join(','),
         }),
 });
 
-/**
- * Inferred DTO for ApiKeyListRequestSchema.
- * @public
- */
+/** @public */
 export type ApiKeyListRequestDto = z.infer<typeof ApiKeyListRequestSchema>;

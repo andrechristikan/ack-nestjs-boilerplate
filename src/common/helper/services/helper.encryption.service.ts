@@ -11,16 +11,16 @@ import {
 import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { HelperEncryptionSecretInvalidException } from '@common/helper/exceptions/helper.encryption-secret-invalid.exception';
 import { Injectable } from '@nestjs/common';
+import { EnumHelperPemLabel } from '@common/helper/enums/helper.enum';
 import {
     createCipheriv,
     createDecipheriv,
+    createPrivateKey,
+    createPublicKey,
     hkdfSync,
     randomBytes,
 } from 'node:crypto';
 
-/**
- * AES-256-GCM with a key derived by HKDF-SHA-256 from a base64url-encoded 48-byte secret, a random per-payload salt and the purpose, and the context bound as authenticated data.
- */
 @Injectable()
 export class HelperEncryptionService {
     private decodeSecret(secret: string): Buffer {
@@ -98,7 +98,12 @@ export class HelperEncryptionService {
             throw new HelperDecryptFailedException();
         }
 
-        const [saltPart, ivPart, ciphertextPart, authTagPart] = parts;
+        const [saltPart, ivPart, ciphertextPart, authTagPart] = parts as [
+            string,
+            string,
+            string,
+            string,
+        ];
         const salt = this.decodePart(saltPart);
         const iv = this.decodePart(ivPart);
         const ciphertext = this.decodePart(ciphertextPart);
@@ -133,5 +138,19 @@ export class HelperEncryptionService {
         } catch (error: unknown) {
             throw new HelperDecryptFailedException(error);
         }
+    }
+
+    derBase64ToPem(der: string, label: EnumHelperPemLabel): string {
+        const body = Buffer.from(der, 'base64').toString('base64');
+        const lines = body.match(/.{1,64}/g)?.join('\n') ?? '';
+        const pem = `-----BEGIN ${label}-----\n${lines}\n-----END ${label}-----\n`;
+
+        if (label === EnumHelperPemLabel.privateKey) {
+            createPrivateKey(pem);
+        } else {
+            createPublicKey(pem);
+        }
+
+        return pem;
     }
 }

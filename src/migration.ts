@@ -1,27 +1,5 @@
-import { CommandFactory } from 'nest-commander';
-import { MigrationModule } from '@migration/migration.module';
-import { Logger as LoggerPino } from 'nestjs-pino';
+import '@instrument';
 
-async function bootstrap(): Promise<void> {
-    const app = await CommandFactory.createWithoutRunning(MigrationModule, {
-        abortOnError: true,
-        bufferLogs: true,
-    });
+const { bootstrapMigration, bootstrapFailed } = await import('@bootstrap');
 
-    app.useLogger(app.get(LoggerPino));
-    app.flushLogs();
-
-    await CommandFactory.runApplication(app);
-
-    await app.close();
-    process.exit(0);
-}
-
-bootstrap().catch((error: unknown) => {
-    const detail =
-        error instanceof Error ? (error.stack ?? error.message) : String(error);
-
-    process.stderr.write(`[Bootstrap] Failed to start the migration\n`);
-    process.stderr.write(`${detail}\n`);
-    process.exit(1);
-});
+bootstrapMigration().catch(bootstrapFailed);

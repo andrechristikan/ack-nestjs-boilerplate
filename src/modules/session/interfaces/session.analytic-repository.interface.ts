@@ -5,15 +5,28 @@ import type {
 } from '@modules/session/interfaces/session.interface';
 
 export interface ISessionAnalyticRepository {
-    findActiveWithGeoInRange(
-        startDate?: Date,
-        endDate?: Date
+    findActiveInRange(
+        startDate: Date | null,
+        endDate: Date | null,
+        now: Date,
+        idleSince: Date
     ): Promise<ISessionAnalyticSession[]>;
-    countActiveByUser(): Promise<ISessionAnalyticUserCount[]>;
+    findActiveWithGeoInRange(
+        startDate: Date | null,
+        endDate: Date | null,
+        now: Date,
+        idleSince: Date
+    ): Promise<ISessionAnalyticSession[]>;
+    countActiveByUser(
+        now: Date,
+        idleSince: Date
+    ): Promise<ISessionAnalyticUserCount[]>;
     groupByCountry(
-        startDate?: Date,
-        endDate?: Date
+        startDate: Date | null,
+        endDate: Date | null,
+        now: Date,
+        idleSince: Date
     ): Promise<IAnalyticCountBucket[]>;
     countAll(): Promise<number>;
-    countActive(): Promise<number>;
+    countActive(now: Date, idleSince: Date): Promise<number>;
 }

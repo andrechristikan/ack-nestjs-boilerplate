@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 
-/**
- * Raised when `perPage` is below the minimum.
- * @public
- */
+/** @public */
 export class PaginationPerPageCannotBeLessThanOneException extends AppBaseException {
     readonly module = 'pagination';
     readonly statusCode =
@@ -13,7 +10,7 @@ export class PaginationPerPageCannotBeLessThanOneException extends AppBaseExcept
     readonly statusCodeKey = EnumPaginationStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
-    constructor(receivedPerPage: number) {
+    constructor(readonly receivedPerPage: number) {
         super('pagination.error.perPageCannotBeLessThanOne', {
             messageProperties: { minPerPage: 1, receivedPerPage },
         });

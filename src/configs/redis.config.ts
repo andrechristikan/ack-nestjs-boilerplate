@@ -5,22 +5,32 @@ export interface IConfigRedis {
     cache: {
         url: string;
         namespace: string;
-        ttlInMs: number;
     };
     queue: {
         url: string;
         namespace: string;
+        connectTimeoutInMs: number;
+        maxRetriesPerRequest: number;
     };
+    commandTimeoutInMs: number;
+    connectTimeoutInMs: number;
+    warnWindowInMs: number;
 }
 
-export default registerAs('redis', (): IConfigRedis => ({
-    cache: {
-        url: process.env.CACHE_REDIS_URL!,
-        namespace: 'Cache',
-        ttlInMs: ms('5m'),
-    },
-    queue: {
-        url: process.env.QUEUE_REDIS_URL!,
-        namespace: 'Queue',
-    },
-}));
+export default registerAs('redis', (): IConfigRedis => {
+    return {
+        cache: {
+            url: process.env.REDIS_CACHE_URL!,
+            namespace: 'Cache',
+        },
+        queue: {
+            url: process.env.REDIS_QUEUE_URL!,
+            namespace: 'Queue',
+            connectTimeoutInMs: ms('5s'),
+            maxRetriesPerRequest: 1,
+        },
+        commandTimeoutInMs: ms('2s'),
+        connectTimeoutInMs: ms('5s'),
+        warnWindowInMs: ms('1m'),
+    };
+});

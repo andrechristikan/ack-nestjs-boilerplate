@@ -1,4 +1,4 @@
-import { Catch } from '@nestjs/common';
+import { Catch, Logger } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
 import type { IMessageValidationError } from '@common/message/interfaces/message.interface';
@@ -7,11 +7,10 @@ import { RequestValidationException } from '@common/request/exceptions/request.v
 import type { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 
-/**
- * Formats `RequestValidationException` into the standard error envelope with localized field errors.
- */
 @Catch(RequestValidationException)
 export class AppValidationFilter implements ExceptionFilter {
+    private readonly logger = new Logger(AppValidationFilter.name);
+
     constructor(
         private readonly messageService: MessageService,
         private readonly responseMetadataService: ResponseMetadataService
@@ -23,6 +22,15 @@ export class AppValidationFilter implements ExceptionFilter {
     ): Promise<void> {
         const ctx = host.switchToHttp();
         const response: Response = ctx.getResponse<Response>();
+
+        this.logger.warn(
+            {
+                statusCode: exception.statusCode,
+                statusCodeKey: exception.statusCodeKey,
+                httpStatus: exception.httpStatus,
+            },
+            'A request was refused'
+        );
 
         const metadata = this.responseMetadataService.create();
 

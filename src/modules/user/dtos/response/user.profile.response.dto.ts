@@ -3,10 +3,7 @@ import { CountryResponseSchema } from '@modules/country/dtos/response/country.re
 import { UserSchema } from '@modules/user/dtos/user.dto';
 import { UserMobileNumberResponseSchema } from '@modules/user/dtos/response/user.mobile-number.response.dto';
 
-/**
- * Full user profile: the base user row plus its country and registered mobile numbers.
- * @public
- */
+/** @public */
 export const UserProfileResponseSchema = UserSchema.extend({
     country: CountryResponseSchema.meta({
         description: 'Country of the user',
@@ -17,8 +14,5 @@ export const UserProfileResponseSchema = UserSchema.extend({
     }),
 });
 
-/**
- * Full user profile with country and mobile numbers.
- * @public
- */
+/** @public */
 export type UserProfileResponseDto = z.infer<typeof UserProfileResponseSchema>;

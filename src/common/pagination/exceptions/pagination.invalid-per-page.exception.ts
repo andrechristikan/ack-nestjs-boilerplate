@@ -2,17 +2,14 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 
-/**
- * Raised when `perPage` is not an integer within the allowed range.
- * @public
- */
+/** @public */
 export class PaginationInvalidPerPageException extends AppBaseException {
     readonly module = 'pagination';
     readonly statusCode = EnumPaginationStatusCodeError.invalidPerPage;
     readonly statusCodeKey = EnumPaginationStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
 
-    constructor(maxPerPage: number) {
+    constructor(readonly maxPerPage: number) {
         super('pagination.error.invalidPerPage', {
             messageProperties: { maxPerPage },
         });

@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `term-policy` module.
- * @public
- */
+/** @public */
 export enum EnumTermPolicyStatusCodeError {
     notFound = 51500,
     exist = 51501,
@@ -12,4 +9,9 @@ export enum EnumTermPolicyStatusCodeError {
     contentNotFound = 51506,
     contentExist = 51507,
     contentEmpty = 51508,
+    contentInvalid = 51509,
+    requiredNotPublished = 51510,
+    contentSizeExceeded = 51511,
+    contentKeyInvalid = 51512,
+    contentTypeInvalid = 51513,
 }

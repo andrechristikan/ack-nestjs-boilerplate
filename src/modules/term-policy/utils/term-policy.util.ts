@@ -1,61 +1,81 @@
 import type { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
-import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
+import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
+import type {
+    ITermPolicyActivityLogSubject,
+    ITermPolicyContent,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
-import type {
-    TermPolicy,
-    TermPolicyContent,
-} from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyUtil {
-    private readonly uploadContentPath: string;
-    private readonly contentPublicPath: string;
+    private readonly uploadContentPathPattern: string;
+    private readonly contentPublicPathPattern: string;
+    private readonly contentMaxSizeInBytes: number;
+    private readonly contentKeyRandomLength: number;
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperArrayService: HelperArrayService,
         private readonly helperStringService: HelperStringService
     ) {
-        this.uploadContentPath = this.configService.get<string>(
-            'termPolicy.uploadContentPath'
+        this.uploadContentPathPattern = this.configService.get<string>(
+            'termPolicy.uploadContentPathPattern'
         )!;
-        this.contentPublicPath = this.configService.get<string>(
-            'termPolicy.contentPublicPath'
+        this.contentPublicPathPattern = this.configService.get<string>(
+            'termPolicy.contentPublicPathPattern'
+        )!;
+        this.contentMaxSizeInBytes = this.configService.get<number>(
+            'termPolicy.content.maxSizeInBytes'
+        )!;
+        this.contentKeyRandomLength = this.configService.get<number>(
+            'termPolicy.contentKeyRandomLength'
         )!;
     }
 
-    validateUniqueLanguages(contents: TermPolicyContentRequestDto[]): boolean {
-        const languages = contents.map(content => content.language);
-        const uniqueLanguages = this.helperArrayService.unique(languages);
-        return uniqueLanguages.length === languages.length;
+    private getPath(type: EnumTermPolicyType, version: number): string {
+        return this.helperStringService.fillPattern(
+            this.uploadContentPathPattern,
+            {
+                type,
+                version: version.toString(),
+            }
+        );
     }
 
-    getPath(termPolicy: TermPolicy): string {
-        return this.helperStringService.fillPattern(this.uploadContentPath, {
-            type: termPolicy.type,
-            version: termPolicy.version.toString(),
-        });
+    isContentSizeAllowed(size: number): boolean {
+        return size <= this.contentMaxSizeInBytes;
     }
 
-    /** Builds the private S3 key `{path}/{language}.{ext}`, stripping any leading slash. */
-    createRandomFilenameContentWithPath(
+    isContentKeyInPath(
+        type: EnumTermPolicyType,
+        version: number,
+        key: string
+    ): boolean {
+        const path = this.getPath(type, version);
+        const prefix = `${path}/`;
+
+        return key.startsWith(prefix) && key.length > prefix.length;
+    }
+
+    /** Builds the S3 key `{path}/{language}-{random}.{extension}` with the extension lowercased, dropping a leading slash. */
+    getContentKey(
         type: EnumTermPolicyType,
         version: number,
         language: EnumMessageLanguage,
         { extension }: IFileRandomFilenameOptions
     ): string {
-        const path: string = this.helperStringService.fillPattern(
-            this.uploadContentPath,
-            { type, version: version.toString() }
+        const path: string = this.getPath(type, version);
+
+        const random: string = this.helperStringService.random(
+            this.contentKeyRandomLength
         );
 
-        let fullPath: string = `${path}/${language}.${extension.toLowerCase()}`;
+        let fullPath: string = `${path}/${language}-${random}.${extension.toLowerCase()}`;
         if (fullPath.startsWith('/')) {
             fullPath = fullPath.replace('/', '');
         }
@@ -63,15 +83,41 @@ export class TermPolicyUtil {
         return fullPath;
     }
 
+    toContents(
+        contents: Prisma.JsonValue
+    ): ITermPolicyContent[] | TermPolicyContentInvalidException {
+        const mapped: ITermPolicyContent[] = [];
+        const stored = (contents ?? []) as unknown as (Omit<
+            ITermPolicyContent,
+            'language'
+        > & { language: string })[];
+        for (const content of stored) {
+            const language =
+                Object.values(EnumMessageLanguage).find(
+                    value => value === content.language
+                ) ?? null;
+            if (language === null) {
+                return new TermPolicyContentInvalidException();
+            }
+
+            mapped.push({ ...content, language });
+        }
+
+        return mapped;
+    }
+
     getContentPublicPath(type: EnumTermPolicyType, version: number): string {
-        return this.helperStringService.fillPattern(this.contentPublicPath, {
-            type,
-            version: version.toString(),
-        });
+        return this.helperStringService.fillPattern(
+            this.contentPublicPathPattern,
+            {
+                type,
+                version: version.toString(),
+            }
+        );
     }
 
     mapActivityLogMetadata(
-        termPolicy: Pick<TermPolicy, 'id' | 'type' | 'version'>,
+        termPolicy: ITermPolicyActivityLogSubject,
         timestamp: Date
     ): IActivityLogMetadata {
         return {
@@ -80,12 +126,5 @@ export class TermPolicyUtil {
             termPolicyVersion: termPolicy.version,
             timestamp,
         };
-    }
-
-    getContentByLanguage(
-        contents: TermPolicyContent[],
-        language: EnumMessageLanguage
-    ): TermPolicyContent | null {
-        return contents.find(c => c.language === language) ?? null;
     }
 }

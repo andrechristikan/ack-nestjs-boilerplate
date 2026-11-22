@@ -1,5 +1,7 @@
+import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationCursorReturn,
     IPaginationEqual,
@@ -10,20 +12,35 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
-import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
-import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
-import type { WorkspaceUpdateRequestDto } from '@modules/workspace/dtos/request/workspace.update.request.dto';
+import type {
+    IWorkspaceCreate,
+    IWorkspaceUpdate,
+} from '@modules/workspace/interfaces/workspace.interface';
 import type { IWorkspaceRepository } from '@modules/workspace/interfaces/workspace.repository.interface';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class WorkspaceRepository implements IWorkspaceRepository {
+    private readonly deletedSlugPattern: string;
+
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
-    ) {}
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly configService: ConfigService
+    ) {
+        this.deletedSlugPattern = this.configService.get<string>(
+            'workspace.deletedSlugPattern'
+        )!;
+    }
 
     async findActiveById(workspaceId: string): Promise<Workspace | null> {
+        const isValidId = this.databaseUtil.checkIdIsValid(workspaceId);
+        if (!isValidId) {
+            return null;
+        }
+
         return this.databaseService.client.workspace.findFirst({
             where: {
                 id: workspaceId,
@@ -42,74 +59,63 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
-    async findByIdForAdmin(workspaceId: string): Promise<Workspace | null> {
+    async findByIdByAdmin(workspaceId: string): Promise<Workspace | null> {
         return this.databaseService.client.workspace.findUnique({
             where: { id: workspaceId },
         });
     }
 
-    /** Counts slug holders across ALL rows including soft-deleted ones, matching the unique index, which has no `deletedAt` component. */
-    async existsBySlug(
-        slug: string,
-        excludeWorkspaceId?: string
-    ): Promise<boolean> {
-        const count = await this.databaseService.client.workspace.count({
+    async countByOwnerInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceIds: string[]
+    ): Promise<number> {
+        return tx.workspace.count({
             where: {
-                slug,
-                ...(excludeWorkspaceId
-                    ? { id: { not: excludeWorkspaceId } }
-                    : {}),
+                id: { in: workspaceIds },
+                deletedAt: null,
             },
         });
-
-        return count > 0;
     }
 
     async findWithPaginationCursorByMember(
-        userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.WorkspaceWhereInput>
+        workspaceIds: string[],
+        { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<Workspace>> {
-        return this.paginationService.cursor<
-            Workspace,
-            Prisma.WorkspaceWhereInput
-        >(this.databaseService.client.workspace, {
-            ...others,
-            where: {
-                AND: [
-                    where ?? {},
-                    WorkspaceActiveFilter,
-                    { members: { some: { userId } } },
-                ],
-            },
-        });
+        return this.paginationService.cursor(
+            this.databaseService.client.workspace,
+            {
+                ...others,
+                where: {
+                    AND: [
+                        where ?? {},
+                        WorkspaceActiveFilter,
+                        { id: { in: workspaceIds } },
+                    ],
+                },
+            }
+        );
     }
 
-    async findWithPaginationOffsetForAdmin(
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.WorkspaceWhereInput>,
-        isPublic?: Record<string, IPaginationEqual>
+    async findWithPaginationOffsetByAdmin(
+        { where, ...others }: IPaginationQueryOffsetParams,
+        isPublic: Record<string, IPaginationEqual> | null
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        return this.paginationService.offset<
-            Workspace,
-            Prisma.WorkspaceWhereInput
-        >(this.databaseService.client.workspace, {
-            ...others,
-            where: {
-                ...where,
-                ...isPublic,
-            },
-        });
+        return this.paginationService.offset(
+            this.databaseService.client.workspace,
+            {
+                ...others,
+                where: {
+                    ...where,
+                    ...isPublic,
+                },
+            }
+        );
     }
 
     async createInTx(
         tx: IDatabaseTransactionClient,
         ownerId: string,
-        { name, description, isPublic }: WorkspaceCreateRequestDto,
+        { name, description, isPublic }: IWorkspaceCreate,
         slug: string,
         workspaceId: string
     ): Promise<Workspace> {
@@ -126,24 +132,23 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
-    async updateDetails(
+    async updateDetailsInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
-        { name, description }: WorkspaceUpdateRequestDto
+        { name, description }: IWorkspaceUpdate
     ): Promise<Workspace> {
-        return this.databaseService.client.workspace.update({
+        return tx.workspace.update({
             where: { id: workspaceId },
-            data: {
-                name,
-                description,
-            },
+            data: { name, description },
         });
     }
 
-    async updateIsPublic(
+    async updateIsPublicInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         isPublic: boolean
     ): Promise<Workspace> {
-        return this.databaseService.client.workspace.update({
+        return tx.workspace.update({
             where: { id: workspaceId },
             data: {
                 isPublic,
@@ -151,8 +156,12 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
-    async updateSlug(workspaceId: string, slug: string): Promise<Workspace> {
-        return this.databaseService.client.workspace.update({
+    async updateSlugInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceId: string,
+        slug: string
+    ): Promise<Workspace> {
+        return tx.workspace.update({
             where: { id: workspaceId },
             data: {
                 slug,
@@ -163,13 +172,70 @@ export class WorkspaceRepository implements IWorkspaceRepository {
     async softDeleteInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        deletedAt: Date
-    ): Promise<void> {
-        await tx.workspace.softDelete({
-            where: { id: workspaceId },
+        deletedAt: Date,
+        deletedBy: string
+    ): Promise<boolean> {
+        const deletedSlugPattern = this.deletedSlugPattern;
+        const { count } = await tx.workspace.updateMany({
+            where: {
+                id: workspaceId,
+                deletedAt: null,
+            },
             data: {
+                slug: deletedSlugPattern.replace('{id}', () => workspaceId),
                 deletedAt,
+                deletedBy,
             },
         });
+
+        return count > 0;
+    }
+
+    async existsOwnedWithOtherMembersInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceIds: string[],
+        userId: string
+    ): Promise<boolean> {
+        const workspace = await tx.workspace.findFirst({
+            where: {
+                id: { in: workspaceIds },
+                deletedAt: null,
+                members: { some: { userId: { not: userId } } },
+            },
+            select: { id: true },
+        });
+
+        return workspace !== null;
+    }
+
+    async softDeleteOwnedByUserInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceIds: string[],
+        userId: string,
+        deletedAt: Date
+    ): Promise<string[]> {
+        const where: Prisma.WorkspaceWhereInput = {
+            id: { in: workspaceIds },
+            deletedAt: null,
+        };
+        const workspaces = await tx.workspace.findMany({
+            where,
+            select: { id: true },
+        });
+        const liveWorkspaceIds = workspaces.map(({ id }) => id);
+
+        const deletedSlugPattern = this.deletedSlugPattern;
+        for (const workspaceId of liveWorkspaceIds) {
+            await tx.workspace.updateMany({
+                where: { id: workspaceId, deletedAt: null },
+                data: {
+                    slug: deletedSlugPattern.replace('{id}', () => workspaceId),
+                    deletedAt,
+                    deletedBy: userId,
+                },
+            });
+        }
+
+        return liveWorkspaceIds;
     }
 }

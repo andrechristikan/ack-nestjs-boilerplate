@@ -1,28 +1,17 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
+import { RequestEmailSchema } from '@common/request/validations/request.email.validation';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
-import { validateEmail } from '@common/request/validations/request.custom-email.validation';
 import { UserClaimUsernameRequestSchema } from '@modules/user/dtos/request/user.claim-username.request.dto';
 
-/**
- * Validates the body for creating a user as an admin.
- * @public
- */
+/** @public */
 export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
     email: z
         .string()
         .trim()
         .toLowerCase()
         .max(100)
-        .superRefine((value, ctx) => {
-            const validation = validateEmail(value);
-            if (!validation.validated) {
-                ctx.addIssue({
-                    code: 'custom',
-                    message: validation.messagePath,
-                });
-            }
-        })
+        .pipe(RequestEmailSchema)
         .meta({
             description: 'Email address of the user to create',
             example: faker.internet.email(),
@@ -42,8 +31,5 @@ export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
     }),
 });
 
-/**
- * Body for creating a user as an admin.
- * @public
- */
+/** @public */
 export type UserCreateRequestDto = z.infer<typeof UserCreateRequestSchema>;

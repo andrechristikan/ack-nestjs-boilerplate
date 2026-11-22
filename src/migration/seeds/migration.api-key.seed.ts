@@ -1,19 +1,17 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { CacheService } from '@common/cache/services/cache.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { MigrationApiKeyData } from '@migration/data/migration.api-key.data';
 import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import type { ApiKeyCreateRawRequestDto } from '@modules/api-key/dtos/request/api-key.create-raw.request.dto';
-import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Seeds environment-specific API keys; removal also clears their cache entries.
- */
 @Command({
     name: 'apiKey',
     description: 'Seed/Remove Api Keys',
@@ -30,12 +28,12 @@ export class MigrationApiKeySeed
     private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
+        protected readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly apiKeyCredentialUtil: ApiKeyCredentialUtil,
-        private readonly apiKeyCache: ApiKeyCache,
         private readonly configService: ConfigService
     ) {
-        super();
+        super(cacheService);
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.apiKeys = MigrationApiKeyData[this.env];
@@ -77,6 +75,8 @@ export class MigrationApiKeySeed
                                 type: row.type,
                                 name: row.name,
                                 isActive: true,
+                                startAt: null,
+                                endAt: null,
                                 createdBy: MigrationUserSuperAdminId,
                                 updatedBy: MigrationUserSuperAdminId,
                             },
@@ -89,8 +89,7 @@ export class MigrationApiKeySeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding Api Keys');
-            throw error;
+            throw new AppUnknownException(error, 'Seeding API keys failed');
         }
 
         this.logger.log('Api Keys seeded successfully.');
@@ -103,18 +102,8 @@ export class MigrationApiKeySeed
 
         try {
             await this.databaseService.client.apiKey.deleteMany({});
-
-            const deletions = this.apiKeys.map(apiKey => {
-                const cacheKey = this.apiKeyCredentialUtil.createKey(
-                    apiKey.key
-                );
-
-                return this.apiKeyCache.deleteCacheByKey(cacheKey);
-            });
-            await Promise.all(deletions);
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing Api Keys');
-            throw error;
+            throw new AppUnknownException(error, 'Removing API keys failed');
         }
 
         this.logger.log('Api Keys removed successfully.');

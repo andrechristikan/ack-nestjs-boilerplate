@@ -14,13 +14,7 @@ export interface IResponseMetadata {
     messageProperties?: IMessageProperties;
 }
 
-export interface IResponseCacheOptions {
-    key?: string;
-    ttl?: number;
-}
-
 export interface IResponseOptions {
-    cache?: IResponseCacheOptions | boolean;
     schema?: StandardSchemaV1;
 }
 
@@ -48,3 +42,9 @@ export interface IResponsePdfReturn {
 }
 
 export type IResponseFileReturn = IResponseCsvReturn | IResponsePdfReturn;
+
+export interface IResponseFileInterceptorOptions {
+    maxDataExportConfigKey?: string;
+}
+
+export type IResponseFileMediaTypes = Record<EnumFileExtensionDocument, string>;

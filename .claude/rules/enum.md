@@ -1,84 +1,35 @@
+---
+paths:
+    - '**/enums/**'
+    - 'prisma/schema.prisma'
+---
+
 # Enums
 
-## Shape
+A string value equals its key; diverge only when the wire value genuinely differs from the code name. Three families take numeric values: status-code enums (5-digit, sequential from the module block, `exception-class.md`), ordered scales where the order is the meaning (`EnumQueuePriority.high = 1`), and quantities where the number is the value (`EnumWorkspaceInviteExpiry.sevenDays = 7`, `EnumWorkspaceInviteExpiry`, `src/modules/workspace/enums/workspace.enum.ts`).
 
-```ts
-export enum EnumUserStatus {
-    active = 'active',
-    inactive = 'inactive',
-}
-```
+## One file per module
 
-- **Type name is `Enum` + PascalCase.** `EnumQueue`, `EnumPolicyAction`, `EnumUserStatus`.
-- **Keys AND string values are camelCase.** `UPPER_SNAKE_CASE` is wrong on both halves
-  (`rules/naming.md`).
-- A string enum's value normally equals its key. Diverging is allowed only when the wire value
-  is genuinely different from the code name, and then it is worth a line saying which is which.
-
-Two families take numeric values instead:
-
-| Family | Values | Example |
-|---|---|---|
-| status-code enums | 5-digit integers, sequential from the module block | `EnumUserStatusCodeError.notFound = 51000` |
-| ordered scales | small integers where the ORDER is the meaning | `EnumQueuePriority.high = 1` |
-
-Status-code allocation is `rules/status-code.md` and it is a procedure, not a preference.
-
-## One concern per file
-
-`<module>.<concern>.enum.ts`, in the module's `enums/` folder. **A status-code enum always gets
-its own file:** `<module>.status-code.enum.ts`. Never a grab-bag `enums.ts`.
-
-A file may hold two enums when they are the same concern seen twice — `EnumQueue` beside
-`EnumQueuePriority`, `EnumLoggerLevel` beside `EnumLoggerSeverity`. It may not hold two
-unrelated ones.
+Every enum a module owns sits in that module's `enums/` folder, named as `naming.md`, Files, gives. An enum lives with the module that owns its concept, never in a file that collects other modules' enums.
 
 ## Where an enum lives
 
-- **A value the database stores is declared in `prisma/schema.prisma`** and imported from the
-  generated client — every domain enumeration the rows carry: a status, a type, a role, a
-  platform, a logged action.
-- **A TypeScript enum in `src/` is for what the database never stores** — status-code blocks,
-  queue and process names, transport and tooling scales, an option a request may carry without
-  being persisted as it stands.
+- A value the database stores (a status, a type, a role, a platform, a logged action) is declared in `prisma/schema.prisma` and imported from `@generated/prisma-client/client`. A module-local re-declaration is a second source of truth with a mapper between two identical enums. Adding or renaming a persisted member is a schema change (`repository.md`).
+- A TypeScript enum in `src/` is for what the database never stores: status-code blocks, queue and job names, transport and tooling scales, an option a request carries without being persisted as it stands.
+- The exception to both bullets above: a seeded key the database stores and code names, which no API adds or renames (a feature-flag key, a metadata sub-key), is a TypeScript enum the seed data and every caller use: `EnumFeatureFlagKey` and `EnumFeatureFlagMetadataKey` (`feature-flag.md`, Keys).
 
-## Prisma-owned enums are imported, never re-declared (HARD)
+## Reference by member
 
-An enum declared in `prisma/schema.prisma` is imported from the generated client entry,
-`@generated/prisma-client/client`:
+`EnumUserStatusCodeError.notFound`, never `51000`; `EnumNotificationQueue.notificationEmail`, never `'notificationEmail'`; `EnumPaginationType.offset`, never `'offset'`. A literal compiles and silently survives a rename. A decorator factory uses the member too (`@QueueProcessor(EnumNotificationQueue.notificationEmail)`, `@FeatureFlagProtected(EnumFeatureFlagKey.workspace)`).
 
-```ts
-import { EnumUserStatus } from '@generated/prisma-client/client';
-```
+## Literal unions
 
-A module-local re-declaration of a schema-owned enum is a second source of truth with a
-pointless mapper between two identical enums. **Renaming a persisted enum value is a data
-migration, not a rename** — describe it; the owner applies it (`rules/prisma-schema.md`).
-
-## Reference by member, never by literal
-
-`EnumUserStatusCodeError.notFound`, never `51000`. `EnumQueue.notificationEmail`, never
-`'notificationEmail'`. A literal compiles fine and silently survives a rename.
-
-The exception is a decorator factory where DI and imports are not the issue but the VALUE is
-the identity — `@QueueProcessor(EnumQueue.notificationEmail)` still uses the member; there is no
-place a raw string is correct.
-
-## Enum-typed query filters
-
-A query param filtered against an enum is a field on the list zod schema; the HTTP service
-applies `PaginationQueryUtil.inEnum` / `.ninEnum` with the default set as a PascalCase constant
-under `<module>/constants/` (`rules/pagination.md`). Never a hand-parsed `@Query` plus a manual
-`includes` check. Enum members in code always use `Enum…` — never string literals
-(`EnumPaginationType.offset`, `EnumPaginationFilterDateBetweenType.start`).
+- A string naming a process, step, channel, kind, state, field, operator, or key this project declares is an enum member, never a literal.
+- A string-literal union on a signature this project owns (an audit field name, a filter operator) is an enum in `enums/<module>.enum.ts` of the owning module or `src/common/` sub-tree, and the signature takes the enum.
+- A literal a third-party contract defines stays: `code-style.md`, Literal strings.
 
 ## Adding a member
 
-- **Reuse before adding.** Duplicate near-synonyms make the surface unreadable.
-- A new status-code member follows the full procedure in `rules/status-code.md`: sequential,
-  no gaps, an exception class, an i18n key in EVERY language file, and a deliberate
-  `httpStatus`.
-- A new member of an enum that is persisted in Prisma is a SCHEMA change — describe it, do not
-  add it to a local copy.
-- A new member of an enum a `switch` dispatches on means every such `switch` is revisited.
-  TypeScript will not tell you when the switch has a `default`.
+- Reuse before adding; near-synonyms make the surface unreadable.
+- A new status-code member follows `.claude/skills/ack-build/references/add-status-code.md`.
+- A new member of an enum a `switch` dispatches on means every such `switch` is revisited; TypeScript stays silent when the switch has a `default`.

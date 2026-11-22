@@ -1,49 +1,43 @@
 # Strict null types
 
-TypeScript runs with `strict`, `strictNullChecks`, and `noImplicitAny`. Two rules carry all the weight:
+`tsconfig.json` runs `strict`, `exactOptionalPropertyTypes`, and `noUncheckedIndexedAccess`. Two rules carry the weight:
 
-1. **`undefined` is allowed ONLY at the input boundary.** Request DTO body, Query DTO. Every layer deeper speaks `null`.
-2. **Do not invent `field?: Type | null` on new code.** It is ambiguous — a caller cannot tell whether omitting the field and passing `null` mean the same thing. Pick one. A few call sites already carry the union (utils / JWT / geo bags); do not spread the pattern, and clean them when you touch the file.
+1. `undefined` is legal only at the input boundary: request DTO body and query DTO. Every layer deeper speaks `null`.
+2. Never write `field?: Type | null`: a caller cannot tell whether omitting the field and passing `null` mean the same thing. Pick one.
 
 ## Where each convention applies
 
 | Layer | Convention |
-|---|---|
-| Request / Query DTO (input boundary) | `field?: Type` |
-| Response schema | `.optional()` when the field is genuinely absent; `.nullable()` when the value is always present-or-null |
-| Module `I*` interface — data | `field: Type \| null` |
-| Module `I*` interface — request lifecycle or external spec (JWT, Prisma) | `field?: Type` |
-| Exception options / options bag | `field?: Type` |
-| Config interface (`src/configs/`) | `field: Type \| null` |
-| Domain / HTTP / processor / Repository — data param | `param: Type \| null` |
-| Domain / HTTP / processor / Repository — filter param | `param: Type \| null` (an additive domain-level filter may use `?`) |
+| --- | --- |
+| request or query DTO | `field?: Type`, except an update request DTO (Update and create) |
+| response schema | `.optional()` when genuinely absent; `.nullable()` when present-or-null |
+| module `I*` data shape | `field: Type \| null` |
+| update shape (`I<Module>Update`) | `field: Type` for a required column; `field: Type \| null` for a nullable one, `null` clearing it |
+| `I*` for a request lifecycle or an external spec (JWT, Prisma) | `field?: Type` |
+| exception options, option bag | `field?: Type` |
+| config interface (`src/configs/`) | `field: Type \| null` |
+| service / use case / repository data param | `param: Type \| null` |
+| filter param | `param: Type \| null`; an additive service-level filter may use `?` |
 | Prisma return | `Type \| null` |
 
 ## The controller and the boundary
 
-Prefer **passing the whole request DTO** into the HTTP service (`userProfileHttpService.updateProfile(userId, body)`). Normalize `undefined → null` only when a domain or HTTP method takes a discrete `T | null` param and the DTO field is optional:
+Pass the whole request DTO into the use case. Normalize `undefined → null` only when a service or use-case method takes a discrete `T | null` param and the DTO field is optional: `const field = dto.field ?? null`.
 
-```ts
-const field = dto.field ?? null;
-return this.userProfileHttpService.updateSomething(userId, field);
-```
+## Update and create
 
-A domain or HTTP signature that accepts `bio?: string` has pushed the ambiguity one layer deeper and made every downstream call site re-decide what an absent value means.
+An update is a full replace; no field has an unchanged state.
+
+- The update request DTO requires every editable field; a nullable column takes `null` to clear it.
+- The repository writes the values as given, `data: { name, description }` (`src/modules/workspace/repositories/workspace.repository.ts`), with no conditional spread on an update field.
+- A create shape (`I<Module>Create`) stores `null` as given.
+- A conditional spread, `...(x !== null && { x })`, fills a Prisma `where` filter (`...(cursor !== null && { id: { gt: cursor } })`) and an internal write whose input is genuinely optional.
 
 ## Consequences
 
-- **No `any`.** Not as a param type, not as a cast, not as a generic argument.
-- **A shape this module owns is a named type on every public method.** Controllers, HTTP
-  services, domains, and repositories declare returns and parameters as `I*` interfaces,
-  Prisma models, primitives, or request/response DTO types (`rules/naming.md`,
-  `rules/architecture.md`). `Promise<unknown>`, `Record<string, unknown>`,
-  `Record<any, unknown>`, and `Record<string, any>` are not stand-ins for an owned payload —
-  map a Prisma `groupBy` / aggregate / wide inference into the named type inside the
-  repository before it leaves that method.
-- **`unknown` is only a narrowing input.** Use it on a `catch` binding before a type guard, or
-  on a third-party callback value before casting or narrowing into a named type we own. It is
-  not a public return type, not a field on an `I*` we declare, and not a way to silence
-  typecheck on unfinished code.
-- **No ignored null checks.** A non-null assertion (`!`) is permitted only where the value is structurally guaranteed and the compiler cannot see it — a `ConfigService.get` for a key the config module declares required is the canonical case. Anywhere else, handle the null.
-- **No `as` cast across a boundary** to silence a null mismatch. The mismatch is the finding.
-- **An `as` that narrows a value a third party hands in untyped is legitimate.** A library callback typed `unknown`, `object`, or an opaque marker interface gives the compiler nothing to work with, and the cast is where our knowledge of the real shape enters. What is a defect is `as` between two types WE own, forcing them to agree instead of fixing whichever one is wrong.
+- Every public method on a controller, use case, service, or repository names its shape: an `I*` interface, a Prisma model, a primitive, or a DTO type. `Promise<unknown>`, `Record<string, unknown>`, and `Record<string, any>` are not stand-ins for an owned payload; map a Prisma `groupBy` or aggregate into the named type inside the repository.
+- `unknown` is a narrowing input only: a `catch` binding before a type guard, a third-party callback value before it is narrowed into a type we own, or a generic bound (`TArgs extends unknown[]` in `IAppUseCase`). Not a field on an `I*`, not a way to silence typecheck, and a return type only where a function hands back its own `unknown` input untouched: an error mapper returns an unmatched error as it came (`FileUploadErrorInterceptor.mapError`, `src/common/file/interceptors/file.upload-error.interceptor.ts`).
+- A non-null assertion (`!`) is permitted only where the value is structurally guaranteed and the compiler cannot see it; `ConfigService.get` for a key `AppEnvSchema` requires is the canonical case. A key its `superRefine` requires once an integration is set qualifies only where every use goes through that integration's adapter, a no-op while it is unset (`email.noReplyAddress` in the `NotificationEmail*Service` classes). Anywhere else, handle the null.
+- No `as` between two types we own to silence a mismatch; the mismatch is the finding. An `as` that narrows a value a third party hands in untyped is legitimate.
+- No literal `undefined` in our own logic, in every tree: no `return undefined`, `?? undefined`, `= undefined`, or `T | undefined` on a signature we own; write `null`. `undefined` stays where it is a contract we do not own: a Prisma `where`, `data`, `select`, or `cursor` arg (`undefined` skips, `null` matches null), filled by a conditional spread; zod `.optional()`; and a third-party type, normalized with `?? null` where it enters our types.
+- `||` is boolean logic only, on a non-nullable operand too, and `??` never replaces it on a boolean operand: `a ?? b` with `a` false answers `false`. Where `''` or `0` must also fall back, write the comparison (`name === '' ? fallback : name`).

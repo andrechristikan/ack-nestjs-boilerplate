@@ -1,16 +1,20 @@
-/**
- * Where an activity-log contract resolves the logged user from.
- * @public
- */
+/** @public */
+export enum EnumActivityLogQueue {
+    activityLog = 'activityLog',
+}
+
+/** @public */
+export enum EnumActivityLogProcess {
+    createMany = 'createMany',
+}
+
+/** @public */
 export enum EnumActivityLogUser {
     payload = 'payload',
     target = 'target',
 }
 
-/**
- * Where an activity-log contract resolves the workspace from, if any.
- * @public
- */
+/** @public */
 export enum EnumActivityLogWorkspace {
     none = 'none',
     payload = 'payload',

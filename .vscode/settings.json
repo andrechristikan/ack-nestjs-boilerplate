@@ -79,5 +79,7 @@
     "better-comments.highlightPlainText": true,
 
     "prisma.pinToPrisma6": true,
-    "js/ts.tsdk.path": "node_modules/typescript/lib"
+    "js/ts.tsdk.path": "node_modules/typescript/lib",
+
+    "github.copilot.chat.skillTool.enabled": true
 }

@@ -1,3 +1,9 @@
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
+import type {
+    EnumUserProcess,
+    EnumUserQueue,
+} from '@modules/user/enums/user.enum';
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import {
     EnumActivityLogAction,
@@ -8,63 +14,81 @@ import {
     EnumUserLoginFrom,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
+    EnumUserStatus,
     EnumVerificationType,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
-import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
+import type {
+    AuthenticationResponseJSON,
+    PublicKeyCredentialRequestOptionsJSON,
+} from '@simplewebauthn/server';
+import type { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import type { IMfaCheck } from '@modules/mfa/interfaces/mfa.interface';
 import type {
     Country,
+    EnumAwsS3Accessibility,
+    EnumUserReauthenticationAction,
+    ForgotPassword,
     Prisma,
-    Role,
-    TwoFactor,
-    TwoFactorBackupCode,
     User,
     UserMobileNumber,
-    UserPhoto,
+    Verification,
 } from '@generated/prisma-client/client';
 import type {
     UserAdminListSelect,
-    UserAdminNearLockoutSelect,
+    UserAnalyticRefSelect,
+    UserMobileNumberSummarySelect,
+    UserNameSelect,
+    UserRecipientSelect,
 } from '@modules/user/constants/user.constant';
 import type {
     IAuthPassword,
+    IAuthPasswordTemporary,
     IAuthToken,
-    IAuthTwoFactorVerify,
 } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
-import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
+import type {
+    IRole,
+    IRoleWithPolicies,
+} from '@modules/role/interfaces/role.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
+import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 
-export interface IUserTwoFactor extends TwoFactor {
-    backupCodes: TwoFactorBackupCode[];
+export interface IUserDeletedIdentity {
+    email: string;
+    username: string;
 }
 
 export interface IUser extends User {
     role: IRoleWithPolicies;
-    twoFactor: IUserTwoFactor | null;
 }
 
-/** A user row flattened for CSV export: only the role name and the photo are joined. */
-export interface IUserExport extends User {
-    role: Pick<Role, 'name'>;
-    photo: UserPhoto | null;
+export interface IUserContext {
+    user: IUser;
+}
+
+export interface IUserPasswordSet extends IUser {
+    password: string;
 }
 
 export type IUserList = Prisma.UserGetPayload<{
     select: typeof UserAdminListSelect;
 }>;
 
-export type IUserNearLockout = Prisma.UserGetPayload<{
-    select: typeof UserAdminNearLockoutSelect;
+export type IUserName = Prisma.UserGetPayload<{
+    select: typeof UserNameSelect;
 }>;
 
-export type IUserContact = Pick<User, 'id' | 'email' | 'username'>;
+export type IUserRecipient = Prisma.UserGetPayload<{
+    select: typeof UserRecipientSelect;
+}>;
 
 export interface IUserRef {
     id: string;
     name: string | null;
     username: string;
-    photo: UserPhoto | null;
+    photo: Prisma.JsonValue;
     createdAt: Date;
     createdBy: string | null;
     updatedAt: Date;
@@ -80,7 +104,6 @@ export interface IUserMobileNumber extends UserMobileNumber {
 export interface IUserProfile extends IUser {
     mobileNumbers: IUserMobileNumber[];
     country: Country;
-    photo: UserPhoto | null;
 }
 
 export interface IUserForgotPasswordCreate {
@@ -93,8 +116,13 @@ export interface IUserForgotPasswordCreate {
     link: string;
 }
 
+export interface IUserSignUpPrepared {
+    input: IUserCreateWithWorkspaceInput;
+    emailVerification: IUserVerificationEmailCreate;
+}
+
 export interface IUserVerificationEmailCreate {
-    type: 'email';
+    type: typeof EnumVerificationType.email;
     expiredAt: Date;
     expiredInMinutes: number;
     resendInMinutes: number;
@@ -104,18 +132,23 @@ export interface IUserVerificationEmailCreate {
     link: string;
 }
 
-export interface IUserVerificationMobileNumberCreate {
-    type: 'mobileNumber';
-    expiredAt: Date;
+export interface IUserVerificationReauthenticationCreate {
+    verification: IUserCreateVerification;
+    otp: string;
+    action: EnumUserReauthenticationAction;
     expiredInMinutes: number;
-    resendInMinutes: number;
-    reference: string;
-    token: string;
-    hashedToken: string;
 }
 
-export type IUserVerificationCreate =
-    IUserVerificationEmailCreate | IUserVerificationMobileNumberCreate;
+export interface IUserVerificationMobileCreate {
+    verification: IUserCreateVerification;
+    otp: string;
+    expiredInMinutes: number;
+}
+
+export interface IUserVerificationEmailTarget {
+    verification: Verification;
+    user: User;
+}
 
 export interface IUserSignUpWorkspacePersonal {
     type: EnumUserSignUpWorkspaceContextType.personal;
@@ -128,7 +161,7 @@ export interface IUserSignUpWorkspaceInvite {
     type: EnumUserSignUpWorkspaceContextType.invite;
     workspaceId: string;
     workspaceInviteId: string;
-    invitedByUserId: string | null;
+    invitedByUserId: string;
     workspaceMemberRole: EnumWorkspaceMemberRole;
     projectId: string | null;
     projectMemberRole: EnumProjectMemberRole | null;
@@ -137,22 +170,11 @@ export interface IUserSignUpWorkspaceInvite {
 export type IUserSignUpWorkspaceContext =
     IUserSignUpWorkspacePersonal | IUserSignUpWorkspaceInvite;
 
-export interface IUserOnboardingActivity {
-    action: EnumActivityLogAction;
-    userId: string;
-    workspaceId: string | null;
-    createdBy: string;
-    metadata: IActivityLogMetadata;
-}
+export type IUserCreateRole = Pick<IRole, 'id'>;
 
-export interface IUserOnboardingVerification {
-    reference: string;
-    token: string;
-    type: EnumVerificationType;
-    to: string;
-    expiredAt: Date;
-    verifiedAt: Date | null;
-    isUsed: boolean;
+export interface IUserSignUpResolved {
+    roleId: string;
+    workspaceContext: IUserSignUpWorkspaceContext;
 }
 
 export interface IUserCreateContract {
@@ -163,21 +185,9 @@ export interface IUserCreateContract {
     logsActingAdmin: boolean;
 }
 
-export type IUserTermPolicyColumn =
-    | 'termsOfServiceAccepted'
-    | 'privacyAccepted'
-    | 'cookiesAccepted'
-    | 'marketingAccepted';
-
 export interface IUserTermPolicyContract {
-    defaults: Record<EnumTermPolicyType, boolean>;
-    columns: Record<EnumTermPolicyType, IUserTermPolicyColumn>;
     requiredTypes: EnumTermPolicyType[];
 }
-
-export type IUserOnboardingAdminAction =
-    | typeof EnumActivityLogAction.adminUserCreate
-    | typeof EnumActivityLogAction.adminUserImport;
 
 export interface IUserCreateWithWorkspaceInput {
     userId: string;
@@ -189,11 +199,11 @@ export interface IUserCreateWithWorkspaceInput {
     signUpFrom: EnumUserSignUpFrom;
     signUpWith: EnumUserSignUpWith;
     isVerified: boolean;
-    termPolicy: Record<EnumTermPolicyType, boolean>;
+    verifiedAt: Date | null;
     acceptedTermPolicyTypes: EnumTermPolicyType[];
     password: IAuthPassword | null;
     passwordHistoryType: EnumPasswordHistoryType | null;
-    verification: IUserOnboardingVerification | null;
+    verification: IUserCreateVerification | null;
     workspaceContext: IUserSignUpWorkspaceContext;
     createdBy: string;
 }
@@ -207,35 +217,47 @@ export interface IUserCheckUsername extends IUserCheckEmail {
     pattern: boolean;
 }
 
+export interface IUserImportUsernameChecks {
+    existing: string[];
+    badWords: boolean[];
+}
+
 export interface IUserCreateByAdmin {
     username: string;
     email: string;
-    name?: string;
+    name: string | null;
     roleId: string;
     countryId: string;
 }
 
 export interface IUserCreateByAdminPrepared {
     input: IUserCreateWithWorkspaceInput;
+    password: IAuthPasswordTemporary;
     passwordString: string;
 }
 
 export interface IUserImport {
     username: string;
     email: string;
-    name?: string;
+    name: string | null;
 }
 
 export interface IUserImportPrepared {
     inputs: IUserCreateWithWorkspaceInput[];
-    passwordHasheds: IAuthPassword[];
+    passwordHasheds: IAuthPasswordTemporary[];
     passwordStrings: string[];
 }
 
 export interface IUserUpdateProfile {
-    name?: string;
+    name: string | null;
     countryId: string;
     gender: EnumUserGender;
+}
+
+export interface IUserUpdateStatus {
+    status: EnumUserStatus;
+    passwordAttempt: number;
+    passwordLockedUntil: Date | null;
 }
 
 export interface IUserGeneratePhotoProfile {
@@ -245,8 +267,11 @@ export interface IUserGeneratePhotoProfile {
 
 export interface IUserUpdatePhotoProfile {
     key: string;
-    size: number;
 }
+
+export type IUserMobileNumberSummary = Prisma.UserMobileNumberGetPayload<{
+    select: typeof UserMobileNumberSummarySelect;
+}>;
 
 export interface IUserMobileNumberInput {
     number: string;
@@ -254,101 +279,100 @@ export interface IUserMobileNumberInput {
     countryId: string;
 }
 
-export interface IUserLoginCredential {
-    email: string;
-    password: string;
-    from: EnumUserLoginFrom;
-    device: IDeviceIdentity;
+export interface IUserCredential {
+    user: IUser;
+    hashedPassword: string;
 }
 
 export interface IUserLoginSocial {
     username: string;
-    name?: string;
+    name: string | null;
     countryId: string;
     from: EnumUserLoginFrom;
     device: IDeviceIdentity;
     cookies: boolean;
     marketing: boolean;
-    inviteToken?: string;
+    inviteToken: string | null;
 }
 
 export interface IUserSignUp {
     username: string;
     email: string;
-    name?: string;
+    name: string | null;
     countryId: string;
     password: string;
     from: EnumUserSignUpFrom;
     cookies: boolean;
     marketing: boolean;
-    inviteToken?: string;
+    inviteToken: string | null;
 }
 
-export interface IUserChangePassword extends IAuthTwoFactorVerify {
-    newPassword: string;
-    oldPassword: string;
+export interface IUserPasswordTemporary {
+    password: IAuthPasswordTemporary;
+    passwordString: string;
 }
 
-export interface IUserResetPassword extends IAuthTwoFactorVerify {
-    newPassword: string;
-    token: string;
+export interface IUserForgotPassword extends ForgotPassword {
+    user: IUser;
 }
 
-export interface IUserTwoFactorStatus {
-    isEnabled: boolean;
-    isPendingConfirmation: boolean;
-    backupCodesRemaining: number;
-    confirmedAt: Date | null;
-    lastUsedAt: Date | null;
+export interface IUserForgotPasswordPrepared {
+    user: User;
+    forgot: IUserForgotPasswordCreate;
 }
 
-export interface IUserTwoFactorSetup {
-    secret: string;
-    otpauthUrl: string;
+export interface IUserReauthenticationInput {
+    action: EnumUserReauthenticationAction;
+    password: string | null;
+    method: EnumMfaMethod | null;
+    code: string | null;
+    backupCode: string | null;
+    passkeyChallengeToken: string | null;
+    passkeyResponse: AuthenticationResponseJSON | null;
+    otp: string | null;
 }
 
-export interface IUserLoginTwoFactorChallenge {
-    isRequiredSetup: boolean;
+export interface IUserReauthenticationCheck {
+    isPasswordChecked: boolean;
+    mfa: IMfaCheck | null;
+    verificationId: string | null;
+    passkeyChallengeToken: string | null;
+}
+
+export interface IUserLoginMfaChallenge {
     challengeToken: string;
-    challengeExpiresInMs: number;
-    backupCodesRemaining: number;
-    otpauthUrl?: string;
-    secret?: string;
+    expiresInMs: number;
+    methods: EnumMfaMethod[];
+    passkeyOptions: PublicKeyCredentialRequestOptionsJSON | null;
 }
 
-export interface IUserLoginOutcome {
-    isTwoFactorEnable: boolean;
+interface IUserLoginOutcomeBase {
     lastWorkspaceId: string | null;
     lastWorkspaceChangedAt: Date | null;
-    tokens?: IAuthToken;
-    twoFactor?: IUserLoginTwoFactorChallenge;
 }
+
+export interface IUserLoginTokenOutcome extends IUserLoginOutcomeBase {
+    isMfaRequired: false;
+    tokens: IAuthToken;
+    mfa?: never;
+}
+
+export interface IUserLoginMfaOutcome extends IUserLoginOutcomeBase {
+    isMfaRequired: true;
+    mfa: IUserLoginMfaChallenge;
+    tokens?: never;
+}
+
+export type IUserLoginOutcome = IUserLoginTokenOutcome | IUserLoginMfaOutcome;
 
 export interface IUserAnalyticGroupCount<T extends string = string> {
     key: T;
     count: number;
 }
 
-export interface IUserAnalyticSignUp {
-    id: string;
-    email: string;
-    signUpAt: Date;
-    signUpFrom: EnumUserSignUpFrom;
-}
-
-export interface IUserAnalyticRef {
-    id: string;
-    email: string;
-    passwordAttempt: number | null;
-}
-
-export interface IUserForgotPasswordAnalytic {
-    id: string;
-    userId: string;
-    isUsed: boolean;
-    createdAt: Date;
-    to: string;
-}
+export type IUserAnalyticRef = Prisma.UserGetPayload<{
+    select: typeof UserAnalyticRefSelect;
+}>;
 
 export interface IUserForgotPasswordAnalyticUserCount {
     userId: string;
@@ -359,3 +383,60 @@ export interface IUserVerificationAnalyticUsedBucket {
     isUsed: boolean;
     count: number;
 }
+
+export interface IUserDeletePhotoPayload {
+    userId: string;
+    key: string;
+    access: EnumAwsS3Accessibility;
+}
+
+export interface IUserImportByAdminPayload {
+    rows: IUserImport[];
+    activityLog: IActivityLogActorPayload;
+    created: number | null;
+}
+
+export interface IUserCreateContracts {
+    signUp: IUserCreateContract;
+    social: IUserCreateContract;
+    admin: IUserCreateContract;
+}
+
+export interface IUserDeletePhotoEffect extends IOutboxEffect {
+    queue: EnumUserQueue.user;
+    name: EnumUserProcess.deletePhoto;
+    data: IUserDeletePhotoPayload;
+}
+
+export interface IUserImportByAdminEffect extends IOutboxEffect {
+    queue: EnumUserQueue.user;
+    name: EnumUserProcess.importByAdmin;
+    data: IUserImportByAdminPayload;
+}
+
+export interface IUserDeletePhotoQueueResponse extends IQueueResponse {
+    key: string;
+}
+
+export interface IUserImportByAdminQueueResponse extends IQueueResponse {
+    created: number;
+    failed: number;
+}
+
+export interface IUserPurgeExpiredQueueResponse extends IQueueResponse {
+    sessions: number;
+    mfaChallenges: number;
+    passwordHistories: number;
+    verifications: number;
+    forgotPasswords: number;
+}
+
+export type IUserPhoto = {
+    bucket: string;
+    key: string;
+    cdnUrl: string | null;
+    completedUrl: string;
+    mime: string;
+    extension: string;
+    access: EnumAwsS3Accessibility;
+};

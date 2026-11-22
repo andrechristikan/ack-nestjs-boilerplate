@@ -1,0 +1,14 @@
+/** @public */
+export class QueueException extends Error {
+    constructor(
+        readonly message: string,
+        readonly isFatal: boolean = false,
+        readonly rawError: unknown = null
+    ) {
+        super(message);
+
+        if (rawError !== null) {
+            this.cause = rawError;
+        }
+    }
+}

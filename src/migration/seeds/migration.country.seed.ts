@@ -1,17 +1,16 @@
+import { CacheService } from '@common/cache/services/cache.service';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { MigrationCountryData } from '@migration/data/migration.country.data';
 import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import type { CountryRequestDto } from '@modules/country/dtos/request/country.request.dto';
+import type { Prisma } from '@generated/prisma-client/client';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 
-/**
- * Seeds country reference data for the current environment.
- */
 @Command({
     name: 'country',
     description: 'Seed/Remove Countries',
@@ -24,14 +23,15 @@ export class MigrationCountrySeed
     private readonly logger = new Logger(MigrationCountrySeed.name);
 
     private readonly env: EnumAppEnvironment;
-    private readonly countries: CountryRequestDto[] = [];
+    private readonly countries: Prisma.CountryCreateInput[] = [];
     private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
+        protected readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService
     ) {
-        super();
+        super(cacheService);
 
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.countries = MigrationCountryData[this.env];
@@ -67,8 +67,7 @@ export class MigrationCountrySeed
                 { timeout: this.seedTransactionTimeoutInMs }
             );
         } catch (error: unknown) {
-            this.logger.error(error, 'Error seeding countries');
-            throw error;
+            throw new AppUnknownException(error, 'Seeding countries failed');
         }
 
         this.logger.log('Countries seeded successfully.');
@@ -84,8 +83,7 @@ export class MigrationCountrySeed
                 where: {},
             });
         } catch (error: unknown) {
-            this.logger.error(error, 'Error removing countries');
-            throw error;
+            throw new AppUnknownException(error, 'Removing countries failed');
         }
 
         this.logger.log('Countries removed successfully.');

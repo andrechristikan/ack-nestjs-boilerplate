@@ -1,4 +1,5 @@
 import { DatabaseService } from '@common/database/services/database.service';
+import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IAnalyticWorkspaceCount } from '@modules/analytic/interfaces/analytic.interface';
 import type { IProjectAnalyticRepository } from '@modules/project/interfaces/project.analytic-repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -22,11 +23,27 @@ export class ProjectAnalyticRepository implements IProjectAnalyticRepository {
         });
     }
 
-    async perWorkspace(): Promise<IAnalyticWorkspaceCount[]> {
+    async groupCreatedPerWorkspace(
+        startDate: Date,
+        endDate: Date,
+        limit: number
+    ): Promise<IAnalyticWorkspaceCount[]> {
         const rows = await this.databaseService.client.project.groupBy({
             by: ['workspaceId'],
-            where: { deletedAt: null },
+            where: {
+                deletedAt: null,
+                createdAt: { gte: startDate, lt: endDate },
+            },
             _count: { _all: true },
+            orderBy: [
+                {
+                    _count: {
+                        workspaceId: EnumPaginationOrderDirectionType.desc,
+                    },
+                },
+                { workspaceId: EnumPaginationOrderDirectionType.asc },
+            ],
+            take: limit,
         });
         return rows.map(r => ({
             workspaceId: r.workspaceId,

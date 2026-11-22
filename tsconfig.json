@@ -21,10 +21,12 @@
         "types": ["node", "vitest/globals", "multer"],
         "strict": true,
         "strictPropertyInitialization": false,
+        "exactOptionalPropertyTypes": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,
+        "noUncheckedIndexedAccess": true,
         "forceConsistentCasingInFileNames": true,
         "verbatimModuleSyntax": true,
         "isolatedModules": true,
@@ -36,7 +38,6 @@
             "@modules/*": ["./src/modules/*.ts"],
             "@router/*": ["./src/router/*.ts"],
             "@migration/*": ["./src/migration/*.ts"],
-            "@queues/*": ["./src/queues/*.ts"],
             "@test/*": ["./test/*.ts"],
             "@generated/prisma-client": [
                 "./src/generated/prisma-client/client.ts"
@@ -45,16 +46,12 @@
             "@instrument": ["./src/instrument.ts"],
             "@swagger": ["./src/swagger.ts"],
             "@main": ["./src/main.ts"],
-            "@migration": ["./src/migration.ts"]
+            "@configure": ["./src/configure.ts"],
+            "@migration": ["./src/migration.ts"],
+            "@bootstrap": ["./src/bootstrap.ts"]
         }
     },
-    "include": [
-        "src/**/*",
-        "test/**/*",
-        "scripts/**/*",
-        "vitest.config.ts",
-        "vitest.e2e.config.ts"
-    ],
+    "include": ["src/**/*", "test/**/*", "scripts/**/*", "vitest.config.ts"],
     "exclude": [
         "node_modules",
         "dist",

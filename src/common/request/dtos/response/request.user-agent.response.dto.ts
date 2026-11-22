@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Response shape representing parsed User-Agent information from the request header.
- * @public
- */
+/** @public */
 export const RequestUserAgentResponseSchema = z.object({
     ua: z.string().nullable().meta({
         description: 'Raw user-agent string from the request',
@@ -119,10 +116,7 @@ export const RequestUserAgentResponseSchema = z.object({
         }),
 });
 
-/**
- * Parsed client user agent: browser, OS, device, engine, CPU.
- * @public
- */
+/** @public */
 export type RequestUserAgentResponseDto = z.infer<
     typeof RequestUserAgentResponseSchema
 >;

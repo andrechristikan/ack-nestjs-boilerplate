@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PaginationMaxFilterLength } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
 import {
@@ -6,35 +7,37 @@ import {
     RoleDefaultAvailableSearch,
 } from '@modules/role/constants/role.list.constant';
 
-/**
- * Role Admin List Request schema for paginated list query.
- * @public
- */
+/** @public */
 export const RoleAdminListRequestSchema = PaginationOffsetQuerySchema.extend({
-    search: z
-        .string()
-        .optional()
-        .meta({
-            description: `Search query, available fields: ${RoleDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
-            example: '',
-        }),
-    orderBy: z
-        .union([z.string(), z.array(z.string())])
-        .optional()
-        .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${RoleDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-            example: `${RoleDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
-        }),
-    type: z.string().optional().meta({
-        description: 'Filter by type, comma-delimited',
+    search: PaginationOffsetQuerySchema.shape.search.meta({
+        description: `Search query, available fields: ${RoleDefaultAvailableSearch.join(', ')}. Search is case-insensitive and support partial match.`,
         example: '',
     }),
+    orderBy: z
+        .union([
+            z.templateLiteral([
+                z.enum(RoleDefaultAvailableOrderBy),
+                ':',
+                z.enum(EnumPaginationOrderDirectionType),
+            ]),
+            z.literal(''),
+        ])
+        .optional()
+        .meta({
+            description: `Order by field in \`field:direction\` format (e.g. \`${RoleDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${RoleDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
+            example: `${RoleDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+        }),
+    type: z
+        .string()
+        .max(PaginationMaxFilterLength)
+        .optional()
+        .meta({
+            description: `Filter by type, comma-delimited, at most ${PaginationMaxFilterLength} characters`,
+            example: '',
+        }),
 });
 
-/**
- * Inferred DTO for RoleAdminListRequestSchema.
- * @public
- */
+/** @public */
 export type RoleAdminListRequestDto = z.infer<
     typeof RoleAdminListRequestSchema
 >;

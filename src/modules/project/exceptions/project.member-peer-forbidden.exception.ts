@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 
-/**
- * Raised when the caller may not act on that project member.
- * @public
- */
+/** @public */
 export class ProjectMemberPeerForbiddenException extends AppBaseException {
     readonly module = 'project';
     readonly statusCode = EnumProjectStatusCodeError.memberPeerForbidden;

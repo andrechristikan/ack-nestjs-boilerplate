@@ -1,8 +1,11 @@
-/**
- * Day boundary to snap a date to: midnight (`start`) or 23:59:59.999 (`end`).
- * @public
- */
+/** @public */
 export enum EnumHelperDateDayOf {
     start = 'start',
     end = 'end',
+}
+
+/** @public */
+export enum EnumHelperPemLabel {
+    privateKey = 'PRIVATE KEY',
+    publicKey = 'PUBLIC KEY',
 }

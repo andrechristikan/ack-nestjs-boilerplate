@@ -1,7 +1,6 @@
 import {
     SetMetadata,
     UseGuards,
-    UseInterceptors,
     applyDecorators,
     createParamDecorator,
 } from '@nestjs/common';
@@ -10,25 +9,25 @@ import {
     RequestCustomTimeoutMetaKey,
     RequestCustomTimeoutValueMetaKey,
     RequestEnvMetaKey,
+    RequestEnvProtectedDocErrors,
+    RequestLanguageStoreKey,
     RequestLogStoreKey,
     RequestThrottleOptionsMetaKey,
 } from '@common/request/constants/request.constant';
 import ms from 'ms';
 import { RequestEnvGuard } from '@common/request/guards/request.env.guard';
-import { RequestThrottleUserInterceptor } from '@common/request/interceptors/request.throttle-user.interceptor';
+import { RequestThrottleUserGuard } from '@common/request/guards/request.throttle-user.guard';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { RequestContextMissingException } from '@common/request/exceptions/request.context-missing.exception';
 import type {
-    IRequestGeoLocation,
+    IRequestContext,
     IRequestLog,
     IRequestThrottleOptions,
-    IRequestUserAgent,
 } from '@common/request/interfaces/request.interface';
+import { RequestEnvProtectedEmptyException } from '@common/request/exceptions/request.env-protected-empty.exception';
+import { DocErrors } from '@common/doc/decorators/doc.decorator';
 
-/**
- * Overrides the global request timeout for a route.
- * @public
- */
+/** @public */
 export function RequestTimeout(seconds: ms.StringValue): MethodDecorator {
     return applyDecorators(
         SetMetadata(RequestCustomTimeoutMetaKey, true),
@@ -36,96 +35,45 @@ export function RequestTimeout(seconds: ms.StringValue): MethodDecorator {
     );
 }
 
-/**
- * Restricts a route to the given application environments.
- * @public
- */
+/** @public */
 export function RequestEnvProtected(
     ...envs: EnumAppEnvironment[]
 ): MethodDecorator {
+    if (envs.length === 0) {
+        throw new RequestEnvProtectedEmptyException();
+    }
+
     return applyDecorators(
+        DocErrors(...RequestEnvProtectedDocErrors),
         UseGuards(RequestEnvGuard),
         SetMetadata(RequestEnvMetaKey, envs)
     );
 }
 
-/**
- * Switches on the `route` and `user` throttle limiters for one endpoint.
- * @public
- */
+/** @public */
 export function RequestThrottle(
     options: IRequestThrottleOptions
 ): MethodDecorator {
     return applyDecorators(
         SetMetadata(RequestThrottleOptionsMetaKey, options),
-        UseInterceptors(RequestThrottleUserInterceptor)
+        UseGuards(RequestThrottleUserGuard)
     );
 }
 
-/**
- * Reads the client IP resolved once per request into the request-log store; throws when it is unresolved.
- * @public
- */
-export const RequestIPAddress = createParamDecorator((): string => {
-    const requestLog = ClsServiceManager.getClsService().get<
-        IRequestLog | undefined
-    >(RequestLogStoreKey);
-    if (requestLog === undefined || requestLog === null) {
+/** @public */
+export const RequestContext = createParamDecorator((): IRequestContext => {
+    const clsService = ClsServiceManager.getClsService();
+    const requestLog =
+        clsService.get<IRequestLog | null>(RequestLogStoreKey) ?? null;
+    if (requestLog === null) {
         throw new RequestContextMissingException(RequestLogStoreKey);
     }
 
-    const { ipAddress } = requestLog;
-    if (ipAddress === undefined || ipAddress === null) {
-        throw new RequestContextMissingException(
-            `${RequestLogStoreKey}.ipAddress`
-        );
+    const language =
+        clsService.get<string | null>(RequestLanguageStoreKey) ?? null;
+    if (language === null) {
+        throw new RequestContextMissingException(RequestLanguageStoreKey);
     }
 
-    return ipAddress;
+    return { requestLog, language };
 });
-
-/**
- * Reads the user agent parsed once per request into the request-log store; throws when it is absent.
- * @public
- */
-export const RequestUserAgent = createParamDecorator((): IRequestUserAgent => {
-    const requestLog = ClsServiceManager.getClsService().get<
-        IRequestLog | undefined
-    >(RequestLogStoreKey);
-    if (requestLog === undefined || requestLog === null) {
-        throw new RequestContextMissingException(RequestLogStoreKey);
-    }
-
-    const { userAgent } = requestLog;
-    if (userAgent === undefined || userAgent === null) {
-        throw new RequestContextMissingException(
-            `${RequestLogStoreKey}.userAgent`
-        );
-    }
-
-    return userAgent;
-});
-
-/**
- * Reads the IP-derived geolocation resolved once per request into the request-log store; throws when it is unresolved.
- * @public
- */
-export const RequestGeoLocation = createParamDecorator(
-    (): IRequestGeoLocation => {
-        const requestLog = ClsServiceManager.getClsService().get<
-            IRequestLog | undefined
-        >(RequestLogStoreKey);
-        if (requestLog === undefined || requestLog === null) {
-            throw new RequestContextMissingException(RequestLogStoreKey);
-        }
-
-        const { geoLocation } = requestLog;
-        if (geoLocation === undefined || geoLocation === null) {
-            throw new RequestContextMissingException(
-                `${RequestLogStoreKey}.geoLocation`
-            );
-        }
-
-        return geoLocation;
-    }
-);

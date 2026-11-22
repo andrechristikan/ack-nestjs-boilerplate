@@ -4,16 +4,22 @@ import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.
 import { RequestBooleanStringSchema } from '@common/request/validations/request.boolean-string.validation';
 import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 
-/**
- * Offset list query for admin device listing.
- * @public
- */
-export const DeviceAdminListRequestSchema = PaginationOffsetQuerySchema.extend({
+/** @public */
+export const DeviceAdminListRequestSchema = PaginationOffsetQuerySchema.omit({
+    search: true,
+}).extend({
     orderBy: z
-        .union([z.string(), z.array(z.string())])
+        .union([
+            z.templateLiteral([
+                z.enum(DeviceDefaultAvailableOrderBy),
+                ':',
+                z.enum(EnumPaginationOrderDirectionType),
+            ]),
+            z.literal(''),
+        ])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${DeviceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            description: `Order by field in \`field:direction\` format (e.g. \`${DeviceDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${DeviceDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
             example: `${DeviceDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
         }),
     isRevoked: RequestBooleanStringSchema.optional().meta({
@@ -22,10 +28,7 @@ export const DeviceAdminListRequestSchema = PaginationOffsetQuerySchema.extend({
     }),
 });
 
-/**
- * Inferred DTO for DeviceAdminListRequestSchema.
- * @public
- */
+/** @public */
 export type DeviceAdminListRequestDto = z.infer<
     typeof DeviceAdminListRequestSchema
 >;

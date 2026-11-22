@@ -1,35 +1,34 @@
 import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
-import { WorkspaceProcessorService } from '@modules/workspace/services/workspace.processor.service';
+import { WorkspaceProcessExpireStaleInvitesUseCase } from '@modules/workspace/use-cases/workspace.process-expire-stale-invites.use-case';
+import { WorkspaceProcessExpireStaleJoinRequestsUseCase } from '@modules/workspace/use-cases/workspace.process-expire-stale-join-requests.use-case';
 import { Job } from 'bullmq';
-import { QueueProcessorBase } from '@queues/bases/queue.processor.base';
-import { SentryService } from '@common/sentry/services/sentry.service';
-import { QueueProcessor } from '@queues/decorators/queue.decorator';
-import { EnumQueue } from '@queues/enums/queue.enum';
-import type { IQueueResponse } from '@queues/interfaces/queue.interface';
+import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
+import { QueueProcessor } from '@common/queue/decorators/queue.decorator';
+import { EnumWorkspaceQueue } from '@modules/workspace/enums/workspace.enum';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 
-/**
- * Consumes the workspace queue; currently only the recurring stale-invite expiry sweep.
- */
-@QueueProcessor(EnumQueue.workspace)
+@QueueProcessor(EnumWorkspaceQueue.workspace)
 export class WorkspaceProcessor extends QueueProcessorBase {
     constructor(
-        private readonly workspaceProcessorService: WorkspaceProcessorService,
-        sentryService: SentryService
+        private readonly workspaceProcessExpireStaleInvitesUseCase: WorkspaceProcessExpireStaleInvitesUseCase,
+        private readonly workspaceProcessExpireStaleJoinRequestsUseCase: WorkspaceProcessExpireStaleJoinRequestsUseCase
     ) {
-        super(sentryService);
+        super();
     }
 
-    /** Dispatches each job to its handler by job name. */
     protected async handle(
         job: Job<unknown, IQueueResponse, EnumWorkspaceProcess>
     ): Promise<IQueueResponse> {
         switch (job.name) {
             case EnumWorkspaceProcess.expireStaleInvites:
-                return await this.workspaceProcessorService.processExpireStaleInvites();
+                return await this.workspaceProcessExpireStaleInvitesUseCase.execute();
+            case EnumWorkspaceProcess.expireStaleJoinRequests:
+                return await this.workspaceProcessExpireStaleJoinRequestsUseCase.execute();
             default:
-                return {
-                    message: `No workspace processor found for the given job name ${job.name}`,
-                };
+                this.throwUnknownProcess(
+                    'workspace.queue.error.unknownProcess',
+                    job.name
+                );
         }
     }
 }

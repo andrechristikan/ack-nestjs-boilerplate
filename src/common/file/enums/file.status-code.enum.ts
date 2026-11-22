@@ -1,7 +1,4 @@
-/**
- * Status codes raised by the `file` kit.
- * @public
- */
+/** @public */
 export enum EnumFileStatusCodeError {
     required = 50100,
     extensionInvalid = 50101,
@@ -13,4 +10,5 @@ export enum EnumFileStatusCodeError {
     exceedMaxFiles = 50107,
     fieldUnexpected = 50108,
     multipartInvalid = 50109,
+    importInvalid = 50110,
 }

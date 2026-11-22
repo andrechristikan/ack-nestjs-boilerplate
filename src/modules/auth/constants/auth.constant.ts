@@ -1,124 +1,146 @@
 import { HttpStatus } from '@nestjs/common';
-import { DocResponseError } from '@common/doc/decorators/doc.decorator';
+import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 
-/**
- * Passport strategy name of the JWT access-token guard.
- * @public
- */
-export const AuthJwtAccessGuardKey = 'JwtAccess';
+/** @public */
+export const AuthJwtAccessGuardKey = 'AuthJwtAccessGuardKey';
 
-/**
- * Passport strategy name of the JWT refresh-token guard.
- * @public
- */
-export const AuthJwtRefreshGuardKey = 'JwtRefresh';
+/** @public */
+export const AuthJwtRefreshGuardKey = 'AuthJwtRefreshGuardKey';
 
-/**
- * OpenAPI Bearer scheme name for JWT access-token routes.
- * @public
- */
+/** @public */
 export const AuthJwtAccessDocSecurityName = 'accessToken';
 
-/**
- * OpenAPI Bearer scheme name for JWT refresh-token routes.
- * @public
- */
+/** @public */
 export const AuthJwtRefreshDocSecurityName = 'refreshToken';
 
-/**
- * OpenAPI Bearer scheme name for Google social-auth routes.
- * @public
- */
+/** @public */
 export const AuthSocialGoogleDocSecurityName = 'google';
 
-/**
- * OpenAPI Bearer scheme name for Apple social-auth routes.
- * @public
- */
+/** @public */
 export const AuthSocialAppleDocSecurityName = 'apple';
 
-/**
- * Request-store key holding the verified JWT payload.
- * @public
- */
-export const AuthPayloadStoreKey = 'AuthPayloadStore';
+/** @public */
+export const AuthJwtAccessContextStoreKey = 'AuthJwtAccessContextStoreKey';
 
-/**
- * HKDF purpose that seals stored two-factor secrets.
- * @public
- */
-export const AuthTwoFactorSecretEncryptionPurpose = 'auth.twoFactor.secret';
+/** @public */
+export const AuthJwtRefreshContextStoreKey = 'AuthJwtRefreshContextStoreKey';
 
-/**
- * JWT access-token guard error kit for `@AuthJwtAccessProtected`.
- * @public
- */
-export const DocAuthJwtAccessErrorResponses = {
-    unauthorized: DocResponseError(
-        HttpStatus.UNAUTHORIZED,
-        {
-            messagePath: 'auth.error.accessTokenUnauthorized',
-            statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
-        },
-        {
-            messagePath: 'session.error.forbidden',
-            statusCode: EnumSessionStatusCodeError.forbidden,
-        }
-    ),
-} as const;
+/** @public */
+export const AuthSocialContextStoreKey = 'AuthSocialContextStoreKey';
 
-/**
- * JWT refresh-token guard error kit for `@AuthJwtRefreshProtected`.
- * @public
- */
-export const DocAuthJwtRefreshErrorResponses = {
-    unauthorized: DocResponseError(
-        HttpStatus.UNAUTHORIZED,
-        {
-            messagePath: 'auth.error.refreshTokenUnauthorized',
-            statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
-        },
-        {
-            messagePath: 'session.error.forbidden',
-            statusCode: EnumSessionStatusCodeError.forbidden,
-        }
-    ),
-} as const;
+/** @public */
+export const AuthProviderNetworkErrorCodes: readonly string[] = [
+    'ECONNREFUSED',
+    'ECONNRESET',
+    'ENOTFOUND',
+    'ETIMEDOUT',
+    'EAI_AGAIN',
+    'EHOSTUNREACH',
+    'ENETUNREACH',
+];
 
-/**
- * Google social auth guard error kit for `@AuthSocialGoogleProtected`.
- * @public
- */
-export const DocAuthSocialGoogleErrorResponses = {
-    unauthorized: DocResponseError(
-        HttpStatus.UNAUTHORIZED,
-        {
-            messagePath: 'auth.error.socialGoogleInvalid',
-            statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
-        },
-        {
-            messagePath: 'auth.error.socialGoogleRequired',
-            statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
-        }
-    ),
-} as const;
+/** @public */
+export const AuthJwksErrorName = 'JwksError';
 
-/**
- * Apple social auth guard error kit for `@AuthSocialAppleProtected`.
- * @public
- */
-export const DocAuthSocialAppleErrorResponses = {
-    unauthorized: DocResponseError(
-        HttpStatus.UNAUTHORIZED,
-        {
-            messagePath: 'auth.error.socialAppleInvalid',
-            statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
-        },
-        {
-            messagePath: 'auth.error.socialAppleRequired',
-            statusCode: EnumAuthStatusCodeError.socialAppleRequired,
-        }
-    ),
-} as const;
+/** @public */
+export const AuthGoogleCertificateErrorPrefix =
+    'Failed to retrieve verification certificates';
+
+/** @public */
+export const AuthHeaderName = 'Authorization';
+
+/** @public */
+export const AuthBearerScheme = 'Bearer';
+
+/** @public */
+export const AuthJwtAccessProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.jwtAccessTokenInvalid,
+        messagePath: 'auth.error.accessTokenUnauthorized',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumSessionStatusCodeError.revoked,
+        messagePath: 'session.error.revoked',
+    },
+    {
+        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+        messagePath: 'auth.error.providerUnavailable',
+    },
+];
+
+/** @public */
+export const AuthJwtRefreshProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.jwtRefreshTokenInvalid,
+        messagePath: 'auth.error.refreshTokenUnauthorized',
+    },
+    {
+        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+        messagePath: 'auth.error.providerUnavailable',
+    },
+];
+
+/** @public */
+export const AuthSocialGoogleProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
+        messagePath: 'auth.error.socialGoogleInvalid',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.socialGoogleRequired,
+        messagePath: 'auth.error.socialGoogleRequired',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.socialNonceInvalid,
+        messagePath: 'auth.error.socialNonceInvalid',
+    },
+    {
+        httpStatus: HttpStatus.NOT_FOUND,
+        statusCode: EnumAuthStatusCodeError.socialGoogleNotConfigured,
+        messagePath: 'auth.error.socialGoogleNotConfigured',
+    },
+    {
+        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+        messagePath: 'auth.error.providerUnavailable',
+    },
+];
+
+/** @public */
+export const AuthSocialAppleProtectedDocErrors: IDocResponseEntry[] = [
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
+        messagePath: 'auth.error.socialAppleInvalid',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.socialAppleRequired,
+        messagePath: 'auth.error.socialAppleRequired',
+    },
+    {
+        httpStatus: HttpStatus.UNAUTHORIZED,
+        statusCode: EnumAuthStatusCodeError.socialNonceInvalid,
+        messagePath: 'auth.error.socialNonceInvalid',
+    },
+    {
+        httpStatus: HttpStatus.NOT_FOUND,
+        statusCode: EnumAuthStatusCodeError.socialAppleNotConfigured,
+        messagePath: 'auth.error.socialAppleNotConfigured',
+    },
+    {
+        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+        statusCode: EnumAuthStatusCodeError.providerUnavailable,
+        messagePath: 'auth.error.providerUnavailable',
+    },
+];

@@ -1,29 +1,54 @@
 import type { SessionSharedListRequestDto } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import { SessionSharedListRequestSchema } from '@modules/session/dtos/request/session.shared-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
-import { RequestThrottle } from '@common/request/decorators/request.decorator';
+import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
+import {
+    RequestContext,
+    RequestThrottle,
+} from '@common/request/decorators/request.decorator';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
 } from '@common/response/decorators/response.decorator';
-
-import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-
-import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
+import type {
+    IResponsePaginationReturn,
+    IResponseReturn,
+} from '@common/response/interfaces/response.interface';
 import {
+    ApiKeyContext,
+    ApiKeyProtected,
+} from '@modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessContext,
     AuthJwtAccessProtected,
-    AuthJwtPayload,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-
+import { SessionRevokeRequestSchema } from '@modules/session/dtos/request/session.revoke.request.dto';
+import type { SessionRevokeRequestDto } from '@modules/session/dtos/request/session.revoke.request.dto';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
-import { SessionHttpService } from '@modules/session/services/session.http.service';
+import { SessionGetListCursorUseCase } from '@modules/session/use-cases/session.get-list-cursor.use-case';
+import { SessionRevokeUseCase } from '@modules/session/use-cases/session.revoke.use-case';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
-import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
-
+import {
+    UserContext,
+    UserProtected,
+} from '@modules/user/decorators/user.decorator';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
+import {
+    Body,
+    Controller,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Param,
+    Post,
+    Query,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 
 @ApiTags('modules.shared.user.session')
 @Controller({
@@ -31,37 +56,53 @@ import { ApiTags } from '@nestjs/swagger';
     path: '/user/session',
 })
 export class SessionSharedController {
-    constructor(private readonly sessionHttpService: SessionHttpService) {}
+    constructor(
+        private readonly sessionGetListCursorUseCase: SessionGetListCursorUseCase,
+        private readonly sessionRevokeUseCase: SessionRevokeUseCase
+    ) {}
 
     @Doc({ summary: 'get all user Sessions' })
     @ResponsePagination('session.list', { schema: SessionResponseSchema })
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
     @Get('/list')
     async list(
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @Query({ schema: SessionSharedListRequestSchema })
-        query: SessionSharedListRequestDto,
-        @AuthJwtPayload('userId') userId: string
+        query: SessionSharedListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        return this.sessionHttpService.getListCursor(userId, query);
+        return this.sessionGetListCursorUseCase.execute(authContext, query);
     }
 
     @Doc({ summary: 'revoke user Session' })
     @Response('session.revoke')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
+    @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
-    @RequestThrottle({ user: true })
-    @Delete('/revoke/:sessionId')
+    @HttpCode(HttpStatus.OK)
+    @Post('/revoke/:sessionId')
     async revoke(
+        @RequestContext() requestContext: IRequestContext,
+        @ApiKeyContext() apiKeyContext: IApiKeyContext,
+        @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @UserContext() userContext: IUserContext,
         @Param('sessionId', { schema: RequestUuidSchema })
         sessionId: string,
-        @AuthJwtPayload('userId') userId: string
-    ): Promise<void> {
-        await this.sessionHttpService.revoke(userId, sessionId);
+        @Body({ schema: SessionRevokeRequestSchema })
+        body: SessionRevokeRequestDto
+    ): Promise<IResponseReturn<void>> {
+        return this.sessionRevokeUseCase.execute(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            userContext,
+            sessionId,
+            body
+        );
     }
 }

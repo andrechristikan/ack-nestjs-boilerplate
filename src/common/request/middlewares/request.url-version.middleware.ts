@@ -6,30 +6,27 @@ import type { IRequestApp } from '@common/request/interfaces/request.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { RequestVersionStoreKey } from '@common/request/constants/request.constant';
 
-/**
- * Extracts the API version from the URL prefix into the request store, defaulting when disabled.
- */
 @Injectable()
 export class RequestUrlVersionMiddleware implements NestMiddleware {
     private readonly globalPrefix: string;
 
-    private readonly urlVersionEnable: boolean;
-    private readonly urlVersionPrefix: string;
-    private readonly urlVersion: string;
+    private readonly enabled: boolean;
+    private readonly prefix: string;
+    private readonly defaultVersion: string;
 
     constructor(
         private readonly configService: ConfigService,
         private readonly requestStoreService: RequestStoreService
     ) {
         this.globalPrefix = this.configService.get<string>('app.globalPrefix')!;
-        this.urlVersionEnable = this.configService.get<boolean>(
-            'app.urlVersion.enable'
+        this.enabled = this.configService.get<boolean>(
+            'app.urlVersioning.enabled'
         )!;
-        this.urlVersionPrefix = this.configService.get<string>(
-            'app.urlVersion.prefix'
+        this.prefix = this.configService.get<string>(
+            'app.urlVersioning.prefix'
         )!;
-        this.urlVersion = this.configService.get<string>(
-            'app.urlVersion.version'
+        this.defaultVersion = this.configService.get<string>(
+            'app.urlVersioning.defaultVersion'
         )!;
     }
 
@@ -39,15 +36,13 @@ export class RequestUrlVersionMiddleware implements NestMiddleware {
         next: NextFunction
     ): Promise<void> {
         const originalUrl: string = req.originalUrl;
-        let version = this.urlVersion;
+        let version = this.defaultVersion;
         if (
-            this.urlVersionEnable &&
-            originalUrl.startsWith(
-                `${this.globalPrefix}/${this.urlVersionPrefix}`
-            )
+            this.enabled &&
+            originalUrl.startsWith(`${this.globalPrefix}/${this.prefix}`)
         ) {
             const url: string[] = originalUrl.split('/');
-            version = url[2].replace(this.urlVersionPrefix, '');
+            version = url[2]!.replace(this.prefix, '');
         }
 
         this.requestStoreService.set(RequestVersionStoreKey, version);

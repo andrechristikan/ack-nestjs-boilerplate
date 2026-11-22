@@ -1,145 +1,48 @@
+---
+paths:
+    - 'src/modules/auth/**'
+    - 'src/modules/session/**'
+    - 'src/modules/api-key/**'
+    - 'src/modules/device/**'
+    - 'src/modules/workspace/**'
+    - 'src/modules/project/**'
+    - 'src/modules/user/**'
+    - 'src/modules/role/**'
+    - 'src/modules/policy/**'
+    - 'src/modules/term-policy/**'
+    - 'src/modules/activity-log/**'
+    - 'src/modules/notification/**'
+    - 'src/modules/mfa/**'
+    - 'src/common/request/**'
+    - 'src/common/pagination/**'
+    - 'src/common/helper/**'
+    - 'src/instrument.ts'
+    - 'src/swagger.ts'
+---
+
 # Security
 
-This file is the rule set. Flow narrative: `docs/authentication.md`,
-`docs/authorization.md`, `docs/two-factor.md`, `docs/security-and-middleware.md`,
-`docs/activity-log.md` — explorer or planner opens the named file when the behaviour is
-not settled here.
+MFA: `mfa.md`. Sessions: `session.md`. Sign-in: `login.md`. Authorization: `role.md`. The activity log: `activity-entry.md`.
 
 ## Credentials
 
-A credential is a password hash, a generated password, a 2FA secret or pending secret, a backup code, a raw access or refresh token, a verification, reset or invite token, an API key secret, an encryption root secret, a JWT private key, or a presign signature.
+A credential: a password hash or generated password; a TOTP secret, pending secret, backup code; a raw access, refresh, verification, reset, or invite token; a social sign-in nonce; an API key secret, encryption root, JWT private key, presign signature.
 
-- **A credential MUST NOT appear in a log line or a Sentry event** — not in `logger.debug`, not inside an error message, not inside a `JSON.stringify`, not in a URL path. Pino and `src/instrument.ts` redact the keys in `LoggerSensitiveFields`, but redaction is a safety net, not a licence (`rules/logging.md`).
-- **A credential at rest or in a job payload is hashed or encrypted.** A value that is only compared (backup code, token, API key secret) is stored as its SHA-256 hash; a value that must be read back (2FA secret, a queued password or link) is encrypted with `HelperEncryptionService`.
-- **A credential MUST NOT reach the wire.** A response carries only what its zod schema declares (`rules/dto.md`), which is what keeps an overfetched column off the response — that protection holds only while every route declares its schema on `@Response` / `@ResponsePagination`.
-- **A credential MUST NOT land on `request.<field>`.** Whatever a guard assigns there is readable by every downstream controller, interceptor, logger, and error reporter for the rest of the request.
-- Pass credentials as explicit plain values across a call, never bundled inside a payload object that drags every other field along and makes the crossing invisible at the call site.
+- Never in a log line, an error message, `JSON.stringify`, a URL path, activity metadata, a Sentry attribute, or `request.<field>`. Redaction (`logging.md`) is only a safety net.
+- A plaintext credential enters a database row, cache entry, or job payload only sealed: a value only compared (token, one-time code such as `Verification.token`, API key secret, the session jti as `Session.jtiDigest`, an MFA challenge as `MfaChallenge.tokenHash`, the social nonce as `AuthSocialNonce.nonceHash`) as its SHA-256 hash, a backup code as its argon2id hash (`argon2Hash`), a value read back (TOTP secret, queued password or link, the challenge's push token under `MfaChallengeEncryptionPurpose`) encrypted. A passkey public key and a WebAuthn challenge are no credential and are stored plain. In memory it rides plain; on the wire, only what the response schema declares.
+- A notification recipient's email and device tokens in `Outbox.data`, a `snapshot` included, are encrypted against the recipient's user id (`effects.md`, Payloads).
 
 ## Cryptography
 
-- **`node:crypto` only**, through the `Helper*` services. `crypto-js` and `Math.random` are ESLint errors.
-- **Encryption is `HelperEncryptionService.aes256Encrypt` / `aes256Decrypt(value, secret, purpose, context)`**: AES-256-GCM with a 16-byte tag, a random 16-byte salt and 12-byte IV per payload, the key derived by HKDF-SHA-256 from the root secret, the salt and the `purpose`, and the `context` bound as authenticated data. The payload is `salt.iv.ciphertext.tag` in base64url. Any tamper, a wrong purpose, a wrong context or a malformed payload throws `HelperDecryptFailedException`.
-  - `purpose` is a constant owned by the module that encrypts (`NotificationPayloadEncryptionPurpose`, `AuthTwoFactorSecretEncryptionPurpose`); a new use gets its own constant, never a reused one.
-  - `context` is the id the value belongs to (the recipient user id, the invite reference), so a ciphertext copied to another record fails to decrypt.
-  - Callers never supply an IV or salt.
-- **Root secrets** (`APP_ENCRYPTION_SECRET_KEY`, `AUTH_TWO_FACTOR_ENCRYPTION_KEY`) are 48 random bytes written as exactly 64 base64url characters (`rules/config.md`). The helper rejects any other value with `HelperEncryptionSecretInvalidException`. They are separate roots; a new encryption use picks the root whose compromise scope it shares.
-- **Randomness** for any token, code, password, key or id is `randomInt` / `randomBytes` from `node:crypto`, through `HelperStringService` / `HelperNumberService`.
-- **A secret or hash comparison is constant-time**: `HelperHashService.sha256Compare` checks the length, then calls `timingSafeEqual`. `===` on a secret is the defect.
-- **Hashing** is SHA-256 (`HelperHashService.sha256Hash`) for lookups and comparisons and bcrypt for passwords. MD5 is not used.
-- **Key material is generated by `pnpm generate:secret`** (`:jwt`, `:encryption`, or both): it writes into `keys/` and prints paths only, never a value.
+- `node:crypto` runs only through the `Helper*` services, DER-to-PEM key framing included (`HelperEncryptionService.derBase64ToPem`). A token, code, password, or key draws from `HelperStringService` / `HelperNumberService`; a row id is `DatabaseUtil.createId()`.
+- `HelperEncryptionService.aes256Encrypt` / `aes256Decrypt(value, secret, purpose, context)`: AES-256-GCM, an HKDF-SHA-256 key over the root, a per-payload salt, and `purpose`, with `context` as authenticated data. `purpose` is one constant per use, owned by the encrypting module (`MfaTotpSecretEncryptionPurpose`); `context` is the owning id, except the cursor token, which uses the fixed `PaginationCursorEncryptionContext` because a token has no owner.
+- Root secrets (`APP_ENCRYPTION_SECRET`, `MFA_TOTP_ENCRYPTION_SECRET`) are 48 random bytes (64 base64url characters), separate roots, generated by `pnpm generate:secret` into `keys/`. A root has no rotation path: a payload names no key, and replacing a root invalidates what it sealed.
+- Hashing is SHA-256 (`HelperHashService.sha256Hash`) for lookups and one-time codes, argon2id (`argon2Hash`, `argon2Compare`, `helper.argon2`) for passwords and backup codes. A secret comparison is `HelperHashService.sha256Compare` (`timingSafeEqual`); `===` is the defect.
 
-## Two-factor
+## Response headers
 
-- `TwoFactor.secret` holds only a confirmed authenticator, encrypted with the two-factor root secret and the user id as context. Setup writes `pendingSecret`; confirming a code against it moves it into `secret` and clears `pendingSecret`. Disable and admin reset clear both.
-- Setup while two-factor is enabled requires a valid, unused backup code, consumed in the same transaction; until confirmation the existing secret and remaining backup codes stay valid.
-- Backup-code consumption is a compare-and-set on the stored list: a concurrent use of another code fails instead of restoring a consumed one. The consumption commits before a token is issued.
-- A missing or undecryptable secret answers `AuthTwoFactorSecretUnavailableException` (409); the undecryptable case is also reported (`rules/logging.md`).
-
-## Session invalidation — never skip it
-
-Every one of these MUST invalidate the affected sessions:
-
-- password change
-- password reset / forgot-password completion
-- logout
-- device removal
-- account self-deletion — the same transaction revokes the user's sessions and device
-  ownerships and clears their push tokens
-- reaching the maximum password attempt — the lockout transaction deactivates the account and
-  revokes its sessions and device ownerships
-- two-factor disable, and an admin two-factor reset
-- role or status change that revokes access — an admin setting a user `blocked` or `inactive`
-  revokes every session of that user in the same transaction as the status write
-- an admin revoke of one session (`DELETE …/session/revoke/:sessionId`) or of all of them
-  (`DELETE …/session/revoke-all`)
-
-Invalidation is two steps and both are required: the session rows are revoked in the database,
-then the session cache is purged after the commit. The JWT guards read the cache, so a revoke
-that skips the purge leaves the token working.
-
-Which purge depends on how much was revoked:
-
-- **One session, or a named subset** — `SessionCache.deleteLogins(userId, sessions)` purges
-  exactly the revoked ids.
-- **Every session of one user** — `SessionDomain.purgeLoginsByUser(userId)` scans the user's
-  key pattern and unlinks every entry, so an entry written by a login that raced the revoke
-  goes too.
-
-The order on every path is commit, then purge, then stage the activity rows. A purge failure
-after the commit is logged and swallowed; the rows stay revoked. A revoke that finds no active
-session is a no-op, except on the revoke-all route and a single revoke, which answer
-`SessionNotFoundException`.
-
-A session write that a revoke must not resurrect is filtered, not merely ordered:
-`isRevoked: false` is part of the `where` of every revoke and of the refresh rotation, and the
-refresh cache write is conditional on the entry still existing.
-
-Skipping it leaves a live token for an account the user believes they secured. It is silent, and nothing fails until it matters.
-
-## Authorization
-
-The decorator stack in `rules/http.md` is the enforcement order and it is exact. Beyond that:
-
-- **A guard reads transport inputs and delegates the decision.** Resolving an entity and deciding a business rule inline puts the rule where no other caller can reuse it and no test can reach it.
-- CASL abilities are built from the `Policy` rows attached to the caller's role — one row per `subject` carrying its `action` list; `@PolicyProtected` names the subject and actions a route requires. Do not re-implement an ability check by hand in a service.
-- Feature flags gate a route via `@FeatureFlagProtected('<key>')`; `rules/feature-flag.md` owns the key shape.
-
-## Activity log
-
-- Staging is two calls. `ActivityLogDomain.prepare(input)` builds one event and validates it
-  against the action's contract; `stagePrepared(events)` puts prepared events on the CLS queue.
-  The global `ActivityLogInterceptor` (`APP_INTERCEPTOR`) awaits flush when that queue is
-  non-empty.
-- **Prepare before the write, stage after it.** A contract failure throws at `prepare`, so it
-  fails the request before anything is written. Staging after the write keeps a committed
-  change from going unlogged. A value only the write produces — a generated id, a row count —
-  is either drawn before the write (`DatabaseUtil.createId()`, the domain's pre-write `now`) or,
-  where the write alone can produce it, prepared after the commit; the admin revoke-all count is
-  the one path that prepares after committing.
-- Default `prepare` is success-path only. `prepare({ onError: true })` covers both paths:
-  flushed on success and on error — do not stage again in a catch. Error-path flush writes only
-  events with `onError: true`; other staged events are discarded. An event on a path that
-  always throws — a failed login, a lockout — carries `onError: true` or it is never written.
-- Per-action contracts (`ActivityLogActionContract`) resolve `user` / `workspace` and validate
-  metadata with a per-action zod schema; contract failure throws. Every
-  `EnumActivityLogAction` member has a contract and an `activityLog` i18n key.
-  - `user=payload`: the row belongs to the JWT user, resolved at flush; `prepare` carries no
-    `userId` and no `createdBy`.
-  - `user=target`: the row belongs to the `userId` passed to `prepare`, which also passes
-    `createdBy` — the acting user, or the row's own user on a self or public path.
-  - `workspace=payload` reads only `WorkspaceStoreKey`; `workspace=target` takes the staged
-    `workspaceId`; `workspace=none` stores none.
-- **An action one user takes on ANOTHER user writes two rows.** The actor row keeps the action
-  the actor performed; the affected user gets a row of its own under the paired `…ByAdmin` /
-  `…ByOwner` / `…ByInvitee` action (`userUpdateStatus` ↔ `adminUserUpdateStatus`,
-  `workspaceMemberRemovedByAdmin` ↔ `workspaceMemberRemoved`). A self action writes one row
-  under the plain name. When the actor and the affected user are the same person, the domain
-  skips the paired row with an explicit predicate.
-- **Each row names the other party in its metadata**: the actor row carries `targetUserId`
-  (an invite row carries `workspaceInviteId`; a bulk import carries `userCount`), and the
-  paired row carries `actorUserId`. The ids are required by the schema, never optional.
-- A new paired action is a Prisma enum member (`rules/prisma-schema.md`), a contract entry, a
-  metadata schema, an i18n key, and — when it duplicates an existing count — an entry in
-  `ActivityLogWorkspaceVolumeContract` or the analytic action lists, so one event
-  counts once.
-- Activity metadata is returned through the typed response schema, so it never carries a secret or a value the owner of the row may not see.
-- **Never log a secret into activity metadata.** It is durable storage, queried by admins.
+`RequestHelmetMiddleware` sends `RequestHelmetCspDirectives`, `Referrer-Policy: no-referrer`, and `Cache-Control: no-store` on every route it handles, and a route with another cache policy sets its own header (the health routes); the Swagger routes register before module middleware, so `src/swagger.ts` sets `RequestHelmetCspDocDirectives` and the referrer policy itself with helmet's standalone middlewares ahead of `SwaggerModule.setup`. A directive widens only for a blocked load a browser reports.
 
 ## Request store
 
-Per-request state lives in one CLS-backed `RequestStoreService` (`src/common/request/services/request.store.service.ts`), keyed by `*StoreKey` constants — the request's own (`RequestLogStoreKey`, `RequestLanguageStoreKey`, `RequestVersionStoreKey`, `RequestIdStoreKey`, `RequestCorrelationIdStoreKey`, `RequestActorStoreKey`, `RequestThrottleHandledStoreKey`) and the guards' (`AuthPayloadStoreKey`, `UserStoreKey`, `ApiKeyStoreKey`, `PolicyStoreKey`, `WorkspaceStoreKey`, `WorkspaceMemberStoreKey`, `ProjectStoreKey`, `ProjectMemberStoreKey`, `ProjectWorkspaceOwnerStoreKey`), plus the two a kit writes for itself (`ActivityLogStageStoreKey`, `PaginationStoreKey`). `RequestActorStoreKey` is the actor the audit stamping reads (`rules/database.md`). Do not create a per-module CLS store; add a key to the shared one — the `workspace` module's own key constants (`workspace.constant.ts`) are the pattern to follow, not an exception to it.
-
-Geo-location and user-agent are resolved once per request into `RequestLogStoreKey` as an `IRequestLog`, then threaded to the repository as the last method parameter. Do not re-parse them downstream.
-
-**A class reads the store through the injected `RequestStoreService`.** A param decorator is the
-exception: `createParamDecorator` runs outside Nest's injection context, so its factory reads the
-store through `ClsServiceManager.getClsService()` — the only sanctioned service-locator call in
-`src/` (`rules/code-style.md`).
-
-Every store decorator returns a non-null value. It reads its key, and its optional `field` when
-one is given, and throws `RequestContextMissingException` (`50304`, HTTP 500) when either is
-missing, which is what a route stacking the decorator without the guard that fills the key looks
-like. A handler therefore never receives `null` from `@UserCurrent()`, `@WorkspaceCurrent()`,
-`@ApiKeyPayload()`, `@AuthJwtPayload()` or their siblings, and `@ProjectMemberCurrent()` is valid
-only under the role-less `@ProjectMemberProtected()`, because `ProjectRoleGuard` stores no member
-row. The missing key travels in `rawError` to Sentry, never in the response body.
+Per-request state lives in `RequestStoreService`, keyed by `*StoreKey` constants; add a key, never a second store. `IRequestApp` carries the transport only (`id`, `correlationId`). Each module owns its context: its guard or middleware translates a credential or header into `I<Module>[<Concern>]Context` under its own `<Module>[<Concern>]ContextStoreKey`; every reader takes the context, and no code stores a JWT or provider payload or reads `request.user`. The JWT guards also write the kit's `RequestActorStoreKey` (the user id) for the logger, audit stamping, and the per-user throttle. A guard, middleware, or interceptor injects it, and the kit reads it (`DatabaseExtensionFactory` audit stamping, `MessageService`, the logger mixin); a param decorator: `guards.md`. A service, use case, effect builder, or processor never reads it (a list use case's `PaginationStoreKey` merge is a write, `pagination.md`): the controller passes the contexts down (`http.md`, `service.md`), and the raw refresh token lives in `IAuthJwtRefreshContext` only, never in a job payload or a log. `RequestRequestIdMiddleware`, first in the `RequestMiddlewareModule` chain, alone writes `req.id`, `req.correlationId`, and both id store keys (`logging.md`). `IRequestContext.requestLog` holds the client IP, user agent, and geo-location, resolved once per request (`request.request-log.middleware.ts`) and never re-resolved. The client IP is `req.ip` under `trust proxy` (`src/configure.ts:38`).

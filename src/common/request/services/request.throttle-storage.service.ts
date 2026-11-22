@@ -1,11 +1,12 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerStorage } from '@nestjs/throttler';
 import { ThrottlerStorageRecord } from '@nestjs/throttler/dist/throttler-storage-record.interface.js';
-import Keyv from 'keyv';
-import KeyvRedis from '@keyv/redis';
-import type { RedisClientConnectionType } from '@keyv/redis';
-import { RedisClientCachedProvider } from '@common/redis/constants/redis.constant';
+import type { Redis } from 'ioredis';
+import { CacheService } from '@common/cache/services/cache.service';
+import { RequestThrottleResponseInvalidException } from '@common/request/exceptions/request.throttle-response-invalid.exception';
+import { RedisCacheClient } from '@common/redis/constants/redis.constant';
+import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 
 @Injectable()
@@ -13,12 +14,12 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
     private readonly keyPattern: string;
     private readonly blockKeyPattern: string;
     private readonly sequenceKeyPattern: string;
-    private readonly logger = new Logger(RequestThrottleStorageService.name);
 
     constructor(
-        @Inject(RedisClientCachedProvider) private readonly keyv: Keyv,
+        @Inject(RedisCacheClient) private readonly redis: Redis,
         private readonly configService: ConfigService,
-        private readonly helperStringService: HelperStringService
+        private readonly helperStringService: HelperStringService,
+        private readonly cacheService: CacheService
     ) {
         this.keyPattern = this.configService.get<string>(
             'request.throttle.keyPattern'
@@ -40,11 +41,6 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
             name: throttlerName,
             tracker,
         });
-    }
-
-    private async getClient(): Promise<RedisClientConnectionType> {
-        const store = this.keyv.store as KeyvRedis<string>;
-        return store.getClient();
     }
 
     private failOpenRecord(): ThrottlerStorageRecord {
@@ -146,22 +142,22 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
         `;
 
         try {
-            const client = await this.getClient();
-            const results = await client.eval(script, {
-                keys: [redisKey, blockKey, sequenceKey],
-                arguments: [
-                    ttl.toString(),
-                    limit.toString(),
-                    blockDuration.toString(),
-                ],
-            });
+            const results = await this.redis.eval(
+                script,
+                3,
+                redisKey,
+                blockKey,
+                sequenceKey,
+                ttl.toString(),
+                limit.toString(),
+                blockDuration.toString()
+            );
 
             if (!Array.isArray(results) || results.length < 4) {
-                this.logger.error(
-                    new Error(
-                        `Invalid Redis response: ${JSON.stringify(results)}`
-                    ),
-                    `Throttler got an invalid response, allowing request. Key: ${key}`
+                this.cacheService.warnOnce(
+                    throttlerName,
+                    new RequestThrottleResponseInvalidException(results),
+                    'Throttler got an invalid response, allowing request'
                 );
 
                 return this.failOpenRecord();
@@ -169,18 +165,17 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
 
             const parsed = (results as unknown[]).map(r => Number(r));
             if (parsed.some(n => isNaN(n))) {
-                this.logger.error(
-                    new Error(
-                        `Invalid number from Redis: ${JSON.stringify(results)}`
-                    ),
-                    `Throttler got a non-numeric value, allowing request. Key: ${key}`
+                this.cacheService.warnOnce(
+                    throttlerName,
+                    new RequestThrottleResponseInvalidException(results),
+                    'Throttler got a non-numeric value, allowing request'
                 );
 
                 return this.failOpenRecord();
             }
 
             const [totalHits, remainingInMs, isBlockedNum, blockTtlInMs] =
-                parsed;
+                parsed as [number, number, number, number];
 
             const timeToExpire = this.toSeconds(remainingInMs);
             const timeToBlockExpire = this.toSeconds(blockTtlInMs);
@@ -192,11 +187,15 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
                 timeToBlockExpire,
             };
         } catch (error: unknown) {
-            const message =
-                error instanceof Error ? error.message : String(error);
-            this.logger.error(
-                error instanceof Error ? error : new Error(message),
-                `Redis unavailable for throttling, allowing request. Key: ${key}`
+            const isConnection = this.cacheService.isConnectionError(error);
+            if (isConnection) {
+                throw new RedisUnavailableException(error);
+            }
+
+            this.cacheService.warnOnce(
+                throttlerName,
+                error,
+                'Throttler storage failed, allowing request'
             );
 
             return this.failOpenRecord();

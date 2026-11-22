@@ -1,15 +1,9 @@
 import { z } from 'zod';
 
-/**
- * Validates activity-log metadata that must be empty.
- * @public
- */
+/** @public */
 export const ActivityLogEmptyMetadataSchema = z.strictObject({});
 
-/**
- * Activity-log metadata for actions that carry none.
- * @public
- */
+/** @public */
 export type ActivityLogEmptyMetadataDto = z.infer<
     typeof ActivityLogEmptyMetadataSchema
 >;

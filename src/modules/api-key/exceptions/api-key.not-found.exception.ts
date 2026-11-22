@@ -2,10 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 
-/**
- * Raised when the requested API key does not exist.
- * @public
- */
+/** @public */
 export class ApiKeyNotFoundException extends AppBaseException {
     readonly module = 'apiKey';
     readonly statusCode = EnumApiKeyStatusCodeError.notFound;

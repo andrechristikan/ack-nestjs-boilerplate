@@ -4,27 +4,21 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { IPasswordHistoryList } from '@modules/password-history/interfaces/password-history.interface';
-import {
-    EnumPasswordHistoryType,
-    Prisma,
-} from '@generated/prisma-client/client';
+import type {
+    IPasswordHistoryCreate,
+    IPasswordHistoryList,
+} from '@modules/password-history/interfaces/password-history.interface';
+import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
 import type { PasswordHistory } from '@generated/prisma-client/client';
 
 export interface IPasswordHistoryRepository {
     findWithPaginationOffsetByAdmin(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
+        { where, ...others }: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>>;
     findWithPaginationCursor(
         userId: string,
-        {
-            where,
-            ...others
-        }: IPaginationQueryCursorParams<Prisma.PasswordHistoryWhereInput>
+        { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>>;
     findActiveUser(userId: string): Promise<PasswordHistory[]>;
     createInTx(
@@ -36,4 +30,13 @@ export interface IPasswordHistoryRepository {
         createdAt: Date,
         createdBy: string
     ): Promise<PasswordHistory>;
+    createManyInTx(
+        tx: IDatabaseTransactionClient,
+        entries: IPasswordHistoryCreate[]
+    ): Promise<void>;
+    deleteManyByUserInTx(
+        tx: IDatabaseTransactionClient,
+        userId: string
+    ): Promise<void>;
+    deleteExpiredBefore(threshold: Date): Promise<number>;
 }

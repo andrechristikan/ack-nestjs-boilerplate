@@ -1,48 +1,45 @@
-# Feature flags — keys, metadata, gating
+---
+paths:
+    - 'src/modules/feature-flag/**'
+    - 'src/modules/mfa/**'
+    - 'src/modules/workspace/services/**'
+    - 'src/modules/user/services/**'
+    - 'src/modules/analytic/services/**'
+    - 'src/migration/data/migration.feature-flag.data.ts'
+---
 
-This file is the feature-flag-specific rule set. Decorator position is `rules/http.md`.
-Flow narrative: `docs/feature-flag.md` — explorer or planner opens it when the key or
-rollout question is not settled here.
+# Feature flags
 
-## Naming — camelCase, and it is enforced
+Decorator position is `guards.md`.
 
-- **A flag key is camelCase** — `loginWithGoogle`, `changePassword`. Not `login_with_google`, not `LOGIN_WITH_GOOGLE`. Same uniform-wire rule as everything else (`rules/naming.md`).
-- **A metadata key is camelCase too, and this is a HARD validation** — `FeatureFlagUpdateMetadataRequestSchema` rejects any key that fails `/^[a-z][a-zA-Z0-9]*$/`. A `forgot_allowed` sent to the update-metadata endpoint fails validation, it does not reach the database. The regex is the single source of truth for the rule; do not loosen it to admit a snake_case import.
-- **A gate reference is the bare flag key** — `@FeatureFlagProtected('changePassword')`. A dotted `key.metadataKey` is rejected: `validateFeatureFlagGuard` throws `predefinedKeyEmpty` when the path or any segment of it is empty, and `predefinedKeyLengthExceeded` on the SECOND segment.
+## Keys
 
-## Metadata shape
+- A flag key is an `EnumFeatureFlagKey` member and a metadata sub-key code reads is an `EnumFeatureFlagMetadataKey` member (`src/modules/feature-flag/enums/feature-flag.enum.ts`), named by the seed data and every caller, never a literal. A metadata key is camelCase and validated: `FeatureFlagUpdateMetadataRequestSchema` (`src/modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto.ts`) rejects any key failing `/^[a-z][a-zA-Z0-9]*$/`. The regex is the single source of the rule.
 
-- **Flat only.** No nested object — `metadata.a.b` is rejected by the constraint.
-- **Values are `boolean | number | string`, or a homogeneous `string[]` / `number[]`.** A mixed array (`[1, 'a']`), a nested array, or `boolean[]` fails validation. An array value is data only; it is never a gate value.
-- **An array value cannot change element type on update.** `checkMetadataKey` treats `string[]` and `number[]` as distinct types, and an empty array counts as an empty value (rejected), same as `''`.
-- **Keys are frozen; only values change.** The admin API updates values, never adds or removes a metadata key — schema consistency is the contract.
-- **A metadata sub-key used as a gate requires a boolean value.** `FeatureFlagDomain.validateFeatureFlagMetadata(key, metadataKey)` throws `predefinedKeyTypeInvalid` when the value is not boolean, and `serviceUnavailable` (503) when it is `false`.
+## Metadata
+
+- Flat only. Values are `boolean | number | string` or a homogeneous `string[]` / `number[]`; a mixed or nested array, `boolean[]`, an empty array, and `''` fail. An array value cannot change element type on update.
+- A metadata sub-key used as a gate holds a boolean and is asserted in the calling service, never in the decorator (`service.md`, Shape). A sub-key that decides whether a module's own subject applies is read with `FeatureFlagService.isMetadataAllowed`: `true` only for an enabled flag whose sub-key is `true`, `false` otherwise, `FeatureFlagNotConfiguredException` for no row; it ignores rollout and targeting.
+- A numeric sub-key holds one feature's policy an operator tunes: `maxWorkspacesPerUser`, `inviteExpiresInDays`, and `joinRequestExpiresInDays` on `workspace`; `passkeyMaxPerUser`, `mfaMaxAttempts`, and `mfaLockDurationInMinutes` on `mfa`; `passwordMaxAttempts` and `passwordLockDurationInMinutes` on `loginWithCredential`. A duration is stored in the unit a person types (`InMinutes`, `InDays`), and its reader builds the duration in that unit.
+- Each numeric sub-key has one zod schema const, `FeatureFlagMetadata<Key>Schema`, an integer with its bounds, in the module's `validations/`; `FeatureFlagUpdateMetadataRequestSchema` checks it in its `superRefine`. The service checks no bound and a reader clamps nothing.
+- `FeatureFlagService.getMetadataNumber(key, metadataKey)` returns the stored number whatever `isEnable`, rollout, and targeting say, and throws `FeatureFlagNotConfiguredException` for no row, no sub-key, or a value that is not a number. The seed data is the one source: no config key holds the same value. A reader calls it before its transaction opens; `analytic` takes the password budget from `UserAnalyticService.getPasswordMaxAttempts`.
+- Keys are frozen; the admin API updates values and never adds or removes a key.
 - Per-feature config lives in metadata; per-user rollout lives in `targetUserIds` and `rolloutPercent`, never in metadata.
 
 ## Gating
 
-- A route is gated by `@FeatureFlagProtected('<key>')` — the bare key, never a bare `@UseGuards`. Where it sits in the decorator stack is `rules/http.md`.
-- **`@FeatureFlagProtected()` is NOT authentication.** It gates on flag state only; apply the auth guards separately when the route needs a user.
-- **A metadata sub-key is asserted in the domain, never in the decorator (HARD).** The decorator answers only "is this feature on at all". Whether the feature currently permits this particular operation is a business condition, so it is a guard clause at the top of the domain method — `await this.featureFlagDomain.validateFeatureFlagMetadata('<key>', '<metadataKey>')` before any work. Written into the decorator it would gate one route instead of every caller of the method, and `rules/http.md` already forbids a guard from holding a business rule.
+`@FeatureFlagProtected(EnumFeatureFlagKey.<member>)` answers only "is this feature on". It is not authentication; the auth guards are separate. `isEnable: false` outranks targeting and rollout.
+
+The `mfa` flag is the one flag that switches a security control, and `MfaService` alone reads it as a gate (`MfaPasskeyService.getMaxPerUser` reads its `passkeyMaxPerUser`): off, or with a method's sub-key off (`totpAllowed`, `passkeyAllowed`), a stored factor is neither offered nor accepted (`MfaMethodUnavailableException`, uncounted), and a user with no factor left that applies is an account with MFA off. Stored factors and backup codes stay. Off, every `/shared/mfa/*` route answers `disabled`, and its rollout and targeting gate those routes only: a share lowered after users enrolled leaves a user outside it asked for MFA and answered `disabled` there. A sub-key off closes that method's enrolment; a TOTP disable and a passkey delete still act on the stored factor. The admin reset acts on stored factors whatever the flag.
+
 ## Rollout and targeting
 
-- **`targetUserIds` is an allow-list that bypasses rollout entirely.** A targeted user passes even at `rolloutPercent: 0`.
-- **Rollout buckets stickily.** `sha256Hash('<key>:<identifier>')`, the first 8 hex characters modulo 100, salted by the flag key, so the same caller always lands in the same bucket for a given flag and does not land on the same side of every flag at once.
-- **`isEnable: false` outranks both.** A targeted user is still rejected when the flag is globally off — that is what makes it a kill switch.
-
-## Anonymous callers — fail closed
-
-- **An authenticated caller is always bucketed by `userId`, and the `x-anonymous-id` header is ignored entirely.** If the header could override it, any user could move their own bucket by sending one.
-- **With no authenticated user:** `rolloutPercent: 100` passes without the header ever being read; anything below 100 buckets by `x-anonymous-id`, and a caller that sends none or sends a malformed one is REJECTED. Fail closed — a gate that silently admits everyone is not a gate.
-- The header name and the length/charset bounds come from `featureFlag.anonymous.*` config, never a literal in the service. An unbounded client string must not reach the hash, the logs, or a cache key; an invalid value is treated as absent.
-- **`targetUserIds` applies to authenticated callers only** — targeting is by `userId`, which an anonymous caller does not have.
-
-## A flag is never an authorization boundary (HARD)
-
-A feature flag is progressive-exposure machinery: canary, load control, staged launch. The anonymous bucketing key is client-supplied and **forgeable by design** — a caller who dislikes their bucket sends a different value and retries. Never place an entitlement or a security boundary behind a `rolloutPercent`. A feature that must not be seen is gated by `isEnable: false` or by authorization.
+- `targetUserIds` is an allow-list that bypasses rollout; a targeted user passes at `rolloutPercent: 0`. It applies to authenticated callers only.
+- Rollout buckets stickily: `sha256Hash('<key>:<identifier>')`, the first 8 hex characters modulo 100 (`FeatureFlagService.isInRollout`, `src/modules/feature-flag/services/feature-flag.service.ts`), so one caller lands in the same bucket for a flag and not on the same side of every flag.
+- An authenticated caller is bucketed by `userId`; the `x-anonymous-id` header is ignored for them. With no user, `rolloutPercent: 100` passes without reading the header; anything lower buckets by `x-anonymous-id`, and a caller sending none or a malformed one is rejected. The header is `FeatureFlagAnonymousIdHeaderName`; the bounds come from `featureFlag.anonymous.*` config; an invalid value is treated as absent and never reaches the hash, a log, or a key.
+- A flag is never an authorization boundary: the anonymous key is client-supplied and forgeable by design. An entitlement is gated by authorization or `isEnable: false`.
 
 ## Restrictions
 
-- Flags cannot be created or deleted through the admin API — they are seeded (`migration.feature-flag.data.ts`, `rules/seeding.md`).
-- Cache is best-effort: a read/write/delete failure falls through to the database.
-- **An unknown flag key is a SERVER misconfiguration, not a disabled feature.** It throws `predefinedKeyNotFound` (HTTP 500), distinct from the 503 that a disabled flag, a false metadata sub-key, or a lost rollout bucket returns. There is no fail-open in either direction.
+- Flags are seeded (`src/migration/data/migration.feature-flag.data.ts`, `seeding.md`), not created or deleted through the admin API.
+- A gated key no row holds throws `FeatureFlagNotConfiguredException` (`notConfigured`, HTTP 500, `FeatureFlagService.validateFeatureFlag`): a missing seed row is our bug, reported to Sentry. `FeatureFlagNotFoundException` (`notFound`, HTTP 404) answers only an admin route naming a flag id no row holds (`FeatureFlagService.updateStatusByAdmin`). A disabled flag, a false sub-key, an anonymous caller with no id, and a lost bucket throw `FeatureFlagDisabledException` (`disabled`, HTTP 404), so a gated feature answers as absent. No fail-open either way, a disabled `mfa` flag or sub-key excepted (Gating).

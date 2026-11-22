@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 
-/**
- * Per-response context: language, timing, versioning, and request/correlation IDs.
- * @public
- */
+/** @public */
 export const ResponseMetadataSchema = z.object({
     language: z.enum(EnumMessageLanguage).meta({
         description: 'Language of the response message',
@@ -26,19 +23,15 @@ export const ResponseMetadataSchema = z.object({
         description: 'Repository version of the application',
         example: '1.0.0',
     }),
-    requestId: z.string().meta({
+    requestId: z.string().nullable().meta({
         description: 'Unique ID of this request',
         example: '01966c9a-2b8d-7000-a957-4e1c1de0c8f7',
     }),
-    correlationId: z.string().meta({
+    correlationId: z.string().nullable().meta({
         description: 'Correlation ID for distributed tracing',
         example: '01966c9a-2b8d-7000-a957-4e1c1de0c8f7',
     }),
 });
 
-/**
- * Extensible: carries additional metadata fields alongside the declared ones.
- * @public
- */
-export type ResponseMetadataDto = z.infer<typeof ResponseMetadataSchema> &
-    Record<string, unknown>;
+/** @public */
+export type ResponseMetadataDto = z.infer<typeof ResponseMetadataSchema>;

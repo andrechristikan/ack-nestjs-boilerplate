@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { UserCheckEmailResponseSchema } from '@modules/user/dtos/response/user.check-email.response.dto';
 
-/**
- * Shapes a username check outcome, adding the pattern check.
- * @public
- */
+/** @public */
 export const UserCheckUsernameResponseSchema =
     UserCheckEmailResponseSchema.extend({
         pattern: z.boolean().meta({
@@ -13,10 +10,7 @@ export const UserCheckUsernameResponseSchema =
         }),
     });
 
-/**
- * Username check outcome.
- * @public
- */
+/** @public */
 export type UserCheckUsernameResponseDto = z.infer<
     typeof UserCheckUsernameResponseSchema
 >;

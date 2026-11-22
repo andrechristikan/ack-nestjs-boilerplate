@@ -1,34 +1,32 @@
-import { CacheMainProvider } from '@common/cache/constants/cache.constant';
-import { Inject, Injectable } from '@nestjs/common';
+import { RedisCacheClient } from '@common/redis/constants/redis.constant';
+import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
-import type { Cache } from 'cache-manager';
+import type { Redis } from 'ioredis';
 
-/**
- * Reports Redis cache reachability as a Terminus health indicator.
- */
 @Injectable()
 export class HealthRedisIndicator {
+    private readonly logger = new Logger(HealthRedisIndicator.name);
+
     constructor(
-        @Inject(CacheMainProvider) private cacheManager: Cache,
+        @Inject(RedisCacheClient) private readonly redis: Redis,
         private readonly healthIndicatorService: HealthIndicatorService
     ) {}
 
-    /**
-     * Down when a probe read against the cache fails or throws.
-     */
-    async isHealthy(key: string): Promise<HealthIndicatorResult> {
+    async isHealthy(
+        key: EnumHealthIndicatorKey
+    ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
 
         try {
-            await this.cacheManager.get('health-check');
+            await this.redis.ping();
 
             return indicator.up();
         } catch (err: unknown) {
-            const message =
-                err instanceof Error ? err.message : 'Unknown error';
+            this.logger.error(err, 'Redis health check failed');
 
-            return indicator.down(`HealthRedisIndicator Failed - ${message}`);
+            return indicator.down('Redis is unreachable');
         }
     }
 }

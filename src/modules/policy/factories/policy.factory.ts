@@ -1,20 +1,13 @@
 import { AbilityBuilder, createMongoAbility } from '@casl/ability';
-import type { ExtractSubjectType } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
 import { EnumPolicyAction } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
-import type {
-    IPolicyAbilityRule,
-    IPolicyAbilitySubject,
-} from '@modules/policy/interfaces/policy.interface';
+import type { IPolicyAbilityRule } from '@modules/policy/interfaces/policy.interface';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 
-/**
- * Builds and evaluates CASL ability rules for policy checks.
- */
 @Injectable()
 export class PolicyAbilityFactory {
-    createForUser(policies: Policy[]): IPolicyAbilityRule {
+    createByUser(policies: Policy[]): IPolicyAbilityRule {
         const { can, build } = new AbilityBuilder<IPolicyAbilityRule>(
             createMongoAbility
         );
@@ -23,25 +16,23 @@ export class PolicyAbilityFactory {
             can(policy.action, policy.subject);
         }
 
-        return build({
-            // Read https://casl.js.org/v6/en/guide/subject-type-detection#use-classes-as-subject-types for details
-            detectSubjectType: (item: {
-                constructor: ExtractSubjectType<IPolicyAbilitySubject>;
-            }) => item.constructor,
-        });
+        return build();
     }
 
-    /**
-     * Returns true only when the user holds every required action on each subject.
-     */
     handlerPolicies(
         userPolicies: IPolicyAbilityRule,
         policies: PolicyRequestDto[]
     ): boolean {
-        return policies.every((policy: PolicyRequestDto) =>
-            policy.action.every((action: EnumPolicyAction) =>
-                userPolicies.can(action, policy.subject)
-            )
+        if (policies.length === 0) {
+            return false;
+        }
+
+        return policies.every(
+            (policy: PolicyRequestDto) =>
+                policy.action.length > 0 &&
+                policy.action.every((action: EnumPolicyAction) =>
+                    userPolicies.can(action, policy.subject)
+                )
         );
     }
 }

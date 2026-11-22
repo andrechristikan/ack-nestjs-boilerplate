@@ -1,20 +1,20 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import * as path from 'path';
 import { HeaderResolver, I18nJsonLoader, I18nModule } from 'nestjs-i18n';
 import { ConfigService } from '@nestjs/config';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
+import { RequestCustomLangHeaderName } from '@common/request/constants/request.constant';
 
-/**
- * Global i18n module: JSON loader plus `x-custom-lang` header resolver, exposing `MessageService`.
- */
+/** Shared module: MessageService for every service, filter, and interceptor translating a message key. */
+@Global()
 @Module({})
 export class MessageModule {
     static forRoot(): DynamicModule {
         return {
             module: MessageModule,
-            global: true,
+            controllers: [],
             providers: [MessageService],
             exports: [MessageService],
             imports: [
@@ -22,11 +22,13 @@ export class MessageModule {
                     imports: [],
                     loader: I18nJsonLoader,
                     inject: [ConfigService],
-                    resolvers: [new HeaderResolver(['x-custom-lang'])],
+                    resolvers: [
+                        new HeaderResolver([RequestCustomLangHeaderName]),
+                    ],
                     useFactory: (configService: ConfigService) => ({
-                        fallbackLanguage: configService
-                            .get<string[]>('message.availableLanguage')!
-                            .join(','),
+                        fallbackLanguage: configService.get<string>(
+                            'message.defaultLanguage'
+                        )!,
                         fallbacks: Object.values(EnumMessageLanguage).reduce(
                             (a, v) => ({ ...a, [`${v}-*`]: v }),
                             {}
@@ -41,7 +43,6 @@ export class MessageModule {
                     }),
                 }),
             ],
-            controllers: [],
         };
     }
 }

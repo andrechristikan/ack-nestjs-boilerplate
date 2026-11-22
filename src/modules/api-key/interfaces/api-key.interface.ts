@@ -1,10 +1,19 @@
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey, Prisma } from '@generated/prisma-client/client';
-import type { ApiKeyAdminListSelect } from '@modules/api-key/constants/api-key.constant';
+import type { ApiKeySelect } from '@modules/api-key/constants/api-key.constant';
 
-export type IApiKeyList = Prisma.ApiKeyGetPayload<{
-    select: typeof ApiKeyAdminListSelect;
+export type IApiKey = Prisma.ApiKeyGetPayload<{
+    select: typeof ApiKeySelect;
 }>;
+
+export interface IApiKeyContext {
+    apiKey: ApiKey;
+}
+
+export interface IApiKeyHeader {
+    key: string;
+    secret: string;
+}
 
 export interface IApiKeyGenerateCredential {
     key: string;
@@ -15,22 +24,17 @@ export interface IApiKeyGenerateCredential {
 export interface IApiKeyCreate {
     name: string;
     type: EnumApiKeyType;
-    startAt?: Date;
-    endAt?: Date;
+    startAt: Date | null;
+    endAt: Date | null;
 }
 
 export interface IApiKeyWithSecret {
-    apiKey: ApiKey;
+    apiKey: IApiKey;
     secret: string;
 }
 
-export interface IApiKeyCreated extends ApiKey {
+export interface IApiKeyCreated extends IApiKey {
     secret: string;
 }
 
-export interface IApiKeyAnalyticCreated {
-    id: string;
-    type: EnumApiKeyType;
-    createdAt: Date;
-    createdBy: string | null;
-}
+export type IApiKeyActivityLogSubject = Pick<ApiKey, 'id' | 'name' | 'type'>;

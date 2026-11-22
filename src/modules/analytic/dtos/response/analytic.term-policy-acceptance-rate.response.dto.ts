@@ -1,13 +1,11 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 
-/**
- * Shapes how many users have accepted the published term policies.
- * @public
- */
+/** @public */
 export const AnalyticTermPolicyAcceptanceRateResponseSchema = z.object({
     acceptances: z.number().meta({
-        description: 'Acceptance rows recorded',
+        description:
+            'Acceptance rows recorded for the latest published versions',
         example: faker.number.int({ min: 0, max: 5000 }),
     }),
     users: z.number().meta({
@@ -15,19 +13,17 @@ export const AnalyticTermPolicyAcceptanceRateResponseSchema = z.object({
         example: faker.number.int({ min: 0, max: 5000 }),
     }),
     published: z.number().meta({
-        description: 'Published term policies in force',
+        description: 'Required term policy types with a published version',
         example: faker.number.int({ min: 0, max: 20 }),
     }),
     rate: z.number().meta({
-        description: 'Acceptances divided by the expected total',
-        example: faker.number.float({ min: 0, max: 1, fractionDigits: 2 }),
+        description:
+            'Acceptances divided by the expected total, as a percentage between 0-100',
+        example: faker.number.float({ min: 0, max: 100, fractionDigits: 2 }),
     }),
 });
 
-/**
- * How many users have accepted the published term policies.
- * @public
- */
+/** @public */
 export type AnalyticTermPolicyAcceptanceRateResponseDto = z.infer<
     typeof AnalyticTermPolicyAcceptanceRateResponseSchema
 >;

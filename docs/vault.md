@@ -2,23 +2,34 @@
 
 ## Overview
 
-> [!IMPORTANT]
-> Local-development setup only. The unseal key and root token are written to `generated/vault/init.json` so the stack unseals itself unattended. A dev convenience, not a production pattern. See [Scope](#scope).
+> [!IMPORTANT] Local-development setup only.
+>
+> - The unseal key and root token are written to `generated/vault/init.json`, so the stack unseals itself unattended.
+> - It is a dev convenience, not a production pattern. See [Scope](#scope).
 
-Optional [HashiCorp Vault][ref-vault] setup for **local development secret management**. Secrets live in Vault; `pnpm vault:pull` writes them into `.env` on demand. Vault is optional: skip the `vault` profile and keep a hand-managed `.env` as in [Installation][ref-doc-installation].
+Optional [HashiCorp Vault][ref-vault] setup for **local development secret management**.
+
+- Secrets live in Vault, and `pnpm vault:pull` writes them into `.env` on demand.
+- Vault is optional: skip the `vault` profile and keep a hand-managed `.env` as in [Installation][ref-doc-installation].
 
 - Wired through Docker Compose, gated behind the `vault` profile (never starts unless you opt in).
 - **File storage backend**, persistent across restarts.
 - Container entrypoint **auto-initializes and auto-unseals** on every boot.
-- Layout mirrors production: one kv-v2 mount per project, one path per environment, a read-only [AppRole][ref-approle] per environment.
-- Useful in a team: one source of truth in kv-v2 (seeded from `.env.example`), one sync command (`pnpm vault:pull`), AppRole standing in for production OIDC/JWT.
+- Layout mirrors production:
+    - one kv-v2 mount per project
+    - one path per environment
+    - a read-only [AppRole][ref-approle] per environment
+- Useful in a team:
+    - one source of truth in kv-v2, seeded from `.env.example`
+    - one sync command, `pnpm vault:pull`
+    - AppRole standing in for production OIDC/JWT
 
 ## Related Documents
 
-- [Installation Documentation][ref-doc-installation] - Docker setup (including the `vault` profile)
-- [Environment Documentation][ref-doc-environment] - Variables seeded into Vault
-- [Configuration Documentation][ref-doc-configuration] - How the app reads `.env` at startup
-- [Third Party Integration Documentation][ref-doc-third-party-integration] - Other external services
+- [Installation Documentation][ref-doc-installation]: Docker setup (including the `vault` profile)
+- [Environment Documentation][ref-doc-environment]: Variables seeded into Vault
+- [Configuration Documentation][ref-doc-configuration]: How the app reads `.env` at startup
+- [Third Party Integration Documentation][ref-doc-third-party-integration]: Other external services
 
 ## Table of Contents
 
@@ -27,31 +38,35 @@ Optional [HashiCorp Vault][ref-vault] setup for **local development secret manag
 - [Scope](#scope)
 - [Architecture](#architecture)
 - [Components](#components)
-  - [`vault` service](#vault-service)
-  - [`vault-bootstrap` service](#vault-bootstrap-service)
-  - [`vault:pull` script](#vaultpull-script)
+    - [`vault` service](#vault-service)
+    - [`vault-bootstrap` service](#vault-bootstrap-service)
+    - [`vault:pull` script](#vaultpull-script)
 - [KV Layout](#kv-layout)
 - [Installation & Usage](#installation--usage)
-  - [Prerequisites](#prerequisites)
-  - [Step 1: Start Vault](#step-1-start-vault)
-  - [Step 2: Pull Secrets into `.env`](#step-2-pull-secrets-into-env)
-  - [Step 3: Run the App](#step-3-run-the-app)
-  - [Reading the Root Token](#reading-the-root-token)
-  - [Updating a Secret](#updating-a-secret)
-  - [Resetting Vault](#resetting-vault)
+    - [Prerequisites](#prerequisites)
+    - [Step 1: Start Vault](#step-1-start-vault)
+    - [Step 2: Pull Secrets into `.env`](#step-2-pull-secrets-into-env)
+    - [Step 3: Run the App](#step-3-run-the-app)
+    - [Reading the Root Token](#reading-the-root-token)
+    - [Updating a Secret](#updating-a-secret)
+    - [Resetting Vault](#resetting-vault)
 - [How It Works](#how-it-works)
 - [Configuration Reference](#configuration-reference)
 
 ## Scope
 
-Covers the bundled Vault config and the `vault:pull` workflow. The server is persistent and auto-unsealed, so the local flow resembles a real "authenticate, fetch, inject" pattern without the production machinery.
+- This page covers the bundled Vault config and the `vault:pull` workflow.
+- The server is persistent and auto-unsealed.
+- The local flow resembles a real "authenticate, fetch, inject" pattern without the production machinery.
 
 **Covered here:**
+
 - File-backed Vault server (persistent), auto-init + auto-unseal via the entrypoint.
 - One-shot bootstrap: kv-v2 mount, AppRole auth, per-env read-only policies, seeds `development` from `.env.example`.
 - `pnpm vault:pull`: fetches an env's secret into a local env file via a scoped AppRole token.
 
 **Not covered (yours to build for production):**
+
 - **Deploy**: clustering, Raft HA, managed Vault.
 - **Unseal**: Shamir split across operators, or KMS / Transit auto-unseal. Never the key on disk.
 - **Auth**: OIDC / JWT with bound claims, Kubernetes auth, short-lived tokens. No root.
@@ -60,7 +75,7 @@ Covers the bundled Vault config and the `vault:pull` workflow. The server is per
 Development vs production. Informational, not a migration checklist:
 
 | Concern | Development (this boilerplate) | Production (your responsibility) |
-|---|---|---|
+| --- | --- | --- |
 | Storage | File backend, persisted to a Docker volume | Raft HA or managed Vault |
 | Unseal | Auto-unsealed by the entrypoint, key on disk | KMS / Transit auto-unseal, key never on disk |
 | Auth | Per-env AppRole; root token only mints AppRole creds | OIDC / JWT with bound claims, root revoked after setup |
@@ -111,10 +126,12 @@ Two containers (gated by the `vault` profile) plus one local script:
 
 ### `vault` service
 
-Defined in `docker-compose.yml`. Runs `ci/vault/entrypoint.sh` instead of `-dev` mode so data persists.
+- The local stack defines it in `docker-compose.yml`, which the table below describes.
+- `ci/docker-compose.production.yml` defines the same `vault` and `vault-bootstrap` services under the `vault` profile, with a pinned image and no published port.
+- Runs `ci/vault/entrypoint.sh` instead of `-dev` mode so data persists.
 
 | Property | Value |
-|---|---|
+| --- | --- |
 | Image | `hashicorp/vault:latest` |
 | Mode | `vault server -config=/vault/config.hcl`, file backend, auto-init + auto-unseal via `entrypoint.sh` |
 | Storage | `vault_data` volume mounted at `/vault/file` (owned by the image's `vault` user, so it is writable without root) |
@@ -129,7 +146,8 @@ Defined in `docker-compose.yml`. Runs `ci/vault/entrypoint.sh` instead of `-dev`
 
 ### `vault-bootstrap` service
 
-One-shot provisioner (`ci/vault/bootstrap.sh`), then exits. Depends on the `vault` healthcheck, so it runs only after Vault is unsealed and `init.json` exists.
+- One-shot provisioner (`ci/vault/bootstrap.sh`), then exits.
+- Depends on the `vault` healthcheck, so it runs only after Vault is unsealed and `init.json` exists.
 
 `bootstrap.sh` (idempotent, safe on every boot):
 
@@ -137,41 +155,52 @@ One-shot provisioner (`ci/vault/bootstrap.sh`), then exits. Depends on the `vaul
 2. Enable a **kv-v2** engine at mount `ack-nestjs-boilerplate/` if missing.
 3. Enable **AppRole** auth if missing (local stand-in for production's OIDC/JWT).
 4. Per environment (`production`, `staging`, `development`):
-   - Apply a read-only policy from `ci/vault/policies/<env>-ro.hcl` (one env path, no write, no cross-env access).
-   - Create AppRole `ack-nestjs-boilerplate-<env>` with only that policy and a short token TTL.
-   - Mint `role_id` + `secret_id`, persist to `generated/vault/<env>.approle`, so `vault:pull` authenticates without root.
-5. Seed `development` from `.env.example`, first run only (empty path). `production` and `staging` stay empty: a dev box must never hold real production secrets.
+    - Apply a read-only policy from `ci/vault/policies/<env>-ro.hcl` (one env path, no write, no cross-env access).
+    - Create AppRole `ack-nestjs-boilerplate-<env>` with only that policy and a short token TTL.
+    - Mint `role_id` + `secret_id`, persist to `generated/vault/<env>.approle`, so `vault:pull` authenticates without root.
+5. Seed `development` from `.env.example`, first run only (empty path):
+    - `production` and `staging` stay empty.
+    - A dev box never holds real production secrets.
 
-Roles: bootstrap is the privileged **broker** (holds root, delivers scoped creds). `vault:pull` is a pure **consumer** that never touches root.
+Roles:
 
-Storage is persistent: re-seeding happens only when `development` is empty. Edits in Vault survive restarts.
+- Bootstrap is the privileged **broker** (holds root, delivers scoped creds).
+- `vault:pull` is a pure **consumer** that never touches root.
+
+Storage is persistent:
+
+- Re-seeding happens only when `development` is empty.
+- Edits in Vault survive restarts.
 
 ### `vault:pull` script
 
-`ci/vault/pull.sh`, exposed as `pnpm vault:pull`. The **producer**: pulls one env's secret and writes it to a local env file.
+- `ci/vault/pull.sh`, exposed as `pnpm vault:pull`.
+- The **producer**: pulls one env's secret and writes it to a local env file.
 
 ```bash
 sh ci/vault/pull.sh [ENV] [OUT]
 # ENV defaults to development, OUT defaults to .env
 ```
 
-- Resolves the KV path from `ENV`; runs auth + read **inside** the vault container via `docker compose exec` over `127.0.0.1:8200` (in-container loopback).
-- Reads the AppRole creds bootstrap minted to `generated/vault/<env>.approle` (no root), logs in for a **scoped, read-only token**, runs `kv get` with it. Mirrors production, where a workload holds delivered scoped creds, not root.
+- Resolves the KV path from `ENV`.
+- Runs auth + read **inside** the vault container via `docker compose exec` over `127.0.0.1:8200` (in-container loopback).
+- Reads the AppRole creds bootstrap minted to `generated/vault/<env>.approle`, never the root token.
+- Logs in for a **scoped, read-only token** and runs `kv get` with it.
+- Mirrors production, where a workload holds delivered scoped creds, not root.
 - Flattens `.data.data` to `key=value` via **Node** (already a dependency, no `jq`).
 - Writes a **temp file first**, then `mv` on success, so a failed fetch never truncates an existing env file.
 
 ## KV Layout
 
-> [!TIP]
-> `project/env` scales to multiple projects: each project gets its own kv-v2 mount, isolating policies, audit, and access. For a second project, give it its own `KV_MOUNT` and policy files.
+> [!TIP] `project/env` scales to multiple projects: each project gets its own kv-v2 mount, isolating policies, audit, and access. For a second project, give it its own `KV_MOUNT` and policy files.
 
 **kv-v2** engine, structured **project then environment**: mount is the project, each environment is a path under it.
 
-| Part | Default | Env var |
-|---|---|---|
-| Mount (project) | `ack-nestjs-boilerplate` | `KV_MOUNT` |
-| Environments | `production staging development` | `KV_ENVS` |
-| Seeded environment | `development` | `KV_SEED_ENV` |
+| Part               | Default                          | Env var       |
+| ------------------ | -------------------------------- | ------------- |
+| Mount (project)    | `ack-nestjs-boilerplate`         | `KV_MOUNT`    |
+| Environments       | `production staging development` | `KV_ENVS`     |
+| Seeded environment | `development`                    | `KV_SEED_ENV` |
 
 Full paths: **`ack-nestjs-boilerplate/{production,staging,development}`**
 
@@ -205,7 +234,12 @@ Vault services start only with the `vault` profile:
 docker compose --profile vault up -d
 ```
 
-First boot: entrypoint inits + unseals, bootstrap provisions and seeds `development`. Confirm via logs:
+On first boot:
+
+- The entrypoint inits and unseals Vault.
+- Bootstrap provisions Vault and seeds `development`.
+
+Confirm through the logs:
 
 ```bash
 docker compose logs vault
@@ -229,7 +263,9 @@ pnpm vault:pull
 # vault:pull: wrote .env (env=development)
 ```
 
-`.env` now holds every key from the `development` secret. Target another env with explicit args:
+`.env` now holds every key from the `development` secret.
+
+Target another env with explicit args:
 
 ```bash
 sh ci/vault/pull.sh staging .env.staging
@@ -237,8 +273,7 @@ sh ci/vault/pull.sh staging .env.staging
 
 ### Step 3: Run the App
 
-> [!NOTE]
-> Vault only **produces** an env file. The app never talks to Vault at runtime; it reads the generated `.env`.
+> [!NOTE] Vault only **produces** an env file. The app never talks to Vault at runtime. It reads the generated `.env`.
 
 Unchanged from here. The app reads `.env` as usual:
 
@@ -251,8 +286,19 @@ The seeded `development` secret copies `.env.example`. These fields are empty th
 - JWT keys and KIDs
 - `APP_ENCRYPTION_SECRET_KEY`
 - `AUTH_TWO_FACTOR_ENCRYPTION_KEY`
+- `AUTH_TWO_FACTOR_ISSUER`
 
-Until those fields hold real values in Vault, `pnpm generate:secret --direct-insert` fills them in the pulled `.env`; the next `pnpm vault:pull` overwrites that file again. See [Installation][ref-doc-installation].
+Until those fields hold real values in Vault:
+
+- `pnpm generate:secret --direct-insert` fills the keys, KIDs, and both encryption secrets in the pulled `.env`.
+- `AUTH_TWO_FACTOR_ISSUER` is set by hand.
+- The next `pnpm vault:pull` overwrites that file again.
+
+The third-party fields:
+
+- AWS, Firebase, social sign-in, and Sentry fields also arrive empty.
+- Validation reads an empty value as unset, so those integrations stay off until their values are filled in.
+- See [Installation][ref-doc-installation].
 
 ### Reading the Root Token
 
@@ -270,8 +316,10 @@ Use the root token for the UI at `http://localhost:8200` (token auth) or the CLI
 
 ### Updating a Secret
 
-> [!NOTE]
-> Storage is persistent. The change survives restarts and is **not** re-seeded away on next boot. Re-seeding happens only when `development` is empty (a fresh volume).
+> [!NOTE] Storage is persistent.
+>
+> - The change survives restarts.
+> - Re-seeding happens only when `development` is empty (a fresh volume), so the next boot does not overwrite the change.
 
 Update in Vault, then re-pull. Auth with the root token from `init.json`:
 
@@ -290,8 +338,10 @@ pnpm vault:pull
 
 ### Resetting Vault
 
-> [!WARNING]
-> Keep the data volume and `generated/vault/init.json` in sync. Delete the volume and the entrypoint re-inits, overwriting `init.json`. Delete `init.json` while the volume persists and auto-unseal fails (key gone).
+> [!WARNING] Keep the data volume and `generated/vault/init.json` in sync.
+>
+> - Deleting the volume makes the entrypoint re-init and overwrite `init.json`.
+> - Deleting `init.json` while the volume persists makes auto-unseal fail, because the key is gone.
 
 Wipe all data and re-initialize (new unseal key + root token):
 
@@ -340,10 +390,11 @@ sequenceDiagram
 
 ## Configuration Reference
 
-The defaults are enough for local development. Override with environment variables when needed.
+- The defaults are enough for local development.
+- Override with environment variables when needed.
 
 | Variable | Used by | Default | Purpose |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `VAULT_CONFIG` | `entrypoint.sh` | `/vault/config.hcl` | Server config file path |
 | `INIT_FILE` | `entrypoint.sh` / `bootstrap.sh` | `/vault/init/init.json` | Init output (unseal key + root token) |
 | `VAULT_ADDR` | `bootstrap.sh` / `entrypoint.sh` | `http://vault:8200` (bootstrap), `http://127.0.0.1:8200` (entrypoint) | Vault API address (network alias from bootstrap, in-container loopback from the entrypoint) |
@@ -355,7 +406,7 @@ The defaults are enough for local development. Override with environment variabl
 Relevant files:
 
 | File | Role |
-|---|---|
+| --- | --- |
 | `ci/vault/config.hcl` | Server config: file storage at `/vault/file`, TCP listener, UI |
 | `ci/vault/entrypoint.sh` | Auto-init + auto-unseal wrapper around `vault server` |
 | `ci/vault/bootstrap.sh` | Provisions mount, AppRole, policies, and seeds `development` |
@@ -366,7 +417,6 @@ Relevant files:
 
 [ref-vault]: https://developer.hashicorp.com/vault
 [ref-approle]: https://developer.hashicorp.com/vault/docs/auth/approle
-
 [ref-doc-installation]: installation.md
 [ref-doc-environment]: environment.md
 [ref-doc-configuration]: configuration.md

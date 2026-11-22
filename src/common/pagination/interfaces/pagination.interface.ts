@@ -4,6 +4,10 @@ import {
     EnumPaginationOrderDirectionType,
     EnumPaginationType,
 } from '@common/pagination/enums/pagination.enum';
+import type { PaginationInvalidPageException } from '@common/pagination/exceptions/pagination.invalid-page.exception';
+import type { PaginationPageCannotBeLessThanOneException } from '@common/pagination/exceptions/pagination.page-cannot-be-less-than-one.exception';
+import type { PaginationPageExceedsMaximumException } from '@common/pagination/exceptions/pagination.page-exceeds-maximum.exception';
+import type { Prisma } from '@generated/prisma-client/client';
 
 export type IPaginationQueryFilter = Record<
     string,
@@ -14,6 +18,8 @@ export type IPaginationOrderBy = Record<
     string,
     EnumPaginationOrderDirectionType
 >;
+
+export type IPaginationOrderByQuery = string | undefined;
 
 export interface IPaginationQuery {
     search?: string;
@@ -27,72 +33,100 @@ export interface IPaginationQuery {
 }
 
 export interface IPaginationQueryOffsetOptions {
-    availableOrderBy?: readonly string[];
+    availableOrderBy: readonly string[];
     availableSearch?: readonly string[];
     defaultPerPage?: number;
 }
 
 export interface IPaginationQueryCursorOptions {
-    availableOrderBy?: readonly string[];
+    scope: string;
+    availableOrderBy: readonly string[];
     availableSearch?: readonly string[];
     defaultPerPage?: number;
-    cursorField?: string;
 }
 
-export interface IPaginationQueryDefaultWhere {
-    or?: Record<string, { contains?: string }>[];
-    [key: string]: unknown;
+export interface IPaginationSearchWhere {
+    OR: Array<Record<string, Prisma.StringFilter>>;
 }
 
-export interface IPaginationQueryReturn<
-    TArgsWhere = IPaginationQueryDefaultWhere,
-> {
-    where?: TArgsWhere;
-    orderBy?: IPaginationOrderBy[];
+export interface IPaginationQueryReturn {
+    where?: IPaginationSearchWhere;
+    orderBy: IPaginationOrderBy[];
     limit: number;
 }
 
-export interface IPaginationQueryOffsetParams<
-    TArgsWhere = unknown,
-> extends IPaginationQueryReturn<TArgsWhere> {
+export interface IPaginationQueryOffsetParams extends IPaginationQueryReturn {
     skip: number;
 }
 
-export interface IPaginationQueryCursorParams<
-    TArgsWhere = unknown,
-> extends IPaginationQueryReturn<TArgsWhere> {
+export interface IPaginationQueryCursorParams extends IPaginationQueryReturn {
     cursor?: string;
-    cursorField?: string;
+    fingerprint: string;
 }
 
-export type IPaginationShape =
-    | { include?: unknown; select?: never }
-    | { select?: unknown; include?: never };
+export interface IPaginationDelegate {
+    findMany(args: never): PromiseLike<object[]>;
+    count(args: never): PromiseLike<number>;
+}
 
-export type IPaginationOffsetArgs<TArgsWhere = unknown> =
-    IPaginationQueryOffsetParams<TArgsWhere> & IPaginationShape;
+export type IPaginationDelegateArgs<TDelegate> = Prisma.Args<
+    TDelegate,
+    'findMany'
+>;
 
-export type IPaginationCursorArgs<TArgsWhere = unknown> =
-    IPaginationQueryCursorParams<TArgsWhere> & {
-        includeCount?: boolean;
-    } & IPaginationShape;
+export type IPaginationDelegateShape<TDelegate> =
+    | {
+          select?: IPaginationDelegateArgs<TDelegate> extends {
+              select?: infer TSelect;
+          }
+              ? TSelect
+              : never;
+          include?: never;
+      }
+    | {
+          include?: IPaginationDelegateArgs<TDelegate> extends {
+              include?: infer TInclude;
+          }
+              ? TInclude
+              : never;
+          select?: never;
+      };
+
+export type IPaginationDelegateRow<TDelegate, TShape> =
+    Prisma.Result<TDelegate, TShape, 'findMany'> extends ReadonlyArray<
+        infer TRow
+    >
+        ? TRow
+        : never;
+
+export type IPaginationOffsetArgs<TDelegate> = Omit<
+    IPaginationQueryOffsetParams,
+    'where'
+> & {
+    where?: NonNullable<IPaginationDelegateArgs<TDelegate>['where']>;
+};
+
+export type IPaginationCursorArgs<TDelegate> = Omit<
+    IPaginationQueryCursorParams,
+    'where'
+> & {
+    where?: NonNullable<IPaginationDelegateArgs<TDelegate>['where']>;
+    includeCount?: boolean;
+};
+
+export type IPaginationPageException =
+    | PaginationInvalidPageException
+    | PaginationPageExceedsMaximumException
+    | PaginationPageCannotBeLessThanOneException;
 
 export interface IPaginationQueryFilterOptions {
     customField?: string;
 }
 
-export interface IPaginationQueryFilterNumberOptions extends IPaginationQueryFilterOptions {
-    isNumber: true;
+export interface IPaginationQueryFilterEqualOptions extends IPaginationQueryFilterOptions {
+    isBoolean?: boolean;
+    isNumber?: boolean;
 }
-
-export interface IPaginationQueryFilterBooleanOptions extends IPaginationQueryFilterOptions {
-    isBoolean: true;
-}
-
-export type IPaginationQueryFilterEqualOptions =
-    | IPaginationQueryFilterOptions
-    | IPaginationQueryFilterBooleanOptions
-    | IPaginationQueryFilterNumberOptions;
 
 export interface IPaginationQueryFilterDateOptions extends IPaginationQueryFilterOptions {
     dayOf?: EnumHelperDateDayOf;
@@ -143,42 +177,30 @@ export interface IPaginationCursorReturn<T = unknown> {
     data: T[];
 }
 
-export interface IPaginationRepository {
-    findMany(args?: unknown): Promise<unknown[]>;
-    count(args?: unknown): Promise<number>;
+export type IPaginationCursorScalar = string | number | boolean | Date;
+
+export type IPaginationCursorJsonValue =
+    string | number | boolean | { $date: string };
+
+export interface IPaginationCursorKeyset {
+    OR: Record<
+        string,
+        | IPaginationCursorScalar
+        | { gt: IPaginationCursorScalar }
+        | { lt: IPaginationCursorScalar }
+    >[];
 }
 
-export interface IPaginationCursorValue {
-    cursor: string;
+export interface IPaginationCursorToken {
+    values: Record<string, IPaginationCursorJsonValue>;
     fingerprint: string;
 }
 
-/**
- * Wire shape shared by offset list query DTOs after zod parse.
- */
-export interface IPaginationOffsetQueryDto {
-    page?: number;
-    perPage?: number;
-    search?: string;
-    orderBy?: string | string[];
-}
-
-/**
- * Wire shape shared by cursor list query DTOs after zod parse.
- */
-export interface IPaginationCursorQueryDto {
-    cursor?: string;
-    perPage?: number;
-    search?: string;
-    orderBy?: string | string[];
-}
-
-/**
- * One filter helper result: Prisma `where` fragment plus the scalar the store surfaces.
- */
 export interface IPaginationQueryFilterResult<
-    TWhere extends Record<string, unknown> = Record<string, unknown>,
+    TWhere extends Record<string, unknown>,
 > {
     where: TWhere;
     storeFilter: IPaginationQueryFilter;
 }
+
+export type IPaginationQueryPatch = Partial<IPaginationQuery>;
