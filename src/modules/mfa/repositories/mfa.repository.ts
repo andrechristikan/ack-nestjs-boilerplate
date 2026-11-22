@@ -2,6 +2,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { MfaInclude } from '@modules/mfa/constants/mfa.constant';
 import type { IMfa } from '@modules/mfa/interfaces/mfa.interface';
+import type { Mfa } from '@generated/prisma-client/client';
 import type { IMfaRepository } from '@modules/mfa/interfaces/mfa.repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -27,10 +28,9 @@ export class MfaRepository implements IMfaRepository {
         tx: IDatabaseTransactionClient,
         userId: string,
         createdBy: string
-    ): Promise<IMfa> {
+    ): Promise<Mfa> {
         return tx.mfa.create({
             data: { userId, lockedUntil: null, createdBy },
-            include: MfaInclude,
         });
     }
 

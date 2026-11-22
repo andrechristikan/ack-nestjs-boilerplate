@@ -39,6 +39,7 @@ import {
     EnumNotificationLoginLockedMethod,
 } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import type { Mfa } from '@generated/prisma-client/client';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
@@ -101,7 +102,7 @@ export class MfaService {
         return null;
     }
 
-    private assertNotLocked(mfa: IMfa | null): void {
+    private assertNotLocked(mfa: Mfa | null): void {
         const now = this.helperDateService.create();
         const lockedUntil = mfa?.lockedUntil ?? null;
         if (lockedUntil !== null && lockedUntil > now) {
@@ -350,7 +351,7 @@ export class MfaService {
         tx: IDatabaseTransactionClient,
         userId: string,
         createdBy: string
-    ): Promise<IMfa> {
+    ): Promise<Mfa> {
         return this.mfaRepository.createInTx(tx, userId, createdBy);
     }
 

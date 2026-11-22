@@ -1,4 +1,5 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import type { Mfa } from '@generated/prisma-client/client';
 import type { IMfa } from '@modules/mfa/interfaces/mfa.interface';
 
 export interface IMfaRepository {
@@ -11,7 +12,7 @@ export interface IMfaRepository {
         tx: IDatabaseTransactionClient,
         userId: string,
         createdBy: string
-    ): Promise<IMfa>;
+    ): Promise<Mfa>;
     deleteByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string
