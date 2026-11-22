@@ -89,7 +89,7 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
     async updateStatusInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        { isEnable, rolloutPercent, targetUserIds }: IFeatureFlagUpdateStatus
+        { isEnable, rolloutPercent }: IFeatureFlagUpdateStatus
     ): Promise<IFeatureFlag | null> {
         const { count } = await tx.featureFlag.updateMany({
             where: { id },
@@ -98,11 +98,6 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
         if (count === 0) {
             return null;
         }
-
-        await tx.featureFlagUser.deleteMany({ where: { featureFlagId: id } });
-        await tx.featureFlagUser.createMany({
-            data: targetUserIds.map(userId => ({ featureFlagId: id, userId })),
-        });
 
         const row = await tx.featureFlag.findFirst({
             where: { id },
@@ -115,6 +110,28 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
         const flag = this.toFeatureFlag(row);
 
         return flag;
+    }
+
+    async addTargetUserInTx(
+        tx: IDatabaseTransactionClient,
+        featureFlagId: string,
+        userId: string
+    ): Promise<void> {
+        await tx.featureFlagUser.upsert({
+            where: { featureFlagId_userId: { featureFlagId, userId } },
+            create: { featureFlagId, userId },
+            update: {},
+        });
+    }
+
+    async removeTargetUserInTx(
+        tx: IDatabaseTransactionClient,
+        featureFlagId: string,
+        userId: string
+    ): Promise<void> {
+        await tx.featureFlagUser.deleteMany({
+            where: { featureFlagId, userId },
+        });
     }
 
     async updateMetadataInTx(

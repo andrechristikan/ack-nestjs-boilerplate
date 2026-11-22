@@ -45,7 +45,6 @@ describe('FeatureFlagUpdateStatusByAdminUseCase', () => {
             const body: FeatureFlagUpdateStatusRequestDto = {
                 isEnable: false,
                 rolloutPercent: 0,
-                targetUserIds: [],
             };
             const updated = { ...featureFlag, isEnable: false };
             featureFlagService.updateStatusByAdmin.mockResolvedValue(updated);
@@ -58,7 +57,7 @@ describe('FeatureFlagUpdateStatusByAdminUseCase', () => {
             expect(result).toEqual({ data: updated });
             expect(featureFlagService.updateStatusByAdmin).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439011',
-                { isEnable: false, rolloutPercent: 0, targetUserIds: [] }
+                { isEnable: false, rolloutPercent: 0 }
             );
         });
     });

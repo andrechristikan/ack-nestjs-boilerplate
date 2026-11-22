@@ -280,4 +280,52 @@ export class FeatureFlagService {
             return updated;
         });
     }
+
+    async addTargetUserByAdmin(
+        featureFlagId: string,
+        userId: string
+    ): Promise<IFeatureFlag> {
+        return this.outboxService.withTransaction(async tx => {
+            const flag =
+                await this.featureFlagRepository.findOneById(featureFlagId);
+            if (!flag) {
+                throw new FeatureFlagNotFoundException();
+            }
+            await this.featureFlagRepository.addTargetUserInTx(
+                tx,
+                featureFlagId,
+                userId
+            );
+            await this.addInvalidateEffectInTx(tx, flag.key);
+            return {
+                ...flag,
+                targetUserIds: Array.from(
+                    new Set([...flag.targetUserIds, userId])
+                ),
+            };
+        });
+    }
+
+    async removeTargetUserByAdmin(
+        featureFlagId: string,
+        userId: string
+    ): Promise<IFeatureFlag> {
+        return this.outboxService.withTransaction(async tx => {
+            const flag =
+                await this.featureFlagRepository.findOneById(featureFlagId);
+            if (!flag) {
+                throw new FeatureFlagNotFoundException();
+            }
+            await this.featureFlagRepository.removeTargetUserInTx(
+                tx,
+                featureFlagId,
+                userId
+            );
+            await this.addInvalidateEffectInTx(tx, flag.key);
+            return {
+                ...flag,
+                targetUserIds: flag.targetUserIds.filter(id => id !== userId),
+            };
+        });
+    }
 }

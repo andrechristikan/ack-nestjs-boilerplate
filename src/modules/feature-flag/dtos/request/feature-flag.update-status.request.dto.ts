@@ -1,6 +1,4 @@
 import { z } from 'zod';
-import { faker } from '@faker-js/faker';
-import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 
 /** @public */
 export const FeatureFlagUpdateStatusRequestSchema = z.strictObject({
@@ -12,14 +10,6 @@ export const FeatureFlagUpdateStatusRequestSchema = z.strictObject({
         description: 'Feature flag rollout percentage (0-100)',
         example: 50,
     }),
-    targetUserIds: z
-        .array(RequestUuidSchema)
-        .max(1000)
-        .meta({
-            description:
-                'Target user ids allow-list, at most 1000; [] clears it',
-            example: [faker.string.uuid()],
-        }),
 });
 
 /** @public */

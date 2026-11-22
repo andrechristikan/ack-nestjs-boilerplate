@@ -8,7 +8,6 @@ export type IFeatureFlagMetadata = Record<string, IFeatureFlagMetadataValue>;
 export interface IFeatureFlagUpdateStatus {
     isEnable: boolean;
     rolloutPercent: number;
-    targetUserIds: string[];
 }
 
 export interface IFeatureFlagUpdateMetadata {

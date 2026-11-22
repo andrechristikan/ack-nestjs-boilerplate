@@ -239,9 +239,9 @@ It throws:
 3. Otherwise the user falls back to rollout percentage.
 4. Anonymous requests (no user) skip targeting and go straight to the anonymous rollout branch (see [Rollout Percentage](#rollout-percentage)).
 
-- `targetUserIds` is admin-editable via `PATCH /admin/feature-flag/update/:featureFlagId/status` and defaults to empty.
-- The same body carries `isEnable`, `rolloutPercent` (integer 0 to 100), and `targetUserIds`. All three are required, and each replaces the stored value.
-- `targetUserIds` holds 24-character hexadecimal user ids. Send `[]` to clear the list.
+- Admins add one UUID through `PUT /admin/feature-flag/:featureFlagId/user` with a `{ "userId": "..." }` body and remove one through `DELETE /admin/feature-flag/:featureFlagId/user/:userId`.
+- `PATCH /admin/feature-flag/update/:featureFlagId/status` updates `isEnable` and `rolloutPercent` (integer 0 to 100) without changing target users.
+- The admin and system flag-list responses include `targetUserIds`.
 
 ## Rollout Percentage
 
@@ -314,7 +314,9 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 | --- | --- | --- |
 | `GET` | `/system/feature-flag/list` | System API key lists the flags (cursor) |
 | `GET` | `/admin/feature-flag/list` | Admin lists the flags (offset), `search` on `key`, `orderBy` on `createdAt` or `key` |
-| `PATCH` | `/admin/feature-flag/update/:featureFlagId/status` | Admin updates `isEnable`, `rolloutPercent`, and `targetUserIds` |
+| `PATCH` | `/admin/feature-flag/update/:featureFlagId/status` | Admin updates `isEnable` and `rolloutPercent` |
+| `PUT` | `/admin/feature-flag/:featureFlagId/user` | Admin adds a target user |
+| `DELETE` | `/admin/feature-flag/:featureFlagId/user/:userId` | Admin removes a target user |
 | `PUT` | `/admin/feature-flag/update/:featureFlagId/metadata` | Admin replaces the metadata values |
 
 - The system list route carries `ApiKeySystemProtected()` only: an `x-api-key` of type `system`. It needs no JWT, role, or policy ability.
@@ -326,7 +328,7 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 - Feature flags cannot be added via admin API
 - Feature flags cannot be deleted
 - Metadata keys cannot be modified (add/remove)
-- Only values can be updated: `isEnable`, `rolloutPercent`, `targetUserIds`, metadata values
+- Only values can be updated: `isEnable`, `rolloutPercent`, target users, metadata values
 
 <!-- REFERENCES -->
 
