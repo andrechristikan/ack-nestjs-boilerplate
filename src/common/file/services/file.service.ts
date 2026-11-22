@@ -37,13 +37,10 @@ export class FileService {
         randomLength,
     }: IFileRandomFilenameOptions): string {
         const randomPath = this.helperStringService.random(randomLength ?? 10);
-        let fullPath: string = `${path ? `${path}/` : ''}${prefix ? `${prefix}-` : ''}${randomPath}.${extension.toLowerCase()}`;
 
-        if (fullPath.startsWith('/')) {
-            fullPath = fullPath.replace('/', '');
-        }
-
-        return fullPath;
+        return this.helperStringService.stripLeadingSlashes(
+            `${path ? `${path}/` : ''}${prefix ? `${prefix}-` : ''}${randomPath}.${extension.toLowerCase()}`
+        );
     }
 
     extractExtensionFromFilename(filename: string): string {

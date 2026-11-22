@@ -102,7 +102,6 @@ export class UserService {
         return { email: deletedEmail, username: deletedUsername };
     }
 
-    /** True when the username does not match the allowed pattern, so true rejects it. */
     private isUsernamePatternInvalid(username: string): boolean {
         return !!username.search(UserUsernameRegex);
     }

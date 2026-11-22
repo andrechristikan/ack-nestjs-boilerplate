@@ -9,8 +9,13 @@ import {
     EnumUserStatus,
 } from '@generated/prisma-client/client';
 import type { User } from '@generated/prisma-client/client';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import type {
+    IUser,
+    IUserMobileNumber,
+    IUserProfile,
+} from '@modules/user/interfaces/user.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
@@ -70,6 +75,35 @@ describe('UserUtil', () => {
         },
     };
 
+    const country = {
+        id: 'country-marigold',
+        name: 'Marigold Coast',
+        alpha2Code: 'MG',
+        alpha3Code: 'MGC',
+        phoneCode: ['+62'],
+        continent: 'Atlantis',
+        timezone: 'UTC',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+    };
+
+    const mobileNumber: IUserMobileNumber = {
+        id: 'mobile-marigold',
+        userId: 'user-marigold',
+        countryId: 'country-marigold',
+        phoneCode: '+62',
+        number: '+6281234567890',
+        isVerified: true,
+        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+        country,
+    };
+
     beforeEach(async () => {
         configService = buildConfigService({
             ...TestUnitKitConfigValues,
@@ -81,9 +115,36 @@ describe('UserUtil', () => {
                 UserUtil,
                 { provide: ConfigService, useValue: configService },
                 HelperDateService,
+                HelperStringService,
             ],
         }).compile();
         util = module.get(UserUtil);
+    });
+
+    describe('toCensoredMobileNumber', () => {
+        it('censors the number and keeps every other field', () => {
+            expect(util.toCensoredMobileNumber(mobileNumber)).toEqual({
+                ...mobileNumber,
+                number: '+628********90',
+            });
+        });
+    });
+
+    describe('toCensoredProfile', () => {
+        it('censors the email and each mobile number and keeps every other field', () => {
+            const profile: IUserProfile = {
+                ...iUser,
+                email: 'marigold.finch@example.com',
+                country,
+                mobileNumbers: [mobileNumber],
+            };
+
+            expect(util.toCensoredProfile(profile)).toEqual({
+                ...profile,
+                email: 'mari********ch@e**********',
+                mobileNumbers: [{ ...mobileNumber, number: '+628********90' }],
+            });
+        });
     });
 
     describe('isInsideResendWindow', () => {

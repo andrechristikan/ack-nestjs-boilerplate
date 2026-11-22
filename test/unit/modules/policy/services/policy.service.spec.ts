@@ -19,7 +19,7 @@ import {
 import type { Policy } from '@generated/prisma-client/client';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
-import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.ability.factory';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';

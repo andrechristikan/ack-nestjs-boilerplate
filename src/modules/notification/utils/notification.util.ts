@@ -8,6 +8,7 @@ import { NotificationSettingContract } from '@modules/notification/contracts/not
 import type {
     INotificationContext,
     INotificationSealedRecord,
+    INotificationSendProcess,
     INotificationSnapshot,
     INotificationUserSettingPreference,
     INotificationWorkspaceInviteFields,
@@ -225,7 +226,10 @@ export class NotificationUtil {
         return sealed;
     }
 
-    toStepKey(notificationId: string, process: string): string {
+    toStepKey(
+        notificationId: string,
+        process: INotificationSendProcess
+    ): string {
         return this.helperStringService.fillPattern(this.stepPattern, {
             process,
             notificationId,

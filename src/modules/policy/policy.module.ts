@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
-import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.ability.factory';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyUtil } from '@modules/policy/utils/policy.util';

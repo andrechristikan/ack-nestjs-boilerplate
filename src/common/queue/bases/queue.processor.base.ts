@@ -30,9 +30,7 @@ export abstract class QueueProcessorBase extends WorkerHost {
         try {
             await job.log(message);
         } catch (error: unknown) {
-            this.logger.warn(
-                error instanceof Error ? error.message : String(error)
-            );
+            this.logger.warn(error, 'Queue job log write failed');
         }
     }
 

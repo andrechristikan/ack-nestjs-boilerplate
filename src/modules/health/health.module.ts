@@ -3,7 +3,7 @@ import { FirebaseModule } from '@common/firebase/firebase.module';
 import { EnumHealthQueue } from '@modules/health/enums/health.enum';
 import { HealthQueueFactory } from '@modules/health/factories/health.queue.factory';
 import { HealthAppleIndicator } from '@modules/health/indicators/health.apple.indicator';
-import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3.indicator';
+import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3-bucket.indicator';
 import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
 import { HealthDatabaseIndicator } from '@modules/health/indicators/health.database.indicator';
 import { HealthFirebaseIndicator } from '@modules/health/indicators/health.firebase.indicator';

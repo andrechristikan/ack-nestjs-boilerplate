@@ -28,7 +28,6 @@ export class MfaGeneratePasskeyRegistrationUseCase implements IAppUseCase<
         const [passkeyOptions] = await Promise.all([
             this.mfaPasskeyService.getRegistrationOptions(
                 authContext.userId,
-                user.email,
                 user.username
             ),
             this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.passkey),

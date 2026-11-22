@@ -1,6 +1,12 @@
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IUser, IUserName } from '@modules/user/interfaces/user.interface';
+import type {
+    IUser,
+    IUserMobileNumber,
+    IUserName,
+    IUserProfile,
+} from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { User } from '@generated/prisma-client/client';
@@ -13,7 +19,8 @@ export class UserUtil {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly helperStringService: HelperStringService
     ) {
         const availableLanguages = this.configService.get<string[]>(
             'message.availableLanguages'
@@ -28,6 +35,23 @@ export class UserUtil {
 
     normalizeEmail(email: string): string {
         return email.trim().toLowerCase();
+    }
+
+    toCensoredMobileNumber(mobileNumber: IUserMobileNumber): IUserMobileNumber {
+        const number = this.helperStringService.censorMobileNumber(
+            mobileNumber.number
+        );
+
+        return { ...mobileNumber, number };
+    }
+
+    toCensoredProfile(profile: IUserProfile): IUserProfile {
+        const email = this.helperStringService.censorEmail(profile.email);
+        const mobileNumbers = profile.mobileNumbers.map(mobileNumber =>
+            this.toCensoredMobileNumber(mobileNumber)
+        );
+
+        return { ...profile, email, mobileNumbers };
     }
 
     hasBadWord(str: string): boolean {

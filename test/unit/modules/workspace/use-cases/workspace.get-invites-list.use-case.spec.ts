@@ -11,7 +11,10 @@ import {
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumWorkspaceInviteStatus } from '@generated/prisma-client/client';
+import {
+    EnumWorkspaceInviteStatus,
+    EnumWorkspaceMemberRole,
+} from '@generated/prisma-client/client';
 import { EnumWorkspaceInviteOrderBy } from '@modules/workspace/enums/workspace.enum';
 
 import {
@@ -21,6 +24,7 @@ import {
 import type { WorkspaceInviteListRequestDto } from '@modules/workspace/dtos/request/workspace.invite-list.request.dto';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import type { IWorkspaceInviteList } from '@modules/workspace/interfaces/workspace.interface';
+import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { WorkspaceGetInvitesListUseCase } from '@modules/workspace/use-cases/workspace.get-invites-list.use-case';
 import {
     buildWorkspace,
@@ -57,6 +61,7 @@ describe('WorkspaceGetInvitesListUseCase', () => {
                     provide: WorkspaceInviteService,
                     useValue: workspaceInviteService,
                 },
+                WorkspaceUtil,
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
@@ -70,6 +75,41 @@ describe('WorkspaceGetInvitesListUseCase', () => {
     });
 
     describe('execute', () => {
+        it('returns each invite of the page with its email censored', async () => {
+            const invite: IWorkspaceInviteList = {
+                id: 'invite-1',
+                workspaceId: 'workspace-1',
+                email: 'invitee@example.com',
+                workspaceRole: EnumWorkspaceMemberRole.member,
+                projectId: null,
+                projectRole: null,
+                reference: 'REF123',
+                expiredAt: new Date('2026-02-01T00:00:00.000Z'),
+                status: EnumWorkspaceInviteStatus.pending,
+                invitedByUserId: 'user-1',
+                acceptedAt: null,
+                acceptedByUserId: null,
+                createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                createdBy: 'user-1',
+                updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+                updatedBy: null,
+            };
+            const page: IResponsePaginationReturn<IWorkspaceInviteList> = {
+                type: EnumPaginationType.cursor,
+                perPage: 20,
+                hasNext: false,
+                data: [invite],
+            };
+            workspaceInviteService.getInvitesList.mockResolvedValue(page);
+
+            await expect(
+                useCase.execute(workspaceContext, {})
+            ).resolves.toEqual({
+                ...page,
+                data: [{ ...invite, email: 'invi*ee@e**********' }],
+            });
+        });
+
         it('parses the cursor query, merges the status filter, and returns the page', async () => {
             const query: WorkspaceInviteListRequestDto = {
                 status: 'pending',

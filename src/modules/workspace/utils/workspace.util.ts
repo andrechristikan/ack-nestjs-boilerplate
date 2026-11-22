@@ -1,10 +1,22 @@
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IUserCreateWithWorkspaceInput } from '@modules/user/interfaces/user.interface';
-import type { IWorkspaceOwnedUser } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceInviteList,
+    IWorkspaceOwnedUser,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class WorkspaceUtil {
+    constructor(private readonly helperStringService: HelperStringService) {}
+
+    toCensoredInvite<T extends IWorkspaceInviteList>(invite: T): T {
+        const email = this.helperStringService.censorEmail(invite.email);
+
+        return { ...invite, email };
+    }
+
     buildOwnedUsers(
         inputs: IUserCreateWithWorkspaceInput[],
         slugAttempt: number

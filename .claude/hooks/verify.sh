@@ -5,6 +5,7 @@
 # changed modules; block on failure. A path under src/modules/<name>/ or test/unit/modules/<name>/ adds the filter
 # test/unit/modules/<name>; one under src/common/<name>/ or test/unit/common/<name>/ adds test/unit/common/<name>; any
 # other recorded src/ or test/ path runs the full unit suite. A filtered run passes --passWithNoTests; the full run does not.
+# A green run writes the changed paths' fingerprint to <state>.pass; a Stop whose fingerprint matches it exits 0 unchecked.
 # VERIFY_DRY_RUN=1 prints the test command run_tests would run and exits 0, running neither typecheck nor tests.
 set -uo pipefail
 
@@ -69,10 +70,17 @@ run_tests() {
 
 [ "${VERIFY_DRY_RUN:-0}" = 1 ] && { run_tests; exit 0; }
 
+pass="$state.pass"
+print=$(while IFS= read -r path; do
+    printf '%s %s\n' "$path" "$(git hash-object "$path" 2>/dev/null || echo deleted)"
+done <<< "$changed" | git hash-object --stdin)
+[ "$(cat "$pass" 2>/dev/null)" = "$print" ] && exit 0
+
 out=$(pnpm typecheck 2>&1) || {
     line=$(printf '%s\n' "$out" | grep -m1 'error TS' || printf '%s\n' "$out" | grep -m1 -v '^$' || echo 'pnpm typecheck failed')
     block "pnpm typecheck failed: $line"
 }
 
 run_tests
+echo "$print" >"$pass"
 exit 0

@@ -16,6 +16,7 @@ import type {
     IWorkspaceContext,
     IWorkspaceInviteList,
 } from '@modules/workspace/interfaces/workspace.interface';
+import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { EnumWorkspaceInviteOrderBy } from '@modules/workspace/enums/workspace.enum';
@@ -29,7 +30,8 @@ export class WorkspaceGetInvitesListUseCase implements IAppUseCase<
         private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly paginationFilterUtil: PaginationFilterUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly workspaceUtil: WorkspaceUtil
     ) {}
 
     async execute(
@@ -63,7 +65,9 @@ export class WorkspaceGetInvitesListUseCase implements IAppUseCase<
             );
 
         return {
-            data,
+            data: data.map(invite =>
+                this.workspaceUtil.toCensoredInvite(invite)
+            ),
             ...others,
         };
     }

@@ -365,7 +365,7 @@ describe('UserCreateByAdminUseCase', () => {
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
-                null,
+                authContext,
                 null,
                 stageInput
             );
@@ -510,6 +510,7 @@ describe('UserCreateByAdminUseCase', () => {
     describe('createAdminUsers', () => {
         const requestContext = buildRequestContext();
         const apiKeyContext = buildApiKeyContext();
+        const authContext = buildAuthJwtAccessContext('admin-bramble');
         const acceptanceEntry = {
             userId: 'user-bramble',
             types: [EnumTermPolicyType.termsOfService],
@@ -526,10 +527,10 @@ describe('UserCreateByAdminUseCase', () => {
             const users = await useCase['createAdminUsers'](
                 requestContext,
                 apiKeyContext,
+                authContext,
                 [input],
                 [welcomeEffect],
-                7000,
-                'admin-bramble'
+                7000
             );
 
             expect(users).toEqual([committedUser]);
@@ -564,10 +565,10 @@ describe('UserCreateByAdminUseCase', () => {
             await useCase['createAdminUsers'](
                 requestContext,
                 apiKeyContext,
+                authContext,
                 [input],
                 [welcomeEffect],
-                7000,
-                'admin-bramble'
+                7000
             );
 
             expect(mfaService.createInTx).toHaveBeenCalledWith(
@@ -609,10 +610,10 @@ describe('UserCreateByAdminUseCase', () => {
             await useCase['createAdminUsers'](
                 requestContext,
                 apiKeyContext,
+                authContext,
                 [input],
                 [welcomeEffect],
-                7000,
-                'admin-bramble'
+                7000
             );
 
             expect(databaseService.withTransaction).toHaveBeenCalledWith(
@@ -630,10 +631,10 @@ describe('UserCreateByAdminUseCase', () => {
             const users = await useCase['createAdminUsers'](
                 requestContext,
                 apiKeyContext,
+                authContext,
                 [input],
                 [welcomeEffect],
-                5000,
-                'admin-bramble'
+                5000
             );
 
             expect(users).toEqual([committedUser]);
@@ -651,10 +652,10 @@ describe('UserCreateByAdminUseCase', () => {
                 useCase['createAdminUsers'](
                     requestContext,
                     apiKeyContext,
+                    authContext,
                     [input],
                     [welcomeEffect],
-                    5000,
-                    'admin-bramble'
+                    5000
                 )
             ).rejects.toMatchObject({
                 module: 'user',
@@ -670,10 +671,10 @@ describe('UserCreateByAdminUseCase', () => {
                 useCase['createAdminUsers'](
                     requestContext,
                     apiKeyContext,
+                    authContext,
                     [input],
                     [welcomeEffect],
-                    5000,
-                    'admin-bramble'
+                    5000
                 )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
@@ -690,10 +691,10 @@ describe('UserCreateByAdminUseCase', () => {
                 useCase['createAdminUsers'](
                     requestContext,
                     apiKeyContext,
+                    authContext,
                     [input],
                     [welcomeEffect],
-                    5000,
-                    'admin-bramble'
+                    5000
                 )
             ).rejects.toMatchObject({
                 module: 'database',

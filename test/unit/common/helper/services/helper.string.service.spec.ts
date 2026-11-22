@@ -14,6 +14,16 @@ describe('HelperStringService', () => {
         service = module.get(HelperStringService);
     });
 
+    describe('stripLeadingSlashes', () => {
+        it('strips every leading slash', () => {
+            expect(service.stripLeadingSlashes('//a/b')).toBe('a/b');
+        });
+
+        it('leaves a path without a leading slash unchanged', () => {
+            expect(service.stripLeadingSlashes('a/b/')).toBe('a/b/');
+        });
+    });
+
     describe('random', () => {
         it('generates an alphanumeric string of the requested length', () => {
             const result = service.random(12);
@@ -114,6 +124,36 @@ describe('HelperStringService', () => {
 
         it('masks a fixed 10-character span, keeping the first 3 and last 4 for longer strings', () => {
             expect(service.censor('abcdefghijkl')).toBe('abc**********ijkl');
+        });
+    });
+
+    describe('censorMobileNumber', () => {
+        it('keeps the first 4 and the last 2 characters', () => {
+            expect(service.censorMobileNumber('+6281234567890')).toBe(
+                '+628********90'
+            );
+        });
+
+        it('masks every character of a value of 6 characters or fewer', () => {
+            expect(service.censorMobileNumber('081234')).toBe('******');
+        });
+
+        it('keeps the length of the input', () => {
+            expect(service.censorMobileNumber('+6281234567890')).toHaveLength(
+                14
+            );
+        });
+    });
+
+    describe('censorEmail', () => {
+        it('keeps the first 4 and last 2 characters of the local part and the first character of the domain', () => {
+            expect(service.censorEmail('andre.christikan@gmail.com')).toBe(
+                'andr**********an@g********'
+            );
+        });
+
+        it('masks the whole local part of 6 characters or fewer and keeps the at sign', () => {
+            expect(service.censorEmail('ab@x.io')).toBe('**@x***');
         });
     });
 

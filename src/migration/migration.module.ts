@@ -9,7 +9,7 @@ import { MigrationCountrySeed } from '@migration/seeds/migration.country.seed';
 import { MigrationFeatureFlagSeed } from '@migration/seeds/migration.feature-flag.seed';
 import { MigrationPolicySeed } from '@migration/seeds/migration.policy.seed';
 import { MigrationRoleSeed } from '@migration/seeds/migration.role.seed';
-import { MigrationTemplateEmailNotificationSeed } from '@migration/seeds/migration.template-notification.seed';
+import { MigrationTemplateEmailNotificationSeed } from '@migration/seeds/migration.template-email-notification.seed';
 import { MigrationTermPolicySeed } from '@migration/seeds/migration.term-policy.seed';
 import { MigrationUserSeed } from '@migration/seeds/migration.user.seed';
 import { MigrationWorkspaceSeed } from '@migration/seeds/migration.workspace.seed';

@@ -10,7 +10,7 @@ import type {
     HealthIndicatorResult,
 } from '@nestjs/terminus';
 import { HealthAppleIndicator } from '@modules/health/indicators/health.apple.indicator';
-import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3.indicator';
+import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3-bucket.indicator';
 import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
 import { HealthDatabaseIndicator } from '@modules/health/indicators/health.database.indicator';
 import { HealthService } from '@modules/health/services/health.service';

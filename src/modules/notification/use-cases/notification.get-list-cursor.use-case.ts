@@ -47,11 +47,15 @@ export class NotificationGetListCursorUseCase implements IAppUseCase<
             );
 
         const translated = data.map(notification => {
+            const metadata = this.notificationService.toCensoredMetadata(
+                notification.title,
+                notification.metadata,
+                notification.userId
+            );
             const metadataProperties =
                 this.notificationService.toMessageProperties(
                     notification.title,
-                    notification.metadata,
-                    notification.userId
+                    metadata
                 );
             const properties =
                 this.notificationService.toRejectReasonProperties(
@@ -71,7 +75,7 @@ export class NotificationGetListCursorUseCase implements IAppUseCase<
                 options
             );
 
-            return { ...notification, title, body };
+            return { ...notification, metadata, title, body };
         });
 
         return {

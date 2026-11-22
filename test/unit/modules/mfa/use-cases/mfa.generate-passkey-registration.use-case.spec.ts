@@ -99,7 +99,7 @@ describe('MfaGeneratePasskeyRegistrationUseCase', () => {
 
             expect(
                 mfaPasskeyService.getRegistrationOptions
-            ).toHaveBeenCalledWith('user-quartz', 'quartz@example.com', 'jane');
+            ).toHaveBeenCalledWith('user-quartz', 'jane');
             expect(mfaChallengeService.create).toHaveBeenCalledWith({
                 purpose: EnumMfaChallengePurpose.registration,
                 userId: 'user-quartz',

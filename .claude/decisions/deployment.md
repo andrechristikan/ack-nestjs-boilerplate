@@ -83,6 +83,12 @@ Rule: `docker.md`, Credentials and variables.
 
 - Connecting as root: a leaked `DATABASE_URL` hands out every database and every user.
 
+### Each Redis instance takes its own password
+
+Rule: `docker.md`, Credentials and variables.
+
+- One password shared by both instances: a leaked `REDIS_CACHE_URL` would also open the queue instance and every job on it.
+
 ### Connections inside the compose network stay unencrypted
 
 Rule: `docker-production.md`.

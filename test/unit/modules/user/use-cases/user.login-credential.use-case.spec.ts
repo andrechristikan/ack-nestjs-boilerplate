@@ -5,6 +5,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import {
     EnumActivityLogAction,
     EnumDevicePlatform,
@@ -192,6 +193,7 @@ describe('UserLoginCredentialUseCase', () => {
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 HelperDateService,
+                HelperStringService,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitUserConfigValues),

@@ -153,30 +153,30 @@ import { AnalyticWorkspaceMembershipListUseCase } from '@modules/analytic/use-ca
 import { AnalyticWorkspaceActivityVolumeListUseCase } from '@modules/analytic/use-cases/analytic.workspace-activity-volume-list.use-case';
 import { AnalyticProjectCreationUseCase } from '@modules/analytic/use-cases/analytic.project-creation.use-case';
 import { AnalyticNotificationDeliveryUseCase } from '@modules/analytic/use-cases/analytic.notification-delivery.use-case';
-import { AnalyticCredentialStuffingSummaryUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-summary.use-case';
-import { AnalyticCredentialStuffingListUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-list.use-case';
-import { AnalyticAccountTakeoverSummaryUseCase } from '@modules/analytic/use-cases/analytic.account-takeover-summary.use-case';
-import { AnalyticAccountTakeoverListUseCase } from '@modules/analytic/use-cases/analytic.account-takeover-list.use-case';
-import { AnalyticMassRegistrationSummaryUseCase } from '@modules/analytic/use-cases/analytic.mass-registration-summary.use-case';
-import { AnalyticMassRegistrationListUseCase } from '@modules/analytic/use-cases/analytic.mass-registration-list.use-case';
-import { AnalyticPasswordResetEnumerationSummaryUseCase } from '@modules/analytic/use-cases/analytic.password-reset-enumeration-summary.use-case';
-import { AnalyticPasswordResetEnumerationListUseCase } from '@modules/analytic/use-cases/analytic.password-reset-enumeration-list.use-case';
-import { AnalyticSharedFingerprintSummaryUseCase } from '@modules/analytic/use-cases/analytic.shared-fingerprint-summary.use-case';
-import { AnalyticSharedFingerprintListUseCase } from '@modules/analytic/use-cases/analytic.shared-fingerprint-list.use-case';
-import { AnalyticSessionAfterAdminSummaryUseCase } from '@modules/analytic/use-cases/analytic.session-after-admin-summary.use-case';
-import { AnalyticSessionAfterAdminListUseCase } from '@modules/analytic/use-cases/analytic.session-after-admin-list.use-case';
-import { AnalyticForgotPasswordTokenAbuseSummaryUseCase } from '@modules/analytic/use-cases/analytic.forgot-password-token-abuse-summary.use-case';
-import { AnalyticForgotPasswordTokenAbuseListUseCase } from '@modules/analytic/use-cases/analytic.forgot-password-token-abuse-list.use-case';
-import { AnalyticRiskScoreUseCase } from '@modules/analytic/use-cases/analytic.risk-score.use-case';
-import { AnalyticRiskScoreListUseCase } from '@modules/analytic/use-cases/analytic.risk-score-list.use-case';
-import { AnalyticImpossibleTravelSummaryUseCase } from '@modules/analytic/use-cases/analytic.impossible-travel-summary.use-case';
-import { AnalyticImpossibleTravelListUseCase } from '@modules/analytic/use-cases/analytic.impossible-travel-list.use-case';
-import { AnalyticLoginSpikeIpSummaryUseCase } from '@modules/analytic/use-cases/analytic.login-spike-ip-summary.use-case';
-import { AnalyticLoginSpikeIpListUseCase } from '@modules/analytic/use-cases/analytic.login-spike-ip-list.use-case';
-import { AnalyticFailedLoginSpikeSummaryUseCase } from '@modules/analytic/use-cases/analytic.failed-login-spike-summary.use-case';
-import { AnalyticFailedLoginSpikeListUseCase } from '@modules/analytic/use-cases/analytic.failed-login-spike-list.use-case';
-import { AnalyticDeviceProliferationSummaryUseCase } from '@modules/analytic/use-cases/analytic.device-proliferation-summary.use-case';
-import { AnalyticDeviceProliferationListUseCase } from '@modules/analytic/use-cases/analytic.device-proliferation-list.use-case';
+import { AnalyticFraudCredentialStuffingUseCase } from '@modules/analytic/use-cases/analytic.fraud-credential-stuffing.use-case';
+import { AnalyticFraudCredentialStuffingListUseCase } from '@modules/analytic/use-cases/analytic.fraud-credential-stuffing-list.use-case';
+import { AnalyticFraudAccountTakeoverUseCase } from '@modules/analytic/use-cases/analytic.fraud-account-takeover.use-case';
+import { AnalyticFraudAccountTakeoverListUseCase } from '@modules/analytic/use-cases/analytic.fraud-account-takeover-list.use-case';
+import { AnalyticFraudMassRegistrationUseCase } from '@modules/analytic/use-cases/analytic.fraud-mass-registration.use-case';
+import { AnalyticFraudMassRegistrationListUseCase } from '@modules/analytic/use-cases/analytic.fraud-mass-registration-list.use-case';
+import { AnalyticFraudPasswordResetEnumerationUseCase } from '@modules/analytic/use-cases/analytic.fraud-password-reset-enumeration.use-case';
+import { AnalyticFraudPasswordResetEnumerationListUseCase } from '@modules/analytic/use-cases/analytic.fraud-password-reset-enumeration-list.use-case';
+import { AnalyticFraudSharedFingerprintUseCase } from '@modules/analytic/use-cases/analytic.fraud-shared-fingerprint.use-case';
+import { AnalyticFraudSharedFingerprintListUseCase } from '@modules/analytic/use-cases/analytic.fraud-shared-fingerprint-list.use-case';
+import { AnalyticFraudSessionAfterAdminUseCase } from '@modules/analytic/use-cases/analytic.fraud-session-after-admin.use-case';
+import { AnalyticFraudSessionAfterAdminListUseCase } from '@modules/analytic/use-cases/analytic.fraud-session-after-admin-list.use-case';
+import { AnalyticFraudForgotPasswordTokenAbuseUseCase } from '@modules/analytic/use-cases/analytic.fraud-forgot-password-token-abuse.use-case';
+import { AnalyticFraudForgotPasswordTokenAbuseListUseCase } from '@modules/analytic/use-cases/analytic.fraud-forgot-password-token-abuse-list.use-case';
+import { AnalyticFraudRiskScoreUseCase } from '@modules/analytic/use-cases/analytic.fraud-risk-score.use-case';
+import { AnalyticFraudRiskScoreListUseCase } from '@modules/analytic/use-cases/analytic.fraud-risk-score-list.use-case';
+import { AnalyticAnomalyImpossibleTravelUseCase } from '@modules/analytic/use-cases/analytic.anomaly-impossible-travel.use-case';
+import { AnalyticAnomalyImpossibleTravelListUseCase } from '@modules/analytic/use-cases/analytic.anomaly-impossible-travel-list.use-case';
+import { AnalyticAnomalyLoginSpikeIpUseCase } from '@modules/analytic/use-cases/analytic.anomaly-login-spike-ip.use-case';
+import { AnalyticAnomalyLoginSpikeIpListUseCase } from '@modules/analytic/use-cases/analytic.anomaly-login-spike-ip-list.use-case';
+import { AnalyticAnomalyFailedLoginSpikeUseCase } from '@modules/analytic/use-cases/analytic.anomaly-failed-login-spike.use-case';
+import { AnalyticAnomalyFailedLoginSpikeListUseCase } from '@modules/analytic/use-cases/analytic.anomaly-failed-login-spike-list.use-case';
+import { AnalyticAnomalyDeviceProliferationUseCase } from '@modules/analytic/use-cases/analytic.anomaly-device-proliferation.use-case';
+import { AnalyticAnomalyDeviceProliferationListUseCase } from '@modules/analytic/use-cases/analytic.anomaly-device-proliferation-list.use-case';
 
 @ApiTags('modules.admin.analytic')
 @Controller({
@@ -217,30 +217,30 @@ export class AnalyticAdminController {
         private readonly analyticWorkspaceActivityVolumeListUseCase: AnalyticWorkspaceActivityVolumeListUseCase,
         private readonly analyticProjectCreationUseCase: AnalyticProjectCreationUseCase,
         private readonly analyticNotificationDeliveryUseCase: AnalyticNotificationDeliveryUseCase,
-        private readonly analyticCredentialStuffingSummaryUseCase: AnalyticCredentialStuffingSummaryUseCase,
-        private readonly analyticCredentialStuffingListUseCase: AnalyticCredentialStuffingListUseCase,
-        private readonly analyticAccountTakeoverSummaryUseCase: AnalyticAccountTakeoverSummaryUseCase,
-        private readonly analyticAccountTakeoverListUseCase: AnalyticAccountTakeoverListUseCase,
-        private readonly analyticMassRegistrationSummaryUseCase: AnalyticMassRegistrationSummaryUseCase,
-        private readonly analyticMassRegistrationListUseCase: AnalyticMassRegistrationListUseCase,
-        private readonly analyticPasswordResetEnumerationSummaryUseCase: AnalyticPasswordResetEnumerationSummaryUseCase,
-        private readonly analyticPasswordResetEnumerationListUseCase: AnalyticPasswordResetEnumerationListUseCase,
-        private readonly analyticSharedFingerprintSummaryUseCase: AnalyticSharedFingerprintSummaryUseCase,
-        private readonly analyticSharedFingerprintListUseCase: AnalyticSharedFingerprintListUseCase,
-        private readonly analyticSessionAfterAdminSummaryUseCase: AnalyticSessionAfterAdminSummaryUseCase,
-        private readonly analyticSessionAfterAdminListUseCase: AnalyticSessionAfterAdminListUseCase,
-        private readonly analyticForgotPasswordTokenAbuseSummaryUseCase: AnalyticForgotPasswordTokenAbuseSummaryUseCase,
-        private readonly analyticForgotPasswordTokenAbuseListUseCase: AnalyticForgotPasswordTokenAbuseListUseCase,
-        private readonly analyticRiskScoreUseCase: AnalyticRiskScoreUseCase,
-        private readonly analyticRiskScoreListUseCase: AnalyticRiskScoreListUseCase,
-        private readonly analyticImpossibleTravelSummaryUseCase: AnalyticImpossibleTravelSummaryUseCase,
-        private readonly analyticImpossibleTravelListUseCase: AnalyticImpossibleTravelListUseCase,
-        private readonly analyticLoginSpikeIpSummaryUseCase: AnalyticLoginSpikeIpSummaryUseCase,
-        private readonly analyticLoginSpikeIpListUseCase: AnalyticLoginSpikeIpListUseCase,
-        private readonly analyticFailedLoginSpikeSummaryUseCase: AnalyticFailedLoginSpikeSummaryUseCase,
-        private readonly analyticFailedLoginSpikeListUseCase: AnalyticFailedLoginSpikeListUseCase,
-        private readonly analyticDeviceProliferationSummaryUseCase: AnalyticDeviceProliferationSummaryUseCase,
-        private readonly analyticDeviceProliferationListUseCase: AnalyticDeviceProliferationListUseCase
+        private readonly analyticFraudCredentialStuffingUseCase: AnalyticFraudCredentialStuffingUseCase,
+        private readonly analyticFraudCredentialStuffingListUseCase: AnalyticFraudCredentialStuffingListUseCase,
+        private readonly analyticFraudAccountTakeoverUseCase: AnalyticFraudAccountTakeoverUseCase,
+        private readonly analyticFraudAccountTakeoverListUseCase: AnalyticFraudAccountTakeoverListUseCase,
+        private readonly analyticFraudMassRegistrationUseCase: AnalyticFraudMassRegistrationUseCase,
+        private readonly analyticFraudMassRegistrationListUseCase: AnalyticFraudMassRegistrationListUseCase,
+        private readonly analyticFraudPasswordResetEnumerationUseCase: AnalyticFraudPasswordResetEnumerationUseCase,
+        private readonly analyticFraudPasswordResetEnumerationListUseCase: AnalyticFraudPasswordResetEnumerationListUseCase,
+        private readonly analyticFraudSharedFingerprintUseCase: AnalyticFraudSharedFingerprintUseCase,
+        private readonly analyticFraudSharedFingerprintListUseCase: AnalyticFraudSharedFingerprintListUseCase,
+        private readonly analyticFraudSessionAfterAdminUseCase: AnalyticFraudSessionAfterAdminUseCase,
+        private readonly analyticFraudSessionAfterAdminListUseCase: AnalyticFraudSessionAfterAdminListUseCase,
+        private readonly analyticFraudForgotPasswordTokenAbuseUseCase: AnalyticFraudForgotPasswordTokenAbuseUseCase,
+        private readonly analyticFraudForgotPasswordTokenAbuseListUseCase: AnalyticFraudForgotPasswordTokenAbuseListUseCase,
+        private readonly analyticFraudRiskScoreUseCase: AnalyticFraudRiskScoreUseCase,
+        private readonly analyticFraudRiskScoreListUseCase: AnalyticFraudRiskScoreListUseCase,
+        private readonly analyticAnomalyImpossibleTravelUseCase: AnalyticAnomalyImpossibleTravelUseCase,
+        private readonly analyticAnomalyImpossibleTravelListUseCase: AnalyticAnomalyImpossibleTravelListUseCase,
+        private readonly analyticAnomalyLoginSpikeIpUseCase: AnalyticAnomalyLoginSpikeIpUseCase,
+        private readonly analyticAnomalyLoginSpikeIpListUseCase: AnalyticAnomalyLoginSpikeIpListUseCase,
+        private readonly analyticAnomalyFailedLoginSpikeUseCase: AnalyticAnomalyFailedLoginSpikeUseCase,
+        private readonly analyticAnomalyFailedLoginSpikeListUseCase: AnalyticAnomalyFailedLoginSpikeListUseCase,
+        private readonly analyticAnomalyDeviceProliferationUseCase: AnalyticAnomalyDeviceProliferationUseCase,
+        private readonly analyticAnomalyDeviceProliferationListUseCase: AnalyticAnomalyDeviceProliferationListUseCase
     ) {}
 
     @Doc({ summary: 'admin get user registration count by date range' })
@@ -959,10 +959,10 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/credential-stuffing')
-    async credentialStuffing(): Promise<
+    async fraudCredentialStuffing(): Promise<
         IResponseReturn<IAnalyticFraudCredentialStuffingSummary>
     > {
-        return this.analyticCredentialStuffingSummaryUseCase.execute();
+        return this.analyticFraudCredentialStuffingUseCase.execute();
     }
 
     @Doc({
@@ -984,11 +984,11 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/credential-stuffing/list')
-    async credentialStuffingList(
+    async fraudCredentialStuffingList(
         @Query({ schema: AnalyticCredentialStuffingListRequestSchema })
         query: AnalyticCredentialStuffingListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticCredentialStuffing>> {
-        return this.analyticCredentialStuffingListUseCase.execute(query);
+        return this.analyticFraudCredentialStuffingListUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get account takeover fraud summary' })
@@ -1006,8 +1006,10 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/account-takeover')
-    async accountTakeover(): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticAccountTakeoverSummaryUseCase.execute();
+    async fraudAccountTakeover(): Promise<
+        IResponseReturn<IAnalyticFraudSummary>
+    > {
+        return this.analyticFraudAccountTakeoverUseCase.execute();
     }
 
     @Doc({
@@ -1029,11 +1031,11 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/account-takeover/list')
-    async accountTakeoverList(
+    async fraudAccountTakeoverList(
         @Query({ schema: AnalyticAccountTakeoverListRequestSchema })
         query: AnalyticAccountTakeoverListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticAccountTakeover>> {
-        return this.analyticAccountTakeoverListUseCase.execute(query);
+        return this.analyticFraudAccountTakeoverListUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get mass registration fraud summary' })
@@ -1051,8 +1053,10 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/mass-registration')
-    async massRegistration(): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticMassRegistrationSummaryUseCase.execute();
+    async fraudMassRegistration(): Promise<
+        IResponseReturn<IAnalyticFraudSummary>
+    > {
+        return this.analyticFraudMassRegistrationUseCase.execute();
     }
 
     @Doc({
@@ -1074,11 +1078,11 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/mass-registration/list')
-    async massRegistrationList(
+    async fraudMassRegistrationList(
         @Query({ schema: AnalyticMassRegistrationListRequestSchema })
         query: AnalyticMassRegistrationListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticMassRegistration>> {
-        return this.analyticMassRegistrationListUseCase.execute(query);
+        return this.analyticFraudMassRegistrationListUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get password reset enumeration fraud summary' })
@@ -1096,10 +1100,10 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/password-reset-enumeration')
-    async passwordResetEnumeration(): Promise<
+    async fraudPasswordResetEnumeration(): Promise<
         IResponseReturn<IAnalyticFraudSummary>
     > {
-        return this.analyticPasswordResetEnumerationSummaryUseCase.execute();
+        return this.analyticFraudPasswordResetEnumerationUseCase.execute();
     }
 
     @Doc({
@@ -1121,11 +1125,13 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/password-reset-enumeration/list')
-    async passwordResetEnumerationList(
+    async fraudPasswordResetEnumerationList(
         @Query({ schema: AnalyticPasswordResetEnumerationListRequestSchema })
         query: AnalyticPasswordResetEnumerationListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticPasswordResetEnumeration>> {
-        return this.analyticPasswordResetEnumerationListUseCase.execute(query);
+        return this.analyticFraudPasswordResetEnumerationListUseCase.execute(
+            query
+        );
     }
 
     @Doc({ summary: 'admin get shared device fingerprint fraud summary' })
@@ -1143,8 +1149,10 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/shared-fingerprint')
-    async sharedFingerprint(): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticSharedFingerprintSummaryUseCase.execute();
+    async fraudSharedFingerprint(): Promise<
+        IResponseReturn<IAnalyticFraudSummary>
+    > {
+        return this.analyticFraudSharedFingerprintUseCase.execute();
     }
 
     @Doc({
@@ -1166,11 +1174,11 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/shared-fingerprint/list')
-    async sharedFingerprintList(
+    async fraudSharedFingerprintList(
         @Query({ schema: AnalyticSnapshotListRequestSchema })
         query: AnalyticSnapshotListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticSharedFingerprint>> {
-        return this.analyticSharedFingerprintListUseCase.execute(query);
+        return this.analyticFraudSharedFingerprintListUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get session after admin action fraud summary' })
@@ -1188,8 +1196,10 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/session-after-admin')
-    async sessionAfterAdmin(): Promise<IResponseReturn<IAnalyticFraudSummary>> {
-        return this.analyticSessionAfterAdminSummaryUseCase.execute();
+    async fraudSessionAfterAdmin(): Promise<
+        IResponseReturn<IAnalyticFraudSummary>
+    > {
+        return this.analyticFraudSessionAfterAdminUseCase.execute();
     }
 
     @Doc({
@@ -1211,11 +1221,11 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/session-after-admin/list')
-    async sessionAfterAdminList(
+    async fraudSessionAfterAdminList(
         @Query({ schema: AnalyticSessionAfterAdminListRequestSchema })
         query: AnalyticSessionAfterAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticSessionAfterAdmin>> {
-        return this.analyticSessionAfterAdminListUseCase.execute(query);
+        return this.analyticFraudSessionAfterAdminListUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get forgot password token abuse fraud summary' })
@@ -1233,10 +1243,10 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/forgot-password-token-abuse')
-    async forgotPasswordTokenAbuse(): Promise<
+    async fraudForgotPasswordTokenAbuse(): Promise<
         IResponseReturn<IAnalyticFraudSummary>
     > {
-        return this.analyticForgotPasswordTokenAbuseSummaryUseCase.execute();
+        return this.analyticFraudForgotPasswordTokenAbuseUseCase.execute();
     }
 
     @Doc({
@@ -1258,11 +1268,13 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/forgot-password-token-abuse/list')
-    async forgotPasswordTokenAbuseList(
+    async fraudForgotPasswordTokenAbuseList(
         @Query({ schema: AnalyticForgotPasswordAbuseListRequestSchema })
         query: AnalyticForgotPasswordAbuseListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticForgotPasswordAbuse>> {
-        return this.analyticForgotPasswordTokenAbuseListUseCase.execute(query);
+        return this.analyticFraudForgotPasswordTokenAbuseListUseCase.execute(
+            query
+        );
     }
 
     @Doc({
@@ -1284,11 +1296,11 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/risk-score/list')
-    async riskScoreList(
+    async fraudRiskScoreList(
         @Query({ schema: AnalyticFraudRiskScoresListRequestSchema })
         query: AnalyticFraudRiskScoresListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {
-        return this.analyticRiskScoreListUseCase.execute(query);
+        return this.analyticFraudRiskScoreListUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get fraud risk score of a user (report-only)' })
@@ -1306,11 +1318,11 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/fraud/risk-score/user/:userId')
-    async riskScore(
+    async fraudRiskScore(
         @Param('userId', { schema: RequestMongoIdSchema })
         userId: string
     ): Promise<IResponseReturn<IAnalyticFraudRiskScoreUser>> {
-        return this.analyticRiskScoreUseCase.execute(userId);
+        return this.analyticFraudRiskScoreUseCase.execute(userId);
     }
 
     @Doc({ summary: 'admin get impossible travel anomaly summary' })
@@ -1328,10 +1340,10 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/impossible-travel')
-    async impossibleTravel(): Promise<
+    async anomalyImpossibleTravel(): Promise<
         IResponseReturn<IAnalyticAnomalyImpossibleTravelSummary>
     > {
-        return this.analyticImpossibleTravelSummaryUseCase.execute();
+        return this.analyticAnomalyImpossibleTravelUseCase.execute();
     }
 
     @Doc({
@@ -1353,11 +1365,11 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/impossible-travel/list')
-    async impossibleTravelList(
+    async anomalyImpossibleTravelList(
         @Query({ schema: AnalyticImpossibleTravelListRequestSchema })
         query: AnalyticImpossibleTravelListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticImpossibleTravel>> {
-        return this.analyticImpossibleTravelListUseCase.execute(query);
+        return this.analyticAnomalyImpossibleTravelListUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get login spike by ip anomaly summary' })
@@ -1375,10 +1387,10 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/login-spike-ip')
-    async loginSpikeIp(): Promise<
+    async anomalyLoginSpikeIp(): Promise<
         IResponseReturn<IAnalyticAnomalyLoginSpikeIpSummary>
     > {
-        return this.analyticLoginSpikeIpSummaryUseCase.execute();
+        return this.analyticAnomalyLoginSpikeIpUseCase.execute();
     }
 
     @Doc({
@@ -1400,11 +1412,11 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/login-spike-ip/list')
-    async loginSpikeIpList(
+    async anomalyLoginSpikeIpList(
         @Query({ schema: AnalyticLoginSpikeIpListRequestSchema })
         query: AnalyticLoginSpikeIpListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticLoginSpikeIp>> {
-        return this.analyticLoginSpikeIpListUseCase.execute(query);
+        return this.analyticAnomalyLoginSpikeIpListUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get failed login spike anomaly summary' })
@@ -1422,10 +1434,10 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/failed-login-spike')
-    async failedLoginSpike(): Promise<
+    async anomalyFailedLoginSpike(): Promise<
         IResponseReturn<IAnalyticAnomalyFailedLoginSpikeSummary>
     > {
-        return this.analyticFailedLoginSpikeSummaryUseCase.execute();
+        return this.analyticAnomalyFailedLoginSpikeUseCase.execute();
     }
 
     @Doc({
@@ -1447,11 +1459,11 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/failed-login-spike/list')
-    async failedLoginSpikeList(
+    async anomalyFailedLoginSpikeList(
         @Query({ schema: AnalyticNearLockoutListRequestSchema })
         query: AnalyticNearLockoutListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
-        return this.analyticFailedLoginSpikeListUseCase.execute(query);
+        return this.analyticAnomalyFailedLoginSpikeListUseCase.execute(query);
     }
 
     @Doc({ summary: 'admin get device proliferation anomaly summary' })
@@ -1469,10 +1481,10 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/device-proliferation')
-    async deviceProliferation(): Promise<
+    async anomalyDeviceProliferation(): Promise<
         IResponseReturn<IAnalyticAnomalyDeviceProliferationSummary>
     > {
-        return this.analyticDeviceProliferationSummaryUseCase.execute();
+        return this.analyticAnomalyDeviceProliferationUseCase.execute();
     }
 
     @Doc({
@@ -1494,10 +1506,12 @@ export class AnalyticAdminController {
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/anomaly/device-proliferation/list')
-    async deviceProliferationList(
+    async anomalyDeviceProliferationList(
         @Query({ schema: AnalyticSnapshotListRequestSchema })
         query: AnalyticSnapshotListRequestDto
     ): Promise<IResponsePaginationReturn<IAnalyticDeviceProliferation>> {
-        return this.analyticDeviceProliferationListUseCase.execute(query);
+        return this.analyticAnomalyDeviceProliferationListUseCase.execute(
+            query
+        );
     }
 }

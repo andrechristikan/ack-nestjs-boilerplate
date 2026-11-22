@@ -19,6 +19,14 @@ export class HelperStringService {
         return result;
     }
 
+    private keepEnds(text: string): string {
+        if (text.length <= 6) {
+            return '*'.repeat(text.length);
+        }
+
+        return `${text.slice(0, 4)}${'*'.repeat(text.length - 6)}${text.slice(-2)}`;
+    }
+
     random(length: number): string {
         return this.randomFrom(HelperStringAlphanumericCharacters, length);
     }
@@ -41,6 +49,10 @@ export class HelperStringService {
                 return values[token]!;
             }
         );
+    }
+
+    stripLeadingSlashes(path: string): string {
+        return path.replace(/^\/+/, '');
     }
 
     generateSlug(prefix: string, maxLength: number): string {
@@ -71,5 +83,19 @@ export class HelperStringService {
 
         const stringCensor = '*'.repeat(10);
         return `${text.slice(0, 3)}${stringCensor}${text.slice(-4)}`;
+    }
+
+    censorMobileNumber(mobileNumber: string): string {
+        return this.keepEnds(mobileNumber);
+    }
+
+    censorEmail(email: string): string {
+        const at = email.lastIndexOf('@');
+        const local = email.slice(0, at);
+        const domain = email.slice(at + 1);
+
+        const maskedLocal = this.keepEnds(local);
+
+        return `${maskedLocal}@${domain.slice(0, 1)}${'*'.repeat(domain.length - 1)}`;
     }
 }

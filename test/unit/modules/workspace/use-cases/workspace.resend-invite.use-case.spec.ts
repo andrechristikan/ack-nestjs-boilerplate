@@ -1,4 +1,5 @@
 import { UserUtil } from '@modules/user/utils/user.util';
+import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
@@ -80,6 +81,7 @@ describe('WorkspaceResendInviteUseCase', () => {
         acceptedByUserId: null,
         nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     };
+    const censoredInvite = { ...invite, email: 'invi*ee@e**********' };
     const existingUser: User = {
         id: 'user-2',
         name: 'Jane Doe',
@@ -153,6 +155,7 @@ describe('WorkspaceResendInviteUseCase', () => {
                 { provide: UserService, useValue: userService },
                 { provide: DatabaseService, useValue: databaseService },
                 UserUtil,
+                WorkspaceUtil,
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
@@ -237,7 +240,7 @@ describe('WorkspaceResendInviteUseCase', () => {
                 body
             );
 
-            expect(result).toEqual({ data: invite });
+            expect(result).toEqual({ data: censoredInvite });
             expect(callOrder).toEqual(['pending', 'rotate']);
             expect(
                 workspaceInviteService.getResendableById
@@ -287,7 +290,7 @@ describe('WorkspaceResendInviteUseCase', () => {
 
             pendingInvite.resolve(invite);
 
-            await expect(pending).resolves.toEqual({ data: invite });
+            await expect(pending).resolves.toEqual({ data: censoredInvite });
             expect(userService.getOneActiveByEmail).toHaveBeenCalledWith(
                 'invitee@example.com'
             );
@@ -408,7 +411,7 @@ describe('WorkspaceResendInviteUseCase', () => {
                     body
                 );
 
-                expect(result).toEqual({ data: invite });
+                expect(result).toEqual({ data: censoredInvite });
                 expect(databaseService.withTransaction).toHaveBeenCalledTimes(
                     2
                 );

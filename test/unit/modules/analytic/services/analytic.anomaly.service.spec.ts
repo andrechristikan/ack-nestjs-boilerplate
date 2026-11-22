@@ -105,7 +105,7 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('getImpossibleTravelSummary', () => {
+    describe('getAnomalyImpossibleTravel', () => {
         it('reads the snapshot summary and returns its header fields and metadata', async () => {
             const computedAt = new Date('2026-02-28T23:45:00.000Z');
             analyticSnapshotService.getSummary.mockResolvedValue({
@@ -116,7 +116,7 @@ describe('AnalyticAnomalyService', () => {
                 computedAt,
             });
 
-            const result = await service.getImpossibleTravelSummary();
+            const result = await service.getAnomalyImpossibleTravel();
 
             expect(result).toEqual({
                 count: 3,
@@ -140,7 +140,7 @@ describe('AnalyticAnomalyService', () => {
                 computedAt: null,
             });
 
-            const result = await service.getImpossibleTravelSummary();
+            const result = await service.getAnomalyImpossibleTravel();
 
             expect(result).toEqual({
                 count: 0,
@@ -156,11 +156,12 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('getImpossibleTravelList', () => {
+    describe('getAnomalyImpossibleTravelList', () => {
         it('pages the snapshot rows of the impossible-travel signal', async () => {
             analyticSnapshotService.getListOffset.mockResolvedValue(offsetPage);
 
-            const result = await service.getImpossibleTravelList(pagination);
+            const result =
+                await service.getAnomalyImpossibleTravelList(pagination);
 
             expect(result).toBe(offsetPage);
             expect(analyticSnapshotService.getListOffset).toHaveBeenCalledWith(
@@ -172,11 +173,11 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('getLoginSpikeIpSummary', () => {
+    describe('getAnomalyLoginSpikeIp', () => {
         it('reads through with the loginSpikeIp key for the configured window, the cache schema, and the anomaly summary TTL', async () => {
             analyticAnomalyRepository.countLoginSpikeIp.mockResolvedValue(3);
 
-            await service.getLoginSpikeIpSummary();
+            await service.getAnomalyLoginSpikeIp();
 
             expect(analyticCache.buildAnomalySummaryKey).toHaveBeenCalledWith(
                 EnumAnalyticAnomalySignal.loginSpikeIp,
@@ -193,7 +194,7 @@ describe('AnalyticAnomalyService', () => {
         it('counts once over the configured window and answers its dates, the minimum as metadata, and no computedAt', async () => {
             analyticAnomalyRepository.countLoginSpikeIp.mockResolvedValue(3);
 
-            const result = await service.getLoginSpikeIpSummary();
+            const result = await service.getAnomalyLoginSpikeIp();
 
             expect(result).toEqual({
                 count: 3,
@@ -220,7 +221,7 @@ describe('AnalyticAnomalyService', () => {
             };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.getLoginSpikeIpSummary();
+            const result = await service.getAnomalyLoginSpikeIp();
 
             expect(result).toEqual(cached);
             expect(
@@ -229,13 +230,13 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('getLoginSpikeIpList', () => {
+    describe('getAnomalyLoginSpikeIpList', () => {
         it('pages the repository over the configured window and minimum', async () => {
             analyticAnomalyRepository.findLoginSpikeIpOffset.mockResolvedValue(
                 offsetPage
             );
 
-            const result = await service.getLoginSpikeIpList(pagination);
+            const result = await service.getAnomalyLoginSpikeIpList(pagination);
 
             expect(result).toBe(offsetPage);
             expect(
@@ -244,7 +245,7 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('getFailedLoginSpikeSummary', () => {
+    describe('getAnomalyFailedLoginSpike', () => {
         it('reads through with the failedLoginSpike key, AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema, and the anomaly summary TTL', async () => {
             const cached = {
                 count: 1,
@@ -255,7 +256,7 @@ describe('AnalyticAnomalyService', () => {
             };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.getFailedLoginSpikeSummary();
+            const result = await service.getAnomalyFailedLoginSpike();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildAnomalySummaryKey).toHaveBeenCalledWith(
@@ -276,7 +277,7 @@ describe('AnalyticAnomalyService', () => {
         it('counts the near-lockout users once in the loader on a cache miss', async () => {
             analyticAnomalyRepository.countNearLockout.mockResolvedValue(1);
 
-            const result = await service.getFailedLoginSpikeSummary();
+            const result = await service.getAnomalyFailedLoginSpike();
 
             expect(result).toEqual({
                 count: 1,
@@ -304,7 +305,7 @@ describe('AnalyticAnomalyService', () => {
                 );
                 analyticAnomalyRepository.countNearLockout.mockResolvedValue(0);
 
-                const result = await service.getFailedLoginSpikeSummary();
+                const result = await service.getAnomalyFailedLoginSpike();
 
                 expect(
                     featureFlagService.getMetadataNumber
@@ -328,19 +329,20 @@ describe('AnalyticAnomalyService', () => {
                 metadata: { nearLockoutMinAttempt: 4 },
             });
 
-            await service.getFailedLoginSpikeSummary();
+            await service.getAnomalyFailedLoginSpike();
 
             expect(featureFlagService.getMetadataNumber).not.toHaveBeenCalled();
         });
     });
 
-    describe('getFailedLoginSpikeList', () => {
+    describe('getAnomalyFailedLoginSpikeList', () => {
         it('lists near-lockout users at the threshold of the password budget', async () => {
             analyticAnomalyRepository.findNearLockoutOffset.mockResolvedValue(
                 offsetPage
             );
 
-            const result = await service.getFailedLoginSpikeList(pagination);
+            const result =
+                await service.getAnomalyFailedLoginSpikeList(pagination);
 
             expect(result).toEqual(offsetPage);
             expect(featureFlagService.getMetadataNumber).toHaveBeenCalledWith(
@@ -353,7 +355,7 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('getDeviceProliferationSummary', () => {
+    describe('getAnomalyDeviceProliferation', () => {
         it('reads the snapshot summary and returns its header fields and metadata', async () => {
             const computedAt = new Date('2026-02-28T23:45:00.000Z');
             analyticSnapshotService.getSummary.mockResolvedValue({
@@ -364,7 +366,7 @@ describe('AnalyticAnomalyService', () => {
                 computedAt,
             });
 
-            const result = await service.getDeviceProliferationSummary();
+            const result = await service.getAnomalyDeviceProliferation();
 
             expect(result).toEqual({
                 count: 2,
@@ -388,7 +390,7 @@ describe('AnalyticAnomalyService', () => {
                 computedAt: null,
             });
 
-            const result = await service.getDeviceProliferationSummary();
+            const result = await service.getAnomalyDeviceProliferation();
 
             expect(result).toEqual({
                 count: 0,
@@ -403,11 +405,12 @@ describe('AnalyticAnomalyService', () => {
         });
     });
 
-    describe('getDeviceProliferationList', () => {
+    describe('getAnomalyDeviceProliferationList', () => {
         it('pages the snapshot rows of the device-proliferation signal', async () => {
             analyticSnapshotService.getListOffset.mockResolvedValue(offsetPage);
 
-            const result = await service.getDeviceProliferationList(pagination);
+            const result =
+                await service.getAnomalyDeviceProliferationList(pagination);
 
             expect(result).toBe(offsetPage);
             expect(analyticSnapshotService.getListOffset).toHaveBeenCalledWith(

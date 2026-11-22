@@ -13,6 +13,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
@@ -77,6 +78,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 HelperDateService,
+                HelperStringService,
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 SessionUtil,

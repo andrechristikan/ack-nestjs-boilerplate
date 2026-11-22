@@ -1,12 +1,12 @@
 import { AnalyticModule } from '@modules/analytic/analytic.module';
-import { AnalyticImpossibleTravelSummaryUseCase } from '@modules/analytic/use-cases/analytic.impossible-travel-summary.use-case';
-import { AnalyticImpossibleTravelListUseCase } from '@modules/analytic/use-cases/analytic.impossible-travel-list.use-case';
-import { AnalyticLoginSpikeIpSummaryUseCase } from '@modules/analytic/use-cases/analytic.login-spike-ip-summary.use-case';
-import { AnalyticLoginSpikeIpListUseCase } from '@modules/analytic/use-cases/analytic.login-spike-ip-list.use-case';
-import { AnalyticFailedLoginSpikeSummaryUseCase } from '@modules/analytic/use-cases/analytic.failed-login-spike-summary.use-case';
-import { AnalyticFailedLoginSpikeListUseCase } from '@modules/analytic/use-cases/analytic.failed-login-spike-list.use-case';
-import { AnalyticDeviceProliferationSummaryUseCase } from '@modules/analytic/use-cases/analytic.device-proliferation-summary.use-case';
-import { AnalyticDeviceProliferationListUseCase } from '@modules/analytic/use-cases/analytic.device-proliferation-list.use-case';
+import { AnalyticAnomalyImpossibleTravelUseCase } from '@modules/analytic/use-cases/analytic.anomaly-impossible-travel.use-case';
+import { AnalyticAnomalyImpossibleTravelListUseCase } from '@modules/analytic/use-cases/analytic.anomaly-impossible-travel-list.use-case';
+import { AnalyticAnomalyLoginSpikeIpUseCase } from '@modules/analytic/use-cases/analytic.anomaly-login-spike-ip.use-case';
+import { AnalyticAnomalyLoginSpikeIpListUseCase } from '@modules/analytic/use-cases/analytic.anomaly-login-spike-ip-list.use-case';
+import { AnalyticAnomalyFailedLoginSpikeUseCase } from '@modules/analytic/use-cases/analytic.anomaly-failed-login-spike.use-case';
+import { AnalyticAnomalyFailedLoginSpikeListUseCase } from '@modules/analytic/use-cases/analytic.anomaly-failed-login-spike-list.use-case';
+import { AnalyticAnomalyDeviceProliferationUseCase } from '@modules/analytic/use-cases/analytic.anomaly-device-proliferation.use-case';
+import { AnalyticAnomalyDeviceProliferationListUseCase } from '@modules/analytic/use-cases/analytic.anomaly-device-proliferation-list.use-case';
 import { AnalyticUserRegistrationsUseCase } from '@modules/analytic/use-cases/analytic.user-registrations.use-case';
 import { AnalyticUserChurnUseCase } from '@modules/analytic/use-cases/analytic.user-churn.use-case';
 import { AnalyticUserBlockedUseCase } from '@modules/analytic/use-cases/analytic.user-blocked.use-case';
@@ -39,22 +39,22 @@ import { AnalyticWorkspaceMembershipListUseCase } from '@modules/analytic/use-ca
 import { AnalyticWorkspaceActivityVolumeListUseCase } from '@modules/analytic/use-cases/analytic.workspace-activity-volume-list.use-case';
 import { AnalyticProjectCreationUseCase } from '@modules/analytic/use-cases/analytic.project-creation.use-case';
 import { AnalyticNotificationDeliveryUseCase } from '@modules/analytic/use-cases/analytic.notification-delivery.use-case';
-import { AnalyticCredentialStuffingSummaryUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-summary.use-case';
-import { AnalyticCredentialStuffingListUseCase } from '@modules/analytic/use-cases/analytic.credential-stuffing-list.use-case';
-import { AnalyticAccountTakeoverSummaryUseCase } from '@modules/analytic/use-cases/analytic.account-takeover-summary.use-case';
-import { AnalyticAccountTakeoverListUseCase } from '@modules/analytic/use-cases/analytic.account-takeover-list.use-case';
-import { AnalyticMassRegistrationSummaryUseCase } from '@modules/analytic/use-cases/analytic.mass-registration-summary.use-case';
-import { AnalyticMassRegistrationListUseCase } from '@modules/analytic/use-cases/analytic.mass-registration-list.use-case';
-import { AnalyticPasswordResetEnumerationSummaryUseCase } from '@modules/analytic/use-cases/analytic.password-reset-enumeration-summary.use-case';
-import { AnalyticPasswordResetEnumerationListUseCase } from '@modules/analytic/use-cases/analytic.password-reset-enumeration-list.use-case';
-import { AnalyticSharedFingerprintSummaryUseCase } from '@modules/analytic/use-cases/analytic.shared-fingerprint-summary.use-case';
-import { AnalyticSharedFingerprintListUseCase } from '@modules/analytic/use-cases/analytic.shared-fingerprint-list.use-case';
-import { AnalyticSessionAfterAdminSummaryUseCase } from '@modules/analytic/use-cases/analytic.session-after-admin-summary.use-case';
-import { AnalyticSessionAfterAdminListUseCase } from '@modules/analytic/use-cases/analytic.session-after-admin-list.use-case';
-import { AnalyticForgotPasswordTokenAbuseSummaryUseCase } from '@modules/analytic/use-cases/analytic.forgot-password-token-abuse-summary.use-case';
-import { AnalyticForgotPasswordTokenAbuseListUseCase } from '@modules/analytic/use-cases/analytic.forgot-password-token-abuse-list.use-case';
-import { AnalyticRiskScoreUseCase } from '@modules/analytic/use-cases/analytic.risk-score.use-case';
-import { AnalyticRiskScoreListUseCase } from '@modules/analytic/use-cases/analytic.risk-score-list.use-case';
+import { AnalyticFraudCredentialStuffingUseCase } from '@modules/analytic/use-cases/analytic.fraud-credential-stuffing.use-case';
+import { AnalyticFraudCredentialStuffingListUseCase } from '@modules/analytic/use-cases/analytic.fraud-credential-stuffing-list.use-case';
+import { AnalyticFraudAccountTakeoverUseCase } from '@modules/analytic/use-cases/analytic.fraud-account-takeover.use-case';
+import { AnalyticFraudAccountTakeoverListUseCase } from '@modules/analytic/use-cases/analytic.fraud-account-takeover-list.use-case';
+import { AnalyticFraudMassRegistrationUseCase } from '@modules/analytic/use-cases/analytic.fraud-mass-registration.use-case';
+import { AnalyticFraudMassRegistrationListUseCase } from '@modules/analytic/use-cases/analytic.fraud-mass-registration-list.use-case';
+import { AnalyticFraudPasswordResetEnumerationUseCase } from '@modules/analytic/use-cases/analytic.fraud-password-reset-enumeration.use-case';
+import { AnalyticFraudPasswordResetEnumerationListUseCase } from '@modules/analytic/use-cases/analytic.fraud-password-reset-enumeration-list.use-case';
+import { AnalyticFraudSharedFingerprintUseCase } from '@modules/analytic/use-cases/analytic.fraud-shared-fingerprint.use-case';
+import { AnalyticFraudSharedFingerprintListUseCase } from '@modules/analytic/use-cases/analytic.fraud-shared-fingerprint-list.use-case';
+import { AnalyticFraudSessionAfterAdminUseCase } from '@modules/analytic/use-cases/analytic.fraud-session-after-admin.use-case';
+import { AnalyticFraudSessionAfterAdminListUseCase } from '@modules/analytic/use-cases/analytic.fraud-session-after-admin-list.use-case';
+import { AnalyticFraudForgotPasswordTokenAbuseUseCase } from '@modules/analytic/use-cases/analytic.fraud-forgot-password-token-abuse.use-case';
+import { AnalyticFraudForgotPasswordTokenAbuseListUseCase } from '@modules/analytic/use-cases/analytic.fraud-forgot-password-token-abuse-list.use-case';
+import { AnalyticFraudRiskScoreUseCase } from '@modules/analytic/use-cases/analytic.fraud-risk-score.use-case';
+import { AnalyticFraudRiskScoreListUseCase } from '@modules/analytic/use-cases/analytic.fraud-risk-score-list.use-case';
 import { AnalyticSummaryUseCase } from '@modules/analytic/use-cases/analytic.summary.use-case';
 import { AnalyticInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.invite-funnel.use-case';
 import { AnalyticJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.join-outcomes.use-case';
@@ -65,14 +65,14 @@ import { Module } from '@nestjs/common';
 @Module({
     controllers: [],
     providers: [
-        AnalyticImpossibleTravelSummaryUseCase,
-        AnalyticImpossibleTravelListUseCase,
-        AnalyticLoginSpikeIpSummaryUseCase,
-        AnalyticLoginSpikeIpListUseCase,
-        AnalyticFailedLoginSpikeSummaryUseCase,
-        AnalyticFailedLoginSpikeListUseCase,
-        AnalyticDeviceProliferationSummaryUseCase,
-        AnalyticDeviceProliferationListUseCase,
+        AnalyticAnomalyImpossibleTravelUseCase,
+        AnalyticAnomalyImpossibleTravelListUseCase,
+        AnalyticAnomalyLoginSpikeIpUseCase,
+        AnalyticAnomalyLoginSpikeIpListUseCase,
+        AnalyticAnomalyFailedLoginSpikeUseCase,
+        AnalyticAnomalyFailedLoginSpikeListUseCase,
+        AnalyticAnomalyDeviceProliferationUseCase,
+        AnalyticAnomalyDeviceProliferationListUseCase,
         AnalyticUserRegistrationsUseCase,
         AnalyticUserChurnUseCase,
         AnalyticUserBlockedUseCase,
@@ -105,22 +105,22 @@ import { Module } from '@nestjs/common';
         AnalyticWorkspaceActivityVolumeListUseCase,
         AnalyticProjectCreationUseCase,
         AnalyticNotificationDeliveryUseCase,
-        AnalyticCredentialStuffingSummaryUseCase,
-        AnalyticCredentialStuffingListUseCase,
-        AnalyticAccountTakeoverSummaryUseCase,
-        AnalyticAccountTakeoverListUseCase,
-        AnalyticMassRegistrationSummaryUseCase,
-        AnalyticMassRegistrationListUseCase,
-        AnalyticPasswordResetEnumerationSummaryUseCase,
-        AnalyticPasswordResetEnumerationListUseCase,
-        AnalyticSharedFingerprintSummaryUseCase,
-        AnalyticSharedFingerprintListUseCase,
-        AnalyticSessionAfterAdminSummaryUseCase,
-        AnalyticSessionAfterAdminListUseCase,
-        AnalyticForgotPasswordTokenAbuseSummaryUseCase,
-        AnalyticForgotPasswordTokenAbuseListUseCase,
-        AnalyticRiskScoreUseCase,
-        AnalyticRiskScoreListUseCase,
+        AnalyticFraudCredentialStuffingUseCase,
+        AnalyticFraudCredentialStuffingListUseCase,
+        AnalyticFraudAccountTakeoverUseCase,
+        AnalyticFraudAccountTakeoverListUseCase,
+        AnalyticFraudMassRegistrationUseCase,
+        AnalyticFraudMassRegistrationListUseCase,
+        AnalyticFraudPasswordResetEnumerationUseCase,
+        AnalyticFraudPasswordResetEnumerationListUseCase,
+        AnalyticFraudSharedFingerprintUseCase,
+        AnalyticFraudSharedFingerprintListUseCase,
+        AnalyticFraudSessionAfterAdminUseCase,
+        AnalyticFraudSessionAfterAdminListUseCase,
+        AnalyticFraudForgotPasswordTokenAbuseUseCase,
+        AnalyticFraudForgotPasswordTokenAbuseListUseCase,
+        AnalyticFraudRiskScoreUseCase,
+        AnalyticFraudRiskScoreListUseCase,
         AnalyticSummaryUseCase,
         AnalyticInviteFunnelUseCase,
         AnalyticJoinOutcomesUseCase,
@@ -128,14 +128,14 @@ import { Module } from '@nestjs/common';
         AnalyticProcessRefreshSnapshotUseCase,
     ],
     exports: [
-        AnalyticImpossibleTravelSummaryUseCase,
-        AnalyticImpossibleTravelListUseCase,
-        AnalyticLoginSpikeIpSummaryUseCase,
-        AnalyticLoginSpikeIpListUseCase,
-        AnalyticFailedLoginSpikeSummaryUseCase,
-        AnalyticFailedLoginSpikeListUseCase,
-        AnalyticDeviceProliferationSummaryUseCase,
-        AnalyticDeviceProliferationListUseCase,
+        AnalyticAnomalyImpossibleTravelUseCase,
+        AnalyticAnomalyImpossibleTravelListUseCase,
+        AnalyticAnomalyLoginSpikeIpUseCase,
+        AnalyticAnomalyLoginSpikeIpListUseCase,
+        AnalyticAnomalyFailedLoginSpikeUseCase,
+        AnalyticAnomalyFailedLoginSpikeListUseCase,
+        AnalyticAnomalyDeviceProliferationUseCase,
+        AnalyticAnomalyDeviceProliferationListUseCase,
         AnalyticUserRegistrationsUseCase,
         AnalyticUserChurnUseCase,
         AnalyticUserBlockedUseCase,
@@ -168,22 +168,22 @@ import { Module } from '@nestjs/common';
         AnalyticWorkspaceActivityVolumeListUseCase,
         AnalyticProjectCreationUseCase,
         AnalyticNotificationDeliveryUseCase,
-        AnalyticCredentialStuffingSummaryUseCase,
-        AnalyticCredentialStuffingListUseCase,
-        AnalyticAccountTakeoverSummaryUseCase,
-        AnalyticAccountTakeoverListUseCase,
-        AnalyticMassRegistrationSummaryUseCase,
-        AnalyticMassRegistrationListUseCase,
-        AnalyticPasswordResetEnumerationSummaryUseCase,
-        AnalyticPasswordResetEnumerationListUseCase,
-        AnalyticSharedFingerprintSummaryUseCase,
-        AnalyticSharedFingerprintListUseCase,
-        AnalyticSessionAfterAdminSummaryUseCase,
-        AnalyticSessionAfterAdminListUseCase,
-        AnalyticForgotPasswordTokenAbuseSummaryUseCase,
-        AnalyticForgotPasswordTokenAbuseListUseCase,
-        AnalyticRiskScoreUseCase,
-        AnalyticRiskScoreListUseCase,
+        AnalyticFraudCredentialStuffingUseCase,
+        AnalyticFraudCredentialStuffingListUseCase,
+        AnalyticFraudAccountTakeoverUseCase,
+        AnalyticFraudAccountTakeoverListUseCase,
+        AnalyticFraudMassRegistrationUseCase,
+        AnalyticFraudMassRegistrationListUseCase,
+        AnalyticFraudPasswordResetEnumerationUseCase,
+        AnalyticFraudPasswordResetEnumerationListUseCase,
+        AnalyticFraudSharedFingerprintUseCase,
+        AnalyticFraudSharedFingerprintListUseCase,
+        AnalyticFraudSessionAfterAdminUseCase,
+        AnalyticFraudSessionAfterAdminListUseCase,
+        AnalyticFraudForgotPasswordTokenAbuseUseCase,
+        AnalyticFraudForgotPasswordTokenAbuseListUseCase,
+        AnalyticFraudRiskScoreUseCase,
+        AnalyticFraudRiskScoreListUseCase,
         AnalyticSummaryUseCase,
         AnalyticInviteFunnelUseCase,
         AnalyticJoinOutcomesUseCase,

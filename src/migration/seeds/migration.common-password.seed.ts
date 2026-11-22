@@ -48,7 +48,10 @@ export class MigrationCommonPasswordSeed
             values,
             this.seedBatchSize
         );
-        this.logger.log(`Found ${values.length} Common Passwords to seed.`);
+        this.logger.log(
+            { count: values.length },
+            'Found common passwords to seed'
+        );
 
         try {
             // Sequential by design: a fan-out over an unbounded collection: bounded chunks in turn, each concurrent

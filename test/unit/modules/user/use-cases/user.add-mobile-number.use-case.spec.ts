@@ -12,7 +12,6 @@ import { EnumUserReauthenticationAction } from '@generated/prisma-client/client'
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
@@ -39,7 +38,11 @@ import { UserAddMobileNumberUseCase } from '@modules/user/use-cases/user.add-mob
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { UserUtil } from '@modules/user/utils/user.util';
 import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 const passkeyResponse = {
@@ -147,10 +150,14 @@ describe('UserAddMobileNumberUseCase', () => {
                 { provide: MfaService, useValue: mfaService },
                 { provide: CountryService, useValue: countryService },
                 { provide: DatabaseService, useValue: databaseService },
-                DatabaseUtil,
+                UserUtil,
+                ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
-                    useValue: buildConfigService(TestUnitKitConfigValues),
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'message.availableLanguages': ['en'],
+                    }),
                 },
             ],
         }).compile();
@@ -265,7 +272,9 @@ describe('UserAddMobileNumberUseCase', () => {
                     userContext,
                     dto
                 )
-            ).resolves.toEqual({ data: mobileNumber });
+            ).resolves.toEqual({
+                data: { ...mobileNumber, number: '8123*****90' },
+            });
 
             expect(
                 userAuthService.checkReauthenticationPassword

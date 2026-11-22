@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { IAnalyticSharedFingerprint } from '@modules/analytic/interfaces/analytic.interface';
-import { AnalyticPipelineObjectIdSchema } from '@modules/analytic/validations/analytic.pipeline-object-id.validation';
+import { AnalyticPipelineObjectIdSchema } from '@modules/analytic/dtos/analytic.pipeline-object-id.dto';
 
 /** @public */
 export const AnalyticSharedFingerprintPipelineSchema = z.array(

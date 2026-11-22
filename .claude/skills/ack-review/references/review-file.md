@@ -27,7 +27,7 @@ New names in this example, not in the checkout: the `country-inactive` feature f
 
 - **Where:** `src/modules/country/use-cases/country.set-inactive.use-case.ts:41`
 - **Breaks:** `.claude/rules/effects.md`, "Its use case opens `DatabaseService.withTransaction` over the `*InTx` write, which adds `CacheQueue.invalidateEffect(keys)`"; decision: Cache invalidation is a job.
-- **Cause:** `execute` awaits `cacheService.invalidate(keys)` after the transaction. Its sibling, `ApiKeyService.addInvalidateEffectInTx`, adds the effect on `tx`.
+- **Cause:** `execute` awaits `cacheService.invalidate(keys)` after the transaction. Its sibling, `APIKeyService.addInvalidateEffectInTx`, adds the effect on `tx`.
 - **Change:** remove the `cacheService.invalidate` call from `execute`. In `CountryService.setInactiveInTx`, build the keys with `CountryCache`, then `await this.outboxService.addInTx(tx, this.cacheQueue.invalidateEffect(keys))`. `execute` opens `DatabaseService.withTransaction` and calls `setInactiveInTx(tx, id)`.
 - **First failing spec:** `country.set-inactive.use-case.spec.ts`: `execute` opens `DatabaseService.withTransaction` and never calls `CacheService.invalidate`.
 ```

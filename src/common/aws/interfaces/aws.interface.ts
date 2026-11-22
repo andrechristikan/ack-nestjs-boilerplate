@@ -1,11 +1,14 @@
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import type { StreamingBlobTypes } from '@smithy/types';
 
-export interface IAwsS3 {
+export interface IAwsS3Urls {
+    completedUrl: string;
+    cdnUrl: string | null;
+}
+
+export interface IAwsS3 extends IAwsS3Urls {
     bucket: string;
     key: string;
-    cdnUrl: string | null;
-    completedUrl: string;
     mime: string;
     extension: string;
     access: EnumAwsS3Accessibility;

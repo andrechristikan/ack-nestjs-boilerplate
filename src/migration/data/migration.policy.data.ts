@@ -3,12 +3,12 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
 } from '@generated/prisma-client/client';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import type {
+    IMigrationEnvironmentData,
+    IMigrationPolicyData,
+} from '@migration/interfaces/migration.interface';
 
-const PolicyData: {
-    role: string;
-    policies: PolicyRequestDto[];
-}[] = [
+const PolicyData: IMigrationPolicyData[] = [
     {
         role: 'superadmin',
         policies: [],
@@ -26,12 +26,8 @@ const PolicyData: {
     },
 ];
 
-export const MigrationPolicyData: Record<
-    EnumAppEnvironment,
-    {
-        role: string;
-        policies: PolicyRequestDto[];
-    }[]
+export const MigrationPolicyData: IMigrationEnvironmentData<
+    IMigrationPolicyData[]
 > = {
     [EnumAppEnvironment.local]: PolicyData,
     [EnumAppEnvironment.development]: PolicyData,

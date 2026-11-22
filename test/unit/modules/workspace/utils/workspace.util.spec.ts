@@ -2,12 +2,14 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import {
     EnumTermPolicyType,
+    EnumWorkspaceInviteStatus,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IUserCreateWithWorkspaceInput } from '@modules/user/interfaces/user.interface';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 
 describe('WorkspaceUtil', () => {
@@ -54,7 +56,7 @@ describe('WorkspaceUtil', () => {
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
-            providers: [WorkspaceUtil],
+            providers: [WorkspaceUtil, HelperStringService],
         }).compile();
 
         util = module.get(WorkspaceUtil);
@@ -75,6 +77,34 @@ describe('WorkspaceUtil', () => {
                     slug: 'slug-b',
                 },
             ]);
+        });
+    });
+
+    describe('toCensoredInvite', () => {
+        it('censors the email and keeps every other field', () => {
+            const invite = {
+                id: 'invite-1',
+                workspaceId: 'workspace-1',
+                email: 'invitee.person@example.com',
+                workspaceRole: EnumWorkspaceMemberRole.member,
+                projectId: null,
+                projectRole: null,
+                reference: 'REF123',
+                expiredAt: new Date('2026-02-01T00:00:00.000Z'),
+                status: EnumWorkspaceInviteStatus.pending,
+                invitedByUserId: 'user-1',
+                acceptedAt: null,
+                acceptedByUserId: null,
+                createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                createdBy: 'user-1',
+                updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+                updatedBy: null,
+            };
+
+            expect(util.toCensoredInvite(invite)).toEqual({
+                ...invite,
+                email: 'invi********on@e**********',
+            });
         });
     });
 

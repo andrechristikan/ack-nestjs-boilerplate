@@ -31,6 +31,11 @@ import type { NotificationReadStateSelect } from '@modules/notification/constant
 import type { ITermPolicyPublishPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 import type { NotificationUserSetting } from '@generated/prisma-client/client';
 
+export type INotificationSendProcess =
+    | EnumNotificationEmailProcess
+    | EnumNotificationPushProcess
+    | EnumNotificationSmsProcess;
+
 export type INotificationReadState = Prisma.NotificationGetPayload<{
     select: typeof NotificationReadStateSelect;
 }>;

@@ -90,9 +90,14 @@ Each command runs in a fresh session, so it starts from the files the previous o
 
 1. One `coder` builds one ticket, test-first: a failing unit spec, then the code that turns it green. Each dispatch carries the ticket's position, and the hand-back returns it (`DONE 3/10`).
 2. The session ticks the ticket, records the evidence in `plan.md`, and reports the position to the owner (`3/10`), then moves to the next ticket whose blockers are done.
-3. A check that still fails after two attempts goes to `debugger` for a root cause.
-4. The session runs the gates (`pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`, the module specs, coverage per changed file) and boots the app when wiring changed.
-5. The session hands back the result and names `/ack-review`, which reviews the build and settles the findings. An owner answer that rejected a named alternative is listed as a decision candidate for `/ack-harness`.
+3. A choice the ticket, the spec, and the rules leave open stops the `coder`, which hands back `NEEDS_DECISION` with the options and its recommendation. The first route that fits answers it:
+    - The spec, its owner decisions, or a decision entry: the session answers.
+    - A choice of what the product does: the owner answers.
+    - A choice of how to build it: `advisor` answers, and passes to the owner what only the owner can answer.
+4. The answer corrects the ticket step, its acceptance criterion, and the spec. One line under the ticket's `## Deviations` records what differs, why, and who decided.
+5. A check that still fails after two attempts goes to `debugger` for a root cause.
+6. The session runs the gates (`pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`, the module specs, coverage per changed file) and boots the app when wiring changed.
+7. The session hands back the result and names `/ack-review`, which reviews the build and settles the findings. An owner answer that rejected a named alternative is listed as a decision candidate for `/ack-harness`.
 
 A build that was interrupted resumes from the first ticket that is not done.
 
@@ -124,7 +129,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 | --- | --- | --- | --- |
 | `coder` | builds one ticket or one pinned fix, test-first | `src/`, `test/unit/`, `prisma/schema.prisma`, the run surface | sonnet, medium |
 | `reviewer` | cold-reads a plan, reviews a built feature, judges a fix or the harness | `.scratch/<feature>/review.md` | opus, high |
-| `advisor` | settles what two cold reads of a plan left open | the spec, the plan, and the tickets under `.scratch/` | fable, medium |
+| `advisor` | settles what two cold reads of a plan left open, or a coder's decision on how to build a ticket | the spec, the plan, and the tickets under `.scratch/` | fable, medium |
 | `debugger` | reproduces a symptom and finds its root cause | nothing | opus, high |
 | `tester` | covers existing code with unit specs | `test/unit/` | sonnet, high |
 | `writer` | docs, root people files, pull request text | `docs/`, `.scratch/pr/` | sonnet, medium |
@@ -176,7 +181,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 | `guard-write.sh` | before every file write | denies secrets, generated trees, edits to a copied skill, an `eslint-disable` comment, and a focused or skipped spec |
 | `rules-gate.sh` | before every file write, and after every file read | denies a write until the session or agent has read whole every path-scoped rule that binds the file, and names the rules still unread |
 | `format.sh` | after every file write | formats the file |
-| `verify.sh` | after every file write, and when a session stops | records each `src/` and `test/` file the session writes; at stop, for those still changed, runs typecheck and the unit specs of their modules |
+| `verify.sh` | after every file write, and when a session stops | records each `src/` and `test/` file the session writes; at stop, for those still changed, runs typecheck and the unit specs of their modules, skipped when those files are unchanged since the last green run |
 | `roster.sh` | at session start | prints the `/ack-*` commands |
 
 `jev.sh` and `check.sh` are scripts a skill runs, and `mcp.sh` is the launcher `.mcp.json` runs. None is a hook.
@@ -273,6 +278,7 @@ After a change to a skill or an agent, run its scenarios in a fresh session and 
 | `/ack-build` | one ticket | the hand-back quotes the spec failing, then passing, and `plan.md` records it |
 | `/ack-build` | a plan with two tickets done | continues from the third |
 | `/ack-build` | a plan with an open harness change | stops and names `/ack-harness` |
+| `/ack-build` | a `coder` hands back `NEEDS_DECISION` on how to build a ticket | `advisor` corrects the ticket step and criterion and adds one `## Deviations` line, and the next `coder` builds the corrected step |
 | `/ack-review` | a plan with a ticket not done | stops and names `/ack-build` |
 | `/ack-review` | a built feature | `review.md` has a coverage row per rule file and per changed flow, and each finding names its exact change |
 | `/ack-review` | a finding the owner drops | no `coder` runs for it, and `review.md` records the answer |

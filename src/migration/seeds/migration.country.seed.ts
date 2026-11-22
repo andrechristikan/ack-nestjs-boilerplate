@@ -42,7 +42,10 @@ export class MigrationCountrySeed
 
     async seed(): Promise<void> {
         this.logger.log('Seeding Countries...');
-        this.logger.log(`Found ${this.countries.length} Countries to seed.`);
+        this.logger.log(
+            { count: this.countries.length },
+            'Found countries to seed'
+        );
 
         try {
             await this.databaseService.withTransaction(

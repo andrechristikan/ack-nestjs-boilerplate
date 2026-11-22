@@ -76,10 +76,10 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
     private async createAdminUsers(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
         inputs: IUserCreateWithWorkspaceInput[],
         effects: IOutboxEffect[],
-        createTimeoutInMs: number,
-        createdBy: string
+        createTimeoutInMs: number
     ): Promise<IUser[]> {
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
         const termPolicyAcceptances =
@@ -111,7 +111,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
                             this.notificationService.createDefaultsManyInTx(
                                 tx,
                                 userIds,
-                                createdBy
+                                authContext.userId
                             ),
                         ]);
 
@@ -138,7 +138,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
                                 this.activityLogQueue.recordEffect(
                                     requestContext,
                                     apiKeyContext,
-                                    null,
+                                    authContext,
                                     null,
                                     stage
                                 )
@@ -223,10 +223,10 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         const users = await this.createAdminUsers(
             requestContext,
             apiKeyContext,
+            authContext,
             [input],
             effects,
-            this.createTimeoutInMs,
-            authContext.userId
+            this.createTimeoutInMs
         );
         const created = users[0]!;
 

@@ -184,7 +184,7 @@ services:
         profiles: ['deps']
         image: redis:8.8.3-alpine
         environment:
-            REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:?set DOCKER_REDIS_PASSWORD in .env.docker}
+            REDIS_PASSWORD: ${DOCKER_REDIS_QUEUE_PASSWORD:?set DOCKER_REDIS_QUEUE_PASSWORD in .env.docker}
         user: redis
         command:
             [
@@ -222,7 +222,7 @@ services:
         profiles: ['deps']
         image: redis:8.8.3-alpine
         environment:
-            REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:?set DOCKER_REDIS_PASSWORD in .env.docker}
+            REDIS_PASSWORD: ${DOCKER_REDIS_CACHE_PASSWORD:?set DOCKER_REDIS_CACHE_PASSWORD in .env.docker}
         user: redis
         command:
             [
@@ -258,7 +258,7 @@ services:
         environment:
             REDIS_HOST: redis-queue
             REDIS_PORT: '6379'
-            REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:?set DOCKER_REDIS_PASSWORD in .env.docker}
+            REDIS_PASSWORD: ${DOCKER_REDIS_QUEUE_PASSWORD:?set DOCKER_REDIS_QUEUE_PASSWORD in .env.docker}
             BULL_PREFIX: Queue
             REDIS_DB: '0'
             USER_LOGIN: ${DOCKER_BULLBOARD_USERNAME:?set DOCKER_BULLBOARD_USERNAME in .env.docker}

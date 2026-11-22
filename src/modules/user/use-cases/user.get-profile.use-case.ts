@@ -5,6 +5,7 @@ import type {
     IUserProfile,
 } from '@modules/user/interfaces/user.interface';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
+import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
@@ -15,7 +16,8 @@ export class UserGetProfileUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly countryService: CountryService,
-        private readonly userMobileNumberService: UserMobileNumberService
+        private readonly userMobileNumberService: UserMobileNumberService,
+        private readonly userUtil: UserUtil
     ) {}
 
     async execute({
@@ -26,6 +28,9 @@ export class UserGetProfileUseCase implements IAppUseCase<
             this.userMobileNumberService.getListByUser(user.id),
         ]);
 
-        return { data: { ...user, country, mobileNumbers } };
+        const profile = { ...user, country, mobileNumbers };
+        const censored = this.userUtil.toCensoredProfile(profile);
+
+        return { data: censored };
     }
 }

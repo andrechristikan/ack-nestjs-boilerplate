@@ -2,7 +2,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
 import { PolicyRoleTypeInvalidException } from '@modules/policy/exceptions/policy.role-type-invalid.exception';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
-import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.ability.factory';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';

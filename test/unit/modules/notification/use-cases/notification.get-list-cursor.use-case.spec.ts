@@ -131,6 +131,9 @@ describe('NotificationGetListCursorUseCase', () => {
                 ...cursorPage,
                 data: [stored],
             });
+            notificationService.toCensoredMetadata.mockReturnValue(
+                stored.metadata
+            );
             notificationService.toMessageProperties.mockReturnValue(
                 metadataProperties
             );
@@ -148,13 +151,14 @@ describe('NotificationGetListCursorUseCase', () => {
             );
 
             expect(requestStoreService.get).not.toHaveBeenCalled();
-            expect(
-                notificationService.toMessageProperties
-            ).toHaveBeenCalledWith(
+            expect(notificationService.toCensoredMetadata).toHaveBeenCalledWith(
                 stored.title,
                 stored.metadata,
                 stored.userId
             );
+            expect(
+                notificationService.toMessageProperties
+            ).toHaveBeenCalledWith(stored.title, stored.metadata);
             expect(
                 notificationService.toRejectReasonProperties
             ).toHaveBeenCalledWith(metadataProperties, 'en');
@@ -202,6 +206,9 @@ describe('NotificationGetListCursorUseCase', () => {
                 ...cursorPage,
                 data: [stored],
             });
+            notificationService.toCensoredMetadata.mockReturnValue(
+                stored.metadata
+            );
             notificationService.toMessageProperties.mockReturnValue(properties);
             notificationService.toRejectReasonProperties.mockReturnValue(
                 properties
@@ -214,15 +221,71 @@ describe('NotificationGetListCursorUseCase', () => {
 
             expect(
                 notificationService.toMessageProperties
-            ).toHaveBeenCalledWith(
-                stored.title,
-                stored.metadata,
-                stored.userId
-            );
+            ).toHaveBeenCalledWith(stored.title, stored.metadata);
             expect(messageService.setMessage).toHaveBeenCalledWith(
                 'notification.notify.newDeviceLogin.body',
                 { customLanguage: 'en', properties }
             );
+        });
+
+        it('returns the censored metadata, never the stored one, and renders the body from it', async () => {
+            const stored: Notification = {
+                id: 'notification-id',
+                userId: 'user-id',
+                type: EnumNotificationType.userActivity,
+                priority: EnumNotificationPriority.normal,
+                title: 'notification.notify.verifiedMobileNumber.title',
+                body: 'notification.notify.verifiedMobileNumber.body',
+                metadata: {
+                    username: 'ana',
+                    encryptedMobileNumber: 'sealed-value',
+                },
+                isRead: false,
+                readAt: null,
+                createdAt: new Date('2024-01-01T00:00:00.000Z'),
+                createdBy: null,
+                updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+                updatedBy: null,
+            };
+            const censoredMetadata = {
+                username: 'ana',
+                mobileNumber: '+628********90',
+            };
+            notificationService.getListCursor.mockResolvedValue({
+                ...cursorPage,
+                data: [stored],
+            });
+            notificationService.toCensoredMetadata.mockReturnValue(
+                censoredMetadata
+            );
+            notificationService.toMessageProperties.mockReturnValue(
+                censoredMetadata as Record<string, string>
+            );
+            notificationService.toRejectReasonProperties.mockReturnValue(
+                censoredMetadata as Record<string, string>
+            );
+            messageService.setMessage.mockImplementation(
+                (path: string, options) =>
+                    `${path}:${String(options?.properties?.mobileNumber)}`
+            );
+
+            const result = await useCase.execute(
+                requestContext,
+                authContext,
+                query
+            );
+
+            expect(
+                notificationService.toMessageProperties
+            ).toHaveBeenCalledWith(stored.title, censoredMetadata);
+            expect(result.data).toEqual([
+                {
+                    ...stored,
+                    metadata: censoredMetadata,
+                    title: 'notification.notify.verifiedMobileNumber.title:+628********90',
+                    body: 'notification.notify.verifiedMobileNumber.body:+628********90',
+                },
+            ]);
         });
     });
 });

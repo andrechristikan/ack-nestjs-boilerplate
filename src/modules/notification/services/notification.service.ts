@@ -40,6 +40,7 @@ import { NotificationRepository } from '@modules/notification/repositories/notif
 import { NotificationUserSettingRepository } from '@modules/notification/repositories/notification.user-setting.repository';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { Injectable } from '@nestjs/common';
 import { MessageService } from '@common/message/services/message.service';
 import type { IMessageProperties } from '@common/message/interfaces/message.interface';
@@ -52,6 +53,7 @@ export class NotificationService {
         private readonly notificationRepository: NotificationRepository,
         private readonly notificationUserSettingRepository: NotificationUserSettingRepository,
         private readonly notificationUtil: NotificationUtil,
+        private readonly helperStringService: HelperStringService,
         private readonly messageService: MessageService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
@@ -68,6 +70,42 @@ export class NotificationService {
                 kind => NotificationKindContract[kind].title === title
             ) ?? null
         );
+    }
+
+    private toPlainRecord(
+        metadata: Prisma.JsonValue
+    ): INotificationSealedRecord | null {
+        if (
+            metadata === null ||
+            typeof metadata !== 'object' ||
+            Array.isArray(metadata)
+        ) {
+            return null;
+        }
+
+        return metadata as INotificationSealedRecord;
+    }
+
+    private censorSecrets(
+        kind: EnumNotificationKind,
+        opened: INotificationSealedRecord
+    ): INotificationSealedRecord {
+        const censored: INotificationSealedRecord = { ...opened };
+        for (const field of NotificationKindContract[kind].secrets) {
+            const value = opened[field];
+            if (typeof value !== 'string') {
+                continue;
+            }
+
+            if (field === 'mobileNumber') {
+                censored[field] =
+                    this.helperStringService.censorMobileNumber(value);
+            } else {
+                censored[field] = this.helperStringService.censor(value);
+            }
+        }
+
+        return censored;
     }
 
     private listConfigurableSettings(
@@ -382,26 +420,32 @@ export class NotificationService {
         );
     }
 
-    /** The message properties of a stored notification: the metadata with each sealed secret of the kind opened for the recipient, its primitive values, the kind's date fields formatted for display. The kind is the one whose contract row owns the title. */
-    toMessageProperties(
+    /** The stored metadata with each sealed secret of the kind opened for the recipient and censored; a metadata that is no plain object, or a title no kind owns, comes back as stored. */
+    toCensoredMetadata(
         title: string,
         metadata: Prisma.JsonValue,
         userId: string
-    ): IMessageProperties {
-        const properties: IMessageProperties = {};
-        if (
-            metadata === null ||
-            typeof metadata !== 'object' ||
-            Array.isArray(metadata)
-        ) {
-            return properties;
+    ): Prisma.JsonValue {
+        const stored = this.toPlainRecord(metadata);
+        const kind = this.findKindByTitle(title);
+        if (stored === null || kind === null) {
+            return metadata;
         }
 
-        const kind = this.findKindByTitle(title);
-        const stored = metadata as INotificationSealedRecord;
-        let record = stored;
-        if (kind !== null) {
-            record = this.notificationUtil.openContext(kind, stored, userId);
+        const opened = this.notificationUtil.openContext(kind, stored, userId);
+
+        return this.censorSecrets(kind, opened);
+    }
+
+    /** The message properties of a stored notification: the primitive metadata values, the kind's date fields formatted for display. The kind is the one whose contract row owns the title. */
+    toMessageProperties(
+        title: string,
+        metadata: Prisma.JsonValue
+    ): IMessageProperties {
+        const properties: IMessageProperties = {};
+        const record = this.toPlainRecord(metadata);
+        if (record === null) {
+            return properties;
         }
 
         for (const [key, value] of Object.entries(record)) {
@@ -414,6 +458,7 @@ export class NotificationService {
             }
         }
 
+        const kind = this.findKindByTitle(title);
         if (kind === null) {
             return properties;
         }

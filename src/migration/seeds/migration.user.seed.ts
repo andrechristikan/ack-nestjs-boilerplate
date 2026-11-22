@@ -72,7 +72,7 @@ export class MigrationUserSeed
 
     async seed(): Promise<void> {
         this.logger.log('Seeding Users...');
-        this.logger.log(`Found ${this.users.length} Users to seed.`);
+        this.logger.log({ count: this.users.length }, 'Found users to seed');
 
         const roleNames = this.users.map(user => user.role);
         const uniqueRoles = this.helperArrayService.unique(roleNames);
@@ -105,12 +105,12 @@ export class MigrationUserSeed
             ]);
 
         if (roles.length !== uniqueRoles.length) {
-            this.logger.error('Roles not found for users, cannot seed.');
+            this.logger.warn('Roles not found for users, cannot seed.');
             return;
         }
 
         if (countries.length !== uniqueCountries.length) {
-            this.logger.error('Countries not found for users, cannot seed.');
+            this.logger.warn('Countries not found for users, cannot seed.');
             return;
         }
 
@@ -123,7 +123,7 @@ export class MigrationUserSeed
         if (
             termPolicies.length !== UserTermPolicyContract.requiredTypes.length
         ) {
-            this.logger.error('TermPolicies not found for users, cannot seed.');
+            this.logger.warn('TermPolicies not found for users, cannot seed.');
             return;
         }
 

@@ -4,6 +4,7 @@ import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
+import type { IMigrationEnvironmentData } from '@migration/interfaces/migration.interface';
 
 const FeatureFlagData: Prisma.FeatureFlagCreateInput[] = [
     {
@@ -84,8 +85,7 @@ const FeatureFlagData: Prisma.FeatureFlagCreateInput[] = [
     },
 ];
 
-export const MigrationFeatureFlagData: Record<
-    EnumAppEnvironment,
+export const MigrationFeatureFlagData: IMigrationEnvironmentData<
     Prisma.FeatureFlagCreateInput[]
 > = {
     [EnumAppEnvironment.local]: FeatureFlagData,

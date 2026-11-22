@@ -28,8 +28,8 @@ const [role, email] = await Promise.all([readRole, readEmail, gateCountry]);
 - Statements on one `tx` that use no other statement's result and are bound to no order run in one `Promise.all`.
 - One `Promise.all` holds reads only or writes only, and a write follows its checks. A method whose only read on `tx` serves its own write (the ids for its `updateMany`, its own row, a keyed outbox add's key) is a write; a method that reads another subject to build its write joins none (`TermPolicyAcceptanceService.acceptPublishedManyInTx`).
 - Awaited alone, in turn:
-    - a statement whose failure is the answer: a guarded statement, `UserAuthService.completeReauthenticationInTx` and `MfaService.completeReauthenticationInTx` in turn, an insert whose unique collision is mapped or retried;
-    - a credential proof (the `UserAuthService` and `MfaService` re-authentication checks `checkReauthenticationPassword` and `checkReauthentication`, `MfaService.check`, `checkPasskeyLogin`, `checkTotpSetupCode`, the password compare), so a failed proof is always counted and recorded;
+    - a statement whose failure is the answer: a guarded statement, `UserAuthService.completeReauthenticationInTx` and `MFAService.completeReauthenticationInTx` in turn, an insert whose unique collision is mapped or retried;
+    - a credential proof (the `UserAuthService` and `MFAService` re-authentication checks `checkReauthenticationPassword` and `checkReauthentication`, `MFAService.check`, `checkPasskeyLogin`, `checkTOTPSetupCode`, the password compare), so a failed proof is always counted and recorded;
     - a statement another depends on;
     - a cheap check before the expensive or external work it guards (S3, an argon2 hash, a send).
 - argon2id hashes, and argon2id compares over several hashes, run under `Promise.all`.

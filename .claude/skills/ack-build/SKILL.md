@@ -42,14 +42,35 @@ Decisions to honour: <the plan's line>
 
 `Position` counts the tickets `done` plus this one, over every ticket of the plan; a second dispatch on a ticket repeats its `Position`. Each time a ticket becomes `done`, tell the owner `<n>/<total>`.
 
-2. A `DONE <n>/<total>` hand-back that quotes each spec failing, then passing: tick the ticket's criteria, set its `**Status:**` to `done`, and fill the plan row's `Status` and `Evidence` with the command and its decisive line.
-3. `NEEDS_CONTEXT`, `BLOCKED`, `DONE_WITH_CONCERNS`, or a line that is not green: answer from the spec when it answers. Otherwise ask the owner with `AskUserQuestion`; the answer joins the spec's `## Owner decisions` before the next dispatch.
+2. A `DONE <n>/<total>` hand-back that quotes each spec failing, then passing: record each deviation it names (step 3), tick the ticket's criteria, set its `**Status:**` to `done`, and fill the plan row's `Status` and `Evidence` with the command and its decisive line.
+3. `NEEDS_CONTEXT`, `NEEDS_DECISION`, `BLOCKED`, `DONE_WITH_CONCERNS`, or a line that is not green: route each open item, the first match only.
+    - The spec, its `## Owner decisions`, or an entry `Decisions to honour` names answers it: answer it.
+    - A choice of what the product does: ask the owner with `AskUserQuestion`. The answer joins the spec's `## Owner decisions`.
+    - A choice of how to build it: dispatch `advisor` (below). Ask the owner each item it hands back `NEEDS_OWNER`, as above.
+
+    Then, before the next dispatch on the ticket and before it is set `done`, record each decision answered and each deviation a hand-back names, a rule-wins one included:
+    - Correct the ticket step and the acceptance criterion it changes. The next coder builds them, and step 2 ticks them.
+    - Correct the spec section it changes.
+    - Add one line under the ticket's `## Deviations`: what differs, why, who decided (rule, session, advisor, or owner). Add the heading at the end of the ticket when it is absent. `## Deviations` is the record of the difference.
+    - An item `advisor` settled: `advisor` has written these three. Add no second line.
+    - Change the plan row only when a blocker or a seam moved.
+
+The `advisor` dispatch, with the Agent call's `model` set to `fable`:
+
+```
+Agent: advisor
+Spec: <the spec path>
+Plan: <the plan path>
+Tickets: <the ticket path>
+Open: <the coder's question, options, and recommendation>
+```
+
 4. One check still failing after two coder dispatches: dispatch `debugger` with the symptom, then one `coder` with its pin. Stop with the evidence when the cause stays unknown.
 5. A schema delta in a hand-back: add the owner's `pnpm db:migrate` to the plan's `## Owner commands`.
 
 Stop before the last ticket only when:
 
-- The spec is wrong or ambiguous in a way that changes behaviour.
+- The spec has a defect that changes behaviour and one owner answer does not settle.
 - The work reaches a module or a dependency no ticket names.
 - A rule has to change first: a plan defect, since `## Harness changes` missed it. Add the line there and name `/ack-harness <the plan path>`.
 

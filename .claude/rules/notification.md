@@ -7,7 +7,7 @@ paths:
 
 # Notifications
 
-Three channels, email (`AwsSESService`), push (`FirebaseService`), and sms (`NotificationSmsDeliveryService`, the pending adapter of `layering.md`), each with its own queue and processor beside the main `EnumNotificationQueue.notification`. A request never sends inline. Every notification job is an outbox row (`effects.md`); every notification queue dedupes by its `jobId`, the row's key, never `deduplication`.
+Three channels, email (`AWSSESService`), push (`FirebaseService`), and sms (`NotificationSMSDeliveryService`, the pending adapter of `layering.md`), each with its own queue and processor beside the main `EnumNotificationQueue.notification`. A request never sends inline. Every notification job is an outbox row (`effects.md`); every notification queue dedupes by its `jobId`, the row's key, never `deduplication`.
 
 Producing a notification, its key, and the `snapshot`: `notify.md`.
 
@@ -21,8 +21,8 @@ Producing a notification, its key, and the `snapshot`: `notify.md`.
 ## Fan-out and send
 
 - After the recipient, `NotificationProcessUseCase` opens one `DatabaseService.withTransaction`: it creates the `Notification` row, its id generated and recorded beforehand, and adds one row per channel with `addManyInTx`, keyed by `notification.idempotencyKey.stepPattern`. Email goes when the channels hold `email` (every recipient has an address), push when the channels hold `push` and the recipient has tokens, sms when the channels hold `sms` and the recipient has a number; a recipient with none gets no channel row.
-- One use case per channel step: `NotificationEmailProcessSendUseCase`, `NotificationEmailProcessSendUnregisteredUseCase`, `NotificationPushProcessSendUseCase`, `NotificationSmsProcessSendUseCase`. Each picks its values from the context by the kind's `NotificationKindContract` row: `templateFields` for the SES template data, `metadataFields` for the push title and body properties, `username` added to both; the SES template name is the kind. A contract row holds data only, no function.
-- `NotificationEmailProcessSendUseCase` and `NotificationEmailProcessSendUnregisteredUseCase` check `AwsSESService.isInitialized()` first; unset, they return `{ message, result: null }`, the message from `notification.queue.email.error.sesNotInitialized`, and call no delivery stamp, no `OutboxService.updateData`, and no send.
+- One use case per channel step: `NotificationEmailProcessSendUseCase`, `NotificationEmailProcessSendUnregisteredUseCase`, `NotificationPushProcessSendUseCase`, `NotificationSMSProcessSendUseCase`. Each picks its values from the context by the kind's `NotificationKindContract` row: `templateFields` for the SES template data, `metadataFields` for the push title and body properties, `username` added to both; the SES template name is the kind. A contract row holds data only, no function.
+- `NotificationEmailProcessSendUseCase` and `NotificationEmailProcessSendUnregisteredUseCase` check `AWSSESService.isInitialized()` first; unset, they return `{ message, result: null }`, the message from `notification.queue.email.error.sesNotInitialized`, and call no delivery stamp, no `OutboxService.updateData`, and no send.
 - `dateFields` on the contract row names the context fields holding a date. `Notification.metadata` keeps them ISO; `NotificationUtil` formats them to RFC 2822 when it builds the SES template data, the push properties, and the message properties of the notification list's title and body.
 - No service or use case exists per kind. A kind costs its enum member, its contract row, its messages, its context type, and its template.
 - Step state between attempts lives in the row through `OutboxService.updateData`, never `job.updateData`: the recipient, the notification id, `completedSteps`, `encryptedPendingTokens`, `encryptedFailureTokens`. A retry skips a completed step.

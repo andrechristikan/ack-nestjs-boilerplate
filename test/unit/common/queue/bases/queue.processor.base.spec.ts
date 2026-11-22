@@ -470,6 +470,21 @@ describe('QueueProcessorBase', () => {
             expect(job.log).toHaveBeenCalledWith('a message');
         });
 
+        it('warns with the error first and the sentence second when job.log rejects', async () => {
+            const warn = vi.spyOn(Logger.prototype, 'warn');
+            const error = new Error('log failed');
+            const job = buildProcessorJob({
+                log: vi.fn().mockRejectedValue(error),
+            });
+
+            await processor['writeJobLog'](job, 'a message');
+
+            expect(warn).toHaveBeenCalledWith(
+                error,
+                'Queue job log write failed'
+            );
+        });
+
         it('swallows an Error raised by job.log', async () => {
             const job = buildProcessorJob({
                 log: vi.fn().mockRejectedValue(new Error('log failed')),

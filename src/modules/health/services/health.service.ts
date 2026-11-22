@@ -2,7 +2,7 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 import { HealthAppleIndicator } from '@modules/health/indicators/health.apple.indicator';
-import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3.indicator';
+import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3-bucket.indicator';
 import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
 import { HealthDatabaseIndicator } from '@modules/health/indicators/health.database.indicator';
 import { HealthFirebaseIndicator } from '@modules/health/indicators/health.firebase.indicator';
@@ -24,16 +24,16 @@ export class HealthService {
     constructor(
         private readonly health: HealthCheckService,
         private readonly healthInstanceIndicator: HealthInstanceIndicator,
-        private readonly awsS3BucketIndicator: HealthAwsS3BucketIndicator,
-        private readonly awsSESIndicator: HealthAwsSESIndicator,
-        private readonly databaseIndicator: HealthDatabaseIndicator,
-        private readonly redisIndicator: HealthRedisIndicator,
-        private readonly sentryIndicator: HealthSentryIndicator,
-        private readonly firebaseIndicator: HealthFirebaseIndicator,
-        private readonly googleIndicator: HealthGoogleIndicator,
-        private readonly appleIndicator: HealthAppleIndicator,
-        private readonly jwksIndicator: HealthJwksIndicator,
-        private readonly queueIndicator: HealthQueueIndicator
+        private readonly healthAwsS3BucketIndicator: HealthAwsS3BucketIndicator,
+        private readonly healthAwsSESIndicator: HealthAwsSESIndicator,
+        private readonly healthDatabaseIndicator: HealthDatabaseIndicator,
+        private readonly healthRedisIndicator: HealthRedisIndicator,
+        private readonly healthSentryIndicator: HealthSentryIndicator,
+        private readonly healthFirebaseIndicator: HealthFirebaseIndicator,
+        private readonly healthGoogleIndicator: HealthGoogleIndicator,
+        private readonly healthAppleIndicator: HealthAppleIndicator,
+        private readonly healthJwksIndicator: HealthJwksIndicator,
+        private readonly healthQueueIndicator: HealthQueueIndicator
     ) {}
 
     private isIndicatorMap(value: unknown): boolean {
@@ -93,45 +93,63 @@ export class HealthService {
     async checkAws(): Promise<HealthCheckResult> {
         return this.check([
             () =>
-                this.awsS3BucketIndicator.isHealthy(
+                this.healthAwsS3BucketIndicator.isHealthy(
                     EnumHealthIndicatorKey.s3PublicBucket,
                     EnumAwsS3Accessibility.public
                 ),
             () =>
-                this.awsS3BucketIndicator.isHealthy(
+                this.healthAwsS3BucketIndicator.isHealthy(
                     EnumHealthIndicatorKey.s3PrivateBucket,
                     EnumAwsS3Accessibility.private
                 ),
-            () => this.awsSESIndicator.isHealthy(EnumHealthIndicatorKey.ses),
+            () =>
+                this.healthAwsSESIndicator.isHealthy(
+                    EnumHealthIndicatorKey.ses
+                ),
         ]);
     }
 
     async checkDatabase(): Promise<HealthCheckResult> {
         return this.check([
             () =>
-                this.databaseIndicator.isHealthy(
+                this.healthDatabaseIndicator.isHealthy(
                     EnumHealthIndicatorKey.database
                 ),
-            () => this.redisIndicator.isHealthy(EnumHealthIndicatorKey.redis),
-            () => this.queueIndicator.isHealthy(EnumHealthIndicatorKey.queue),
+            () =>
+                this.healthRedisIndicator.isHealthy(
+                    EnumHealthIndicatorKey.redis
+                ),
+            () =>
+                this.healthQueueIndicator.isHealthy(
+                    EnumHealthIndicatorKey.queue
+                ),
         ]);
     }
 
     async checkThirdParty(): Promise<HealthCheckResult> {
         return this.check([
-            () => this.sentryIndicator.isHealthy(EnumHealthIndicatorKey.sentry),
             () =>
-                this.firebaseIndicator.isHealthy(
+                this.healthSentryIndicator.isHealthy(
+                    EnumHealthIndicatorKey.sentry
+                ),
+            () =>
+                this.healthFirebaseIndicator.isHealthy(
                     EnumHealthIndicatorKey.firebase
                 ),
-            () => this.googleIndicator.isHealthy(EnumHealthIndicatorKey.google),
-            () => this.appleIndicator.isHealthy(EnumHealthIndicatorKey.apple),
             () =>
-                this.jwksIndicator.isHealthyAccessToken(
+                this.healthGoogleIndicator.isHealthy(
+                    EnumHealthIndicatorKey.google
+                ),
+            () =>
+                this.healthAppleIndicator.isHealthy(
+                    EnumHealthIndicatorKey.apple
+                ),
+            () =>
+                this.healthJwksIndicator.isHealthyAccessToken(
                     EnumHealthIndicatorKey.jwksAccessToken
                 ),
             () =>
-                this.jwksIndicator.isHealthyRefreshToken(
+                this.healthJwksIndicator.isHealthyRefreshToken(
                     EnumHealthIndicatorKey.jwksRefreshToken
                 ),
         ]);

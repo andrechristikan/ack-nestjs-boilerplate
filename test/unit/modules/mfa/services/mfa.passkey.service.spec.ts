@@ -124,11 +124,7 @@ describe('MfaPasskeyService', () => {
             vi.mocked(generateRegistrationOptions).mockResolvedValue(options);
 
             await expect(
-                service.getRegistrationOptions(
-                    'user-quartz',
-                    'quartz@example.test',
-                    'quartz'
-                )
+                service.getRegistrationOptions('user-quartz', 'quartz')
             ).resolves.toBe(options);
 
             expect(
@@ -138,7 +134,7 @@ describe('MfaPasskeyService', () => {
                 rpName: 'Ack Example',
                 rpID: 'example.test',
                 userID: new TextEncoder().encode('user-quartz'),
-                userName: 'quartz@example.test',
+                userName: 'quartz',
                 userDisplayName: 'quartz',
                 attestationType: 'none',
                 authenticatorSelection: {

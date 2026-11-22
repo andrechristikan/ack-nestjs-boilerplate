@@ -17,6 +17,7 @@ import type {
     IWorkspaceContext,
     IWorkspaceInviteCreate,
 } from '@modules/workspace/interfaces/workspace.interface';
+import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -45,6 +46,7 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
         private readonly userUtil: UserUtil,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly workspaceUtil: WorkspaceUtil,
         private readonly configService: ConfigService
     ) {
         this.referenceMaxAttempts = this.configService.get<number>(
@@ -128,7 +130,9 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
                         )
                 );
 
-                return { data: invite };
+                const censored = this.workspaceUtil.toCensoredInvite(invite);
+
+                return { data: censored };
             } catch (err: unknown) {
                 const isDuplicate = this.databaseUtil.isUniqueCollision(
                     err,

@@ -114,7 +114,7 @@ services:
         image: redis:latest
         hostname: redis-queue
         environment:
-            REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:-}
+            REDIS_PASSWORD: ${DOCKER_REDIS_QUEUE_PASSWORD:-}
         user: redis
         command:
             [
@@ -150,7 +150,7 @@ services:
         image: redis:latest
         hostname: redis-cache
         environment:
-            REDIS_PASSWORD: ${DOCKER_REDIS_PASSWORD:-}
+            REDIS_PASSWORD: ${DOCKER_REDIS_CACHE_PASSWORD:-}
         user: redis
         command:
             [
@@ -188,7 +188,7 @@ services:
         environment:
             - REDIS_HOST=redis-queue
             - REDIS_PORT=6379
-            - REDIS_PASSWORD=${DOCKER_REDIS_PASSWORD:-}
+            - REDIS_PASSWORD=${DOCKER_REDIS_QUEUE_PASSWORD:-}
             - BULL_PREFIX=Queue
             - USER_LOGIN=${DOCKER_BULLBOARD_USERNAME:-admin}
             - USER_PASSWORD=${DOCKER_BULLBOARD_PASSWORD:-admin123}

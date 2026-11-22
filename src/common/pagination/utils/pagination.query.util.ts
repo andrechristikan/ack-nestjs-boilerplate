@@ -18,6 +18,7 @@ import type {
     IPaginationQueryOffsetOptions,
     IPaginationQueryOffsetParams,
     IPaginationQueryPatch,
+    IPaginationQueryPresetOptions,
     IPaginationSearchWhere,
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationCursorUtil } from '@common/pagination/utils/pagination.cursor.util';
@@ -57,6 +58,45 @@ export class PaginationQueryUtil {
                 : defaultName;
 
         return { name, terms: [...presets[name]!] };
+    }
+
+    private resolveSearchAndOrder<T extends IPaginationOrderByPresets>(
+        rawSearch: string | null,
+        requestedOrderBy: string | null,
+        availableSearch: readonly string[],
+        options: IPaginationQueryPresetOptions<T>
+    ): {
+        where: IPaginationSearchWhere | null;
+        search: string | null;
+        name: string;
+        orderBy: IPaginationOrderBy[];
+    } {
+        const search = rawSearch?.trim() ?? null;
+        let where: IPaginationSearchWhere | null = null;
+        if (search && availableSearch.length > 0) {
+            where = this.buildSearchObject(search, availableSearch);
+        }
+        const { name, terms: orderBy } = this.resolvePreset(
+            requestedOrderBy,
+            options.orderBy,
+            options.defaultOrderBy
+        );
+
+        return { where, search, name, orderBy };
+    }
+
+    private buildStoreTail<T extends IPaginationOrderByPresets>(
+        name: string,
+        availableSearch: readonly string[],
+        search: string | null,
+        options: IPaginationQueryPresetOptions<T>
+    ): IPaginationQueryPatch {
+        return {
+            orderBy: name,
+            availableSearch,
+            availableOrderBy: Object.keys(options.orderBy),
+            ...(search && availableSearch.length > 0 ? { search } : {}),
+        };
     }
 
     private validateAndParsePage(page: number | string | null): number {
@@ -132,17 +172,20 @@ export class PaginationQueryUtil {
             dto.perPage ?? null,
             options.defaultPerPage
         );
-        const search = dto.search?.trim();
-        let where: IPaginationSearchWhere | null = null;
-        if (search && availableSearch.length > 0) {
-            where = this.buildSearchObject(search, availableSearch);
-        }
-        const { name, terms: orderBy } = this.resolvePreset(
+        const { where, search, name, orderBy } = this.resolveSearchAndOrder(
+            dto.search ?? null,
             dto.orderBy ?? null,
-            options.orderBy,
-            options.defaultOrderBy
+            availableSearch,
+            options
         );
         const skip = this.paginationOffsetUtil.skip(page, perPage);
+
+        const storeTail = this.buildStoreTail(
+            name,
+            availableSearch,
+            search,
+            options
+        );
 
         return {
             params: {
@@ -154,10 +197,7 @@ export class PaginationQueryUtil {
             storePatch: {
                 page,
                 perPage,
-                orderBy: name,
-                availableSearch,
-                availableOrderBy: Object.keys(options.orderBy),
-                ...(search && availableSearch.length > 0 ? { search } : {}),
+                ...storeTail,
             },
         };
     }
@@ -175,20 +215,23 @@ export class PaginationQueryUtil {
             options.defaultPerPage
         );
         const cursor = this.validateAndSanitizeCursor(dto.cursor ?? null);
-        const search = dto.search?.trim();
-        let where: IPaginationSearchWhere | null = null;
-        if (search && availableSearch.length > 0) {
-            where = this.buildSearchObject(search, availableSearch);
-        }
-        const { name, terms: orderBy } = this.resolvePreset(
+        const { where, search, name, orderBy } = this.resolveSearchAndOrder(
+            dto.search ?? null,
             dto.orderBy ?? null,
-            options.orderBy,
-            options.defaultOrderBy
+            availableSearch,
+            options
         );
         const fingerprint = this.paginationCursorUtil.fingerprint(
             options.scope,
             dto,
             orderBy
+        );
+
+        const storeTail = this.buildStoreTail(
+            name,
+            availableSearch,
+            search,
+            options
         );
 
         return {
@@ -202,10 +245,7 @@ export class PaginationQueryUtil {
             storePatch: {
                 perPage,
                 ...(cursor && { cursor }),
-                orderBy: name,
-                availableSearch,
-                availableOrderBy: Object.keys(options.orderBy),
-                ...(search && availableSearch.length > 0 ? { search } : {}),
+                ...storeTail,
             },
         };
     }

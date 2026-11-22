@@ -30,19 +30,21 @@ A DTO's `<concern>` is an action, a noun, or absent for the module's canonical s
 | --- | --- | --- |
 | class | module-prefixed | `UserService`, `UserSignUpUseCase`, `UserAdminController` |
 | interface, data shape, payload | kind word last | `IUser`, `INotificationTermPolicyBatchRecipientEncryptedPayload` |
-| constant of any kind | PascalCase | `UserDefaultAvailableSearch`, `AuthJwtAccessGuardKey` |
+| constant of any kind | PascalCase | `UserDefaultAvailableSearch`, `AuthJWTAccessGuardKey` |
 | injected field | the class name in camelCase | `authService: AuthService`, `userSignUpUseCase: UserSignUpUseCase` |
 | metadata key; CLS store key; passport strategy key | `<Module>[<Concern>]MetaKey`, `StoreKey`, `GuardKey`; the value equals the name | `PolicyRequiredMetaKey = 'PolicyRequiredMetaKey'`; `ProjectContextStoreKey = 'ProjectContextStoreKey'` |
 | cursor scope | `<Module><Endpoint>CursorScope`, PascalCase; the value equals the name | `SessionSharedListCursorScope = 'SessionSharedListCursorScope'` |
 | sort preset constant and its enum | `<Module>[<Concern>]OrderBy` keyed by `Enum<Module>[<Concern>]OrderBy`, `Cursor` as the concern only where the cursor presets differ | `DeviceOrderBy` and `EnumDeviceOrderBy`, `DeviceCursorOrderBy` and `EnumDeviceCursorOrderBy` |
-| guard-mounting decorator; param decorator | `<Module>[<Concern>]Protected()`; `<Module>[<Concern>]Context()` for request state | `WorkspaceProtected()`; `WorkspaceContext()`, `AuthJwtRefreshContext()` |
+| guard-mounting decorator; param decorator | `<Module>[<Concern>]Protected()`; `<Module>[<Concern>]Context()` for request state | `WorkspaceProtected()`; `WorkspaceContext()`, `AuthJWTRefreshContext()` |
 | repository read; service read | `find*`, `count*`, `exists*`, `group*`; `get*` for a public read, `load<Subject>` for the private method a `readThrough` loader calls (`getUserChurn` and `loadUserChurn`, `cache.md`) | `findOneById`; `getListOffsetByAdmin` |
 | method or use case serving one audience | `By<Audience>` suffix | `createByAdmin`, `getListCursorBySystem`, `UserCreateByAdminUseCase` |
-| narrowed list read; Prisma select constant | `I<Module>List` when narrower than the single-row shape, `I<Module>` when list and single-row reads share one neutral select, never `…Row`; `<Module>[<Audience>][<Concern>]Select` | `IUserList` + `UserAdminListSelect`; `IApiKey` + `ApiKeySelect` |
+| narrowed list read; Prisma select constant | `I<Module>List` when narrower than the single-row shape, `I<Module>` when list and single-row reads share one neutral select, never `…Row`; `<Module>[<Audience>][<Concern>]Select` | `IUserList` + `UserAdminListSelect`; `IAPIKey` + `APIKeySelect` |
 | boolean state method; transaction method | `exists*` or the state asserted, `Promise<boolean>`; `*InTx` | `existsByEmail`, `createInTx` |
-| DI token (rare); OpenAPI scheme const | PascalCase in `Symbol()`; PascalCase const, camelCase value | `ApiKeyDocSecurityName = 'xApiKey'` |
+| DI token (rare); OpenAPI scheme const | PascalCase in `Symbol()`; PascalCase const, camelCase value | `APIKeyDocSecurityName = 'xAPIKey'` |
 
 An object-literal or type property is `UPPER_SNAKE_CASE` only when it names an environment variable (`AppEnvSchema` keys, `src/app/dtos/app.env.dto.ts`). Everything on the wire is camelCase: DTO fields, query and route params, Prisma columns, job payload fields, i18n keys, flag keys. Route path segments and folders are kebab-case, mapped one-to-one to camelCase (`sign-up` ↔ `signUp`, never `signup`). A config key named `Pattern` is a `{placeholder}` string. A slug holds lower-case letters, digits, and `-` (`WorkspaceSlugRegex`, `ProjectSlugRegex`): the pattern refuses every other character, an upper-case letter included, no layer converts a slug, and `HelperStringService.generateSlug` returns lower case. A Redis key is a config `keyPattern` with PascalCase segments, no prefix-append.
+
+An acronym of `MFA`, `JWT`, `API`, `SMS`, `OTP`, `TOTP`, `JWKS`, `CDN`, `SES`, `AWS`, `HTTP`, `CORS`, `CSV`, `PDF`, `JSON`, `HTML`, `PEM`, `ACL`, `ISO`, `JTI`, `KID` is upper-case in every name this project declares, the wire's included, unless it is the first word of a camelCase name: `MFAService`, `AuthJWTService`, `APIKeyService`, `AWSS3Service`, `isMFAEnabled`; `mfaService`, `apiKeyContext`, `httpStatus` stay. `Url`, `Uri`, `Ip`, `Ua`, `Ttl`, `Id`, `Ids`, `Dto`, `Tx`, and `S3` keep their form. Exempt: a dependency's own name (`HttpStatus`, `JwtService` of `@nestjs/jwt`, `SESClient`), a file or folder name, a route path, a header's wire value, an environment variable, and a Prisma model name with its `@@map` string, whose client accessor lower-cases only the first letter (`MfaPasskey`, `tx.mfaPasskey`); a Prisma enum, its members, a column, a relation name (`@relation("UserMFATOTP")`), and a Redis key segment (`'APIKey:Lease:{key}'`) follow the rule.
 
 An `OrThrow` suffix is Prisma's only (`findUniqueOrThrow`), never on a name this project declares.
 

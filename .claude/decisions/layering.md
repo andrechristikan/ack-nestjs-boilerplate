@@ -96,7 +96,7 @@ Rule: `module-files.md`, `@Global()`.
 - `global: true` in `forRoot()`: the scope hides in a return value instead of on the class.
 - A static `@Global() @Module({...})`: two shapes for one kind of module.
 - A global module imported again by its use-case module or inside another `forRootAsync`: a global provider is already visible there.
-- `FirebaseModule` global: three importers name it, as `AwsModule`'s importers do.
+- `FirebaseModule` global: three importers name it, as `AWSModule`'s importers do.
 
 ### Only a repository queries the database client; the kit imports no module code or type
 
@@ -167,6 +167,16 @@ Rule: `dto.md`; `naming.md`, Files.
 - One sub-folder per schema kind (`dtos/cache/`): the kind already ends the file's noun (`-cache`, `-pipeline`), so the folder repeats it, and the sub-folders of `dtos/` name a transport direction.
 - One grouped file per kind: it rebuilds the constant file under another name, where a DTO file declares one schema and its type and its spec mirrors that one schema.
 - The `Dto` type replacing the `I*` interface: the schema is declared `satisfies z.ZodType<I*>`, so the interface is the contract it is checked against, and every service and repository signature would move onto a zod inference with no behaviour gained.
+- A piece reused across cache, pipeline, or snapshot schemas as a validation file (`AnalyticPipelineObjectIdSchema` under `validations/`): `validations/` serves the fields of request and environment schemas, and the piece is a schema of its own, like the schemas that reuse it.
+
+### An acronym is upper-case in identifiers and on the wire
+
+Rule: `naming.md`, Identifiers.
+
+- PascalCase acronyms (`MfaService`): an acronym reads as its letters, and one casing in every name leaves no guess.
+- `SES` alone upper-case as the provider spelling: one acronym written apart from the others is an exception a reader remembers name by name.
+- Upper-case in code only: a client reads the response fields (`isMFAEnabled`), and one spelling across code and wire keeps a field equal to the property that fills it.
+- `Url`, `Id`, `Dto`, `Tx` in the list: the list holds technologies and protocols, and these are generic words of nearly every name (`userId`, `ids`, `tx`).
 
 ### One name per analytic metric across route, enum, i18n key, method, and use case, its area singular
 
@@ -236,7 +246,7 @@ Rule: `test-doubles.md`.
 - A real `MessageService`: it needs the i18n runtime and its language files.
 - A real `PaginationService`: it runs the page query on the Prisma delegate it is handed.
 - A real repository or `DatabaseService`: that is the held integration suite.
-- A `vi.spyOn` stub on a deterministic helper method to reach a `src/` branch: the branch no real input reaches is dead code, and the stub hides it (`AuthJwtService.remainingSeconds`).
+- A `vi.spyOn` stub on a deterministic helper method to reach a `src/` branch: the branch no real input reaches is dead code, and the stub hides it (`AuthJWTService.remainingSeconds`).
 
 ### Mock reset and restore come from the unit project config, and a spec may still call the three `vi` mock calls
 

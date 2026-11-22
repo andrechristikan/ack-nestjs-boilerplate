@@ -11,7 +11,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumUserReauthenticationAction } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
@@ -32,7 +31,11 @@ import {
 import { UserDeleteMobileNumberUseCase } from '@modules/user/use-cases/user.delete-mobile-number.use-case';
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { UserUtil } from '@modules/user/utils/user.util';
 import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 const passkeyResponse = {
@@ -120,10 +123,14 @@ describe('UserDeleteMobileNumberUseCase', () => {
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: MfaService, useValue: mfaService },
                 { provide: DatabaseService, useValue: databaseService },
-                DatabaseUtil,
+                UserUtil,
+                ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
-                    useValue: buildConfigService(TestUnitKitConfigValues),
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'message.availableLanguages': ['en'],
+                    }),
                 },
             ],
         }).compile();
@@ -241,7 +248,9 @@ describe('UserDeleteMobileNumberUseCase', () => {
                     mobileNumber.id,
                     dto
                 )
-            ).resolves.toEqual({ data: mobileNumber });
+            ).resolves.toEqual({
+                data: { ...mobileNumber, number: '8123*****90' },
+            });
 
             expect(
                 userAuthService.checkReauthenticationPassword

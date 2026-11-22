@@ -60,7 +60,7 @@ export class MigrationPolicySeed
         });
 
         if (roles.length !== roleNames.length) {
-            this.logger.error('Roles not found for policies, cannot seed.');
+            this.logger.warn('Roles not found for policies, cannot seed.');
             return;
         }
 
@@ -73,7 +73,7 @@ export class MigrationPolicySeed
             }))
         );
 
-        this.logger.log(`Found ${rows.length} Policies to seed.`);
+        this.logger.log({ count: rows.length }, 'Found policies to seed');
 
         try {
             await this.databaseService.withTransaction(

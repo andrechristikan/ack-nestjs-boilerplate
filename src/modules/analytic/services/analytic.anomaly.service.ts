@@ -88,7 +88,7 @@ export class AnalyticAnomalyService {
         return this.analyticFraudUtil.nearLockoutThreshold(passwordMaxAttempt);
     }
 
-    private async loadLoginSpikeIpSummary(): Promise<IAnalyticAnomalyLoginSpikeIpSummary> {
+    private async loadAnomalyLoginSpikeIp(): Promise<IAnalyticAnomalyLoginSpikeIpSummary> {
         const range = this.analyticDateUtil.windowRange(
             this.loginSpikeIpWindowInMs
         );
@@ -108,7 +108,7 @@ export class AnalyticAnomalyService {
         };
     }
 
-    private async loadFailedLoginSpikeSummary(): Promise<IAnalyticAnomalyFailedLoginSpikeSummary> {
+    private async loadAnomalyFailedLoginSpike(): Promise<IAnalyticAnomalyFailedLoginSpikeSummary> {
         const now = this.helperDateService.create();
         const nearLockoutMinAttempt = await this.getNearLockoutMinAttempt();
         const count = await this.analyticAnomalyRepository.countNearLockout(
@@ -179,7 +179,7 @@ export class AnalyticAnomalyService {
         };
     }
 
-    async getImpossibleTravelSummary(): Promise<IAnalyticAnomalyImpossibleTravelSummary> {
+    async getAnomalyImpossibleTravel(): Promise<IAnalyticAnomalyImpossibleTravelSummary> {
         const { count, metadata, windowStart, windowEnd, computedAt } =
             await this.analyticSnapshotService.getSummary(
                 EnumAnalyticSnapshotSignal.impossibleTravel,
@@ -198,7 +198,7 @@ export class AnalyticAnomalyService {
         };
     }
 
-    async getImpossibleTravelList(
+    async getAnomalyImpossibleTravelList(
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticImpossibleTravel>> {
         return this.analyticSnapshotService.getListOffset(
@@ -209,7 +209,7 @@ export class AnalyticAnomalyService {
         );
     }
 
-    async getLoginSpikeIpSummary(): Promise<IAnalyticAnomalyLoginSpikeIpSummary> {
+    async getAnomalyLoginSpikeIp(): Promise<IAnalyticAnomalyLoginSpikeIpSummary> {
         const key = this.analyticCache.buildAnomalySummaryKey(
             EnumAnalyticAnomalySignal.loginSpikeIp,
             String(this.loginSpikeIpWindowInMs)
@@ -219,11 +219,11 @@ export class AnalyticAnomalyService {
             key,
             AnalyticAnomalyLoginSpikeIpSummaryCacheSchema,
             this.analyticCache.liveSummaryTtlInMs,
-            () => this.loadLoginSpikeIpSummary()
+            () => this.loadAnomalyLoginSpikeIp()
         );
     }
 
-    async getLoginSpikeIpList(
+    async getAnomalyLoginSpikeIpList(
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticLoginSpikeIp>> {
         const range = this.analyticDateUtil.windowRange(
@@ -237,7 +237,7 @@ export class AnalyticAnomalyService {
         );
     }
 
-    async getFailedLoginSpikeSummary(): Promise<IAnalyticAnomalyFailedLoginSpikeSummary> {
+    async getAnomalyFailedLoginSpike(): Promise<IAnalyticAnomalyFailedLoginSpikeSummary> {
         const key = this.analyticCache.buildAnomalySummaryKey(
             EnumAnalyticAnomalySignal.failedLoginSpike,
             AnalyticCacheEmptyToken
@@ -247,11 +247,11 @@ export class AnalyticAnomalyService {
             key,
             AnalyticAnomalyFailedLoginSpikeSummaryCacheSchema,
             this.analyticCache.anomalySummaryTtlInMs,
-            () => this.loadFailedLoginSpikeSummary()
+            () => this.loadAnomalyFailedLoginSpike()
         );
     }
 
-    async getFailedLoginSpikeList(
+    async getAnomalyFailedLoginSpikeList(
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
         const now = this.helperDateService.create();
@@ -264,7 +264,7 @@ export class AnalyticAnomalyService {
         );
     }
 
-    async getDeviceProliferationSummary(): Promise<IAnalyticAnomalyDeviceProliferationSummary> {
+    async getAnomalyDeviceProliferation(): Promise<IAnalyticAnomalyDeviceProliferationSummary> {
         const { count, metadata, windowStart, windowEnd, computedAt } =
             await this.analyticSnapshotService.getSummary(
                 EnumAnalyticSnapshotSignal.deviceProliferation,
@@ -284,7 +284,7 @@ export class AnalyticAnomalyService {
         };
     }
 
-    async getDeviceProliferationList(
+    async getAnomalyDeviceProliferationList(
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticDeviceProliferation>> {
         return this.analyticSnapshotService.getListOffset(

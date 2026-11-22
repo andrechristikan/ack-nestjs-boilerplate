@@ -43,6 +43,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { RequestContextService } from '@common/request/services/request.context.service';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
@@ -146,6 +147,7 @@ describe('UserAuthService', () => {
                     useValue: requestContextService,
                 },
                 HelperDateService,
+                HelperStringService,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitUserConfigValues),

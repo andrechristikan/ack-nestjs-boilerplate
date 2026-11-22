@@ -1,5 +1,8 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import type { IMigrationUserData } from '@migration/interfaces/migration.interface';
+import type {
+    IMigrationEnvironmentData,
+    IMigrationUserData,
+} from '@migration/interfaces/migration.interface';
 
 export const MigrationUserSuperAdminId = '6aac171205d6fc2f45c6d616';
 
@@ -38,8 +41,7 @@ const MigrationUserDeployedData: IMigrationUserData[] = UserData.map(user => ({
     password: null,
 }));
 
-export const MigrationUserData: Record<
-    EnumAppEnvironment,
+export const MigrationUserData: IMigrationEnvironmentData<
     IMigrationUserData[]
 > = {
     [EnumAppEnvironment.local]: UserData,

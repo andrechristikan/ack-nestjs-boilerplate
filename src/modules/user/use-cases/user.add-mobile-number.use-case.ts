@@ -17,6 +17,7 @@ import type {
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
+import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -39,7 +40,8 @@ export class UserAddMobileNumberUseCase implements IAppUseCase<
         private readonly mfaService: MfaService,
         private readonly countryService: CountryService,
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly userUtil: UserUtil
     ) {}
 
     async execute(
@@ -163,7 +165,9 @@ export class UserAddMobileNumberUseCase implements IAppUseCase<
                 }
             );
 
-            return { data: mobileNumber };
+            const censored = this.userUtil.toCensoredMobileNumber(mobileNumber);
+
+            return { data: censored };
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;

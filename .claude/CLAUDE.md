@@ -45,7 +45,7 @@ Skills dispatch the agents in `.claude/agents/`; each agent's `description` stat
 ### Gotchas
 
 - `tsc` aborts on a `tsconfig.json` error and reports zero source errors, and `| grep -c 'error TS'` prints `0` on a crashed runner's empty output. Read the raw output and exit code.
-- The `Stop` hook `.claude/hooks/verify.sh` runs `pnpm typecheck` and the unit specs of the changed modules when a file under `src/` or `test/` that this session wrote through a file tool differs from `HEAD` or is untracked, and blocks the stop on failure; a file changed through Bash is not gated. A changed path outside `src/modules/<name>/`, `src/common/<name>/`, and their `test/unit/` mirrors runs the full suite.
+- The `Stop` hook `.claude/hooks/verify.sh` runs `pnpm typecheck` and the unit specs of the changed modules when a file under `src/` or `test/` that this session wrote through a file tool differs from `HEAD` or is untracked, and blocks the stop on failure; a file changed through Bash is not gated. A stop whose gated files are unchanged since the last green run skips both checks. A changed path outside `src/modules/<name>/`, `src/common/<name>/`, and their `test/unit/` mirrors runs the full suite.
 - Claude worktrees live under `.claude/worktrees/` (gitignored).
 - A Bash call's `timeout` is 10 minutes at most, and the default through `BASH_DEFAULT_TIMEOUT_MS` (`.claude/settings.json` `env`). Claude Code moves a call running at its timeout to the background and reports when it ends, so a test run is never wrapped in GNU `timeout`.
 - `pnpm spell` and `pnpm deadcode` exit codes: `.claude/rules/code-style.md`, Lint. `pnpm test` and `pnpm test:cov`: `.claude/rules/testing.md`, Layout and runs. A boot: `.claude/skills/ack-build/references/boot.md`.

@@ -154,7 +154,7 @@ Rule: `login.md`.
 
 Rule: `mfa.md`.
 
-- The challenge as Redis state read with `GETDEL`: a Redis read error turns into `MfaChallengeInvalidException`, the wrong answer.
+- The challenge as Redis state read with `GETDEL`: a Redis read error turns into `MFAChallengeInvalidException`, the wrong answer.
 - A model per purpose: the token, the expiry, and the claim would be the same statements five times.
 
 ### MFA stays opt-in

@@ -1,6 +1,9 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumRoleType } from '@generated/prisma-client/client';
-import type { IMigrationRoleData } from '@migration/interfaces/migration.interface';
+import type {
+    IMigrationEnvironmentData,
+    IMigrationRoleData,
+} from '@migration/interfaces/migration.interface';
 
 const RoleData: IMigrationRoleData[] = [
     {
@@ -23,8 +26,7 @@ const RoleData: IMigrationRoleData[] = [
     },
 ];
 
-export const MigrationRoleData: Record<
-    EnumAppEnvironment,
+export const MigrationRoleData: IMigrationEnvironmentData<
     IMigrationRoleData[]
 > = {
     [EnumAppEnvironment.local]: RoleData,

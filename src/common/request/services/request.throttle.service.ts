@@ -9,7 +9,7 @@ import { RequestThrottleStorageService } from '@common/request/services/request.
 @Injectable()
 export class RequestThrottleService {
     constructor(
-        private readonly storageService: RequestThrottleStorageService
+        private readonly requestThrottleStorageService: RequestThrottleStorageService
     ) {}
 
     async evaluate(
@@ -18,7 +18,7 @@ export class RequestThrottleService {
         tracker: string,
         policy: IRequestThrottlePolicy
     ): Promise<void> {
-        const record = await this.storageService.increment(
+        const record = await this.requestThrottleStorageService.increment(
             tracker,
             policy.ttlInMs,
             policy.limit,

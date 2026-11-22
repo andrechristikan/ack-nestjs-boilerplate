@@ -121,6 +121,6 @@ export default async function (app: NestApplication): Promise<void> {
             },
         });
 
-        logger.log(`Docs will serve on ${docPrefix}`, 'NestApplication');
+        logger.log({ docPrefix }, 'Docs will serve', 'NestApplication');
     }
 }

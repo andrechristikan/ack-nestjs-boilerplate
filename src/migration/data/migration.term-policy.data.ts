@@ -1,6 +1,9 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
-import type { IMigrationTermPolicyData } from '@migration/interfaces/migration.interface';
+import type {
+    IMigrationEnvironmentData,
+    IMigrationTermPolicyData,
+} from '@migration/interfaces/migration.interface';
 
 const TermPolicyData: IMigrationTermPolicyData[] = [
     {
@@ -21,8 +24,7 @@ const TermPolicyData: IMigrationTermPolicyData[] = [
     },
 ];
 
-export const MigrationTermPolicyData: Record<
-    EnumAppEnvironment,
+export const MigrationTermPolicyData: IMigrationEnvironmentData<
     IMigrationTermPolicyData[]
 > = {
     [EnumAppEnvironment.local]: TermPolicyData,

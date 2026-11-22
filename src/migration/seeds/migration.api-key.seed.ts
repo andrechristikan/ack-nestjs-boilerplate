@@ -44,7 +44,10 @@ export class MigrationApiKeySeed
 
     async seed(): Promise<void> {
         this.logger.log('Seeding Api Keys...');
-        this.logger.log(`Found ${this.apiKeys.length} Api Keys to seed.`);
+        this.logger.log(
+            { count: this.apiKeys.length },
+            'Found api keys to seed'
+        );
 
         const rows = this.apiKeys.map(apiKey => {
             const key = this.apiKeyCredentialUtil.createKey(apiKey.key);

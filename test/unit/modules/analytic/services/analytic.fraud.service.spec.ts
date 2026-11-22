@@ -168,7 +168,7 @@ describe('AnalyticFraudService', () => {
         service = module.get(AnalyticFraudService);
     });
 
-    describe('getCredentialStuffingSummary', () => {
+    describe('getFraudCredentialStuffing', () => {
         it('reads through with the credentialStuffing key, the metadata cache schema, and the fraud summary TTL', async () => {
             const cached = {
                 count: 4,
@@ -177,7 +177,7 @@ describe('AnalyticFraudService', () => {
             };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.getCredentialStuffingSummary();
+            const result = await service.getFraudCredentialStuffing();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -197,7 +197,7 @@ describe('AnalyticFraudService', () => {
                 4
             );
 
-            const result = await service.getCredentialStuffingSummary();
+            const result = await service.getFraudCredentialStuffing();
 
             expect(
                 analyticFraudRepository.countCredentialStuffing
@@ -213,14 +213,15 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getCredentialStuffingList', () => {
+    describe('getFraudCredentialStuffingList', () => {
         it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findCredentialStuffingOffset.mockResolvedValue(
                 page
             );
 
-            const result = await service.getCredentialStuffingList(pagination);
+            const result =
+                await service.getFraudCredentialStuffingList(pagination);
 
             expect(result).toBe(page);
             expect(
@@ -232,12 +233,12 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getAccountTakeoverSummary', () => {
+    describe('getFraudAccountTakeover', () => {
         it('reads through with the accountTakeover key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
             const cached = { count: 1, ...dayRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.getAccountTakeoverSummary();
+            const result = await service.getFraudAccountTakeover();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -255,7 +256,7 @@ describe('AnalyticFraudService', () => {
         it('counts once with the configured window on a cache miss and answers a null computedAt', async () => {
             analyticFraudRepository.countAccountTakeover.mockResolvedValue(3);
 
-            const result = await service.getAccountTakeoverSummary();
+            const result = await service.getFraudAccountTakeover();
 
             expect(
                 analyticFraudRepository.countAccountTakeover
@@ -267,14 +268,15 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getAccountTakeoverList', () => {
+    describe('getFraudAccountTakeoverList', () => {
         it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findAccountTakeoverOffset.mockResolvedValue(
                 page
             );
 
-            const result = await service.getAccountTakeoverList(pagination);
+            const result =
+                await service.getFraudAccountTakeoverList(pagination);
 
             expect(result).toBe(page);
             expect(
@@ -286,12 +288,12 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getSessionAfterAdminSummary', () => {
+    describe('getFraudSessionAfterAdmin', () => {
         it('reads through with the sessionAfterAdmin key, AnalyticFraudSummaryCacheSchema, and the fraud summary TTL', async () => {
             const cached = { count: 1, ...hourRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.getSessionAfterAdminSummary();
+            const result = await service.getFraudSessionAfterAdmin();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -309,7 +311,7 @@ describe('AnalyticFraudService', () => {
         it('counts once with the configured window on a cache miss and answers a null computedAt', async () => {
             analyticFraudRepository.countSessionAfterAdmin.mockResolvedValue(3);
 
-            const result = await service.getSessionAfterAdminSummary();
+            const result = await service.getFraudSessionAfterAdmin();
 
             expect(
                 analyticFraudRepository.countSessionAfterAdmin
@@ -321,14 +323,15 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getSessionAfterAdminList', () => {
+    describe('getFraudSessionAfterAdminList', () => {
         it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findSessionAfterAdminOffset.mockResolvedValue(
                 page
             );
 
-            const result = await service.getSessionAfterAdminList(pagination);
+            const result =
+                await service.getFraudSessionAfterAdminList(pagination);
 
             expect(result).toBe(page);
             expect(
@@ -340,12 +343,12 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getMassRegistrationSummary', () => {
+    describe('getFraudMassRegistration', () => {
         it('reads through with the massRegistration key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
             const cached = { count: 1, ...hourRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.getMassRegistrationSummary();
+            const result = await service.getFraudMassRegistration();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -363,7 +366,7 @@ describe('AnalyticFraudService', () => {
         it('counts once with the configured window and the minimum on a cache miss', async () => {
             analyticFraudRepository.countMassRegistration.mockResolvedValue(3);
 
-            const result = await service.getMassRegistrationSummary();
+            const result = await service.getFraudMassRegistration();
             expect(
                 analyticFraudRepository.countMassRegistration
             ).toHaveBeenCalledTimes(1);
@@ -374,14 +377,15 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getMassRegistrationList', () => {
+    describe('getFraudMassRegistrationList', () => {
         it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findMassRegistrationOffset.mockResolvedValue(
                 page
             );
 
-            const result = await service.getMassRegistrationList(pagination);
+            const result =
+                await service.getFraudMassRegistrationList(pagination);
 
             expect(result).toBe(page);
             expect(
@@ -393,12 +397,12 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getPasswordResetEnumerationSummary', () => {
+    describe('getFraudPasswordResetEnumeration', () => {
         it('reads through with the passwordResetEnumeration key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
             const cached = { count: 1, ...dayRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.getPasswordResetEnumerationSummary();
+            const result = await service.getFraudPasswordResetEnumeration();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -418,7 +422,7 @@ describe('AnalyticFraudService', () => {
                 3
             );
 
-            const result = await service.getPasswordResetEnumerationSummary();
+            const result = await service.getFraudPasswordResetEnumeration();
             expect(
                 analyticFraudRepository.countPasswordResetEnumeration
             ).toHaveBeenCalledTimes(1);
@@ -429,7 +433,7 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getPasswordResetEnumerationList', () => {
+    describe('getFraudPasswordResetEnumerationList', () => {
         it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findPasswordResetEnumerationOffset.mockResolvedValue(
@@ -437,7 +441,7 @@ describe('AnalyticFraudService', () => {
             );
 
             const result =
-                await service.getPasswordResetEnumerationList(pagination);
+                await service.getFraudPasswordResetEnumerationList(pagination);
 
             expect(result).toBe(page);
             expect(
@@ -449,7 +453,7 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getSharedFingerprintSummary', () => {
+    describe('getFraudSharedFingerprint', () => {
         it('reads the stored summary and no repository', async () => {
             analyticSnapshotService.getSummary.mockResolvedValue({
                 count: 4,
@@ -459,7 +463,7 @@ describe('AnalyticFraudService', () => {
                 computedAt,
             });
 
-            const result = await service.getSharedFingerprintSummary();
+            const result = await service.getFraudSharedFingerprint();
 
             expect(result).toEqual({
                 count: 4,
@@ -486,7 +490,7 @@ describe('AnalyticFraudService', () => {
                 computedAt: null,
             });
 
-            const result = await service.getSharedFingerprintSummary();
+            const result = await service.getFraudSharedFingerprint();
 
             expect(result).toEqual({
                 count: 0,
@@ -497,7 +501,7 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getSharedFingerprintList', () => {
+    describe('getFraudSharedFingerprintList', () => {
         it('returns the stored page and reads no repository', async () => {
             const page = {
                 ...offsetPage,
@@ -513,7 +517,7 @@ describe('AnalyticFraudService', () => {
             analyticSnapshotService.getListOffset.mockResolvedValue(page);
             const params = { skip: 1, limit: 1, orderBy };
 
-            const result = await service.getSharedFingerprintList(params);
+            const result = await service.getFraudSharedFingerprintList(params);
 
             expect(result).toBe(page);
             expect(analyticSnapshotService.getListOffset).toHaveBeenCalledWith(
@@ -586,12 +590,12 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getForgotPasswordTokenAbuseSummary', () => {
+    describe('getFraudForgotPasswordTokenAbuse', () => {
         it('reads through with the forgotPasswordTokenAbuse key, AnalyticFraudSummaryCacheSchema, and the live summary TTL', async () => {
             const cached = { count: 1, ...dayRequestWindow };
             cacheService.readThrough.mockResolvedValue(cached);
 
-            const result = await service.getForgotPasswordTokenAbuseSummary();
+            const result = await service.getFraudForgotPasswordTokenAbuse();
 
             expect(result).toEqual(cached);
             expect(analyticCache.buildFraudSummaryKey).toHaveBeenCalledWith(
@@ -611,7 +615,7 @@ describe('AnalyticFraudService', () => {
                 3
             );
 
-            const result = await service.getForgotPasswordTokenAbuseSummary();
+            const result = await service.getFraudForgotPasswordTokenAbuse();
             expect(
                 analyticFraudRepository.countForgotPasswordAbuse
             ).toHaveBeenCalledTimes(1);
@@ -622,7 +626,7 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getForgotPasswordTokenAbuseList', () => {
+    describe('getFraudForgotPasswordTokenAbuseList', () => {
         it('returns the repository page for the configured window unchanged', async () => {
             const page = { ...offsetPage, data: [] };
             analyticFraudRepository.findForgotPasswordAbuseOffset.mockResolvedValue(
@@ -630,7 +634,7 @@ describe('AnalyticFraudService', () => {
             );
 
             const result =
-                await service.getForgotPasswordTokenAbuseList(pagination);
+                await service.getFraudForgotPasswordTokenAbuseList(pagination);
 
             expect(result).toBe(page);
             expect(
@@ -729,7 +733,7 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getRiskScore', () => {
+    describe('getFraudRiskScore', () => {
         const stored = {
             userId: 'user-1',
             score: 50,
@@ -748,7 +752,7 @@ describe('AnalyticFraudService', () => {
                 computedAt,
             });
 
-            const result = await service.getRiskScore('user-1');
+            const result = await service.getFraudRiskScore('user-1');
 
             expect(result).toEqual({ ...stored, computedAt });
             expect(analyticSnapshotService.getOneByKey).toHaveBeenCalledWith(
@@ -766,7 +770,7 @@ describe('AnalyticFraudService', () => {
                 computedAt,
             });
 
-            const result = await service.getRiskScore('user-1');
+            const result = await service.getFraudRiskScore('user-1');
 
             expect(result).toEqual({
                 userId: 'user-1',
@@ -788,7 +792,7 @@ describe('AnalyticFraudService', () => {
                 computedAt: null,
             });
 
-            const result = await service.getRiskScore('user-1');
+            const result = await service.getFraudRiskScore('user-1');
 
             expect(result).toEqual({
                 userId: 'user-1',
@@ -806,12 +810,12 @@ describe('AnalyticFraudService', () => {
                 computedAt,
             });
 
-            await expect(service.getRiskScore('missing')).rejects.toMatchObject(
-                {
-                    module: 'user',
-                    statusCode: EnumUserStatusCodeError.notFound,
-                }
-            );
+            await expect(
+                service.getFraudRiskScore('missing')
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+            });
         });
 
         it('reads the snapshot while the user check is still pending', async () => {
@@ -824,7 +828,7 @@ describe('AnalyticFraudService', () => {
                 computedAt,
             });
 
-            const pending = service.getRiskScore('user-1');
+            const pending = service.getFraudRiskScore('user-1');
 
             expect(analyticSnapshotService.getOneByKey).toHaveBeenCalledTimes(
                 1
@@ -834,7 +838,7 @@ describe('AnalyticFraudService', () => {
         });
     });
 
-    describe('getRiskScoreList', () => {
+    describe('getFraudRiskScoreList', () => {
         const listed = {
             ...offsetPage,
             data: [
@@ -852,7 +856,7 @@ describe('AnalyticFraudService', () => {
         it('passes the minScore as a value filter and returns the stored page', async () => {
             analyticSnapshotService.getListOffset.mockResolvedValue(listed);
 
-            const result = await service.getRiskScoreList(30, pagination);
+            const result = await service.getFraudRiskScoreList(30, pagination);
 
             expect(result).toBe(listed);
             expect(analyticSnapshotService.getListOffset).toHaveBeenCalledWith(
@@ -866,7 +870,7 @@ describe('AnalyticFraudService', () => {
         it('passes no filter for a null minScore', async () => {
             analyticSnapshotService.getListOffset.mockResolvedValue(listed);
 
-            await service.getRiskScoreList(null, pagination);
+            await service.getFraudRiskScoreList(null, pagination);
 
             expect(analyticSnapshotService.getListOffset).toHaveBeenCalledWith(
                 EnumAnalyticSnapshotSignal.riskScore,

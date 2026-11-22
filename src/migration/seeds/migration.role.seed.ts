@@ -42,7 +42,7 @@ export class MigrationRoleSeed
 
     async seed(): Promise<void> {
         this.logger.log('Seeding Roles...');
-        this.logger.log(`Found ${this.roles.length} Roles to seed.`);
+        this.logger.log({ count: this.roles.length }, 'Found roles to seed');
 
         try {
             await this.databaseService.withTransaction(

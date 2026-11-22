@@ -12,6 +12,7 @@ import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
 import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
+import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -41,6 +42,7 @@ export class WorkspaceResendInviteUseCase implements IAppUseCase<
         private readonly userUtil: UserUtil,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly workspaceUtil: WorkspaceUtil,
         private readonly configService: ConfigService
     ) {
         this.referenceMaxAttempts = this.configService.get<number>(
@@ -100,7 +102,9 @@ export class WorkspaceResendInviteUseCase implements IAppUseCase<
                         )
                 );
 
-                return { data: invite };
+                const censored = this.workspaceUtil.toCensoredInvite(invite);
+
+                return { data: censored };
             } catch (err: unknown) {
                 if (err instanceof AppBaseException) {
                     throw err;

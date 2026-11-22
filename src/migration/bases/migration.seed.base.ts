@@ -15,8 +15,12 @@ export abstract class MigrationSeedBase extends CommandRunner {
         _passedParam: string[],
         options?: IMigrationOptions
     ): Promise<void> {
-        this.baseLogger.log(`Running ${MigrationSeedBase.name} migration...`);
+        this.baseLogger.log(
+            { type: options?.type ?? null },
+            'Running seed migration'
+        );
 
+        // Sequential by design: side effects whose order is part of the contract
         if (options?.type === EnumMigrationType.remove) {
             await this.remove();
             await this.cacheService.flush();
@@ -25,7 +29,11 @@ export abstract class MigrationSeedBase extends CommandRunner {
             await this.cacheService.flush();
         } else {
             this.baseLogger.warn(
-                `Please specify --type ${EnumMigrationType.seed} or ${EnumMigrationType.remove}`
+                {
+                    seed: EnumMigrationType.seed,
+                    remove: EnumMigrationType.remove,
+                },
+                'Please specify a migration type'
             );
         }
     }

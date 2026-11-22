@@ -172,7 +172,7 @@ export class AnalyticFraudService {
         return this.analyticFraudUtil.nearLockoutThreshold(passwordMaxAttempt);
     }
 
-    private async loadCredentialStuffingSummary(): Promise<IAnalyticFraudCredentialStuffingSummary> {
+    private async loadFraudCredentialStuffing(): Promise<IAnalyticFraudCredentialStuffingSummary> {
         const range = this.analyticDateUtil.windowRange(
             this.credentialStuffingWindowInMs
         );
@@ -193,7 +193,7 @@ export class AnalyticFraudService {
         };
     }
 
-    private async loadAccountTakeoverSummary(): Promise<IAnalyticFraudSummary> {
+    private async loadFraudAccountTakeover(): Promise<IAnalyticFraudSummary> {
         const range = this.analyticDateUtil.windowRange(
             this.riskScoreLookbackInMs
         );
@@ -210,7 +210,7 @@ export class AnalyticFraudService {
         };
     }
 
-    private async loadMassRegistrationSummary(): Promise<IAnalyticFraudSummary> {
+    private async loadFraudMassRegistration(): Promise<IAnalyticFraudSummary> {
         const range = this.analyticDateUtil.windowRange(
             this.massRegistrationWindowInMs
         );
@@ -227,7 +227,7 @@ export class AnalyticFraudService {
         };
     }
 
-    private async loadPasswordResetEnumerationSummary(): Promise<IAnalyticFraudSummary> {
+    private async loadFraudPasswordResetEnumeration(): Promise<IAnalyticFraudSummary> {
         const range = this.analyticDateUtil.windowRange(
             this.passwordResetEnumerationWindowInMs
         );
@@ -245,7 +245,7 @@ export class AnalyticFraudService {
         };
     }
 
-    private async loadSessionAfterAdminSummary(): Promise<IAnalyticFraudSummary> {
+    private async loadFraudSessionAfterAdmin(): Promise<IAnalyticFraudSummary> {
         const range = this.analyticDateUtil.windowRange(
             this.riskScoreLookbackInMs
         );
@@ -262,7 +262,7 @@ export class AnalyticFraudService {
         };
     }
 
-    private async loadForgotPasswordTokenAbuseSummary(): Promise<IAnalyticFraudSummary> {
+    private async loadFraudForgotPasswordTokenAbuse(): Promise<IAnalyticFraudSummary> {
         const range = this.analyticDateUtil.windowRange(
             this.forgotPasswordTokenAbuseWindowInMs
         );
@@ -280,7 +280,7 @@ export class AnalyticFraudService {
         };
     }
 
-    async getCredentialStuffingSummary(): Promise<IAnalyticFraudCredentialStuffingSummary> {
+    async getFraudCredentialStuffing(): Promise<IAnalyticFraudCredentialStuffingSummary> {
         const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.credentialStuffing,
             String(this.credentialStuffingWindowInMs)
@@ -290,11 +290,11 @@ export class AnalyticFraudService {
             key,
             AnalyticFraudCredentialStuffingSummaryCacheSchema,
             this.analyticCache.liveSummaryTtlInMs,
-            () => this.loadCredentialStuffingSummary()
+            () => this.loadFraudCredentialStuffing()
         );
     }
 
-    async getCredentialStuffingList(
+    async getFraudCredentialStuffingList(
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticCredentialStuffing>> {
         const range = this.analyticDateUtil.windowRange(
@@ -308,7 +308,7 @@ export class AnalyticFraudService {
         );
     }
 
-    async getAccountTakeoverSummary(): Promise<IAnalyticFraudSummary> {
+    async getFraudAccountTakeover(): Promise<IAnalyticFraudSummary> {
         const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.accountTakeover,
             String(this.riskScoreLookbackInMs)
@@ -318,11 +318,11 @@ export class AnalyticFraudService {
             key,
             AnalyticFraudSummaryCacheSchema,
             this.analyticCache.liveSummaryTtlInMs,
-            () => this.loadAccountTakeoverSummary()
+            () => this.loadFraudAccountTakeover()
         );
     }
 
-    async getAccountTakeoverList(
+    async getFraudAccountTakeoverList(
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticAccountTakeover>> {
         const range = this.analyticDateUtil.windowRange(
@@ -336,7 +336,7 @@ export class AnalyticFraudService {
         );
     }
 
-    async getMassRegistrationSummary(): Promise<IAnalyticFraudSummary> {
+    async getFraudMassRegistration(): Promise<IAnalyticFraudSummary> {
         const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.massRegistration,
             String(this.massRegistrationWindowInMs)
@@ -346,11 +346,11 @@ export class AnalyticFraudService {
             key,
             AnalyticFraudSummaryCacheSchema,
             this.analyticCache.liveSummaryTtlInMs,
-            () => this.loadMassRegistrationSummary()
+            () => this.loadFraudMassRegistration()
         );
     }
 
-    async getMassRegistrationList(
+    async getFraudMassRegistrationList(
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticMassRegistration>> {
         const range = this.analyticDateUtil.windowRange(
@@ -364,7 +364,7 @@ export class AnalyticFraudService {
         );
     }
 
-    async getPasswordResetEnumerationSummary(): Promise<IAnalyticFraudSummary> {
+    async getFraudPasswordResetEnumeration(): Promise<IAnalyticFraudSummary> {
         const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.passwordResetEnumeration,
             String(this.passwordResetEnumerationWindowInMs)
@@ -374,11 +374,11 @@ export class AnalyticFraudService {
             key,
             AnalyticFraudSummaryCacheSchema,
             this.analyticCache.liveSummaryTtlInMs,
-            () => this.loadPasswordResetEnumerationSummary()
+            () => this.loadFraudPasswordResetEnumeration()
         );
     }
 
-    async getPasswordResetEnumerationList(
+    async getFraudPasswordResetEnumerationList(
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticPasswordResetEnumeration>> {
         const range = this.analyticDateUtil.windowRange(
@@ -412,7 +412,7 @@ export class AnalyticFraudService {
         };
     }
 
-    async getSharedFingerprintSummary(): Promise<IAnalyticFraudSummary> {
+    async getFraudSharedFingerprint(): Promise<IAnalyticFraudSummary> {
         const { count, windowStart, windowEnd, computedAt } =
             await this.analyticSnapshotService.getSummary(
                 EnumAnalyticSnapshotSignal.sharedFingerprint,
@@ -422,7 +422,7 @@ export class AnalyticFraudService {
         return { count, windowStart, windowEnd, computedAt };
     }
 
-    async getSharedFingerprintList(
+    async getFraudSharedFingerprintList(
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticSharedFingerprint>> {
         return this.analyticSnapshotService.getListOffset(
@@ -433,7 +433,7 @@ export class AnalyticFraudService {
         );
     }
 
-    async getSessionAfterAdminSummary(): Promise<IAnalyticFraudSummary> {
+    async getFraudSessionAfterAdmin(): Promise<IAnalyticFraudSummary> {
         const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.sessionAfterAdmin,
             String(this.riskScoreLookbackInMs)
@@ -443,11 +443,11 @@ export class AnalyticFraudService {
             key,
             AnalyticFraudSummaryCacheSchema,
             this.analyticCache.liveSummaryTtlInMs,
-            () => this.loadSessionAfterAdminSummary()
+            () => this.loadFraudSessionAfterAdmin()
         );
     }
 
-    async getSessionAfterAdminList(
+    async getFraudSessionAfterAdminList(
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticSessionAfterAdmin>> {
         const range = this.analyticDateUtil.windowRange(
@@ -461,7 +461,7 @@ export class AnalyticFraudService {
         );
     }
 
-    async getForgotPasswordTokenAbuseSummary(): Promise<IAnalyticFraudSummary> {
+    async getFraudForgotPasswordTokenAbuse(): Promise<IAnalyticFraudSummary> {
         const key = this.analyticCache.buildFraudSummaryKey(
             EnumAnalyticFraudSignal.forgotPasswordTokenAbuse,
             String(this.forgotPasswordTokenAbuseWindowInMs)
@@ -471,11 +471,11 @@ export class AnalyticFraudService {
             key,
             AnalyticFraudSummaryCacheSchema,
             this.analyticCache.liveSummaryTtlInMs,
-            () => this.loadForgotPasswordTokenAbuseSummary()
+            () => this.loadFraudForgotPasswordTokenAbuse()
         );
     }
 
-    async getForgotPasswordTokenAbuseList(
+    async getFraudForgotPasswordTokenAbuseList(
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticForgotPasswordAbuse>> {
         const range = this.analyticDateUtil.windowRange(
@@ -563,7 +563,9 @@ export class AnalyticFraudService {
         };
     }
 
-    async getRiskScore(userId: string): Promise<IAnalyticFraudRiskScoreUser> {
+    async getFraudRiskScore(
+        userId: string
+    ): Promise<IAnalyticFraudRiskScoreUser> {
         const [{ item, computedAt }, exists] = await Promise.all([
             this.analyticSnapshotService.getOneByKey(
                 EnumAnalyticSnapshotSignal.riskScore,
@@ -589,7 +591,7 @@ export class AnalyticFraudService {
         };
     }
 
-    async getRiskScoreList(
+    async getFraudRiskScoreList(
         minScore: number | null,
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticFraudRiskScore>> {

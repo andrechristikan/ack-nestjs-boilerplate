@@ -75,12 +75,9 @@ export class TermPolicyUtil {
             this.contentKeyRandomLength
         );
 
-        let fullPath: string = `${path}/${language}-${random}.${extension.toLowerCase()}`;
-        if (fullPath.startsWith('/')) {
-            fullPath = fullPath.replace('/', '');
-        }
-
-        return fullPath;
+        return this.helperStringService.stripLeadingSlashes(
+            `${path}/${language}-${random}.${extension.toLowerCase()}`
+        );
     }
 
     toContents(

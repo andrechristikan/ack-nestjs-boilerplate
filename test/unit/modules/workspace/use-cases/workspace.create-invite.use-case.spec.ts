@@ -1,4 +1,5 @@
 import { UserUtil } from '@modules/user/utils/user.util';
+import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
@@ -87,6 +88,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
         acceptedByUserId: null,
         nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     };
+    const censoredInvite = { ...invite, email: 'invi*ee@e**********' };
     const project: Project = {
         id: 'project-1',
         workspaceId: 'workspace-1',
@@ -179,6 +181,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 { provide: UserService, useValue: userService },
                 { provide: DatabaseService, useValue: databaseService },
                 UserUtil,
+                WorkspaceUtil,
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
@@ -273,7 +276,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 body
             );
 
-            expect(result).toEqual({ data: invite });
+            expect(result).toEqual({ data: censoredInvite });
             expect(callOrder).toEqual([
                 'lookup',
                 'paired',
@@ -464,7 +467,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
 
             gate.resolve();
 
-            await expect(pending).resolves.toEqual({ data: invite });
+            await expect(pending).resolves.toEqual({ data: censoredInvite });
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
@@ -632,7 +635,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     body
                 );
 
-                expect(result).toEqual({ data: invite });
+                expect(result).toEqual({ data: censoredInvite });
                 expect(databaseService.withTransaction).toHaveBeenCalledTimes(
                     2
                 );

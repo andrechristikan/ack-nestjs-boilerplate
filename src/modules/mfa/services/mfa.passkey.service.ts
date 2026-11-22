@@ -53,7 +53,6 @@ export class MfaPasskeyService {
 
     private async createRegistrationOptions(
         userId: string,
-        email: string,
         username: string,
         excludeCredentials: { id: string; transports: string[] }[]
     ): Promise<PublicKeyCredentialCreationOptionsJSON> {
@@ -61,7 +60,7 @@ export class MfaPasskeyService {
             rpName: this.rpName,
             rpID: this.rpId,
             userID: new TextEncoder().encode(userId),
-            userName: email,
+            userName: username,
             userDisplayName: username,
             attestationType: 'none',
             authenticatorSelection: {
@@ -185,7 +184,6 @@ export class MfaPasskeyService {
 
     async getRegistrationOptions(
         userId: string,
-        email: string,
         username: string
     ): Promise<PublicKeyCredentialCreationOptionsJSON> {
         const credentials =
@@ -193,7 +191,6 @@ export class MfaPasskeyService {
 
         return this.createRegistrationOptions(
             userId,
-            email,
             username,
             credentials.map(({ credentialId, transports }) => ({
                 id: credentialId,

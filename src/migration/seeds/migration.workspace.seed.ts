@@ -150,14 +150,13 @@ export class MigrationWorkspaceSeed
         });
 
         if (seededUsers.length !== emails.length) {
-            this.logger.error(
-                'Seeded users not found, cannot seed workspaces.'
-            );
+            this.logger.warn('Seeded users not found, cannot seed workspaces.');
             return;
         }
 
         this.logger.log(
-            `Found ${seededUsers.length} Users to seed a default Workspace for.`
+            { count: seededUsers.length },
+            'Found users to seed a default workspace for'
         );
 
         try {

@@ -23,7 +23,7 @@ Data file: `.claude/rules/seeding.md`, Anatomy (`src/migration/data/migration.co
 
 ## 4. Register
 
-Add the class to the `providers` of `src/migration/migration.module.ts`, and a kit module it injects from (`AwsModule`) to its `imports`. A feature `<Module>Module` goes there only for an injection `.claude/rules/seeding.md`, Outside the layering, allows; a use-case module never does.
+Add the class to the `providers` of `src/migration/migration.module.ts`, and a kit module it injects from (`AWSModule`) to its `imports`. A feature `<Module>Module` goes there only for an injection `.claude/rules/seeding.md`, Outside the layering, allows; a use-case module never does.
 
 ## 5. Place it in the scripts
 

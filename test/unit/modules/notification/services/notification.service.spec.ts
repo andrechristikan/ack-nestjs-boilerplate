@@ -1009,45 +1009,14 @@ describe('NotificationService', () => {
         });
     });
 
-    describe('toMessageProperties', () => {
-        const title = 'notification.notify.welcome.title';
+    describe('toCensoredMetadata', () => {
+        const mobileTitle =
+            NotificationKindContract[EnumNotificationKind.verifiedMobileNumber]
+                .title;
 
-        it('keeps only the primitive metadata values', () => {
-            expect(
-                service.toMessageProperties(
-                    title,
-                    {
-                        username: 'ana',
-                        age: 3,
-                        isNew: true,
-                        nested: { a: 1 },
-                        list: [1],
-                        missing: null,
-                    },
-                    'user-id'
-                )
-            ).toEqual({ username: 'ana', age: 3, isNew: true });
-        });
-
-        it('formats the date fields of the kind the title belongs to', () => {
-            const result = service.toMessageProperties(
-                NotificationKindContract[EnumNotificationKind.newDeviceLogin]
-                    .title,
-                { username: 'ana', loginAt: '2026-03-01T00:05:00.000Z' },
-                'user-id'
-            );
-
-            expect(result).toEqual({
-                username: 'ana',
-                loginAt: 'Sun, 01 Mar 2026 00:05:00 +0000',
-            });
-        });
-
-        it('opens each sealed secret of the kind for the recipient into its plain property', () => {
-            const result = service.toMessageProperties(
-                NotificationKindContract[
-                    EnumNotificationKind.verifiedMobileNumber
-                ].title,
+        it('opens each sealed secret for the recipient and censors it, leaving no sealed key', () => {
+            const result = service.toCensoredMetadata(
+                mobileTitle,
                 {
                     username: 'ana',
                     encryptedMobileNumber: buildSealedNotificationPayload(
@@ -1060,36 +1029,114 @@ describe('NotificationService', () => {
 
             expect(result).toEqual({
                 username: 'ana',
-                mobileNumber: '+6281234567890',
+                mobileNumber: '+628********90',
+            });
+        });
+
+        it('returns the metadata as stored for a title no contract row owns', () => {
+            const stored = { username: 'ana' };
+
+            expect(
+                service.toCensoredMetadata(
+                    'notification.notify.unknown.title',
+                    stored,
+                    'user-1'
+                )
+            ).toBe(stored);
+        });
+
+        it.each([[null], [['ana']], ['ana']])(
+            'returns the metadata as stored when it is no plain object',
+            stored => {
+                expect(
+                    service.toCensoredMetadata(mobileTitle, stored, 'user-1')
+                ).toBe(stored);
+            }
+        );
+    });
+
+    describe('toMessageProperties', () => {
+        const title = 'notification.notify.welcome.title';
+
+        it('keeps only the primitive metadata values', () => {
+            expect(
+                service.toMessageProperties(title, {
+                    username: 'ana',
+                    age: 3,
+                    isNew: true,
+                    nested: { a: 1 },
+                    list: [1],
+                    missing: null,
+                })
+            ).toEqual({ username: 'ana', age: 3, isNew: true });
+        });
+
+        it('formats the date fields of the kind the title belongs to', () => {
+            const result = service.toMessageProperties(
+                NotificationKindContract[EnumNotificationKind.newDeviceLogin]
+                    .title,
+                { username: 'ana', loginAt: '2026-03-01T00:05:00.000Z' }
+            );
+
+            expect(result).toEqual({
+                username: 'ana',
+                loginAt: 'Sun, 01 Mar 2026 00:05:00 +0000',
+            });
+        });
+
+        it('opens nothing: a sealed key stays in the properties as it is stored', () => {
+            const result = service.toMessageProperties(
+                NotificationKindContract[
+                    EnumNotificationKind.verifiedMobileNumber
+                ].title,
+                { username: 'ana', encryptedMobileNumber: 'sealed-value' }
+            );
+
+            expect(result).toEqual({
+                username: 'ana',
+                encryptedMobileNumber: 'sealed-value',
             });
         });
 
         it('keeps the properties as they are for a title no contract row owns', () => {
             const result = service.toMessageProperties(
                 'notification.notify.unknown.title',
-                { username: 'ana' },
-                'user-id'
+                { username: 'ana' }
             );
 
             expect(result).toEqual({ username: 'ana' });
         });
 
         it('returns empty properties for null metadata', () => {
-            expect(service.toMessageProperties(title, null, 'user-id')).toEqual(
-                {}
-            );
+            expect(service.toMessageProperties(title, null)).toEqual({});
         });
 
         it('returns empty properties for array metadata', () => {
-            expect(
-                service.toMessageProperties(title, ['ana'], 'user-id')
-            ).toEqual({});
+            expect(service.toMessageProperties(title, ['ana'])).toEqual({});
         });
 
         it('returns empty properties for primitive metadata', () => {
+            expect(service.toMessageProperties(title, 'ana')).toEqual({});
+        });
+    });
+
+    describe('censorSecrets', () => {
+        it('censors a secret with no dedicated censor through the generic censor and leaves a field outside the secrets', () => {
             expect(
-                service.toMessageProperties(title, 'ana', 'user-id')
-            ).toEqual({});
+                service['censorSecrets'](EnumNotificationKind.welcomeByAdmin, {
+                    password: 'abcdefgh',
+                    username: 'ana',
+                })
+            ).toEqual({ password: '*****fgh', username: 'ana' });
+        });
+
+        it('leaves a secret that is no string as it is', () => {
+            expect(
+                service['censorSecrets'](
+                    EnumNotificationKind.verifiedMobileNumber,
+                    { mobileNumber: null }
+                )
+            ).toEqual({ mobileNumber: null });
         });
     });
 

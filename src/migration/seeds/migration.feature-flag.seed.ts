@@ -43,7 +43,8 @@ export class MigrationFeatureFlagSeed
     async seed(): Promise<void> {
         this.logger.log('Seeding Feature Flags...');
         this.logger.log(
-            `Found ${this.featureFlags.length} Feature Flags to seed.`
+            { count: this.featureFlags.length },
+            'Found feature flags to seed'
         );
 
         try {

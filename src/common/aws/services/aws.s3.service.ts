@@ -88,6 +88,7 @@ import type {
     IAwsS3PresignPutItemPartOptions,
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
+    IAwsS3Urls,
 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3MaxPartNumber } from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -260,10 +261,34 @@ export class AwsS3Service implements OnModuleInit {
         return this.config[access];
     }
 
-    private buildUrls(
-        config: IAwsS3ConfigBucket,
+    private async assertObjectAbsent(
+        bucket: string,
         key: string
-    ): { completedUrl: string; cdnUrl: string | null } {
+    ): Promise<void> {
+        const headCommand = new HeadObjectCommand({
+            Bucket: bucket,
+            Key: key,
+        });
+
+        try {
+            await this.s3Client.send<
+                HeadObjectCommandInput,
+                HeadObjectCommandOutput
+            >(headCommand);
+
+            throw new AwsS3ObjectExistException();
+        } catch (error: unknown) {
+            if (error instanceof AwsS3ObjectExistException) {
+                throw error;
+            }
+
+            if (!(error instanceof NotFound)) {
+                throw new AppUnknownException(error);
+            }
+        }
+    }
+
+    private buildUrls(config: IAwsS3ConfigBucket, key: string): IAwsS3Urls {
         const { cdnUrl } = config;
         const baseUrl = config.baseUrl ?? '';
         const completedUrl = this.helperStringService.fillPattern(
@@ -629,29 +654,9 @@ export class AwsS3Service implements OnModuleInit {
         const accessibility = options.access;
         const config = this.getConfig(accessibility);
 
+        // Sequential by design: a write after its checks
         if (!options.forceUpdate) {
-            const headCommand = new HeadObjectCommand({
-                Bucket: config.bucket,
-                Key: file.key,
-            });
-
-            try {
-                // Sequential by design: a write after its checks
-                await this.s3Client.send<
-                    HeadObjectCommandInput,
-                    HeadObjectCommandOutput
-                >(headCommand);
-
-                throw new AwsS3ObjectExistException();
-            } catch (error: unknown) {
-                if (error instanceof AwsS3ObjectExistException) {
-                    throw error;
-                }
-
-                if (!(error instanceof NotFound)) {
-                    throw new AppUnknownException(error);
-                }
-            }
+            await this.assertObjectAbsent(config.bucket, file.key);
         }
 
         const { extension, mime } = this.getFileInfoFromKey(file.key);
@@ -825,29 +830,9 @@ export class AwsS3Service implements OnModuleInit {
         const accessibility = options.access;
         const config = this.getConfig(accessibility);
 
+        // Sequential by design: a write after its checks
         if (!options.forceUpdate) {
-            const headCommand = new HeadObjectCommand({
-                Bucket: config.bucket,
-                Key: file.key,
-            });
-
-            try {
-                // Sequential by design: a write after its checks
-                await this.s3Client.send<
-                    HeadObjectCommandInput,
-                    HeadObjectCommandOutput
-                >(headCommand);
-
-                throw new AwsS3ObjectExistException();
-            } catch (error: unknown) {
-                if (error instanceof AwsS3ObjectExistException) {
-                    throw error;
-                }
-
-                if (!(error instanceof NotFound)) {
-                    throw new AppUnknownException(error);
-                }
-            }
+            await this.assertObjectAbsent(config.bucket, file.key);
         }
 
         const { extension, mime } = this.getFileInfoFromKey(file.key);
@@ -1056,29 +1041,9 @@ export class AwsS3Service implements OnModuleInit {
 
         const config = this.getConfig(options.access);
 
+        // Sequential by design: a write after its checks
         if (!options.forceUpdate) {
-            const headCommand = new HeadObjectCommand({
-                Bucket: config.bucket,
-                Key: key,
-            });
-
-            try {
-                // Sequential by design: a write after its checks
-                await this.s3Client.send<
-                    HeadObjectCommandInput,
-                    HeadObjectCommandOutput
-                >(headCommand);
-
-                throw new AwsS3ObjectExistException();
-            } catch (error: unknown) {
-                if (error instanceof AwsS3ObjectExistException) {
-                    throw error;
-                }
-
-                if (!(error instanceof NotFound)) {
-                    throw new AppUnknownException(error);
-                }
-            }
+            await this.assertObjectAbsent(config.bucket, key);
         }
 
         const { extension, mime } = this.getFileInfoFromKey(key);

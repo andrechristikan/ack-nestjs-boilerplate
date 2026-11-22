@@ -144,7 +144,8 @@ export class MigrationTermPolicySeed
     async seed(): Promise<void> {
         this.logger.log('Seeding TermPolicies...');
         this.logger.log(
-            `Found ${this.termPolicies.length} TermPolicies to seed.`
+            { count: this.termPolicies.length },
+            'Found term policies to seed'
         );
 
         const isS3Initialized = this.awsS3Service.isInitialized();

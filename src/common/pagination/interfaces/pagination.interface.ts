@@ -39,21 +39,24 @@ export type IPaginationOrderByPresets<
     TName extends string = string,
 > = Readonly<Record<TName, readonly IPaginationOrderByTerm<TField>[]>>;
 
-export interface IPaginationQueryOffsetOptions<
+export interface IPaginationQueryPresetOptions<
     T extends IPaginationOrderByPresets,
 > {
     orderBy: T;
     defaultOrderBy: Extract<keyof T, string>;
+}
+
+export interface IPaginationQueryOffsetOptions<
+    T extends IPaginationOrderByPresets,
+> extends IPaginationQueryPresetOptions<T> {
     availableSearch?: readonly string[];
     defaultPerPage?: number;
 }
 
 export interface IPaginationQueryCursorOptions<
     T extends IPaginationOrderByPresets,
-> {
+> extends IPaginationQueryPresetOptions<T> {
     scope: string;
-    orderBy: T;
-    defaultOrderBy: Extract<keyof T, string>;
     availableSearch?: readonly string[];
     defaultPerPage?: number;
 }

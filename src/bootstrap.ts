@@ -57,28 +57,35 @@ export async function bootstrapApplication(): Promise<void> {
     await app.listen(port, host);
 
     logger.log('=='.repeat(20), 'NestApplication');
-    logger.log(`App Environment: ${env}`, 'NestApplication');
-    logger.log(`App Name: ${appName}`, 'NestApplication');
-    logger.log(`App Global Prefix: ${globalPrefix}`, 'NestApplication');
-    logger.log(`App Versioning Prefix: /${prefix}`, 'NestApplication');
-    logger.log(`App Version: ${defaultVersion}`, 'NestApplication');
-    logger.log(`App Timezone: ${timezone}`, 'NestApplication');
+    logger.log({ env }, 'App environment', 'NestApplication');
+    logger.log({ appName }, 'App name', 'NestApplication');
+    logger.log({ globalPrefix }, 'App global prefix', 'NestApplication');
     logger.log(
-        `App URL: http://${host}:${port}${globalPrefix}`,
+        { prefix: `/${prefix}` },
+        'App versioning prefix',
         'NestApplication'
     );
-    logger.log(`App Trusted Proxy: ${trustedProxies}`, 'NestApplication');
+    logger.log({ defaultVersion }, 'App version', 'NestApplication');
+    logger.log({ timezone }, 'App timezone', 'NestApplication');
     logger.log(
-        `Database Url: ${databaseUtil.censorUrl(databaseUrl)}`,
+        { url: `http://${host}:${port}${globalPrefix}` },
+        'App URL',
         'NestApplication'
     );
-    logger.log(`Database Debug Enabled: ${debugEnabled}`, 'NestApplication');
+    logger.log({ trustedProxies }, 'App trusted proxy', 'NestApplication');
     logger.log(
-        `Logger Access Log Enabled: ${accessLogEnabled}`,
+        { databaseUrl: databaseUtil.censorUrl(databaseUrl) },
+        'Database url',
         'NestApplication'
     );
-    logger.log(`Logger Enabled: ${enabled}`, 'NestApplication');
-    logger.log(`Logger Debug Level: ${level}`, 'NestApplication');
+    logger.log({ debugEnabled }, 'Database debug enabled', 'NestApplication');
+    logger.log(
+        { accessLogEnabled },
+        'Logger access log enabled',
+        'NestApplication'
+    );
+    logger.log({ loggerEnabled: enabled }, 'Logger enabled', 'NestApplication');
+    logger.log({ level }, 'Logger debug level', 'NestApplication');
     logger.log('=='.repeat(20), 'NestApplication');
 
     return;
