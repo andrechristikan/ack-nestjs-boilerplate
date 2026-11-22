@@ -193,16 +193,16 @@ A build that was interrupted resumes from the first ticket that is not done.
 
 | Server | Reads | Key in `.env.harness` |
 | --- | --- | --- |
-| `mongodb` | the MongoDB replica set, in read-only mode | `MCP_MONGODB_URL` |
+| `postgres` | the PostgreSQL database, in restricted (read-only) mode | `MCP_POSTGRES_URL` |
 | `redis-cache` | the `redis-cache` instance, `db:0`, the cache | `MCP_REDIS_CACHE_URL` |
 | `redis-queue` | the `redis-queue` instance, `db:0`, the BullMQ queues | `MCP_REDIS_QUEUE_URL` |
 
 - No URL is written in a tracked file, and none reaches the session.
 - Each value is the URL the host reaches the container at: the same as `DATABASE_URL`, `REDIS_CACHE_URL`, and `REDIS_QUEUE_URL` for a local setup.
-- The MongoDB server runs through `npx`, the Redis servers through `uvx`, which needs [uv][ref-uv].
+- The PostgreSQL and Redis servers run through `uvx`, which needs [uv][ref-uv].
 - The session, `debugger`, and `reviewer` have the tools. The other agents do not.
 - The Redis server has no read-only mode, so `.claude/settings.json` denies each of its writing tools by name.
-- `mongosh`, `redis-cli`, and every command that writes to a database stay denied and owner-only.
+- `psql`, `redis-cli`, and every command that writes to a database stay denied and owner-only.
 
 ## Other Tools
 

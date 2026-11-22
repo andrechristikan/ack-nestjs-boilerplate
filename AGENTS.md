@@ -9,7 +9,7 @@ An opinionated, production-shaped NestJS starter. It is a boilerplate: no extern
 
 ## Stack
 
-NestJS, TypeScript strict, native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`), SWC build, Vitest (unit; integration and e2e on Testcontainers held). Node and pnpm versions are `engines` and `packageManager` in `package.json`; pnpm only: `engines` and the `preinstall` guard reject `npm` and `yarn`. Prisma with a MongoDB replica set (transactions need one) and no migration files: `prisma db push` applies the schema. Redis: cache (`REDIS_CACHE_URL`) and BullMQ (`REDIS_QUEUE_URL`) on separate instances. Every transport shape is a zod schema, validated by `RequestSchemaValidationPipe` on the way in and `ResponseInterceptor` on the way out; Swagger through `zod-openapi`; nestjs-i18n from `src/languages/`; Pino logging; Sentry (`src/instrument.ts`); nest-commander seeds (`src/migration.ts`); Vault for secrets.
+NestJS, TypeScript strict, native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`), SWC build, Vitest (unit; integration and e2e on Testcontainers held). Node and pnpm versions are `engines` and `packageManager` in `package.json`; pnpm only: `engines` and the `preinstall` guard reject `npm` and `yarn`. Prisma with PostgreSQL 18 and migration files under `prisma/migrations/`: `prisma migrate` applies the schema. Redis: cache (`REDIS_CACHE_URL`) and BullMQ (`REDIS_QUEUE_URL`) on separate instances. Every transport shape is a zod schema, validated by `RequestSchemaValidationPipe` on the way in and `ResponseInterceptor` on the way out; Swagger through `zod-openapi`; nestjs-i18n from `src/languages/`; Pino logging; Sentry (`src/instrument.ts`); nest-commander seeds (`src/migration.ts`); Vault for secrets.
 
 ## Layout
 
@@ -34,9 +34,9 @@ test/integration/ e2e/  held, not created (.claude/rules/testing.md)
 test/helpers/           helpers two or more test types share
 docs/                   durable project documentation
 scripts/                generate-secret.ts, generate-package.ts
-ci/                     production-ready: dockerfile, docker-compose.yml, vault/; mongo/, jwks-server/ (both compose files)
+ci/                     production-ready: dockerfile, docker-compose.yml, vault/; jwks-server/ (both compose files)
 dockerfile              local image, the compose apis service
-keys/                   generated JWT keys, encryption secret, and Mongo keyfile, gitignored
+keys/                   generated JWT keys and encryption secret, gitignored
 generated/              swagger, vault init, sweep log, gitignored
 ```
 
@@ -60,7 +60,7 @@ Before an edit, read each rule `bash .claude/hooks/rules.sh <path>` prints. `.cl
 
 ## Prisma schema
 
-A release applies the schema through `migrate`. Owner-only: `pnpm db:migrate` (applies the schema), `pnpm db:studio`, `pnpm migration*`, `prisma db|migrate|studio`, `node dist/migration.js`, `mongosh`, `redis-cli`. Edit the schema; hand back the commands.
+A release applies the schema through `migrate`. Owner-only: `pnpm db:migrate` (applies the schema), `pnpm db:studio`, `pnpm migration*`, `prisma db|migrate|studio`, `node dist/migration.js`, `psql`, `redis-cli`. Edit the schema; hand back the commands.
 
 ## Commit gates
 
