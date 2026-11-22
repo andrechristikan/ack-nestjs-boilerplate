@@ -30,6 +30,12 @@ Rule: `repository.md`, Schema.
 - A bare id column: nothing ties the value to a row, and no read can `include` or filter through it.
 - A relation on the audit fields too: every model would relate to `User` three times over, for values a read never joins.
 
+### A generated value that references no row is a plain `String` (`claimNonce`, `batchId`)
+
+Rule: `repository.md`, Schema.
+
+- A batch model for `TermPolicyRecipient.batchId` to relate to: no read uses it.
+
 ### One transaction per flow whose writes span more than one table or include an outbox row, cross-module allowed; an unbounded cascade is a chunked, idempotent job
 
 Rule: `discipline.md`, Hard rules; `transaction.md`, Transactions; `database.md`.

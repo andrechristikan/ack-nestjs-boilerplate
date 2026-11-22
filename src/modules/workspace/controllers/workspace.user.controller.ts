@@ -70,6 +70,8 @@ import { WorkspaceInviteResponseSchema } from '@modules/workspace/dtos/response/
 import { WorkspaceJoinRequestResponseSchema } from '@modules/workspace/dtos/response/workspace.join-request.response.dto';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 import { WorkspaceResponseSchema } from '@modules/workspace/dtos/response/workspace.response.dto';
+import { WorkspaceSoftDeleteResponseSchema } from '@modules/workspace/dtos/response/workspace.soft-delete.response.dto';
+import type { WorkspaceSoftDeleteResponseDto } from '@modules/workspace/dtos/response/workspace.soft-delete.response.dto';
 import type {
     IWorkspaceContext,
     IWorkspaceInviteList,
@@ -389,7 +391,9 @@ export class WorkspaceUserController {
     }
 
     @Doc({ summary: 'soft-delete the current workspace' })
-    @Response('workspace.softDelete')
+    @Response('workspace.softDelete', {
+        schema: WorkspaceSoftDeleteResponseSchema,
+    })
     @TermPolicyAcceptanceProtected()
     @WorkspaceProtected(EnumWorkspaceMemberRole.owner)
     @UserProtected()
@@ -403,7 +407,7 @@ export class WorkspaceUserController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext
-    ): Promise<IResponseReturn<void>> {
+    ): Promise<IResponseReturn<WorkspaceSoftDeleteResponseDto>> {
         return this.workspaceSoftDeleteUseCase.execute(
             requestContext,
             apiKeyContext,

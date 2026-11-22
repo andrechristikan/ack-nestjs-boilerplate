@@ -27,10 +27,16 @@ Its place in the layer chain and what it injects: `layering.md`, Roles.
 
 ## Transactions
 
-- One transaction per flow, or per chunk in a job that pages an unbounded collection (`concurrency.md`), opened in `execute` or a private method of the same use case, the only opener in a feature module; each service joins as `*InTx(tx, ...)` (`transaction.md`, Transactions).
+- One transaction per flow, a job's chunks aside (Jobs), opened in `execute` or a private method of the same use case; each service joins as `*InTx(tx, ...)` (`transaction.md`, Transactions).
 - A sequence several use cases share over one module and the levels below it: `service.md`, Shared transactions.
 - A sequence over two modules of one level is sequenced by each use case, in its own transaction, through each module's `*InTx` call (`UserCreateByAdminUseCase`, `UserProcessImportByAdminUseCase`).
-- A call made twice is sequencing, not duplication (`code-style.md`, Types and comments): two use cases calling the same service method with the same arguments copy nothing. The same sequence of one module's `*InTx` calls in two use cases is one `*InTx` method of that module's service (`service.md`, Shared transactions).
+- A call made twice is sequencing, not duplication (`code-style.md`, Types and comments): two use cases calling the same service method with the same arguments copy nothing. The same sequence of one module's `*InTx` calls in two use cases is one `*InTx` method of that module's service (`service.md`, Shared transactions), and each use case, a request's or a job's, composes its own sequence around it (`WorkspaceService.softDeleteInTx` in `WorkspaceProcessSoftDeleteUseCase` and `UserProcessDeleteSelfUseCase`).
+
+## Jobs
+
+- A job is one flow in its processor use case: it opens the transaction and calls each module's service inside it, as a route's use case does, and queues no job to finish its own work; what it adds is a side effect (`effects.md`).
+- A part of the flow over an unbounded collection is paged by the same use case after the commit, the chunks in turn (`transaction.md`, Transactions; `concurrency.md`, Sequential by design).
+- An action that pages an unbounded collection is a job its route queues: the route's use case validates and adds the job's effect in the transaction of its own writes, or in one holding the add alone when it has none (`UserDeleteSelfUseCase`, `TermPolicyPublishByAdminUseCase`); a route that writes nothing else answers the effect's `outboxId` (`WorkspaceSoftDeleteUseCase`, `UserImportByAdminUseCase`).
 
 ## Branches
 

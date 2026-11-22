@@ -1,5 +1,10 @@
 import { Test } from '@nestjs/testing';
-import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
+import {
+    TestUnitReauthenticationMfaFailure,
+    TestUnitReauthenticationMfaOff,
+    TestUnitReauthenticationPasswordLimit,
+    TestUnitReauthenticationPasswordPassed,
+} from '@test/unit/helpers/test.unit.user.helper';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -18,12 +23,11 @@ import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mo
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.mobile-number-invalid.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
+import type { IMfaReauthenticationResult } from '@modules/mfa/interfaces/mfa.interface';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
-import type {
-    IUserMobileNumber,
-    IUserReauthenticationCheck,
-} from '@modules/user/interfaces/user.interface';
+import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
 import {
     buildUser,
     buildRequestContext,
@@ -54,6 +58,7 @@ describe('UserAddMobileNumberUseCase', () => {
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
         mock<UserMobileNumberService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const countryService: MockProxy<CountryService> = mock<CountryService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
 
@@ -65,21 +70,15 @@ describe('UserAddMobileNumberUseCase', () => {
     const userContext = buildUserContext(user);
     const authContext = buildAuthJwtAccessContext(user.id);
     const tx = {} as IDatabaseTransactionClient;
-    const passwordOnly: IUserReauthenticationCheck = {
-        isPasswordChecked: true,
-        mfa: null,
-        verificationId: null,
-        passkeyChallengeToken: null,
-    };
-    const withMfa: IUserReauthenticationCheck = {
-        isPasswordChecked: true,
-        mfa: {
+    const withMfa: IMfaReauthenticationResult = {
+        isEnabled: true,
+        check: {
             method: EnumMfaMethod.totp,
             totpStep: 7,
             backupCodeHash: null,
             passkey: null,
         },
-        verificationId: null,
+        failure: null,
         passkeyChallengeToken: null,
     };
     const mobileNumber: IUserMobileNumber = {
@@ -122,10 +121,15 @@ describe('UserAddMobileNumberUseCase', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userAuthService.checkReauthentication.mockResolvedValue({
-            check: passwordOnly,
-            failure: null,
-        });
+        userAuthService.checkReauthenticationPassword.mockResolvedValue(
+            TestUnitReauthenticationPasswordPassed
+        );
+        mfaService.checkReauthentication.mockResolvedValue(
+            TestUnitReauthenticationMfaOff
+        );
+        userAuthService.getReauthenticationVerificationId.mockResolvedValue(
+            null
+        );
         countryService.getOne.mockResolvedValue(mobileNumber.country);
         userMobileNumberService.existsMobileNumber.mockResolvedValue(false);
         userMobileNumberService.addMobileNumberInTx.mockResolvedValue(
@@ -140,6 +144,7 @@ describe('UserAddMobileNumberUseCase', () => {
                     useValue: userMobileNumberService,
                 },
                 { provide: UserAuthService, useValue: userAuthService },
+                { provide: MfaService, useValue: mfaService },
                 { provide: CountryService, useValue: countryService },
                 { provide: DatabaseService, useValue: databaseService },
                 DatabaseUtil,
@@ -155,9 +160,9 @@ describe('UserAddMobileNumberUseCase', () => {
     describe('execute', () => {
         it('commits the failed count in a transaction of its own, then throws, and leaves the work undone', async () => {
             const refusal = new Error('refused');
-            userAuthService.checkReauthentication.mockResolvedValue({
-                check: null,
-                failure: TestUnitReauthenticationPasswordFailure,
+            userAuthService.checkReauthenticationPassword.mockResolvedValue({
+                isPasswordChecked: true,
+                limit: TestUnitReauthenticationPasswordLimit,
             });
             userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
                 true
@@ -186,7 +191,7 @@ describe('UserAddMobileNumberUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                TestUnitReauthenticationPasswordFailure
+                TestUnitReauthenticationPasswordLimit
             );
             expect(
                 userAuthService.countFailedReauthenticationInTx
@@ -195,12 +200,59 @@ describe('UserAddMobileNumberUseCase', () => {
             );
             expect(
                 userAuthService.throwFailedReauthentication
-            ).toHaveBeenCalledWith(
-                TestUnitReauthenticationPasswordFailure,
+            ).toHaveBeenCalledWith(true);
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(mfaService.checkReauthentication).not.toHaveBeenCalled();
+        });
+
+        it('commits the failed MFA count in a transaction of its own, then throws, and leaves the work undone', async () => {
+            const refusal = new Error('refused');
+            mfaService.checkReauthentication.mockResolvedValue({
+                isEnabled: true,
+                check: null,
+                failure: TestUnitReauthenticationMfaFailure,
+                passkeyChallengeToken: null,
+            });
+            mfaService.countFailedAttemptInTx.mockResolvedValue(true);
+            mfaService.throwFailedAttempt.mockImplementation(() => {
+                throw refusal;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext.userId,
+                TestUnitReauthenticationMfaFailure
+            );
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledBefore(
+                mfaService.throwFailedAttempt
+            );
+            expect(mfaService.throwFailedAttempt).toHaveBeenCalledWith(
+                TestUnitReauthenticationMfaFailure,
                 true
             );
             expect(
+                userAuthService.getReauthenticationVerificationId
+            ).not.toHaveBeenCalled();
+            expect(
                 userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                mfaService.completeReauthenticationInTx
             ).not.toHaveBeenCalled();
         });
 
@@ -215,30 +267,32 @@ describe('UserAddMobileNumberUseCase', () => {
                 )
             ).resolves.toEqual({ data: mobileNumber });
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.mobileNumberAdd,
-                    password: 'Current-pass1',
-                    method: null,
-                    code: null,
-                    backupCode: null,
-                    passkeyChallengeToken: null,
-                    passkeyResponse: null,
-                    otp: null,
-                }
-            );
             expect(
-                userAuthService.checkReauthentication
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.mobileNumberAdd,
+                password: 'Current-pass1',
+                method: null,
+                code: null,
+                backupCode: null,
+                passkeyChallengeToken: null,
+                passkeyResponse: null,
+                otp: null,
+            });
+            expect(
+                userAuthService.checkReauthenticationPassword
             ).toHaveBeenCalledBefore(databaseService.withTransaction);
             expect(
                 userAuthService.completeReauthenticationInTx
+            ).toHaveBeenCalledWith(tx, authContext, true, null);
+            expect(
+                mfaService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
                 tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                passwordOnly
+                TestUnitReauthenticationMfaOff
             );
             expect(
                 userAuthService.completeReauthenticationInTx
@@ -342,19 +396,18 @@ describe('UserAddMobileNumberUseCase', () => {
                 }
             );
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.mobileNumberAdd,
-                    password: 'Current-pass1',
-                    method: EnumMfaMethod.totp,
-                    code: '654321',
-                    backupCode: 'BACKUP1',
-                    passkeyChallengeToken: 'challenge-quartz',
-                    passkeyResponse,
-                    otp: '123456',
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.mobileNumberAdd,
+                password: 'Current-pass1',
+                method: EnumMfaMethod.totp,
+                code: '654321',
+                backupCode: 'BACKUP1',
+                passkeyChallengeToken: 'challenge-quartz',
+                passkeyResponse,
+                otp: '123456',
+            });
         });
 
         it('passes null for every re-authentication field the request omits', async () => {
@@ -366,24 +419,25 @@ describe('UserAddMobileNumberUseCase', () => {
                 numberInput
             );
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.mobileNumberAdd,
-                    password: null,
-                    method: null,
-                    code: null,
-                    backupCode: null,
-                    passkeyChallengeToken: null,
-                    passkeyResponse: null,
-                    otp: null,
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.mobileNumberAdd,
+                password: null,
+                method: null,
+                code: null,
+                backupCode: null,
+                passkeyChallengeToken: null,
+                passkeyResponse: null,
+                otp: null,
+            });
         });
 
         it('leaves the work undone when the re-authentication fails', async () => {
             const failure = new UserPasswordNotMatchException();
-            userAuthService.checkReauthentication.mockRejectedValue(failure);
+            userAuthService.checkReauthenticationPassword.mockRejectedValue(
+                failure
+            );
 
             await expect(
                 useCase.execute(
@@ -463,10 +517,7 @@ describe('UserAddMobileNumberUseCase', () => {
         });
 
         it('answers MfaInvalidException on a write conflict when a MFA proof was checked', async () => {
-            userAuthService.checkReauthentication.mockResolvedValue({
-                check: withMfa,
-                failure: null,
-            });
+            mfaService.checkReauthentication.mockResolvedValue(withMfa);
             databaseService.withTransaction.mockRejectedValue(
                 buildPrismaKnownRequestError('P2034')
             );

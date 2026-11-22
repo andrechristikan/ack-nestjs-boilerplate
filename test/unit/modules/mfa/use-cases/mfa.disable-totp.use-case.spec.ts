@@ -1,5 +1,9 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
-import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
+import {
+    TestUnitReauthenticationMfaFailure,
+    TestUnitReauthenticationPasswordLimit,
+    TestUnitReauthenticationPasswordPassed,
+} from '@test/unit/helpers/test.unit.user.helper';
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
@@ -31,12 +35,12 @@ import type { ISessionRef } from '@modules/session/interfaces/session.interface'
 import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.exception';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { MfaTotpNotEnabledException } from '@modules/mfa/exceptions/mfa.totp-not-enabled.exception';
+import type { IMfaReauthenticationResult } from '@modules/mfa/interfaces/mfa.interface';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import type { MfaTotpDisableRequestDto } from '@modules/mfa/dtos/request/mfa.totp-disable.request.dto';
-import type { IUserReauthenticationCheck } from '@modules/user/interfaces/user.interface';
 import { MfaDisableTotpUseCase } from '@modules/mfa/use-cases/mfa.disable-totp.use-case';
 import {
     buildRequestContext,
@@ -86,15 +90,15 @@ describe('MfaDisableTotpUseCase', () => {
     const revoked: ISessionRef[] = [{ id: 'session-one' }];
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-05T00:00:00.000Z');
-    const check: IUserReauthenticationCheck = {
-        isPasswordChecked: true,
-        mfa: {
+    const mfaVerified: IMfaReauthenticationResult = {
+        isEnabled: true,
+        check: {
             method: EnumMfaMethod.totp,
             totpStep: 58123456,
             backupCodeHash: null,
             passkey: null,
         },
-        verificationId: null,
+        failure: null,
         passkeyChallengeToken: null,
     };
 
@@ -113,10 +117,13 @@ describe('MfaDisableTotpUseCase', () => {
             async fn => fn(tx) as never
         );
         mfaTotpService.assertConfirmed.mockResolvedValue();
-        userAuthService.checkReauthentication.mockResolvedValue({
-            check,
-            failure: null,
-        });
+        userAuthService.checkReauthenticationPassword.mockResolvedValue(
+            TestUnitReauthenticationPasswordPassed
+        );
+        mfaService.checkReauthentication.mockResolvedValue(mfaVerified);
+        userAuthService.getReauthenticationVerificationId.mockResolvedValue(
+            null
+        );
         sessionService.revokeActiveByUserExceptInTx.mockResolvedValue(revoked);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -148,9 +155,9 @@ describe('MfaDisableTotpUseCase', () => {
 
         it('commits the failed count in a transaction of its own, then throws, and leaves the work undone', async () => {
             const refusal = new Error('refused');
-            userAuthService.checkReauthentication.mockResolvedValue({
-                check: null,
-                failure: TestUnitReauthenticationPasswordFailure,
+            userAuthService.checkReauthenticationPassword.mockResolvedValue({
+                isPasswordChecked: true,
+                limit: TestUnitReauthenticationPasswordLimit,
             });
             userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
                 true
@@ -179,7 +186,7 @@ describe('MfaDisableTotpUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                TestUnitReauthenticationPasswordFailure
+                TestUnitReauthenticationPasswordLimit
             );
             expect(
                 userAuthService.countFailedReauthenticationInTx
@@ -188,22 +195,69 @@ describe('MfaDisableTotpUseCase', () => {
             );
             expect(
                 userAuthService.throwFailedReauthentication
-            ).toHaveBeenCalledWith(
-                TestUnitReauthenticationPasswordFailure,
+            ).toHaveBeenCalledWith(true);
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(mfaService.checkReauthentication).not.toHaveBeenCalled();
+        });
+
+        it('commits the failed MFA count in a transaction of its own, then throws, and leaves the work undone', async () => {
+            const refusal = new Error('refused');
+            mfaService.checkReauthentication.mockResolvedValue({
+                isEnabled: true,
+                check: null,
+                failure: TestUnitReauthenticationMfaFailure,
+                passkeyChallengeToken: null,
+            });
+            mfaService.countFailedAttemptInTx.mockResolvedValue(true);
+            mfaService.throwFailedAttempt.mockImplementation(() => {
+                throw refusal;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext.userId,
+                TestUnitReauthenticationMfaFailure
+            );
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledBefore(
+                mfaService.throwFailedAttempt
+            );
+            expect(mfaService.throwFailedAttempt).toHaveBeenCalledWith(
+                TestUnitReauthenticationMfaFailure,
                 true
             );
             expect(
+                userAuthService.getReauthenticationVerificationId
+            ).not.toHaveBeenCalled();
+            expect(
                 userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                mfaService.completeReauthenticationInTx
             ).not.toHaveBeenCalled();
         });
 
         it('asserts the re-authentication before the transaction, then completes, disables, revokes every other session and keeps the current one, and adds the disable entry on one tx', async () => {
             const calls: string[] = [];
-            userAuthService.checkReauthentication.mockImplementation(
+            userAuthService.checkReauthenticationPassword.mockImplementation(
                 async () => {
                     calls.push('assert');
 
-                    return { check, failure: null };
+                    return TestUnitReauthenticationPasswordPassed;
                 }
             );
             databaseService.withTransaction.mockImplementation(async fn => {
@@ -254,27 +308,29 @@ describe('MfaDisableTotpUseCase', () => {
             );
             expect(mfaService.isEnabled).not.toHaveBeenCalled();
             expect(mfaService.assertEnabled).not.toHaveBeenCalled();
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.mfaTotpDisable,
-                    password: 'Current-pass1',
-                    method: EnumMfaMethod.totp,
-                    code: '123456',
-                    backupCode: null,
-                    passkeyChallengeToken: null,
-                    passkeyResponse: null,
-                    otp: null,
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.mfaTotpDisable,
+                password: 'Current-pass1',
+                method: EnumMfaMethod.totp,
+                code: '123456',
+                backupCode: null,
+                passkeyChallengeToken: null,
+                passkeyResponse: null,
+                otp: null,
+            });
             expect(
                 userAuthService.completeReauthenticationInTx
+            ).toHaveBeenCalledWith(tx, authContext, true, null);
+            expect(
+                mfaService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
                 tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                check
+                mfaVerified
             );
             expect(mfaTotpService.disableInTx).toHaveBeenCalledWith(
                 tx,
@@ -324,19 +380,18 @@ describe('MfaDisableTotpUseCase', () => {
                 }
             );
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.mfaTotpDisable,
-                    password: null,
-                    method: EnumMfaMethod.backupCode,
-                    code: null,
-                    backupCode: 'B1',
-                    passkeyChallengeToken: null,
-                    passkeyResponse: null,
-                    otp: null,
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.mfaTotpDisable,
+                password: null,
+                method: EnumMfaMethod.backupCode,
+                code: null,
+                backupCode: 'B1',
+                passkeyChallengeToken: null,
+                passkeyResponse: null,
+                otp: null,
+            });
         });
 
         it('passes the email code of the request on', async () => {
@@ -352,19 +407,18 @@ describe('MfaDisableTotpUseCase', () => {
                 }
             );
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.mfaTotpDisable,
-                    password: null,
-                    method: null,
-                    code: null,
-                    backupCode: null,
-                    passkeyChallengeToken: 'challenge-quartz',
-                    passkeyResponse,
-                    otp: '123456',
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.mfaTotpDisable,
+                password: null,
+                method: null,
+                code: null,
+                backupCode: null,
+                passkeyChallengeToken: 'challenge-quartz',
+                passkeyResponse,
+                otp: '123456',
+            });
         });
 
         it('passes null for every field the request omits', async () => {
@@ -376,19 +430,18 @@ describe('MfaDisableTotpUseCase', () => {
                 {}
             );
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.mfaTotpDisable,
-                    password: null,
-                    method: null,
-                    code: null,
-                    backupCode: null,
-                    passkeyChallengeToken: null,
-                    passkeyResponse: null,
-                    otp: null,
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.mfaTotpDisable,
+                password: null,
+                method: null,
+                code: null,
+                backupCode: null,
+                passkeyChallengeToken: null,
+                passkeyResponse: null,
+                otp: null,
+            });
         });
 
         it('asserts nothing and writes nothing when the user has no confirmed TOTP', async () => {
@@ -410,14 +463,14 @@ describe('MfaDisableTotpUseCase', () => {
             });
 
             expect(
-                userAuthService.checkReauthentication
+                userAuthService.checkReauthenticationPassword
             ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('leaves the work undone when the proof fails', async () => {
             const limit = new MfaAttemptMaxException();
-            userAuthService.checkReauthentication.mockRejectedValue(limit);
+            mfaService.checkReauthentication.mockRejectedValue(limit);
 
             await expect(
                 useCase.execute(

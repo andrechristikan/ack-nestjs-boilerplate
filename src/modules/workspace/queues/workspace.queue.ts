@@ -7,6 +7,8 @@ import { Queue } from 'bullmq';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import { EnumWorkspaceQueue } from '@modules/workspace/enums/workspace.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IWorkspaceSoftDeleteEffect } from '@modules/workspace/interfaces/workspace.interface';
 
 @Injectable()
 export class WorkspaceQueue extends QueueBase implements OnModuleInit {
@@ -68,5 +70,19 @@ export class WorkspaceQueue extends QueueBase implements OnModuleInit {
                 },
             }
         );
+    }
+
+    softDeleteEffect(
+        workspaceId: string,
+        deletedBy: string,
+        activityLog: IActivityLogActorPayload
+    ): IWorkspaceSoftDeleteEffect {
+        return {
+            queue: EnumWorkspaceQueue.workspace,
+            name: EnumWorkspaceProcess.softDelete,
+            data: { workspaceId, deletedBy, activityLog },
+            priority: EnumQueuePriority.high,
+            idempotencyKey: null,
+        };
     }
 }

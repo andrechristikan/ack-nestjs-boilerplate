@@ -48,7 +48,6 @@ import type {
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceInviteRepository } from '@modules/workspace/repositories/workspace.invite.repository';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
-import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
@@ -72,7 +71,6 @@ export class WorkspaceInviteService {
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly featureFlagService: FeatureFlagService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly userUtil: UserUtil,
         private readonly outboxService: OutboxService,
         private readonly awsSESService: AwsSESService,
         private readonly helperDateService: HelperDateService,
@@ -239,7 +237,8 @@ export class WorkspaceInviteService {
     }
 
     mapInvitePreview(
-        invite: IWorkspaceInvitePreview
+        invite: IWorkspaceInvitePreview,
+        inviterName: string
     ): IWorkspaceInvitePreviewSummary {
         if (invite.invitedBy.deletedAt !== null) {
             return {
@@ -249,8 +248,6 @@ export class WorkspaceInviteService {
                 expiredAt: invite.expiredAt,
             };
         }
-
-        const inviterName = this.userUtil.getDisplayName(invite.invitedBy);
 
         return {
             workspaceName: invite.workspace.name,

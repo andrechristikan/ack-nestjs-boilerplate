@@ -8,7 +8,8 @@ import {
     EnumPasswordHistoryType,
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { DeviceService } from '@modules/device/services/device.service';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
@@ -39,7 +40,8 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
         private readonly userPasswordService: UserPasswordService,
         private readonly passwordHistoryService: PasswordHistoryService,
         private readonly sessionService: SessionService,
-        private readonly notificationService: NotificationService,
+        private readonly deviceService: DeviceService,
+        private readonly notificationUtil: NotificationUtil,
         private readonly notificationQueue: NotificationQueue,
         private readonly roleService: RoleService,
         private readonly activityLogQueue: ActivityLogQueue,
@@ -68,10 +70,11 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
         );
         this.userService.assertUnblocked(target);
 
-        const [{ password, passwordString }, snapshot] = await Promise.all([
+        const [{ password, passwordString }, tokens] = await Promise.all([
             this.userPasswordService.createTemporaryPassword(),
-            this.notificationService.getSnapshot(target),
+            this.deviceService.getNotificationTokens(userId),
         ]);
+        const snapshot = this.notificationUtil.sealSnapshot(target, tokens);
         const passwordCreatedAt = this.helperDateService.formatToIso(
             password.passwordCreated
         );

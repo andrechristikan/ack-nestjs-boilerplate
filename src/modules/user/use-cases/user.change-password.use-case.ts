@@ -19,6 +19,7 @@ import { NotificationQueue } from '@modules/notification/queues/notification.que
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { SessionService } from '@modules/session/services/session.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
@@ -47,6 +48,7 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         private readonly userService: UserService,
         private readonly userPasswordService: UserPasswordService,
         private readonly userAuthService: UserAuthService,
+        private readonly mfaService: MfaService,
         private readonly passwordHistoryService: PasswordHistoryService,
         private readonly sessionService: SessionService,
         private readonly notificationQueue: NotificationQueue,
@@ -79,18 +81,23 @@ export class UserChangePasswordUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
         // Sequential by design: a credential proof, awaited alone; a statement whose failure is the answer, awaited before an unrelated write
-        const { check, failure } =
-            await this.userAuthService.checkReauthentication(user, {
-                action: EnumUserReauthenticationAction.changePassword,
-                password: currentPassword ?? null,
-                method: method ?? null,
-                code: code ?? null,
-                backupCode: backupCode ?? null,
-                passkeyChallengeToken: passkeyChallengeToken ?? null,
-                passkeyResponse: passkeyResponse ?? null,
-                otp: otp ?? null,
-            });
-        if (failure !== null) {
+        const input = {
+            action: EnumUserReauthenticationAction.changePassword,
+            password: currentPassword ?? null,
+            method: method ?? null,
+            code: code ?? null,
+            backupCode: backupCode ?? null,
+            passkeyChallengeToken: passkeyChallengeToken ?? null,
+            passkeyResponse: passkeyResponse ?? null,
+            otp: otp ?? null,
+        };
+        const passwordCheck =
+            await this.userAuthService.checkReauthenticationPassword(
+                user,
+                input
+            );
+        if (passwordCheck.limit !== null) {
+            const limit = passwordCheck.limit;
             const isLocked = await this.databaseService.withTransaction(
                 async tx =>
                     this.userAuthService.countFailedReauthenticationInTx(
@@ -98,15 +105,41 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                         requestContext,
                         apiKeyContext,
                         authContext,
+                        limit
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(isLocked);
+        }
+
+        const mfaCheck = await this.mfaService.checkReauthentication(
+            user.id,
+            input,
+            passwordCheck.isPasswordChecked
+        );
+        if (mfaCheck.failure !== null) {
+            const failure = mfaCheck.failure;
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.mfaService.countFailedAttemptInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext.userId,
                         failure
                     )
             );
 
-            return this.userAuthService.throwFailedReauthentication(
-                failure,
-                isLocked
-            );
+            return this.mfaService.throwFailedAttempt(failure, isLocked);
         }
+
+        const verificationId =
+            await this.userAuthService.getReauthenticationVerificationId(
+                user,
+                input,
+                passwordCheck.isPasswordChecked,
+                mfaCheck.isEnabled
+            );
 
         const contextWords = this.authPasswordUtil.createContextWords(
             this.appName,
@@ -117,7 +150,7 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         const checks = [
             this.authPasswordService.assertAllowed(newPassword, contextWords),
         ];
-        if (check.isPasswordChecked) {
+        if (passwordCheck.isPasswordChecked) {
             const historyCheck = this.passwordHistoryService.assertNew(
                 authContext.userId,
                 newPassword
@@ -125,17 +158,22 @@ export class UserChangePasswordUseCase implements IAppUseCase<
             checks.push(historyCheck);
         }
         await Promise.all(checks);
-        const password =
-            await this.authPasswordUtil.createPassword(newPassword);
+        const password = await this.authPasswordService.create(newPassword);
 
         try {
             await this.databaseService.withTransaction(async tx => {
                 await this.userAuthService.completeReauthenticationInTx(
                     tx,
+                    authContext,
+                    passwordCheck.isPasswordChecked,
+                    verificationId
+                );
+                await this.mfaService.completeReauthenticationInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    check
+                    mfaCheck
                 );
                 await Promise.all([
                     this.userService.updatePasswordInTx(
@@ -191,7 +229,7 @@ export class UserChangePasswordUseCase implements IAppUseCase<
 
             const mapped = this.databaseUtil.toException(err);
             if (
-                check.mfa !== null &&
+                mfaCheck.check !== null &&
                 mapped instanceof DatabaseWriteConflictException
             ) {
                 throw new MfaInvalidException();

@@ -1,7 +1,6 @@
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { AwsModule } from '@common/aws/aws.module';
 import { FirebaseModule } from '@common/firebase/firebase.module';
-import { DeviceModule } from '@modules/device/device.module';
 import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
 import { NotificationEmailQueueFactory } from '@modules/notification/factories/notification.email.queue.factory';
 import { NotificationPushQueueFactory } from '@modules/notification/factories/notification.push.queue.factory';
@@ -68,7 +67,6 @@ import { Module } from '@nestjs/common';
     ],
     imports: [
         ActivityLogModule,
-        DeviceModule,
         AwsModule,
         FirebaseModule,
         BullModule.registerQueueAsync(

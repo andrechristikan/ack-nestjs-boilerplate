@@ -19,7 +19,6 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
-import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -44,8 +43,6 @@ describe('WorkspaceLeaveUseCase', () => {
         mock<ActivityLogQueue>();
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
-    const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
-        mock<WorkspaceJoinRequestService>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
@@ -80,10 +77,6 @@ describe('WorkspaceLeaveUseCase', () => {
                 {
                     provide: ProjectMemberService,
                     useValue: projectMemberService,
-                },
-                {
-                    provide: WorkspaceJoinRequestService,
-                    useValue: workspaceJoinRequestService,
                 },
                 { provide: UserService, useValue: userService },
                 { provide: DatabaseService, useValue: databaseService },
@@ -134,13 +127,6 @@ describe('WorkspaceLeaveUseCase', () => {
                     return 2;
                 }
             );
-            workspaceJoinRequestService.cancelPendingByUserInTx.mockImplementation(
-                async () => {
-                    callOrder.push('joinRequests');
-
-                    return 1;
-                }
-            );
             userService.clearLastWorkspaceInTx.mockImplementation(async () => {
                 callOrder.push('lastWorkspace');
             });
@@ -165,9 +151,6 @@ describe('WorkspaceLeaveUseCase', () => {
             expect(
                 projectMemberService.removeByWorkspaceAndUserInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
-            expect(
-                workspaceJoinRequestService.cancelPendingByUserInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
             expect(userService.clearLastWorkspaceInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
@@ -189,13 +172,12 @@ describe('WorkspaceLeaveUseCase', () => {
             expect(callOrder).toEqual([
                 'leave',
                 'projectMembers',
-                'joinRequests',
                 'lastWorkspace',
                 'addEntry',
             ]);
         });
 
-        it('awaits the guarded leave alone, then starts the project member removal, the join request cancel, and the last workspace clear together', async () => {
+        it('awaits the guarded leave alone, then starts the project member removal and the last workspace clear together', async () => {
             const events: string[] = [];
             workspaceMemberService.leaveWorkspaceInTx.mockImplementation(
                 async () => {
@@ -211,15 +193,6 @@ describe('WorkspaceLeaveUseCase', () => {
                     events.push('end:projectMembers');
 
                     return 2;
-                }
-            );
-            workspaceJoinRequestService.cancelPendingByUserInTx.mockImplementation(
-                async () => {
-                    events.push('start:joinRequests');
-                    await Promise.resolve();
-                    events.push('end:joinRequests');
-
-                    return 1;
                 }
             );
             userService.clearLastWorkspaceInTx.mockImplementation(async () => {
@@ -244,10 +217,8 @@ describe('WorkspaceLeaveUseCase', () => {
                 'start:leave',
                 'end:leave',
                 'start:projectMembers',
-                'start:joinRequests',
                 'start:lastWorkspace',
                 'end:projectMembers',
-                'end:joinRequests',
                 'end:lastWorkspace',
                 'addEntry',
             ]);
@@ -271,9 +242,6 @@ describe('WorkspaceLeaveUseCase', () => {
             });
             expect(
                 projectMemberService.removeByWorkspaceAndUserInTx
-            ).not.toHaveBeenCalled();
-            expect(
-                workspaceJoinRequestService.cancelPendingByUserInTx
             ).not.toHaveBeenCalled();
             expect(userService.clearLastWorkspaceInTx).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();

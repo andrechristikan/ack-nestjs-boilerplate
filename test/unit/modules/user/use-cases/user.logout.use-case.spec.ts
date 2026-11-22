@@ -90,6 +90,7 @@ describe('UserLogoutUseCase', () => {
         },
         deviceOwnership: ownership,
         isNewDevice: true,
+        otherOwnershipIds: [],
     };
 
     beforeAll(() => {
@@ -107,7 +108,6 @@ describe('UserLogoutUseCase', () => {
         vi.setSystemTime(now);
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         deviceService.upsertForLoginInTx.mockResolvedValue(upsert);
-        deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue([]);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [

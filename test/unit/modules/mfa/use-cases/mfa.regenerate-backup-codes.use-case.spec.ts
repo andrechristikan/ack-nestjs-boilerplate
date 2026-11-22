@@ -1,5 +1,9 @@
 import { ConfigService } from '@nestjs/config';
-import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
+import {
+    TestUnitReauthenticationMfaFailure,
+    TestUnitReauthenticationPasswordLimit,
+    TestUnitReauthenticationPasswordPassed,
+} from '@test/unit/helpers/test.unit.user.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
@@ -23,6 +27,7 @@ import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.exception';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { MfaNotEnabledException } from '@modules/mfa/exceptions/mfa.not-enabled.exception';
+import type { IMfaReauthenticationResult } from '@modules/mfa/interfaces/mfa.interface';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -33,7 +38,6 @@ import {
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import type { MfaBackupCodeRegenerateRequestDto } from '@modules/mfa/dtos/request/mfa.backup-code-regenerate.request.dto';
-import type { IUserReauthenticationCheck } from '@modules/user/interfaces/user.interface';
 import { MfaRegenerateBackupCodesUseCase } from '@modules/mfa/use-cases/mfa.regenerate-backup-codes.use-case';
 import {
     buildRequestContext,
@@ -79,15 +83,15 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
         priority: EnumQueuePriority.low,
         idempotencyKey: null,
     };
-    const check: IUserReauthenticationCheck = {
-        isPasswordChecked: true,
-        mfa: {
+    const mfaVerified: IMfaReauthenticationResult = {
+        isEnabled: true,
+        check: {
             method: EnumMfaMethod.totp,
             totpStep: 58123456,
             backupCodeHash: null,
             passkey: null,
         },
-        verificationId: null,
+        failure: null,
         passkeyChallengeToken: null,
     };
 
@@ -95,10 +99,13 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userAuthService.checkReauthentication.mockResolvedValue({
-            check,
-            failure: null,
-        });
+        userAuthService.checkReauthenticationPassword.mockResolvedValue(
+            TestUnitReauthenticationPasswordPassed
+        );
+        mfaService.checkReauthentication.mockResolvedValue(mfaVerified);
+        userAuthService.getReauthenticationVerificationId.mockResolvedValue(
+            null
+        );
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -128,9 +135,9 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
 
         it('commits the failed count in a transaction of its own, then throws, and leaves the work undone', async () => {
             const refusal = new Error('refused');
-            userAuthService.checkReauthentication.mockResolvedValue({
-                check: null,
-                failure: TestUnitReauthenticationPasswordFailure,
+            userAuthService.checkReauthenticationPassword.mockResolvedValue({
+                isPasswordChecked: true,
+                limit: TestUnitReauthenticationPasswordLimit,
             });
             userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
                 true
@@ -159,7 +166,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                TestUnitReauthenticationPasswordFailure
+                TestUnitReauthenticationPasswordLimit
             );
             expect(
                 userAuthService.countFailedReauthenticationInTx
@@ -168,12 +175,59 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
             );
             expect(
                 userAuthService.throwFailedReauthentication
-            ).toHaveBeenCalledWith(
-                TestUnitReauthenticationPasswordFailure,
+            ).toHaveBeenCalledWith(true);
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(mfaService.checkReauthentication).not.toHaveBeenCalled();
+        });
+
+        it('commits the failed MFA count in a transaction of its own, then throws, and leaves the work undone', async () => {
+            const refusal = new Error('refused');
+            mfaService.checkReauthentication.mockResolvedValue({
+                isEnabled: true,
+                check: null,
+                failure: TestUnitReauthenticationMfaFailure,
+                passkeyChallengeToken: null,
+            });
+            mfaService.countFailedAttemptInTx.mockResolvedValue(true);
+            mfaService.throwFailedAttempt.mockImplementation(() => {
+                throw refusal;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext.userId,
+                TestUnitReauthenticationMfaFailure
+            );
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledBefore(
+                mfaService.throwFailedAttempt
+            );
+            expect(mfaService.throwFailedAttempt).toHaveBeenCalledWith(
+                TestUnitReauthenticationMfaFailure,
                 true
             );
             expect(
+                userAuthService.getReauthenticationVerificationId
+            ).not.toHaveBeenCalled();
+            expect(
                 userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                mfaService.completeReauthenticationInTx
             ).not.toHaveBeenCalled();
         });
 
@@ -198,30 +252,32 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
             expect(mfaService.assertEnabled).toHaveBeenCalledWith(
                 'user-marten'
             );
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.mfaBackupCodeRegenerate,
-                    password: 'Current-pass1',
-                    method: EnumMfaMethod.totp,
-                    code: '654321',
-                    backupCode: null,
-                    passkeyChallengeToken: null,
-                    passkeyResponse: null,
-                    otp: null,
-                }
-            );
             expect(
-                userAuthService.checkReauthentication
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.mfaBackupCodeRegenerate,
+                password: 'Current-pass1',
+                method: EnumMfaMethod.totp,
+                code: '654321',
+                backupCode: null,
+                passkeyChallengeToken: null,
+                passkeyResponse: null,
+                otp: null,
+            });
+            expect(
+                userAuthService.checkReauthenticationPassword
             ).toHaveBeenCalledBefore(databaseService.withTransaction);
             expect(
                 userAuthService.completeReauthenticationInTx
+            ).toHaveBeenCalledWith(tx, authContext, true, null);
+            expect(
+                mfaService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
                 tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                check
+                mfaVerified
             );
             expect(
                 userAuthService.completeReauthenticationInTx
@@ -254,19 +310,18 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                 }
             );
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.mfaBackupCodeRegenerate,
-                    password: null,
-                    method: EnumMfaMethod.backupCode,
-                    code: null,
-                    backupCode: 'B1',
-                    passkeyChallengeToken: null,
-                    passkeyResponse: null,
-                    otp: null,
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.mfaBackupCodeRegenerate,
+                password: null,
+                method: EnumMfaMethod.backupCode,
+                code: null,
+                backupCode: 'B1',
+                passkeyChallengeToken: null,
+                passkeyResponse: null,
+                otp: null,
+            });
         });
 
         it('passes the email code of the request on', async () => {
@@ -282,19 +337,18 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                 }
             );
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.mfaBackupCodeRegenerate,
-                    password: null,
-                    method: null,
-                    code: null,
-                    backupCode: null,
-                    passkeyChallengeToken: 'challenge-quartz',
-                    passkeyResponse,
-                    otp: '123456',
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.mfaBackupCodeRegenerate,
+                password: null,
+                method: null,
+                code: null,
+                backupCode: null,
+                passkeyChallengeToken: 'challenge-quartz',
+                passkeyResponse,
+                otp: '123456',
+            });
         });
 
         it('passes null for every field the request omits', async () => {
@@ -306,19 +360,18 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                 {}
             );
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.mfaBackupCodeRegenerate,
-                    password: null,
-                    method: null,
-                    code: null,
-                    backupCode: null,
-                    passkeyChallengeToken: null,
-                    passkeyResponse: null,
-                    otp: null,
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.mfaBackupCodeRegenerate,
+                password: null,
+                method: null,
+                code: null,
+                backupCode: null,
+                passkeyChallengeToken: null,
+                passkeyResponse: null,
+                otp: null,
+            });
         });
 
         it('asserts nothing when MFA is not enabled', async () => {
@@ -336,13 +389,13 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
             ).rejects.toBe(failure);
 
             expect(
-                userAuthService.checkReauthentication
+                userAuthService.checkReauthenticationPassword
             ).not.toHaveBeenCalled();
         });
 
         it('opens no transaction when the proof fails', async () => {
             const limit = new MfaAttemptMaxException();
-            userAuthService.checkReauthentication.mockRejectedValue(limit);
+            mfaService.checkReauthentication.mockRejectedValue(limit);
 
             await expect(
                 useCase.execute(

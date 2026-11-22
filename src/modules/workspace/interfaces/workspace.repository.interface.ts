@@ -70,10 +70,4 @@ export interface IWorkspaceRepository {
         workspaceIds: string[],
         userId: string
     ): Promise<boolean>;
-    softDeleteOwnedByUserInTx(
-        tx: IDatabaseTransactionClient,
-        workspaceIds: string[],
-        userId: string,
-        deletedAt: Date
-    ): Promise<string[]>;
 }

@@ -3,6 +3,7 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
+import type { IPasswordHistoryCreate } from '@modules/password-history/interfaces/password-history.interface';
 import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
@@ -198,6 +199,32 @@ export class UserCreateUtil {
             types: acceptedTermPolicyTypes,
             createdBy,
         }));
+    }
+
+    buildPasswordHistoryEntries(
+        inputs: IUserCreateWithWorkspaceInput[]
+    ): IPasswordHistoryCreate[] {
+        const entries: IPasswordHistoryCreate[] = [];
+
+        for (const {
+            userId,
+            password,
+            passwordHistoryType,
+            createdBy,
+        } of inputs) {
+            if (password && passwordHistoryType) {
+                entries.push({
+                    userId,
+                    password: password.passwordHash,
+                    type: passwordHistoryType,
+                    expiredAt: password.passwordPeriodExpired,
+                    createdAt: password.passwordCreated,
+                    createdBy,
+                });
+            }
+        }
+
+        return entries;
     }
 
     /** Maps a username or email unique collision to its user exception and returns any other error untouched. */

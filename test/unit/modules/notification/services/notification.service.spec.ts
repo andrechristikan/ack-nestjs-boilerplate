@@ -34,7 +34,6 @@ import {
     EnumNotificationType,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
-import { DeviceService } from '@modules/device/services/device.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import {
@@ -84,7 +83,6 @@ describe('NotificationService', () => {
         mock<NotificationPushQueue>();
     const notificationSmsQueue: MockProxy<NotificationSmsQueue> =
         mock<NotificationSmsQueue>();
-    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
@@ -160,7 +158,6 @@ describe('NotificationService', () => {
                     provide: NotificationSmsQueue,
                     useValue: notificationSmsQueue,
                 },
-                { provide: DeviceService, useValue: deviceService },
                 { provide: MessageService, useValue: messageService },
                 NotificationService,
                 {
@@ -234,44 +231,6 @@ describe('NotificationService', () => {
                     'user-id'
                 )
             ).toBe('+6281234567890');
-        });
-    });
-
-    describe('getSnapshot', () => {
-        it('returns the username with the address and each distinct live-session token encrypted against the user id', async () => {
-            const user: IUserRecipient = {
-                id: 'user-id',
-                email: 'user@example.com',
-                username: 'user',
-            };
-            deviceService.getNotificationTokens.mockResolvedValue([
-                'token-1',
-                'token-1',
-                'token-2',
-            ]);
-
-            const result = await service.getSnapshot(user);
-
-            expect(result).toEqual({
-                username: 'user',
-                encryptedEmail: expect.any(String),
-                encryptedTokens: [expect.any(String), expect.any(String)],
-            });
-            expect(
-                buildUnsealedNotificationPayload(
-                    result.encryptedEmail,
-                    'user-id'
-                )
-            ).toBe('user@example.com');
-            expect(
-                buildUnsealedNotificationPayloads(
-                    result.encryptedTokens,
-                    'user-id'
-                )
-            ).toEqual(['token-1', 'token-2']);
-            expect(deviceService.getNotificationTokens).toHaveBeenCalledWith(
-                'user-id'
-            );
         });
     });
 
@@ -1008,16 +967,6 @@ describe('NotificationService', () => {
                     statusCode: EnumHelperStatusCodeError.decryptFailed,
                 })
             );
-        });
-    });
-
-    describe('toCleanupTokensResult', () => {
-        it('reports the requested and removed counts', () => {
-            expect(service.toCleanupTokensResult(2, 1)).toEqual({
-                message: 'notification.queue.push.cleanupTokens',
-                countRequestedTokens: 2,
-                countRemovedTokens: 1,
-            });
         });
     });
 

@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { FeatureFlag } from '@generated/prisma-client/client';
+import type { IFeatureFlag } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
 import { FeatureFlagCacheSchema } from '@modules/feature-flag/constants/feature-flag.constant';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
@@ -67,7 +67,7 @@ describe('FeatureFlagCache', () => {
 
     describe('FeatureFlagCacheSchema', () => {
         it('parses a cached flag with ISO dates and null metadata', () => {
-            const featureFlag: FeatureFlag = {
+            const featureFlag: IFeatureFlag = {
                 id: '507f1f77bcf86cd799439011',
                 key: 'loginWithGoogle',
                 description: 'Enables Google sign-in',

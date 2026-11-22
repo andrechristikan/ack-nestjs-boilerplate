@@ -8,9 +8,11 @@ import { NotificationSettingContract } from '@modules/notification/contracts/not
 import type {
     INotificationContext,
     INotificationSealedRecord,
+    INotificationSnapshot,
     INotificationUserSettingPreference,
     INotificationWorkspaceInviteFields,
 } from '@modules/notification/interfaces/notification.interface';
+import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
 import {
     EnumNotificationKind,
     EnumNotificationStep,
@@ -180,6 +182,19 @@ export class NotificationUtil {
             NotificationPayloadEncryptionPurpose,
             context
         );
+    }
+
+    /** The username with the address and each distinct token encrypted against the user id. */
+    sealSnapshot(
+        { id, email, username }: IUserRecipient,
+        tokens: string[]
+    ): INotificationSnapshot {
+        const encryptedEmail = this.encryptPayload(email, id);
+        const encryptedTokens = [...new Set(tokens)].map(token =>
+            this.encryptPayload(token, id)
+        );
+
+        return { username, encryptedEmail, encryptedTokens };
     }
 
     /** The context with each secret field renamed `encrypted<Field>` and encrypted against the encryption context. */

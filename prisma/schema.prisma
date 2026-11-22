@@ -192,6 +192,7 @@ model User {
   workspaceInvitesInvited       WorkspaceInvite[]          @relation("WorkspaceInviteInvitedBy")
   workspaceInvitesAccepted      WorkspaceInvite[]          @relation("WorkspaceInviteAcceptedBy")
   workspaceJoinRequestsReviewed WorkspaceJoinRequest[]     @relation("WorkspaceJoinRequestReviewedBy")
+  featureFlagTargets            FeatureFlagTarget[]        @relation("FeatureFlagTargetUser")
 
   @@unique(fields: [username])
   @@unique(fields: [email])
@@ -500,10 +501,10 @@ model TermPolicyRecipient {
   termPolicyId   String    @db.ObjectId
   userId         String    @db.ObjectId
   notificationId String    @db.ObjectId
-  batchId        String    @db.ObjectId
+  batchId        String
   sentAt         DateTime?
   claimedAt      DateTime?
-  claimNonce     String?   @db.ObjectId
+  claimNonce     String?
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId
@@ -540,12 +541,11 @@ model TermPolicyUserAcceptance {
 }
 
 model FeatureFlag {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  id             String  @id @default(auto()) @map("_id") @db.ObjectId
   key            String
   description    String
-  isEnable       Boolean  @default(true)
-  rolloutPercent Int      @default(100)
-  targetUserIds  String[] @default([]) @db.ObjectId
+  isEnable       Boolean @default(true)
+  rolloutPercent Int     @default(100)
   metadata       Json?
 
   createdAt DateTime @default(now())
@@ -553,8 +553,25 @@ model FeatureFlag {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.ObjectId
 
+  targets FeatureFlagTarget[] @relation("FeatureFlagTargetFeatureFlag")
+
   @@unique(fields: [key])
   @@map("FeatureFlags")
+}
+
+model FeatureFlagTarget {
+  id            String @id @default(auto()) @map("_id") @db.ObjectId
+  featureFlagId String @db.ObjectId
+  userId        String @db.ObjectId
+
+  createdAt DateTime @default(now())
+  createdBy String?  @db.ObjectId
+
+  featureFlag FeatureFlag @relation("FeatureFlagTargetFeatureFlag", fields: [featureFlagId], references: [id])
+  user        User        @relation("FeatureFlagTargetUser", fields: [userId], references: [id])
+
+  @@unique(fields: [featureFlagId, userId])
+  @@map("FeatureFlagTargets")
 }
 
 model ForgotPassword {

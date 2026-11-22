@@ -6,7 +6,7 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
@@ -60,7 +60,7 @@ export class UserPasswordService {
         private readonly userService: UserService,
         private readonly outboxService: OutboxService,
         private readonly notificationQueue: NotificationQueue,
-        private readonly authPasswordUtil: AuthPasswordUtil,
+        private readonly authPasswordService: AuthPasswordService,
         private readonly featureFlagService: FeatureFlagService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly messageService: MessageService,
@@ -138,11 +138,10 @@ export class UserPasswordService {
     }
 
     async createTemporaryPassword(): Promise<IUserPasswordTemporary> {
-        const passwordString = this.authPasswordUtil.createPasswordRandom();
-        const password = await this.authPasswordUtil.createPassword(
-            passwordString,
-            { temporary: true }
-        );
+        const passwordString = this.authPasswordService.createRandom();
+        const password = await this.authPasswordService.create(passwordString, {
+            temporary: true,
+        });
 
         return { password, passwordString };
     }

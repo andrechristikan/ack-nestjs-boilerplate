@@ -11,6 +11,13 @@ import type {
     WorkspaceInvite,
 } from '@generated/prisma-client/client';
 import type { IWorkspaceInvitePreview } from '@modules/workspace/interfaces/workspace.interface';
+import { UserUtil } from '@modules/user/utils/user.util';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
+import { ConfigService } from '@nestjs/config';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspacePreviewInviteUseCase } from '@modules/workspace/use-cases/workspace.preview-invite.use-case';
@@ -56,6 +63,14 @@ describe('WorkspacePreviewInviteUseCase', () => {
                     provide: WorkspaceInviteService,
                     useValue: workspaceInviteService,
                 },
+                UserUtil,
+                ...TestUnitKitProviders,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                    }),
+                },
             ],
         }).compile();
 
@@ -85,7 +100,7 @@ describe('WorkspacePreviewInviteUseCase', () => {
             ).toHaveBeenCalledExactlyOnceWith('raw-token');
             expect(
                 workspaceInviteService.mapInvitePreview
-            ).toHaveBeenCalledExactlyOnceWith(previewInvite);
+            ).toHaveBeenCalledExactlyOnceWith(previewInvite, 'Jane Doe');
         });
 
         it('throws WorkspaceInviteInvalidException and maps nothing when the token is not valid', async () => {

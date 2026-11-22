@@ -16,6 +16,7 @@ import { UserReauthenticationOtpResendLimitException } from '@modules/user/excep
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
@@ -32,6 +33,7 @@ import {
 describe('UserSendReauthenticationOtpUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const userService: MockProxy<UserService> = mock<UserService>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
@@ -55,12 +57,14 @@ describe('UserSendReauthenticationOtpUseCase', () => {
             async fn => fn(tx) as never
         );
         activityLogQueue.recordEffect.mockReturnValue(entry);
+        mfaService.isEnabled.mockResolvedValue(false);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 UserSendReauthenticationOtpUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: UserAuthService, useValue: userAuthService },
+                { provide: MfaService, useValue: mfaService },
                 {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
@@ -101,8 +105,11 @@ describe('UserSendReauthenticationOtpUseCase', () => {
         });
 
         it('throws not allowed for an account with a stronger proof and writes nothing', async () => {
-            userAuthService.assertReauthenticationOtpAllowed.mockRejectedValue(
-                new UserReauthenticationOtpNotAllowedException()
+            mfaService.isEnabled.mockResolvedValue(true);
+            userAuthService.assertReauthenticationOtpAllowed.mockImplementation(
+                () => {
+                    throw new UserReauthenticationOtpNotAllowedException();
+                }
             );
 
             await expect(
@@ -121,18 +128,17 @@ describe('UserSendReauthenticationOtpUseCase', () => {
 
             expect(
                 userAuthService.assertReauthenticationOtpAllowed
-            ).toHaveBeenCalledWith(user);
+            ).toHaveBeenCalledWith(user, true);
+            expect(mfaService.isEnabled).toHaveBeenCalledWith('user-swift');
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userVerificationService.sendReauthenticationInTx
             ).not.toHaveBeenCalled();
         });
 
-        it('checks the resend limit while the not-allowed gate is still pending', async () => {
-            const gate = buildDeferred<void>();
-            userAuthService.assertReauthenticationOtpAllowed.mockReturnValue(
-                gate.promise
-            );
+        it('checks the resend limit while the MFA read is still pending', async () => {
+            const gate = buildDeferred<boolean>();
+            mfaService.isEnabled.mockReturnValue(gate.promise);
 
             const running = useCase.execute(
                 requestContext,
@@ -146,8 +152,12 @@ describe('UserSendReauthenticationOtpUseCase', () => {
                 userVerificationService.assertReauthenticationResendable
             ).toHaveBeenCalledWith('user-swift', dto.action);
 
-            gate.resolve();
+            gate.resolve(false);
             await running;
+
+            expect(
+                userAuthService.assertReauthenticationOtpAllowed
+            ).toHaveBeenCalledWith(user, false);
         });
 
         it('throws the resend limit inside the window of the action and writes nothing', async () => {

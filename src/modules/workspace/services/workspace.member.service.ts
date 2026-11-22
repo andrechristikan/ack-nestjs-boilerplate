@@ -30,6 +30,7 @@ import type {
     IWorkspaceTransfer,
     IWorkspaceTransferMember,
 } from '@modules/workspace/interfaces/workspace.interface';
+import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/workspace.join-request.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { Injectable } from '@nestjs/common';
@@ -41,6 +42,7 @@ export class WorkspaceMemberService {
     constructor(
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
+        private readonly workspaceJoinRequestRepository: WorkspaceJoinRequestRepository,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue
     ) {}
@@ -373,10 +375,12 @@ export class WorkspaceMemberService {
         }
     }
 
+    /** Removes the member and cancels that user's pending join request to the workspace; throws and cancels nothing when the guarded removal misses. */
     async leaveWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         member: WorkspaceMember
     ): Promise<void> {
+        // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
         const removed = await this.workspaceMemberRepository.removeMemberInTx(
             tx,
             member.id,
@@ -385,6 +389,12 @@ export class WorkspaceMemberService {
         if (!removed) {
             throw new WorkspaceMemberNotFoundException();
         }
+
+        await this.workspaceJoinRequestRepository.cancelPendingByUserInTx(
+            tx,
+            member.workspaceId,
+            member.userId
+        );
     }
 
     async getMembersList(
@@ -471,10 +481,12 @@ export class WorkspaceMemberService {
         return targetMember;
     }
 
+    /** Removes the target member and cancels that user's pending join request to the workspace; throws and cancels nothing when the guarded removal misses. */
     async removeMemberInTx(
         tx: IDatabaseTransactionClient,
         targetMember: WorkspaceMember
     ): Promise<void> {
+        // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
         const removed = await this.workspaceMemberRepository.removeMemberInTx(
             tx,
             targetMember.id,
@@ -483,6 +495,12 @@ export class WorkspaceMemberService {
         if (!removed) {
             throw new WorkspaceMemberPeerForbiddenException();
         }
+
+        await this.workspaceJoinRequestRepository.cancelPendingByUserInTx(
+            tx,
+            targetMember.workspaceId,
+            targetMember.userId
+        );
     }
 
     async getMembersListByAdmin(

@@ -34,7 +34,7 @@ Under `test/`, a spec with a subject file is that file's name plus `.spec.ts`. E
 ## Unit
 
 - A double is `const userRepository: MockProxy<UserRepository> = mock<UserRepository>()`, shared at the root `describe`; `mockDeep<T>()` only for a nested reach (`DatabaseService.client`); a stub is `vi.fn().mockReturnValue()`.
-- The subject is rebuilt in `beforeEach` through `Test.createTestingModule`. The unit project's `mockReset` and `restoreMocks` reset every double and spy before each test: a spec calls no `vi.resetAllMocks()` or `vi.restoreAllMocks()`, and sets a shared mock implementation, a `vi.spyOn`, or `buildConfigService` in `beforeEach`.
+- The subject is rebuilt in `beforeEach` through `Test.createTestingModule`. The unit project's `mockReset` and `restoreMocks` reset every double and spy before each test, so a spec sets a shared mock implementation, a `vi.spyOn`, or `buildConfigService` in `beforeEach`.
 - The unit project runs each spec file in its own module registry on the default pool with a fixed worker count (`vitest.config.ts`); never `isolate: false`, another pool, or more workers.
 - A `vi.mock('<pkg>')` replaces a third-party or network boundary only; one identical in three or more specs, none needing the real module, moves to a `test/unit/test.unit.setup.ts` added to the unit `setupFiles`. Imports are static; `vi.resetModules()` with a dynamic import serves only a case that needs a fresh module (a per-case `vi.doMock`).
 - `beforeAll` holds immutable setup (`vi.useFakeTimers()`); `afterAll` undoes `beforeAll`; no empty hook.

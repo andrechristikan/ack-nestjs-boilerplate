@@ -14,7 +14,6 @@ import { WorkspaceService } from '@modules/workspace/services/workspace.service'
 import { WorkspaceIdMiddleware } from '@modules/workspace/middlewares/workspace.id.middleware';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { NotificationModule } from '@modules/notification/notification.module';
-import { UserModule } from '@modules/user/user.module';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
@@ -49,7 +48,6 @@ import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
         ActivityLogModule,
         AwsModule,
         NotificationModule,
-        UserModule,
         BullModule.registerQueueAsync({
             name: EnumWorkspaceQueue.workspace,
             useClass: WorkspaceQueueFactory,

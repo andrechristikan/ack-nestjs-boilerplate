@@ -10,7 +10,6 @@ import { UserProcessDeletePhotoUseCase } from '@modules/user/use-cases/user.proc
 import { UserProcessDeleteSelfUseCase } from '@modules/user/use-cases/user.process-delete-self.use-case';
 import { UserProcessExportByAdminUseCase } from '@modules/user/use-cases/user.process-export-by-admin.use-case';
 import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.process-import-by-admin.use-case';
-import { UserProcessPurgeExpiredUseCase } from '@modules/user/use-cases/user.process-purge-expired.use-case';
 import { Job, UnrecoverableError } from 'bullmq';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
@@ -24,8 +23,7 @@ export class UserProcessor extends QueueProcessorBase {
         private readonly userProcessDeletePhotoUseCase: UserProcessDeletePhotoUseCase,
         private readonly userProcessImportByAdminUseCase: UserProcessImportByAdminUseCase,
         private readonly userProcessExportByAdminUseCase: UserProcessExportByAdminUseCase,
-        private readonly userProcessDeleteSelfUseCase: UserProcessDeleteSelfUseCase,
-        private readonly userProcessPurgeExpiredUseCase: UserProcessPurgeExpiredUseCase
+        private readonly userProcessDeleteSelfUseCase: UserProcessDeleteSelfUseCase
     ) {
         super();
     }
@@ -85,8 +83,6 @@ export class UserProcessor extends QueueProcessorBase {
                 return await this.userProcessDeleteSelfUseCase.execute(
                     data as IUserDeleteSelfPayload
                 );
-            case EnumUserProcess.purgeExpired:
-                return await this.userProcessPurgeExpiredUseCase.execute();
             default:
                 this.throwUnknownProcess(
                     'user.queue.error.unknownProcess',

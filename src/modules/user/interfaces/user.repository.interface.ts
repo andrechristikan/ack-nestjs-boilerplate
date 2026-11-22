@@ -63,6 +63,7 @@ export interface IUserRepository {
         roleId: string | null,
         countryId: string | null
     ): Promise<number>;
+    countByIds(userIds: string[]): Promise<number>;
     existsByEmail(email: string): Promise<boolean>;
     existsByUsername(username: string): Promise<boolean>;
     createInTx(

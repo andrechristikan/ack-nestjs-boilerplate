@@ -3,6 +3,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import {
     EnumActivityLogAction,
+    EnumPasswordHistoryType,
     EnumProjectMemberRole,
     EnumRoleType,
     EnumTermPolicyType,
@@ -283,6 +284,39 @@ describe('UserCreateUtil', () => {
                         EnumTermPolicyType.privacy,
                     ],
                     createdBy: user.id,
+                },
+            ]);
+        });
+    });
+
+    describe('buildPasswordHistoryEntries', () => {
+        it('maps each input holding a password and a history type, skipping the rest', () => {
+            const withPassword: IUserCreateWithWorkspaceInput = {
+                ...personalInput,
+                password: {
+                    passwordHash: 'hashed-password',
+                    passwordCreated: new Date('2026-01-01T00:00:00.000Z'),
+                    passwordPeriodExpired: new Date('2026-04-01T00:00:00.000Z'),
+                    passwordExpired: new Date('2026-06-01T00:00:00.000Z'),
+                },
+                passwordHistoryType: EnumPasswordHistoryType.admin,
+                createdBy: 'admin-harbor',
+            };
+            const social: IUserCreateWithWorkspaceInput = {
+                ...personalInput,
+                userId: 'user-social',
+            };
+
+            expect(
+                util.buildPasswordHistoryEntries([withPassword, social])
+            ).toEqual([
+                {
+                    userId: 'user-harbor',
+                    password: 'hashed-password',
+                    type: EnumPasswordHistoryType.admin,
+                    expiredAt: new Date('2026-04-01T00:00:00.000Z'),
+                    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                    createdBy: 'admin-harbor',
                 },
             ]);
         });

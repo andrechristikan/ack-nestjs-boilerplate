@@ -83,7 +83,13 @@ export class MigrationFeatureFlagSeed
         this.logger.log('Removing back Feature Flags...');
 
         try {
-            await this.databaseService.client.featureFlag.deleteMany({});
+            await this.databaseService.withTransaction(
+                async tx => {
+                    await tx.featureFlagTarget.deleteMany({});
+                    await tx.featureFlag.deleteMany({});
+                },
+                { timeout: this.seedTransactionTimeoutInMs }
+            );
         } catch (error: unknown) {
             throw new AppUnknownException(
                 error,

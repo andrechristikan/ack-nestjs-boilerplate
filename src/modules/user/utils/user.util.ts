@@ -44,6 +44,16 @@ export class UserUtil {
         return !user.isVerified;
     }
 
+    /** True when the expiry date has passed; false when no expiry is set. */
+    isPasswordExpired(passwordExpired: Date | null): boolean {
+        if (!passwordExpired) {
+            return false;
+        }
+
+        const today: Date = this.helperDateService.create();
+        return today > passwordExpired;
+    }
+
     isInsideResendWindow(
         lastCreatedAt: Date,
         resendInMinutes: number

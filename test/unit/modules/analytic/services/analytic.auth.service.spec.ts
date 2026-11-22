@@ -29,7 +29,6 @@ import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.se
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
 import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
-import { MfaUtil } from '@modules/mfa/utils/mfa.util';
 import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
@@ -94,7 +93,6 @@ describe('AnalyticAuthService', () => {
                 ...TestUnitKitProviders,
                 AnalyticDateUtil,
                 AnalyticBucketUtil,
-                MfaUtil,
                 {
                     provide: AnalyticSnapshotService,
                     useValue: analyticSnapshotService,

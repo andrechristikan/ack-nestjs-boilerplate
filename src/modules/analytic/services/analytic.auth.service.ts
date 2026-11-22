@@ -29,6 +29,7 @@ import type {
     IAnalyticMetricCount,
     IAnalyticMfaAdoption,
     IAnalyticMfaAdoptionCount,
+    IAnalyticMfaAdoptionRate,
     IAnalyticSnapshotBucketsResult,
     IAnalyticSnapshotResult,
     IAnalyticVerificationFunnel,
@@ -39,7 +40,6 @@ import { AnalyticAuthRepository } from '@modules/analytic/repositories/analytic.
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
 import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
-import { MfaUtil } from '@modules/mfa/utils/mfa.util';
 import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -58,7 +58,6 @@ export class AnalyticAuthService {
         private readonly analyticSnapshotService: AnalyticSnapshotService,
         private readonly helperDateService: HelperDateService,
         private readonly helperNumberService: HelperNumberService,
-        private readonly mfaUtil: MfaUtil,
         private readonly analyticAuthRepository: AnalyticAuthRepository
     ) {
         this.idleTimeoutInMs = this.configService.get<number>(
@@ -149,6 +148,14 @@ export class AnalyticAuthService {
                 return { count };
             }
         );
+    }
+
+    private mapAdoption(
+        enabled: number,
+        activeUserCount: number
+    ): IAnalyticMfaAdoptionRate {
+        const rate = this.helperNumberService.percent(enabled, activeUserCount);
+        return { enabled, total: activeUserCount, rate };
     }
 
     async authLoginFrequency(
@@ -427,7 +434,7 @@ export class AnalyticAuthService {
                 AnalyticMfaAdoptionSnapshotMetaSchema
             );
 
-        const adoption = this.mfaUtil.mapAdoption(
+        const adoption = this.mapAdoption(
             metadata?.enabled ?? 0,
             metadata?.total ?? 0
         );

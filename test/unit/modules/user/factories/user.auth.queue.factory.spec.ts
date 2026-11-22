@@ -2,26 +2,26 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import type { MockProxy } from 'vitest-mock-extended';
-import { ProjectQueueFactory } from '@modules/project/factories/project.queue.factory';
+import { UserAuthQueueFactory } from '@modules/user/factories/user.auth.queue.factory';
 import {
     buildConfigService,
     stubConfigValues,
 } from '@test/unit/helpers/test.unit.config.helper';
 
-describe('ProjectQueueFactory', () => {
+describe('UserAuthQueueFactory', () => {
     let configService: MockProxy<ConfigService>;
-    let factory: ProjectQueueFactory;
+    let factory: UserAuthQueueFactory;
 
     beforeEach(async () => {
         configService = buildConfigService({});
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                ProjectQueueFactory,
+                UserAuthQueueFactory,
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
 
-        factory = module.get(ProjectQueueFactory);
+        factory = module.get(UserAuthQueueFactory);
     });
 
     describe('createRegisterQueueOptions', () => {
@@ -29,7 +29,7 @@ describe('ProjectQueueFactory', () => {
             stubConfigValues(configService, {
                 'queue.job.attempts': 5,
                 'queue.job.keepLogs': 100,
-                'queue.job.projectBackoffDelayInMs': 2500,
+                'queue.job.userAuthBackoffDelayInMs': 2500,
                 'queue.job.removeOnCompleteAgeInSeconds': 3600,
                 'queue.job.removeOnFailAgeInSeconds': 86400,
             });

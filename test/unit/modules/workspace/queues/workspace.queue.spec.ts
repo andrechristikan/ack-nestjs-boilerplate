@@ -10,7 +10,9 @@ import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { EnumWorkspaceProcess } from '@modules/workspace/enums/workspace.enum';
 import { WorkspaceQueue } from '@modules/workspace/queues/workspace.queue';
 import { MessageService } from '@common/message/services/message.service';
+import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceQueue', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
@@ -126,6 +128,35 @@ describe('WorkspaceQueue', () => {
             workspaceQueue.upsertJobScheduler.mockRejectedValue(error);
 
             await expect(queue.scheduleInviteExpirySweep()).rejects.toBe(error);
+        });
+    });
+
+    describe('softDeleteEffect', () => {
+        it('returns the high-priority softDelete effect carrying the workspace id, the actor id, and the activity payload and no business key', () => {
+            const activityLog: IActivityLogActorPayload = {
+                apiKeyId: 'api-key-1',
+                actorUserId: 'user-1',
+                workspaceId: 'workspace-1',
+                requestLog: buildRequestContext().requestLog,
+            };
+
+            const effect = queue.softDeleteEffect(
+                'workspace-1',
+                'user-1',
+                activityLog
+            );
+
+            expect(effect).toEqual({
+                queue: EnumWorkspaceQueue.workspace,
+                name: EnumWorkspaceProcess.softDelete,
+                data: {
+                    workspaceId: 'workspace-1',
+                    deletedBy: 'user-1',
+                    activityLog,
+                },
+                priority: EnumQueuePriority.high,
+                idempotencyKey: null,
+            });
         });
     });
 });

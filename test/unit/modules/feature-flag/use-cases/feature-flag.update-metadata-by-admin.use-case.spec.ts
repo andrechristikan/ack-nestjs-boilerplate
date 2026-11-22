@@ -4,7 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import type { FeatureFlag } from '@generated/prisma-client/client';
+import type { IFeatureFlag } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 import { FeatureFlagInvalidMetadataException } from '@modules/feature-flag/exceptions/feature-flag.invalid-metadata.exception';
 import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
@@ -21,7 +21,7 @@ describe('FeatureFlagUpdateMetadataByAdminUseCase', () => {
 
     let useCase: FeatureFlagUpdateMetadataByAdminUseCase;
 
-    const featureFlag: FeatureFlag = {
+    const featureFlag: IFeatureFlag = {
         id: '507f1f77bcf86cd799439011',
         key: 'loginWithGoogle',
         description: 'Enables Google sign-in',

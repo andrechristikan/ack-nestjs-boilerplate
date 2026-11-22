@@ -17,7 +17,7 @@ import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-c
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { UserImportService } from '@modules/user/services/user.import.service';
@@ -30,7 +30,6 @@ import type {
     IUserCreateWithWorkspaceInput,
     IUserImportUsernameChecks,
 } from '@modules/user/interfaces/user.interface';
-import type { MockInstance } from 'vitest';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -46,6 +45,8 @@ describe('UserImportService', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
     const userService: MockProxy<UserService> = mock<UserService>();
+    const authPasswordService: MockProxy<AuthPasswordService> =
+        mock<AuthPasswordService>();
 
     const now = new Date('2026-03-01T00:00:00.000Z');
     const password = {
@@ -57,7 +58,6 @@ describe('UserImportService', () => {
     let service: UserImportService;
     let databaseUtil: DatabaseUtil;
     let helperStringService: HelperStringService;
-    let helperHashService: HelperHashService;
 
     const configValues: Record<string, unknown> = {
         ...TestUnitUserConfigValues,
@@ -95,7 +95,7 @@ describe('UserImportService', () => {
                 UserUtil,
                 UserCreateUtil,
                 UserVerificationUtil,
-                AuthPasswordUtil,
+                { provide: AuthPasswordService, useValue: authPasswordService },
                 DatabaseUtil,
                 HelperDateService,
                 HelperStringService,
@@ -109,7 +109,6 @@ describe('UserImportService', () => {
         service = module.get(UserImportService);
         databaseUtil = module.get(DatabaseUtil);
         helperStringService = module.get(HelperStringService);
-        helperHashService = module.get(HelperHashService);
     });
 
     describe('prepareImportByAdmin', () => {
@@ -143,7 +142,6 @@ describe('UserImportService', () => {
             token: 'adb97ffd599d30b788077856502e55d9ef5543386cd60a5106e034ebbc3acb0c',
             to: 'marigold@example.com',
         };
-        let argon2Hash: MockInstance<HelperHashService['argon2Hash']>;
 
         beforeEach(() => {
             vi.spyOn(databaseUtil, 'createId')
@@ -151,9 +149,10 @@ describe('UserImportService', () => {
                 .mockReturnValueOnce('user-id-two')
                 .mockReturnValueOnce('workspace-one')
                 .mockReturnValueOnce('workspace-two');
-            vi.spyOn(helperStringService, 'random')
+            authPasswordService.createRandom
                 .mockReturnValueOnce('password-one')
-                .mockReturnValueOnce('password-two')
+                .mockReturnValueOnce('password-two');
+            vi.spyOn(helperStringService, 'random')
                 .mockReturnValueOnce('one-a')
                 .mockReturnValueOnce('one-b')
                 .mockReturnValueOnce('one-c')
@@ -164,9 +163,7 @@ describe('UserImportService', () => {
                 .mockReturnValueOnce('ref-one')
                 .mockReturnValueOnce('token-two')
                 .mockReturnValueOnce('ref-two');
-            argon2Hash = vi
-                .spyOn(helperHashService, 'argon2Hash')
-                .mockResolvedValue('hashed');
+            authPasswordService.create.mockResolvedValue(password);
         });
 
         it('builds the import inputs for every row', async () => {
@@ -224,16 +221,27 @@ describe('UserImportService', () => {
                 'country-thistle'
             );
 
-            expect(argon2Hash).toHaveBeenCalledTimes(2);
-            expect(argon2Hash).toHaveBeenNthCalledWith(1, 'password-one');
-            expect(argon2Hash).toHaveBeenNthCalledWith(2, 'password-two');
+            expect(authPasswordService.create).toHaveBeenCalledTimes(2);
+            expect(authPasswordService.create).toHaveBeenNthCalledWith(
+                1,
+                'password-one',
+                { temporary: true }
+            );
+            expect(authPasswordService.create).toHaveBeenNthCalledWith(
+                2,
+                'password-two',
+                { temporary: true }
+            );
         });
 
         it('starts every hash before the first resolves and keeps row order', async () => {
-            const first = Promise.withResolvers<string>();
-            argon2Hash
+            const first = Promise.withResolvers<typeof password>();
+            authPasswordService.create
                 .mockReturnValueOnce(first.promise)
-                .mockResolvedValueOnce('hash-second');
+                .mockResolvedValueOnce({
+                    ...password,
+                    passwordHash: 'hash-second',
+                });
 
             const pending = service.prepareImportByAdmin(
                 rows,
@@ -243,10 +251,14 @@ describe('UserImportService', () => {
             );
             await Promise.resolve();
 
-            expect(argon2Hash).toHaveBeenCalledTimes(2);
-            expect(argon2Hash).toHaveBeenNthCalledWith(2, 'password-two');
+            expect(authPasswordService.create).toHaveBeenCalledTimes(2);
+            expect(authPasswordService.create).toHaveBeenNthCalledWith(
+                2,
+                'password-two',
+                { temporary: true }
+            );
 
-            first.resolve('hash-first');
+            first.resolve({ ...password, passwordHash: 'hash-first' });
             const result = await pending;
 
             expect(result.passwordHasheds[0]?.passwordHash).toBe('hash-first');

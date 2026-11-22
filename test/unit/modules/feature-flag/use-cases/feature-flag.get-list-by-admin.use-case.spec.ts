@@ -12,7 +12,7 @@ import {
 } from '@test/unit/helpers/test.unit.kit.helper';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { FeatureFlag } from '@generated/prisma-client/client';
+import type { IFeatureFlag } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import type { FeatureFlagAdminListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.admin-list.request.dto';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagGetListByAdminUseCase } from '@modules/feature-flag/use-cases/feature-flag.get-list-by-admin.use-case';
@@ -31,7 +31,7 @@ describe('FeatureFlagGetListByAdminUseCase', () => {
 
     let useCase: FeatureFlagGetListByAdminUseCase;
 
-    const featureFlag: FeatureFlag = {
+    const featureFlag: IFeatureFlag = {
         id: '507f1f77bcf86cd799439011',
         key: 'loginWithGoogle',
         description: 'Enables Google sign-in',
@@ -71,7 +71,7 @@ describe('FeatureFlagGetListByAdminUseCase', () => {
                 page: 1,
                 perPage: 20,
             };
-            const page: IResponsePaginationReturn<FeatureFlag> = {
+            const page: IResponsePaginationReturn<IFeatureFlag> = {
                 type: EnumPaginationType.offset,
                 count: 1,
                 perPage: 20,

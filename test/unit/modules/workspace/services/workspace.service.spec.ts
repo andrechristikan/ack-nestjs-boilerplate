@@ -560,18 +560,19 @@ describe('WorkspaceService', () => {
     });
 
     describe('softDeleteInTx', () => {
-        it('soft-deletes the workspace row on the given transaction', async () => {
+        it('soft-deletes the workspace row on the given transaction and returns true', async () => {
             const tx = {} as IDatabaseTransactionClient;
             const deletedAt = new Date('2026-01-01T00:00:00.000Z');
             workspaceRepository.softDeleteInTx.mockResolvedValue(true);
 
-            await service.softDeleteInTx(
+            const result = await service.softDeleteInTx(
                 tx,
                 'workspace-1',
                 deletedAt,
                 'user-1'
             );
 
+            expect(result).toBe(true);
             expect(workspaceRepository.softDeleteInTx).toHaveBeenCalledWith(
                 tx,
                 'workspace-1',
@@ -640,104 +641,25 @@ describe('WorkspaceService', () => {
             ]);
         });
 
-        it('throws WorkspaceNotFoundException and closes nothing when the guarded write misses', async () => {
+        it('returns false and closes nothing when the workspace was already deleted', async () => {
             const tx = {} as IDatabaseTransactionClient;
             const deletedAt = new Date('2026-01-01T00:00:00.000Z');
             workspaceRepository.softDeleteInTx.mockResolvedValue(false);
 
-            await expect(
-                service.softDeleteInTx(tx, 'workspace-1', deletedAt, 'user-1')
-            ).rejects.toMatchObject({
-                constructor: WorkspaceNotFoundException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.notFound,
-            });
-            expect(
-                workspaceInviteService.revokePendingByWorkspaceInTx
-            ).not.toHaveBeenCalled();
-            expect(
-                workspaceJoinRequestService.cancelPendingByWorkspaceInTx
-            ).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('softDeleteOwnedByUserInTx', () => {
-        const tx = {} as IDatabaseTransactionClient;
-        const deletedAt = new Date('2026-01-01T00:00:00.000Z');
-
-        it('soft-deletes the given workspace ids and returns the deleted ids without reading the owned ids again', async () => {
-            workspaceRepository.softDeleteOwnedByUserInTx.mockResolvedValue([
-                'workspace-1',
-                'workspace-2',
-            ]);
-
-            await expect(
-                service.softDeleteOwnedByUserInTx(
-                    tx,
-                    ['workspace-1', 'workspace-2'],
-                    'user-1',
-                    deletedAt
-                )
-            ).resolves.toEqual(['workspace-1', 'workspace-2']);
-
-            expect(
-                workspaceMemberRepository.findWorkspaceIdsByUser
-            ).not.toHaveBeenCalled();
-            expect(
-                workspaceRepository.softDeleteOwnedByUserInTx
-            ).toHaveBeenCalledWith(
+            const result = await service.softDeleteInTx(
                 tx,
-                ['workspace-1', 'workspace-2'],
-                'user-1',
-                deletedAt
-            );
-        });
-
-        it('calls revokePendingByWorkspaceInTx and cancelPendingByWorkspaceInTx on the given tx for each returned workspace id with the user id as updatedBy', async () => {
-            workspaceRepository.softDeleteOwnedByUserInTx.mockResolvedValue([
                 'workspace-1',
-                'workspace-2',
-            ]);
-
-            await service.softDeleteOwnedByUserInTx(
-                tx,
-                ['workspace-1', 'workspace-2', 'workspace-3'],
-                'user-1',
-                deletedAt
+                deletedAt,
+                'user-1'
             );
 
-            for (const workspaceId of ['workspace-1', 'workspace-2']) {
-                expect(
-                    workspaceInviteService.revokePendingByWorkspaceInTx
-                ).toHaveBeenCalledWith(tx, workspaceId, 'user-1');
-                expect(
-                    workspaceJoinRequestService.cancelPendingByWorkspaceInTx
-                ).toHaveBeenCalledWith(tx, workspaceId, 'user-1');
-            }
-            expect(
-                workspaceInviteService.revokePendingByWorkspaceInTx
-            ).toHaveBeenCalledTimes(2);
-            expect(
-                workspaceJoinRequestService.cancelPendingByWorkspaceInTx
-            ).toHaveBeenCalledTimes(2);
-        });
-
-        it('passes an empty owner id list to the repository unchanged and closes nothing', async () => {
-            workspaceRepository.softDeleteOwnedByUserInTx.mockResolvedValue([]);
-
-            await expect(
-                service.softDeleteOwnedByUserInTx(tx, [], 'user-1', deletedAt)
-            ).resolves.toEqual([]);
+            expect(result).toBe(false);
             expect(
                 workspaceInviteService.revokePendingByWorkspaceInTx
             ).not.toHaveBeenCalled();
             expect(
                 workspaceJoinRequestService.cancelPendingByWorkspaceInTx
             ).not.toHaveBeenCalled();
-
-            expect(
-                workspaceRepository.softDeleteOwnedByUserInTx
-            ).toHaveBeenCalledWith(tx, [], 'user-1', deletedAt);
         });
     });
 

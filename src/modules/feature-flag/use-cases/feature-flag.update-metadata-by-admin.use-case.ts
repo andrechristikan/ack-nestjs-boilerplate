@@ -1,7 +1,7 @@
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import type { FeatureFlag } from '@generated/prisma-client/client';
 import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
+import type { IFeatureFlag } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -9,7 +9,7 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 @Injectable()
 export class FeatureFlagUpdateMetadataByAdminUseCase implements IAppUseCase<
     [string, FeatureFlagUpdateMetadataRequestDto],
-    IResponseReturn<FeatureFlag>
+    IResponseReturn<IFeatureFlag>
 > {
     constructor(
         private readonly featureFlagService: FeatureFlagService,
@@ -19,7 +19,7 @@ export class FeatureFlagUpdateMetadataByAdminUseCase implements IAppUseCase<
     async execute(
         id: string,
         body: FeatureFlagUpdateMetadataRequestDto
-    ): Promise<IResponseReturn<FeatureFlag>> {
+    ): Promise<IResponseReturn<IFeatureFlag>> {
         // Sequential by design: a write after its checks
         const featureFlag = await this.featureFlagService.getOneById(id);
         this.featureFlagService.assertMetadataValid(featureFlag, body);

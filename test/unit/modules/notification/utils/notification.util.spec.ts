@@ -12,7 +12,10 @@ import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumNotificationStep } from '@modules/notification/enums/notification.enum';
-import { buildSealedNotificationPayload } from '@test/unit/helpers/test.unit.notification-push.helper';
+import {
+    buildSealedNotificationPayload,
+    buildUnsealedNotificationPayloads,
+} from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('NotificationUtil', () => {
     const loginAtIso = '2026-03-01T00:05:00.000Z';
@@ -54,6 +57,35 @@ describe('NotificationUtil', () => {
 
             expect(sealed).not.toBe('plain');
             expect(util.decryptPayload(sealed, 'user-id')).toBe('plain');
+        });
+    });
+
+    describe('sealSnapshot', () => {
+        const user = {
+            id: 'user-id',
+            email: 'user@example.com',
+            username: 'user',
+        };
+
+        it('encrypts the email and each distinct token against the user id', () => {
+            const result = util.sealSnapshot(user, ['a', 'a', 'b']);
+
+            expect(result.username).toBe('user');
+            expect(util.decryptPayload(result.encryptedEmail, 'user-id')).toBe(
+                'user@example.com'
+            );
+            expect(
+                buildUnsealedNotificationPayloads(
+                    result.encryptedTokens,
+                    'user-id'
+                )
+            ).toEqual(['a', 'b']);
+        });
+
+        it('yields no encrypted tokens for an empty token list', () => {
+            const result = util.sealSnapshot(user, []);
+
+            expect(result.encryptedTokens).toEqual([]);
         });
     });
 

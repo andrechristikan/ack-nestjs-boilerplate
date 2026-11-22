@@ -1,4 +1,3 @@
-import type { INotificationPushCleanupTokensEffect } from '@modules/notification/interfaces/notification.interface';
 import { setImmediate } from 'node:timers/promises';
 import { Test } from '@nestjs/testing';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
@@ -13,18 +12,16 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import {
     EnumNotificationKind,
     EnumNotificationPushProcess,
-    EnumNotificationQueue,
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import type { INotificationPushSendPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushDeliveryService } from '@modules/notification/services/notification.push.delivery.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
+import { DeviceService } from '@modules/device/services/device.service';
 import { NotificationPushProcessSendUseCase } from '@modules/notification/use-cases/notification.push.process-send.use-case';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -37,8 +34,7 @@ describe('NotificationPushProcessSendUseCase', () => {
         mock<NotificationPushDeliveryService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const notificationPushQueue: MockProxy<NotificationPushQueue> =
-        mock<NotificationPushQueue>();
+    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
@@ -70,17 +66,6 @@ describe('NotificationPushProcessSendUseCase', () => {
         encryptedFailureTokens: null,
     };
 
-    const cleanupEffect: INotificationPushCleanupTokensEffect = {
-        queue: EnumNotificationQueue.notificationPush,
-        name: EnumNotificationPushProcess.cleanupTokens,
-        data: {
-            userId: 'user-id',
-            encryptedFailureTokens: ['cipher(token-2)'],
-        },
-        priority: EnumQueuePriority.low,
-        idempotencyKey: null,
-    };
-
     beforeEach(async () => {
         messageService.setMessage.mockImplementation((path: string) => path);
         updatedPatches = [];
@@ -99,10 +84,7 @@ describe('NotificationPushProcessSendUseCase', () => {
                     useValue: notificationPushDeliveryService,
                 },
                 { provide: NotificationService, useValue: notificationService },
-                {
-                    provide: NotificationPushQueue,
-                    useValue: notificationPushQueue,
-                },
+                { provide: DeviceService, useValue: deviceService },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
@@ -148,7 +130,7 @@ describe('NotificationPushProcessSendUseCase', () => {
             );
         });
 
-        it('sends the contract title and body with the metadata, then stamps sent and adds the cleanup row on one tx', async () => {
+        it('sends the contract title and body with the metadata, then stamps sent and clears the dead tokens on one tx', async () => {
             notificationPushDeliveryService.sendMulticast.mockResolvedValue({
                 encryptedFailureTokens: ['cipher(token-2)'],
                 encryptedPendingTokens: [],
@@ -157,20 +139,17 @@ describe('NotificationPushProcessSendUseCase', () => {
             notificationService.decryptFailureTokens.mockReturnValue([
                 'token-2',
             ]);
-            notificationPushQueue.cleanupTokensEffect.mockReturnValue(
-                cleanupEffect
-            );
             const txCalls: string[] = [];
             notificationPushDeliveryService.stampSentInTx.mockImplementation(
                 async () => {
                     txCalls.push('stampSent');
                 }
             );
-            outboxService.addInTx.mockImplementation(async () => {
-                txCalls.push('addEffect');
-
-                return 'outbox-id';
-            });
+            deviceService.cleanupNotificationTokensInTx.mockImplementation(
+                async () => {
+                    txCalls.push('cleanup');
+                }
+            );
             outboxService.updateDataInTx.mockImplementation(async () => {
                 txCalls.push('updateData');
             });
@@ -217,12 +196,9 @@ describe('NotificationPushProcessSendUseCase', () => {
                 'actor-id'
             );
             expect(
-                notificationPushQueue.cleanupTokensEffect
-            ).toHaveBeenCalledWith('user-id', ['cipher(token-2)']);
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                cleanupEffect
-            );
+                deviceService.cleanupNotificationTokensInTx
+            ).toHaveBeenCalledWith(tx, 'user-id', ['token-2']);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(outboxService.updateDataInTx).toHaveBeenCalledWith(
                 tx,
                 'outbox-id',
@@ -236,7 +212,7 @@ describe('NotificationPushProcessSendUseCase', () => {
                     encryptedFailureTokens: ['cipher(token-2)'],
                 }
             );
-            expect(txCalls).toEqual(['stampSent', 'addEffect', 'updateData']);
+            expect(txCalls).toEqual(['stampSent', 'updateData', 'cleanup']);
             expect(updatedPatches).toEqual([
                 {
                     completedSteps: [
@@ -250,7 +226,7 @@ describe('NotificationPushProcessSendUseCase', () => {
             expect(result).toEqual({ message: 'notification.queue.push.send' });
         });
 
-        it('stamps sent alone, then patches the step state and adds the cleanup together', async () => {
+        it('stamps sent alone, then patches the step state and clears the dead tokens together', async () => {
             notificationPushDeliveryService.sendMulticast.mockResolvedValue({
                 encryptedFailureTokens: ['cipher(token-2)'],
                 encryptedPendingTokens: [],
@@ -259,13 +235,10 @@ describe('NotificationPushProcessSendUseCase', () => {
             notificationService.decryptFailureTokens.mockReturnValue([
                 'token-2',
             ]);
-            notificationPushQueue.cleanupTokensEffect.mockReturnValue(
-                cleanupEffect
-            );
             const started: string[] = [];
             const stamp = buildDeferred<void>();
             const patch = buildDeferred<void>();
-            const cleanup = buildDeferred<string>();
+            const cleanup = buildDeferred<void>();
             notificationPushDeliveryService.stampSentInTx.mockImplementation(
                 () => {
                     started.push('stampSent');
@@ -278,11 +251,13 @@ describe('NotificationPushProcessSendUseCase', () => {
 
                 return patch.promise;
             });
-            outboxService.addInTx.mockImplementation(() => {
-                started.push('addEffect');
+            deviceService.cleanupNotificationTokensInTx.mockImplementation(
+                () => {
+                    started.push('cleanup');
 
-                return cleanup.promise;
-            });
+                    return cleanup.promise;
+                }
+            );
 
             const running = useCase.execute('outbox-id', data);
             await setImmediate();
@@ -292,10 +267,10 @@ describe('NotificationPushProcessSendUseCase', () => {
             stamp.resolve();
             await setImmediate();
 
-            expect(started).toEqual(['stampSent', 'addEffect', 'updateData']);
+            expect(started).toEqual(['stampSent', 'updateData', 'cleanup']);
 
             patch.resolve();
-            cleanup.resolve('cleanup-outbox-id');
+            cleanup.resolve();
             await running;
         });
 
@@ -327,7 +302,7 @@ describe('NotificationPushProcessSendUseCase', () => {
             ]);
         });
 
-        it('adds no cleanup row when no token failed', async () => {
+        it('clears no token when none failed', async () => {
             notificationPushDeliveryService.sendMulticast.mockResolvedValue({
                 encryptedFailureTokens: [],
                 encryptedPendingTokens: [],
@@ -346,6 +321,9 @@ describe('NotificationPushProcessSendUseCase', () => {
                 EnumNotificationPushProcess.send,
                 'actor-id'
             );
+            expect(
+                deviceService.cleanupNotificationTokensInTx
+            ).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
@@ -459,6 +437,9 @@ describe('NotificationPushProcessSendUseCase', () => {
                 EnumNotificationPushProcess.send,
                 'actor-id'
             );
+            expect(
+                deviceService.cleanupNotificationTokensInTx
+            ).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 

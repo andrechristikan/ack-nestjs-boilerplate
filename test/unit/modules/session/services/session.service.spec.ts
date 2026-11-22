@@ -2,7 +2,6 @@ import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfa
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -12,8 +11,6 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
-import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
-import { DeviceService } from '@modules/device/services/device.service';
 import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -28,19 +25,17 @@ import {
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import {
     EnumActivityLogAction,
-    EnumDevicePlatform,
     EnumRoleType,
 } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import {
-    EnumSessionProcess,
-    EnumSessionQueue,
-} from '@modules/session/enums/session.enum';
+    EnumUserAuthProcess,
+    EnumUserQueue,
+} from '@modules/user/enums/user.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import type {
     ISession,
     ISessionList,
-    ISessionPurgeLoginsPayload,
     ISessionRef,
     ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
@@ -52,8 +47,8 @@ import { SessionService } from '@modules/session/services/session.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { SessionQueue } from '@modules/session/queues/session.queue';
-import type { ISessionPurgeLoginsEffect } from '@modules/session/interfaces/session.interface';
+import { UserAuthQueue } from '@modules/user/queues/user.auth.queue';
+import type { IUserPurgeLoginsEffect } from '@modules/user/interfaces/user.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
@@ -81,9 +76,8 @@ describe('SessionService', () => {
     const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
-    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const sessionQueue: MockProxy<SessionQueue> = mock<SessionQueue>();
+    const userAuthQueue: MockProxy<UserAuthQueue> = mock<UserAuthQueue>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
     const idleTimeoutInMs = 604800000;
@@ -100,14 +94,14 @@ describe('SessionService', () => {
         priority: EnumQueuePriority.low,
         idempotencyKey: 'actor',
     };
-    const purgeEffect: ISessionPurgeLoginsEffect = {
-        queue: EnumSessionQueue.session,
-        name: EnumSessionProcess.purgeLogins,
+    const purgeEffect: IUserPurgeLoginsEffect = {
+        queue: EnumUserQueue.userAuth,
+        name: EnumUserAuthProcess.purgeLogins,
         data: { userId: 'user-1', sessions: [] },
         priority: EnumQueuePriority.high,
         idempotencyKey: null,
     };
-    const otherPurgeEffect: ISessionPurgeLoginsEffect = {
+    const otherPurgeEffect: IUserPurgeLoginsEffect = {
         ...purgeEffect,
         data: { userId: 'user-2', sessions: [] },
     };
@@ -167,7 +161,7 @@ describe('SessionService', () => {
     });
 
     beforeEach(async () => {
-        sessionQueue.purgeLoginsEffect.mockReturnValue(purgeEffect);
+        userAuthQueue.purgeLoginsEffect.mockReturnValue(purgeEffect);
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 SessionService,
@@ -183,10 +177,9 @@ describe('SessionService', () => {
                 { provide: SessionCache, useValue: sessionCache },
                 { provide: CacheService, useValue: cacheService },
                 ...TestUnitKitProviders,
-                { provide: DeviceService, useValue: deviceService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
-                { provide: SessionQueue, useValue: sessionQueue },
+                { provide: UserAuthQueue, useValue: userAuthQueue },
                 SessionUtil,
             ],
         }).compile();
@@ -576,7 +569,7 @@ describe('SessionService', () => {
                 new Date('2025-12-29T00:00:00.000Z')
             );
             expect(sessionRepository.revokeInTx).not.toHaveBeenCalled();
-            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+            expect(userAuthQueue.purgeLoginsEffect).toHaveBeenCalledWith(
                 'user-1',
                 [{ id: 'session-1' }]
             );
@@ -645,7 +638,7 @@ describe('SessionService', () => {
                 'admin-1',
                 revokedAt
             );
-            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+            expect(userAuthQueue.purgeLoginsEffect).toHaveBeenCalledWith(
                 'user-1',
                 [{ id: 'session-1' }]
             );
@@ -692,7 +685,7 @@ describe('SessionService', () => {
             expect(
                 sessionRepository.revokeActiveByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-1', null, 'admin-1', revokedAt);
-            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+            expect(userAuthQueue.purgeLoginsEffect).toHaveBeenCalledWith(
                 'user-1',
                 refs
             );
@@ -742,7 +735,7 @@ describe('SessionService', () => {
                 'user-1',
                 revokedAt
             );
-            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+            expect(userAuthQueue.purgeLoginsEffect).toHaveBeenCalledWith(
                 'user-1',
                 refs
             );
@@ -762,59 +755,6 @@ describe('SessionService', () => {
 
             expect(result).toEqual([]);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('revokeAllByUserInTx', () => {
-        const revokedAt = new Date('2026-01-05T00:00:00.000Z');
-
-        it('revokes every device ownership on the given tx while the session revoke is still pending', async () => {
-            const sessions = buildDeferred<ISessionRef[]>();
-            sessionRepository.revokeActiveByUserInTx.mockReturnValue(
-                sessions.promise
-            );
-
-            const running = service.revokeAllByUserInTx(
-                tx,
-                'user-1',
-                'admin-1',
-                revokedAt
-            );
-            await vi.advanceTimersByTimeAsync(0);
-
-            expect(deviceService.revokeAllByUserInTx).toHaveBeenCalledWith(
-                tx,
-                'user-1',
-                'admin-1',
-                revokedAt
-            );
-
-            sessions.resolve([{ id: 'session-1' }]);
-            await running;
-
-            expect(
-                sessionRepository.revokeActiveByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', null, 'admin-1', revokedAt);
-        });
-
-        it('returns the revoked session refs and adds exactly one purge row for the user', async () => {
-            const refs: ISessionRef[] = [{ id: 'session-1' }];
-            sessionRepository.revokeActiveByUserInTx.mockResolvedValue(refs);
-
-            const result = await service.revokeAllByUserInTx(
-                tx,
-                'user-1',
-                'admin-1',
-                revokedAt
-            );
-
-            expect(result).toBe(refs);
-            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
-            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
-                'user-1',
-                refs
-            );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
         });
     });
 
@@ -845,7 +785,7 @@ describe('SessionService', () => {
                 'admin-1',
                 revokedAt
             );
-            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+            expect(userAuthQueue.purgeLoginsEffect).toHaveBeenCalledWith(
                 'user-1',
                 refs
             );
@@ -868,29 +808,27 @@ describe('SessionService', () => {
     });
 
     describe('revokeByDeviceOwnershipIdsInTx', () => {
-        it('revokes on the caller transaction and returns the refs grouped per user', async () => {
+        it('revokes on the caller transaction and adds one purge effect and one userSessionRevokedByDeviceLogin entry per affected user in one addManyInTx', async () => {
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
             const rows: ISessionUserRef[] = [
                 { id: 'session-2', userId: 'user-2' },
                 { id: 'session-3', userId: 'user-2' },
                 { id: 'session-4', userId: 'user-3' },
             ];
-            const grouped: ISessionPurgeLoginsPayload[] = [
-                {
-                    userId: 'user-2',
-                    sessions: [{ id: 'session-2' }, { id: 'session-3' }],
-                },
-                { userId: 'user-3', sessions: [{ id: 'session-4' }] },
-            ];
             sessionRepository.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
                 rows
             );
-            sessionQueue.purgeLoginsEffect
+            userAuthQueue.purgeLoginsEffect
                 .mockReturnValueOnce(purgeEffect)
                 .mockReturnValueOnce(otherPurgeEffect);
+            activityLogQueue.recordEffect
+                .mockReturnValueOnce(actorEffect)
+                .mockReturnValueOnce(targetEffect);
 
-            const result = await service.revokeByDeviceOwnershipIdsInTx(
+            await service.revokeByDeviceOwnershipIdsInTx(
                 tx,
+                requestContext,
+                apiKeyContext,
                 ['device-ownership-2'],
                 'user-1',
                 revokedAt
@@ -904,37 +842,67 @@ describe('SessionService', () => {
                 'user-1',
                 new Date('2026-01-05T00:00:00.000Z')
             );
-            expect(result).toEqual(grouped);
-            expect(sessionQueue.purgeLoginsEffect).toHaveBeenNthCalledWith(
+            expect(userAuthQueue.purgeLoginsEffect).toHaveBeenNthCalledWith(
                 1,
                 'user-2',
                 [{ id: 'session-2' }, { id: 'session-3' }]
             );
-            expect(sessionQueue.purgeLoginsEffect).toHaveBeenNthCalledWith(
+            expect(userAuthQueue.purgeLoginsEffect).toHaveBeenNthCalledWith(
                 2,
                 'user-3',
                 [{ id: 'session-4' }]
             );
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
+                1,
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
+                {
+                    action: EnumActivityLogAction.userSessionRevokedByDeviceLogin,
+                    userId: 'user-2',
+                    createdBy: 'user-1',
+                    metadata: { actorUserId: 'user-1', sessionCount: 2 },
+                }
+            );
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
+                2,
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
+                {
+                    action: EnumActivityLogAction.userSessionRevokedByDeviceLogin,
+                    userId: 'user-3',
+                    createdBy: 'user-1',
+                    metadata: { actorUserId: 'user-1', sessionCount: 1 },
+                }
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 purgeEffect,
+                actorEffect,
                 otherPurgeEffect,
+                targetEffect,
             ]);
         });
 
-        it('adds no row when no session was revoked', async () => {
+        it('adds nothing when no session was revoked', async () => {
             sessionRepository.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
                 []
             );
 
-            const result = await service.revokeByDeviceOwnershipIdsInTx(
+            await service.revokeByDeviceOwnershipIdsInTx(
                 tx,
+                requestContext,
+                apiKeyContext,
                 ['device-ownership-2'],
                 'user-1',
                 new Date('2026-01-05T00:00:00.000Z')
             );
 
-            expect(result).toEqual([]);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+            expect(activityLogQueue.recordEffect).not.toHaveBeenCalled();
         });
     });
 
@@ -1047,7 +1015,7 @@ describe('SessionService', () => {
                 'admin-1',
                 revokedAt
             );
-            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+            expect(userAuthQueue.purgeLoginsEffect).toHaveBeenCalledWith(
                 'user-1',
                 [{ id: 'session-1' }]
             );
@@ -1170,7 +1138,7 @@ describe('SessionService', () => {
                 sessionRepository.revokeActiveByUserInTx
             ).toHaveBeenCalledWith(tx, 'user-1', null, 'admin-1', revokedAt);
             expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
-            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
+            expect(userAuthQueue.purgeLoginsEffect).toHaveBeenCalledWith(
                 'user-1',
                 refs
             );
@@ -1193,119 +1161,6 @@ describe('SessionService', () => {
                 module: 'session',
                 statusCode: EnumSessionStatusCodeError.notFound,
             });
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('removeDeviceOwnershipInTx', () => {
-        const now = new Date('2026-01-05T00:00:00.000Z');
-        const revokedSessions: ISessionRef[] = [{ id: 'session-1' }];
-        const deviceOwnership: IDeviceOwnership = {
-            id: 'device-ownership-1',
-            createdAt: now,
-            createdBy: 'user-1',
-            updatedAt: now,
-            updatedBy: 'user-1',
-            deviceId: 'device-1',
-            userId: 'user-1',
-            revokedAt: null,
-            isRevoked: false,
-            revokedById: null,
-            lastActiveAt: now,
-            notificationToken: null,
-            notificationProvider: null,
-            device: {
-                id: 'device-1',
-                createdAt: now,
-                createdBy: 'user-1',
-                updatedAt: now,
-                updatedBy: 'user-1',
-                fingerprint: 'abc123def456ghi789jkl012mno345pq',
-                name: 'iPhone 12',
-                platform: EnumDevicePlatform.ios,
-                lastActiveAt: now,
-            },
-            user: {
-                id: 'user-1',
-                createdAt: now,
-                createdBy: 'user-1',
-                updatedAt: now,
-                updatedBy: 'user-1',
-                deletedAt: null,
-                deletedBy: null,
-                name: 'Jane Doe',
-                username: 'jane',
-                photo: null,
-            },
-            revokedBy: null,
-            _count: { sessions: 2 },
-        };
-
-        it('revokes the ownership sessions with their purge row, then removes the ownership, on the given tx', async () => {
-            const calls: string[] = [];
-            sessionRepository.revokeByDeviceOwnershipInTx.mockImplementation(
-                async () => {
-                    calls.push('revokeSessions');
-
-                    return revokedSessions;
-                }
-            );
-            deviceService.removeOwnershipInTx.mockImplementation(async () => {
-                calls.push('removeOwnership');
-
-                return deviceOwnership;
-            });
-
-            await expect(
-                service.removeDeviceOwnershipInTx(
-                    tx,
-                    'user-1',
-                    'device-ownership-1',
-                    'user-1',
-                    now
-                )
-            ).resolves.toEqual({ deviceOwnership, revokedSessions });
-
-            expect(
-                sessionRepository.revokeByDeviceOwnershipInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                'user-1',
-                'device-ownership-1',
-                'user-1',
-                now
-            );
-            expect(deviceService.removeOwnershipInTx).toHaveBeenCalledWith(
-                tx,
-                'user-1',
-                'device-ownership-1',
-                'user-1',
-                now
-            );
-            expect(calls).toEqual(['revokeSessions', 'removeOwnership']);
-            expect(sessionQueue.purgeLoginsEffect).toHaveBeenCalledWith(
-                'user-1',
-                revokedSessions
-            );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
-        });
-
-        it('adds no purge row when the ownership has no live session', async () => {
-            sessionRepository.revokeByDeviceOwnershipInTx.mockResolvedValue([]);
-            deviceService.removeOwnershipInTx.mockResolvedValue(
-                deviceOwnership
-            );
-
-            await expect(
-                service.removeDeviceOwnershipInTx(
-                    tx,
-                    'user-1',
-                    'device-ownership-1',
-                    'user-1',
-                    now
-                )
-            ).resolves.toEqual({ deviceOwnership, revokedSessions: [] });
-
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });

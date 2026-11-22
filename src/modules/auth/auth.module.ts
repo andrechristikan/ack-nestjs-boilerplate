@@ -7,14 +7,13 @@ import { AuthPasswordService } from '@modules/auth/services/auth.password.servic
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import { AuthSocialService } from '@modules/auth/services/auth.social.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
 import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import type { JwtModuleOptions } from '@nestjs/jwt';
 
-/** Shared module: AuthService for the JWT and social guards; AuthJwtService and AuthPasswordService for the user module and use cases; AuthSocialService for the user use cases; AuthUtil for the user module; AuthPasswordUtil for the user and password-history modules and the user seed. */
+/** Shared module: AuthService for the JWT and social guards; AuthJwtService for the user module and use cases; AuthPasswordService for the user module and use cases and the user seed; AuthSocialService for the user use cases; AuthPasswordUtil for the user use cases. */
 @Global()
 @Module({})
 export class AuthModule {
@@ -32,7 +31,6 @@ export class AuthModule {
                 AuthPasswordService,
                 AuthPasswordUtil,
                 AuthSocialService,
-                AuthUtil,
             ],
             exports: [
                 AuthService,
@@ -40,7 +38,6 @@ export class AuthModule {
                 AuthPasswordService,
                 AuthPasswordUtil,
                 AuthSocialService,
-                AuthUtil,
             ],
             imports: [
                 JwtModule.registerAsync({

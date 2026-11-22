@@ -10,6 +10,7 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { RoleService } from '@modules/role/services/role.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { SessionService } from '@modules/session/services/session.service';
@@ -40,6 +41,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
         private readonly userService: UserService,
         private readonly roleService: RoleService,
         private readonly sessionService: SessionService,
+        private readonly mfaService: MfaService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly sessionUtil: SessionUtil,
         private readonly userUtil: UserUtil,
@@ -69,6 +71,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
 
         const now = this.helperDateService.create();
         const revokesSessions = this.userService.revokesSessionsOn(status);
+        const resetsMfaAttempt = this.userService.resetsMfaAttemptOn(status);
         const action = this.userService.resolveStatusActivityLogAction(status);
         try {
             await this.databaseService.withTransaction(async tx => {
@@ -77,15 +80,25 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                     target,
                     status
                 );
-                let revoked: ISessionRef[] = [];
+                let revoke: Promise<ISessionRef[]> = Promise.resolve([]);
                 if (revokesSessions) {
-                    revoked = await this.sessionService.revokeActiveByUserInTx(
+                    revoke = this.sessionService.revokeActiveByUserInTx(
                         tx,
                         userId,
                         authContext.userId,
                         now
                     );
                 }
+
+                let resetMfaAttempt: Promise<void> = Promise.resolve();
+                if (resetsMfaAttempt) {
+                    resetMfaAttempt = this.mfaService.resetAttemptInTx(
+                        tx,
+                        userId
+                    );
+                }
+
+                const [revoked] = await Promise.all([revoke, resetMfaAttempt]);
 
                 const entries: IOutboxEffect[] = [];
                 if (revoked.length > 0) {

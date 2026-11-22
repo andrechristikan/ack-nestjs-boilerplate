@@ -1,6 +1,5 @@
 import { getQueueToken } from '@nestjs/bullmq';
 import { Test } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
 import type { Queue } from 'bullmq';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -13,18 +12,12 @@ import {
 } from '@generated/prisma-client/client';
 import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
-import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('UserQueue', () => {
     const userQueue: MockProxy<Queue> = mock<Queue>();
-    let configService: MockProxy<ConfigService>;
     let queue: UserQueue;
 
     beforeEach(async () => {
-        configService = buildConfigService({
-            'app.timezone': 'UTC',
-            'user.purgeExpiredCron': '0 3 * * *',
-        });
         const module = await Test.createTestingModule({
             providers: [
                 UserQueue,
@@ -32,34 +25,9 @@ describe('UserQueue', () => {
                     provide: getQueueToken(EnumUserQueue.user),
                     useValue: userQueue,
                 },
-                { provide: ConfigService, useValue: configService },
             ],
         }).compile();
         queue = module.get(UserQueue);
-    });
-
-    describe('onModuleInit', () => {
-        it('schedules the recurring purge of expired identity rows', async () => {
-            await queue.onModuleInit();
-
-            expect(userQueue.upsertJobScheduler).toHaveBeenCalledTimes(1);
-            expect(userQueue.upsertJobScheduler).toHaveBeenCalledWith(
-                EnumUserProcess.purgeExpired,
-                { pattern: '0 3 * * *', tz: 'UTC' },
-                {
-                    name: EnumUserProcess.purgeExpired,
-                    data: {},
-                    opts: { priority: EnumQueuePriority.low },
-                }
-            );
-        });
-
-        it('rejects when the scheduler upsert rejects', async () => {
-            const error = new Error('redis down');
-            userQueue.upsertJobScheduler.mockRejectedValue(error);
-
-            await expect(queue.onModuleInit()).rejects.toBe(error);
-        });
     });
 
     describe('deletePhotoEffect', () => {

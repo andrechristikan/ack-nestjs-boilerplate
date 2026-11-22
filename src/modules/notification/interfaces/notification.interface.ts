@@ -326,11 +326,6 @@ export interface INotificationUserSettingUpdate {
     isActive: boolean;
 }
 
-export interface INotificationPushCleanupTokenEncryptedPayload {
-    userId: string;
-    encryptedFailureTokens: string[];
-}
-
 export interface INotificationEmailBulkQueuePayload<T = null> {
     data: T;
     batchId: string;
@@ -371,12 +366,6 @@ export type INotificationKindContracts = {
 
 export type INotificationEmailPublishTermPolicyResult = {
     message: string;
-};
-
-export type INotificationPushCleanupTokensResult = {
-    message: string;
-    countRequestedTokens: number;
-    countRemovedTokens: number;
 };
 
 export type INotificationPushCleanupStaleTokensResult = {
@@ -429,12 +418,6 @@ export interface INotificationSmsSendEffect extends IOutboxEffect {
     queue: EnumNotificationQueue.notificationSms;
     name: EnumNotificationSmsProcess.send;
     data: INotificationSmsSendPayload;
-}
-
-export interface INotificationPushCleanupTokensEffect extends IOutboxEffect {
-    queue: EnumNotificationQueue.notificationPush;
-    name: EnumNotificationPushProcess.cleanupTokens;
-    data: INotificationPushCleanupTokenEncryptedPayload;
 }
 
 export interface INotificationEmailSendQueueResponse extends IQueueResponse {

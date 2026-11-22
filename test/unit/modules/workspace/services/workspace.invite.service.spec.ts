@@ -14,7 +14,6 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { UserUtil } from '@modules/user/utils/user.util';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -267,7 +266,6 @@ describe('WorkspaceInviteService', () => {
                 },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 ...TestUnitKitProviders,
-                UserUtil,
                 { provide: OutboxService, useValue: outboxService },
                 { provide: AwsSESService, useValue: awsSESService },
                 {
@@ -1730,25 +1728,31 @@ describe('WorkspaceInviteService', () => {
     });
 
     describe('mapInvitePreview', () => {
-        it('maps the inviter display name from the user util', () => {
-            const result = service.mapInvitePreview(previewInvite);
+        it('answers the given inviter name for a live inviter', () => {
+            const result = service.mapInvitePreview(
+                previewInvite,
+                'Ada Lovelace'
+            );
 
             expect(result).toEqual({
                 workspaceName: 'Acme',
-                inviterName: 'Bramble',
+                inviterName: 'Ada Lovelace',
                 workspaceRole: EnumWorkspaceMemberRole.member,
                 expiredAt: baseInvite.expiredAt,
             });
         });
 
         it('answers the workspace name as the inviter name when the inviter is self-deleted', () => {
-            const result = service.mapInvitePreview({
-                ...previewInvite,
-                invitedBy: {
-                    ...previewInvite.invitedBy,
-                    deletedAt: new Date('2026-01-02T00:00:00.000Z'),
+            const result = service.mapInvitePreview(
+                {
+                    ...previewInvite,
+                    invitedBy: {
+                        ...previewInvite.invitedBy,
+                        deletedAt: new Date('2026-01-02T00:00:00.000Z'),
+                    },
                 },
-            });
+                'Ada Lovelace'
+            );
 
             expect(result.inviterName).toBe('Acme');
         });

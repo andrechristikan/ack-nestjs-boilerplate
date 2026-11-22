@@ -16,13 +16,6 @@
         "list": "List of all projects",
         "get": "Project retrieved successfully"
     },
-    "queue": {
-        "softDeleteByWorkspace": "Soft-deleted the projects of a deleted workspace.",
-        "error": {
-            "unknownProcess": "No {process} job handler exists.",
-            "softDeleteByWorkspace": "The project soft delete for the workspace failed."
-        }
-    },
     "error": {
         "notFound": "Sorry, we couldn't find the project.",
         "memberForbidden": "You are not a member of this project.",

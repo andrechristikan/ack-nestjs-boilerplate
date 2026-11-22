@@ -18,24 +18,22 @@ import type {
     IAuthJwtAccessContext,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
-import type { IDeviceRemoveResult } from '@modules/device/interfaces/device.interface';
-import { DeviceService } from '@modules/device/services/device.service';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type {
     ISession,
     ISessionList,
     ISessionLogin,
-    ISessionPurgeLoginsPayload,
     ISessionRef,
     ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { SessionLoginCacheSchema } from '@modules/session/constants/session.constant';
-import { SessionQueue } from '@modules/session/queues/session.queue';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
+import type { IUserPurgeLoginsPayload } from '@modules/user/interfaces/user.interface';
+import { UserAuthQueue } from '@modules/user/queues/user.auth.queue';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
@@ -57,10 +55,9 @@ export class SessionService {
         private readonly cacheService: CacheService,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
-        private readonly deviceService: DeviceService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
-        private readonly sessionQueue: SessionQueue,
+        private readonly userAuthQueue: UserAuthQueue,
         private readonly sessionUtil: SessionUtil
     ) {
         this.idleTimeoutInMs = this.configService.get<number>(
@@ -73,7 +70,7 @@ export class SessionService {
 
     private groupRefsByUser(
         sessions: ISessionUserRef[]
-    ): ISessionPurgeLoginsPayload[] {
+    ): IUserPurgeLoginsPayload[] {
         const grouped = new Map<string, ISessionRef[]>();
         for (const { id, userId } of sessions) {
             const refs = grouped.get(userId) ?? [];
@@ -150,7 +147,7 @@ export class SessionService {
             revokedAt
         );
         if (sessions.length > 0) {
-            const effect = this.sessionQueue.purgeLoginsEffect(
+            const effect = this.userAuthQueue.purgeLoginsEffect(
                 userId,
                 sessions
             );
@@ -334,7 +331,7 @@ export class SessionService {
             return false;
         }
 
-        const effect = this.sessionQueue.purgeLoginsEffect(userId, [
+        const effect = this.userAuthQueue.purgeLoginsEffect(userId, [
             { id: sessionId },
         ]);
         await this.outboxService.addInTx(tx, effect);
@@ -361,7 +358,7 @@ export class SessionService {
             throw new SessionNotFoundException();
         }
 
-        const effect = this.sessionQueue.purgeLoginsEffect(userId, [
+        const effect = this.userAuthQueue.purgeLoginsEffect(userId, [
             { id: sessionId },
         ]);
         await this.outboxService.addInTx(tx, effect);
@@ -394,26 +391,6 @@ export class SessionService {
         );
     }
 
-    /** Revokes the user's active sessions with their cache purge row and every device ownership together, on the caller's transaction; returns the revoked session refs. */
-    async revokeAllByUserInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        revokedBy: string,
-        revokedAt: Date
-    ): Promise<ISessionRef[]> {
-        const [sessions] = await Promise.all([
-            this.revokeActiveByUserInTx(tx, userId, revokedBy, revokedAt),
-            this.deviceService.revokeAllByUserInTx(
-                tx,
-                userId,
-                revokedBy,
-                revokedAt
-            ),
-        ]);
-
-        return sessions;
-    }
-
     /** Revokes the live sessions of a device ownership on the caller's transaction and adds their cache purge row when any was revoked; returns the revoked refs. */
     async revokeByDeviceOwnershipInTx(
         tx: IDatabaseTransactionClient,
@@ -431,7 +408,7 @@ export class SessionService {
                 revokedAt
             );
         if (sessions.length > 0) {
-            const effect = this.sessionQueue.purgeLoginsEffect(
+            const effect = this.userAuthQueue.purgeLoginsEffect(
                 userId,
                 sessions
             );
@@ -441,13 +418,15 @@ export class SessionService {
         return sessions;
     }
 
-    /** Revokes the live sessions of the device ownerships on the caller's transaction and adds one cache purge row per affected user; returns the revoked refs grouped per user. */
+    /** Revokes the live sessions of the device ownerships on the caller's transaction and adds, per affected user, the cache purge row and a userSessionRevokedByDeviceLogin entry; adds nothing when no session was live. */
     async revokeByDeviceOwnershipIdsInTx(
         tx: IDatabaseTransactionClient,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
         deviceOwnershipIds: string[],
         revokedBy: string,
         revokedAt: Date
-    ): Promise<ISessionPurgeLoginsPayload[]> {
+    ): Promise<void> {
         const sessions =
             await this.sessionRepository.revokeByDeviceOwnershipIdsInTx(
                 tx,
@@ -458,42 +437,33 @@ export class SessionService {
 
         const grouped = this.groupRefsByUser(sessions);
         if (grouped.length > 0) {
-            const effects = grouped.map(group =>
-                this.sessionQueue.purgeLoginsEffect(
-                    group.userId,
-                    group.sessions
-                )
-            );
+            const effects: IOutboxEffect[] = [];
+            for (const { userId, sessions: refs } of grouped) {
+                const metadata =
+                    this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
+                        revokedBy,
+                        refs.length
+                    );
+                const purge = this.userAuthQueue.purgeLoginsEffect(
+                    userId,
+                    refs
+                );
+                const entry = this.activityLogQueue.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    null,
+                    null,
+                    {
+                        action: EnumActivityLogAction.userSessionRevokedByDeviceLogin,
+                        userId,
+                        createdBy: revokedBy,
+                        metadata,
+                    }
+                );
+                effects.push(purge, entry);
+            }
             await this.outboxService.addManyInTx(tx, effects);
         }
-
-        return grouped;
-    }
-
-    /** Revokes the live sessions of a device ownership with their cache purge row, then removes the ownership, on the caller's transaction; returns the removed ownership and the revoked refs. */
-    async removeDeviceOwnershipInTx(
-        tx: IDatabaseTransactionClient,
-        userId: string,
-        deviceOwnershipId: string,
-        removedBy: string,
-        now: Date
-    ): Promise<IDeviceRemoveResult> {
-        const revokedSessions = await this.revokeByDeviceOwnershipInTx(
-            tx,
-            userId,
-            deviceOwnershipId,
-            removedBy,
-            now
-        );
-        const deviceOwnership = await this.deviceService.removeOwnershipInTx(
-            tx,
-            userId,
-            deviceOwnershipId,
-            removedBy,
-            now
-        );
-
-        return { deviceOwnership, revokedSessions };
     }
 
     /** Revokes the session as an admin on the caller's transaction, adds its cache purge row and activity entries, and returns it; no match throws SessionNotFoundException. */
@@ -523,7 +493,7 @@ export class SessionService {
             revokedAt
         );
         const effects: IOutboxEffect[] = [
-            this.sessionQueue.purgeLoginsEffect(userId, [{ id: sessionId }]),
+            this.userAuthQueue.purgeLoginsEffect(userId, [{ id: sessionId }]),
             this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,

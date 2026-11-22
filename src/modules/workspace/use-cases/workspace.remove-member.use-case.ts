@@ -12,7 +12,6 @@ import { ProjectMemberService } from '@modules/project/services/project.member.s
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/exceptions/workspace.member-peer-forbidden.exception';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
-import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -35,7 +34,6 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly projectMemberService: ProjectMemberService,
-        private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
         private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly userService: UserService,
         private readonly databaseService: DatabaseService,
@@ -72,11 +70,6 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
                         tx,
                         workspaceId,
                         removed.user.email
-                    ),
-                    this.workspaceJoinRequestService.cancelPendingByUserInTx(
-                        tx,
-                        workspaceId,
-                        removed.userId
                     ),
                     this.userService.clearLastWorkspaceInTx(
                         tx,

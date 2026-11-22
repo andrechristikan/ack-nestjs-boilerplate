@@ -12,7 +12,7 @@ import {
 } from '@test/unit/helpers/test.unit.kit.helper';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { FeatureFlag } from '@generated/prisma-client/client';
+import type { IFeatureFlag } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import type { FeatureFlagSystemListRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.system-list.request.dto';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagGetListCursorUseCase } from '@modules/feature-flag/use-cases/feature-flag.get-list-cursor.use-case';
@@ -31,7 +31,7 @@ describe('FeatureFlagGetListCursorUseCase', () => {
 
     let useCase: FeatureFlagGetListCursorUseCase;
 
-    const featureFlag: FeatureFlag = {
+    const featureFlag: IFeatureFlag = {
         id: '507f1f77bcf86cd799439011',
         key: 'loginWithGoogle',
         description: 'Enables Google sign-in',
@@ -70,7 +70,7 @@ describe('FeatureFlagGetListCursorUseCase', () => {
             const query: FeatureFlagSystemListRequestDto = {
                 perPage: 20,
             };
-            const page: IResponsePaginationReturn<FeatureFlag> = {
+            const page: IResponsePaginationReturn<IFeatureFlag> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
                 hasNext: false,

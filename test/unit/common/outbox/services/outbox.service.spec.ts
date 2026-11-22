@@ -12,14 +12,13 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
-    EnumSessionProcess,
-    EnumSessionQueue,
-} from '@modules/session/enums/session.enum';
-import {
     EnumTermPolicyProcess,
     EnumTermPolicyQueue,
 } from '@modules/term-policy/enums/term-policy.enum';
-import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
+import {
+    EnumUserAuthProcess,
+    EnumUserQueue,
+} from '@modules/user/enums/user.enum';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import {
     EnumQueueJobState,
@@ -41,14 +40,14 @@ describe('OutboxService', () => {
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const moduleRef: MockProxy<ModuleRef> = mock<ModuleRef>();
     let configService: MockProxy<ConfigService>;
-    const sessionQueue: MockProxy<QueueBase> = mock<QueueBase>();
+    const userQueue: MockProxy<QueueBase> = mock<QueueBase>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
     const now = new Date('2026-11-11T10:00:00.000Z');
 
     const purgeEffect: IOutboxEffect = {
-        queue: EnumSessionQueue.session,
-        name: EnumSessionProcess.purgeLogins,
+        queue: EnumUserQueue.userAuth,
+        name: EnumUserAuthProcess.purgeLogins,
         data: {
             userId: 'user-1',
             sessions: [{ id: 'session-1' }],
@@ -58,8 +57,8 @@ describe('OutboxService', () => {
     };
     const purgeRow: Outbox = {
         id: 'outbox-1',
-        queue: EnumSessionQueue.session,
-        name: EnumSessionProcess.purgeLogins,
+        queue: EnumUserQueue.userAuth,
+        name: EnumUserAuthProcess.purgeLogins,
         data: {
             userId: 'user-1',
             sessions: [{ id: 'session-1' }],
@@ -101,9 +100,9 @@ describe('OutboxService', () => {
             async fn => fn(tx) as never
         );
         vi.setSystemTime(now);
-        moduleRef.get.mockReturnValue(sessionQueue);
+        moduleRef.get.mockReturnValue(userQueue);
         outboxRepository.findManyPendingByIds.mockResolvedValue([]);
-        sessionQueue.enqueue.mockResolvedValue();
+        userQueue.enqueue.mockResolvedValue();
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -204,7 +203,7 @@ describe('OutboxService', () => {
                 'outbox-existing',
                 'outbox-2',
             ]);
-            expect(sessionQueue.enqueue).toHaveBeenCalledWith([purgeRow]);
+            expect(userQueue.enqueue).toHaveBeenCalledWith([purgeRow]);
             expect(outboxRepository.updateEnqueued).toHaveBeenCalledWith(
                 ['outbox-1'],
                 now
@@ -223,8 +222,8 @@ describe('OutboxService', () => {
             expect(outboxRepository.createManyInTx).toHaveBeenCalledWith(tx, [
                 {
                     id: 'outbox-1',
-                    queue: EnumSessionQueue.session,
-                    name: EnumSessionProcess.purgeLogins,
+                    queue: EnumUserQueue.userAuth,
+                    name: EnumUserAuthProcess.purgeLogins,
                     data: purgeEffect.data,
                     priority: EnumQueuePriority.high,
                     idempotencyKey: 'outbox-1',
@@ -490,8 +489,8 @@ describe('OutboxService', () => {
             expect(
                 outboxRepository.findManyEnqueuedBefore
             ).toHaveBeenCalledWith(enqueuedCutoff, 100);
-            expect(sessionQueue.getJobState).not.toHaveBeenCalled();
-            expect(sessionQueue.enqueue).toHaveBeenCalledTimes(1);
+            expect(userQueue.getJobState).not.toHaveBeenCalled();
+            expect(userQueue.enqueue).toHaveBeenCalledTimes(1);
             expect(outboxRepository.updateEnqueued).toHaveBeenCalledWith(
                 ['outbox-1'],
                 now
@@ -509,12 +508,12 @@ describe('OutboxService', () => {
             outboxRepository.updateSwept.mockImplementation(async () => {
                 calls.push('updateSwept');
             });
-            sessionQueue.getJobState.mockImplementation(async () => {
+            userQueue.getJobState.mockImplementation(async () => {
                 calls.push('getJobState');
 
                 return null;
             });
-            sessionQueue.enqueue.mockImplementation(async () => {
+            userQueue.enqueue.mockImplementation(async () => {
                 calls.push('enqueue');
             });
 
@@ -543,18 +542,18 @@ describe('OutboxService', () => {
             outboxRepository.findManyEnqueuedBefore.mockResolvedValue([
                 enqueuedRow,
             ]);
-            sessionQueue.getJobState.mockResolvedValue(jobState);
+            userQueue.getJobState.mockResolvedValue(jobState);
 
             const result = await service.sweep();
 
             expect(result).toBe(1);
-            expect(sessionQueue.getJobState).toHaveBeenCalledWith('outbox-1');
+            expect(userQueue.getJobState).toHaveBeenCalledWith('outbox-1');
             expect(outboxRepository.updateCompleted).toHaveBeenCalledWith(
                 'outbox-1',
                 2,
                 now
             );
-            expect(sessionQueue.enqueue).not.toHaveBeenCalled();
+            expect(userQueue.enqueue).not.toHaveBeenCalled();
         });
 
         it('stamps an enqueued row failed with the attempts and the reason of its failed job', async () => {
@@ -566,7 +565,7 @@ describe('OutboxService', () => {
             outboxRepository.findManyEnqueuedBefore.mockResolvedValue([
                 enqueuedRow,
             ]);
-            sessionQueue.getJobState.mockResolvedValue(jobState);
+            userQueue.getJobState.mockResolvedValue(jobState);
 
             const result = await service.sweep();
 
@@ -589,7 +588,7 @@ describe('OutboxService', () => {
             outboxRepository.findManyEnqueuedBefore.mockResolvedValue([
                 enqueuedRow,
             ]);
-            sessionQueue.getJobState.mockResolvedValue(jobState);
+            userQueue.getJobState.mockResolvedValue(jobState);
 
             await service.sweep();
 
@@ -605,12 +604,12 @@ describe('OutboxService', () => {
             outboxRepository.findManyEnqueuedBefore.mockResolvedValue([
                 enqueuedRow,
             ]);
-            sessionQueue.getJobState.mockResolvedValue(null);
+            userQueue.getJobState.mockResolvedValue(null);
 
             const result = await service.sweep();
 
             expect(result).toBe(1);
-            expect(sessionQueue.enqueue).toHaveBeenCalledWith([enqueuedRow]);
+            expect(userQueue.enqueue).toHaveBeenCalledWith([enqueuedRow]);
             expect(outboxRepository.updateEnqueued).toHaveBeenCalledWith(
                 ['outbox-1'],
                 now
@@ -637,15 +636,15 @@ describe('OutboxService', () => {
                 goneRow2,
                 goneRow3,
             ]);
-            sessionQueue.getJobState.mockResolvedValue(null);
+            userQueue.getJobState.mockResolvedValue(null);
 
             const result = await service.sweep();
 
             expect(result).toBe(3);
-            expect(sessionQueue.getJobState).toHaveBeenCalledWith('outbox-2');
-            expect(sessionQueue.getJobState).toHaveBeenCalledWith('outbox-3');
-            expect(sessionQueue.enqueue).toHaveBeenCalledTimes(1);
-            expect(sessionQueue.enqueue).toHaveBeenCalledWith([
+            expect(userQueue.getJobState).toHaveBeenCalledWith('outbox-2');
+            expect(userQueue.getJobState).toHaveBeenCalledWith('outbox-3');
+            expect(userQueue.enqueue).toHaveBeenCalledTimes(1);
+            expect(userQueue.enqueue).toHaveBeenCalledWith([
                 purgeRow,
                 goneRow2,
                 goneRow3,
@@ -666,14 +665,14 @@ describe('OutboxService', () => {
             outboxRepository.findManyEnqueuedBefore.mockResolvedValue([
                 enqueuedRow,
             ]);
-            sessionQueue.getJobState.mockResolvedValue(jobState);
+            userQueue.getJobState.mockResolvedValue(jobState);
 
             const result = await service.sweep();
 
             expect(result).toBe(0);
             expect(outboxRepository.updateCompleted).not.toHaveBeenCalled();
             expect(outboxRepository.updateFailed).not.toHaveBeenCalled();
-            expect(sessionQueue.enqueue).not.toHaveBeenCalled();
+            expect(userQueue.enqueue).not.toHaveBeenCalled();
             expect(outboxRepository.updateEnqueued).not.toHaveBeenCalled();
         });
 
@@ -686,14 +685,14 @@ describe('OutboxService', () => {
             outboxRepository.findManyEnqueuedBefore.mockResolvedValue([
                 { ...enqueuedRow, id: 'outbox-3', idempotencyKey: 'outbox-3' },
             ]);
-            sessionQueue.getJobState.mockRejectedValue(error);
+            userQueue.getJobState.mockRejectedValue(error);
 
             const first = await service.sweep();
             const result = await service.sweep();
 
             expect(first).toBe(1);
             expect(result).toBe(1);
-            expect(sessionQueue.getJobState).toHaveBeenCalledWith('outbox-3');
+            expect(userQueue.getJobState).toHaveBeenCalledWith('outbox-3');
             expect(outboxRepository.updateEnqueued).toHaveBeenCalledWith(
                 ['outbox-1'],
                 now
@@ -715,8 +714,8 @@ describe('OutboxService', () => {
             await expect(service.sweep()).resolves.toBe(0);
             await expect(service.sweep()).resolves.toBe(0);
 
-            expect(sessionQueue.getJobState).not.toHaveBeenCalled();
-            expect(sessionQueue.enqueue).not.toHaveBeenCalled();
+            expect(userQueue.getJobState).not.toHaveBeenCalled();
+            expect(userQueue.enqueue).not.toHaveBeenCalled();
             expect(warn).toHaveBeenCalledTimes(2);
             expect(warn).toHaveBeenCalledWith(
                 { key: OutboxDispatchWarnKey, err: error },
@@ -742,23 +741,25 @@ describe('OutboxService', () => {
     });
 
     describe('dispatch', () => {
-        const userRow: Outbox = {
+        const termPolicyRow: Outbox = {
             ...purgeRow,
             id: 'outbox-2',
-            queue: EnumUserQueue.user,
-            name: EnumUserProcess.deletePhoto,
-            data: { userId: 'user-1', key: 'photo-key', access: 'private' },
+            queue: EnumTermPolicyQueue.termPolicy,
+            name: EnumTermPolicyProcess.deleteContent,
+            data: { path: 'term-policy/draft' },
             idempotencyKey: 'outbox-2',
         };
 
         it('enqueues only the rows still pending, one enqueue per queue, then stamps them enqueued', async () => {
-            const userQueue: MockProxy<QueueBase> = mock<QueueBase>();
+            const termPolicyQueue: MockProxy<QueueBase> = mock<QueueBase>();
             moduleRef.get.mockImplementation(token =>
-                token === EnumUserQueue.user ? userQueue : sessionQueue
+                token === EnumTermPolicyQueue.termPolicy
+                    ? termPolicyQueue
+                    : userQueue
             );
             outboxRepository.findManyPendingByIds.mockResolvedValue([
                 purgeRow,
-                userRow,
+                termPolicyRow,
             ]);
 
             await service['dispatch'](['outbox-1', 'outbox-2', 'outbox-done']);
@@ -768,17 +769,19 @@ describe('OutboxService', () => {
                 'outbox-2',
                 'outbox-done',
             ]);
-            expect(moduleRef.get).toHaveBeenCalledWith(
-                EnumSessionQueue.session,
-                { strict: false }
-            );
-            expect(moduleRef.get).toHaveBeenCalledWith(EnumUserQueue.user, {
+            expect(moduleRef.get).toHaveBeenCalledWith(EnumUserQueue.userAuth, {
                 strict: false,
             });
-            expect(sessionQueue.enqueue).toHaveBeenCalledTimes(1);
-            expect(sessionQueue.enqueue).toHaveBeenCalledWith([purgeRow]);
+            expect(moduleRef.get).toHaveBeenCalledWith(
+                EnumTermPolicyQueue.termPolicy,
+                { strict: false }
+            );
             expect(userQueue.enqueue).toHaveBeenCalledTimes(1);
-            expect(userQueue.enqueue).toHaveBeenCalledWith([userRow]);
+            expect(userQueue.enqueue).toHaveBeenCalledWith([purgeRow]);
+            expect(termPolicyQueue.enqueue).toHaveBeenCalledTimes(1);
+            expect(termPolicyQueue.enqueue).toHaveBeenCalledWith([
+                termPolicyRow,
+            ]);
             expect(outboxRepository.updateEnqueued).toHaveBeenCalledTimes(1);
             expect(outboxRepository.updateEnqueued).toHaveBeenCalledWith(
                 ['outbox-1', 'outbox-2'],
@@ -792,22 +795,24 @@ describe('OutboxService', () => {
             expect(
                 outboxRepository.findManyPendingByIds
             ).not.toHaveBeenCalled();
-            expect(sessionQueue.enqueue).not.toHaveBeenCalled();
+            expect(userQueue.enqueue).not.toHaveBeenCalled();
             expect(outboxRepository.updateEnqueued).not.toHaveBeenCalled();
         });
 
         it('leaves the rows of a rejected enqueue pending, stamps the other queue, and warns on every connection error', async () => {
             const warn = vi.spyOn(Logger.prototype, 'warn');
-            const userQueue: MockProxy<QueueBase> = mock<QueueBase>();
+            const termPolicyQueue: MockProxy<QueueBase> = mock<QueueBase>();
             const error = new Error('Connection is closed.');
             moduleRef.get.mockImplementation(token =>
-                token === EnumUserQueue.user ? userQueue : sessionQueue
+                token === EnumTermPolicyQueue.termPolicy
+                    ? termPolicyQueue
+                    : userQueue
             );
             outboxRepository.findManyPendingByIds.mockResolvedValue([
                 purgeRow,
-                userRow,
+                termPolicyRow,
             ]);
-            sessionQueue.enqueue.mockRejectedValue(error);
+            userQueue.enqueue.mockRejectedValue(error);
 
             await expect(
                 service['dispatch'](['outbox-1', 'outbox-2'])
@@ -839,7 +844,7 @@ describe('OutboxService', () => {
                 service['dispatch'](['outbox-1'])
             ).resolves.toBeUndefined();
 
-            expect(sessionQueue.enqueue).not.toHaveBeenCalled();
+            expect(userQueue.enqueue).not.toHaveBeenCalled();
             expect(outboxRepository.updateEnqueued).not.toHaveBeenCalled();
             expect(warn).toHaveBeenCalledTimes(1);
             expect(warn).toHaveBeenCalledWith(
@@ -852,7 +857,7 @@ describe('OutboxService', () => {
             const warn = vi.spyOn(Logger.prototype, 'warn');
             const error = new Error('bad job');
             outboxRepository.findManyPendingByIds.mockResolvedValue([purgeRow]);
-            sessionQueue.enqueue.mockRejectedValue(error);
+            userQueue.enqueue.mockRejectedValue(error);
 
             await expect(
                 service['dispatch'](['outbox-1'])
@@ -878,7 +883,7 @@ describe('OutboxService', () => {
                 service['dispatch'](['outbox-1'])
             ).resolves.toBeUndefined();
 
-            expect(sessionQueue.enqueue).not.toHaveBeenCalled();
+            expect(userQueue.enqueue).not.toHaveBeenCalled();
         });
 
         it('resolves when the enqueued stamp fails', async () => {

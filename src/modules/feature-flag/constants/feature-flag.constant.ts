@@ -1,12 +1,17 @@
 import { HttpStatus } from '@nestjs/common';
 import { z } from 'zod';
 import { Prisma } from '@generated/prisma-client/client';
-import type { FeatureFlag } from '@generated/prisma-client/client';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
+import type { IFeatureFlag } from '@modules/feature-flag/interfaces/feature-flag.interface';
 
 /** @public */
 export const FeatureFlagKeyPathMetaKey = 'FeatureFlagKeyPathMetaKey';
+
+/** @public */
+export const FeatureFlagWithTargetsInclude = {
+    targets: { select: { userId: true } },
+} satisfies Prisma.FeatureFlagInclude;
 
 /** @public */
 export const FeatureFlagCacheSchema = z.object({
@@ -23,7 +28,7 @@ export const FeatureFlagCacheSchema = z.object({
     createdBy: z.string().nullable(),
     updatedAt: z.coerce.date(),
     updatedBy: z.string().nullable(),
-}) satisfies z.ZodType<FeatureFlag>;
+}) satisfies z.ZodType<IFeatureFlag>;
 
 /** @public */
 export const FeatureFlagAnonymousIdHeaderName = 'x-anonymous-id';

@@ -65,18 +65,23 @@ export class MfaDeletePasskeyUseCase implements IAppUseCase<
             otp,
         }: MfaPasskeyDeleteRequestDto
     ): Promise<IResponseReturn<void>> {
-        const { check, failure } =
-            await this.userAuthService.checkReauthentication(user, {
-                action: EnumUserReauthenticationAction.mfaPasskeyDelete,
-                password: password ?? null,
-                method: method ?? null,
-                code: code ?? null,
-                backupCode: backupCode ?? null,
-                passkeyChallengeToken: passkeyChallengeToken ?? null,
-                passkeyResponse: passkeyResponse ?? null,
-                otp: otp ?? null,
-            });
-        if (failure !== null) {
+        const input = {
+            action: EnumUserReauthenticationAction.mfaPasskeyDelete,
+            password: password ?? null,
+            method: method ?? null,
+            code: code ?? null,
+            backupCode: backupCode ?? null,
+            passkeyChallengeToken: passkeyChallengeToken ?? null,
+            passkeyResponse: passkeyResponse ?? null,
+            otp: otp ?? null,
+        };
+        const passwordCheck =
+            await this.userAuthService.checkReauthenticationPassword(
+                user,
+                input
+            );
+        if (passwordCheck.limit !== null) {
+            const limit = passwordCheck.limit;
             const isLocked = await this.databaseService.withTransaction(
                 async tx =>
                     this.userAuthService.countFailedReauthenticationInTx(
@@ -84,25 +89,57 @@ export class MfaDeletePasskeyUseCase implements IAppUseCase<
                         requestContext,
                         apiKeyContext,
                         authContext,
+                        limit
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(isLocked);
+        }
+
+        const mfaCheck = await this.mfaService.checkReauthentication(
+            user.id,
+            input,
+            passwordCheck.isPasswordChecked
+        );
+        if (mfaCheck.failure !== null) {
+            const failure = mfaCheck.failure;
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.mfaService.countFailedAttemptInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext.userId,
                         failure
                     )
             );
 
-            return this.userAuthService.throwFailedReauthentication(
-                failure,
-                isLocked
-            );
+            return this.mfaService.throwFailedAttempt(failure, isLocked);
         }
+
+        const verificationId =
+            await this.userAuthService.getReauthenticationVerificationId(
+                user,
+                input,
+                passwordCheck.isPasswordChecked,
+                mfaCheck.isEnabled
+            );
 
         const now = this.helperDateService.create();
         try {
             await this.databaseService.withTransaction(async tx => {
                 await this.userAuthService.completeReauthenticationInTx(
                     tx,
+                    authContext,
+                    passwordCheck.isPasswordChecked,
+                    verificationId
+                );
+                await this.mfaService.completeReauthenticationInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    check
+                    mfaCheck
                 );
                 await this.mfaPasskeyService.deleteInTx(
                     tx,
@@ -136,7 +173,7 @@ export class MfaDeletePasskeyUseCase implements IAppUseCase<
 
             const mapped = this.databaseUtil.toException(err);
             if (mapped instanceof DatabaseWriteConflictException) {
-                throw check.mfa !== null
+                throw mfaCheck.check !== null
                     ? new MfaInvalidException()
                     : new MfaPasskeyNotFoundException();
             }

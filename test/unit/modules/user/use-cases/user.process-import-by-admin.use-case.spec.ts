@@ -54,7 +54,10 @@ import type {
     IUserSignUpWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
 import { UserImportService } from '@modules/user/services/user.import.service';
-import { UserRegistrationService } from '@modules/user/services/user.registration.service';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
+import { UserService } from '@modules/user/services/user.service';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.process-import-by-admin.use-case';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
@@ -84,8 +87,12 @@ describe('UserProcessImportByAdminUseCase', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const userRegistrationService: MockProxy<UserRegistrationService> =
-        mock<UserRegistrationService>();
+    const userService: MockProxy<UserService> = mock<UserService>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
+    const passwordHistoryService: MockProxy<PasswordHistoryService> =
+        mock<PasswordHistoryService>();
+    const notificationService: MockProxy<NotificationService> =
+        mock<NotificationService>();
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
         mock<TermPolicyAcceptanceService>();
     const tx = {} as IDatabaseTransactionClient;
@@ -238,7 +245,7 @@ describe('UserProcessImportByAdminUseCase', () => {
         userImportService.buildImportByAdminStages.mockReturnValue([
             stageInput,
         ]);
-        userRegistrationService.createInTx.mockResolvedValue([committedUser]);
+        userService.createManyInTx.mockResolvedValue([committedUser]);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -249,9 +256,15 @@ describe('UserProcessImportByAdminUseCase', () => {
                 { provide: OutboxService, useValue: outboxService },
                 DatabaseUtil,
                 WorkspaceUtil,
+                { provide: UserService, useValue: userService },
+                { provide: MfaService, useValue: mfaService },
                 {
-                    provide: UserRegistrationService,
-                    useValue: userRegistrationService,
+                    provide: PasswordHistoryService,
+                    useValue: passwordHistoryService,
+                },
+                {
+                    provide: NotificationService,
+                    useValue: notificationService,
                 },
                 {
                     provide: TermPolicyAcceptanceService,
@@ -296,10 +309,9 @@ describe('UserProcessImportByAdminUseCase', () => {
                 expect.any(Function),
                 { timeout: 30000 }
             );
-            expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
-                tx,
-                [input]
-            );
+            expect(userService.createManyInTx).toHaveBeenCalledWith(tx, [
+                input,
+            ]);
             expect(
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenCalledWith(tx, [owned]);
@@ -324,6 +336,44 @@ describe('UserProcessImportByAdminUseCase', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
+        it("writes each user's Mfa row, password history, and notification defaults on tx right after the users", async () => {
+            await useCase.execute('outbox-bramble', payload);
+
+            expect(mfaService.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-bramble',
+                'admin-bramble'
+            );
+            expect(passwordHistoryService.createManyInTx).toHaveBeenCalledWith(
+                tx,
+                [
+                    {
+                        userId: 'user-bramble',
+                        password: 'hashed',
+                        type: EnumPasswordHistoryType.signUp,
+                        expiredAt: new Date('2026-04-01T00:00:00.000Z'),
+                        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                        createdBy: 'admin-bramble',
+                    },
+                ]
+            );
+            expect(
+                notificationService.createDefaultsManyInTx
+            ).toHaveBeenCalledWith(tx, ['user-bramble']);
+            expect(userService.createManyInTx).toHaveBeenCalledBefore(
+                mfaService.createInTx
+            );
+            expect(userService.createManyInTx).toHaveBeenCalledBefore(
+                passwordHistoryService.createManyInTx
+            );
+            expect(userService.createManyInTx).toHaveBeenCalledBefore(
+                notificationService.createDefaultsManyInTx
+            );
+            expect(mfaService.createInTx).toHaveBeenCalledBefore(
+                workspaceService.createOwnedForUsersInTx
+            );
+        });
+
         it('records the created count on the outbox row inside the transaction that creates the users', async () => {
             await useCase.execute('outbox-bramble', payload);
 
@@ -333,7 +383,7 @@ describe('UserProcessImportByAdminUseCase', () => {
                 'outbox-bramble',
                 { created: 1 }
             );
-            expect(userRegistrationService.createInTx).toHaveBeenCalledBefore(
+            expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 outboxService.updateDataInTx
             );
         });

@@ -7,13 +7,13 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { FeatureFlag } from '@generated/prisma-client/client';
 import { FeatureFlagCacheSchema } from '@modules/feature-flag/constants/feature-flag.constant';
 import { FeatureFlagInvalidMetadataException } from '@modules/feature-flag/exceptions/feature-flag.invalid-metadata.exception';
 import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
 import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import type {
+    IFeatureFlag,
     IFeatureFlagMetadata,
     IFeatureFlagMetadataValue,
     IFeatureFlagUpdateMetadata,
@@ -117,7 +117,7 @@ export class FeatureFlagService {
     }
 
     /** Read-through over the flag row; null when no row exists. */
-    async getByKey(key: EnumFeatureFlagKey): Promise<FeatureFlag | null> {
+    async getByKey(key: EnumFeatureFlagKey): Promise<IFeatureFlag | null> {
         const cacheKey = this.featureFlagCache.buildFeatureFlagKey(key);
         const lease = this.featureFlagCache.buildFeatureFlagLease(key);
 
@@ -221,7 +221,7 @@ export class FeatureFlagService {
 
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
+    ): Promise<IResponsePaginationReturn<IFeatureFlag>> {
         return this.featureFlagRepository.findWithPaginationOffsetByAdmin(
             pagination
         );
@@ -229,11 +229,11 @@ export class FeatureFlagService {
 
     async getListCursor(
         pagination: IPaginationQueryCursorParams
-    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
+    ): Promise<IResponsePaginationReturn<IFeatureFlag>> {
         return this.featureFlagRepository.findWithPaginationCursor(pagination);
     }
 
-    async getOneById(id: string): Promise<FeatureFlag> {
+    async getOneById(id: string): Promise<IFeatureFlag> {
         const featureFlag = await this.featureFlagRepository.findOneById(id);
         if (!featureFlag) {
             throw new FeatureFlagNotFoundException();
@@ -243,7 +243,7 @@ export class FeatureFlagService {
     }
 
     assertMetadataValid(
-        featureFlag: FeatureFlag,
+        featureFlag: IFeatureFlag,
         data: IFeatureFlagUpdateMetadata
     ): void {
         const validated = this.isMetadataValid(
@@ -259,7 +259,7 @@ export class FeatureFlagService {
         tx: IDatabaseTransactionClient,
         id: string,
         data: IFeatureFlagUpdateStatus
-    ): Promise<FeatureFlag> {
+    ): Promise<IFeatureFlag> {
         const updated = await this.featureFlagRepository.updateStatusInTx(
             tx,
             id,
@@ -278,7 +278,7 @@ export class FeatureFlagService {
         tx: IDatabaseTransactionClient,
         id: string,
         data: IFeatureFlagUpdateMetadata
-    ): Promise<FeatureFlag> {
+    ): Promise<IFeatureFlag> {
         const updated = await this.featureFlagRepository.updateMetadataInTx(
             tx,
             id,

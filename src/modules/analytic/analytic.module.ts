@@ -29,7 +29,6 @@ import { AnalyticNotificationService } from '@modules/analytic/services/analytic
 import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
-import { MfaModule } from '@modules/mfa/mfa.module';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 
@@ -87,7 +86,6 @@ import { Module } from '@nestjs/common';
         AnalyticQueue,
     ],
     imports: [
-        MfaModule,
         BullModule.registerQueueAsync({
             name: EnumAnalyticQueue.analytic,
             useClass: AnalyticQueueFactory,

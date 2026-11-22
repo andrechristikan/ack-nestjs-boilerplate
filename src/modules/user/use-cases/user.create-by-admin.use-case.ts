@@ -10,6 +10,9 @@ import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queu
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -54,6 +57,9 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         private readonly notificationQueue: NotificationQueue,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userRegistrationService: UserRegistrationService,
+        private readonly mfaService: MfaService,
+        private readonly passwordHistoryService: PasswordHistoryService,
+        private readonly notificationService: NotificationService,
         private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseService: DatabaseService,
@@ -77,16 +83,35 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
         const termPolicyAcceptances =
             this.userCreateUtil.buildTermPolicyAcceptanceEntries(inputs);
+        const passwordHistories =
+            this.userCreateUtil.buildPasswordHistoryEntries(inputs);
+        const userIds = inputs.map(({ userId }) => userId);
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
                 return await this.databaseService.withTransaction(
                     async tx => {
-                        const users =
-                            await this.userRegistrationService.createInTx(
+                        const users = await this.userService.createManyInTx(
+                            tx,
+                            inputs
+                        );
+                        await Promise.all([
+                            ...inputs.map(({ userId, createdBy }) =>
+                                this.mfaService.createInTx(
+                                    tx,
+                                    userId,
+                                    createdBy
+                                )
+                            ),
+                            this.passwordHistoryService.createManyInTx(
                                 tx,
-                                inputs
-                            );
+                                passwordHistories
+                            ),
+                            this.notificationService.createDefaultsManyInTx(
+                                tx,
+                                userIds
+                            ),
+                        ]);
 
                         const ownedUsers = this.workspaceUtil.buildOwnedUsers(
                             inputs,

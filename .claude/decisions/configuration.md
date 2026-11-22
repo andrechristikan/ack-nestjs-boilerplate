@@ -82,6 +82,19 @@ Rule: `feature-flag.md`, Restrictions.
 
 - Admin create and delete of flags: every key is an enum member the code reads, so a flag created at runtime gates nothing and a deleted one leaves its guard with no row to read.
 
+### A flag's targets are the join model `FeatureFlagTarget`
+
+Rule: `feature-flag.md`, Rollout and targeting.
+
+- A two-sided relation list (`User.featureFlagIds`): every target change writes an id array on the flag and on each user row.
+
+### A flag's target check counts a soft-deleted user's row
+
+Rule: `feature-flag.md`, Rollout and targeting.
+
+- Refusing a deleted user's id: a status update that sends the stored list back answers 404 with no id named.
+- Removing the target rows in the account deletion job: a new service method, a repository method, and a cache invalidation for a row that gates nothing.
+
 ### `DATABASE_DEBUG_ENABLED` is refused in production
 
 Rule: `config.md`.

@@ -26,12 +26,17 @@ import {
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
-import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
+import type {
+    IDeviceIdentity,
+    IDeviceLoginUpsert,
+} from '@modules/device/interfaces/device.interface';
+import { DeviceService } from '@modules/device/services/device.service';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.exception';
 import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { MfaMethodRequiredException } from '@modules/mfa/exceptions/mfa.method-required.exception';
+import { MfaNotEnabledException } from '@modules/mfa/exceptions/mfa.not-enabled.exception';
 import type {
     IMfaChallengeLogin,
     IMfaCheck,
@@ -58,6 +63,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
+    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
@@ -87,6 +93,12 @@ describe('UserLoginVerifyMfaUseCase', () => {
         priority: EnumQueuePriority.low,
         idempotencyKey: null,
     };
+    const upserted = {
+        device: { id: 'device-one' },
+        deviceOwnership: { id: 'ownership-one' },
+        isNewDevice: false,
+        otherOwnershipIds: ['ownership-two'],
+    } as unknown as IDeviceLoginUpsert;
     const baseUser = {
         ...buildUser('user-bramble', 'bramble@example.com'),
         isVerified: true,
@@ -134,6 +146,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
+        deviceService.upsertForLoginInTx.mockResolvedValue(upserted);
         userAuthService.createTokenAndSessionInTx.mockResolvedValue(session);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -143,6 +156,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 { provide: MfaChallengeService, useValue: mfaChallengeService },
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
+                { provide: DeviceService, useValue: deviceService },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 HelperDateService,
@@ -166,6 +180,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
         beforeEach(() => {
             mfaChallengeService.getLogin.mockResolvedValue(challenge);
             userAuthService.getOneForMfaLogin.mockResolvedValue(baseUser);
+            mfaService.assertEnabled.mockResolvedValue();
             mfaService.check.mockResolvedValue({
                 check: checked,
                 failure: null,
@@ -225,6 +240,11 @@ describe('UserLoginVerifyMfaUseCase', () => {
 
                 return 'outbox-id';
             });
+            deviceService.upsertForLoginInTx.mockImplementation(async () => {
+                callOrder.push('upsertForLoginInTx');
+
+                return upserted;
+            });
             userAuthService.createTokenAndSessionInTx.mockImplementation(
                 async () => {
                     callOrder.push('createTokenAndSessionInTx');
@@ -241,6 +261,9 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 'challenge-token'
             );
             expect(userAuthService.getOneForMfaLogin).toHaveBeenCalledWith(
+                'user-bramble'
+            );
+            expect(mfaService.assertEnabled).toHaveBeenCalledWith(
                 'user-bramble'
             );
             expect(mfaService.check).toHaveBeenCalledWith(
@@ -278,15 +301,22 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 baseUser,
-                deviceIdentity,
+                upserted,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
+                now
+            );
+            expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
+                tx,
+                'user-bramble',
+                deviceIdentity,
                 now
             );
             expect(callOrder).toEqual([
                 'check',
                 'completeChallengeInTx',
                 'addInTx',
+                'upsertForLoginInTx',
                 'createTokenAndSessionInTx',
             ]);
         });
@@ -379,6 +409,18 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 statusCode: EnumMfaStatusCodeError.challengeInvalid,
             });
             expect(userAuthService.getOneForMfaLogin).not.toHaveBeenCalled();
+        });
+
+        it('throws MfaNotEnabledException and checks nothing when MFA is off', async () => {
+            mfaService.assertEnabled.mockRejectedValue(
+                new MfaNotEnabledException()
+            );
+
+            await expect(
+                useCase.execute(requestContext, apiKeyContext, dto)
+            ).rejects.toBeInstanceOf(MfaNotEnabledException);
+            expect(mfaService.check).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('throws MfaMethodRequiredException uncounted when the check finds no method', async () => {

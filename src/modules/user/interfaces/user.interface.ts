@@ -1,5 +1,6 @@
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type {
+    EnumUserAuthProcess,
     EnumUserProcess,
     EnumUserQueue,
 } from '@modules/user/enums/user.enum';
@@ -19,15 +20,9 @@ import {
     EnumVerificationType,
     EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
-import type {
-    AuthenticationResponseJSON,
-    PublicKeyCredentialRequestOptionsJSON,
-} from '@simplewebauthn/server';
+import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/server';
 import type { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
-import type {
-    IMfaAttemptFailure,
-    IMfaCheck,
-} from '@modules/mfa/interfaces/mfa.interface';
+import type { IMfaReauthenticationInput } from '@modules/mfa/interfaces/mfa.interface';
 import type {
     Country,
     EnumAwsS3Accessibility,
@@ -58,6 +53,7 @@ import type {
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
+import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 
 export interface IUserDeletedIdentity {
     email: string;
@@ -334,22 +330,9 @@ export interface IUserForgotPasswordPrepared {
     forgot: IUserForgotPasswordCreate;
 }
 
-export interface IUserReauthenticationInput {
-    action: EnumUserReauthenticationAction;
+export interface IUserReauthenticationInput extends IMfaReauthenticationInput {
     password: string | null;
-    method: EnumMfaMethod | null;
-    code: string | null;
-    backupCode: string | null;
-    passkeyChallengeToken: string | null;
-    passkeyResponse: AuthenticationResponseJSON | null;
     otp: string | null;
-}
-
-export interface IUserReauthenticationCheck {
-    isPasswordChecked: boolean;
-    mfa: IMfaCheck | null;
-    verificationId: string | null;
-    passkeyChallengeToken: string | null;
 }
 
 export interface IUserPasswordAttemptLimit {
@@ -357,31 +340,10 @@ export interface IUserPasswordAttemptLimit {
     lockedUntil: Date;
 }
 
-interface IUserReauthenticationPasswordFailure {
-    password: IUserPasswordAttemptLimit;
-    mfa: null;
+export interface IUserReauthenticationPasswordResult {
+    isPasswordChecked: boolean;
+    limit: IUserPasswordAttemptLimit | null;
 }
-
-interface IUserReauthenticationMfaFailure {
-    password: null;
-    mfa: IMfaAttemptFailure;
-}
-
-export type IUserReauthenticationFailure =
-    IUserReauthenticationPasswordFailure | IUserReauthenticationMfaFailure;
-
-interface IUserReauthenticationPassed {
-    check: IUserReauthenticationCheck;
-    failure: null;
-}
-
-interface IUserReauthenticationRefused {
-    check: null;
-    failure: IUserReauthenticationFailure;
-}
-
-export type IUserReauthenticationResult =
-    IUserReauthenticationPassed | IUserReauthenticationRefused;
 
 export interface IUserLoginMfaChallenge {
     challengeToken: string;
@@ -433,6 +395,11 @@ export interface IUserDeleteSelfPayload {
     userId: string;
     ownedWorkspaceIds: string[];
     activityLog: IActivityLogActorPayload;
+}
+
+export interface IUserPurgeLoginsPayload {
+    userId: string;
+    sessions: ISessionRef[];
 }
 
 export interface IUserExport {
@@ -491,6 +458,12 @@ export interface IUserDeleteSelfEffect extends IOutboxEffect {
     data: IUserDeleteSelfPayload;
 }
 
+export interface IUserPurgeLoginsEffect extends IOutboxEffect {
+    queue: EnumUserQueue.userAuth;
+    name: EnumUserAuthProcess.purgeLogins;
+    data: IUserPurgeLoginsPayload;
+}
+
 export interface IUserDeletePhotoQueueResponse extends IQueueResponse {
     key: string;
 }
@@ -510,4 +483,8 @@ export interface IUserPurgeExpiredQueueResponse extends IQueueResponse {
     passwordHistories: number;
     verifications: number;
     forgotPasswords: number;
+}
+
+export interface IUserPurgeLoginsQueueResponse extends IQueueResponse {
+    countSessions: number;
 }

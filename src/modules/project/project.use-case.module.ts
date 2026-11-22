@@ -13,7 +13,6 @@ import { ProjectAssignMemberUseCase } from '@modules/project/use-cases/project.a
 import { ProjectUpdateMemberRoleUseCase } from '@modules/project/use-cases/project.update-member-role.use-case';
 import { ProjectRemoveMemberUseCase } from '@modules/project/use-cases/project.remove-member.use-case';
 import { ProjectLeaveUseCase } from '@modules/project/use-cases/project.leave.use-case';
-import { ProjectProcessSoftDeleteByWorkspaceUseCase } from '@modules/project/use-cases/project.process-soft-delete-by-workspace.use-case';
 import { WorkspaceModule } from '@modules/workspace/workspace.module';
 import { Module } from '@nestjs/common';
 
@@ -33,7 +32,6 @@ import { Module } from '@nestjs/common';
         ProjectUpdateMemberRoleUseCase,
         ProjectRemoveMemberUseCase,
         ProjectLeaveUseCase,
-        ProjectProcessSoftDeleteByWorkspaceUseCase,
     ],
     exports: [
         ProjectGetListCursorByMemberUseCase,
@@ -49,7 +47,6 @@ import { Module } from '@nestjs/common';
         ProjectUpdateMemberRoleUseCase,
         ProjectRemoveMemberUseCase,
         ProjectLeaveUseCase,
-        ProjectProcessSoftDeleteByWorkspaceUseCase,
     ],
     imports: [ActivityLogModule, ProjectModule, WorkspaceModule],
 })

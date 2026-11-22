@@ -30,4 +30,6 @@ Sessions: `session.md`. Credentials, cryptography, and the request store: `secur
 - MFA is opt-in per user. TOTP runs SHA-1 with `window` 1 (`mfa.totp.algorithm`, `mfa.totp.window`).
 - `MfaTotp.lastUsedStep` accepts each TOTP step once. A passkey assertion whose counter did not increase is a mismatch, except a counter of 0 stored and asserted.
 - A challenge is an `MfaChallenge` row of one `EnumMfaChallengePurpose`, read and claimed for that purpose only; the login's is created in the login's transaction. The flow claims it with a guarded `updateMany` inside the transaction that completes the check, in `UserLoginVerifyMfaUseCase` the one that creates the session.
+- `UserLoginVerifyMfaUseCase` awaits `MfaService.assertEnabled`, which throws `MfaNotEnabledException`, beside `UserAuthService.getOneForMfaLogin`, which reads the user alone, in one `Promise.all`.
+- A re-authentication's MFA part is `MfaService`'s (`credential-policy.md`, Re-authentication): `checkReauthentication` writes nothing and answers whether MFA is on, the check, or the failure, a passkey proof against a `reauthentication` challenge standing for the whole proof; `completeReauthenticationInTx` claims that challenge and completes the check through `completeInTx`.
 - An admin reset deletes every factor and empties the codes, the counter, and the lock: the next login asks no MFA.

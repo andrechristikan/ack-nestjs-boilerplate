@@ -34,6 +34,7 @@ import { WorkspaceRoleForbiddenException } from '@modules/workspace/exceptions/w
 import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/workspace.self-transfer.exception';
 import { WorkspaceTransferTargetInactiveException } from '@modules/workspace/exceptions/workspace.transfer-target-inactive.exception';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/workspace.join-request.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import {
@@ -56,6 +57,8 @@ describe('WorkspaceMemberService', () => {
         mock<WorkspaceMemberRepository>();
     const workspaceRepository: MockProxy<WorkspaceRepository> =
         mock<WorkspaceRepository>();
+    const workspaceJoinRequestRepository: MockProxy<WorkspaceJoinRequestRepository> =
+        mock<WorkspaceJoinRequestRepository>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -92,6 +95,10 @@ describe('WorkspaceMemberService', () => {
                     useValue: workspaceMemberRepository,
                 },
                 { provide: WorkspaceRepository, useValue: workspaceRepository },
+                {
+                    provide: WorkspaceJoinRequestRepository,
+                    useValue: workspaceJoinRequestRepository,
+                },
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
@@ -811,7 +818,19 @@ describe('WorkspaceMemberService', () => {
             );
         });
 
-        it('throws WorkspaceMemberNotFoundException when the guarded removal misses', async () => {
+        it('cancels the pending join request of the member user on the same transaction after the removal', async () => {
+            await service.leaveWorkspaceInTx(tx, baseMember);
+
+            expect(
+                workspaceJoinRequestRepository.cancelPendingByUserInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                baseMember.workspaceId,
+                baseMember.userId
+            );
+        });
+
+        it('throws WorkspaceMemberNotFoundException and cancels nothing when the guarded removal misses', async () => {
             workspaceMemberRepository.removeMemberInTx.mockResolvedValue(false);
 
             await expect(
@@ -821,6 +840,9 @@ describe('WorkspaceMemberService', () => {
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
             });
+            expect(
+                workspaceJoinRequestRepository.cancelPendingByUserInTx
+            ).not.toHaveBeenCalled();
         });
     });
 
@@ -1076,7 +1098,15 @@ describe('WorkspaceMemberService', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException when the target role changed since it was read', async () => {
+        it('cancels the pending join request of the target user on the same transaction after the removal', async () => {
+            await service.removeMemberInTx(tx, target);
+
+            expect(
+                workspaceJoinRequestRepository.cancelPendingByUserInTx
+            ).toHaveBeenCalledWith(tx, target.workspaceId, 'user-2');
+        });
+
+        it('throws WorkspaceMemberPeerForbiddenException and cancels nothing when the target role changed since it was read', async () => {
             workspaceMemberRepository.removeMemberInTx.mockResolvedValue(false);
 
             await expect(
@@ -1086,6 +1116,9 @@ describe('WorkspaceMemberService', () => {
                 statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
                 constructor: WorkspaceMemberPeerForbiddenException,
             });
+            expect(
+                workspaceJoinRequestRepository.cancelPendingByUserInTx
+            ).not.toHaveBeenCalled();
         });
     });
 

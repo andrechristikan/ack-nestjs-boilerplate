@@ -7,6 +7,7 @@ import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queu
 import type { UserReauthenticationSendRequestDto } from '@modules/user/dtos/request/user.reauthentication-send.request.dto';
 import type { IUserContext } from '@modules/user/interfaces/user.interface';
 import { UserService } from '@modules/user/services/user.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { Injectable } from '@nestjs/common';
@@ -28,6 +29,7 @@ export class UserSendReauthenticationOtpUseCase implements IAppUseCase<
     constructor(
         private readonly userService: UserService,
         private readonly userAuthService: UserAuthService,
+        private readonly mfaService: MfaService,
         private readonly userVerificationService: UserVerificationService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
@@ -44,13 +46,17 @@ export class UserSendReauthenticationOtpUseCase implements IAppUseCase<
         this.userService.assertEmailDeliverable();
 
         // Sequential by design: a write after its checks
-        await Promise.all([
-            this.userAuthService.assertReauthenticationOtpAllowed(user),
+        const [isMfaEnabled] = await Promise.all([
+            this.mfaService.isEnabled(user.id),
             this.userVerificationService.assertReauthenticationResendable(
                 user.id,
                 action
             ),
         ]);
+        this.userAuthService.assertReauthenticationOtpAllowed(
+            user,
+            isMfaEnabled
+        );
 
         await this.databaseService.withTransaction(async tx => {
             await this.userVerificationService.sendReauthenticationInTx(

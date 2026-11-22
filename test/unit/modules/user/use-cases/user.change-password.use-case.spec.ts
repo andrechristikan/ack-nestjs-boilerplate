@@ -1,6 +1,11 @@
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
-import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
+import {
+    TestUnitReauthenticationMfaFailure,
+    TestUnitReauthenticationMfaOff,
+    TestUnitReauthenticationPasswordLimit,
+    TestUnitReauthenticationPasswordPassed,
+} from '@test/unit/helpers/test.unit.user.helper';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -17,10 +22,6 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { MockInstance } from 'vitest';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -49,11 +50,12 @@ import { SessionService } from '@modules/session/services/session.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
+import type { IMfaReauthenticationResult } from '@modules/mfa/interfaces/mfa.interface';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { PasswordHistoryMustNewException } from '@modules/password-history/exceptions/password-history.must-new.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
-import type { IUserReauthenticationCheck } from '@modules/user/interfaces/user.interface';
 import { UserChangePasswordUseCase } from '@modules/user/use-cases/user.change-password.use-case';
 import {
     buildRequestContext,
@@ -82,6 +84,7 @@ describe('UserChangePasswordUseCase', () => {
     const userPasswordService: MockProxy<UserPasswordService> =
         mock<UserPasswordService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const passwordHistoryService: MockProxy<PasswordHistoryService> =
         mock<PasswordHistoryService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
@@ -94,8 +97,6 @@ describe('UserChangePasswordUseCase', () => {
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
-    let helperHashService: HelperHashService;
-    let argon2Hash: MockInstance<HelperHashService['argon2Hash']>;
     let useCase: UserChangePasswordUseCase;
 
     const user = buildUser('user-linden', 'linden@example.com');
@@ -140,21 +141,15 @@ describe('UserChangePasswordUseCase', () => {
         id: 'user-linden',
         updatedAt: new Date('2026-03-01T00:00:00.000Z'),
     } as User;
-    const passwordOnly: IUserReauthenticationCheck = {
-        isPasswordChecked: true,
-        mfa: null,
-        verificationId: null,
-        passkeyChallengeToken: null,
-    };
-    const withMfa: IUserReauthenticationCheck = {
-        isPasswordChecked: true,
-        mfa: {
+    const withMfa: IMfaReauthenticationResult = {
+        isEnabled: true,
+        check: {
             method: EnumMfaMethod.totp,
             totpStep: 58123456,
             backupCodeHash: null,
             passkey: null,
         },
-        verificationId: null,
+        failure: null,
         passkeyChallengeToken: null,
     };
 
@@ -180,6 +175,7 @@ describe('UserChangePasswordUseCase', () => {
                 { provide: UserService, useValue: userService },
                 { provide: UserPasswordService, useValue: userPasswordService },
                 { provide: UserAuthService, useValue: userAuthService },
+                { provide: MfaService, useValue: mfaService },
                 {
                     provide: PasswordHistoryService,
                     useValue: passwordHistoryService,
@@ -188,9 +184,6 @@ describe('UserChangePasswordUseCase', () => {
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: AuthPasswordService, useValue: authPasswordService },
                 AuthPasswordUtil,
-                HelperHashService,
-                HelperDateService,
-                HelperStringService,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
@@ -204,7 +197,6 @@ describe('UserChangePasswordUseCase', () => {
                 DatabaseUtil,
             ],
         }).compile();
-        helperHashService = module.get(HelperHashService);
         useCase = module.get(UserChangePasswordUseCase);
     });
 
@@ -215,13 +207,16 @@ describe('UserChangePasswordUseCase', () => {
         };
 
         beforeEach(() => {
-            userAuthService.checkReauthentication.mockResolvedValue({
-                check: passwordOnly,
-                failure: null,
-            });
-            argon2Hash = vi
-                .spyOn(helperHashService, 'argon2Hash')
-                .mockResolvedValue('hashed');
+            userAuthService.checkReauthenticationPassword.mockResolvedValue(
+                TestUnitReauthenticationPasswordPassed
+            );
+            mfaService.checkReauthentication.mockResolvedValue(
+                TestUnitReauthenticationMfaOff
+            );
+            userAuthService.getReauthenticationVerificationId.mockResolvedValue(
+                null
+            );
+            authPasswordService.create.mockResolvedValue(password);
             userService.updatePasswordInTx.mockResolvedValue(updatedRow);
             passwordHistoryService.createInTx.mockResolvedValue(
                 passwordHistory
@@ -233,9 +228,9 @@ describe('UserChangePasswordUseCase', () => {
 
         it('commits the failed count in a transaction of its own, then throws, and leaves the work undone', async () => {
             const refusal = new Error('refused');
-            userAuthService.checkReauthentication.mockResolvedValue({
-                check: null,
-                failure: TestUnitReauthenticationPasswordFailure,
+            userAuthService.checkReauthenticationPassword.mockResolvedValue({
+                isPasswordChecked: true,
+                limit: TestUnitReauthenticationPasswordLimit,
             });
             userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
                 true
@@ -264,7 +259,7 @@ describe('UserChangePasswordUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                TestUnitReauthenticationPasswordFailure
+                TestUnitReauthenticationPasswordLimit
             );
             expect(
                 userAuthService.countFailedReauthenticationInTx
@@ -273,12 +268,59 @@ describe('UserChangePasswordUseCase', () => {
             );
             expect(
                 userAuthService.throwFailedReauthentication
-            ).toHaveBeenCalledWith(
-                TestUnitReauthenticationPasswordFailure,
+            ).toHaveBeenCalledWith(true);
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(mfaService.checkReauthentication).not.toHaveBeenCalled();
+        });
+
+        it('commits the failed MFA count in a transaction of its own, then throws, and leaves the work undone', async () => {
+            const refusal = new Error('refused');
+            mfaService.checkReauthentication.mockResolvedValue({
+                isEnabled: true,
+                check: null,
+                failure: TestUnitReauthenticationMfaFailure,
+                passkeyChallengeToken: null,
+            });
+            mfaService.countFailedAttemptInTx.mockResolvedValue(true);
+            mfaService.throwFailedAttempt.mockImplementation(() => {
+                throw refusal;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext.userId,
+                TestUnitReauthenticationMfaFailure
+            );
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledBefore(
+                mfaService.throwFailedAttempt
+            );
+            expect(mfaService.throwFailedAttempt).toHaveBeenCalledWith(
+                TestUnitReauthenticationMfaFailure,
                 true
             );
             expect(
+                userAuthService.getReauthenticationVerificationId
+            ).not.toHaveBeenCalled();
+            expect(
                 userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                mfaService.completeReauthenticationInTx
             ).not.toHaveBeenCalled();
         });
 
@@ -298,19 +340,18 @@ describe('UserChangePasswordUseCase', () => {
                 }
             );
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.changePassword,
-                    password: 'old-password',
-                    method: EnumMfaMethod.totp,
-                    code: '654321',
-                    backupCode: null,
-                    passkeyChallengeToken: 'challenge-quartz',
-                    passkeyResponse,
-                    otp: '123456',
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.changePassword,
+                password: 'old-password',
+                method: EnumMfaMethod.totp,
+                code: '654321',
+                backupCode: null,
+                passkeyChallengeToken: 'challenge-quartz',
+                passkeyResponse,
+                otp: '123456',
+            });
             expect(passwordHistoryService.assertNew).toHaveBeenCalledWith(
                 'user-linden',
                 'new-password'
@@ -320,16 +361,18 @@ describe('UserChangePasswordUseCase', () => {
                 ['ACK Boilerplate', 'linden', 'jane', 'Jane Doe']
             );
             expect(
-                userAuthService.checkReauthentication
+                userAuthService.checkReauthenticationPassword
             ).toHaveBeenCalledBefore(authPasswordService.assertAllowed);
             expect(passwordHistoryService.assertNew).toHaveBeenCalledBefore(
-                argon2Hash
+                authPasswordService.create
             );
             expect(authPasswordService.assertAllowed).toHaveBeenCalledBefore(
-                argon2Hash
+                authPasswordService.create
             );
-            expect(argon2Hash).toHaveBeenCalledWith('new-password');
-            expect(argon2Hash).toHaveBeenCalledBefore(
+            expect(authPasswordService.create).toHaveBeenCalledWith(
+                'new-password'
+            );
+            expect(authPasswordService.create).toHaveBeenCalledBefore(
                 databaseService.withTransaction
             );
         });
@@ -388,12 +431,15 @@ describe('UserChangePasswordUseCase', () => {
 
             expect(
                 userAuthService.completeReauthenticationInTx
+            ).toHaveBeenCalledWith(tx, authContext, true, null);
+            expect(
+                mfaService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
                 tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                passwordOnly
+                TestUnitReauthenticationMfaOff
             );
             expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
@@ -499,12 +545,9 @@ describe('UserChangePasswordUseCase', () => {
         });
 
         it('checks no history for an account with no password', async () => {
-            userAuthService.checkReauthentication.mockResolvedValue({
-                check: {
-                    ...passwordOnly,
-                    isPasswordChecked: false,
-                },
-                failure: null,
+            userAuthService.checkReauthenticationPassword.mockResolvedValue({
+                isPasswordChecked: false,
+                limit: null,
             });
 
             await useCase.execute(
@@ -516,25 +559,26 @@ describe('UserChangePasswordUseCase', () => {
             );
 
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.changePassword,
-                    password: null,
-                    method: null,
-                    code: null,
-                    backupCode: null,
-                    passkeyChallengeToken: null,
-                    passkeyResponse: null,
-                    otp: null,
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.changePassword,
+                password: null,
+                method: null,
+                code: null,
+                backupCode: null,
+                passkeyChallengeToken: null,
+                passkeyResponse: null,
+                otp: null,
+            });
             expect(userService.updatePasswordInTx).toHaveBeenCalled();
         });
 
         it('writes nothing and checks nothing further when the re-authentication fails', async () => {
             const failure = new UserPasswordNotMatchException();
-            userAuthService.checkReauthentication.mockRejectedValue(failure);
+            userAuthService.checkReauthenticationPassword.mockRejectedValue(
+                failure
+            );
 
             await expect(
                 useCase.execute(
@@ -548,13 +592,13 @@ describe('UserChangePasswordUseCase', () => {
 
             expect(passwordHistoryService.assertNew).not.toHaveBeenCalled();
             expect(authPasswordService.assertAllowed).not.toHaveBeenCalled();
-            expect(argon2Hash).not.toHaveBeenCalled();
+            expect(authPasswordService.create).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
         it('writes nothing when the MFA budget is spent', async () => {
             const limit = new MfaAttemptMaxException();
-            userAuthService.checkReauthentication.mockRejectedValue(limit);
+            mfaService.checkReauthentication.mockRejectedValue(limit);
 
             await expect(
                 useCase.execute(
@@ -602,7 +646,7 @@ describe('UserChangePasswordUseCase', () => {
                 )
             ).rejects.toBe(refused);
 
-            expect(argon2Hash).not.toHaveBeenCalled();
+            expect(authPasswordService.create).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
@@ -645,10 +689,7 @@ describe('UserChangePasswordUseCase', () => {
 
         it('answers MfaInvalidException when a verified MFA user loses a write conflict', async () => {
             const conflict = buildPrismaKnownRequestError('P2034');
-            userAuthService.checkReauthentication.mockResolvedValue({
-                check: withMfa,
-                failure: null,
-            });
+            mfaService.checkReauthentication.mockResolvedValue(withMfa);
             databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(

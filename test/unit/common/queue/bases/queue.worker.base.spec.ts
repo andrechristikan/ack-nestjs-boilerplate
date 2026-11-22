@@ -38,5 +38,18 @@ describe('QueueWorkerBase', () => {
                 connection,
             });
         });
+
+        it('passes the options as given, with no concurrency of its own', () => {
+            Reflect.construct(QueueWorkerBase, [
+                'notification',
+                processor,
+                { prefix: 'Queue' },
+            ]);
+
+            expect(Worker).toHaveBeenCalledWith('notification', processor, {
+                prefix: 'Queue',
+                connection,
+            });
+        });
     });
 });

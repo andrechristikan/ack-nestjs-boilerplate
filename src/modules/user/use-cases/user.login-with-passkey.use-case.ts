@@ -12,6 +12,7 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
@@ -34,6 +35,7 @@ export class UserLoginWithPasskeyUseCase implements IAppUseCase<
         private readonly mfaChallengeService: MfaChallengeService,
         private readonly mfaPasskeyService: MfaPasskeyService,
         private readonly workspaceMemberService: WorkspaceMemberService,
+        private readonly deviceService: DeviceService,
         private readonly deviceUtil: DeviceUtil,
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
@@ -99,13 +101,20 @@ export class UserLoginWithPasskeyUseCase implements IAppUseCase<
                         EnumMfaChallengePurpose.passwordless,
                         check
                     );
+                    const upserted =
+                        await this.deviceService.upsertForLoginInTx(
+                            tx,
+                            user.id,
+                            deviceIdentity,
+                            loginAt
+                        );
 
                     return this.userAuthService.createTokenAndSessionInTx(
                         tx,
                         requestContext,
                         apiKeyContext,
                         user,
-                        deviceIdentity,
+                        upserted,
                         from,
                         EnumUserLoginWith.passkey,
                         loginAt

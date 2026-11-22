@@ -87,11 +87,10 @@ export interface IDeviceOwnershipRepository {
         deviceId: string,
         userId: string
     ): Promise<string[]>;
-    clearTokens(userId: string, tokens: string[]): Promise<Prisma.BatchPayload>;
-    clearTokensWithoutLiveSession(
+    clearTokensInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
-        now: Date,
-        idleSince: Date
-    ): Promise<Prisma.BatchPayload>;
+        tokens: string[]
+    ): Promise<void>;
     clearStaleTokens(thresholdInMs: number): Promise<Prisma.BatchPayload>;
 }

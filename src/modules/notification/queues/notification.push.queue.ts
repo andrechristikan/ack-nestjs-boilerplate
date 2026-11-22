@@ -5,7 +5,6 @@ import {
 } from '@modules/notification/enums/notification.enum';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import type {
-    INotificationPushCleanupTokensEffect,
     INotificationPushSendEffect,
     INotificationRecipientRecord,
     INotificationSealedData,
@@ -87,19 +86,6 @@ export class NotificationPushQueue extends QueueBase implements OnModuleInit {
             },
             priority: queuePriority,
             idempotencyKey,
-        };
-    }
-
-    cleanupTokensEffect(
-        userId: string,
-        encryptedFailureTokens: string[]
-    ): INotificationPushCleanupTokensEffect {
-        return {
-            queue: EnumNotificationQueue.notificationPush,
-            name: EnumNotificationPushProcess.cleanupTokens,
-            data: { userId, encryptedFailureTokens },
-            priority: EnumQueuePriority.low,
-            idempotencyKey: null,
         };
     }
 }

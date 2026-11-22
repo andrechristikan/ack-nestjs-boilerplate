@@ -23,7 +23,6 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { FeatureFlag } from '@generated/prisma-client/client';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
 import { FeatureFlagCacheSchema } from '@modules/feature-flag/constants/feature-flag.constant';
 import {
@@ -35,6 +34,7 @@ import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
 import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
 import type {
+    IFeatureFlag,
     IFeatureFlagMetadata,
     IFeatureFlagUpdateMetadata,
     IFeatureFlagUpdateStatus,
@@ -68,7 +68,7 @@ describe('FeatureFlagService', () => {
         idempotencyKey: null,
     };
 
-    const baseFlag: FeatureFlag = {
+    const baseFlag: IFeatureFlag = {
         id: '507f1f77bcf86cd799439011',
         key: EnumFeatureFlagKey.loginWithGoogle,
         description: 'Enables Google sign-in',
@@ -646,7 +646,7 @@ describe('FeatureFlagService', () => {
                 limit: 20,
                 skip: 0,
             };
-            const paginationReturn: IResponsePaginationReturn<FeatureFlag> = {
+            const paginationReturn: IResponsePaginationReturn<IFeatureFlag> = {
                 type: EnumPaginationType.offset,
                 count: 1,
                 perPage: 20,
@@ -677,7 +677,7 @@ describe('FeatureFlagService', () => {
                 orderBy: [],
                 limit: 20,
             };
-            const paginationReturn: IResponsePaginationReturn<FeatureFlag> = {
+            const paginationReturn: IResponsePaginationReturn<IFeatureFlag> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
                 hasNext: false,

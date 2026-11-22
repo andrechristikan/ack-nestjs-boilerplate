@@ -24,7 +24,6 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
-import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
 import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/exceptions/workspace.member-peer-forbidden.exception';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -49,8 +48,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
         mock<ActivityLogQueue>();
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
-    const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
-        mock<WorkspaceJoinRequestService>();
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -87,10 +84,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 {
                     provide: ProjectMemberService,
                     useValue: projectMemberService,
-                },
-                {
-                    provide: WorkspaceJoinRequestService,
-                    useValue: workspaceJoinRequestService,
                 },
                 {
                     provide: WorkspaceInviteService,
@@ -144,7 +137,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('awaits the member removal alone, then starts the project member removal, the invite revoke, the join request cancel, and the last workspace clear together', async () => {
+        it('awaits the member removal alone, then starts the project member removal, the invite revoke, and the last workspace clear together', async () => {
             const events: string[] = [];
             workspaceMemberService.removeMemberInTx.mockImplementation(
                 async () => {
@@ -167,15 +160,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                     events.push('start:invite');
                     await Promise.resolve();
                     events.push('end:invite');
-                }
-            );
-            workspaceJoinRequestService.cancelPendingByUserInTx.mockImplementation(
-                async () => {
-                    events.push('start:joinRequests');
-                    await Promise.resolve();
-                    events.push('end:joinRequests');
-
-                    return 0;
                 }
             );
             userService.clearLastWorkspaceInTx.mockImplementation(async () => {
@@ -202,11 +186,9 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 'end:remove',
                 'start:projectMembers',
                 'start:invite',
-                'start:joinRequests',
                 'start:lastWorkspace',
                 'end:projectMembers',
                 'end:invite',
-                'end:joinRequests',
                 'end:lastWorkspace',
                 'addEntries',
             ]);
@@ -231,13 +213,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                     callOrder.push('invite');
                 }
             );
-            workspaceJoinRequestService.cancelPendingByUserInTx.mockImplementation(
-                async () => {
-                    callOrder.push('joinRequests');
-
-                    return 0;
-                }
-            );
             userService.clearLastWorkspaceInTx.mockImplementation(async () => {
                 callOrder.push('lastWorkspace');
             });
@@ -258,9 +233,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             expect(
                 projectMemberService.removeByWorkspaceAndUserInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-2');
-            expect(
-                workspaceJoinRequestService.cancelPendingByUserInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-2');
             expect(userService.clearLastWorkspaceInTx).toHaveBeenCalledWith(
                 tx,
                 'user-2',
@@ -270,7 +242,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 'remove',
                 'projectMembers',
                 'invite',
-                'joinRequests',
                 'lastWorkspace',
             ]);
             expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
@@ -343,9 +314,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             ).not.toHaveBeenCalled();
             expect(
                 workspaceInviteService.revokePendingByEmailInTx
-            ).not.toHaveBeenCalled();
-            expect(
-                workspaceJoinRequestService.cancelPendingByUserInTx
             ).not.toHaveBeenCalled();
             expect(userService.clearLastWorkspaceInTx).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();

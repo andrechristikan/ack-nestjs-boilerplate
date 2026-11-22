@@ -1,6 +1,5 @@
 import { EnumDevicePlatform } from '@generated/prisma-client/client';
 import type { Device, DeviceOwnership } from '@generated/prisma-client/client';
-import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 
 export interface IDeviceIdentity {
@@ -14,6 +13,7 @@ export interface IDeviceLoginUpsert {
     device: Device;
     deviceOwnership: DeviceOwnership;
     isNewDevice: boolean;
+    otherOwnershipIds: string[];
 }
 
 export interface IDeviceOwnershipLoginUpsert {
@@ -47,9 +47,4 @@ export interface IDeviceRefresh {
     name: string | null;
     platform: EnumDevicePlatform;
     notificationToken: string | null;
-}
-
-export interface IDeviceRemoveResult {
-    deviceOwnership: IDeviceOwnership;
-    revokedSessions: ISessionRef[];
 }

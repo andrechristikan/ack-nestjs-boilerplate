@@ -9,10 +9,7 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumWorkspaceMemberRole,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import type {
     IWorkspaceCreate,
@@ -247,6 +244,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
                 slug: deletedSlugPattern.replace('{id}', () => workspaceId),
                 deletedAt,
                 deletedBy,
+                updatedBy: deletedBy,
             },
         });
 
@@ -269,42 +267,5 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         );
 
         return workspace !== null;
-    }
-
-    async softDeleteOwnedByUserInTx(
-        tx: IDatabaseTransactionClient,
-        workspaceIds: string[],
-        userId: string,
-        deletedAt: Date
-    ): Promise<string[]> {
-        const where: Prisma.WorkspaceWhereInput = {
-            id: { in: workspaceIds },
-            deletedAt: null,
-        };
-        const workspaces = await tx.workspace.findMany({
-            where,
-            select: { id: true },
-        });
-        const liveWorkspaceIds = workspaces.map(({ id }) => id);
-
-        const deletedSlugPattern = this.deletedSlugPattern;
-        await Promise.all(
-            liveWorkspaceIds.map(workspaceId =>
-                tx.workspace.updateMany({
-                    where: { id: workspaceId, deletedAt: null },
-                    data: {
-                        slug: deletedSlugPattern.replace(
-                            '{id}',
-                            () => workspaceId
-                        ),
-                        deletedAt,
-                        deletedBy: userId,
-                        updatedBy: userId,
-                    },
-                })
-            )
-        );
-
-        return liveWorkspaceIds;
     }
 }

@@ -1,4 +1,6 @@
+import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
+import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import {
     EnumProjectMemberRole,
     EnumWorkspaceMemberRole,
@@ -16,6 +18,10 @@ import type {
 } from '@modules/workspace/constants/workspace.constant';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
+import type {
+    EnumWorkspaceProcess,
+    EnumWorkspaceQueue,
+} from '@modules/workspace/enums/workspace.enum';
 
 export interface IWorkspaceContext {
     workspaceId: string;
@@ -170,4 +176,16 @@ export interface IWorkspaceExpireStaleInvitesQueueResponse extends IQueueRespons
 
 export interface IWorkspaceExpireStaleJoinRequestsQueueResponse extends IQueueResponse {
     countExpiredJoinRequests: number;
+}
+
+export interface IWorkspaceSoftDeletePayload {
+    workspaceId: string;
+    deletedBy: string;
+    activityLog: IActivityLogActorPayload;
+}
+
+export interface IWorkspaceSoftDeleteEffect extends IOutboxEffect {
+    queue: EnumWorkspaceQueue.workspace;
+    name: EnumWorkspaceProcess.softDelete;
+    data: IWorkspaceSoftDeletePayload;
 }

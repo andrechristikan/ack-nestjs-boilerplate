@@ -11,7 +11,6 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
-import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -28,7 +27,6 @@ export class WorkspaceLeaveUseCase implements IAppUseCase<
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly projectMemberService: ProjectMemberService,
-        private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
         private readonly userService: UserService,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
@@ -54,11 +52,6 @@ export class WorkspaceLeaveUseCase implements IAppUseCase<
                 );
                 await Promise.all([
                     this.projectMemberService.removeByWorkspaceAndUserInTx(
-                        tx,
-                        workspaceId,
-                        member.userId
-                    ),
-                    this.workspaceJoinRequestService.cancelPendingByUserInTx(
                         tx,
                         workspaceId,
                         member.userId

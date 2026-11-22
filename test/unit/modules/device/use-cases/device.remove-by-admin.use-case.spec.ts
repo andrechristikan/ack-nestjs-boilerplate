@@ -24,6 +24,7 @@ import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queu
 import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
+import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import type { IRole } from '@modules/role/interfaces/role.interface';
@@ -45,6 +46,7 @@ import {
 
 describe('DeviceRemoveByAdminUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
+    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
@@ -151,6 +153,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
             providers: [
                 DeviceRemoveByAdminUseCase,
                 { provide: SessionService, useValue: sessionService },
+                { provide: DeviceService, useValue: deviceService },
                 { provide: RoleService, useValue: roleService },
                 { provide: UserService, useValue: userService },
                 { provide: DatabaseService, useValue: databaseService },
@@ -170,19 +173,21 @@ describe('DeviceRemoveByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        it('checks the rank, then removes on one tx and adds the actor and target entries in one addManyInTx after the removal when the admin removes another user device', async () => {
+        it('checks the rank, then revokes and removes on one tx and adds the actor and target entries in one addManyInTx after the removal when the admin removes another user device', async () => {
             userService.getRoleById.mockResolvedValue(userRole);
             const callOrder: string[] = [];
-            sessionService.removeDeviceOwnershipInTx.mockImplementation(
+            sessionService.revokeByDeviceOwnershipInTx.mockImplementation(
                 async () => {
-                    callOrder.push('removeDeviceOwnershipInTx');
+                    callOrder.push('revokeByDeviceOwnershipInTx');
 
-                    return {
-                        deviceOwnership,
-                        revokedSessions: [{ id: 'session-1' }],
-                    };
+                    return [{ id: 'session-1' }];
                 }
             );
+            deviceService.removeOwnershipInTx.mockImplementation(async () => {
+                callOrder.push('removeOwnershipInTx');
+
+                return deviceOwnership;
+            });
             outboxService.addManyInTx.mockImplementation(async () => {
                 callOrder.push('addManyInTx');
 
@@ -206,8 +211,15 @@ describe('DeviceRemoveByAdminUseCase', () => {
             );
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
-                sessionService.removeDeviceOwnershipInTx
+                sessionService.revokeByDeviceOwnershipInTx
             ).toHaveBeenCalledWith(
+                tx,
+                'user-1',
+                'device-ownership-1',
+                'admin-1',
+                now
+            );
+            expect(deviceService.removeOwnershipInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
                 'device-ownership-1',
@@ -258,7 +270,8 @@ describe('DeviceRemoveByAdminUseCase', () => {
             ]);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(callOrder).toEqual([
-                'removeDeviceOwnershipInTx',
+                'revokeByDeviceOwnershipInTx',
+                'removeOwnershipInTx',
                 'addManyInTx',
             ]);
         });
@@ -268,9 +281,10 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 ...userRole,
                 type: EnumRoleType.admin,
             });
-            sessionService.removeDeviceOwnershipInTx.mockResolvedValue({
-                deviceOwnership: { ...deviceOwnership, userId: 'admin-1' },
-                revokedSessions: [],
+            sessionService.revokeByDeviceOwnershipInTx.mockResolvedValue([]);
+            deviceService.removeOwnershipInTx.mockResolvedValue({
+                ...deviceOwnership,
+                userId: 'admin-1',
             });
 
             await useCase.execute(
@@ -293,9 +307,8 @@ describe('DeviceRemoveByAdminUseCase', () => {
         it('rethrows the removal exception', async () => {
             const notFound = new DeviceNotFoundException();
             userService.getRoleById.mockResolvedValue(userRole);
-            sessionService.removeDeviceOwnershipInTx.mockRejectedValue(
-                notFound
-            );
+            sessionService.revokeByDeviceOwnershipInTx.mockResolvedValue([]);
+            deviceService.removeOwnershipInTx.mockRejectedValue(notFound);
 
             await expect(
                 useCase.execute(
@@ -374,8 +387,9 @@ describe('DeviceRemoveByAdminUseCase', () => {
             ).rejects.toBe(rankForbidden);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
-                sessionService.removeDeviceOwnershipInTx
+                sessionService.revokeByDeviceOwnershipInTx
             ).not.toHaveBeenCalled();
+            expect(deviceService.removeOwnershipInTx).not.toHaveBeenCalled();
         });
     });
 });

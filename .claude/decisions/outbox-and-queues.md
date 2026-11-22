@@ -17,6 +17,41 @@ Rule: `effects.md`.
 - `@nestjs/event-emitter`: in-memory events add a second, non-durable mechanism whose `suppressErrors` default swallows listener failures.
 - `@nestjs/cqrs`: it adds the same second, non-durable in-memory mechanism.
 
+### A job is one flow in its processor use case, and pages its unbounded part itself after its transaction
+
+Rule: `use-case.md`, Jobs; `transaction.md`, Transactions.
+
+- A job queuing another module's job for its cascade (`softDeleteByWorkspace` on the `project` queue): one deletion is read across two processors.
+- The account deletion queuing `softDelete` and a memberships job: a deleted account keeps live workspaces when a follow-up job fails (`auth.md`, Self-delete validates in the request and a job deletes).
+- Every project of a workspace in the one transaction: it is unbounded.
+- A service method holding the entry and the cascade: it hides the sequence below the use case.
+
+### The side effects a job's flow may add are a closed list, and lint narrows a processor use case's own queue imports by folder
+
+Rule: `effects.md`; `eslint.md`, Boundaries.
+
+- Only `notification` and kit jobs in a job's flow: it forbids an activity entry and an S3 delete from a job.
+- Any module's job called a side effect: a domain write hides in a queued job.
+- A lint list of queue class names: every new kit queue edits it.
+- The reviewer alone: a breach waits for a review instead of failing the lint.
+
+### The workspace delete route queues the `softDelete` job
+
+Rule: `use-case.md`, Jobs.
+
+- The route deleting in the request: it holds the request open over every project chunk.
+- Every cascade, a session revoke included, as a job: a session revoke, a device removal, and an MFA factor wipe commit with the action that causes them.
+- The project delete route queuing a job per project: an action on one row stays in the request.
+
+### The session cache purge and the identity purge run on the `user` module's own `userAuth` queue, and every worker runs one job at a time
+
+Rule: `queue.md`, Enqueuing and Processors; `session.md`, Session invalidation; `effects.md`, Effects.
+
+- The purge on its own `session` queue: a queue, a factory, and a processor for one job of the user's, where the user's jobs run on the `user` module's queues.
+- The purge on the `user` queue: it waits behind a running import, export, or account deletion, one worker serving the queue.
+- Only `purgeLogins` on `userAuth`, with `purgeExpired` left on the `user` queue: both jobs concern sessions and credentials, so both leave the queue of the long user jobs.
+- A configured worker concurrency, one key for every queue, a key per queue, or a value read in the processor decorator: not needed, since BullMQ's default of one job at a time serves every queue.
+
 ### Each feature registers its own queues
 
 Rule: `queue.md`, Where things live.
@@ -118,6 +153,12 @@ Rule: `code-style.md`, Dates.
 Rule: `notification.md`, Recipient.
 
 - A stored override of a default: the materialised rows are the design.
+
+### The push send clears the dead tokens in its transaction
+
+Rule: `notification.md`, Fan-out and send.
+
+- The `cleanupTokens` job: a second job for one `updateMany` on `device` rows, where the step state in the outbox row already keeps a retry from sending twice.
 
 ### The notification processor resolves the recipient
 

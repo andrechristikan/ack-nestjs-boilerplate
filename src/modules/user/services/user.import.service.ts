@@ -11,7 +11,7 @@ import {
 import type { EnumUserStatus } from '@generated/prisma-client/client';
 import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
 import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
-import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
@@ -42,7 +42,7 @@ export class UserImportService {
         private readonly userUtil: UserUtil,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userVerificationUtil: UserVerificationUtil,
-        private readonly authPasswordUtil: AuthPasswordUtil,
+        private readonly authPasswordService: AuthPasswordService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly awsS3Service: AwsS3Service,
         private readonly userService: UserService,
@@ -130,10 +130,10 @@ export class UserImportService {
             .map(() => this.databaseUtil.createId());
         const passwords = Array(totalData)
             .fill(0)
-            .map(() => this.authPasswordUtil.createPasswordRandom());
+            .map(() => this.authPasswordService.createRandom());
         const passwordHasheds = await Promise.all(
             passwords.map(password =>
-                this.authPasswordUtil.createPassword(password, {
+                this.authPasswordService.create(password, {
                     temporary: true,
                 })
             )

@@ -14,6 +14,7 @@ import type {
     IUserContext,
     IUserMobileNumber,
 } from '@modules/user/interfaces/user.interface';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { Injectable } from '@nestjs/common';
@@ -36,6 +37,7 @@ export class UserUpdateMobileNumberUseCase implements IAppUseCase<
     constructor(
         private readonly userMobileNumberService: UserMobileNumberService,
         private readonly userAuthService: UserAuthService,
+        private readonly mfaService: MfaService,
         private readonly countryService: CountryService,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil
@@ -62,18 +64,23 @@ export class UserUpdateMobileNumberUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<IUserMobileNumber>> {
         const { user } = userContext;
         // Sequential by design: a credential proof, awaited alone
-        const { check, failure } =
-            await this.userAuthService.checkReauthentication(user, {
-                action: EnumUserReauthenticationAction.mobileNumberUpdate,
-                password: password ?? null,
-                method: method ?? null,
-                code: code ?? null,
-                backupCode: backupCode ?? null,
-                passkeyChallengeToken: passkeyChallengeToken ?? null,
-                passkeyResponse: passkeyResponse ?? null,
-                otp: otp ?? null,
-            });
-        if (failure !== null) {
+        const input = {
+            action: EnumUserReauthenticationAction.mobileNumberUpdate,
+            password: password ?? null,
+            method: method ?? null,
+            code: code ?? null,
+            backupCode: backupCode ?? null,
+            passkeyChallengeToken: passkeyChallengeToken ?? null,
+            passkeyResponse: passkeyResponse ?? null,
+            otp: otp ?? null,
+        };
+        const passwordCheck =
+            await this.userAuthService.checkReauthenticationPassword(
+                user,
+                input
+            );
+        if (passwordCheck.limit !== null) {
+            const limit = passwordCheck.limit;
             const isLocked = await this.databaseService.withTransaction(
                 async tx =>
                     this.userAuthService.countFailedReauthenticationInTx(
@@ -81,15 +88,41 @@ export class UserUpdateMobileNumberUseCase implements IAppUseCase<
                         requestContext,
                         apiKeyContext,
                         authContext,
+                        limit
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(isLocked);
+        }
+
+        const mfaCheck = await this.mfaService.checkReauthentication(
+            user.id,
+            input,
+            passwordCheck.isPasswordChecked
+        );
+        if (mfaCheck.failure !== null) {
+            const failure = mfaCheck.failure;
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.mfaService.countFailedAttemptInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext.userId,
                         failure
                     )
             );
 
-            return this.userAuthService.throwFailedReauthentication(
-                failure,
-                isLocked
-            );
+            return this.mfaService.throwFailedAttempt(failure, isLocked);
         }
+
+        const verificationId =
+            await this.userAuthService.getReauthenticationVerificationId(
+                user,
+                input,
+                passwordCheck.isPasswordChecked,
+                mfaCheck.isEnabled
+            );
 
         const [current, country, isDuplicate] = await Promise.all([
             this.userMobileNumberService.getOneMobileNumber(
@@ -114,10 +147,16 @@ export class UserUpdateMobileNumberUseCase implements IAppUseCase<
                 async tx => {
                     await this.userAuthService.completeReauthenticationInTx(
                         tx,
+                        authContext,
+                        passwordCheck.isPasswordChecked,
+                        verificationId
+                    );
+                    await this.mfaService.completeReauthenticationInTx(
+                        tx,
                         requestContext,
                         apiKeyContext,
                         authContext,
-                        check
+                        mfaCheck
                     );
 
                     return this.userMobileNumberService.updateMobileNumberInTx(
@@ -147,7 +186,7 @@ export class UserUpdateMobileNumberUseCase implements IAppUseCase<
 
             const mapped = this.databaseUtil.toException(err);
             if (
-                check.mfa !== null &&
+                mfaCheck.check !== null &&
                 mapped instanceof DatabaseWriteConflictException
             ) {
                 throw new MfaInvalidException();

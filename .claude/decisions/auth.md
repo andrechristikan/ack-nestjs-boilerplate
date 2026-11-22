@@ -140,7 +140,7 @@ Rule: `login.md`.
 
 Rule: `login.md`.
 
-- The account scrubbed and its sessions revoked in the request, the rest in a job: the scrub and the job are two transactions, so a failed job leaves the account half deleted (scrubbed and signed out while its workspaces and memberships stay live). One transaction in the job deletes everything or nothing.
+- The account scrubbed and its sessions revoked in the request, the rest in a job: the scrub and the job are two transactions, so a failed job leaves the account half deleted (scrubbed and signed out while its workspaces and memberships stay live). The job's one transaction deletes the account and what it owns, and the projects of its deleted workspaces are paged after that commit.
 
 ### Self-delete is refused while the user owns a workspace with other members
 
@@ -284,7 +284,7 @@ Rule: `notify.md`.
 
 - Resolving after the revoke: the revoke destroys the live-session set, so the alert would reach nothing.
 - Reading the snapshot inside the transaction's callback: a read off `tx` then runs while the transaction is open, beside its writes.
-- Every registered device: a logged-out device's token is already cleared, so no wider set exists.
+- Every registered device: a device with no live session is signed out of the account, and its stored token is a value no send reads.
 - Honouring opt-outs on a credential reset: a credential-reset alert is not optional.
 
 ### A session cache sits in front of the row, cleared through the purge row
@@ -293,8 +293,15 @@ Rule: `session.md`, Session invalidation.
 
 - No session cache: the database would take every JWT request.
 - The raw jti stored: a value only compared is stored as its SHA-256 hash.
-- A `cache.invalidate` row beside a purge row that clears tokens only: two rows per revoke and a reshaped payload for the same work.
 - A `cache.invalidate` row per refresh: one more row and job per refresh for what the mismatch reload already does.
+
+### A revoke leaves the stored push token; the token read takes devices with a live session only
+
+Rule: `session.md`, Session invalidation.
+
+- Clearing it in the session cache purge job (`purgeLogins`): a `device` write in a cache purge, left to a queued job.
+- Clearing it in each of the fifteen revoking use cases: one more call at every site for a value no send reads.
+- A purge row that clears the tokens beside a `cache.invalidate` row for the login keys: two rows per revoke and a reshaped payload, for a token no send reads.
 
 ### Sessions end after 7 days idle
 

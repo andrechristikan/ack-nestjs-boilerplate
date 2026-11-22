@@ -1,4 +1,9 @@
-import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
+import {
+    TestUnitReauthenticationMfaFailure,
+    TestUnitReauthenticationMfaOff,
+    TestUnitReauthenticationPasswordLimit,
+    TestUnitReauthenticationPasswordPassed,
+} from '@test/unit/helpers/test.unit.user.helper';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -16,6 +21,7 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserQueue } from '@modules/user/queues/user.queue';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
@@ -28,10 +34,7 @@ import { UserDeleteSelfForbiddenException } from '@modules/user/exceptions/user.
 import { UserPasswordExpiredException } from '@modules/user/exceptions/user.password-expired.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.delete-self.request.dto';
-import type {
-    IUser,
-    IUserReauthenticationCheck,
-} from '@modules/user/interfaces/user.interface';
+import type { IUser } from '@modules/user/interfaces/user.interface';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { UserDeleteSelfUseCase } from '@modules/user/use-cases/user.delete-self.use-case';
 import {
@@ -63,6 +66,7 @@ describe('UserDeleteSelfUseCase', () => {
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const userQueue: MockProxy<UserQueue> = mock<UserQueue>();
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
@@ -89,6 +93,7 @@ describe('UserDeleteSelfUseCase', () => {
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: UserAuthService, useValue: userAuthService },
+                { provide: MfaService, useValue: mfaService },
                 { provide: UserQueue, useValue: userQueue },
                 { provide: WorkspaceService, useValue: workspaceService },
                 DatabaseUtil,
@@ -120,20 +125,18 @@ describe('UserDeleteSelfUseCase', () => {
             idempotencyKey: null,
         };
 
-        const check: IUserReauthenticationCheck = {
-            isPasswordChecked: true,
-            mfa: null,
-            verificationId: null,
-            passkeyChallengeToken: null,
-        };
-
         beforeEach(() => {
             activityLogQueue.toPayload.mockReturnValue(activityLog);
             userQueue.deleteSelfEffect.mockReturnValue(deleteSelfEffect);
-            userAuthService.checkReauthentication.mockResolvedValue({
-                check,
-                failure: null,
-            });
+            userAuthService.checkReauthenticationPassword.mockResolvedValue(
+                TestUnitReauthenticationPasswordPassed
+            );
+            mfaService.checkReauthentication.mockResolvedValue(
+                TestUnitReauthenticationMfaOff
+            );
+            userAuthService.getReauthenticationVerificationId.mockResolvedValue(
+                null
+            );
             workspaceService.getOwnedForSelfDelete.mockResolvedValue([
                 'workspace-one',
             ]);
@@ -165,12 +168,15 @@ describe('UserDeleteSelfUseCase', () => {
             expect(calls).toEqual(['complete', 'addEffect']);
             expect(
                 userAuthService.completeReauthenticationInTx
+            ).toHaveBeenCalledWith(tx, authContext, true, null);
+            expect(
+                mfaService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
                 tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                check
+                TestUnitReauthenticationMfaOff
             );
             expect(activityLogQueue.toPayload).toHaveBeenCalledWith(
                 requestContext,
@@ -228,9 +234,9 @@ describe('UserDeleteSelfUseCase', () => {
 
         it('commits the failed count in a transaction of its own, then throws, and adds no effect', async () => {
             const refusal = new Error('refused');
-            userAuthService.checkReauthentication.mockResolvedValue({
-                check: null,
-                failure: TestUnitReauthenticationPasswordFailure,
+            userAuthService.checkReauthenticationPassword.mockResolvedValue({
+                isPasswordChecked: true,
+                limit: TestUnitReauthenticationPasswordLimit,
             });
             userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
                 true
@@ -259,7 +265,7 @@ describe('UserDeleteSelfUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                TestUnitReauthenticationPasswordFailure
+                TestUnitReauthenticationPasswordLimit
             );
             expect(
                 userAuthService.countFailedReauthenticationInTx
@@ -268,12 +274,60 @@ describe('UserDeleteSelfUseCase', () => {
             );
             expect(
                 userAuthService.throwFailedReauthentication
-            ).toHaveBeenCalledWith(
-                TestUnitReauthenticationPasswordFailure,
+            ).toHaveBeenCalledWith(true);
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(mfaService.checkReauthentication).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('commits the failed MFA count in a transaction of its own, then throws, and adds no effect', async () => {
+            const refusal = new Error('refused');
+            mfaService.checkReauthentication.mockResolvedValue({
+                isEnabled: true,
+                check: null,
+                failure: TestUnitReauthenticationMfaFailure,
+                passkeyChallengeToken: null,
+            });
+            mfaService.countFailedAttemptInTx.mockResolvedValue(true);
+            mfaService.throwFailedAttempt.mockImplementation(() => {
+                throw refusal;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext.userId,
+                TestUnitReauthenticationMfaFailure
+            );
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledBefore(
+                mfaService.throwFailedAttempt
+            );
+            expect(mfaService.throwFailedAttempt).toHaveBeenCalledWith(
+                TestUnitReauthenticationMfaFailure,
                 true
             );
             expect(
+                userAuthService.getReauthenticationVerificationId
+            ).not.toHaveBeenCalled();
+            expect(
                 userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                mfaService.completeReauthenticationInTx
             ).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
@@ -302,7 +356,7 @@ describe('UserDeleteSelfUseCase', () => {
                 superAdmin
             );
             expect(
-                userAuthService.checkReauthentication
+                userAuthService.checkReauthenticationPassword
             ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
@@ -343,19 +397,18 @@ describe('UserDeleteSelfUseCase', () => {
                 }
             );
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                baseUser,
-                {
-                    action: EnumUserReauthenticationAction.deleteSelf,
-                    password: 'plain-password',
-                    method: EnumMfaMethod.backupCode,
-                    code: '654321',
-                    backupCode: 'BACKUP1',
-                    passkeyChallengeToken: 'challenge-quartz',
-                    passkeyResponse,
-                    otp: '123456',
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(baseUser, {
+                action: EnumUserReauthenticationAction.deleteSelf,
+                password: 'plain-password',
+                method: EnumMfaMethod.backupCode,
+                code: '654321',
+                backupCode: 'BACKUP1',
+                passkeyChallengeToken: 'challenge-quartz',
+                passkeyResponse,
+                otp: '123456',
+            });
         });
 
         it('passes a null password for an absent one', async () => {
@@ -369,7 +422,9 @@ describe('UserDeleteSelfUseCase', () => {
                 )
             ).resolves.toEqual({});
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(
                 baseUser,
                 expect.objectContaining({ password: null })
             );
@@ -377,7 +432,7 @@ describe('UserDeleteSelfUseCase', () => {
         });
 
         it('throws UserPasswordNotMatchException and queues nothing when the password is absent', async () => {
-            userAuthService.checkReauthentication.mockRejectedValue(
+            userAuthService.checkReauthenticationPassword.mockRejectedValue(
                 new UserPasswordNotMatchException()
             );
 
@@ -400,7 +455,9 @@ describe('UserDeleteSelfUseCase', () => {
 
         it('rejects an expired password after a match', async () => {
             const failure = new UserPasswordExpiredException();
-            userAuthService.checkReauthentication.mockRejectedValue(failure);
+            userAuthService.checkReauthenticationPassword.mockRejectedValue(
+                failure
+            );
 
             await expect(
                 useCase.execute(

@@ -12,7 +12,7 @@ import {
 } from '@migration/data/migration.user.data';
 import type { IMigrationUserData } from '@migration/interfaces/migration.interface';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { Logger } from '@nestjs/common';
@@ -54,7 +54,7 @@ export class MigrationUserSeed
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly authPasswordUtil: AuthPasswordUtil,
+        private readonly authPasswordService: AuthPasswordService,
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly helperArrayService: HelperArrayService,
         private readonly helperDateService: HelperDateService,
@@ -150,10 +150,10 @@ export class MigrationUserSeed
                 if (user.password !== null) {
                     return user.password;
                 }
-                return this.authPasswordUtil.createPasswordRandom();
+                return this.authPasswordService.createRandom();
             });
             const createPasswords = plainPasswords.map(plainPassword =>
-                this.authPasswordUtil.createPassword(plainPassword)
+                this.authPasswordService.create(plainPassword)
             );
             const passwords = await Promise.all(createPasswords);
             const rows = this.users.map((user, index) => {
@@ -407,6 +407,7 @@ export class MigrationUserSeed
                     await tx.forgotPassword.deleteMany({});
                     await tx.activityLog.deleteMany({});
                     await tx.termPolicyUserAcceptance.deleteMany({});
+                    await tx.featureFlagTarget.deleteMany({});
                     await tx.user.deleteMany({});
                 },
                 { timeout: this.seedTransactionTimeoutInMs }

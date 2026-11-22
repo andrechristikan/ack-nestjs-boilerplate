@@ -11,6 +11,7 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
+import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { RoleService } from '@modules/role/services/role.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -35,6 +36,7 @@ export class DeviceRemoveByAdminUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly sessionService: SessionService,
+        private readonly deviceService: DeviceService,
         private readonly roleService: RoleService,
         private readonly userService: UserService,
         private readonly deviceUtil: DeviceUtil,
@@ -68,8 +70,16 @@ export class DeviceRemoveByAdminUseCase implements IAppUseCase<
         const now = this.helperDateService.create();
         try {
             await this.databaseService.withTransaction(async tx => {
-                const { deviceOwnership, revokedSessions } =
-                    await this.sessionService.removeDeviceOwnershipInTx(
+                const revokedSessions =
+                    await this.sessionService.revokeByDeviceOwnershipInTx(
+                        tx,
+                        userId,
+                        deviceOwnershipId,
+                        removedBy,
+                        now
+                    );
+                const deviceOwnership =
+                    await this.deviceService.removeOwnershipInTx(
                         tx,
                         userId,
                         deviceOwnershipId,

@@ -29,6 +29,7 @@ Match the existing models: `id String @id @default(auto()) @map("_id") @db.Objec
 
 - The file holds every `model`, then every `enum`, then every composite `type`.
 - A model runs in four blocks, one blank line between them: its own fields, `id` first, relation scalars and composite `type` fields included; the audit pairs it carries, `createdAt createdBy`, `updatedAt updatedBy`, `deletedAt deletedBy`, in that order; its `@relation` fields, every singular one (optional or not) before every list; its `@@unique` lines, then its `@@index` lines, then its `@@map` (`pnpm db:format` keeps the `@@` lines together). A block the model lacks is left out with its blank line. Inside a block, and among the models, enums, and types, the existing order stays.
+- A generated value that references no row (a batch id, a claim nonce) is a plain `String` with no `@db.ObjectId`, and no model is added only to give it a relation.
 - A `Json` or `Json[]` field holds a free-form payload only and is named `metadata` or `data`, never `meta`; a payload with a fixed shape is plain fields or a composite `type`.
 
 - A row the application stops reading once past its `expiredAt` is hard-deleted by its owning repository's `deleteExpiredBefore(threshold)`, never soft-deleted, scrubbed, or expired through a TTL index; its history lives in `ActivityLog`, and its model carries `@@index(fields: [expiredAt])`. `AuthSocialNonce` is swept on issue (`login.md`).

@@ -52,6 +52,9 @@ import type { IRole } from '@modules/role/interfaces/role.interface';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRequiredNotPublishedException } from '@modules/term-policy/exceptions/term-policy.required-not-published.exception';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
@@ -99,6 +102,11 @@ describe('UserSignUpUseCase', () => {
         mock<UserRegistrationService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
+    const passwordHistoryService: MockProxy<PasswordHistoryService> =
+        mock<PasswordHistoryService>();
+    const notificationService: MockProxy<NotificationService> =
+        mock<NotificationService>();
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
         mock<TermPolicyAcceptanceService>();
     const workspaceService: MockProxy<WorkspaceService> =
@@ -300,7 +308,7 @@ describe('UserSignUpUseCase', () => {
                 ? welcomeEffect
                 : verificationEffect
         );
-        userRegistrationService.createInTx.mockResolvedValue([committedUser]);
+        userService.createManyInTx.mockResolvedValue([committedUser]);
         roleService.getByName.mockResolvedValue(role);
         countryService.getOne.mockResolvedValue(country);
 
@@ -313,6 +321,15 @@ describe('UserSignUpUseCase', () => {
                 {
                     provide: UserRegistrationService,
                     useValue: userRegistrationService,
+                },
+                { provide: MfaService, useValue: mfaService },
+                {
+                    provide: PasswordHistoryService,
+                    useValue: passwordHistoryService,
+                },
+                {
+                    provide: NotificationService,
+                    useValue: notificationService,
                 },
                 {
                     provide: TermPolicyAcceptanceService,
@@ -681,10 +698,9 @@ describe('UserSignUpUseCase', () => {
                 )
             ).resolves.toBeUndefined();
 
-            expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
-                tx,
-                [inviteInput]
-            );
+            expect(userService.createManyInTx).toHaveBeenCalledWith(tx, [
+                inviteInput,
+            ]);
             expect(
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenCalledWith(tx, []);
@@ -702,7 +718,7 @@ describe('UserSignUpUseCase', () => {
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             ).toHaveBeenCalledWith(tx, [acceptanceEntry]);
 
-            expect(userRegistrationService.createInTx).toHaveBeenCalledBefore(
+            expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 workspaceService.createOwnedForUsersInTx
             );
             expect(
@@ -723,6 +739,49 @@ describe('UserSignUpUseCase', () => {
             );
         });
 
+        it("writes each user's Mfa row, password history, and notification defaults on tx right after the users", async () => {
+            await useCase['createSignUpUser'](
+                requestContext,
+                apiKeyContext,
+                input,
+                emailVerification
+            );
+
+            expect(mfaService.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-bramble',
+                'user-bramble'
+            );
+            expect(passwordHistoryService.createManyInTx).toHaveBeenCalledWith(
+                tx,
+                [
+                    {
+                        userId: 'user-bramble',
+                        password: 'hashed',
+                        type: EnumPasswordHistoryType.signUp,
+                        expiredAt: new Date('2026-04-01T00:00:00.000Z'),
+                        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                        createdBy: 'user-bramble',
+                    },
+                ]
+            );
+            expect(
+                notificationService.createDefaultsManyInTx
+            ).toHaveBeenCalledWith(tx, ['user-bramble']);
+            expect(userService.createManyInTx).toHaveBeenCalledBefore(
+                mfaService.createInTx
+            );
+            expect(userService.createManyInTx).toHaveBeenCalledBefore(
+                passwordHistoryService.createManyInTx
+            );
+            expect(userService.createManyInTx).toHaveBeenCalledBefore(
+                notificationService.createDefaultsManyInTx
+            );
+            expect(mfaService.createInTx).toHaveBeenCalledBefore(
+                workspaceService.createOwnedForUsersInTx
+            );
+        });
+
         it("runs createInTx on each attempt's tx after a slug collision", async () => {
             const retryTx = {} as IDatabaseTransactionClient;
             databaseService.withTransaction
@@ -739,12 +798,10 @@ describe('UserSignUpUseCase', () => {
                 emailVerification
             );
 
-            expect(userRegistrationService.createInTx).toHaveBeenNthCalledWith(
-                1,
-                tx,
-                [input]
-            );
-            expect(userRegistrationService.createInTx).toHaveBeenNthCalledWith(
+            expect(userService.createManyInTx).toHaveBeenNthCalledWith(1, tx, [
+                input,
+            ]);
+            expect(userService.createManyInTx).toHaveBeenNthCalledWith(
                 2,
                 retryTx,
                 [input]

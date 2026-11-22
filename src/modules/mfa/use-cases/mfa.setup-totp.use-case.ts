@@ -67,18 +67,23 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
             this.mfaTotpService.assertSetupAllowed(authContext.userId),
         ]);
         // Sequential by design: a credential proof, awaited alone
-        const { check, failure } =
-            await this.userAuthService.checkReauthentication(user, {
-                action: EnumUserReauthenticationAction.mfaTotpSetup,
-                password: password ?? null,
-                method: method ?? null,
-                code: code ?? null,
-                backupCode: backupCode ?? null,
-                passkeyChallengeToken: passkeyChallengeToken ?? null,
-                passkeyResponse: passkeyResponse ?? null,
-                otp: otp ?? null,
-            });
-        if (failure !== null) {
+        const input = {
+            action: EnumUserReauthenticationAction.mfaTotpSetup,
+            password: password ?? null,
+            method: method ?? null,
+            code: code ?? null,
+            backupCode: backupCode ?? null,
+            passkeyChallengeToken: passkeyChallengeToken ?? null,
+            passkeyResponse: passkeyResponse ?? null,
+            otp: otp ?? null,
+        };
+        const passwordCheck =
+            await this.userAuthService.checkReauthenticationPassword(
+                user,
+                input
+            );
+        if (passwordCheck.limit !== null) {
+            const limit = passwordCheck.limit;
             const isLocked = await this.databaseService.withTransaction(
                 async tx =>
                     this.userAuthService.countFailedReauthenticationInTx(
@@ -86,25 +91,57 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
                         requestContext,
                         apiKeyContext,
                         authContext,
+                        limit
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(isLocked);
+        }
+
+        const mfaCheck = await this.mfaService.checkReauthentication(
+            user.id,
+            input,
+            passwordCheck.isPasswordChecked
+        );
+        if (mfaCheck.failure !== null) {
+            const failure = mfaCheck.failure;
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.mfaService.countFailedAttemptInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext.userId,
                         failure
                     )
             );
 
-            return this.userAuthService.throwFailedReauthentication(
-                failure,
-                isLocked
-            );
+            return this.mfaService.throwFailedAttempt(failure, isLocked);
         }
+
+        const verificationId =
+            await this.userAuthService.getReauthenticationVerificationId(
+                user,
+                input,
+                passwordCheck.isPasswordChecked,
+                mfaCheck.isEnabled
+            );
 
         try {
             const setup = await this.databaseService.withTransaction(
                 async tx => {
                     await this.userAuthService.completeReauthenticationInTx(
                         tx,
+                        authContext,
+                        passwordCheck.isPasswordChecked,
+                        verificationId
+                    );
+                    await this.mfaService.completeReauthenticationInTx(
+                        tx,
                         requestContext,
                         apiKeyContext,
                         authContext,
-                        check
+                        mfaCheck
                     );
                     const totpSetup = await this.mfaTotpService.setupInTx(
                         tx,
@@ -144,7 +181,7 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
 
             const mapped = this.databaseUtil.toException(err);
             if (
-                check.mfa !== null &&
+                mfaCheck.check !== null &&
                 mapped instanceof DatabaseWriteConflictException
             ) {
                 throw new MfaInvalidException();

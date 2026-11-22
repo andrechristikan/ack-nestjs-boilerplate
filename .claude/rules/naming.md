@@ -29,7 +29,7 @@ A DTO's `<concern>` is an action, a noun, or absent for the module's canonical s
 | Kind | Rule | Example |
 | --- | --- | --- |
 | class | module-prefixed | `UserService`, `UserSignUpUseCase`, `UserAdminController` |
-| interface, data shape, payload | kind word last | `IUser`, `INotificationPushCleanupTokenEncryptedPayload` |
+| interface, data shape, payload | kind word last | `IUser`, `INotificationTermPolicyBatchRecipientEncryptedPayload` |
 | constant of any kind | PascalCase | `UserDefaultAvailableSearch`, `AuthJwtAccessGuardKey` |
 | injected field | the class name in camelCase | `authService: AuthService`, `userSignUpUseCase: UserSignUpUseCase` |
 | metadata key; CLS store key; passport strategy key | `<Module>[<Concern>]MetaKey`, `StoreKey`, `GuardKey`; the value equals the name | `PolicyRequiredMetaKey = 'PolicyRequiredMetaKey'`; `ProjectContextStoreKey = 'ProjectContextStoreKey'` |

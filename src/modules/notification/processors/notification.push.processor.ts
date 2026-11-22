@@ -3,12 +3,8 @@ import {
     FirebaseRateLimitDurationInMs,
 } from '@common/firebase/constants/firebase.constant';
 import { EnumNotificationPushProcess } from '@modules/notification/enums/notification.enum';
-import type {
-    INotificationPushCleanupTokenEncryptedPayload,
-    INotificationPushSendPayload,
-} from '@modules/notification/interfaces/notification.interface';
+import type { INotificationPushSendPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushProcessSendUseCase } from '@modules/notification/use-cases/notification.push.process-send.use-case';
-import { NotificationPushProcessCleanupTokensUseCase } from '@modules/notification/use-cases/notification.push.process-cleanup-tokens.use-case';
 import { NotificationPushProcessCleanupStaleTokensUseCase } from '@modules/notification/use-cases/notification.push.process-cleanup-stale-tokens.use-case';
 import { Job, UnrecoverableError } from 'bullmq';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
@@ -28,7 +24,6 @@ import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 export class NotificationPushProcessor extends QueueProcessorBase {
     constructor(
         private readonly notificationPushProcessSendUseCase: NotificationPushProcessSendUseCase,
-        private readonly notificationPushProcessCleanupTokensUseCase: NotificationPushProcessCleanupTokensUseCase,
         private readonly notificationPushProcessCleanupStaleTokensUseCase: NotificationPushProcessCleanupStaleTokensUseCase
     ) {
         super();
@@ -53,10 +48,6 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                         data as INotificationPushSendPayload
                     );
                 }
-                case EnumNotificationPushProcess.cleanupTokens:
-                    return await this.notificationPushProcessCleanupTokensUseCase.execute(
-                        data as INotificationPushCleanupTokenEncryptedPayload
-                    );
                 case EnumNotificationPushProcess.cleanupStaleTokens:
                     return await this.notificationPushProcessCleanupStaleTokensUseCase.execute();
                 default:

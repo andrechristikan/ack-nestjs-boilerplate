@@ -301,13 +301,13 @@ export class WorkspaceService {
         }
     }
 
+    /** Soft-deletes the workspace and closes its pending invites and join requests; returns `false` and closes nothing when the workspace was already deleted. */
     async softDeleteInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
         deletedAt: Date,
         deletedBy: string
-    ): Promise<void> {
-        // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
+    ): Promise<boolean> {
         const softDeleted = await this.workspaceRepository.softDeleteInTx(
             tx,
             workspaceId,
@@ -315,10 +315,12 @@ export class WorkspaceService {
             deletedBy
         );
         if (!softDeleted) {
-            throw new WorkspaceNotFoundException();
+            return false;
         }
 
         await this.closePendingByWorkspaceInTx(tx, workspaceId, deletedBy);
+
+        return true;
     }
 
     /** Reads `maxWorkspacesPerUser` and the owner's active workspace count; throws at the cap. */
@@ -352,28 +354,6 @@ export class WorkspaceService {
         }
 
         return workspaceIds;
-    }
-
-    async softDeleteOwnedByUserInTx(
-        tx: IDatabaseTransactionClient,
-        workspaceIds: string[],
-        userId: string,
-        deletedAt: Date
-    ): Promise<string[]> {
-        const ownedIds =
-            await this.workspaceRepository.softDeleteOwnedByUserInTx(
-                tx,
-                workspaceIds,
-                userId,
-                deletedAt
-            );
-        await Promise.all(
-            ownedIds.map(workspaceId =>
-                this.closePendingByWorkspaceInTx(tx, workspaceId, userId)
-            )
-        );
-
-        return ownedIds;
     }
 
     async getListOffsetByAdmin(

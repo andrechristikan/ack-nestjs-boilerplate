@@ -6,7 +6,8 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { MfaService } from '@modules/mfa/services/mfa.service';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { DeviceService } from '@modules/device/services/device.service';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { RoleService } from '@modules/role/services/role.service';
@@ -35,7 +36,8 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
         private readonly userService: UserService,
         private readonly roleService: RoleService,
         private readonly sessionService: SessionService,
-        private readonly notificationService: NotificationService,
+        private readonly deviceService: DeviceService,
+        private readonly notificationUtil: NotificationUtil,
         private readonly notificationQueue: NotificationQueue,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly userUtil: UserUtil,
@@ -63,7 +65,8 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
         );
         this.userService.assertUnblocked(target);
 
-        const snapshot = await this.notificationService.getSnapshot(target);
+        const tokens = await this.deviceService.getNotificationTokens(userId);
+        const snapshot = this.notificationUtil.sealSnapshot(target, tokens);
 
         const now = this.helperDateService.create();
         await this.databaseService.withTransaction(async tx => {

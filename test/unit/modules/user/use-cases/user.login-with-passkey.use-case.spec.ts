@@ -19,6 +19,8 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
+import type { IDeviceLoginUpsert } from '@modules/device/interfaces/device.interface';
+import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
@@ -57,6 +59,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
+    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
 
     let useCase: UserLoginWithPasskeyUseCase;
@@ -79,6 +82,12 @@ describe('UserLoginWithPasskeyUseCase', () => {
         platform: EnumDevicePlatform.web,
         notificationToken: null,
     };
+    const upserted = {
+        device: { id: 'device-one' },
+        deviceOwnership: { id: 'ownership-one' },
+        isNewDevice: true,
+        otherOwnershipIds: [],
+    } as unknown as IDeviceLoginUpsert;
     const baseUser = {
         ...buildUser('user-bramble', 'bramble@example.com'),
         isVerified: true,
@@ -152,6 +161,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
         workspaceMemberService.resolveLastWorkspaceId.mockResolvedValue(
             'workspace-bramble'
         );
+        deviceService.upsertForLoginInTx.mockResolvedValue(upserted);
         userAuthService.createTokenAndSessionInTx.mockResolvedValue(session);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -166,6 +176,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
                     useValue: workspaceMemberService,
                 },
                 DeviceUtil,
+                { provide: DeviceService, useValue: deviceService },
                 { provide: DatabaseService, useValue: databaseService },
                 HelperDateService,
                 DatabaseUtil,
@@ -239,18 +250,25 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 baseUser,
-                deviceIdentity,
+                upserted,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.passkey,
                 now
+            );
+            expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
+                tx,
+                'user-bramble',
+                deviceIdentity,
+                now
+            );
+            expect(deviceService.upsertForLoginInTx).toHaveBeenCalledBefore(
+                userAuthService.createTokenAndSessionInTx
             );
             expect(userAuthService.isCredentialMatch).not.toHaveBeenCalled();
             expect(
                 userAuthService.assertPasswordNotExpired
             ).not.toHaveBeenCalled();
-            expect(
-                userAuthService.createMfaChallengeInTx
-            ).not.toHaveBeenCalled();
+            expect(mfaChallengeService.createInTx).not.toHaveBeenCalled();
         });
 
         it('reads the passwordless challenge, the passkey, the user, and the lock, checks the assertion with the challenge WebAuthn value, then claims, completes, and issues the session on one tx', async () => {
@@ -289,6 +307,11 @@ describe('UserLoginWithPasskeyUseCase', () => {
             );
             mfaService.completeChallengeInTx.mockImplementation(async () => {
                 callOrder.push('completeChallengeInTx');
+            });
+            deviceService.upsertForLoginInTx.mockImplementation(async () => {
+                callOrder.push('upsertForLoginInTx');
+
+                return upserted;
             });
             userAuthService.createTokenAndSessionInTx.mockImplementation(
                 async () => {
@@ -337,6 +360,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 'check',
                 'resolveLastWorkspaceId',
                 'completeChallengeInTx',
+                'upsertForLoginInTx',
                 'createTokenAndSessionInTx',
             ]);
         });

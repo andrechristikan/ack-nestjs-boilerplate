@@ -18,7 +18,8 @@ import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import type { IMfaCheck } from '@modules/mfa/interfaces/mfa.interface';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { DeviceService } from '@modules/device/services/device.service';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
@@ -46,7 +47,8 @@ export class UserResetPasswordUseCase implements IAppUseCase<
         private readonly mfaChallengeService: MfaChallengeService,
         private readonly passwordHistoryService: PasswordHistoryService,
         private readonly sessionService: SessionService,
-        private readonly notificationService: NotificationService,
+        private readonly deviceService: DeviceService,
+        private readonly notificationUtil: NotificationUtil,
         private readonly notificationQueue: NotificationQueue,
         private readonly authPasswordService: AuthPasswordService,
         private readonly authPasswordUtil: AuthPasswordUtil,
@@ -127,10 +129,11 @@ export class UserResetPasswordUseCase implements IAppUseCase<
             }
             mfaCheck = check;
         }
-        const [password, snapshot] = await Promise.all([
-            this.authPasswordUtil.createPassword(newPassword),
-            this.notificationService.getSnapshot(reset.user),
+        const [password, tokens] = await Promise.all([
+            this.authPasswordService.create(newPassword),
+            this.deviceService.getNotificationTokens(reset.userId),
         ]);
+        const snapshot = this.notificationUtil.sealSnapshot(reset.user, tokens);
 
         try {
             await this.databaseService.withTransaction(async tx => {

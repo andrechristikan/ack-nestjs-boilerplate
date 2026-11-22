@@ -5,13 +5,15 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { MessageService } from '@common/message/services/message.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type {
+import {
+    EnumActivityLogAction,
     EnumMfaChallengePurpose,
-    Mfa,
+    EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
+import type { Mfa } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.exception';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
@@ -25,6 +27,8 @@ import type {
     IMfaCheck,
     IMfaCheckResult,
     IMfaPasskeyCredential,
+    IMfaReauthenticationInput,
+    IMfaReauthenticationResult,
     IMfaStatus,
     IMfaTotpSetupCheckResult,
     IMfaVerifyInput,
@@ -471,6 +475,109 @@ export class MfaService {
         }
 
         return this.checkProof(userId, input.method, input, webAuthnChallenge);
+    }
+
+    /** Checks the MFA part of a re-authentication and writes nothing: both passkey fields present make one passkey proof against the reauthentication challenge the whole proof, answering its token; otherwise a code or backup code is checked when MFA is on, except for mfaTotpEnable after a password check. A mismatch answers the failure; a missing method, an unavailable method, and a lock throw as check does. */
+    async checkReauthentication(
+        userId: string,
+        {
+            action,
+            method,
+            code,
+            backupCode,
+            passkeyChallengeToken,
+            passkeyResponse,
+        }: IMfaReauthenticationInput,
+        isPasswordChecked: boolean
+    ): Promise<IMfaReauthenticationResult> {
+        if (passkeyChallengeToken !== null && passkeyResponse !== null) {
+            const webAuthnChallenge =
+                await this.mfaChallengeService.getWebAuthnChallengeForUser(
+                    passkeyChallengeToken,
+                    EnumMfaChallengePurpose.reauthentication,
+                    userId
+                );
+            const { check, failure } = await this.check(
+                userId,
+                {
+                    method: EnumMfaMethod.passkey,
+                    code: null,
+                    backupCode: null,
+                    passkeyResponse,
+                },
+                webAuthnChallenge
+            );
+            if (failure !== null) {
+                return {
+                    isEnabled: true,
+                    check: null,
+                    failure,
+                    passkeyChallengeToken: null,
+                };
+            }
+
+            return {
+                isEnabled: true,
+                check,
+                failure: null,
+                passkeyChallengeToken,
+            };
+        }
+
+        const isEnabled = await this.isEnabled(userId);
+        const requiresMfa =
+            isEnabled &&
+            (action !== EnumUserReauthenticationAction.mfaTotpEnable ||
+                !isPasswordChecked);
+        if (!requiresMfa) {
+            return {
+                isEnabled,
+                check: null,
+                failure: null,
+                passkeyChallengeToken: null,
+            };
+        }
+
+        const { check, failure } = await this.check(
+            userId,
+            { method, code, backupCode, passkeyResponse: null },
+            null
+        );
+
+        return { isEnabled, check, failure, passkeyChallengeToken: null };
+    }
+
+    /** Completes the proof checkReauthentication checked on the caller's transaction: claims the reauthentication challenge of a passkey proof, then completes the check and adds the userMfaVerified entry. */
+    async completeReauthenticationInTx(
+        tx: IDatabaseTransactionClient,
+        requestContext: IRequestContext,
+        apiKeyContext: IApiKeyContext,
+        authContext: IAuthJwtAccessContext,
+        { check, passkeyChallengeToken }: IMfaReauthenticationResult
+    ): Promise<void> {
+        if (passkeyChallengeToken !== null) {
+            await this.mfaChallengeService.consumeInTx(
+                tx,
+                passkeyChallengeToken,
+                EnumMfaChallengePurpose.reauthentication,
+                authContext.userId
+            );
+        }
+        if (check !== null) {
+            await this.completeInTx(tx, authContext.userId, check);
+            const entry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.userMfaVerified,
+                    userId: authContext.userId,
+                    createdBy: authContext.userId,
+                }
+            );
+            await this.outboxService.addInTx(tx, entry);
+        }
     }
 
     /** Checks a passkey assertion for the passkey sign-in without reading the mfa flag; the lock and the failure answer are those of check. */

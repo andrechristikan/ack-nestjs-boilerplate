@@ -18,7 +18,8 @@ import {
     buildRequestContext,
     buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
+import type { IAuthPasswordTemporary } from '@modules/auth/interfaces/auth.interface';
 import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
@@ -69,9 +70,11 @@ describe('UserPasswordService', () => {
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
 
+    const authPasswordService: MockProxy<AuthPasswordService> =
+        mock<AuthPasswordService>();
+
     let service: UserPasswordService;
     let helperStringService: HelperStringService;
-    let helperHashService: HelperHashService;
 
     const tx = {} as IDatabaseTransactionClient;
     const requestContext = buildRequestContext();
@@ -133,7 +136,7 @@ describe('UserPasswordService', () => {
                 { provide: UserService, useValue: userService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: NotificationQueue, useValue: notificationQueue },
-                AuthPasswordUtil,
+                { provide: AuthPasswordService, useValue: authPasswordService },
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 {
                     provide: ActivityLogQueue,
@@ -148,7 +151,6 @@ describe('UserPasswordService', () => {
         }).compile();
         service = module.get(UserPasswordService);
         helperStringService = module.get(HelperStringService);
-        helperHashService = module.get(HelperHashService);
     });
 
     describe('assertPasswordAttemptAvailable', () => {
@@ -229,25 +231,24 @@ describe('UserPasswordService', () => {
 
     describe('createTemporaryPassword', () => {
         it('draws a random password and hashes it as a temporary one', async () => {
-            const random = vi
-                .spyOn(helperStringService, 'random')
-                .mockReturnValue('random-password');
-            const argon2Hash = vi
-                .spyOn(helperHashService, 'argon2Hash')
-                .mockResolvedValue('hashed');
+            const password: IAuthPasswordTemporary = {
+                passwordHash: 'hashed',
+                passwordExpired: new Date('2026-03-01T01:00:00.000Z'),
+                passwordCreated: now,
+                passwordPeriodExpired: new Date('2026-05-30T00:00:00.000Z'),
+            };
+            authPasswordService.createRandom.mockReturnValue('random-password');
+            authPasswordService.create.mockResolvedValue(password);
 
             await expect(service.createTemporaryPassword()).resolves.toEqual({
-                password: {
-                    passwordHash: 'hashed',
-                    passwordExpired: new Date('2026-03-01T01:00:00.000Z'),
-                    passwordCreated: now,
-                    passwordPeriodExpired: new Date('2026-05-30T00:00:00.000Z'),
-                },
+                password,
                 passwordString: 'random-password',
             });
 
-            expect(random).toHaveBeenCalledWith(14);
-            expect(argon2Hash).toHaveBeenCalledWith('random-password');
+            expect(authPasswordService.create).toHaveBeenCalledWith(
+                'random-password',
+                { temporary: true }
+            );
         });
     });
 

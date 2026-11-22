@@ -1,17 +1,13 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
-import type {
-    AuthenticationResponseJSON,
-    PublicKeyCredentialRequestOptionsJSON,
-} from '@simplewebauthn/server';
+import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
     EnumDevicePlatform,
-    EnumMfaChallengePurpose,
     EnumRoleType,
     EnumUserReauthenticationAction,
     EnumUserLoginFrom,
@@ -26,7 +22,6 @@ import type {
     User,
     Verification,
 } from '@generated/prisma-client/client';
-import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
@@ -39,29 +34,10 @@ import {
     buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
-import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
-import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
-import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
-import { MfaMethodUnavailableException } from '@modules/mfa/exceptions/mfa.method-unavailable.exception';
-import { MfaMethodRequiredException } from '@modules/mfa/exceptions/mfa.method-required.exception';
-import type {
-    IMfaAttemptFailure,
-    IMfaCheck,
-} from '@modules/mfa/interfaces/mfa.interface';
-import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
-import { MfaService } from '@modules/mfa/services/mfa.service';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
-import { DeviceService } from '@modules/device/services/device.service';
-import type {
-    IDeviceIdentity,
-    IDeviceLoginUpsert,
-} from '@modules/device/interfaces/device.interface';
-import type { ISessionPurgeLoginsPayload } from '@modules/session/interfaces/session.interface';
+import type { IDeviceLoginUpsert } from '@modules/device/interfaces/device.interface';
 import { SessionService } from '@modules/session/services/session.service';
-import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserService } from '@modules/user/services/user.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -80,7 +56,7 @@ import type {
     IRequestContext,
     IRequestLog,
 } from '@common/request/interfaces/request.interface';
-import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { UserUtil } from '@modules/user/utils/user.util';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserPasswordAttemptMaxException } from '@modules/user/exceptions/user.password-attempt-max.exception';
@@ -88,7 +64,6 @@ import { UserReauthenticationOtpInvalidException } from '@modules/user/exception
 import type {
     IUser,
     IUserPasswordAttemptLimit,
-    IUserReauthenticationCheck,
     IUserReauthenticationInput,
 } from '@modules/user/interfaces/user.interface';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
@@ -97,7 +72,6 @@ import { UserVerificationService } from '@modules/user/services/user.verificatio
 import { ConfigService } from '@nestjs/config';
 import type { MockInstance } from 'vitest';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
@@ -108,14 +82,8 @@ describe('UserAuthService', () => {
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
     const userService: MockProxy<UserService> = mock<UserService>();
-    const mfaService: MockProxy<MfaService> = mock<MfaService>();
-    const mfaChallengeService: MockProxy<MfaChallengeService> =
-        mock<MfaChallengeService>();
-    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const authJwtService: MockProxy<AuthJwtService> = mock<AuthJwtService>();
-    let databaseUtil: DatabaseUtil;
-    let helperStringService: HelperStringService;
     let argon2Compare: MockInstance<HelperHashService['argon2Compare']>;
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
@@ -127,8 +95,6 @@ describe('UserAuthService', () => {
         mock<ActivityLogQueue>();
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
-    const userRequestContext = buildRequestContext();
-    const userApiKeyContext = buildApiKeyContext();
     const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -167,21 +133,11 @@ describe('UserAuthService', () => {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
                 },
-                AuthPasswordUtil,
+                UserUtil,
                 HelperHashService,
-                HelperStringService,
                 { provide: UserService, useValue: userService },
-                { provide: MfaService, useValue: mfaService },
-                {
-                    provide: MfaChallengeService,
-                    useValue: mfaChallengeService,
-                },
-                { provide: DeviceService, useValue: deviceService },
                 { provide: SessionService, useValue: sessionService },
                 { provide: AuthJwtService, useValue: authJwtService },
-                AuthUtil,
-                DatabaseUtil,
-                SessionUtil,
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: NotificationQueue, useValue: notificationQueue },
@@ -201,8 +157,6 @@ describe('UserAuthService', () => {
             ],
         }).compile();
         service = module.get(UserAuthService);
-        databaseUtil = module.get(DatabaseUtil);
-        helperStringService = module.get(HelperStringService);
         argon2Compare = vi
             .spyOn(module.get(HelperHashService), 'argon2Compare')
             .mockResolvedValue(false);
@@ -586,12 +540,6 @@ describe('UserAuthService', () => {
             accessToken: 'access-token',
             refreshToken: 'refresh-token',
         };
-        const deviceIdentity: IDeviceIdentity = {
-            fingerprint: 'device-halcyon',
-            name: null,
-            platform: EnumDevicePlatform.web,
-            notificationToken: null,
-        };
         const ownership: DeviceOwnership = {
             id: 'device-ownership-halcyon',
             deviceId: 'device-halcyon',
@@ -621,31 +569,13 @@ describe('UserAuthService', () => {
             },
             deviceOwnership: ownership,
             isNewDevice: true,
+            otherOwnershipIds: [],
         };
         const revokedRef = [{ id: 'session-earlier' }];
         const otherOwnershipIds = [
             'device-ownership-thistle',
             'device-ownership-clover',
         ];
-        const affected: ISessionPurgeLoginsPayload[] = [
-            {
-                userId: 'user-thistle',
-                sessions: [
-                    { id: 'session-thistle-1' },
-                    { id: 'session-thistle-2' },
-                ],
-            },
-            { userId: 'user-clover', sessions: [{ id: 'session-clover' }] },
-        ];
-        const thistleMetadata: IActivityLogMetadata = {
-            actorUserId: 'user-halcyon',
-            sessionCount: 2,
-        };
-        const cloverMetadata: IActivityLogMetadata = {
-            actorUserId: 'user-halcyon',
-            sessionCount: 1,
-        };
-
         const newDeviceEffect: INotificationNotifyEffect = {
             queue: EnumNotificationQueue.notification,
             name: EnumNotificationProcess.notify,
@@ -685,16 +615,10 @@ describe('UserAuthService', () => {
                     idempotencyKey: `${input.action}:${input.userId ?? ''}`,
                 })
             );
-            deviceService.upsertForLoginInTx.mockResolvedValue(upsert);
-            deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
-                []
-            );
-            vi.spyOn(databaseUtil, 'createId').mockReturnValue(
-                'session-halcyon'
-            );
-            vi.spyOn(helperStringService, 'random').mockReturnValue(
-                'jti-halcyon'
-            );
+            authJwtService.createLoginIdentifiers.mockReturnValue({
+                sessionId: 'session-halcyon',
+                jti: 'jti-halcyon',
+            });
             authJwtService.createTokens.mockReturnValue(tokens);
             Object.defineProperty(
                 authJwtService,
@@ -703,25 +627,19 @@ describe('UserAuthService', () => {
             );
         });
 
-        it('upserts the device, creates the session, and stamps the login on the given tx without opening one', async () => {
+        it('creates the session on the upserted ownership and stamps the login on the given tx without opening one', async () => {
             await service.createTokenAndSessionInTx(
                 tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
-                deviceIdentity,
+                upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 loginAt
             );
 
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
-                tx,
-                'user-halcyon',
-                deviceIdentity,
-                now
-            );
             expect(sessionService.createInTx).toHaveBeenCalledWith(
                 tx,
                 'user-halcyon',
@@ -747,7 +665,7 @@ describe('UserAuthService', () => {
                 requestContext,
                 apiKeyContext,
                 baseUser,
-                deviceIdentity,
+                upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 loginAt
@@ -805,7 +723,7 @@ describe('UserAuthService', () => {
                 },
                 apiKeyContext,
                 baseUser,
-                deviceIdentity,
+                upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 loginAt
@@ -844,7 +762,7 @@ describe('UserAuthService', () => {
                 },
                 apiKeyContext,
                 baseUser,
-                deviceIdentity,
+                upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 loginAt
@@ -861,17 +779,12 @@ describe('UserAuthService', () => {
         });
 
         it('adds only the login entry when the device is known', async () => {
-            deviceService.upsertForLoginInTx.mockResolvedValue({
-                ...upsert,
-                isNewDevice: false,
-            });
-
             await service.createTokenAndSessionInTx(
                 tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
-                deviceIdentity,
+                { ...upsert, isNewDevice: false },
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 loginAt
@@ -895,7 +808,7 @@ describe('UserAuthService', () => {
                 requestContext,
                 apiKeyContext,
                 baseUser,
-                deviceIdentity,
+                upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 loginAt
@@ -905,17 +818,12 @@ describe('UserAuthService', () => {
                 sessionService.revokeByDeviceOwnershipInTx
             ).not.toHaveBeenCalled();
 
-            deviceService.upsertForLoginInTx.mockResolvedValue({
-                ...upsert,
-                isNewDevice: false,
-            });
-
             await service.createTokenAndSessionInTx(
                 tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
-                deviceIdentity,
+                { ...upsert, isNewDevice: false },
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 loginAt
@@ -932,13 +840,13 @@ describe('UserAuthService', () => {
             );
         });
 
-        it("revokes other users' sessions only when other ownerships exist", async () => {
+        it("revokes other users' sessions with the two contexts only when other ownerships exist", async () => {
             await service.createTokenAndSessionInTx(
                 tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
-                deviceIdentity,
+                upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 loginAt
@@ -948,30 +856,27 @@ describe('UserAuthService', () => {
                 sessionService.revokeByDeviceOwnershipIdsInTx
             ).not.toHaveBeenCalled();
 
-            deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
-                otherOwnershipIds
-            );
-            sessionService.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
-                affected
-            );
-
             await service.createTokenAndSessionInTx(
                 tx,
                 requestContext,
                 apiKeyContext,
                 baseUser,
-                deviceIdentity,
+                { ...upsert, otherOwnershipIds },
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 loginAt
             );
 
             expect(
-                deviceService.getOtherOwnershipIdsByDeviceInTx
-            ).toHaveBeenCalledWith(tx, 'device-halcyon', 'user-halcyon');
-            expect(
                 sessionService.revokeByDeviceOwnershipIdsInTx
-            ).toHaveBeenCalledWith(tx, otherOwnershipIds, 'user-halcyon', now);
+            ).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                otherOwnershipIds,
+                'user-halcyon',
+                now
+            );
         });
 
         it('creates the session expiring loginAt plus the refresh lifetime', async () => {
@@ -982,7 +887,7 @@ describe('UserAuthService', () => {
                 requestContext,
                 apiKeyContext,
                 baseUser,
-                deviceIdentity,
+                upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 loginAt
@@ -1005,7 +910,7 @@ describe('UserAuthService', () => {
                 requestContext,
                 apiKeyContext,
                 baseUser,
-                deviceIdentity,
+                upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 loginAt
@@ -1026,64 +931,6 @@ describe('UserAuthService', () => {
                 tokens,
                 sessionId: 'session-halcyon',
             });
-        });
-
-        it('adds one userSessionRevokedByDeviceLogin entry per affected user, createdBy the logging-in user, after the login entry on the same tx', async () => {
-            deviceService.getOtherOwnershipIdsByDeviceInTx.mockResolvedValue(
-                otherOwnershipIds
-            );
-            sessionService.revokeByDeviceOwnershipIdsInTx.mockResolvedValue(
-                affected
-            );
-            await service.createTokenAndSessionInTx(
-                tx,
-                requestContext,
-                apiKeyContext,
-                baseUser,
-                deviceIdentity,
-                EnumUserLoginFrom.website,
-                EnumUserLoginWith.credential,
-                loginAt
-            );
-
-            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                null,
-                null,
-                {
-                    action: EnumActivityLogAction.userSessionRevokedByDeviceLogin,
-                    userId: 'user-thistle',
-                    createdBy: 'user-halcyon',
-                    metadata: thistleMetadata,
-                }
-            );
-            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                null,
-                null,
-                {
-                    action: EnumActivityLogAction.userSessionRevokedByDeviceLogin,
-                    userId: 'user-clover',
-                    createdBy: 'user-halcyon',
-                    metadata: cloverMetadata,
-                }
-            );
-            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                expect.objectContaining({
-                    idempotencyKey: 'userLoggedInWithCredential:user-halcyon',
-                }),
-                expect.objectContaining({
-                    idempotencyKey:
-                        'userSessionRevokedByDeviceLogin:user-thistle',
-                }),
-                expect.objectContaining({
-                    idempotencyKey:
-                        'userSessionRevokedByDeviceLogin:user-clover',
-                }),
-                newDeviceEffect,
-            ]);
         });
 
         it.each([
@@ -1115,7 +962,7 @@ describe('UserAuthService', () => {
                     requestContext,
                     apiKeyContext,
                     baseUser,
-                    deviceIdentity,
+                    upsert,
                     EnumUserLoginFrom.website,
                     loginWith,
                     loginAt
@@ -1141,7 +988,7 @@ describe('UserAuthService', () => {
                 requestContext,
                 apiKeyContext,
                 baseUser,
-                deviceIdentity,
+                upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 loginAt
@@ -1163,7 +1010,7 @@ describe('UserAuthService', () => {
                     requestContext,
                     apiKeyContext,
                     baseUser,
-                    deviceIdentity,
+                    upsert,
                     EnumUserLoginFrom.website,
                     EnumUserLoginWith.credential,
                     loginAt
@@ -1174,9 +1021,8 @@ describe('UserAuthService', () => {
     });
 
     describe('getOneForMfaLogin', () => {
-        it('answers the active verified user with MFA on', async () => {
+        it('answers the active verified user and reads no MFA state', async () => {
             userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            mfaService.isEnabled.mockResolvedValue(true);
 
             await expect(
                 service.getOneForMfaLogin('user-halcyon')
@@ -1184,12 +1030,10 @@ describe('UserAuthService', () => {
             expect(userRepository.findOneWithRoleById).toHaveBeenCalledWith(
                 'user-halcyon'
             );
-            expect(mfaService.isEnabled).toHaveBeenCalledWith('user-halcyon');
         });
 
         it('throws UserNotFoundException when the user is gone', async () => {
             userRepository.findOneWithRoleById.mockResolvedValue(null);
-            mfaService.isEnabled.mockResolvedValue(true);
 
             await expect(
                 service.getOneForMfaLogin('user-halcyon')
@@ -1204,7 +1048,6 @@ describe('UserAuthService', () => {
                 ...baseUser,
                 status: EnumUserStatus.inactive,
             });
-            mfaService.isEnabled.mockResolvedValue(true);
 
             await expect(
                 service.getOneForMfaLogin('user-halcyon')
@@ -1219,25 +1062,12 @@ describe('UserAuthService', () => {
                 ...baseUser,
                 isVerified: false,
             });
-            mfaService.isEnabled.mockResolvedValue(true);
 
             await expect(
                 service.getOneForMfaLogin('user-halcyon')
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.emailNotVerified,
-            });
-        });
-
-        it('throws MfaNotEnabledException when MFA is off', async () => {
-            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
-            mfaService.isEnabled.mockResolvedValue(false);
-
-            await expect(
-                service.getOneForMfaLogin('user-halcyon')
-            ).rejects.toMatchObject({
-                module: 'mfa',
-                statusCode: EnumMfaStatusCodeError.notEnabled,
             });
         });
     });
@@ -1252,7 +1082,6 @@ describe('UserAuthService', () => {
             expect(userRepository.findOneWithRoleById).toHaveBeenCalledWith(
                 'user-halcyon'
             );
-            expect(mfaService.isEnabled).not.toHaveBeenCalled();
         });
 
         it('throws UserCredentialInvalidException when the user is gone', async () => {
@@ -1295,86 +1124,7 @@ describe('UserAuthService', () => {
         });
     });
 
-    describe('createMfaChallengeInTx', () => {
-        const tx = {} as IDatabaseTransactionClient;
-        const device: IDeviceIdentity = {
-            fingerprint: 'fingerprint-halcyon',
-            name: null,
-            platform: EnumDevicePlatform.web,
-            notificationToken: null,
-        };
-
-        it('creates a login challenge with no WebAuthn challenge and null options for a user without a passkey', async () => {
-            const methods = [EnumMfaMethod.totp, EnumMfaMethod.backupCode];
-            mfaChallengeService.createInTx.mockResolvedValue({
-                challengeToken: 'challenge-token',
-                expiresInMs: 300000,
-            });
-
-            await expect(
-                service.createMfaChallengeInTx(
-                    tx,
-                    'user-halcyon',
-                    device,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    methods,
-                    null
-                )
-            ).resolves.toEqual({
-                challengeToken: 'challenge-token',
-                expiresInMs: 300000,
-                methods,
-                passkeyOptions: null,
-            });
-            expect(mfaChallengeService.createInTx).toHaveBeenCalledWith(tx, {
-                purpose: EnumMfaChallengePurpose.login,
-                userId: 'user-halcyon',
-                device,
-                loginFrom: EnumUserLoginFrom.website,
-                loginWith: EnumUserLoginWith.credential,
-                webAuthnChallenge: null,
-            });
-        });
-
-        it('creates the login challenge with the challenge of the given assertion options and answers the options', async () => {
-            const methods = [EnumMfaMethod.passkey, EnumMfaMethod.backupCode];
-            const passkeyOptions = {
-                challenge: 'challenge-webauthn',
-            } as PublicKeyCredentialRequestOptionsJSON;
-            mfaChallengeService.createInTx.mockResolvedValue({
-                challengeToken: 'challenge-token',
-                expiresInMs: 300000,
-            });
-
-            await expect(
-                service.createMfaChallengeInTx(
-                    tx,
-                    'user-halcyon',
-                    device,
-                    EnumUserLoginFrom.website,
-                    EnumUserLoginWith.credential,
-                    methods,
-                    passkeyOptions
-                )
-            ).resolves.toEqual({
-                challengeToken: 'challenge-token',
-                expiresInMs: 300000,
-                methods,
-                passkeyOptions,
-            });
-            expect(mfaChallengeService.createInTx).toHaveBeenCalledWith(tx, {
-                purpose: EnumMfaChallengePurpose.login,
-                userId: 'user-halcyon',
-                device,
-                loginFrom: EnumUserLoginFrom.website,
-                loginWith: EnumUserLoginWith.credential,
-                webAuthnChallenge: 'challenge-webauthn',
-            });
-        });
-    });
-
-    describe('checkReauthentication', () => {
+    describe('checkReauthenticationPassword', () => {
         const credential = {
             user: baseUser,
             hashedPassword: 'hashed-password',
@@ -1396,27 +1146,155 @@ describe('UserAuthService', () => {
             maxAttempts: 5,
             lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
         };
-        const totpFailure: IMfaAttemptFailure = {
-            method: EnumMfaMethod.totp,
-            maxAttempts: 5,
-            lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
-        };
-        const passkeyFailure: IMfaAttemptFailure = {
-            method: EnumMfaMethod.passkey,
-            maxAttempts: 5,
-            lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
-        };
-        const passkeyCheck: IMfaCheck = {
-            method: EnumMfaMethod.passkey,
-            totpStep: null,
-            backupCodeHash: null,
-            passkey: { id: 'passkey-halcyon', counter: 5 },
-        };
-        const mfaCheck: IMfaCheck = {
-            method: EnumMfaMethod.totp,
-            totpStep: 7,
-            backupCodeHash: null,
-            passkey: null,
+
+        beforeEach(() => {
+            userPasswordService.getCredential.mockReturnValue(credential);
+            argon2Compare.mockResolvedValue(true);
+        });
+
+        it('answers unchecked with no limit and checks nothing when both passkey fields are present', async () => {
+            await expect(
+                service.checkReauthenticationPassword(baseUser, {
+                    ...input,
+                    passkeyChallengeToken: 'challenge-halcyon',
+                    passkeyResponse,
+                })
+            ).resolves.toEqual({ isPasswordChecked: false, limit: null });
+            expect(userPasswordService.getCredential).not.toHaveBeenCalled();
+            expect(argon2Compare).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            ['the token', 'challenge-halcyon', null],
+            ['the response', null, passkeyResponse],
+        ])(
+            'checks the password when only %s of the passkey proof is present',
+            async (_label, passkeyChallengeToken, response) => {
+                await expect(
+                    service.checkReauthenticationPassword(baseUser, {
+                        ...input,
+                        passkeyChallengeToken,
+                        passkeyResponse: response,
+                    })
+                ).resolves.toEqual({ isPasswordChecked: true, limit: null });
+                expect(argon2Compare).toHaveBeenCalledWith(
+                    'plain-password',
+                    'hashed-password'
+                );
+            }
+        );
+
+        it('answers unchecked with no limit for an account with no credential', async () => {
+            userPasswordService.getCredential.mockReturnValue(null);
+
+            await expect(
+                service.checkReauthenticationPassword(baseUser, {
+                    ...input,
+                    password: null,
+                })
+            ).resolves.toEqual({ isPasswordChecked: false, limit: null });
+            expect(argon2Compare).not.toHaveBeenCalled();
+        });
+
+        it('answers checked with no limit for a matching password and writes nothing', async () => {
+            await expect(
+                service.checkReauthenticationPassword(baseUser, input)
+            ).resolves.toEqual({ isPasswordChecked: true, limit: null });
+            expect(
+                userPasswordService.assertPasswordAttemptAvailable
+            ).toHaveBeenCalledWith(baseUser);
+            expect(argon2Compare).toHaveBeenCalledWith(
+                'plain-password',
+                'hashed-password'
+            );
+            expect(
+                userPasswordService.countFailedPasswordAttemptInTx
+            ).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('answers checked with the attempt limit for a wrong password and writes nothing', async () => {
+            argon2Compare.mockResolvedValue(false);
+            userPasswordService.getPasswordAttemptLimit.mockResolvedValue(
+                passwordLimit
+            );
+
+            await expect(
+                service.checkReauthenticationPassword(baseUser, input)
+            ).resolves.toEqual({
+                isPasswordChecked: true,
+                limit: passwordLimit,
+            });
+            expect(
+                userPasswordService.countFailedPasswordAttemptInTx
+            ).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('answers the attempt limit for a null password without comparing', async () => {
+            userPasswordService.getPasswordAttemptLimit.mockResolvedValue(
+                passwordLimit
+            );
+
+            await expect(
+                service.checkReauthenticationPassword(baseUser, {
+                    ...input,
+                    password: null,
+                })
+            ).resolves.toEqual({
+                isPasswordChecked: true,
+                limit: passwordLimit,
+            });
+            expect(argon2Compare).not.toHaveBeenCalled();
+        });
+
+        it('throws the max-attempt exception without comparing when the account is locked', async () => {
+            userPasswordService.assertPasswordAttemptAvailable.mockImplementation(
+                () => {
+                    throw new UserPasswordAttemptMaxException();
+                }
+            );
+
+            await expect(
+                service.checkReauthenticationPassword(baseUser, input)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
+            });
+            expect(argon2Compare).not.toHaveBeenCalled();
+        });
+
+        it('throws UserPasswordExpiredException when the matched password has expired', async () => {
+            const expiredUser = {
+                ...baseUser,
+                passwordExpired: new Date('2026-02-01T00:00:00.000Z'),
+            };
+            userPasswordService.getCredential.mockReturnValue({
+                ...credential,
+                user: expiredUser,
+            });
+
+            await expect(
+                service.checkReauthenticationPassword(expiredUser, input)
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.passwordExpired,
+            });
+        });
+    });
+
+    describe('getReauthenticationVerificationId', () => {
+        const input: IUserReauthenticationInput = {
+            action: EnumUserReauthenticationAction.mobileNumberAdd,
+            password: null,
+            method: null,
+            code: null,
+            backupCode: null,
+            passkeyChallengeToken: null,
+            passkeyResponse: null,
+            otp: '123456',
         };
         const reauthenticationVerification: Verification = {
             id: 'verification-halcyon',
@@ -1436,394 +1314,35 @@ describe('UserAuthService', () => {
             updatedBy: null,
         };
 
-        beforeEach(() => {
-            userPasswordService.getCredential.mockReturnValue(credential);
-            argon2Compare.mockResolvedValue(true);
-            mfaService.isEnabled.mockResolvedValue(false);
-        });
-
-        it('checks the password, then the MFA code through MfaService.check, when MFA is on', async () => {
-            mfaService.isEnabled.mockResolvedValue(true);
-            mfaService.check.mockResolvedValue({
-                check: mfaCheck,
-                failure: null,
-            });
-
-            await expect(
-                service.checkReauthentication(baseUser, input)
-            ).resolves.toEqual({
-                check: {
-                    isPasswordChecked: true,
-                    mfa: mfaCheck,
-                    verificationId: null,
-                    passkeyChallengeToken: null,
-                },
-                failure: null,
-            });
-            expect(argon2Compare).toHaveBeenCalledWith(
-                'plain-password',
-                'hashed-password'
-            );
-            expect(argon2Compare).toHaveBeenCalledBefore(mfaService.check);
-            expect(mfaService.check).toHaveBeenCalledWith(
-                'user-halcyon',
-                {
-                    method: EnumMfaMethod.totp,
-                    code: '123456',
-                    backupCode: null,
-                    passkeyResponse: null,
-                },
-                null
-            );
-        });
-
-        it('passes a backup code on', async () => {
-            mfaService.isEnabled.mockResolvedValue(true);
-            mfaService.check.mockResolvedValue({
-                check: {
-                    method: EnumMfaMethod.backupCode,
-                    totpStep: null,
-                    backupCodeHash: 'hash-one',
-                    passkey: null,
-                },
-                failure: null,
-            });
-
-            await service.checkReauthentication(baseUser, {
-                ...input,
-                method: EnumMfaMethod.backupCode,
-                code: null,
-                backupCode: 'BACKUP1',
-            });
-
-            expect(mfaService.check).toHaveBeenCalledWith(
-                'user-halcyon',
-                {
-                    method: EnumMfaMethod.backupCode,
-                    code: null,
-                    backupCode: 'BACKUP1',
-                    passkeyResponse: null,
-                },
-                null
-            );
-        });
-
-        it('answers the MFA failure of the check and writes nothing', async () => {
-            mfaService.isEnabled.mockResolvedValue(true);
-            mfaService.check.mockResolvedValue({
-                check: null,
-                failure: totpFailure,
-            });
-
-            await expect(
-                service.checkReauthentication(baseUser, {
-                    ...input,
-                    code: null,
-                })
-            ).resolves.toEqual({
-                check: null,
-                failure: { password: null, mfa: totpFailure },
-            });
-            expect(
-                userPasswordService.getPasswordAttemptLimit
-            ).not.toHaveBeenCalled();
-            expect(
-                userPasswordService.countFailedPasswordAttemptInTx
-            ).not.toHaveBeenCalled();
-            expect(mfaService.countFailedAttemptInTx).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('answers the password failure without checking MFA on a wrong password', async () => {
-            argon2Compare.mockResolvedValue(false);
-            mfaService.isEnabled.mockResolvedValue(true);
-            userPasswordService.getPasswordAttemptLimit.mockResolvedValue(
-                passwordLimit
-            );
-
-            await expect(
-                service.checkReauthentication(baseUser, input)
-            ).resolves.toEqual({
-                check: null,
-                failure: { password: passwordLimit, mfa: null },
-            });
-            expect(
-                userPasswordService.assertPasswordAttemptAvailable
-            ).toHaveBeenCalledWith(baseUser);
-            expect(mfaService.check).not.toHaveBeenCalled();
-            expect(
-                userPasswordService.countFailedPasswordAttemptInTx
-            ).not.toHaveBeenCalled();
-            expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('answers the password failure for a null password without comparing', async () => {
-            userPasswordService.getPasswordAttemptLimit.mockResolvedValue(
-                passwordLimit
-            );
-
-            await expect(
-                service.checkReauthentication(baseUser, {
-                    ...input,
-                    password: null,
-                })
-            ).resolves.toEqual({
-                check: null,
-                failure: { password: passwordLimit, mfa: null },
-            });
-            expect(argon2Compare).not.toHaveBeenCalled();
-        });
-
-        it('throws the max-attempt exception without comparing when the account is locked', async () => {
-            userPasswordService.assertPasswordAttemptAvailable.mockImplementation(
-                () => {
-                    throw new UserPasswordAttemptMaxException();
-                }
-            );
-
-            await expect(
-                service.checkReauthentication(baseUser, input)
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordAttemptMax,
-            });
-            expect(argon2Compare).not.toHaveBeenCalled();
-            expect(mfaService.check).not.toHaveBeenCalled();
-        });
-
-        it('throws UserPasswordExpiredException when the matched password has expired and checks no MFA', async () => {
-            const expiredUser = {
-                ...baseUser,
-                passwordExpired: new Date('2026-02-01T00:00:00.000Z'),
-            };
-            userPasswordService.getCredential.mockReturnValue({
-                ...credential,
-                user: expiredUser,
-            });
-            mfaService.isEnabled.mockResolvedValue(true);
-
-            await expect(
-                service.checkReauthentication(expiredUser, input)
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.passwordExpired,
-            });
-            expect(mfaService.check).not.toHaveBeenCalled();
-        });
-
-        it('answers the MFA failure of a passkey proof with the challenge claimed by nobody', async () => {
-            mfaChallengeService.getWebAuthnChallengeForUser.mockResolvedValue(
-                'webauthn-halcyon'
-            );
-            mfaService.check.mockResolvedValue({
-                check: null,
-                failure: passkeyFailure,
-            });
-
-            await expect(
-                service.checkReauthentication(baseUser, {
-                    ...input,
-                    passkeyChallengeToken: 'challenge-halcyon',
-                    passkeyResponse,
-                })
-            ).resolves.toEqual({
-                check: null,
-                failure: { password: null, mfa: passkeyFailure },
-            });
-            expect(argon2Compare).not.toHaveBeenCalled();
-            expect(mfaChallengeService.consumeInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws MfaMethodRequiredException uncounted when the method is missing', async () => {
-            mfaService.isEnabled.mockResolvedValue(true);
-            mfaService.check.mockRejectedValue(
-                new MfaMethodRequiredException()
-            );
-
-            await expect(
-                service.checkReauthentication(baseUser, {
-                    ...input,
-                    method: null,
-                })
-            ).rejects.toMatchObject({
-                statusCode: EnumMfaStatusCodeError.methodRequired,
-
-                module: 'mfa',
-            });
-            expect(
-                userPasswordService.countFailedPasswordAttemptInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('asks no MFA code for the mfaTotpEnable action', async () => {
-            mfaService.isEnabled.mockResolvedValue(true);
-
-            await expect(
-                service.checkReauthentication(baseUser, {
-                    ...input,
-                    action: EnumUserReauthenticationAction.mfaTotpEnable,
-                    method: null,
-                    code: null,
-                })
-            ).resolves.toEqual({
-                check: {
-                    isPasswordChecked: true,
-                    mfa: null,
-                    verificationId: null,
-                    passkeyChallengeToken: null,
-                },
-                failure: null,
-            });
-            expect(mfaService.check).not.toHaveBeenCalled();
-        });
-
-        it('checks the backup code of a passwordless account with MFA on for the mfaTotpEnable action', async () => {
-            userPasswordService.getCredential.mockReturnValue(null);
-            mfaService.isEnabled.mockResolvedValue(true);
-            mfaService.check.mockResolvedValue({
-                check: {
-                    method: EnumMfaMethod.backupCode,
-                    totpStep: null,
-                    backupCodeHash: 'hash-one',
-                    passkey: null,
-                },
-                failure: null,
-            });
-
-            await expect(
-                service.checkReauthentication(baseUser, {
-                    ...input,
-                    action: EnumUserReauthenticationAction.mfaTotpEnable,
-                    password: null,
-                    method: EnumMfaMethod.backupCode,
-                    code: null,
-                    backupCode: 'ABCD1234EF',
-                })
-            ).resolves.toMatchObject({
-                check: {
-                    isPasswordChecked: false,
-                    mfa: { method: EnumMfaMethod.backupCode },
-                    verificationId: null,
-                },
-            });
-            expect(mfaService.check).toHaveBeenCalledWith(
-                'user-halcyon',
-                {
-                    method: EnumMfaMethod.backupCode,
-                    code: null,
-                    backupCode: 'ABCD1234EF',
-                    passkeyResponse: null,
-                },
-                null
-            );
-        });
-
-        it('passes on the MfaMethodRequiredException for a passwordless account with MFA on and no proof at mfaTotpEnable', async () => {
-            userPasswordService.getCredential.mockReturnValue(null);
-            mfaService.isEnabled.mockResolvedValue(true);
-            mfaService.check.mockRejectedValue(
-                new MfaMethodRequiredException()
-            );
-
-            await expect(
-                service.checkReauthentication(baseUser, {
-                    ...input,
-                    action: EnumUserReauthenticationAction.mfaTotpEnable,
-                    password: null,
-                    method: null,
-                    code: null,
-                })
-            ).rejects.toMatchObject({
-                statusCode: EnumMfaStatusCodeError.methodRequired,
-
-                module: 'mfa',
-            });
-            expect(
-                userVerificationService.getOneActiveReauthentication
-            ).not.toHaveBeenCalled();
-        });
-
-        it('asks the email code of a passwordless account with MFA off for the mfaTotpEnable action', async () => {
-            userPasswordService.getCredential.mockReturnValue(null);
+        it('answers the id of the email code of the action for an account with neither proof', async () => {
             userVerificationService.getOneActiveReauthentication.mockResolvedValue(
-                { id: 'verification-halcyon' } as never
+                reauthenticationVerification
             );
 
             await expect(
-                service.checkReauthentication(baseUser, {
-                    ...input,
-                    action: EnumUserReauthenticationAction.mfaTotpEnable,
-                    password: null,
-                    otp: '123456',
-                })
-            ).resolves.toMatchObject({
-                check: { verificationId: 'verification-halcyon' },
-            });
-            expect(mfaService.check).not.toHaveBeenCalled();
-        });
-
-        it('asks no MFA code and returns no check with MFA off', async () => {
-            await expect(
-                service.checkReauthentication(baseUser, input)
-            ).resolves.toEqual({
-                check: {
-                    isPasswordChecked: true,
-                    mfa: null,
-                    verificationId: null,
-                    passkeyChallengeToken: null,
-                },
-                failure: null,
-            });
-            expect(mfaService.check).not.toHaveBeenCalled();
-        });
-
-        it('asks no email code for an account with a password', async () => {
-            await service.checkReauthentication(baseUser, {
-                ...input,
-                otp: '123456',
-            });
-
-            expect(
-                userVerificationService.getOneActiveReauthentication
-            ).not.toHaveBeenCalled();
-        });
-
-        it('asks no email code for an account with no password and MFA on', async () => {
-            userPasswordService.getCredential.mockReturnValue(null);
-            mfaService.isEnabled.mockResolvedValue(true);
-            mfaService.check.mockResolvedValue({
-                check: mfaCheck,
-                failure: null,
-            });
-
-            await expect(
-                service.checkReauthentication(
-                    { ...baseUser, password: null },
-                    { ...input, password: null }
+                service.getReauthenticationVerificationId(
+                    baseUser,
+                    input,
+                    false,
+                    false
                 )
-            ).resolves.toEqual({
-                check: {
-                    isPasswordChecked: false,
-                    mfa: mfaCheck,
-                    verificationId: null,
-                    passkeyChallengeToken: null,
-                },
-                failure: null,
-            });
+            ).resolves.toBe('verification-halcyon');
             expect(
                 userVerificationService.getOneActiveReauthentication
-            ).not.toHaveBeenCalled();
+            ).toHaveBeenCalledWith(
+                'user-halcyon',
+                EnumUserReauthenticationAction.mobileNumberAdd,
+                '123456'
+            );
         });
 
         it('throws UserReauthenticationOtpRequiredException for an account with neither proof and no email code', async () => {
-            userPasswordService.getCredential.mockReturnValue(null);
-
             await expect(
-                service.checkReauthentication(
-                    { ...baseUser, password: null },
-                    { ...input, password: null }
+                service.getReauthenticationVerificationId(
+                    baseUser,
+                    { ...input, otp: null },
+                    false,
+                    false
                 )
             ).rejects.toMatchObject({
                 module: 'user',
@@ -1832,212 +1351,52 @@ describe('UserAuthService', () => {
             expect(
                 userVerificationService.getOneActiveReauthentication
             ).not.toHaveBeenCalled();
-            expect(mfaService.check).not.toHaveBeenCalled();
         });
 
         it('throws UserReauthenticationOtpInvalidException for a wrong, expired, or other-action email code', async () => {
-            userPasswordService.getCredential.mockReturnValue(null);
             userVerificationService.getOneActiveReauthentication.mockRejectedValue(
                 new UserReauthenticationOtpInvalidException()
             );
 
             await expect(
-                service.checkReauthentication(
-                    { ...baseUser, password: null },
-                    { ...input, password: null, otp: '000000' }
+                service.getReauthenticationVerificationId(
+                    baseUser,
+                    { ...input, otp: '000000' },
+                    false,
+                    false
                 )
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.reauthenticationOtpInvalid,
             });
-            expect(
-                userVerificationService.getOneActiveReauthentication
-            ).toHaveBeenCalledWith(
-                'user-halcyon',
-                EnumUserReauthenticationAction.deleteSelf,
-                '000000'
-            );
         });
 
-        it('checks the email code of the action and answers its verification id for an account with neither proof', async () => {
-            userPasswordService.getCredential.mockReturnValue(null);
-            userVerificationService.getOneActiveReauthentication.mockResolvedValue(
-                reauthenticationVerification
-            );
-
-            await expect(
-                service.checkReauthentication(
-                    { ...baseUser, password: null },
-                    {
-                        ...input,
-                        action: EnumUserReauthenticationAction.mobileNumberAdd,
-                        password: null,
-                        otp: '123456',
-                    }
-                )
-            ).resolves.toEqual({
-                check: {
-                    isPasswordChecked: false,
-                    mfa: null,
-                    verificationId: 'verification-halcyon',
-                    passkeyChallengeToken: null,
-                },
-                failure: null,
-            });
-            expect(
-                userVerificationService.getOneActiveReauthentication
-            ).toHaveBeenCalledWith(
-                'user-halcyon',
-                EnumUserReauthenticationAction.mobileNumberAdd,
-                '123456'
-            );
-            expect(argon2Compare).not.toHaveBeenCalled();
-            expect(mfaService.check).not.toHaveBeenCalled();
-        });
-
-        it('checks the passkey only and never calls the password or TOTP check for a valid passkey proof on an account with a password and TOTP', async () => {
-            mfaService.isEnabled.mockResolvedValue(true);
-            mfaChallengeService.getWebAuthnChallengeForUser.mockResolvedValue(
-                'webauthn-halcyon'
-            );
-            mfaService.check.mockResolvedValue({
-                check: passkeyCheck,
-                failure: null,
-            });
-
-            await expect(
-                service.checkReauthentication(baseUser, {
-                    ...input,
-                    passkeyChallengeToken: 'challenge-halcyon',
-                    passkeyResponse,
-                })
-            ).resolves.toEqual({
-                check: {
-                    isPasswordChecked: false,
-                    mfa: passkeyCheck,
-                    verificationId: null,
-                    passkeyChallengeToken: 'challenge-halcyon',
-                },
-                failure: null,
-            });
-            expect(
-                mfaChallengeService.getWebAuthnChallengeForUser
-            ).toHaveBeenCalledWith(
-                'challenge-halcyon',
-                EnumMfaChallengePurpose.reauthentication,
-                'user-halcyon'
-            );
-            expect(mfaService.check).toHaveBeenCalledTimes(1);
-            expect(mfaService.check).toHaveBeenCalledWith(
-                'user-halcyon',
-                {
-                    method: EnumMfaMethod.passkey,
-                    code: null,
-                    backupCode: null,
-                    passkeyResponse,
-                },
-                'webauthn-halcyon'
-            );
-            expect(argon2Compare).not.toHaveBeenCalled();
-            expect(
-                userPasswordService.countFailedPasswordAttemptInTx
-            ).not.toHaveBeenCalled();
-            expect(
-                userVerificationService.getOneActiveReauthentication
-            ).not.toHaveBeenCalled();
-        });
-
-        it('takes a passkey proof for the mfaTotpEnable action too', async () => {
-            mfaService.isEnabled.mockResolvedValue(true);
-            mfaChallengeService.getWebAuthnChallengeForUser.mockResolvedValue(
-                'webauthn-halcyon'
-            );
-            mfaService.check.mockResolvedValue({
-                check: passkeyCheck,
-                failure: null,
-            });
-
-            await expect(
-                service.checkReauthentication(baseUser, {
-                    ...input,
-                    action: EnumUserReauthenticationAction.mfaTotpEnable,
-                    passkeyChallengeToken: 'challenge-halcyon',
-                    passkeyResponse,
-                })
-            ).resolves.toMatchObject({
-                check: { mfa: passkeyCheck },
-            });
-            expect(argon2Compare).not.toHaveBeenCalled();
-        });
-
-        it('passes on the MfaChallengeInvalidException of the challenge service and checks nothing', async () => {
-            mfaChallengeService.getWebAuthnChallengeForUser.mockRejectedValue(
-                new MfaChallengeInvalidException()
-            );
-
-            await expect(
-                service.checkReauthentication(baseUser, {
-                    ...input,
-                    passkeyChallengeToken: 'challenge-halcyon',
-                    passkeyResponse,
-                })
-            ).rejects.toMatchObject({
-                statusCode: EnumMfaStatusCodeError.challengeInvalid,
-
-                module: 'mfa',
-            });
-            expect(mfaService.check).not.toHaveBeenCalled();
-        });
-
-        it('throws MfaMethodUnavailableException for a passkey proof on an account without a passkey', async () => {
-            mfaChallengeService.getWebAuthnChallengeForUser.mockResolvedValue(
-                'webauthn-halcyon'
-            );
-            mfaService.check.mockRejectedValue(
-                new MfaMethodUnavailableException()
-            );
-
-            await expect(
-                service.checkReauthentication(baseUser, {
-                    ...input,
-                    passkeyChallengeToken: 'challenge-halcyon',
-                    passkeyResponse,
-                })
-            ).rejects.toMatchObject({
-                statusCode: EnumMfaStatusCodeError.methodUnavailable,
-
-                module: 'mfa',
-            });
-        });
-
-        it('keeps the password and code order when only one passkey field is present', async () => {
-            mfaService.isEnabled.mockResolvedValue(true);
-            mfaService.check.mockResolvedValue({
-                check: mfaCheck,
-                failure: null,
-            });
-
-            await service.checkReauthentication(baseUser, {
-                ...input,
-                passkeyChallengeToken: 'challenge-halcyon',
-            });
-
-            expect(
-                mfaChallengeService.getWebAuthnChallengeForUser
-            ).not.toHaveBeenCalled();
-            expect(argon2Compare).toHaveBeenCalledTimes(1);
-        });
+        it.each([
+            [true, false],
+            [false, true],
+            [true, true],
+        ])(
+            'answers null and reads nothing when the password is checked %s and MFA is enabled %s',
+            async (isPasswordChecked, isMfaEnabled) => {
+                await expect(
+                    service.getReauthenticationVerificationId(
+                        baseUser,
+                        input,
+                        isPasswordChecked,
+                        isMfaEnabled
+                    )
+                ).resolves.toBeNull();
+                expect(
+                    userVerificationService.getOneActiveReauthentication
+                ).not.toHaveBeenCalled();
+            }
+        );
     });
 
     describe('countFailedReauthenticationInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
         const authContext = buildAuthJwtAccessContext('user-halcyon');
         const passwordLimit: IUserPasswordAttemptLimit = {
-            maxAttempts: 5,
-            lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
-        };
-        const totpFailure: IMfaAttemptFailure = {
-            method: EnumMfaMethod.totp,
             maxAttempts: 5,
             lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
         };
@@ -2059,7 +1418,7 @@ describe('UserAuthService', () => {
                         requestContext,
                         apiKeyContext,
                         authContext,
-                        { password: passwordLimit, mfa: null }
+                        passwordLimit
                     )
                 ).resolves.toBe(isLocked);
 
@@ -2090,62 +1449,14 @@ describe('UserAuthService', () => {
                 expect(
                     userPasswordService.countFailedPasswordAttemptInTx
                 ).toHaveBeenCalledBefore(outboxService.addInTx);
-                expect(
-                    mfaService.countFailedAttemptInTx
-                ).not.toHaveBeenCalled();
                 expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            }
-        );
-
-        it.each([false, true])(
-            'counts the MFA failure through MfaService on the tx, adds no entry of its own, and answers lock %s',
-            async isLocked => {
-                mfaService.countFailedAttemptInTx.mockResolvedValue(isLocked);
-
-                await expect(
-                    service.countFailedReauthenticationInTx(
-                        tx,
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        { password: null, mfa: totpFailure }
-                    )
-                ).resolves.toBe(isLocked);
-
-                expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledWith(
-                    tx,
-                    requestContext,
-                    apiKeyContext,
-                    'user-halcyon',
-                    totpFailure
-                );
-                expect(activityLogQueue.recordEffect).not.toHaveBeenCalled();
-                expect(outboxService.addInTx).not.toHaveBeenCalled();
-                expect(
-                    userPasswordService.countFailedPasswordAttemptInTx
-                ).not.toHaveBeenCalled();
             }
         );
     });
 
     describe('throwFailedReauthentication', () => {
-        const passwordLimit: IUserPasswordAttemptLimit = {
-            maxAttempts: 5,
-            lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
-        };
-        const totpFailure: IMfaAttemptFailure = {
-            method: EnumMfaMethod.totp,
-            maxAttempts: 5,
-            lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
-        };
-
-        it('throws UserPasswordAttemptMaxException for a locking password failure', () => {
-            expect(() =>
-                service.throwFailedReauthentication(
-                    { password: passwordLimit, mfa: null },
-                    true
-                )
-            ).toThrow(
+        it('throws UserPasswordAttemptMaxException for a locking failure', () => {
+            expect(() => service.throwFailedReauthentication(true)).toThrow(
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.passwordAttemptMax,
@@ -2153,286 +1464,97 @@ describe('UserAuthService', () => {
             );
         });
 
-        it('throws UserPasswordNotMatchException for a password failure below the budget', () => {
-            expect(() =>
-                service.throwFailedReauthentication(
-                    { password: passwordLimit, mfa: null },
-                    false
-                )
-            ).toThrow(
+        it('throws UserPasswordNotMatchException for a failure below the budget', () => {
+            expect(() => service.throwFailedReauthentication(false)).toThrow(
                 expect.objectContaining({
                     module: 'user',
                     statusCode: EnumUserStatusCodeError.passwordNotMatch,
                 })
             );
         });
-
-        it.each([false, true])(
-            'goes through MfaService.throwFailedAttempt for an MFA failure with lock %s',
-            isLocked => {
-                const failure = new MfaInvalidException();
-                mfaService.throwFailedAttempt.mockImplementation(() => {
-                    throw failure;
-                });
-
-                expect(() =>
-                    service.throwFailedReauthentication(
-                        { password: null, mfa: totpFailure },
-                        isLocked
-                    )
-                ).toThrow(failure);
-                expect(mfaService.throwFailedAttempt).toHaveBeenCalledWith(
-                    totpFailure,
-                    isLocked
-                );
-            }
-        );
     });
 
     describe('assertReauthenticationOtpAllowed', () => {
-        it('answers nothing for an account with no password and MFA off', async () => {
+        it('answers nothing for an account with no password and MFA off', () => {
             userPasswordService.getCredential.mockReturnValue(null);
-            mfaService.isEnabled.mockResolvedValue(false);
 
-            await expect(
-                service.assertReauthenticationOtpAllowed(baseUser)
-            ).resolves.toBeUndefined();
-            expect(mfaService.isEnabled).toHaveBeenCalledWith('user-halcyon');
+            expect(
+                service.assertReauthenticationOtpAllowed(baseUser, false)
+            ).toBeUndefined();
         });
 
-        it('throws UserReauthenticationOtpNotAllowedException for an account with a password', async () => {
+        it('throws UserReauthenticationOtpNotAllowedException for an account with a password', () => {
             userPasswordService.getCredential.mockReturnValue({
                 user: baseUser,
                 hashedPassword: 'hashed-password',
             });
-            mfaService.isEnabled.mockResolvedValue(false);
 
-            await expect(
-                service.assertReauthenticationOtpAllowed(baseUser)
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode:
-                    EnumUserStatusCodeError.reauthenticationOtpNotAllowed,
-            });
+            expect(() =>
+                service.assertReauthenticationOtpAllowed(baseUser, false)
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode:
+                        EnumUserStatusCodeError.reauthenticationOtpNotAllowed,
+                })
+            );
         });
 
-        it('throws UserReauthenticationOtpNotAllowedException for an account with MFA on', async () => {
+        it('throws UserReauthenticationOtpNotAllowedException for an account with MFA on', () => {
             userPasswordService.getCredential.mockReturnValue(null);
-            mfaService.isEnabled.mockResolvedValue(true);
 
-            await expect(
-                service.assertReauthenticationOtpAllowed(baseUser)
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode:
-                    EnumUserStatusCodeError.reauthenticationOtpNotAllowed,
-            });
+            expect(() =>
+                service.assertReauthenticationOtpAllowed(baseUser, true)
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode:
+                        EnumUserStatusCodeError.reauthenticationOtpNotAllowed,
+                })
+            );
         });
     });
 
     describe('completeReauthenticationInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
         const authContext = buildAuthJwtAccessContext('user-halcyon');
-        const mfaCheck: IMfaCheck = {
-            method: EnumMfaMethod.backupCode,
-            totpStep: null,
-            backupCodeHash: 'hash-one',
-            passkey: null,
-        };
-        const passwordOnly: IUserReauthenticationCheck = {
-            isPasswordChecked: true,
-            mfa: null,
-            verificationId: null,
-            passkeyChallengeToken: null,
-        };
-        const both: IUserReauthenticationCheck = {
-            isPasswordChecked: true,
-            mfa: mfaCheck,
-            verificationId: null,
-            passkeyChallengeToken: null,
-        };
 
-        beforeEach(() => {
-            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
-        });
-
-        it('resets only the password counter for a password proof', async () => {
+        it('resets the password counter on the tx for a password proof and marks no code used', async () => {
             await expect(
                 service.completeReauthenticationInTx(
                     tx,
-                    userRequestContext,
-                    userApiKeyContext,
                     authContext,
-                    passwordOnly
+                    true,
+                    null
                 )
             ).resolves.toBeUndefined();
 
             expect(
                 userPasswordService.resetPasswordAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-halcyon');
-            expect(mfaService.completeInTx).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(userVerificationService.markUsedInTx).not.toHaveBeenCalled();
         });
 
-        it('completes the MFA proof on the tx and adds the verify entry', async () => {
-            await service.completeReauthenticationInTx(
-                tx,
-                userRequestContext,
-                userApiKeyContext,
-                authContext,
-                both
-            );
-
-            expect(
-                userPasswordService.resetPasswordAttemptInTx
-            ).toHaveBeenCalledWith(tx, 'user-halcyon');
-            expect(mfaService.completeInTx).toHaveBeenCalledWith(
-                tx,
-                'user-halcyon',
-                mfaCheck
-            );
-            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
-                userRequestContext,
-                userApiKeyContext,
-                authContext,
-                null,
-                {
-                    action: EnumActivityLogAction.userMfaVerified,
-                    userId: 'user-halcyon',
-                    createdBy: 'user-halcyon',
-                }
-            );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
-        });
-
-        it('claims the reauthentication challenge first, then completes the passkey proof and adds the verify entry on the given tx', async () => {
-            const passkeyMfa: IMfaCheck = {
-                method: EnumMfaMethod.passkey,
-                totpStep: null,
-                backupCodeHash: null,
-                passkey: { id: 'passkey-halcyon', counter: 5 },
-            };
-
-            await service.completeReauthenticationInTx(
-                tx,
-                userRequestContext,
-                userApiKeyContext,
-                authContext,
-                {
-                    isPasswordChecked: false,
-                    mfa: passkeyMfa,
-                    verificationId: null,
-                    passkeyChallengeToken: 'challenge-halcyon',
-                }
-            );
-
-            expect(mfaChallengeService.consumeInTx).toHaveBeenCalledWith(
-                tx,
-                'challenge-halcyon',
-                EnumMfaChallengePurpose.reauthentication,
-                'user-halcyon'
-            );
-            expect(mfaChallengeService.consumeInTx).toHaveBeenCalledBefore(
-                mfaService.completeInTx
-            );
-            expect(mfaService.completeInTx).toHaveBeenCalledWith(
-                tx,
-                'user-halcyon',
-                passkeyMfa
-            );
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
-            expect(
-                userPasswordService.resetPasswordAttemptInTx
-            ).not.toHaveBeenCalled();
-        });
-
-        it('completes nothing when the challenge claim is lost', async () => {
-            mfaChallengeService.consumeInTx.mockRejectedValue(
-                new MfaChallengeInvalidException()
-            );
-
-            await expect(
-                service.completeReauthenticationInTx(
-                    tx,
-                    userRequestContext,
-                    userApiKeyContext,
-                    authContext,
-                    {
-                        isPasswordChecked: false,
-                        mfa: mfaCheck,
-                        verificationId: null,
-                        passkeyChallengeToken: 'challenge-halcyon',
-                    }
-                )
-            ).rejects.toMatchObject({
-                statusCode: EnumMfaStatusCodeError.challengeInvalid,
-
-                module: 'mfa',
-            });
-            expect(mfaService.completeInTx).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('claims no challenge for a proof without a passkey token', async () => {
-            await service.completeReauthenticationInTx(
-                tx,
-                userRequestContext,
-                userApiKeyContext,
-                authContext,
-                both
-            );
-
-            expect(mfaChallengeService.consumeInTx).not.toHaveBeenCalled();
-        });
-
-        it('adds no entry when the MFA completion throws', async () => {
-            mfaService.completeInTx.mockRejectedValue(
-                new MfaInvalidException()
-            );
-
-            await expect(
-                service.completeReauthenticationInTx(
-                    tx,
-                    userRequestContext,
-                    userApiKeyContext,
-                    authContext,
-                    both
-                )
-            ).rejects.toMatchObject({
-                statusCode: EnumMfaStatusCodeError.invalid,
-
-                module: 'mfa',
-            });
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('marks the email code used for an account with neither proof', async () => {
+        it('marks the email code used on the tx and resets no counter for an account with neither proof', async () => {
             userVerificationService.markUsedInTx.mockResolvedValue(true);
 
             await expect(
                 service.completeReauthenticationInTx(
                     tx,
-                    userRequestContext,
-                    userApiKeyContext,
                     authContext,
-                    {
-                        isPasswordChecked: false,
-                        mfa: null,
-                        verificationId: 'verification-halcyon',
-                        passkeyChallengeToken: null,
-                    }
+                    false,
+                    'verification-halcyon'
                 )
             ).resolves.toBeUndefined();
 
             expect(userVerificationService.markUsedInTx).toHaveBeenCalledWith(
                 tx,
                 'verification-halcyon',
-                authContext.userId
+                'user-halcyon'
             );
             expect(
                 userPasswordService.resetPasswordAttemptInTx
             ).not.toHaveBeenCalled();
-            expect(mfaService.completeInTx).not.toHaveBeenCalled();
         });
 
         it('throws UserReauthenticationOtpInvalidException when the email code was used first', async () => {
@@ -2441,15 +1563,9 @@ describe('UserAuthService', () => {
             await expect(
                 service.completeReauthenticationInTx(
                     tx,
-                    userRequestContext,
-                    userApiKeyContext,
                     authContext,
-                    {
-                        isPasswordChecked: false,
-                        mfa: null,
-                        verificationId: 'verification-halcyon',
-                        passkeyChallengeToken: null,
-                    }
+                    false,
+                    'verification-halcyon'
                 )
             ).rejects.toMatchObject({
                 module: 'user',
@@ -2457,15 +1573,17 @@ describe('UserAuthService', () => {
             });
         });
 
-        it('marks no email code used for a password or MFA proof', async () => {
+        it('writes nothing when neither a password was checked nor a code was read', async () => {
             await service.completeReauthenticationInTx(
                 tx,
-                userRequestContext,
-                userApiKeyContext,
                 authContext,
-                passwordOnly
+                false,
+                null
             );
 
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).not.toHaveBeenCalled();
             expect(userVerificationService.markUsedInTx).not.toHaveBeenCalled();
         });
     });

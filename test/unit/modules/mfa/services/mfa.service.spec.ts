@@ -21,6 +21,7 @@ import {
     EnumActivityLogAction,
     EnumMfaChallengePurpose,
     EnumMfaPasskeyDeviceType,
+    EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import type { Mfa } from '@generated/prisma-client/client';
 import {
@@ -36,6 +37,8 @@ import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import type {
     IMfaAttemptFailure,
     IMfaCheck,
+    IMfaReauthenticationInput,
+    IMfaReauthenticationResult,
 } from '@modules/mfa/interfaces/mfa.interface';
 import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
@@ -63,6 +66,7 @@ import type { INotificationNotifyEffect } from '@modules/notification/interfaces
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import {
     buildApiKeyContext,
+    buildAuthJwtAccessContext,
     buildRequestContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 
@@ -914,6 +918,276 @@ describe('MfaService', () => {
                 );
             }
         );
+    });
+
+    describe('checkReauthentication', () => {
+        const baseInput: IMfaReauthenticationInput = {
+            action: EnumUserReauthenticationAction.mfaTotpDisable,
+            method: EnumMfaMethod.totp,
+            code: ' 123456 ',
+            backupCode: null,
+            passkeyChallengeToken: null,
+            passkeyResponse: null,
+        };
+        const totpCheck: IMfaCheck = {
+            method: EnumMfaMethod.totp,
+            totpStep: 7,
+            backupCodeHash: null,
+            passkey: null,
+        };
+
+        beforeEach(() => {
+            mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
+            mfaTotpService.existsConfirmed.mockResolvedValue(true);
+            mfaPasskeyService.existsByUser.mockResolvedValue(false);
+            featureFlagService.isMetadataAllowed.mockResolvedValue(true);
+        });
+
+        it('answers enabled with nothing checked and calls no proof check for mfaTotpEnable after a password check', async () => {
+            await expect(
+                service.checkReauthentication(
+                    'user-quartz',
+                    {
+                        ...baseInput,
+                        action: EnumUserReauthenticationAction.mfaTotpEnable,
+                    },
+                    true
+                )
+            ).resolves.toEqual({
+                isEnabled: true,
+                check: null,
+                failure: null,
+                passkeyChallengeToken: null,
+            });
+            expect(mfaTotpService.checkCode).not.toHaveBeenCalled();
+            expect(mfaPasskeyService.checkAssertion).not.toHaveBeenCalled();
+            expect(mfaRepository.findOneByUserId).not.toHaveBeenCalled();
+        });
+
+        it('answers disabled with nothing checked and calls no proof check for a user with MFA off', async () => {
+            mfaTotpService.existsConfirmed.mockResolvedValue(false);
+
+            await expect(
+                service.checkReauthentication('user-quartz', baseInput, true)
+            ).resolves.toEqual({
+                isEnabled: false,
+                check: null,
+                failure: null,
+                passkeyChallengeToken: null,
+            });
+            expect(mfaTotpService.checkCode).not.toHaveBeenCalled();
+        });
+
+        it('checks the proof for mfaTotpEnable when no password was checked and answers the check', async () => {
+            mfaTotpService.checkCode.mockResolvedValue(7);
+
+            await expect(
+                service.checkReauthentication(
+                    'user-quartz',
+                    {
+                        ...baseInput,
+                        action: EnumUserReauthenticationAction.mfaTotpEnable,
+                    },
+                    false
+                )
+            ).resolves.toEqual({
+                isEnabled: true,
+                check: totpCheck,
+                failure: null,
+                passkeyChallengeToken: null,
+            });
+            expect(mfaTotpService.checkCode).toHaveBeenCalledWith(
+                'user-quartz',
+                ' 123456 '
+            );
+        });
+
+        it('checks the proof for another action after a password check and answers the check', async () => {
+            mfaTotpService.checkCode.mockResolvedValue(7);
+
+            await expect(
+                service.checkReauthentication('user-quartz', baseInput, true)
+            ).resolves.toEqual({
+                isEnabled: true,
+                check: totpCheck,
+                failure: null,
+                passkeyChallengeToken: null,
+            });
+        });
+
+        it('answers the failure and writes nothing for a mismatch', async () => {
+            mfaTotpService.checkCode.mockResolvedValue(null);
+
+            await expect(
+                service.checkReauthentication('user-quartz', baseInput, false)
+            ).resolves.toEqual({
+                isEnabled: true,
+                check: null,
+                failure: totpFailure,
+                passkeyChallengeToken: null,
+            });
+            expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('treats the passkey as the whole proof, reads its reauthentication challenge, and answers the token with the check', async () => {
+            mfaChallengeService.getWebAuthnChallengeForUser.mockResolvedValue(
+                'challenge-quartz'
+            );
+            mfaPasskeyService.checkAssertion.mockResolvedValue({
+                id: 'passkey-one',
+                counter: 8,
+            });
+
+            await expect(
+                service.checkReauthentication(
+                    'user-quartz',
+                    {
+                        ...baseInput,
+                        action: EnumUserReauthenticationAction.mfaTotpEnable,
+                        passkeyChallengeToken: 'token-quartz',
+                        passkeyResponse,
+                    },
+                    true
+                )
+            ).resolves.toEqual({
+                isEnabled: true,
+                check: {
+                    method: EnumMfaMethod.passkey,
+                    totpStep: null,
+                    backupCodeHash: null,
+                    passkey: { id: 'passkey-one', counter: 8 },
+                },
+                failure: null,
+                passkeyChallengeToken: 'token-quartz',
+            });
+            expect(
+                mfaChallengeService.getWebAuthnChallengeForUser
+            ).toHaveBeenCalledWith(
+                'token-quartz',
+                EnumMfaChallengePurpose.reauthentication,
+                'user-quartz'
+            );
+            expect(mfaPasskeyService.checkAssertion).toHaveBeenCalledWith(
+                'user-quartz',
+                passkeyResponse,
+                'challenge-quartz'
+            );
+            expect(mfaTotpService.checkCode).not.toHaveBeenCalled();
+        });
+
+        it('answers the passkey failure with no token for a passkey mismatch', async () => {
+            mfaChallengeService.getWebAuthnChallengeForUser.mockResolvedValue(
+                'challenge-quartz'
+            );
+            mfaPasskeyService.checkAssertion.mockResolvedValue(null);
+
+            await expect(
+                service.checkReauthentication(
+                    'user-quartz',
+                    {
+                        ...baseInput,
+                        passkeyChallengeToken: 'token-quartz',
+                        passkeyResponse,
+                    },
+                    false
+                )
+            ).resolves.toEqual({
+                isEnabled: true,
+                check: null,
+                failure: passkeyFailure,
+                passkeyChallengeToken: null,
+            });
+        });
+    });
+
+    describe('completeReauthenticationInTx', () => {
+        const check: IMfaCheck = {
+            method: EnumMfaMethod.totp,
+            totpStep: 9,
+            backupCodeHash: null,
+            passkey: null,
+        };
+        const authContext = buildAuthJwtAccessContext('user-quartz');
+        const baseResult: IMfaReauthenticationResult = {
+            isEnabled: true,
+            check: null,
+            failure: null,
+            passkeyChallengeToken: null,
+        };
+
+        it('writes nothing for a result with no check and no token', async () => {
+            await service.completeReauthenticationInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                baseResult
+            );
+
+            expect(mfaChallengeService.consumeInTx).not.toHaveBeenCalled();
+            expect(mfaRepository.resetAttemptInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+        });
+
+        it('completes the check on the tx and adds one userMfaVerified entry', async () => {
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
+
+            await service.completeReauthenticationInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                { ...baseResult, check }
+            );
+
+            expect(mfaRepository.resetAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz',
+                'user-quartz'
+            );
+            expect(mfaTotpService.markUsedInTx).toHaveBeenCalledWith(
+                tx,
+                'user-quartz',
+                9
+            );
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.userMfaVerified,
+                    userId: 'user-quartz',
+                    createdBy: 'user-quartz',
+                }
+            );
+            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
+            expect(mfaChallengeService.consumeInTx).not.toHaveBeenCalled();
+        });
+
+        it('claims the reauthentication challenge first, then completes the check', async () => {
+            activityLogQueue.recordEffect.mockReturnValue(entryEffect);
+
+            await service.completeReauthenticationInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                { ...baseResult, check, passkeyChallengeToken: 'token-quartz' }
+            );
+
+            expect(mfaChallengeService.consumeInTx).toHaveBeenCalledWith(
+                tx,
+                'token-quartz',
+                EnumMfaChallengePurpose.reauthentication,
+                'user-quartz'
+            );
+            expect(mfaChallengeService.consumeInTx).toHaveBeenCalledBefore(
+                mfaRepository.resetAttemptInTx
+            );
+        });
     });
 
     describe('completeInTx', () => {

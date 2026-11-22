@@ -65,7 +65,7 @@ describe('UserProcessPurgeExpiredUseCase', () => {
             const result = await useCase.execute();
 
             expect(result).toEqual({
-                message: 'user.queue.purgeExpired',
+                message: 'user.queue.auth.purgeExpired',
                 sessions: 1,
                 mfaChallenges: 2,
                 passwordHistories: 3,

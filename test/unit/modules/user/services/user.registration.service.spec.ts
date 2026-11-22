@@ -1,10 +1,7 @@
-import { setImmediate } from 'node:timers/promises';
-import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
@@ -25,12 +22,8 @@ import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
-import { NotificationService } from '@modules/notification/services/notification.service';
-import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
-import type { IPasswordHistoryCreate } from '@modules/password-history/interfaces/password-history.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
-import { UserService } from '@modules/user/services/user.service';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
@@ -41,7 +34,7 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
-import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
@@ -50,21 +43,16 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { buildUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserRegistrationService', () => {
-    const userService: MockProxy<UserService> = mock<UserService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
-    const passwordHistoryService: MockProxy<PasswordHistoryService> =
-        mock<PasswordHistoryService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
+    const authPasswordService: MockProxy<AuthPasswordService> =
+        mock<AuthPasswordService>();
 
     let service: UserRegistrationService;
     let databaseUtil: DatabaseUtil;
     let helperStringService: HelperStringService;
-    let helperHashService: HelperHashService;
 
-    const tx = {} as IDatabaseTransactionClient;
     const password: IAuthPassword = {
         passwordHash: 'hashed-password',
         passwordExpired: null,
@@ -100,18 +88,6 @@ describe('UserRegistrationService', () => {
         'user-ochre',
         'user-ochre@example.com'
     );
-    const created: IUser[] = [createdUser];
-    const histories: IPasswordHistoryCreate[] = [
-        {
-            userId: 'user-ochre',
-            password: 'hashed-password',
-            type: EnumPasswordHistoryType.signUp,
-            expiredAt: new Date('2026-04-01T00:00:00.000Z'),
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: 'user-ochre',
-        },
-    ];
-    const userIds = ['user-ochre'];
     const email = 'ochre@example.com';
 
     const workspaceContext: IUserSignUpWorkspacePersonal = {
@@ -126,7 +102,6 @@ describe('UserRegistrationService', () => {
     };
 
     beforeEach(async () => {
-        userService.createManyInTx.mockResolvedValue(created);
         featureFlagService.getMetadataByKey.mockResolvedValue({
             [EnumFeatureFlagMetadataKey.signUpAllowed]: true,
         });
@@ -135,16 +110,10 @@ describe('UserRegistrationService', () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 UserRegistrationService,
-                { provide: UserService, useValue: userService },
                 { provide: UserAuthService, useValue: userAuthService },
-                {
-                    provide: PasswordHistoryService,
-                    useValue: passwordHistoryService,
-                },
-                { provide: NotificationService, useValue: notificationService },
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 UserCreateUtil,
-                AuthPasswordUtil,
+                { provide: AuthPasswordService, useValue: authPasswordService },
                 UserVerificationUtil,
                 DatabaseUtil,
                 {
@@ -160,54 +129,6 @@ describe('UserRegistrationService', () => {
         service = moduleRef.get(UserRegistrationService);
         databaseUtil = moduleRef.get(DatabaseUtil);
         helperStringService = moduleRef.get(HelperStringService);
-        helperHashService = moduleRef.get(HelperHashService);
-    });
-
-    describe('createInTx', () => {
-        it('creates the users, then the password histories, then the notification defaults, on one tx', async () => {
-            await service.createInTx(tx, inputs);
-
-            expect(userService.createManyInTx).toHaveBeenCalledWith(tx, inputs);
-            expect(passwordHistoryService.createManyInTx).toHaveBeenCalledWith(
-                tx,
-                histories
-            );
-            expect(
-                notificationService.createDefaultsManyInTx
-            ).toHaveBeenCalledWith(tx, userIds);
-            expect(userService.createManyInTx).toHaveBeenCalledBefore(
-                passwordHistoryService.createManyInTx
-            );
-            expect(
-                passwordHistoryService.createManyInTx
-            ).toHaveBeenCalledBefore(
-                notificationService.createDefaultsManyInTx
-            );
-        });
-
-        it('starts the notification defaults while the password histories are pending', async () => {
-            const saved = buildDeferred<void>();
-            passwordHistoryService.createManyInTx.mockReturnValue(
-                saved.promise
-            );
-
-            const running = service.createInTx(tx, inputs);
-            await setImmediate();
-
-            expect(
-                notificationService.createDefaultsManyInTx
-            ).toHaveBeenCalledWith(tx, userIds);
-
-            saved.resolve();
-
-            await expect(running).resolves.toBe(created);
-        });
-
-        it('returns the created users', async () => {
-            const result = await service.createInTx(tx, inputs);
-
-            expect(result).toBe(created);
-        });
     });
 
     describe('isSocialSignUpAllowed', () => {
@@ -319,14 +240,15 @@ describe('UserRegistrationService', () => {
             vi.spyOn(helperStringService, 'random')
                 .mockReturnValueOnce('raw-token')
                 .mockReturnValueOnce('halcyon');
-            vi.spyOn(helperHashService, 'argon2Hash').mockResolvedValue(
-                'hashed'
-            );
+            authPasswordService.create.mockResolvedValue(password);
         });
 
         it('prepares the sign-up input and the email verification', async () => {
             const result = await service.prepareSignUp(signUpInput, resolved);
 
+            expect(authPasswordService.create).toHaveBeenCalledWith(
+                signUpInput.password
+            );
             expect(result.emailVerification).toEqual(emailVerification);
             expect(result.input).toMatchObject({
                 userId: 'user-id-halcyon',
@@ -339,12 +261,7 @@ describe('UserRegistrationService', () => {
                 verifiedAt: null,
                 acceptedTermPolicyTypes,
                 createdBy: 'user-id-halcyon',
-                password: {
-                    passwordHash: 'hashed',
-                    passwordExpired: null,
-                    passwordCreated: signUpNow,
-                    passwordPeriodExpired: new Date('2026-05-30T00:00:00.000Z'),
-                },
+                password,
                 verification: {
                     reference: emailVerification.reference,
                     token: emailVerification.hashedToken,
@@ -558,47 +475,6 @@ describe('UserRegistrationService', () => {
                 EnumTermPolicyType.privacy,
                 EnumTermPolicyType.marketing,
             ]);
-        });
-    });
-
-    describe('buildPasswordHistoryEntries', () => {
-        it('maps each input holding a password and a history type, skipping the rest', () => {
-            const withPassword: IUserCreateWithWorkspaceInput = {
-                ...inputs[0]!,
-                password,
-                passwordHistoryType: EnumPasswordHistoryType.admin,
-                createdBy: 'admin-ochre',
-            };
-            const social: IUserCreateWithWorkspaceInput = {
-                ...inputs[0]!,
-                userId: 'user-social',
-                password: null,
-                passwordHistoryType: null,
-            };
-
-            expect(
-                service['buildPasswordHistoryEntries']([withPassword, social])
-            ).toEqual([
-                {
-                    userId: 'user-ochre',
-                    password: 'hashed-password',
-                    type: EnumPasswordHistoryType.admin,
-                    expiredAt: password.passwordPeriodExpired,
-                    createdAt: password.passwordCreated,
-                    createdBy: 'admin-ochre',
-                },
-            ]);
-        });
-    });
-
-    describe('buildUserIds', () => {
-        it('lists the user id of every input in order', () => {
-            expect(
-                service['buildUserIds']([
-                    inputs[0]!,
-                    { ...inputs[0]!, userId: 'user-second' },
-                ])
-            ).toEqual(['user-ochre', 'user-second']);
         });
     });
 

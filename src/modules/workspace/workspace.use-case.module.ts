@@ -31,6 +31,7 @@ import { WorkspaceRemoveMemberUseCase } from '@modules/workspace/use-cases/works
 import { WorkspaceGetMembersListByAdminUseCase } from '@modules/workspace/use-cases/workspace.get-members-list-by-admin.use-case';
 import { WorkspaceProcessExpireStaleInvitesUseCase } from '@modules/workspace/use-cases/workspace.process-expire-stale-invites.use-case';
 import { WorkspaceProcessExpireStaleJoinRequestsUseCase } from '@modules/workspace/use-cases/workspace.process-expire-stale-join-requests.use-case';
+import { WorkspaceProcessSoftDeleteUseCase } from '@modules/workspace/use-cases/workspace.process-soft-delete.use-case';
 import { WorkspaceModule } from '@modules/workspace/workspace.module';
 import { Module } from '@nestjs/common';
 
@@ -67,6 +68,7 @@ import { Module } from '@nestjs/common';
         WorkspaceGetMembersListByAdminUseCase,
         WorkspaceProcessExpireStaleInvitesUseCase,
         WorkspaceProcessExpireStaleJoinRequestsUseCase,
+        WorkspaceProcessSoftDeleteUseCase,
     ],
     exports: [
         WorkspaceGetListCursorByMemberUseCase,
@@ -99,6 +101,7 @@ import { Module } from '@nestjs/common';
         WorkspaceGetMembersListByAdminUseCase,
         WorkspaceProcessExpireStaleInvitesUseCase,
         WorkspaceProcessExpireStaleJoinRequestsUseCase,
+        WorkspaceProcessSoftDeleteUseCase,
     ],
     imports: [ActivityLogModule, ProjectModule, UserModule, WorkspaceModule],
 })

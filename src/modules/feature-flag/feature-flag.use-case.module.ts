@@ -2,6 +2,7 @@ import { FeatureFlagGetListByAdminUseCase } from '@modules/feature-flag/use-case
 import { FeatureFlagGetListCursorUseCase } from '@modules/feature-flag/use-cases/feature-flag.get-list-cursor.use-case';
 import { FeatureFlagUpdateStatusByAdminUseCase } from '@modules/feature-flag/use-cases/feature-flag.update-status-by-admin.use-case';
 import { FeatureFlagUpdateMetadataByAdminUseCase } from '@modules/feature-flag/use-cases/feature-flag.update-metadata-by-admin.use-case';
+import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
 
 @Module({
@@ -18,6 +19,6 @@ import { Module } from '@nestjs/common';
         FeatureFlagUpdateStatusByAdminUseCase,
         FeatureFlagUpdateMetadataByAdminUseCase,
     ],
-    imports: [],
+    imports: [UserModule],
 })
 export class FeatureFlagUseCaseModule {}

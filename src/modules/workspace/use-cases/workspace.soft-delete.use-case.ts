@@ -1,103 +1,49 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { ProjectQueue } from '@modules/project/queues/project.queue';
-import { WorkspaceService } from '@modules/workspace/services/workspace.service';
-import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import type { IRequestContext } from '@common/request/interfaces/request.interface';
+import type { IResponseReturn } from '@common/response/interfaces/response.interface';
+import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { WorkspaceSoftDeleteResponseDto } from '@modules/workspace/dtos/response/workspace.soft-delete.response.dto';
 import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
+import { WorkspaceQueue } from '@modules/workspace/queues/workspace.queue';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
     [IRequestContext, IApiKeyContext, IAuthJwtAccessContext, IWorkspaceContext],
-    IResponseReturn<void>
+    IResponseReturn<WorkspaceSoftDeleteResponseDto>
 > {
-    private readonly timeoutInMs: number;
-
     constructor(
-        private readonly workspaceService: WorkspaceService,
-        private readonly projectQueue: ProjectQueue,
+        private readonly workspaceQueue: WorkspaceQueue,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
-        private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService,
-        private readonly configService: ConfigService
-    ) {
-        this.timeoutInMs = this.configService.get<number>(
-            'workspace.delete.timeoutInMs'
-        )!;
-    }
+        private readonly outboxService: OutboxService
+    ) {}
 
     async execute(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         workspaceContext: IWorkspaceContext
-    ): Promise<IResponseReturn<void>> {
-        const workspaceId = workspaceContext.workspace.id;
-        const actorId = authContext.userId;
-        const deletedAt = this.helperDateService.create();
-        try {
-            await this.databaseService.withTransaction(
-                async tx => {
-                    // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
-                    await this.workspaceService.softDeleteInTx(
-                        tx,
-                        workspaceId,
-                        deletedAt,
-                        actorId
-                    );
-                    const entry = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        workspaceContext,
-                        {
-                            action: EnumActivityLogAction.workspaceDeleted,
-                            userId: actorId,
-                            createdBy: actorId,
-                            workspaceId,
-                        }
-                    );
-                    const projectEffect =
-                        this.projectQueue.softDeleteByWorkspaceEffect(
-                            workspaceId,
-                            deletedAt,
-                            actorId
-                        );
-                    await this.outboxService.addManyInTx(tx, [
-                        projectEffect,
-                        entry,
-                    ]);
-                },
-                { timeout: this.timeoutInMs }
-            );
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
+    ): Promise<IResponseReturn<WorkspaceSoftDeleteResponseDto>> {
+        const activityLog = this.activityLogQueue.toPayload(
+            requestContext,
+            apiKeyContext,
+            authContext,
+            workspaceContext
+        );
+        const effect = this.workspaceQueue.softDeleteEffect(
+            workspaceContext.workspace.id,
+            authContext.userId,
+            activityLog
+        );
+        const outboxId = await this.databaseService.withTransaction(async tx =>
+            this.outboxService.addInTx(tx, effect)
+        );
 
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new WorkspaceNotFoundException();
-            }
-
-            throw new AppUnknownException(err);
-        }
-
-        return {};
+        return { data: { outboxId } };
     }
 }

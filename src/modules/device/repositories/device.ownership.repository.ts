@@ -363,40 +363,15 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         return ownerships.map(ownership => ownership.id);
     }
 
-    async clearTokens(
+    async clearTokensInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         tokens: string[]
-    ): Promise<Prisma.BatchPayload> {
-        return this.databaseService.client.deviceOwnership.updateMany({
+    ): Promise<void> {
+        await tx.deviceOwnership.updateMany({
             where: {
                 userId,
                 notificationToken: { in: tokens },
-            },
-            data: {
-                notificationToken: null,
-                notificationProvider: null,
-                updatedBy: userId,
-            },
-        });
-    }
-
-    async clearTokensWithoutLiveSession(
-        userId: string,
-        now: Date,
-        idleSince: Date
-    ): Promise<Prisma.BatchPayload> {
-        return this.databaseService.client.deviceOwnership.updateMany({
-            where: {
-                userId,
-                isRevoked: false,
-                notificationToken: { not: null },
-                sessions: {
-                    none: {
-                        isRevoked: false,
-                        expiredAt: { gt: now },
-                        lastActiveAt: { gte: idleSince },
-                    },
-                },
             },
             data: {
                 notificationToken: null,

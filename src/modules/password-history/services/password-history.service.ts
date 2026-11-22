@@ -7,7 +7,7 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumPasswordHistoryType } from '@generated/prisma-client/client';
 import type { PasswordHistory } from '@generated/prisma-client/client';
-import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type {
     IPasswordHistoryCreate,
     IPasswordHistoryList,
@@ -15,14 +15,22 @@ import type {
 import { PasswordHistoryMustNewException } from '@modules/password-history/exceptions/password-history.must-new.exception';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PasswordHistoryService {
+    private readonly periodInDays: number;
+
     constructor(
         private readonly passwordHistoryRepository: PasswordHistoryRepository,
-        private readonly authPasswordUtil: AuthPasswordUtil,
-        private readonly helperDateService: HelperDateService
-    ) {}
+        private readonly helperHashService: HelperHashService,
+        private readonly helperDateService: HelperDateService,
+        private readonly configService: ConfigService
+    ) {
+        this.periodInDays = this.configService.get<number>(
+            'auth.password.periodInDays'
+        )!;
+    }
 
     async getListOffsetByAdmin(
         userId: string,
@@ -47,15 +55,16 @@ export class PasswordHistoryService {
     async assertNew(userId: string, newPassword: string): Promise<void> {
         const passwordHistories =
             await this.passwordHistoryRepository.findActiveUser(userId);
-        const repeated = await this.authPasswordUtil.checkPasswordPeriod(
-            passwordHistories,
-            newPassword
+        const matches = await Promise.all(
+            passwordHistories.map(history =>
+                this.helperHashService.argon2Compare(
+                    newPassword,
+                    history.password
+                )
+            )
         );
-        if (repeated) {
-            const passwordPeriodInDays =
-                this.authPasswordUtil.getPasswordPeriodInDays();
-
-            throw new PasswordHistoryMustNewException(passwordPeriodInDays);
+        if (matches.includes(true)) {
+            throw new PasswordHistoryMustNewException(this.periodInDays);
         }
     }
 

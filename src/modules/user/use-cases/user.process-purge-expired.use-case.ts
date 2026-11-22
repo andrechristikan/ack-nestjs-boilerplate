@@ -38,7 +38,7 @@ export class UserProcessPurgeExpiredUseCase implements IAppUseCase<
         ]);
 
         const message = this.messageService.setMessage(
-            'user.queue.purgeExpired'
+            'user.queue.auth.purgeExpired'
         );
 
         return {

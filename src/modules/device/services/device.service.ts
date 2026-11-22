@@ -135,32 +135,16 @@ export class DeviceService {
         );
     }
 
-    async clearNotificationsWithoutLiveSession(
-        userId: string,
-        now: Date
-    ): Promise<void> {
-        const idleSince = this.helperDateService.backward(
-            now,
-            Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
-        );
-
-        await this.deviceOwnershipRepository.clearTokensWithoutLiveSession(
-            userId,
-            now,
-            idleSince
-        );
-    }
-
-    async cleanupNotificationTokens(
+    async cleanupNotificationTokensInTx(
+        tx: IDatabaseTransactionClient,
         userId: string,
         tokens: string[]
-    ): Promise<number> {
-        const { count } = await this.deviceOwnershipRepository.clearTokens(
+    ): Promise<void> {
+        await this.deviceOwnershipRepository.clearTokensInTx(
+            tx,
             userId,
             tokens
         );
-
-        return count;
     }
 
     async cleanupStaleNotificationTokens(
@@ -207,23 +191,19 @@ export class DeviceService {
                 now
             );
 
+        const otherOwnershipIds =
+            await this.deviceOwnershipRepository.findOtherIdsByDeviceInTx(
+                tx,
+                upserted.id,
+                userId
+            );
+
         return {
             device: upserted,
             deviceOwnership,
             isNewDevice: isNewOwnership,
+            otherOwnershipIds,
         };
-    }
-
-    async getOtherOwnershipIdsByDeviceInTx(
-        tx: IDatabaseTransactionClient,
-        deviceId: string,
-        userId: string
-    ): Promise<string[]> {
-        return this.deviceOwnershipRepository.findOtherIdsByDeviceInTx(
-            tx,
-            deviceId,
-            userId
-        );
     }
 
     async clearNotificationInTx(

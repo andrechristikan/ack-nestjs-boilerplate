@@ -7,6 +7,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumMfaChallengePurpose,
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
@@ -14,8 +15,11 @@ import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queu
 import type { IAuthSocialContext } from '@modules/auth/interfaces/auth.interface';
 import { CountryService } from '@modules/country/services/country.service';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
+import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { NotificationService } from '@modules/notification/services/notification.service';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -23,6 +27,7 @@ import type { IProjectMember } from '@modules/project/interfaces/project.interfa
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
@@ -72,8 +77,11 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         private readonly userService: UserService,
         private readonly mfaService: MfaService,
         private readonly mfaPasskeyService: MfaPasskeyService,
+        private readonly mfaChallengeService: MfaChallengeService,
         private readonly userSocialService: UserSocialService,
         private readonly userRegistrationService: UserRegistrationService,
+        private readonly passwordHistoryService: PasswordHistoryService,
+        private readonly notificationService: NotificationService,
         private readonly notificationQueue: NotificationQueue,
         private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
         private readonly workspaceService: WorkspaceService,
@@ -86,6 +94,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userUtil: UserUtil,
         private readonly workspaceUtil: WorkspaceUtil,
+        private readonly deviceService: DeviceService,
         private readonly deviceUtil: DeviceUtil,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
@@ -138,16 +147,35 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
         const termPolicyAcceptances =
             this.userCreateUtil.buildTermPolicyAcceptanceEntries(inputs);
+        const passwordHistories =
+            this.userCreateUtil.buildPasswordHistoryEntries(inputs);
+        const userIds = inputs.map(({ userId }) => userId);
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
                 return await this.databaseService.withTransaction(
                     async tx => {
-                        const created =
-                            await this.userRegistrationService.createInTx(
+                        const created = await this.userService.createManyInTx(
+                            tx,
+                            inputs
+                        );
+                        await Promise.all([
+                            ...inputs.map(({ userId, createdBy }) =>
+                                this.mfaService.createInTx(
+                                    tx,
+                                    userId,
+                                    createdBy
+                                )
+                            ),
+                            this.passwordHistoryService.createManyInTx(
                                 tx,
-                                inputs
-                            );
+                                passwordHistories
+                            ),
+                            this.notificationService.createDefaultsManyInTx(
+                                tx,
+                                userIds
+                            ),
+                        ]);
                         const ownedUsers = this.workspaceUtil.buildOwnedUsers(
                             inputs,
                             attempt
@@ -222,13 +250,20 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                         ]);
 
                         const user = created[0]!;
+                        const upserted =
+                            await this.deviceService.upsertForLoginInTx(
+                                tx,
+                                user.id,
+                                loginSocial.device,
+                                loginAt
+                            );
                         const { tokens } =
                             await this.userAuthService.createTokenAndSessionInTx(
                                 tx,
                                 requestContext,
                                 apiKeyContext,
                                 user,
-                                loginSocial.device,
+                                upserted,
                                 loginSocial.from,
                                 loginWith,
                                 loginAt
@@ -327,13 +362,20 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                 }
                 const [loginUser] = await Promise.all([verifying, linking]);
                 if (!isMfaEnabled) {
+                    const upserted =
+                        await this.deviceService.upsertForLoginInTx(
+                            tx,
+                            loginUser.id,
+                            device,
+                            loginAt
+                        );
                     const { tokens } =
                         await this.userAuthService.createTokenAndSessionInTx(
                             tx,
                             requestContext,
                             apiKeyContext,
                             loginUser,
-                            device,
+                            upserted,
                             loginFrom,
                             loginWith,
                             loginAt
@@ -347,21 +389,23 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                     };
                 }
 
-                const mfa = await this.userAuthService.createMfaChallengeInTx(
+                const challenge = await this.mfaChallengeService.createInTx(
                     tx,
-                    user.id,
-                    device,
-                    loginFrom,
-                    loginWith,
-                    methods,
-                    passkeyOptions
+                    {
+                        purpose: EnumMfaChallengePurpose.login,
+                        userId: user.id,
+                        device,
+                        loginFrom,
+                        loginWith,
+                        webAuthnChallenge: passkeyOptions?.challenge ?? null,
+                    }
                 );
 
                 return {
                     isMfaRequired: true,
                     lastWorkspaceId,
                     lastWorkspaceChangedAt,
-                    mfa,
+                    mfa: { ...challenge, methods, passkeyOptions },
                 };
             }
         );

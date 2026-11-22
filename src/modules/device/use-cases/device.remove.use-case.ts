@@ -14,9 +14,11 @@ import {
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { DeviceRemoveRequestDto } from '@modules/device/dtos/request/device.remove.request.dto';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
+import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { SessionService } from '@modules/session/services/session.service';
 import type { IUserContext } from '@modules/user/interfaces/user.interface';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -37,8 +39,10 @@ export class DeviceRemoveUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly sessionService: SessionService,
+        private readonly deviceService: DeviceService,
         private readonly deviceUtil: DeviceUtil,
         private readonly userAuthService: UserAuthService,
+        private readonly mfaService: MfaService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
@@ -65,18 +69,23 @@ export class DeviceRemoveUseCase implements IAppUseCase<
         const { user } = userContext;
         const userId = authContext.userId;
         // Sequential by design: a credential proof, awaited alone
-        const { check, failure } =
-            await this.userAuthService.checkReauthentication(user, {
-                action: EnumUserReauthenticationAction.deviceRemove,
-                password: password ?? null,
-                method: method ?? null,
-                code: code ?? null,
-                backupCode: backupCode ?? null,
-                passkeyChallengeToken: passkeyChallengeToken ?? null,
-                passkeyResponse: passkeyResponse ?? null,
-                otp: otp ?? null,
-            });
-        if (failure !== null) {
+        const input = {
+            action: EnumUserReauthenticationAction.deviceRemove,
+            password: password ?? null,
+            method: method ?? null,
+            code: code ?? null,
+            backupCode: backupCode ?? null,
+            passkeyChallengeToken: passkeyChallengeToken ?? null,
+            passkeyResponse: passkeyResponse ?? null,
+            otp: otp ?? null,
+        };
+        const passwordCheck =
+            await this.userAuthService.checkReauthenticationPassword(
+                user,
+                input
+            );
+        if (passwordCheck.limit !== null) {
+            const limit = passwordCheck.limit;
             const isLocked = await this.databaseService.withTransaction(
                 async tx =>
                     this.userAuthService.countFailedReauthenticationInTx(
@@ -84,28 +93,68 @@ export class DeviceRemoveUseCase implements IAppUseCase<
                         requestContext,
                         apiKeyContext,
                         authContext,
+                        limit
+                    )
+            );
+
+            return this.userAuthService.throwFailedReauthentication(isLocked);
+        }
+
+        const mfaCheck = await this.mfaService.checkReauthentication(
+            user.id,
+            input,
+            passwordCheck.isPasswordChecked
+        );
+        if (mfaCheck.failure !== null) {
+            const failure = mfaCheck.failure;
+            const isLocked = await this.databaseService.withTransaction(
+                async tx =>
+                    this.mfaService.countFailedAttemptInTx(
+                        tx,
+                        requestContext,
+                        apiKeyContext,
+                        authContext.userId,
                         failure
                     )
             );
 
-            return this.userAuthService.throwFailedReauthentication(
-                failure,
-                isLocked
-            );
+            return this.mfaService.throwFailedAttempt(failure, isLocked);
         }
+
+        const verificationId =
+            await this.userAuthService.getReauthenticationVerificationId(
+                user,
+                input,
+                passwordCheck.isPasswordChecked,
+                mfaCheck.isEnabled
+            );
 
         const now = this.helperDateService.create();
         try {
             await this.databaseService.withTransaction(async tx => {
                 await this.userAuthService.completeReauthenticationInTx(
                     tx,
+                    authContext,
+                    passwordCheck.isPasswordChecked,
+                    verificationId
+                );
+                await this.mfaService.completeReauthenticationInTx(
+                    tx,
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    check
+                    mfaCheck
                 );
-                const { deviceOwnership, revokedSessions } =
-                    await this.sessionService.removeDeviceOwnershipInTx(
+                const revokedSessions =
+                    await this.sessionService.revokeByDeviceOwnershipInTx(
+                        tx,
+                        userId,
+                        deviceOwnershipId,
+                        userId,
+                        now
+                    );
+                const deviceOwnership =
+                    await this.deviceService.removeOwnershipInTx(
                         tx,
                         userId,
                         deviceOwnershipId,

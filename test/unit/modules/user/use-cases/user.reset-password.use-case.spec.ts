@@ -16,9 +16,6 @@ import {
 import type { PasswordHistory, User } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { MockInstance } from 'vitest';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { HelperHashService } from '@common/helper/services/helper.hash.service';
-import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -37,7 +34,13 @@ import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordCommonException } from '@modules/auth/exceptions/auth.password-common.exception';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { DeviceService } from '@modules/device/services/device.service';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperHashService } from '@common/helper/services/helper.hash.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { buildUnsealedNotificationPayloads } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import {
     EnumNotificationKind,
@@ -80,8 +83,7 @@ describe('UserResetPasswordUseCase', () => {
     const passwordHistoryService: MockProxy<PasswordHistoryService> =
         mock<PasswordHistoryService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
+    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
     const authPasswordService: MockProxy<AuthPasswordService> =
@@ -93,8 +95,8 @@ describe('UserResetPasswordUseCase', () => {
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
-    let helperHashService: HelperHashService;
-    let argon2Hash: MockInstance<HelperHashService['argon2Hash']>;
+    let notificationUtil: NotificationUtil;
+    let sealSnapshot: MockInstance<NotificationUtil['sealSnapshot']>;
     let useCase: UserResetPasswordUseCase;
 
     const user: IUser = {
@@ -184,7 +186,7 @@ describe('UserResetPasswordUseCase', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        notificationService.getSnapshot.mockResolvedValue(snapshot);
+        deviceService.getNotificationTokens.mockResolvedValue(['token-one']);
         notificationQueue.notify.mockReturnValue(notifyEffect);
         mfaService.isEnabled.mockResolvedValue(false);
         vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
@@ -204,14 +206,13 @@ describe('UserResetPasswordUseCase', () => {
                     useValue: passwordHistoryService,
                 },
                 { provide: SessionService, useValue: sessionService },
-                {
-                    provide: NotificationService,
-                    useValue: notificationService,
-                },
+                { provide: DeviceService, useValue: deviceService },
+                NotificationUtil,
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: AuthPasswordService, useValue: authPasswordService },
                 AuthPasswordUtil,
                 HelperHashService,
+                HelperEncryptionService,
                 HelperDateService,
                 HelperStringService,
                 {
@@ -227,7 +228,10 @@ describe('UserResetPasswordUseCase', () => {
                 DatabaseUtil,
             ],
         }).compile();
-        helperHashService = module.get(HelperHashService);
+        notificationUtil = module.get(NotificationUtil);
+        sealSnapshot = vi
+            .spyOn(notificationUtil, 'sealSnapshot')
+            .mockReturnValue(snapshot);
         useCase = module.get(UserResetPasswordUseCase);
     });
 
@@ -239,9 +243,7 @@ describe('UserResetPasswordUseCase', () => {
 
         beforeEach(() => {
             userPasswordService.getOneActiveReset.mockResolvedValue(resetRow);
-            argon2Hash = vi
-                .spyOn(helperHashService, 'argon2Hash')
-                .mockResolvedValue('hashed');
+            authPasswordService.create.mockResolvedValue(password);
             userService.updatePasswordInTx.mockResolvedValue(updatedRow);
             passwordHistoryService.createInTx.mockResolvedValue(
                 passwordHistory
@@ -261,7 +263,7 @@ describe('UserResetPasswordUseCase', () => {
                 'new-password',
                 ['ACK Boilerplate', 'linden', 'lindenFrost', 'Linden Frost']
             );
-            expect(argon2Hash).not.toHaveBeenCalled();
+            expect(authPasswordService.create).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
@@ -294,10 +296,10 @@ describe('UserResetPasswordUseCase', () => {
                     calls.push('markUnusedResetsUsed');
                 }
             );
-            notificationService.getSnapshot.mockImplementation(async () => {
-                calls.push('snapshot');
+            deviceService.getNotificationTokens.mockImplementation(async () => {
+                calls.push('readTokens');
 
-                return snapshot;
+                return ['token-one'];
             });
             outboxService.addManyInTx.mockImplementation(async () => {
                 calls.push('addEffects');
@@ -324,11 +326,13 @@ describe('UserResetPasswordUseCase', () => {
                 'new-password'
             );
             expect(passwordHistoryService.assertNew).toHaveBeenCalledBefore(
-                argon2Hash
+                authPasswordService.create
             );
             expect(mfaService.isEnabled).toHaveBeenCalledWith('user-linden');
             expect(mfaService.check).not.toHaveBeenCalled();
-            expect(argon2Hash).toHaveBeenCalledWith('new-password');
+            expect(authPasswordService.create).toHaveBeenCalledWith(
+                'new-password'
+            );
             expect(activityLogQueue.recordEffect).toHaveBeenCalledTimes(1);
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
@@ -341,7 +345,10 @@ describe('UserResetPasswordUseCase', () => {
                     createdBy: 'user-linden',
                 }
             );
-            expect(notificationService.getSnapshot).toHaveBeenCalledWith(user);
+            expect(deviceService.getNotificationTokens).toHaveBeenCalledWith(
+                'user-linden'
+            );
+            expect(sealSnapshot).toHaveBeenCalledWith(user, ['token-one']);
             expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.resetPassword,
                 {
@@ -386,7 +393,7 @@ describe('UserResetPasswordUseCase', () => {
             );
             expect(mfaService.completeInTx).not.toHaveBeenCalled();
             expect(calls).toEqual([
-                'snapshot',
+                'readTokens',
                 'begin',
                 'markResetUsed',
                 'updatePassword',
@@ -450,12 +457,33 @@ describe('UserResetPasswordUseCase', () => {
             ]);
         });
 
-        it('reads the snapshot before it opens the transaction', async () => {
+        it('reads the device tokens before it opens the transaction and hands the sealed tokens to the notification effect', async () => {
+            sealSnapshot.mockRestore();
+            deviceService.getNotificationTokens.mockResolvedValue([
+                'a',
+                'a',
+                'b',
+            ]);
+            let encryptedTokens: string[] = [];
+            notificationQueue.notify.mockImplementation((_kind, context) => {
+                if ('snapshot' in context) {
+                    encryptedTokens = context.snapshot.encryptedTokens;
+                }
+
+                return notifyEffect;
+            });
+
             await useCase.execute(requestContext, apiKeyContext, dto);
 
-            expect(notificationService.getSnapshot).toHaveBeenCalledBefore(
+            expect(deviceService.getNotificationTokens).toHaveBeenCalledBefore(
                 databaseService.withTransaction
             );
+            expect(
+                buildUnsealedNotificationPayloads(
+                    encryptedTokens,
+                    'user-linden'
+                )
+            ).toEqual(['a', 'b']);
         });
 
         it('checks the MFA proof of the reset user, completes it on the transaction, and adds the verify entry', async () => {
@@ -789,9 +817,9 @@ describe('UserResetPasswordUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('revokes nothing and adds no effect when the snapshot read rejects', async () => {
+        it('revokes nothing and adds no effect when the token read rejects', async () => {
             const cause = new Error('read');
-            notificationService.getSnapshot.mockRejectedValue(cause);
+            deviceService.getNotificationTokens.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)

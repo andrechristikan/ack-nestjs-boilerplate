@@ -1,5 +1,10 @@
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
-import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
+import {
+    TestUnitReauthenticationMfaFailure,
+    TestUnitReauthenticationMfaOff,
+    TestUnitReauthenticationPasswordLimit,
+    TestUnitReauthenticationPasswordPassed,
+} from '@test/unit/helpers/test.unit.user.helper';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
@@ -32,11 +37,12 @@ import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.excepti
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
+import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { DeviceRemoveUseCase } from '@modules/device/use-cases/device.remove.use-case';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
-import type { IUserReauthenticationCheck } from '@modules/user/interfaces/user.interface';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import {
     buildUser,
@@ -60,7 +66,9 @@ const passkeyResponse = {
 
 describe('DeviceRemoveUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
+    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
@@ -72,12 +80,6 @@ describe('DeviceRemoveUseCase', () => {
     const authContext = buildAuthJwtAccessContext(user.id);
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-01-05T00:00:00.000Z');
-    const check: IUserReauthenticationCheck = {
-        isPasswordChecked: true,
-        mfa: null,
-        verificationId: null,
-        passkeyChallengeToken: null,
-    };
     const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -147,22 +149,30 @@ describe('DeviceRemoveUseCase', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userAuthService.checkReauthentication.mockResolvedValue({
-            check,
-            failure: null,
-        });
+        userAuthService.checkReauthenticationPassword.mockResolvedValue(
+            TestUnitReauthenticationPasswordPassed
+        );
+        mfaService.checkReauthentication.mockResolvedValue(
+            TestUnitReauthenticationMfaOff
+        );
+        userAuthService.getReauthenticationVerificationId.mockResolvedValue(
+            null
+        );
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
-        sessionService.removeDeviceOwnershipInTx.mockResolvedValue({
-            deviceOwnership,
-            revokedSessions: [{ id: 'session-1' }, { id: 'session-2' }],
-        });
+        sessionService.revokeByDeviceOwnershipInTx.mockResolvedValue([
+            { id: 'session-1' },
+            { id: 'session-2' },
+        ]);
+        deviceService.removeOwnershipInTx.mockResolvedValue(deviceOwnership);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 DeviceRemoveUseCase,
                 { provide: SessionService, useValue: sessionService },
+                { provide: DeviceService, useValue: deviceService },
                 DeviceUtil,
                 { provide: UserAuthService, useValue: userAuthService },
+                { provide: MfaService, useValue: mfaService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
@@ -179,9 +189,9 @@ describe('DeviceRemoveUseCase', () => {
     describe('execute', () => {
         it('commits the failed count in a transaction of its own, then throws, and leaves the work undone', async () => {
             const refusal = new Error('refused');
-            userAuthService.checkReauthentication.mockResolvedValue({
-                check: null,
-                failure: TestUnitReauthenticationPasswordFailure,
+            userAuthService.checkReauthenticationPassword.mockResolvedValue({
+                isPasswordChecked: true,
+                limit: TestUnitReauthenticationPasswordLimit,
             });
             userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
                 true
@@ -211,7 +221,7 @@ describe('DeviceRemoveUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                TestUnitReauthenticationPasswordFailure
+                TestUnitReauthenticationPasswordLimit
             );
             expect(
                 userAuthService.countFailedReauthenticationInTx
@@ -220,22 +230,70 @@ describe('DeviceRemoveUseCase', () => {
             );
             expect(
                 userAuthService.throwFailedReauthentication
-            ).toHaveBeenCalledWith(
-                TestUnitReauthenticationPasswordFailure,
+            ).toHaveBeenCalledWith(true);
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(mfaService.checkReauthentication).not.toHaveBeenCalled();
+        });
+
+        it('commits the failed MFA count in a transaction of its own, then throws, and leaves the work undone', async () => {
+            const refusal = new Error('refused');
+            mfaService.checkReauthentication.mockResolvedValue({
+                isEnabled: true,
+                check: null,
+                failure: TestUnitReauthenticationMfaFailure,
+                passkeyChallengeToken: null,
+            });
+            mfaService.countFailedAttemptInTx.mockResolvedValue(true);
+            mfaService.throwFailedAttempt.mockImplementation(() => {
+                throw refusal;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    'device-ownership-1',
+                    dto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext.userId,
+                TestUnitReauthenticationMfaFailure
+            );
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledBefore(
+                mfaService.throwFailedAttempt
+            );
+            expect(mfaService.throwFailedAttempt).toHaveBeenCalledWith(
+                TestUnitReauthenticationMfaFailure,
                 true
             );
             expect(
+                userAuthService.getReauthenticationVerificationId
+            ).not.toHaveBeenCalled();
+            expect(
                 userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                mfaService.completeReauthenticationInTx
             ).not.toHaveBeenCalled();
         });
 
         it('asserts the re-authentication, then completes it, removes the ownership, and adds the entry on one transaction', async () => {
             const calls: string[] = [];
-            userAuthService.checkReauthentication.mockImplementation(
+            userAuthService.checkReauthenticationPassword.mockImplementation(
                 async () => {
                     calls.push('assert');
 
-                    return { check, failure: null };
+                    return TestUnitReauthenticationPasswordPassed;
                 }
             );
             databaseService.withTransaction.mockImplementation(async fn => {
@@ -250,16 +308,18 @@ describe('DeviceRemoveUseCase', () => {
                     calls.push('complete');
                 }
             );
-            sessionService.removeDeviceOwnershipInTx.mockImplementation(
+            sessionService.revokeByDeviceOwnershipInTx.mockImplementation(
                 async () => {
-                    calls.push('remove');
+                    calls.push('revoke');
 
-                    return {
-                        deviceOwnership,
-                        revokedSessions: [{ id: 'session-1' }],
-                    };
+                    return [{ id: 'session-1' }];
                 }
             );
+            deviceService.removeOwnershipInTx.mockImplementation(async () => {
+                calls.push('remove');
+
+                return deviceOwnership;
+            });
             outboxService.addInTx.mockImplementation(async () => {
                 calls.push('addInTx');
 
@@ -277,31 +337,40 @@ describe('DeviceRemoveUseCase', () => {
                 )
             ).resolves.toEqual({});
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.deviceRemove,
-                    password: 'Current-pass1',
-                    method: null,
-                    code: null,
-                    backupCode: null,
-                    passkeyChallengeToken: null,
-                    passkeyResponse: null,
-                    otp: null,
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.deviceRemove,
+                password: 'Current-pass1',
+                method: null,
+                code: null,
+                backupCode: null,
+                passkeyChallengeToken: null,
+                passkeyResponse: null,
+                otp: null,
+            });
             expect(
                 userAuthService.completeReauthenticationInTx
+            ).toHaveBeenCalledWith(tx, authContext, true, null);
+            expect(
+                mfaService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
                 tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                check
+                TestUnitReauthenticationMfaOff
             );
             expect(
-                sessionService.removeDeviceOwnershipInTx
+                sessionService.revokeByDeviceOwnershipInTx
             ).toHaveBeenCalledWith(
+                tx,
+                'user-1',
+                'device-ownership-1',
+                'user-1',
+                now
+            );
+            expect(deviceService.removeOwnershipInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
                 'device-ownership-1',
@@ -325,6 +394,7 @@ describe('DeviceRemoveUseCase', () => {
                 'assert',
                 'begin',
                 'complete',
+                'revoke',
                 'remove',
                 'addInTx',
                 'commit',
@@ -348,24 +418,25 @@ describe('DeviceRemoveUseCase', () => {
                 }
             );
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.deviceRemove,
-                    password: null,
-                    method: EnumMfaMethod.totp,
-                    code: '654321',
-                    backupCode: 'BACKUP1',
-                    passkeyChallengeToken: 'challenge-quartz',
-                    passkeyResponse,
-                    otp: '123456',
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.deviceRemove,
+                password: null,
+                method: EnumMfaMethod.totp,
+                code: '654321',
+                backupCode: 'BACKUP1',
+                passkeyChallengeToken: 'challenge-quartz',
+                passkeyResponse,
+                otp: '123456',
+            });
         });
 
         it('leaves the device alone when the re-authentication fails', async () => {
             const failure = new UserPasswordNotMatchException();
-            userAuthService.checkReauthentication.mockRejectedValue(failure);
+            userAuthService.checkReauthenticationPassword.mockRejectedValue(
+                failure
+            );
 
             await expect(
                 useCase.execute(
@@ -380,13 +451,14 @@ describe('DeviceRemoveUseCase', () => {
 
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
-                sessionService.removeDeviceOwnershipInTx
+                sessionService.revokeByDeviceOwnershipInTx
             ).not.toHaveBeenCalled();
+            expect(deviceService.removeOwnershipInTx).not.toHaveBeenCalled();
         });
 
         it('rethrows an AppBaseException of the transaction as it is, adding no entry', async () => {
             const failure = new DeviceNotFoundException();
-            sessionService.removeDeviceOwnershipInTx.mockRejectedValue(failure);
+            deviceService.removeOwnershipInTx.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -420,8 +492,9 @@ describe('DeviceRemoveUseCase', () => {
             ).rejects.toBe(failure);
 
             expect(
-                sessionService.removeDeviceOwnershipInTx
+                sessionService.revokeByDeviceOwnershipInTx
             ).not.toHaveBeenCalled();
+            expect(deviceService.removeOwnershipInTx).not.toHaveBeenCalled();
         });
 
         it('answers DeviceNotFoundException on a write conflict', async () => {

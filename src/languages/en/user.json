@@ -42,7 +42,13 @@
         "importByAdmin": "Imported users by admin.",
         "exportByAdmin": "Exported users by admin.",
         "deleteSelf": "Deleted the user account on its own request.",
-        "purgeExpired": "Purged expired identity rows.",
+        "auth": {
+            "purgeExpired": "Purged expired identity rows.",
+            "purgeLogins": "Purged revoked session logins.",
+            "error": {
+                "unknownProcess": "No {process} job handler exists."
+            }
+        },
         "error": {
             "unknownProcess": "No {process} job handler exists.",
             "importFailed": "The user import job failed.",

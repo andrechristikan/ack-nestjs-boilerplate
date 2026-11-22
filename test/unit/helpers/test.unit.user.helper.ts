@@ -1,4 +1,12 @@
-import type { IUserReauthenticationFailure } from '@modules/user/interfaces/user.interface';
+import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import type {
+    IMfaAttemptFailure,
+    IMfaReauthenticationResult,
+} from '@modules/mfa/interfaces/mfa.interface';
+import type {
+    IUserPasswordAttemptLimit,
+    IUserReauthenticationPasswordResult,
+} from '@modules/user/interfaces/user.interface';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 
 export const TestUnitUserConfigValues: Record<string, unknown> = {
@@ -21,11 +29,24 @@ export const TestUnitUserConfigValues: Record<string, unknown> = {
     'auth.jwt.jtiLength': 16,
 };
 
-export const TestUnitReauthenticationPasswordFailure: IUserReauthenticationFailure =
+export const TestUnitReauthenticationPasswordLimit: IUserPasswordAttemptLimit =
     {
-        password: {
-            maxAttempts: 5,
-            lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
-        },
-        mfa: null,
+        maxAttempts: 5,
+        lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
     };
+
+export const TestUnitReauthenticationPasswordPassed: IUserReauthenticationPasswordResult =
+    { isPasswordChecked: true, limit: null };
+
+export const TestUnitReauthenticationMfaOff: IMfaReauthenticationResult = {
+    isEnabled: false,
+    check: null,
+    failure: null,
+    passkeyChallengeToken: null,
+};
+
+export const TestUnitReauthenticationMfaFailure: IMfaAttemptFailure = {
+    method: EnumMfaMethod.totp,
+    maxAttempts: 5,
+    lockedUntil: new Date('2026-03-01T00:15:00.000Z'),
+};

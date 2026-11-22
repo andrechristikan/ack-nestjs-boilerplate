@@ -1,6 +1,7 @@
 /** @public */
 export enum EnumUserQueue {
     user = 'user',
+    userAuth = 'userAuth',
 }
 
 /** @public */
@@ -15,6 +16,11 @@ export enum EnumUserProcess {
     importByAdmin = 'importByAdmin',
     exportByAdmin = 'exportByAdmin',
     deleteSelf = 'deleteSelf',
+}
+
+/** @public */
+export enum EnumUserAuthProcess {
+    purgeLogins = 'purgeLogins',
     purgeExpired = 'purgeExpired',
 }
 

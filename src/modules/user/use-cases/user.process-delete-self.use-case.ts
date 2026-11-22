@@ -1,5 +1,6 @@
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
@@ -8,10 +9,11 @@ import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
+import { DeviceService } from '@modules/device/services/device.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
-import { ProjectQueue } from '@modules/project/queues/project.queue';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
+import { ProjectService } from '@modules/project/services/project.service';
 import { SessionService } from '@modules/session/services/session.service';
 import type { IUserDeleteSelfPayload } from '@modules/user/interfaces/user.interface';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
@@ -43,9 +45,10 @@ export class UserProcessDeleteSelfUseCase implements IAppUseCase<
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
-        private readonly projectQueue: ProjectQueue,
         private readonly projectMemberService: ProjectMemberService,
+        private readonly projectService: ProjectService,
         private readonly sessionService: SessionService,
+        private readonly deviceService: DeviceService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
@@ -58,107 +61,150 @@ export class UserProcessDeleteSelfUseCase implements IAppUseCase<
         )!;
     }
 
+    private async softDeleteOwnedInTx(
+        tx: IDatabaseTransactionClient,
+        workspaceIds: string[],
+        userId: string,
+        now: Date
+    ): Promise<string[]> {
+        const isDeleted = await Promise.all(
+            workspaceIds.map(workspaceId =>
+                this.workspaceService.softDeleteInTx(
+                    tx,
+                    workspaceId,
+                    now,
+                    userId
+                )
+            )
+        );
+
+        return workspaceIds.filter((_, index) => isDeleted[index] === true);
+    }
+
+    private async softDeleteProjects(
+        workspaceId: string,
+        now: Date,
+        userId: string
+    ): Promise<void> {
+        let chunk: number;
+        // Sequential by design: a fan-out over an unbounded collection: bounded chunks in turn, each concurrent
+        do {
+            chunk = await this.projectService.softDeleteChunkByWorkspace(
+                workspaceId,
+                now,
+                userId
+            );
+        } while (chunk > 0);
+    }
+
     async execute({
         userId,
         ownedWorkspaceIds,
         activityLog,
     }: IUserDeleteSelfPayload): Promise<IQueueResponse> {
         const message = this.messageService.setMessage('user.queue.deleteSelf');
-        const user = await this.userService.getOneLive(userId);
-        if (user === null) {
-            return { message };
-        }
-
         const now = this.helperDateService.create();
+        const user = await this.userService.getOneLive(userId);
         try {
-            await this.databaseService.withTransaction(
-                async tx => {
-                    const [ownedIds] = await Promise.all([
-                        this.workspaceService.softDeleteOwnedByUserInTx(
-                            tx,
-                            ownedWorkspaceIds,
-                            userId,
-                            now
-                        ),
-                        this.workspaceJoinRequestService.cancelPendingByRequesterInTx(
-                            tx,
-                            userId,
-                            userId
-                        ),
-                        this.workspaceInviteService.revokeAllPendingByEmailInTx(
-                            tx,
-                            user.email,
-                            userId
-                        ),
-                        this.workspaceMemberService.removeByUserInTx(
-                            tx,
-                            userId
-                        ),
-                        this.projectMemberService.removeByUserInTx(tx, userId),
-                        this.userMobileNumberService.removeByUserInTx(
-                            tx,
-                            userId
-                        ),
-                        this.userSocialService.removeByUserInTx(tx, userId),
-                        this.mfaService.deleteByUserInTx(tx, userId),
-                        this.passwordHistoryService.removeByUserInTx(
-                            tx,
-                            userId
-                        ),
-                        this.sessionService.revokeAllByUserInTx(
-                            tx,
-                            userId,
-                            userId,
-                            now
-                        ),
-                        this.userService.deleteSelfInTx(tx, userId, now),
-                        this.userProfileService.deleteOwnedPhotoInTx(
-                            tx,
-                            userId,
-                            user.photo
-                        ),
-                    ]);
+            if (user !== null) {
+                await this.databaseService.withTransaction(
+                    async tx => {
+                        const [ownedIds] = await Promise.all([
+                            this.softDeleteOwnedInTx(
+                                tx,
+                                ownedWorkspaceIds,
+                                userId,
+                                now
+                            ),
+                            this.workspaceJoinRequestService.cancelPendingByRequesterInTx(
+                                tx,
+                                userId,
+                                userId
+                            ),
+                            this.workspaceInviteService.revokeAllPendingByEmailInTx(
+                                tx,
+                                user.email,
+                                userId
+                            ),
+                            this.workspaceMemberService.removeByUserInTx(
+                                tx,
+                                userId
+                            ),
+                            this.projectMemberService.removeByUserInTx(
+                                tx,
+                                userId
+                            ),
+                            this.userMobileNumberService.removeByUserInTx(
+                                tx,
+                                userId
+                            ),
+                            this.userSocialService.removeByUserInTx(tx, userId),
+                            this.mfaService.deleteByUserInTx(tx, userId),
+                            this.passwordHistoryService.removeByUserInTx(
+                                tx,
+                                userId
+                            ),
+                            this.sessionService.revokeActiveByUserInTx(
+                                tx,
+                                userId,
+                                userId,
+                                now
+                            ),
+                            this.deviceService.revokeAllByUserInTx(
+                                tx,
+                                userId,
+                                userId,
+                                now
+                            ),
+                            this.userService.deleteSelfInTx(tx, userId, now),
+                            this.userProfileService.deleteOwnedPhotoInTx(
+                                tx,
+                                userId,
+                                user.photo
+                            ),
+                        ]);
 
-                    const revokeAllEntry =
-                        this.activityLogQueue.recordEffectFromPayload(
-                            activityLog,
-                            {
-                                action: EnumActivityLogAction.userAllSessionsRevoked,
-                                userId,
-                                createdBy: userId,
-                            }
+                        const revokeAllEntry =
+                            this.activityLogQueue.recordEffectFromPayload(
+                                activityLog,
+                                {
+                                    action: EnumActivityLogAction.userAllSessionsRevoked,
+                                    userId,
+                                    createdBy: userId,
+                                }
+                            );
+                        const deleteSelfEntry =
+                            this.activityLogQueue.recordEffectFromPayload(
+                                activityLog,
+                                {
+                                    action: EnumActivityLogAction.userSelfDeleted,
+                                }
+                            );
+                        const workspaceEntries = ownedIds.map(workspaceId =>
+                            this.activityLogQueue.recordEffectFromPayload(
+                                activityLog,
+                                {
+                                    action: EnumActivityLogAction.workspaceDeleted,
+                                    userId,
+                                    createdBy: userId,
+                                    workspaceId,
+                                }
+                            )
                         );
-                    const deleteSelfEntry =
-                        this.activityLogQueue.recordEffectFromPayload(
-                            activityLog,
-                            { action: EnumActivityLogAction.userSelfDeleted }
-                        );
-                    const workspaceEntries = ownedIds.map(workspaceId =>
-                        this.activityLogQueue.recordEffectFromPayload(
-                            activityLog,
-                            {
-                                action: EnumActivityLogAction.workspaceDeleted,
-                                userId,
-                                createdBy: userId,
-                                workspaceId,
-                            }
-                        )
-                    );
-                    const projectEffects = ownedIds.map(workspaceId =>
-                        this.projectQueue.softDeleteByWorkspaceEffect(
-                            workspaceId,
-                            now,
-                            userId
-                        )
-                    );
-                    await this.outboxService.addManyInTx(tx, [
-                        revokeAllEntry,
-                        deleteSelfEntry,
-                        ...workspaceEntries,
-                        ...projectEffects,
-                    ]);
-                },
-                { timeout: this.timeoutInMs }
+                        await this.outboxService.addManyInTx(tx, [
+                            revokeAllEntry,
+                            deleteSelfEntry,
+                            ...workspaceEntries,
+                        ]);
+                    },
+                    { timeout: this.timeoutInMs }
+                );
+            }
+
+            await Promise.all(
+                ownedWorkspaceIds.map(workspaceId =>
+                    this.softDeleteProjects(workspaceId, now, userId)
+                )
             );
         } catch (error: unknown) {
             if (

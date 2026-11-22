@@ -13,6 +13,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { RoleService } from '@modules/role/services/role.service';
@@ -40,6 +41,7 @@ import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.help
 describe('UserUpdateStatusByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
@@ -71,6 +73,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 UserUpdateStatusByAdminUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: SessionService, useValue: sessionService },
+                { provide: MfaService, useValue: mfaService },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 HelperDateService,
@@ -125,6 +128,49 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             userService.resolveStatusActivityLogAction.mockReturnValue(
                 EnumActivityLogAction.userStatusUpdated
             );
+        });
+
+        it('resets the MFA attempt counter on tx after the status write when the status resets it', async () => {
+            userService.resetsMfaAttemptOn.mockReturnValue(true);
+            userService.updateStatusByAdminInTx.mockResolvedValue(row);
+            sessionService.revokeActiveByUserInTx.mockResolvedValue([]);
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'user-cinder',
+                { status: EnumUserStatus.active }
+            );
+
+            expect(userService.resetsMfaAttemptOn).toHaveBeenCalledWith(
+                EnumUserStatus.active
+            );
+            expect(mfaService.resetAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                'user-cinder'
+            );
+            expect(userService.updateStatusByAdminInTx).toHaveBeenCalledBefore(
+                mfaService.resetAttemptInTx
+            );
+        });
+
+        it('resets no MFA attempt counter when the status does not reset it', async () => {
+            userService.resetsMfaAttemptOn.mockReturnValue(false);
+            userService.updateStatusByAdminInTx.mockResolvedValue(row);
+            sessionService.revokeActiveByUserInTx.mockResolvedValue([]);
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                'user-cinder',
+                { status: EnumUserStatus.inactive }
+            );
+
+            expect(mfaService.resetAttemptInTx).not.toHaveBeenCalled();
         });
 
         it('gates the rank, writes the status and the revoke on one transaction and adds the revoke-all entries before the status entries on it', async () => {

@@ -13,7 +13,7 @@ Effects, writing, and payloads: `effects.md`.
 
 ## Dispatch
 
-- `dispatch` enqueues each committed row through `QueueBase.enqueue` on the queue class that owns `row.queue`, resolved by `ModuleRef.get(row.queue, { strict: false })`; each queue class is provided under its queue's enum value (`module-files.md`, Module files). The outbox imports no module's queue class. Only `dispatch` calls `enqueue`, only the sweep calls `getJobState`, and only a queue class, through `QueueBase`, and `HealthQueueIndicator` call a method of the BullMQ `Queue`.
+- `dispatch` enqueues each committed row through `QueueBase.enqueue` on the queue class that owns `row.queue`, resolved by `ModuleRef.get(row.queue, { strict: false })`; each queue class is provided under its queue's enum value (`module-files.md`, Module files). The outbox imports no module's queue class. Only `dispatch` calls `enqueue`, and only the sweep calls `getJobState`.
 - Dispatch never throws and never changes the response. A failed enqueue leaves the row `pending` and writes one `warn` each time, a connection error included; nothing goes to Sentry.
 - The sweep runs every `outbox.sweepIntervalInMs` and once at boot:
     - it stamps `sweptAt` on every row its two reads return before it reconciles and dispatches; a row it cannot move keeps its state, with no attempt counter and no `failed` stamp;

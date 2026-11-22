@@ -134,7 +134,6 @@
             "sendUnregistered": "Email invitation for an unregistered invitee sent."
         },
         "push": {
-            "cleanupTokens": "Processed token cleanup for invalid tokens.",
             "cleanupStaleTokens": "Processed stale token cleanup.",
             "error": {
                 "firebaseNotInitialized": "Firebase not initialized, skipping {process} notification.",

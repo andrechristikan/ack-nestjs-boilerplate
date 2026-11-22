@@ -7,7 +7,6 @@ import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
-import { MfaUtil } from '@modules/mfa/utils/mfa.util';
 import { NotificationModule } from '@modules/notification/notification.module';
 import { Module } from '@nestjs/common';
 
@@ -22,14 +21,12 @@ import { Module } from '@nestjs/common';
         MfaTotpService,
         MfaPasskeyService,
         MfaChallengeService,
-        MfaUtil,
     ],
     exports: [
         MfaService,
         MfaTotpService,
         MfaPasskeyService,
         MfaChallengeService,
-        MfaUtil,
     ],
     imports: [ActivityLogModule, NotificationModule],
 })

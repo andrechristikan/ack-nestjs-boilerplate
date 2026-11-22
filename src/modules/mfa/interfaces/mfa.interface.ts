@@ -4,6 +4,7 @@ import type {
     EnumMfaPasskeyDeviceType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    EnumUserReauthenticationAction,
     MfaChallengeDevice,
 } from '@generated/prisma-client/client';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
@@ -13,6 +14,15 @@ export interface IMfaVerifyInput {
     method: EnumMfaMethod | null;
     code: string | null;
     backupCode: string | null;
+    passkeyResponse: AuthenticationResponseJSON | null;
+}
+
+export interface IMfaReauthenticationInput {
+    action: EnumUserReauthenticationAction;
+    method: EnumMfaMethod | null;
+    code: string | null;
+    backupCode: string | null;
+    passkeyChallengeToken: string | null;
     passkeyResponse: AuthenticationResponseJSON | null;
 }
 
@@ -45,6 +55,13 @@ interface IMfaCheckMismatched {
 }
 
 export type IMfaCheckResult = IMfaCheckMatched | IMfaCheckMismatched;
+
+export interface IMfaReauthenticationResult {
+    isEnabled: boolean;
+    check: IMfaCheck | null;
+    failure: IMfaAttemptFailure | null;
+    passkeyChallengeToken: string | null;
+}
 
 export interface IMfaTotpSetupCheck {
     totpStep: number | null;

@@ -9,7 +9,7 @@
     "switch": "Active workspace switched successfully",
     "transferOwnership": "Workspace ownership transferred successfully",
     "leave": "You have left the workspace",
-    "softDelete": "Workspace deleted successfully",
+    "softDelete": "Workspace deletion queued successfully.",
     "member": {
         "list": "List of workspace members",
         "updateRole": "Workspace member role updated successfully",
@@ -40,8 +40,10 @@
     "queue": {
         "expireStaleInvites": "Processed stale workspace invite expiry sweep.",
         "expireStaleJoinRequests": "Processed stale workspace join request expiry sweep.",
+        "softDelete": "Deleted the workspace and its projects.",
         "error": {
-            "unknownProcess": "No {process} job handler exists."
+            "unknownProcess": "No {process} job handler exists.",
+            "softDelete": "The workspace deletion job failed."
         }
     },
     "error": {

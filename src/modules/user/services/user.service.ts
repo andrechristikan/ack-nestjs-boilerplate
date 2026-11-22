@@ -25,7 +25,7 @@ import type {
     IAuthPassword,
     IAuthPasswordTemporary,
 } from '@modules/auth/interfaces/auth.interface';
-import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { UserBlockedForbiddenException } from '@modules/user/exceptions/user.blocked-forbidden.exception';
@@ -57,7 +57,6 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import { RoleService } from '@modules/role/services/role.service';
 import type { IRole } from '@modules/role/interfaces/role.interface';
-import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
@@ -74,13 +73,12 @@ export class UserService {
     constructor(
         private readonly userRepository: UserRepository,
         private readonly userVerificationService: UserVerificationService,
-        private readonly mfaService: MfaService,
         private readonly userUtil: UserUtil,
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly roleService: RoleService,
         private readonly awsSESService: AwsSESService,
-        private readonly authPasswordUtil: AuthPasswordUtil,
+        private readonly authPasswordService: AuthPasswordService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
@@ -141,8 +139,9 @@ export class UserService {
             authContext.loginWith
         );
         if (gatesPasswordExpiry) {
-            const isPasswordExpired: boolean =
-                this.authPasswordUtil.isPasswordExpired(user.passwordExpired);
+            const isPasswordExpired: boolean = this.userUtil.isPasswordExpired(
+                user.passwordExpired
+            );
             if (isPasswordExpired) {
                 throw new UserPasswordExpiredException();
             }
@@ -184,25 +183,18 @@ export class UserService {
         inputs: IUserCreateWithWorkspaceInput[]
     ): Promise<IUser[]> {
         const users = await this.userRepository.createManyInTx(tx, inputs);
-        const writes = inputs.flatMap(input => {
-            const mfa = this.mfaService.createInTx(
-                tx,
-                input.userId,
-                input.createdBy
-            );
-            if (!input.verification) {
-                return [mfa];
-            }
-
-            const verification = this.userVerificationService.createInTx(
-                tx,
-                input.userId,
-                input.verification,
-                input.createdBy
-            );
-
-            return [verification, mfa];
-        });
+        const writes = inputs.flatMap(input =>
+            input.verification
+                ? [
+                      this.userVerificationService.createInTx(
+                          tx,
+                          input.userId,
+                          input.verification,
+                          input.createdBy
+                      ),
+                  ]
+                : []
+        );
         await Promise.all(writes);
 
         return users;
@@ -311,9 +303,9 @@ export class UserService {
         role: IUserCreateRole
     ): Promise<IUserCreateByAdminPrepared> {
         const userId = this.databaseUtil.createId();
-        const passwordString = this.authPasswordUtil.createPasswordRandom();
+        const passwordString = this.authPasswordService.createRandom();
         const password: IAuthPasswordTemporary =
-            await this.authPasswordUtil.createPassword(passwordString, {
+            await this.authPasswordService.create(passwordString, {
                 temporary: true,
             });
         const workspaceContexts =
@@ -350,6 +342,18 @@ export class UserService {
 
     async existsByEmail(email: string): Promise<boolean> {
         return this.userRepository.existsByEmail(email);
+    }
+
+    /** Counts a soft-deleted user's row as existing; an empty list reads nothing. */
+    async assertAllExist(userIds: string[]): Promise<void> {
+        if (userIds.length === 0) {
+            return;
+        }
+
+        const count = await this.userRepository.countByIds(userIds);
+        if (count !== userIds.length) {
+            throw new UserNotFoundException();
+        }
     }
 
     assertEmailAvailable(emailExist: boolean): void {
@@ -418,7 +422,7 @@ export class UserService {
         }
     }
 
-    /** Writes the status guarded on the target's current one; activating a user resets its password and MFA attempt counters and clears both locks. */
+    /** Writes the status guarded on the target's current one; activating a user resets its password attempt counter and clears its lock. */
     async updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
         {
@@ -445,10 +449,6 @@ export class UserService {
         );
         if (!row) {
             throw new UserStatusInvalidException();
-        }
-
-        if (status === EnumUserStatus.active) {
-            await this.mfaService.resetAttemptInTx(tx, id);
         }
 
         return row;
@@ -499,6 +499,10 @@ export class UserService {
 
     revokesSessionsOn(status: EnumUserStatus): boolean {
         return status !== EnumUserStatus.active;
+    }
+
+    resetsMfaAttemptOn(status: EnumUserStatus): boolean {
+        return status === EnumUserStatus.active;
     }
 
     resolveStatusActivityLogAction(

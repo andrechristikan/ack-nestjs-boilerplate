@@ -18,6 +18,7 @@ import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/
 import { FeatureFlagUpdateStatusRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import { FeatureFlagResponseSchema } from '@modules/feature-flag/dtos/response/feature-flag.response.dto';
+import type { IFeatureFlag } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagGetListByAdminUseCase } from '@modules/feature-flag/use-cases/feature-flag.get-list-by-admin.use-case';
 import { FeatureFlagUpdateStatusByAdminUseCase } from '@modules/feature-flag/use-cases/feature-flag.update-status-by-admin.use-case';
 import { FeatureFlagUpdateMetadataByAdminUseCase } from '@modules/feature-flag/use-cases/feature-flag.update-metadata-by-admin.use-case';
@@ -40,7 +41,6 @@ import {
     EnumPolicySubject,
     EnumRoleType,
 } from '@generated/prisma-client/client';
-import type { FeatureFlag } from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.featureFlag')
 @Controller({
@@ -76,7 +76,7 @@ export class FeatureFlagAdminController {
     async list(
         @Query({ schema: FeatureFlagAdminListRequestSchema })
         query: FeatureFlagAdminListRequestDto
-    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
+    ): Promise<IResponsePaginationReturn<IFeatureFlag>> {
         return this.featureFlagGetListByAdminUseCase.execute(query);
     }
 
@@ -100,7 +100,7 @@ export class FeatureFlagAdminController {
         featureFlagId: string,
         @Body({ schema: FeatureFlagUpdateStatusRequestSchema })
         body: FeatureFlagUpdateStatusRequestDto
-    ): Promise<IResponseReturn<FeatureFlag>> {
+    ): Promise<IResponseReturn<IFeatureFlag>> {
         return this.featureFlagUpdateStatusByAdminUseCase.execute(
             featureFlagId,
             body
@@ -127,7 +127,7 @@ export class FeatureFlagAdminController {
         featureFlagId: string,
         @Body({ schema: FeatureFlagUpdateMetadataRequestSchema })
         body: FeatureFlagUpdateMetadataRequestDto
-    ): Promise<IResponseReturn<FeatureFlag>> {
+    ): Promise<IResponseReturn<IFeatureFlag>> {
         return this.featureFlagUpdateMetadataByAdminUseCase.execute(
             featureFlagId,
             body

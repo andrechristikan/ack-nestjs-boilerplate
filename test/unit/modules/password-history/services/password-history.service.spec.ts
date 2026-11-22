@@ -23,7 +23,6 @@ import type {
     IPasswordHistoryList,
 } from '@modules/password-history/interfaces/password-history.interface';
 import { PasswordHistoryRepository } from '@modules/password-history/repositories/password-history.repository';
-import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { EnumPasswordHistoryStatusCodeError } from '@modules/password-history/enums/password-history.status-code.enum';
 
 describe('PasswordHistoryService', () => {
@@ -50,15 +49,12 @@ describe('PasswordHistoryService', () => {
                     provide: PasswordHistoryRepository,
                     useValue: passwordHistoryRepository,
                 },
-                AuthPasswordUtil,
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
                         ...TestUnitKitConfigValues,
-                        'auth.password.temporaryExpiresInMs': 3600000,
                         'auth.password.periodInDays': 90,
-                        'auth.password.temporaryLength': 14,
                     }),
                 },
             ],
@@ -255,6 +251,39 @@ describe('PasswordHistoryService', () => {
                 service.assertNew('user-id', 'new-password')
             ).resolves.toBeUndefined();
             expect(compare).toHaveBeenCalledWith('new-password', 'hashed-old');
+        });
+
+        it('passes without comparing when the user has no active history', async () => {
+            passwordHistoryRepository.findActiveUser.mockResolvedValue([]);
+            const compare = vi.spyOn(helperHashService, 'argon2Compare');
+
+            await expect(
+                service.assertNew('user-id', 'new-password')
+            ).resolves.toBeUndefined();
+            expect(compare).not.toHaveBeenCalled();
+        });
+
+        it('compares the new password with every history entry and throws when any matches', async () => {
+            passwordHistoryRepository.findActiveUser.mockResolvedValue([
+                history,
+                { ...history, id: 'history-id-2', password: 'hashed-older' },
+            ]);
+            const compare = vi
+                .spyOn(helperHashService, 'argon2Compare')
+                .mockResolvedValueOnce(false)
+                .mockResolvedValueOnce(true);
+
+            await expect(
+                service.assertNew('user-id', 'old-password')
+            ).rejects.toMatchObject({
+                module: 'passwordHistory',
+                statusCode: EnumPasswordHistoryStatusCodeError.mustNew,
+            });
+            expect(compare).toHaveBeenCalledTimes(2);
+            expect(compare).toHaveBeenCalledWith(
+                'old-password',
+                'hashed-older'
+            );
         });
 
         it('throws PasswordHistoryMustNewException with the period when the new password repeats a history entry', async () => {

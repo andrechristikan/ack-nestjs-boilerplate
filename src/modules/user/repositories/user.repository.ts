@@ -249,6 +249,12 @@ export class UserRepository implements IUserRepository {
         return this.databaseService.client.user.count({ where });
     }
 
+    async countByIds(userIds: string[]): Promise<number> {
+        return this.databaseService.client.user.count({
+            where: { id: { in: userIds } },
+        });
+    }
+
     async existsByEmail(email: string): Promise<boolean> {
         const count = await this.databaseService.client.user.count({
             where: { email },

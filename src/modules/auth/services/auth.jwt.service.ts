@@ -10,10 +10,12 @@ import type {
     IAuthAccessTokenGenerate,
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
+    IAuthLoginIdentifiers,
     IAuthToken,
     IAuthTokenSignInput,
 } from '@modules/auth/interfaces/auth.interface';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import {
     EnumUserLoginFrom,
@@ -41,12 +43,14 @@ export class AuthJwtService {
 
     private readonly audience: string;
     private readonly issuer: string;
+    private readonly jtiLength: number;
 
     constructor(
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService,
-        private readonly authUtil: AuthUtil,
+        private readonly helperStringService: HelperStringService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {
         this.accessTokenKid = this.configService.get<string>(
@@ -92,6 +96,11 @@ export class AuthJwtService {
 
         this.audience = this.configService.get<string>('auth.jwt.audience')!;
         this.issuer = this.configService.get<string>('auth.jwt.issuer')!;
+        this.jtiLength = this.configService.get<number>('auth.jwt.jtiLength')!;
+    }
+
+    private generateJti(): string {
+        return this.helperStringService.random(this.jtiLength);
     }
 
     private parseRequiredBase64Der(
@@ -183,6 +192,13 @@ export class AuthJwtService {
         }
 
         return exp;
+    }
+
+    createLoginIdentifiers(): IAuthLoginIdentifiers {
+        const sessionId = this.databaseUtil.createId();
+        const jti = this.generateJti();
+
+        return { sessionId, jti };
     }
 
     createAccessToken(
@@ -317,7 +333,7 @@ export class AuthJwtService {
         const { deviceOwnershipId, sessionId, loginAt, loginFrom, loginWith } =
             payload;
 
-        const jti = this.authUtil.generateJti();
+        const jti = this.generateJti();
         const payloadAccessToken: IAuthJwtAccessTokenPayload =
             this.createPayloadAccessToken(
                 user,

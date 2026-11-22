@@ -11,7 +11,7 @@ import {
 import type { INotificationPushSendPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationPushDeliveryService } from '@modules/notification/services/notification.push.delivery.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
-import { NotificationPushQueue } from '@modules/notification/queues/notification.push.queue';
+import { DeviceService } from '@modules/device/services/device.service';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -26,7 +26,7 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
         private readonly firebaseService: FirebaseService,
         private readonly notificationPushDeliveryService: NotificationPushDeliveryService,
         private readonly notificationService: NotificationService,
-        private readonly notificationPushQueue: NotificationPushQueue,
+        private readonly deviceService: DeviceService,
         private readonly notificationUtil: NotificationUtil,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
@@ -133,23 +133,23 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
                     process,
                     context.proceedBy
                 );
-                let cleanup: Promise<string | null> = Promise.resolve(null);
-                if (tokens.length > 0) {
-                    const effect =
-                        this.notificationPushQueue.cleanupTokensEffect(
-                            userId,
-                            tokens
-                        );
-                    cleanup = this.outboxService.addInTx(tx, effect);
-                }
-                await Promise.all([
+                const writes = [
                     this.outboxService.updateDataInTx(tx, outboxId, {
                         completedSteps: done,
                         encryptedPendingTokens: pendingTokens,
                         encryptedFailureTokens: failureTokens,
                     }),
-                    cleanup,
-                ]);
+                ];
+                if (tokens.length > 0) {
+                    const cleanup =
+                        this.deviceService.cleanupNotificationTokensInTx(
+                            tx,
+                            userId,
+                            plainTokens
+                        );
+                    writes.push(cleanup);
+                }
+                await Promise.all(writes);
             });
         }
 

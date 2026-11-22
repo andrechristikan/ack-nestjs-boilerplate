@@ -1,4 +1,3 @@
-import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -14,15 +13,17 @@ import {
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import type { Mfa } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
-import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import type {
+    IAuthPassword,
+    IAuthPasswordTemporary,
+} from '@modules/auth/interfaces/auth.interface';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import type {
     IRole,
     IRoleWithPolicies,
@@ -41,7 +42,6 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
-import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
@@ -62,14 +62,14 @@ describe('UserService', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
-    const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
+    const authPasswordService: MockProxy<AuthPasswordService> =
+        mock<AuthPasswordService>();
 
     let service: UserService;
     let databaseUtil: DatabaseUtil;
     let helperStringService: HelperStringService;
-    let helperHashService: HelperHashService;
 
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const configValues: Record<string, unknown> = {
@@ -93,18 +93,6 @@ describe('UserService', () => {
         updatedBy: null,
         policies: [],
     };
-    const mfa: Mfa = {
-        id: 'mfa-cobalt',
-        userId: 'user-cobalt',
-        backupCodes: [],
-        attempt: 0,
-        lockedUntil: null,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    };
-
     const baseUser: IUser = {
         ...buildUser('user-cobalt', 'cobalt@example.com'),
         isVerified: true,
@@ -136,13 +124,9 @@ describe('UserService', () => {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
                 },
-                {
-                    provide: MfaService,
-                    useValue: mfaService,
-                },
                 { provide: RoleService, useValue: roleService },
                 { provide: AwsSESService, useValue: awsSESService },
-                AuthPasswordUtil,
+                { provide: AuthPasswordService, useValue: authPasswordService },
                 DatabaseUtil,
                 HelperDateService,
                 HelperStringService,
@@ -157,7 +141,6 @@ describe('UserService', () => {
         service = module.get(UserService);
         databaseUtil = module.get(DatabaseUtil);
         helperStringService = module.get(HelperStringService);
-        helperHashService = module.get(HelperHashService);
     });
 
     describe('assertEmailDeliverable', () => {
@@ -506,13 +489,7 @@ describe('UserService', () => {
             verification: null,
             createdBy: 'admin-cobalt',
         };
-        const marigoldMfa: Mfa = {
-            ...mfa,
-            id: 'mfa-marigold',
-            userId: 'user-marigold',
-        };
-
-        it('writes the users, then the verification row when the input carries one and the Mfa row per user', async () => {
+        it('writes the users, then the verification row only for an input that carries one', async () => {
             const marigold: IUser = {
                 ...baseUser,
                 id: 'user-marigold',
@@ -521,9 +498,6 @@ describe('UserService', () => {
                 baseUser,
                 marigold,
             ]);
-            mfaService.createInTx
-                .mockResolvedValueOnce(mfa)
-                .mockResolvedValueOnce(marigoldMfa);
 
             const result = await service.createManyInTx(tx, [
                 withVerification,
@@ -541,52 +515,7 @@ describe('UserService', () => {
                 verification,
                 'user-cobalt'
             );
-            expect(mfaService.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cobalt',
-                'user-cobalt'
-            );
-            expect(mfaService.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-marigold',
-                'admin-cobalt'
-            );
             expect(result).toEqual([baseUser, marigold]);
-        });
-
-        it('starts the Mfa row of every user while a verification write is pending', async () => {
-            const marigold: IUser = {
-                ...baseUser,
-                id: 'user-marigold',
-            };
-            const pending = buildDeferred<never>();
-            const failure = new Error('verification failed');
-            userRepository.createManyInTx.mockResolvedValue([
-                baseUser,
-                marigold,
-            ]);
-            userVerificationService.createInTx.mockReturnValue(pending.promise);
-
-            const running = service.createManyInTx(tx, [
-                withVerification,
-                withoutVerification,
-            ]);
-            await vi.advanceTimersByTimeAsync(0);
-
-            expect(mfaService.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-cobalt',
-                'user-cobalt'
-            );
-            expect(mfaService.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-marigold',
-                'admin-cobalt'
-            );
-
-            pending.reject(failure);
-
-            await expect(running).rejects.toBe(failure);
         });
 
         it('issues no statement for an empty list', async () => {
@@ -594,7 +523,6 @@ describe('UserService', () => {
 
             await expect(service.createManyInTx(tx, [])).resolves.toEqual([]);
             expect(userVerificationService.createInTx).not.toHaveBeenCalled();
-            expect(mfaService.createInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -798,21 +726,25 @@ describe('UserService', () => {
             verifiedAt: now,
             isUsed: true,
         };
+        const temporaryPassword: IAuthPasswordTemporary = {
+            passwordHash: 'hashed',
+            passwordExpired: new Date('2026-03-01T01:00:00.000Z'),
+            passwordCreated: now,
+            passwordPeriodExpired: new Date('2026-05-30T00:00:00.000Z'),
+        };
 
         beforeEach(() => {
             vi.spyOn(databaseUtil, 'createId')
                 .mockReturnValueOnce('user-id-cobalt')
                 .mockReturnValueOnce('workspace-cobalt');
+            authPasswordService.createRandom.mockReturnValue('random-password');
+            authPasswordService.create.mockResolvedValue(temporaryPassword);
             vi.spyOn(helperStringService, 'random')
-                .mockReturnValueOnce('random-password')
                 .mockReturnValueOnce('cobalt-a')
                 .mockReturnValueOnce('cobalt-b')
                 .mockReturnValueOnce('cobalt-c')
                 .mockReturnValueOnce('verify-token')
                 .mockReturnValueOnce('verify-ref');
-            vi.spyOn(helperHashService, 'argon2Hash').mockResolvedValue(
-                'hashed'
-            );
         });
 
         it('creates a user-role account verified at the verification time with a used verification row', async () => {
@@ -836,12 +768,11 @@ describe('UserService', () => {
                 createdBy: 'admin-cobalt',
             });
             expect(result.input.verification).toEqual(verified);
-            expect(result.input.password).toEqual({
-                passwordHash: 'hashed',
-                passwordExpired: new Date('2026-03-01T01:00:00.000Z'),
-                passwordCreated: now,
-                passwordPeriodExpired: new Date('2026-05-30T00:00:00.000Z'),
-            });
+            expect(authPasswordService.create).toHaveBeenCalledWith(
+                'random-password',
+                { temporary: true }
+            );
+            expect(result.input.password).toBe(temporaryPassword);
             expect(result.input.workspaceContext).toEqual({
                 type: EnumUserSignUpWorkspaceContextType.personal,
                 workspaceId: 'workspace-cobalt',
@@ -872,6 +803,36 @@ describe('UserService', () => {
             expect(userRepository.existsByEmail).toHaveBeenCalledWith(
                 'cobalt@example.com'
             );
+        });
+    });
+
+    describe('assertAllExist', () => {
+        it('resolves when the count equals the number of ids', async () => {
+            userRepository.countByIds.mockResolvedValue(2);
+
+            await expect(
+                service.assertAllExist(['user-cobalt', 'admin-cobalt'])
+            ).resolves.toBeUndefined();
+            expect(userRepository.countByIds).toHaveBeenCalledWith([
+                'user-cobalt',
+                'admin-cobalt',
+            ]);
+        });
+
+        it('throws UserNotFoundException when the count is lower than the number of ids', async () => {
+            userRepository.countByIds.mockResolvedValue(1);
+
+            await expect(
+                service.assertAllExist(['user-cobalt', 'admin-cobalt'])
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.notFound,
+            });
+        });
+
+        it('resolves without a query for an empty list', async () => {
+            await expect(service.assertAllExist([])).resolves.toBeUndefined();
+            expect(userRepository.countByIds).not.toHaveBeenCalled();
         });
     });
 
@@ -1149,33 +1110,6 @@ describe('UserService', () => {
             );
         });
 
-        it('resets the MFA attempt counter in the same transaction when activating', async () => {
-            userRepository.updateStatusByAdminInTx.mockResolvedValue(baseUser);
-
-            await service.updateStatusByAdminInTx(
-                tx,
-                { ...target, status: EnumUserStatus.inactive },
-                EnumUserStatus.active
-            );
-
-            expect(mfaService.resetAttemptInTx).toHaveBeenCalledWith(
-                tx,
-                target.id
-            );
-        });
-
-        it('leaves the MFA counter when the status is not active', async () => {
-            userRepository.updateStatusByAdminInTx.mockResolvedValue(baseUser);
-
-            await service.updateStatusByAdminInTx(
-                tx,
-                { ...target, status: EnumUserStatus.active },
-                EnumUserStatus.inactive
-            );
-
-            expect(mfaService.resetAttemptInTx).not.toHaveBeenCalled();
-        });
-
         it('throws UserStatusInvalidException when the current status no longer holds', async () => {
             userRepository.updateStatusByAdminInTx.mockResolvedValue(null);
 
@@ -1189,7 +1123,6 @@ describe('UserService', () => {
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.statusInvalid,
             });
-            expect(mfaService.resetAttemptInTx).not.toHaveBeenCalled();
         });
     });
 
@@ -1269,6 +1202,26 @@ describe('UserService', () => {
         it('returns true for blocked', () => {
             expect(service.revokesSessionsOn(EnumUserStatus.blocked)).toBe(
                 true
+            );
+        });
+    });
+
+    describe('resetsMfaAttemptOn', () => {
+        it('returns true for active', () => {
+            expect(service.resetsMfaAttemptOn(EnumUserStatus.active)).toBe(
+                true
+            );
+        });
+
+        it('returns false for inactive', () => {
+            expect(service.resetsMfaAttemptOn(EnumUserStatus.inactive)).toBe(
+                false
+            );
+        });
+
+        it('returns false for blocked', () => {
+            expect(service.resetsMfaAttemptOn(EnumUserStatus.blocked)).toBe(
+                false
             );
         });
     });

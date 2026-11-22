@@ -116,6 +116,33 @@ describe('UserUtil', () => {
         });
     });
 
+    describe('isPasswordExpired', () => {
+        beforeAll(() => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+        });
+
+        afterAll(() => {
+            vi.useRealTimers();
+        });
+
+        it('returns false when no expiry is set', () => {
+            expect(util.isPasswordExpired(null)).toBe(false);
+        });
+
+        it('returns true when the expiry date has passed', () => {
+            expect(
+                util.isPasswordExpired(new Date('2025-12-01T00:00:00.000Z'))
+            ).toBe(true);
+        });
+
+        it('returns false when the expiry date has not passed', () => {
+            expect(
+                util.isPasswordExpired(new Date('2026-02-01T00:00:00.000Z'))
+            ).toBe(false);
+        });
+    });
+
     describe('isUsernamePatternInvalid', () => {
         it('returns false when the username matches the allowed pattern', () => {
             expect(util.isUsernamePatternInvalid('marigoldFinch')).toBe(false);

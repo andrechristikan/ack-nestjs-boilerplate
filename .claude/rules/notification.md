@@ -15,7 +15,7 @@ Producing a notification, its key, and the `snapshot`: `notify.md`.
 
 - A `null` id, a job with no row, is an `UnrecoverableError` in the processor.
 - `NotificationProcessUseCase` resolves the recipient on the first attempt: user, address, settings, and live-session tokens through `UserService`, `NotificationService`, and `DeviceService`; a missing or inactive user writes no row and sends nothing. A kind whose channels hold `sms` takes the number from its verification row (`UserVerificationService.getOneActiveMobileRecipient`); a used or expired row gives none. It encrypts them and records them through `OutboxService.updateData`; a later attempt reuses the recorded recipient.
-- A user's notification settings are one stored row per channel and type, created at registration (`UserRegistrationService`); an update changes that row, never stores an override of a default.
+- A user's notification settings are one stored row per channel and type, created with the user by each creating use case (`NotificationService.createDefaultsManyInTx`); an update changes that row, never stores an override of a default.
 - Channels are `NotificationUtil.resolveChannels`: the contract's channels minus those the user disabled for a toggleable, non-mandatory type. Only `silent` left writes no row and sends nothing.
 
 ## Fan-out and send
@@ -28,7 +28,7 @@ Producing a notification, its key, and the `snapshot`: `notify.md`.
 - Step state between attempts lives in the row through `OutboxService.updateData`, never `job.updateData`: the recipient, the notification id, `completedSteps`, `encryptedPendingTokens`, `encryptedFailureTokens`. A retry skips a completed step.
 - Ciphertext travels unchanged. A channel use case decrypts immediately before its SES or FCM call, an email value into `templateData` only.
 - The channel processors map `HelperDecryptFailedException` and `NotificationEmailDeliveryUnknownException` to `UnrecoverableError` (`queue.md`, Processors).
-- `FirebaseService.sendMulticast` returns `failureTokens` (invalid, purged by a `cleanupTokens` row) and `retryTokens` (a `FirebaseRetryableTokenCodes` code, no code, or a rejected chunk), kept as `encryptedPendingTokens`: a retry sends only to those, and push `sentAt` is stamped once none is pending.
+- `FirebaseService.sendMulticast` returns `failureTokens` (invalid, cleared from the user's devices through `DeviceService.cleanupNotificationTokensInTx` in the transaction that stamps the push sent) and `retryTokens` (a `FirebaseRetryableTokenCodes` code, no code, or a rejected chunk), kept as `encryptedPendingTokens`: a retry sends only to those, and push `sentAt` is stamped once none is pending.
 - An email body is a seeded SES Handlebars template (`seeding.md`), one per kind, registered in `NotificationTemplateService`.
 
 ## Term-policy publish
@@ -45,6 +45,5 @@ Producing a notification, its key, and the `snapshot`: `notify.md`.
 
 - The recorded recipient and step state.
 - `TermPolicyRecipient` `sentAt` and `claimedAt`.
-- The idempotent `cleanupTokens` purge.
 
 Procedure: `.claude/skills/ack-build/references/add-notification.md`.

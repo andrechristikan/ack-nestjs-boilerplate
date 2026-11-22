@@ -1,5 +1,10 @@
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import { TestUnitReauthenticationPasswordFailure } from '@test/unit/helpers/test.unit.user.helper';
+import {
+    TestUnitReauthenticationMfaFailure,
+    TestUnitReauthenticationMfaOff,
+    TestUnitReauthenticationPasswordLimit,
+    TestUnitReauthenticationPasswordPassed,
+} from '@test/unit/helpers/test.unit.user.helper';
 import { ConfigService } from '@nestjs/config';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
@@ -45,7 +50,6 @@ import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaRegisterPasskeyUseCase } from '@modules/mfa/use-cases/mfa.register-passkey.use-case';
-import type { IUserReauthenticationCheck } from '@modules/user/interfaces/user.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import {
     buildApiKeyContext,
@@ -87,12 +91,6 @@ describe('MfaRegisterPasskeyUseCase', () => {
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext(user.id);
     const userContext = buildUserContext(user);
-    const passwordOnly: IUserReauthenticationCheck = {
-        isPasswordChecked: true,
-        mfa: null,
-        verificationId: null,
-        passkeyChallengeToken: null,
-    };
     const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -136,10 +134,15 @@ describe('MfaRegisterPasskeyUseCase', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        userAuthService.checkReauthentication.mockResolvedValue({
-            check: passwordOnly,
-            failure: null,
-        });
+        userAuthService.checkReauthenticationPassword.mockResolvedValue(
+            TestUnitReauthenticationPasswordPassed
+        );
+        mfaService.checkReauthentication.mockResolvedValue(
+            TestUnitReauthenticationMfaOff
+        );
+        userAuthService.getReauthenticationVerificationId.mockResolvedValue(
+            null
+        );
         mfaChallengeService.getWebAuthnChallengeForUser.mockResolvedValue(
             'challenge-stored'
         );
@@ -171,9 +174,9 @@ describe('MfaRegisterPasskeyUseCase', () => {
     describe('execute', () => {
         it('commits the failed count in a transaction of its own, then throws, and leaves the work undone', async () => {
             const refusal = new Error('refused');
-            userAuthService.checkReauthentication.mockResolvedValue({
-                check: null,
-                failure: TestUnitReauthenticationPasswordFailure,
+            userAuthService.checkReauthenticationPassword.mockResolvedValue({
+                isPasswordChecked: true,
+                limit: TestUnitReauthenticationPasswordLimit,
             });
             userAuthService.countFailedReauthenticationInTx.mockResolvedValue(
                 true
@@ -202,7 +205,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                TestUnitReauthenticationPasswordFailure
+                TestUnitReauthenticationPasswordLimit
             );
             expect(
                 userAuthService.countFailedReauthenticationInTx
@@ -211,12 +214,59 @@ describe('MfaRegisterPasskeyUseCase', () => {
             );
             expect(
                 userAuthService.throwFailedReauthentication
-            ).toHaveBeenCalledWith(
-                TestUnitReauthenticationPasswordFailure,
+            ).toHaveBeenCalledWith(true);
+            expect(
+                userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(mfaService.checkReauthentication).not.toHaveBeenCalled();
+        });
+
+        it('commits the failed MFA count in a transaction of its own, then throws, and leaves the work undone', async () => {
+            const refusal = new Error('refused');
+            mfaService.checkReauthentication.mockResolvedValue({
+                isEnabled: true,
+                check: null,
+                failure: TestUnitReauthenticationMfaFailure,
+                passkeyChallengeToken: null,
+            });
+            mfaService.countFailedAttemptInTx.mockResolvedValue(true);
+            mfaService.throwFailedAttempt.mockImplementation(() => {
+                throw refusal;
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toBe(refusal);
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledWith(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext.userId,
+                TestUnitReauthenticationMfaFailure
+            );
+            expect(mfaService.countFailedAttemptInTx).toHaveBeenCalledBefore(
+                mfaService.throwFailedAttempt
+            );
+            expect(mfaService.throwFailedAttempt).toHaveBeenCalledWith(
+                TestUnitReauthenticationMfaFailure,
                 true
             );
             expect(
+                userAuthService.getReauthenticationVerificationId
+            ).not.toHaveBeenCalled();
+            expect(
                 userAuthService.completeReauthenticationInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                mfaService.completeReauthenticationInTx
             ).not.toHaveBeenCalled();
         });
 
@@ -238,7 +288,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 EnumMfaMethod.passkey
             );
             expect(
-                userAuthService.checkReauthentication
+                userAuthService.checkReauthenticationPassword
             ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
@@ -262,7 +312,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
             );
 
             expect(mfaPasskeyService.assertRegistrable).toHaveBeenCalledBefore(
-                userAuthService.checkReauthentication
+                userAuthService.checkReauthenticationPassword
             );
         });
 
@@ -275,19 +325,18 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 dto
             );
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.mfaPasskeyRegister,
-                    password: 'Current-pass1',
-                    method: null,
-                    code: null,
-                    backupCode: null,
-                    passkeyChallengeToken: null,
-                    passkeyResponse: null,
-                    otp: null,
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.mfaPasskeyRegister,
+                password: 'Current-pass1',
+                method: null,
+                code: null,
+                backupCode: null,
+                passkeyChallengeToken: null,
+                passkeyResponse: null,
+                otp: null,
+            });
             expect(
                 mfaChallengeService.getWebAuthnChallengeForUser
             ).toHaveBeenCalledWith(
@@ -297,7 +346,9 @@ describe('MfaRegisterPasskeyUseCase', () => {
             );
             expect(
                 mfaChallengeService.getWebAuthnChallengeForUser
-            ).toHaveBeenCalledBefore(userAuthService.checkReauthentication);
+            ).toHaveBeenCalledBefore(
+                userAuthService.checkReauthenticationPassword
+            );
         });
 
         it('passes the method, codes, and email code of the request to the re-authentication', async () => {
@@ -317,19 +368,18 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 }
             );
 
-            expect(userAuthService.checkReauthentication).toHaveBeenCalledWith(
-                user,
-                {
-                    action: EnumUserReauthenticationAction.mfaPasskeyRegister,
-                    password: null,
-                    method: EnumMfaMethod.backupCode,
-                    code: null,
-                    backupCode: 'B1',
-                    passkeyChallengeToken: 'challenge-quartz',
-                    passkeyResponse,
-                    otp: '123456',
-                }
-            );
+            expect(
+                userAuthService.checkReauthenticationPassword
+            ).toHaveBeenCalledWith(user, {
+                action: EnumUserReauthenticationAction.mfaPasskeyRegister,
+                password: null,
+                method: EnumMfaMethod.backupCode,
+                code: null,
+                backupCode: 'B1',
+                passkeyChallengeToken: 'challenge-quartz',
+                passkeyResponse,
+                otp: '123456',
+            });
         });
 
         it('completes the re-authentication first on one tx, claims the challenge, registers the passkey, creates the codes, adds the entry, and answers the passkey with the codes', async () => {
@@ -379,12 +429,15 @@ describe('MfaRegisterPasskeyUseCase', () => {
             ]);
             expect(
                 userAuthService.completeReauthenticationInTx
+            ).toHaveBeenCalledWith(tx, authContext, true, null);
+            expect(
+                mfaService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
                 tx,
                 requestContext,
                 apiKeyContext,
                 authContext,
-                passwordOnly
+                TestUnitReauthenticationMfaOff
             );
             expect(mfaChallengeService.consumeInTx).toHaveBeenCalledWith(
                 tx,
@@ -471,7 +524,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 ).rejects.toBe(failure);
 
                 expect(
-                    userAuthService.checkReauthentication
+                    userAuthService.checkReauthenticationPassword
                 ).not.toHaveBeenCalled();
                 expect(databaseService.withTransaction).not.toHaveBeenCalled();
                 expect(mfaPasskeyService.registerInTx).not.toHaveBeenCalled();
@@ -518,7 +571,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
             ).rejects.toBe(failure);
 
             expect(
-                userAuthService.checkReauthentication
+                userAuthService.checkReauthenticationPassword
             ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
@@ -541,17 +594,16 @@ describe('MfaRegisterPasskeyUseCase', () => {
         });
 
         it('answers MfaInvalidException on a write conflict after an MFA proof', async () => {
-            userAuthService.checkReauthentication.mockResolvedValue({
+            mfaService.checkReauthentication.mockResolvedValue({
+                isEnabled: true,
                 check: {
-                    ...passwordOnly,
-                    mfa: {
-                        method: EnumMfaMethod.totp,
-                        totpStep: 1,
-                        backupCodeHash: null,
-                        passkey: null,
-                    },
+                    method: EnumMfaMethod.totp,
+                    totpStep: 1,
+                    backupCodeHash: null,
+                    passkey: null,
                 },
                 failure: null,
+                passkeyChallengeToken: null,
             });
             databaseService.withTransaction.mockRejectedValue(
                 new Prisma.PrismaClientKnownRequestError('conflict', {

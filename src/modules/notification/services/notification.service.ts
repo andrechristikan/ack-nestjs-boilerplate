@@ -13,7 +13,6 @@ import type {
     Notification,
     NotificationUserSetting,
 } from '@generated/prisma-client/client';
-import { DeviceService } from '@modules/device/services/device.service';
 import { NotificationSettingContract } from '@modules/notification/contracts/notification.setting.contract';
 import { NotificationAlreadyReadException } from '@modules/notification/exceptions/notification.already-read.exception';
 import { NotificationInvalidChannelException } from '@modules/notification/exceptions/notification.invalid-channel.exception';
@@ -28,7 +27,6 @@ import type {
     INotificationCreateEntry,
     INotificationCreateRecipient,
     INotificationPushCleanupStaleTokensResult,
-    INotificationPushCleanupTokensResult,
     INotificationRecipientRecord,
     INotificationSealedData,
     INotificationSnapshot,
@@ -54,7 +52,6 @@ export class NotificationService {
         private readonly notificationRepository: NotificationRepository,
         private readonly notificationUserSettingRepository: NotificationUserSettingRepository,
         private readonly notificationUtil: NotificationUtil,
-        private readonly deviceService: DeviceService,
         private readonly messageService: MessageService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
@@ -110,18 +107,6 @@ export class NotificationService {
         return this.listMutedInAppTypes(settings);
     }
 
-    private sealSnapshot(
-        { id, email, username }: IUserRecipient,
-        tokens: string[]
-    ): INotificationSnapshot {
-        const encryptedEmail = this.notificationUtil.encryptPayload(email, id);
-        const encryptedTokens = [...new Set(tokens)].map(token =>
-            this.notificationUtil.encryptPayload(token, id)
-        );
-
-        return { username, encryptedEmail, encryptedTokens };
-    }
-
     /** The recipient record with the address, each distinct token, and the mobile number, when one is given, encrypted against the user id. */
     toRecipientRecord(
         user: IUserRecipient,
@@ -129,7 +114,7 @@ export class NotificationService {
         mobileNumber: string | null,
         channels: EnumNotificationChannel[]
     ): INotificationRecipientRecord {
-        const snapshot = this.sealSnapshot(user, tokens);
+        const snapshot = this.notificationUtil.sealSnapshot(user, tokens);
         let encryptedMobileNumber: string | null = null;
         if (mobileNumber !== null) {
             encryptedMobileNumber = this.notificationUtil.encryptPayload(
@@ -144,13 +129,6 @@ export class NotificationService {
             encryptedMobileNumber,
             channels,
         };
-    }
-
-    /** The encrypted address and the encrypted tokens of the devices with a live session now, to be read before a revoke ends those sessions. */
-    async getSnapshot(user: IUserRecipient): Promise<INotificationSnapshot> {
-        const tokens = await this.deviceService.getNotificationTokens(user.id);
-
-        return this.sealSnapshot(user, tokens);
     }
 
     /** The recipient a snapshot yields, with every channel the kind lists and the user's settings ignored. */
@@ -404,17 +382,6 @@ export class NotificationService {
         return encryptedFailureTokens.map(encrypted =>
             this.notificationUtil.decryptPayload(encrypted, userId)
         );
-    }
-
-    toCleanupTokensResult(
-        countRequestedTokens: number,
-        countRemovedTokens: number
-    ): INotificationPushCleanupTokensResult {
-        const message = this.messageService.setMessage(
-            'notification.queue.push.cleanupTokens'
-        );
-
-        return { message, countRequestedTokens, countRemovedTokens };
     }
 
     toCleanupStaleTokensResult(

@@ -17,7 +17,12 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IAuthPasswordTemporary } from '@modules/auth/interfaces/auth.interface';
-import { NotificationService } from '@modules/notification/services/notification.service';
+import { DeviceService } from '@modules/device/services/device.service';
+import { NotificationUtil } from '@modules/notification/utils/notification.util';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
+import { buildUnsealedNotificationPayloads } from '@test/unit/helpers/test.unit.notification-push.helper';
+import type { MockInstance } from 'vitest';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import {
     EnumNotificationKind,
@@ -55,8 +60,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
     const passwordHistoryService: MockProxy<PasswordHistoryService> =
         mock<PasswordHistoryService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const notificationService: MockProxy<NotificationService> =
-        mock<NotificationService>();
+    const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const notificationQueue: MockProxy<NotificationQueue> =
         mock<NotificationQueue>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
@@ -65,6 +69,8 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
 
+    let notificationUtil: NotificationUtil;
+    let sealSnapshot: MockInstance<NotificationUtil['sealSnapshot']>;
     let useCase: UserUpdatePasswordByAdminUseCase;
 
     const user: IUser = buildUser('user-linden', 'linden@example.com');
@@ -142,7 +148,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        notificationService.getSnapshot.mockResolvedValue(snapshot);
+        deviceService.getNotificationTokens.mockResolvedValue(['token-one']);
         notificationQueue.notify.mockReturnValue(notifyEffect);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -155,10 +161,10 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     useValue: passwordHistoryService,
                 },
                 { provide: SessionService, useValue: sessionService },
-                {
-                    provide: NotificationService,
-                    useValue: notificationService,
-                },
+                { provide: DeviceService, useValue: deviceService },
+                NotificationUtil,
+                HelperEncryptionService,
+                HelperStringService,
                 { provide: NotificationQueue, useValue: notificationQueue },
                 { provide: RoleService, useValue: roleService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
@@ -172,6 +178,10 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 },
             ],
         }).compile();
+        notificationUtil = module.get(NotificationUtil);
+        sealSnapshot = vi
+            .spyOn(notificationUtil, 'sealSnapshot')
+            .mockReturnValue(snapshot);
         useCase = module.get(UserUpdatePasswordByAdminUseCase);
     });
 
@@ -230,10 +240,10 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     calls.push('markUnusedResetsUsed');
                 }
             );
-            notificationService.getSnapshot.mockImplementation(async () => {
-                calls.push('snapshot');
+            deviceService.getNotificationTokens.mockImplementation(async () => {
+                calls.push('readTokens');
 
-                return snapshot;
+                return ['token-one'];
             });
             sessionService.revokeActiveByUserInTx.mockImplementation(
                 async () => {
@@ -269,7 +279,10 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 EnumRoleType.admin,
                 EnumRoleType.user
             );
-            expect(notificationService.getSnapshot).toHaveBeenCalledWith(user);
+            expect(deviceService.getNotificationTokens).toHaveBeenCalledWith(
+                'user-linden'
+            );
+            expect(sealSnapshot).toHaveBeenCalledWith(user, ['token-one']);
             expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
                 tx,
                 'user-linden',
@@ -295,7 +308,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 password.passwordCreated
             );
             expect(calls).toEqual([
-                'snapshot',
+                'readTokens',
                 'begin',
                 'updatePassword',
                 'createHistory',
@@ -392,8 +405,22 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
         });
 
-        it('reads the snapshot before it opens the transaction', async () => {
+        it('reads the device tokens before it opens the transaction and hands the sealed tokens to the notification effect', async () => {
+            sealSnapshot.mockRestore();
+            deviceService.getNotificationTokens.mockResolvedValue([
+                'a',
+                'a',
+                'b',
+            ]);
             userService.updatePasswordInTx.mockResolvedValue(updatedRow);
+            let encryptedTokens: string[] = [];
+            notificationQueue.notify.mockImplementation((_kind, context) => {
+                if ('snapshot' in context) {
+                    encryptedTokens = context.snapshot.encryptedTokens;
+                }
+
+                return notifyEffect;
+            });
 
             await useCase.execute(
                 requestContext,
@@ -403,9 +430,15 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 'user-linden'
             );
 
-            expect(notificationService.getSnapshot).toHaveBeenCalledBefore(
+            expect(deviceService.getNotificationTokens).toHaveBeenCalledBefore(
                 databaseService.withTransaction
             );
+            expect(
+                buildUnsealedNotificationPayloads(
+                    encryptedTokens,
+                    'user-linden'
+                )
+            ).toEqual(['a', 'b']);
         });
 
         it('reads the actor id from the context actorUserId', async () => {
@@ -459,8 +492,8 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('revokes nothing and adds no effect when the snapshot read rejects', async () => {
-            notificationService.getSnapshot.mockRejectedValue(
+        it('revokes nothing and adds no effect when the token read rejects', async () => {
+            deviceService.getNotificationTokens.mockRejectedValue(
                 new Error('read')
             );
 

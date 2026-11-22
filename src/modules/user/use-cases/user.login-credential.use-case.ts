@@ -3,14 +3,17 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
+    EnumMfaChallengePurpose,
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
+import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -40,9 +43,11 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         private readonly userVerificationService: UserVerificationService,
         private readonly mfaService: MfaService,
         private readonly mfaPasskeyService: MfaPasskeyService,
+        private readonly mfaChallengeService: MfaChallengeService,
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly userUtil: UserUtil,
+        private readonly deviceService: DeviceService,
         private readonly deviceUtil: DeviceUtil,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
@@ -74,13 +79,20 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
                         tx,
                         user.id
                     );
+                    const upserted =
+                        await this.deviceService.upsertForLoginInTx(
+                            tx,
+                            user.id,
+                            device,
+                            loginAt
+                        );
 
                     return this.userAuthService.createTokenAndSessionInTx(
                         tx,
                         requestContext,
                         apiKeyContext,
                         user,
-                        device,
+                        upserted,
                         loginFrom,
                         loginWith,
                         loginAt
@@ -111,19 +123,18 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
 
         const mfa = await this.databaseService.withTransaction(async tx => {
             const [challenge] = await Promise.all([
-                this.userAuthService.createMfaChallengeInTx(
-                    tx,
-                    user.id,
+                this.mfaChallengeService.createInTx(tx, {
+                    purpose: EnumMfaChallengePurpose.login,
+                    userId: user.id,
                     device,
                     loginFrom,
                     loginWith,
-                    methods,
-                    passkeyOptions
-                ),
+                    webAuthnChallenge: passkeyOptions?.challenge ?? null,
+                }),
                 this.userPasswordService.resetPasswordAttemptInTx(tx, user.id),
             ]);
 
-            return challenge;
+            return { ...challenge, methods, passkeyOptions };
         });
 
         return {

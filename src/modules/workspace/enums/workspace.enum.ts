@@ -7,6 +7,7 @@ export enum EnumWorkspaceQueue {
 export enum EnumWorkspaceProcess {
     expireStaleInvites = 'expireStaleInvites',
     expireStaleJoinRequests = 'expireStaleJoinRequests',
+    softDelete = 'softDelete',
 }
 
 /** @public */

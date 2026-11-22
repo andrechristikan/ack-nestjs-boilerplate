@@ -145,23 +145,4 @@ describe('NotificationPushQueue', () => {
             });
         });
     });
-
-    describe('cleanupTokensEffect', () => {
-        it('returns the push cleanup effect for the failure tokens', () => {
-            const result = queue.cleanupTokensEffect('user-id', [
-                'encrypted-token',
-            ]);
-
-            expect(result).toEqual({
-                queue: EnumNotificationQueue.notificationPush,
-                name: EnumNotificationPushProcess.cleanupTokens,
-                data: {
-                    userId: 'user-id',
-                    encryptedFailureTokens: ['encrypted-token'],
-                },
-                priority: EnumQueuePriority.low,
-                idempotencyKey: null,
-            });
-        });
-    });
 });

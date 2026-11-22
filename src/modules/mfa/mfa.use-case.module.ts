@@ -1,4 +1,5 @@
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
+import { DeviceModule } from '@modules/device/device.module';
 import { MfaModule } from '@modules/mfa/mfa.module';
 import { MfaDeletePasskeyUseCase } from '@modules/mfa/use-cases/mfa.delete-passkey.use-case';
 import { MfaDisableTotpUseCase } from '@modules/mfa/use-cases/mfa.disable-totp.use-case';
@@ -43,6 +44,12 @@ import { Module } from '@nestjs/common';
         MfaUpdatePasskeyUseCase,
         MfaDeletePasskeyUseCase,
     ],
-    imports: [ActivityLogModule, MfaModule, NotificationModule, UserModule],
+    imports: [
+        ActivityLogModule,
+        DeviceModule,
+        MfaModule,
+        NotificationModule,
+        UserModule,
+    ],
 })
 export class MfaUseCaseModule {}

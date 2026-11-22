@@ -14,7 +14,7 @@
 
 A guard, strategy, interceptor, or decorator injects the exported services of a `@Global()` module (`module-files.md`, `@Global()`), and nothing else from another feature module.
 
-A repository reaches no other module's util. Anything a `@Global()` module exports is reachable with no import by the callers this table allows. `@Global()` removes the import, never the level.
+Anything a `@Global()` module exports is reachable with no import by the callers this table allows. `@Global()` removes the import, never the level.
 
 `src/modules/analytic/` reads every feature's models in its own repositories, read-only (`layering.md`, Levels): the one exception to the table's last row and to model ownership below.
 

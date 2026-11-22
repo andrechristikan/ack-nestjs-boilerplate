@@ -56,6 +56,9 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
+import { MfaService } from '@modules/mfa/services/mfa.service';
+import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
+import { NotificationService } from '@modules/notification/services/notification.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -88,6 +91,11 @@ describe('UserCreateByAdminUseCase', () => {
         mock<UserRegistrationService>();
     const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
         mock<TermPolicyAcceptanceService>();
+    const mfaService: MockProxy<MfaService> = mock<MfaService>();
+    const passwordHistoryService: MockProxy<PasswordHistoryService> =
+        mock<PasswordHistoryService>();
+    const notificationService: MockProxy<NotificationService> =
+        mock<NotificationService>();
     let useCase: UserCreateByAdminUseCase;
 
     const now = new Date('2026-03-01T00:00:00.000Z');
@@ -205,7 +213,7 @@ describe('UserCreateByAdminUseCase', () => {
         ]);
         notificationQueue.notify.mockReturnValue(welcomeEffect);
         databaseService.withTransaction.mockImplementation(async fn => fn(tx));
-        userRegistrationService.createInTx.mockResolvedValue([committedUser]);
+        userService.createManyInTx.mockResolvedValue([committedUser]);
         roleService.getByName.mockResolvedValue(role);
         countryService.getOne.mockResolvedValue(country);
 
@@ -225,6 +233,15 @@ describe('UserCreateByAdminUseCase', () => {
                 {
                     provide: TermPolicyAcceptanceService,
                     useValue: termPolicyAcceptanceService,
+                },
+                { provide: MfaService, useValue: mfaService },
+                {
+                    provide: PasswordHistoryService,
+                    useValue: passwordHistoryService,
+                },
+                {
+                    provide: NotificationService,
+                    useValue: notificationService,
                 },
                 { provide: RoleService, useValue: roleService },
                 { provide: CountryService, useValue: countryService },
@@ -329,10 +346,9 @@ describe('UserCreateByAdminUseCase', () => {
                 expect.any(Function),
                 { timeout: 5000 }
             );
-            expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
-                tx,
-                [input]
-            );
+            expect(userService.createManyInTx).toHaveBeenCalledWith(tx, [
+                input,
+            ]);
             expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.welcomeByAdmin,
                 {
@@ -517,17 +533,16 @@ describe('UserCreateByAdminUseCase', () => {
 
             expect(users).toEqual([committedUser]);
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(userRegistrationService.createInTx).toHaveBeenCalledWith(
-                tx,
-                [input]
-            );
+            expect(userService.createManyInTx).toHaveBeenCalledWith(tx, [
+                input,
+            ]);
             expect(
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenCalledWith(tx, [owned]);
             expect(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             ).toHaveBeenCalledWith(tx, [acceptanceEntry]);
-            expect(userRegistrationService.createInTx).toHaveBeenCalledBefore(
+            expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 workspaceService.createOwnedForUsersInTx
             );
             expect(
@@ -542,6 +557,50 @@ describe('UserCreateByAdminUseCase', () => {
             expect(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             ).toHaveBeenCalledBefore(outboxService.addManyInTx);
+        });
+
+        it("writes each user's Mfa row, password history, and notification defaults on tx after the users", async () => {
+            await useCase['createAdminUsers'](
+                requestContext,
+                apiKeyContext,
+                [input],
+                [welcomeEffect],
+                7000
+            );
+
+            expect(mfaService.createInTx).toHaveBeenCalledWith(
+                tx,
+                'user-bramble',
+                'user-bramble'
+            );
+            expect(passwordHistoryService.createManyInTx).toHaveBeenCalledWith(
+                tx,
+                [
+                    {
+                        userId: 'user-bramble',
+                        password: 'hashed',
+                        type: EnumPasswordHistoryType.signUp,
+                        expiredAt: new Date('2026-04-01T00:00:00.000Z'),
+                        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                        createdBy: 'user-bramble',
+                    },
+                ]
+            );
+            expect(
+                notificationService.createDefaultsManyInTx
+            ).toHaveBeenCalledWith(tx, ['user-bramble']);
+            expect(userService.createManyInTx).toHaveBeenCalledBefore(
+                mfaService.createInTx
+            );
+            expect(userService.createManyInTx).toHaveBeenCalledBefore(
+                passwordHistoryService.createManyInTx
+            );
+            expect(userService.createManyInTx).toHaveBeenCalledBefore(
+                notificationService.createDefaultsManyInTx
+            );
+            expect(mfaService.createInTx).toHaveBeenCalledBefore(
+                workspaceService.createOwnedForUsersInTx
+            );
         });
 
         it('passes timeoutInMs to withTransaction', async () => {

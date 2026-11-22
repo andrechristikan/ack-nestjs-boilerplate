@@ -49,7 +49,21 @@ Rule: `layering.md`, Levels.
 - A side effect reached through the owning module's service: the caller then injects a sibling's service; the queue class is the module's side-effect entry.
 - A feature util exported to another module's service: the util's rule then changes under a caller its module does not own.
 - Two-factor kept in `user` and `auth`: the pieces in `auth` had no caller there, and one factor's logic sat in two modules.
-- `AuthPasswordUtil` in the kit: it is auth-specific, and the kit takes only a module-agnostic concept with three callers or more.
+
+### `device` and `mfa` stay plain modules, and their callers' sequences sit in use cases
+
+Rule: `layering.md`, Levels; `module-files.md`, `@Global()`.
+
+- `device` or `mfa` as `@Global()`: no guard, strategy, interceptor, or decorator injects either, and `@Global()` is for guard-injected modules only.
+- A `@Global()` module's service injecting another `@Global()` module's service: two domains of one level then couple below the use case.
+- No service injecting any other module's service, a lower level included: a shared piece then has no lower service to move down into (`cross-module.md`, Composition).
+
+### Another module's util logic a service needs is a method of the owner's service on a lower level, else a value its use case passes in
+
+Rule: `layering.md`, Roles.
+
+- The use case always passing the value in: every use case repeats a step a lower module's service, which the service may inject, already holds.
+- The logic moved into `src/common/` (`AuthPasswordUtil` in the kit): it is auth-specific, and the kit takes only a module-agnostic concept with three callers or more.
 
 ### A processor injects its use cases only
 
@@ -141,15 +155,30 @@ Rule: `naming.md`, Identifiers.
 
 ## Lint and tests
 
-### Lint enforces the layer matrix only
+### Lint enforces the layer matrix and five boundary policies, reading the `@Global()` set from the module files
 
-Rule: `layering.md`, Levels.
+Rule: `eslint.md`, Boundaries; `layering.md`, Levels.
 
-- Lint derives the module graph, per-feature policies, and cycles: about 230 lines of config for what the boot and the reviewer catch.
-- The levels hard-coded in the config: it drifts from the module files.
+- Lint derives the module graph and its cycles: about 230 lines of config for what the boot and the reviewer catch.
+- The levels or the `@Global()` set written in the config: it drifts from the module files.
 - `dependency-cruiser` as a second runner: a separate script and pre-commit step where the plugin runs inside `pnpm lint`.
 - Rules text alone for the layer matrix: carve-outs are written one by one instead of following from a declared order.
 - The levels in a separate data file: the feature names only move to another file.
+- The level left to the reviewer: a breach waits for a review instead of failing the lint.
+
+### Lint refuses the global number functions and, in `src/modules`, `@Inject(<queue enum>)`, leaves `Math.random` free, and keeps each message neutral
+
+Rule: `eslint.md`; `queue.md`, Where things live; `security.md`, Cryptography; `eslint.config.mjs`, `numberGlobalRestrictions` and `injectQueueRestriction`.
+
+- `Math.random` refused in every file: it is fine to use, and only out of place for an auth value, which `security.md`, Cryptography, already covers.
+- The `@Inject(<queue enum>)` restriction on `src/common` and `src/app` too: the restriction binds feature code; the kit resolves a queue class by its token in `OutboxService` alone and no kit or app class injects one, so there it guards no code.
+- A lint message naming the rule file that holds its rule: a message stays neutral, saying what is refused and what to do.
+
+### Each section and each top-level constant of the lint config carries a one-line JSDoc
+
+Rule: `code-style.md`, Types and comments.
+
+- `eslint.config.mjs` dropped from the `paths:` of `code-style.md`: every other code-style rule would stop binding the file, where only the JSDoc limit differs for it.
 
 ### The typed lint rules are the four promise and exhaustiveness rules
 
@@ -188,11 +217,12 @@ Rule: `test-doubles.md`.
 - A real repository or `DatabaseService`: that is the held integration suite.
 - A `vi.spyOn` stub on a deterministic helper method to reach a `src/` branch: the branch no real input reaches is dead code, and the stub hides it (`AuthJwtService.remainingSeconds`).
 
-### Mock reset and restore come from the unit project config
+### Mock reset and restore come from the unit project config, and a spec may still call the three `vi` mock calls
 
 Rule: `testing.md`, Unit.
 
 - A `vi.resetAllMocks()` and `vi.restoreAllMocks()` hook in every spec: order independence then rests on each of several hundred files remembering it.
+- A lint ban on `vi.clearAllMocks()`, `vi.resetAllMocks()`, and `vi.restoreAllMocks()`: calling them is style only, since the unit project already resets and restores every mock.
 
 ### Each unit spec file runs isolated, on the default pool with four workers
 

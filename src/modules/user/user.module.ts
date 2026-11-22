@@ -1,9 +1,10 @@
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { AwsModule } from '@common/aws/aws.module';
-import { DeviceModule } from '@modules/device/device.module';
 import { EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserQueue } from '@modules/user/queues/user.queue';
 import { UserQueueFactory } from '@modules/user/factories/user.queue.factory';
+import { UserAuthQueue } from '@modules/user/queues/user.auth.queue';
+import { UserAuthQueueFactory } from '@modules/user/factories/user.auth.queue.factory';
 import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
 import { UserForgotPasswordRepository } from '@modules/user/repositories/user.forgot-password.repository';
 import { UserRepository } from '@modules/user/repositories/user.repository';
@@ -21,9 +22,7 @@ import { UserVerificationService } from '@modules/user/services/user.verificatio
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
-import { MfaModule } from '@modules/mfa/mfa.module';
 import { NotificationModule } from '@modules/notification/notification.module';
-import { PasswordHistoryModule } from '@modules/password-history/password-history.module';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 
@@ -52,6 +51,11 @@ import { Module } from '@nestjs/common';
             provide: EnumUserQueue.user,
             useExisting: UserQueue,
         },
+        UserAuthQueue,
+        {
+            provide: EnumUserQueue.userAuth,
+            useExisting: UserAuthQueue,
+        },
     ],
     exports: [
         UserService,
@@ -67,18 +71,22 @@ import { Module } from '@nestjs/common';
         UserUtil,
         UserVerificationUtil,
         UserQueue,
+        UserAuthQueue,
     ],
     imports: [
         ActivityLogModule,
         AwsModule,
-        DeviceModule,
-        MfaModule,
         NotificationModule,
-        PasswordHistoryModule,
-        BullModule.registerQueueAsync({
-            name: EnumUserQueue.user,
-            useClass: UserQueueFactory,
-        }),
+        BullModule.registerQueueAsync(
+            {
+                name: EnumUserQueue.user,
+                useClass: UserQueueFactory,
+            },
+            {
+                name: EnumUserQueue.userAuth,
+                useClass: UserAuthQueueFactory,
+            }
+        ),
     ],
 })
 export class UserModule {}

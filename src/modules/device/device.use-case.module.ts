@@ -5,6 +5,7 @@ import { DeviceGetListOffsetByAdminUseCase } from '@modules/device/use-cases/dev
 import { DeviceRefreshUseCase } from '@modules/device/use-cases/device.refresh.use-case';
 import { DeviceRemoveByAdminUseCase } from '@modules/device/use-cases/device.remove-by-admin.use-case';
 import { DeviceRemoveUseCase } from '@modules/device/use-cases/device.remove.use-case';
+import { MfaModule } from '@modules/mfa/mfa.module';
 import { UserModule } from '@modules/user/user.module';
 import { Module } from '@nestjs/common';
 
@@ -24,6 +25,6 @@ import { Module } from '@nestjs/common';
         DeviceRemoveUseCase,
         DeviceRemoveByAdminUseCase,
     ],
-    imports: [DeviceModule, UserModule, ActivityLogModule],
+    imports: [DeviceModule, UserModule, MfaModule, ActivityLogModule],
 })
 export class DeviceUseCaseModule {}

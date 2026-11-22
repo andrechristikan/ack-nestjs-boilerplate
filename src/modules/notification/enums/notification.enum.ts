@@ -21,7 +21,6 @@ export enum EnumNotificationEmailProcess {
 /** @public */
 export enum EnumNotificationPushProcess {
     send = 'send',
-    cleanupTokens = 'cleanupTokens',
     cleanupStaleTokens = 'cleanupStaleTokens',
 }
 

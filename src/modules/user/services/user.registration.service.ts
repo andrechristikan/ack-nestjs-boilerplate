@@ -1,4 +1,3 @@
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
@@ -9,7 +8,7 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
-import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
+import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import {
@@ -17,9 +16,6 @@ import {
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
-import { NotificationService } from '@modules/notification/services/notification.service';
-import type { IPasswordHistoryCreate } from '@modules/password-history/interfaces/password-history.interface';
-import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
@@ -29,7 +25,6 @@ import type {
     IUserSignUpResolved,
 } from '@modules/user/interfaces/user.interface';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
-import { UserService } from '@modules/user/services/user.service';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { Injectable } from '@nestjs/common';
@@ -37,13 +32,10 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class UserRegistrationService {
     constructor(
-        private readonly userService: UserService,
         private readonly userAuthService: UserAuthService,
-        private readonly passwordHistoryService: PasswordHistoryService,
-        private readonly notificationService: NotificationService,
         private readonly featureFlagService: FeatureFlagService,
         private readonly userCreateUtil: UserCreateUtil,
-        private readonly authPasswordUtil: AuthPasswordUtil,
+        private readonly authPasswordService: AuthPasswordService,
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
@@ -60,59 +52,12 @@ export class UserRegistrationService {
         ];
     }
 
-    private buildPasswordHistoryEntries(
-        inputs: IUserCreateWithWorkspaceInput[]
-    ): IPasswordHistoryCreate[] {
-        const entries: IPasswordHistoryCreate[] = [];
-
-        for (const {
-            userId,
-            password,
-            passwordHistoryType,
-            createdBy,
-        } of inputs) {
-            if (password && passwordHistoryType) {
-                entries.push({
-                    userId,
-                    password: password.passwordHash,
-                    type: passwordHistoryType,
-                    expiredAt: password.passwordPeriodExpired,
-                    createdAt: password.passwordCreated,
-                    createdBy,
-                });
-            }
-        }
-
-        return entries;
-    }
-
-    private buildUserIds(inputs: IUserCreateWithWorkspaceInput[]): string[] {
-        return inputs.map(({ userId }) => userId);
-    }
-
     private resolveSocialFeatureFlagKey(
         loginWith: EnumUserLoginWith
     ): EnumFeatureFlagKey {
         return loginWith === EnumUserLoginWith.socialGoogle
             ? EnumFeatureFlagKey.loginWithGoogle
             : EnumFeatureFlagKey.loginWithApple;
-    }
-
-    /** Creates the users with their first password-history entries and default notification settings on the caller's transaction. */
-    async createInTx(
-        tx: IDatabaseTransactionClient,
-        inputs: IUserCreateWithWorkspaceInput[]
-    ): Promise<IUser[]> {
-        const passwordHistories = this.buildPasswordHistoryEntries(inputs);
-        const userIds = this.buildUserIds(inputs);
-
-        const created = await this.userService.createManyInTx(tx, inputs);
-        await Promise.all([
-            this.passwordHistoryService.createManyInTx(tx, passwordHistories),
-            this.notificationService.createDefaultsManyInTx(tx, userIds),
-        ]);
-
-        return created;
     }
 
     /** False when a user already holds the normalized email or the provider flag's signUpAllowed sub-key is not set. */
@@ -148,8 +93,7 @@ export class UserRegistrationService {
         { roleId, workspaceContext }: IUserSignUpResolved
     ): Promise<IUserSignUpPrepared> {
         const userId = this.databaseUtil.createId();
-        const password =
-            await this.authPasswordUtil.createPassword(passwordString);
+        const password = await this.authPasswordService.create(passwordString);
         const emailVerification = this.userVerificationUtil.createEmail();
         const acceptedTermPolicyTypes = this.buildAcceptedTermPolicyTypes(
             cookies,

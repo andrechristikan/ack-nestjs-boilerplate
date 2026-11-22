@@ -13,7 +13,8 @@ import {
 } from '@generated/prisma-client/client';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
-import { AuthUtil } from '@modules/auth/utils/auth.util';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
     IAuthJwtAccessTokenPayload,
     IAuthJwtRefreshTokenPayload,
@@ -50,7 +51,8 @@ const refreshPublicKeyBase64 = refreshKeyPair.publicKey
 describe('AuthJwtService', () => {
     const jwtService: MockProxy<JwtService> = mock<JwtService>();
     let configService: MockProxy<ConfigService>;
-    let authUtil: AuthUtil;
+    let helperStringService: HelperStringService;
+    let databaseUtil: DatabaseUtil;
 
     let service: AuthJwtService;
 
@@ -91,7 +93,6 @@ describe('AuthJwtService', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ...TestUnitKitProviders,
-                AuthUtil,
                 AuthJwtService,
                 { provide: JwtService, useValue: jwtService },
                 { provide: ConfigService, useValue: configService },
@@ -99,7 +100,8 @@ describe('AuthJwtService', () => {
         }).compile();
 
         service = module.get(AuthJwtService);
-        authUtil = module.get(AuthUtil);
+        helperStringService = module.get(HelperStringService);
+        databaseUtil = module.get(DatabaseUtil);
     });
 
     afterAll(() => {
@@ -346,6 +348,26 @@ describe('AuthJwtService', () => {
         });
     });
 
+    describe('createLoginIdentifiers', () => {
+        it('mints a session id and a jti of the configured length', () => {
+            const createId = vi
+                .spyOn(databaseUtil, 'createId')
+                .mockReturnValue('session-1');
+            const random = vi
+                .spyOn(helperStringService, 'random')
+                .mockReturnValue('jti-value');
+
+            const result = service.createLoginIdentifiers();
+
+            expect(result).toEqual({
+                sessionId: 'session-1',
+                jti: 'jti-value',
+            });
+            expect(createId).toHaveBeenCalledTimes(1);
+            expect(random).toHaveBeenCalledWith(32);
+        });
+    });
+
     describe('refreshToken', () => {
         it('rotates the token pair reusing the session and jti', () => {
             const loginAt = new Date('2026-01-01T00:00:00.000Z');
@@ -361,7 +383,7 @@ describe('AuthJwtService', () => {
                 exp: oldExpSeconds,
             };
             jwtService.decode.mockReturnValue(decodedRefresh);
-            vi.spyOn(authUtil, 'generateJti').mockReturnValue('new-jti');
+            vi.spyOn(helperStringService, 'random').mockReturnValue('new-jti');
             const newAccessPayload: IAuthJwtAccessTokenPayload = {
                 loginAt,
                 loginFrom: EnumUserLoginFrom.website,

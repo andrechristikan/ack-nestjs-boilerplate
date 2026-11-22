@@ -8,7 +8,6 @@ import { NotificationMarkAsReadUseCase } from '@modules/notification/use-cases/n
 import { NotificationMarkAllAsReadUseCase } from '@modules/notification/use-cases/notification.mark-all-as-read.use-case';
 import { NotificationUpdateUserSettingUseCase } from '@modules/notification/use-cases/notification.update-user-setting.use-case';
 import { NotificationEmailProcessPublishTermPolicyUseCase } from '@modules/notification/use-cases/notification.email.process-publish-term-policy.use-case';
-import { NotificationPushProcessCleanupTokensUseCase } from '@modules/notification/use-cases/notification.push.process-cleanup-tokens.use-case';
 import { NotificationPushProcessCleanupStaleTokensUseCase } from '@modules/notification/use-cases/notification.push.process-cleanup-stale-tokens.use-case';
 import { UserModule } from '@modules/user/user.module';
 import { NotificationProcessUseCase } from '@modules/notification/use-cases/notification.process.use-case';
@@ -27,7 +26,6 @@ import { Module } from '@nestjs/common';
         NotificationMarkAllAsReadUseCase,
         NotificationUpdateUserSettingUseCase,
         NotificationEmailProcessPublishTermPolicyUseCase,
-        NotificationPushProcessCleanupTokensUseCase,
         NotificationPushProcessCleanupStaleTokensUseCase,
         NotificationProcessUseCase,
         NotificationEmailProcessSendUseCase,
@@ -42,7 +40,6 @@ import { Module } from '@nestjs/common';
         NotificationMarkAllAsReadUseCase,
         NotificationUpdateUserSettingUseCase,
         NotificationEmailProcessPublishTermPolicyUseCase,
-        NotificationPushProcessCleanupTokensUseCase,
         NotificationPushProcessCleanupStaleTokensUseCase,
         NotificationProcessUseCase,
         NotificationEmailProcessSendUseCase,

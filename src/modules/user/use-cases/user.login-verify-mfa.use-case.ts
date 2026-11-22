@@ -11,6 +11,7 @@ import {
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
+import { DeviceService } from '@modules/device/services/device.service';
 import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
@@ -32,6 +33,7 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
         private readonly mfaService: MfaService,
         private readonly mfaChallengeService: MfaChallengeService,
         private readonly activityLogQueue: ActivityLogQueue,
+        private readonly deviceService: DeviceService,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
         private readonly helperDateService: HelperDateService,
@@ -52,7 +54,10 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
         const { userId, device, loginFrom, loginWith, webAuthnChallenge } =
             await this.mfaChallengeService.getLogin(challengeToken);
 
-        const user = await this.userAuthService.getOneForMfaLogin(userId);
+        const [user] = await Promise.all([
+            this.userAuthService.getOneForMfaLogin(userId),
+            this.mfaService.assertEnabled(userId),
+        ]);
         const { check, failure } = await this.mfaService.check(
             user.id,
             {
@@ -100,13 +105,20 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
                         }
                     );
                     await this.outboxService.addInTx(tx, entry);
+                    const upserted =
+                        await this.deviceService.upsertForLoginInTx(
+                            tx,
+                            user.id,
+                            device,
+                            loginAt
+                        );
 
                     return this.userAuthService.createTokenAndSessionInTx(
                         tx,
                         requestContext,
                         apiKeyContext,
                         user,
-                        device,
+                        upserted,
                         loginFrom,
                         loginWith,
                         loginAt
