@@ -118,6 +118,8 @@ describe('UserExportByAdminUseCase', () => {
             const user = {
                 ...baseUser,
                 photo: {
+                    id: 'photo-fable',
+                    userId: 'user-fable',
                     bucket: 'bucket',
                     key: 'photo.png',
                     cdnUrl: null,

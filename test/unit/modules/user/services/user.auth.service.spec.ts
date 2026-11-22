@@ -818,7 +818,6 @@ describe('UserAuthService', () => {
                 lastLoginWith: EnumUserLoginWith.credential,
                 lastWorkspaceId: null,
                 lastWorkspaceChangedAt: null,
-                photo: null,
                 createdAt: new Date('2026-01-01T00:00:00.000Z'),
                 createdBy: null,
                 updatedAt: new Date('2026-03-01T00:00:00.000Z'),
@@ -841,6 +840,7 @@ describe('UserAuthService', () => {
                 )
             ).resolves.toEqual({
                 ...writtenRow,
+                photo: user.photo,
                 role: user.role,
             });
             expect(

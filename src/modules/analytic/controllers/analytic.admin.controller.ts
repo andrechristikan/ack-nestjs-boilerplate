@@ -132,7 +132,7 @@ import { AnalyticAnomalyImpossibleTravelSummaryResponseSchema } from '@modules/a
 import { AnalyticAnomalyLoginSpikeIpSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-login-spike-ip-summary.response.dto';
 import { AnalyticAnomalyFailedLoginSpikeSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-failed-login-spike-summary.response.dto';
 import { AnalyticAnomalyDeviceProliferationSummaryResponseSchema } from '@modules/analytic/dtos/response/analytic.anomaly-device-proliferation-summary.response.dto';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { AnalyticWindowRequestSchema } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import type { AnalyticWindowRequestDto } from '@modules/analytic/dtos/request/analytic.window.request.dto';
 import { AnalyticFraudRiskScoreResponseSchema } from '@modules/analytic/dtos/response/analytic.fraud-risk-score.response.dto';
@@ -1940,7 +1940,7 @@ export class AnalyticAdminController {
     @ApiKeyProtected()
     @Get('/fraud/risk-score/user/:userId')
     async riskScore(
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponseReturn<IAnalyticFraudRiskScore>> {
         return this.analyticRiskScoreUseCase.execute(userId);

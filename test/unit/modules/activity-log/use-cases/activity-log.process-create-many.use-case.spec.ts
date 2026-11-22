@@ -1,3 +1,4 @@
+import type { IRequestUserAgent } from '@common/request/interfaces/request.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -5,7 +6,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { UserAgent } from '@generated/prisma-client/client';
+
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IActivityLogCreateManyPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import { MessageService } from '@common/message/services/message.service';
@@ -18,7 +19,7 @@ describe('ActivityLogProcessCreateManyUseCase', () => {
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
 
-    const userAgent: UserAgent = {
+    const userAgent: IRequestUserAgent = {
         ua: null,
         browser: null,
         cpu: { architecture: null },

@@ -7,7 +7,7 @@ import {
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -121,7 +121,7 @@ export class DeviceSharedController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
-        @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
+        @Param('deviceOwnershipId', { schema: RequestUuidSchema })
         deviceOwnershipId: string,
         @Body({ schema: DeviceRemoveRequestSchema })
         body: DeviceRemoveRequestDto

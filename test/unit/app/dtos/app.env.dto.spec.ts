@@ -34,7 +34,7 @@ describe('AppEnvSchema', () => {
 
             REQUEST_CORS_ALLOWED_ORIGINS: '*',
 
-            DATABASE_URL: 'mongodb://localhost:27017/ack',
+            DATABASE_URL: 'postgresql://localhost:5432/ack',
             DATABASE_DEBUG_ENABLED: 'false',
 
             AUTH_JWT_AUDIENCE: 'https://example.com',
@@ -85,7 +85,7 @@ describe('AppEnvSchema', () => {
 
                 REQUEST_CORS_ALLOWED_ORIGINS: '*',
 
-                DATABASE_URL: 'mongodb://localhost:27017/ack',
+                DATABASE_URL: 'postgresql://localhost:5432/ack',
                 DATABASE_DEBUG_ENABLED: false,
 
                 AUTH_JWT_AUDIENCE: 'https://example.com',

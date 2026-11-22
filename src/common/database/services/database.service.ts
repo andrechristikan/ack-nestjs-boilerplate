@@ -49,7 +49,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     private async connect(): Promise<void> {
         try {
             await this.client.$connect();
-            await this.client.$runCommandRaw({ ping: 1 });
+            await this.client.$queryRaw`SELECT 1`;
             this.logger.log('Successfully connected to the database');
         } catch (error: unknown) {
             throw new AppUnknownException(

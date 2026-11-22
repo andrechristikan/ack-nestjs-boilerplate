@@ -8,7 +8,7 @@ import {
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -371,7 +371,7 @@ export class ProjectUserController {
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @ProjectContext() projectContext: IProjectContext,
-        @Param('projectMemberId', { schema: RequestMongoIdSchema })
+        @Param('projectMemberId', { schema: RequestUuidSchema })
         projectMemberId: string,
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
         body: ProjectMemberUpdateRoleRequestDto
@@ -409,7 +409,7 @@ export class ProjectUserController {
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @ProjectContext() projectContext: IProjectContext,
-        @Param('projectMemberId', { schema: RequestMongoIdSchema })
+        @Param('projectMemberId', { schema: RequestUuidSchema })
         projectMemberId: string
     ): Promise<IResponseReturn<void>> {
         return this.projectRemoveMemberUseCase.execute(

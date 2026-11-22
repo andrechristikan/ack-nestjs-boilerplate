@@ -19,7 +19,7 @@ describe('DatabaseClientFactory', () => {
         vi.resetAllMocks();
 
         databaseUtil.buildClientUrl.mockReturnValue(
-            'mongodb://h:27017/db?serverSelectionTimeoutMS=5000&connectTimeoutMS=5000'
+            'postgresql://h:5432/db?connect_timeout=5&pool_timeout=5'
         );
 
         const module: TestingModule = await Test.createTestingModule({
@@ -28,7 +28,7 @@ describe('DatabaseClientFactory', () => {
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
-                        'database.url': 'mongodb://h:27017/db',
+                        'database.url': 'postgresql://h:5432/db',
                     }),
                 },
                 { provide: DatabaseUtil, useValue: databaseUtil },
@@ -50,7 +50,7 @@ describe('DatabaseClientFactory', () => {
         it('builds the client url from the configured database url', () => {
             expect(databaseUtil.buildClientUrl).toHaveBeenCalledTimes(1);
             expect(databaseUtil.buildClientUrl).toHaveBeenCalledWith(
-                'mongodb://h:27017/db'
+                'postgresql://h:5432/db'
             );
         });
     });

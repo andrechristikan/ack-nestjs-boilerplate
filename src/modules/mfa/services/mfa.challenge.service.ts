@@ -3,16 +3,14 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import {
-    EnumMfaChallengePurpose,
-    type MfaChallengeDevice,
-} from '@generated/prisma-client/client';
+import { EnumMfaChallengePurpose } from '@generated/prisma-client/client';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import { MfaChallengeEncryptionPurpose } from '@modules/mfa/constants/mfa.constant';
 import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import type {
     IMfaChallenge,
     IMfaChallengeCreate,
+    IMfaChallengeDevice,
     IMfaChallengeLogin,
     IMfaChallengePrepared,
     IMfaChallengeToken,
@@ -50,7 +48,7 @@ export class MfaChallengeService {
     private sealDevice(
         device: IDeviceIdentity | null,
         userId: string | null
-    ): MfaChallengeDevice | null {
+    ): IMfaChallengeDevice | null {
         if (device === null) {
             return null;
         }
@@ -77,7 +75,7 @@ export class MfaChallengeService {
     }
 
     private openDevice(
-        device: MfaChallengeDevice | null,
+        device: IMfaChallengeDevice | null,
         userId: string | null
     ): IDeviceIdentity | null {
         if (device === null) {
@@ -168,7 +166,10 @@ export class MfaChallengeService {
             throw new MfaChallengeInvalidException();
         }
 
-        const device = this.openDevice(row.device, row.userId);
+        const device = this.openDevice(
+            row.device as unknown as IMfaChallengeDevice | null,
+            row.userId
+        );
 
         return {
             userId: row.userId,

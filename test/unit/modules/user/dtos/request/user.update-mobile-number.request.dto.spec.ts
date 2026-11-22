@@ -3,7 +3,7 @@ import { UserUpdateMobileNumberRequestSchema } from '@modules/user/dtos/request/
 
 describe('UserUpdateMobileNumberRequestSchema', () => {
     const payload = {
-        countryId: '507f1f77bcf86cd799439012',
+        countryId: '01920000-0000-7000-8000-6cd799439012',
         number: '81234567890',
         phoneCode: '62',
     };

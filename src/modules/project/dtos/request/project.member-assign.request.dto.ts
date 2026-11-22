@@ -1,14 +1,14 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 
 /** @public */
 export const ProjectMemberAssignRequestSchema = z.strictObject({
-    userId: RequestMongoIdSchema.meta({
+    userId: RequestUuidSchema.meta({
         description:
             'User id to assign to the project; must already be a member of the parent workspace',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     role: z.enum(EnumProjectMemberRole).meta({
         description:

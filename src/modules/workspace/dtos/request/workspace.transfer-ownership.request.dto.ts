@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 
 /** @public */
 export const WorkspaceTransferOwnershipRequestSchema = z.strictObject({
-    targetUserId: RequestMongoIdSchema.meta({
+    targetUserId: RequestUuidSchema.meta({
         description:
             'User to transfer ownership to; must already be a workspace member',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
 });
 

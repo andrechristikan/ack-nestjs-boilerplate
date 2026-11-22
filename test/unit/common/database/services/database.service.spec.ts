@@ -101,25 +101,25 @@ describe('DatabaseService', () => {
                 rawError: error,
                 message: 'Connecting to the database failed',
             });
-            expect(client.$runCommandRaw).not.toHaveBeenCalled();
+            expect(client.$queryRaw).not.toHaveBeenCalled();
         });
 
         it('pings the database after connecting', async () => {
             client.$connect.mockResolvedValue(undefined);
-            client.$runCommandRaw.mockResolvedValue({ ok: 1 });
+            client.$queryRaw.mockResolvedValue({ ok: 1 });
 
             await service.onModuleInit();
 
-            expect(client.$runCommandRaw).toHaveBeenCalledWith({ ping: 1 });
-            expect(client.$connect).toHaveBeenCalledBefore(
-                client.$runCommandRaw
+            expect(client.$queryRaw).toHaveBeenCalledWith(
+                expect.arrayContaining(['SELECT 1'])
             );
+            expect(client.$connect).toHaveBeenCalledBefore(client.$queryRaw);
         });
 
         it('wraps a failed ping once in AppUnknownException', async () => {
-            const error = new Error('Server selection timeout');
+            const error = new Error("Can't reach database server");
             client.$connect.mockResolvedValue(undefined);
-            client.$runCommandRaw.mockRejectedValue(error);
+            client.$queryRaw.mockRejectedValue(error);
 
             await expect(service.onModuleInit()).rejects.toMatchObject({
                 constructor: AppUnknownException,

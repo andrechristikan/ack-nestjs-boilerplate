@@ -61,7 +61,11 @@ export interface IUserDeletedIdentity {
     username: string;
 }
 
-export interface IUser extends User {
+export interface IUserWithPhoto extends User {
+    photo: UserPhoto | null;
+}
+
+export interface IUser extends IUserWithPhoto {
     role: IRoleWithPolicies;
 }
 

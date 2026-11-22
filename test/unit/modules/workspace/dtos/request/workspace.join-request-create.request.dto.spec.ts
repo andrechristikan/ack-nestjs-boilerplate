@@ -2,7 +2,7 @@ import { WorkspaceJoinRequestCreateRequestSchema } from '@modules/workspace/dtos
 
 describe('WorkspaceJoinRequestCreateRequestSchema', () => {
     const payload = {
-        workspaceId: '507f1f77bcf86cd799439011',
+        workspaceId: '01920000-0000-7000-8000-6cd799439011',
         message: 'Please let me in',
     };
 

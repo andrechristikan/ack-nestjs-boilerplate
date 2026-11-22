@@ -471,7 +471,7 @@ async list(
 @RequestThrottle({ user: true })
 @Patch('/update/:userId/status')
 async updateStatus(
-  @Param('userId', { schema: RequestMongoIdSchema }) userId: string,
+  @Param('userId', { schema: RequestUuidSchema }) userId: string,
   @AuthJwtPayload('userId') updatedBy: string,
   @Body({ schema: UserUpdateStatusRequestSchema }) body: UserUpdateStatusRequestDto
 ): Promise<IResponseReturn<void>> {
@@ -498,8 +498,8 @@ async updateStatus(
 @RequestThrottle({ user: true })
 @Delete('/revoke/:sessionId')
 async revoke(
-  @Param('userId', { schema: RequestMongoIdSchema }) userId: string,
-  @Param('sessionId', { schema: RequestMongoIdSchema }) sessionId: string,
+  @Param('userId', { schema: RequestUuidSchema }) userId: string,
+  @Param('sessionId', { schema: RequestUuidSchema }) sessionId: string,
   @AuthJwtPayload('userId') revokedBy: string
 ): Promise<IResponseReturn<void>> {
   await this.sessionHttpService.revokeByAdmin(userId, sessionId, revokedBy);

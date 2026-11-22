@@ -1,3 +1,7 @@
+import type {
+    IRequestUserAgent,
+    IRequestGeoLocation,
+} from '@common/request/interfaces/request.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -6,7 +10,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MessageService } from '@common/message/services/message.service';
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
+
 import { buildActivityLog } from '@test/unit/helpers/test.unit.activity-log.helper';
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import {
@@ -117,7 +121,7 @@ describe('ActivityLogUtil', () => {
 
     describe('buildCreateManyUserData', () => {
         it('builds the create-many-user row from the actor, request log, and metadata', () => {
-            const userAgent: UserAgent = {
+            const userAgent: IRequestUserAgent = {
                 ua: 'test-agent',
                 browser: null,
                 cpu: { architecture: null },
@@ -125,7 +129,7 @@ describe('ActivityLogUtil', () => {
                 engine: { name: null, version: null },
                 os: { name: null, version: null },
             };
-            const geoLocation: GeoLocation = {
+            const geoLocation: IRequestGeoLocation = {
                 latitude: 1,
                 longitude: 2,
                 country: 'US',
@@ -209,7 +213,7 @@ describe('ActivityLogUtil', () => {
     });
 
     describe('toMaskedList', () => {
-        const geoLocation: GeoLocation = {
+        const geoLocation: IRequestGeoLocation = {
             latitude: 1,
             longitude: 2,
             country: 'ID',

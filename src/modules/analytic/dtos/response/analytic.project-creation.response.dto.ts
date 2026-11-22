@@ -10,7 +10,7 @@ export const AnalyticProjectCreationResponseSchema = z.object({
     }),
     perWorkspace: z.array(AnalyticWorkspaceCountResponseSchema).meta({
         description: 'Projects created inside the window, split per workspace',
-        example: [{ workspaceId: faker.database.mongodbObjectId(), count: 3 }],
+        example: [{ workspaceId: faker.string.uuid(), count: 3 }],
     }),
 });
 

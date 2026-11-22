@@ -15,9 +15,9 @@ COPY . .
 RUN pnpm generate
 RUN pnpm build
 
-# Migrate stage: pushes the schema. Calls the Prisma CLI through node because the corepack pnpm shim needs a writable home, which a host uid has not.
+# Migrate stage: applies the migrations. Calls the Prisma CLI through node because the corepack pnpm shim needs a writable home, which a host uid has not.
 FROM builder AS migrate
-CMD ["node", "node_modules/prisma/build/index.js", "db", "push", "--skip-generate"]
+CMD ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
 
 # Main Stage
 FROM base AS main

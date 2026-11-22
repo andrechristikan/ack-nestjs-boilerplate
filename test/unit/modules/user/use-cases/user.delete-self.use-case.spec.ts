@@ -235,6 +235,8 @@ describe('UserDeleteSelfUseCase', () => {
         };
 
         const photo = {
+            id: 'photo-cinder',
+            userId: 'user-cinder',
             bucket: 'bucket',
             key: 'photo-profile/user-cinder/current.png',
             cdnUrl: null,

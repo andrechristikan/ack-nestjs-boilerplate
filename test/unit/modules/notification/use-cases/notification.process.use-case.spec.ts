@@ -103,7 +103,6 @@ describe('NotificationProcessUseCase', () => {
         lastLoginWith: null,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        photo: null,
         createdAt: new Date('2024-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2024-01-01T00:00:00.000Z'),

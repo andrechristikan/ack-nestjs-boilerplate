@@ -19,7 +19,6 @@ export class FeatureFlagUpdateStatusByAdminUseCase implements IAppUseCase<
         const updated = await this.featureFlagService.updateStatusByAdmin(id, {
             isEnable: body.isEnable,
             rolloutPercent: body.rolloutPercent,
-            targetUserIds: body.targetUserIds,
         });
 
         return {

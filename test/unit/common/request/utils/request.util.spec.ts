@@ -1,7 +1,7 @@
+import type { IRequestUserAgent } from '@common/request/interfaces/request.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import type { Request } from 'express';
-import type { UserAgent } from '@generated/prisma-client/client';
 
 vi.mock('ua-parser-js', () => ({
     UAParser: vi.fn(),
@@ -164,7 +164,7 @@ describe('RequestUtil', () => {
                 device: null,
                 engine: null,
                 os: null,
-            } as UserAgent);
+            } as IRequestUserAgent);
         });
 
         it('leaves geo-location null when geoip has no match for the resolved IP', () => {

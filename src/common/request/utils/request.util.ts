@@ -3,15 +3,15 @@ import type { Request } from 'express';
 import geoIp from 'geoip-lite';
 import { UAParser } from 'ua-parser-js';
 import type {
-    GeoLocation,
-    UserAgent,
-    UserAgentBrowser,
-    UserAgentCpu,
-    UserAgentDevice,
-    UserAgentEngine,
-    UserAgentOs,
-} from '@generated/prisma-client/client';
-import type { IRequestLog } from '@common/request/interfaces/request.interface';
+    IRequestGeoLocation,
+    IRequestLog,
+    IRequestUserAgent,
+    IRequestUserAgentBrowser,
+    IRequestUserAgentCpu,
+    IRequestUserAgentDevice,
+    IRequestUserAgentEngine,
+    IRequestUserAgentOs,
+} from '@common/request/interfaces/request.interface';
 
 @Injectable()
 export class RequestUtil {
@@ -23,28 +23,28 @@ export class RequestUtil {
         return req.ip ?? req.socket.remoteAddress ?? '';
     }
 
-    parseUserAgent(raw: string | null): UserAgent {
+    parseUserAgent(raw: string | null | undefined): IRequestUserAgent {
         const result = UAParser(raw ?? '');
 
-        const browser: UserAgentBrowser = {
+        const browser: IRequestUserAgentBrowser = {
             name: result.browser.name ?? null,
             version: result.browser.version ?? null,
             major: result.browser.major ?? null,
             type: result.browser.type ?? null,
         };
-        const cpu: UserAgentCpu = {
+        const cpu: IRequestUserAgentCpu = {
             architecture: result.cpu.architecture ?? null,
         };
-        const device: UserAgentDevice = {
+        const device: IRequestUserAgentDevice = {
             type: result.device.type ?? null,
             vendor: result.device.vendor ?? null,
             model: result.device.model ?? null,
         };
-        const engine: UserAgentEngine = {
+        const engine: IRequestUserAgentEngine = {
             name: result.engine.name ?? null,
             version: result.engine.version ?? null,
         };
-        const os: UserAgentOs = {
+        const os: IRequestUserAgentOs = {
             name: result.os.name ?? null,
             version: result.os.version ?? null,
         };
@@ -84,7 +84,7 @@ export class RequestUtil {
         const clientIp = this.getClientIp(req);
         const ipAddress = clientIp === '' ? null : clientIp;
 
-        let geoLocation: GeoLocation | null = null;
+        let geoLocation: IRequestGeoLocation | null = null;
         if (ipAddress) {
             const geo = geoIp.lookup(ipAddress);
             if (geo) {

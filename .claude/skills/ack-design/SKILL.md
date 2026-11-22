@@ -44,7 +44,7 @@ Every behaviour is built test-first, so each one needs its seam before the spec 
 
 - A seam is the public boundary a unit spec asserts at: a use case's `execute`, a service method, a guard, a pipe, a zod schema, a queue class.
 - Propose the seams, each with one line on what it catches and what it misses, and confirm them with `AskUserQuestion`.
-- Specs are unit specs with every collaborator doubled (`.claude/rules/testing.md`). Integration and e2e are held.
+- Specs are unit specs with every collaborator doubled (`.claude/rules/testing.md`). Integration tests are held.
 - The rounds are not done while a behaviour has no agreed seam.
 
 ## 4. Spec

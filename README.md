@@ -1,10 +1,10 @@
 [![Contributors][ack-contributors-shield]][ref-ack-contributors] [![Forks][ack-forks-shield]][ref-ack-forks] [![Stargazers][ack-stars-shield]][ref-ack-stars] [![Issues][ack-issues-shield]][ref-ack-issues] [![MIT License][ack-license-shield]][ref-ack-license]
 
-[![NestJs][nestjs-shield]][ref-nestjs] [![NodeJs][nodejs-shield]][ref-nodejs] [![Typescript][typescript-shield]][ref-typescript] [![MongoDB][mongodb-shield]][ref-mongodb] [![JWT][jwt-shield]][ref-jwt] [![Vitest][vitest-shield]][ref-vitest] [![PNPM][pnpm-shield]][ref-pnpm] [![Docker][docker-shield]][ref-docker]
+[![NestJs][nestjs-shield]][ref-nestjs] [![NodeJs][nodejs-shield]][ref-nodejs] [![Typescript][typescript-shield]][ref-typescript] [![PostgreSQL][postgresql-shield]][ref-postgresql] [![JWT][jwt-shield]][ref-jwt] [![Vitest][vitest-shield]][ref-vitest] [![PNPM][pnpm-shield]][ref-pnpm] [![Docker][docker-shield]][ref-docker]
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), TOTP/2FA, and RBAC. It runs Prisma on **MongoDB** (replica set required), uses native ESM, and stays modular with a repository layer for data access.
+[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), TOTP/2FA, and RBAC. It runs Prisma on **PostgreSQL**, uses native ESM, and stays modular with a repository layer for data access.
 
 _[Request a feature][ref-ack-issues] or [report a bug][ref-ack-issues]._
 
@@ -49,7 +49,7 @@ A good fit when you are building:
 
 ## Important
 
-- MongoDB runs as a replica set because Prisma transactions need one.
+- The schema is applied through `prisma migrate`; commit the generated files under `prisma/migrations/`.
 - Third-party integrations (AWS S3, AWS SES, Firebase, Google and Apple sign-in, Sentry) are optional. A blank `.env` line leaves one unset.
     - S3 and SES turn on when their IAM credential key or secret is set.
     - Firebase turns on when any of its three keys is set.
@@ -93,7 +93,6 @@ A good fit when you are building:
 
 ## TODO
 
-- [ ] Move to PostgreSQL
 - [ ] Move to a monorepo (backend application and a separate documentation website)
 - [ ] Publish the documentation website with Fumadocs, API reference rendered from the OpenAPI document
 
@@ -111,8 +110,8 @@ You will get more out of this project if you already know:
 
 1. **[NestJs Fundamentals][ref-nestjs]**: Decorators, modules, services, and dependency injection
 2. **[TypeScript][ref-typescript]**: Strong typing, interfaces, and generics
-3. **[Prisma ORM][ref-prisma]**: Schema design, `prisma db push`, and type-safe queries
-4. **[MongoDB][ref-mongodb]**: NoSQL basics, especially **replica sets** for transactions
+3. **[Prisma ORM][ref-prisma]**: Schema design, `prisma migrate`, and type-safe queries
+4. **[PostgreSQL][ref-postgresql]**: Relational basics, foreign keys, indexes, and transactions
 5. **[Redis][ref-redis]**: Caching, session storage, and queues
 6. **Repository Design Pattern**: Keeping data access behind a clear layer
 7. **SOLID Principles**: Clean architecture and dependencies
@@ -123,17 +122,17 @@ You will get more out of this project if you already know:
 
 Versions this project expects:
 
-| Name           | Version                                      |
-| -------------- | -------------------------------------------- |
-| NestJs         | v12.x                                        |
-| NodeJs         | 26.13.x+                                     |
-| PNPM           | 10.25.x+ (pin pnpm 12.5.x+)                  |
-| TypeScript     | 6.0.x+                                       |
-| Prisma         | 6.19.x+                                      |
-| MongoDB        | 8.0.x+ replica set (compose: `mongo:latest`) |
-| Redis          | 6.2.x+ (compose: `redis:latest`)             |
-| Docker         | 28.5.x+                                      |
-| Docker Compose | 2.40.x+                                      |
+| Name           | Version                          |
+| -------------- | -------------------------------- |
+| NestJs         | v12.x                            |
+| NodeJs         | 26.13.x+                         |
+| PNPM           | 10.25.x+ (pin pnpm 12.5.x+)      |
+| TypeScript     | 6.0.x+                           |
+| Prisma         | 6.19.x+                          |
+| PostgreSQL     | 18.x (compose: `postgres:18`)    |
+| Redis          | 6.2.x+ (compose: `redis:latest`) |
+| Docker         | 28.5.x+                          |
+| Docker Compose | 2.40.x+                          |
 
 See [package.json][ref-package-json] for the full list.
 
@@ -164,7 +163,7 @@ See [package.json][ref-package-json] for the full list.
 
 ### 📊 Database & Storage
 
-- **Prisma on MongoDB**: Type-safe queries with replica-set transactions
+- **Prisma on PostgreSQL**: Type-safe queries, migrations, and transactions
 - **Redis cache**: Shared across instances, with configurable TTLs
 - **AWS S3**: Presigned upload and download for public and private buckets
 - **Offset & cursor pagination**: List endpoints that still feel fast as data grows
@@ -193,9 +192,9 @@ See [package.json][ref-package-json] for the full list.
 - **OpenAPI 3.1**: Swagger UI and `generated/swagger.json` from the same route schemas (off in production)
 - **Zod contracts**: Request and response shapes checked end to end
 - **i18n**: Localized messages via `x-custom-lang`
-- **Vitest**: Unit suite under `test/unit/`. `pnpm test:cov` enforces 100% coverage. The integration and e2e suites are held, so none exists.
+- **Vitest**: Unit suite under `test/unit/`. `pnpm test:cov` enforces 100% coverage. The integration suite is held.
 - **Lint & hooks**: ESLint (incl. security), Prettier, cspell, knip, Husky, and commitlint
-- **Docker Compose**: MongoDB replica set, Redis, BullBoard, and JWKS locally, with optional `apis` and `vault` profiles. A separate production Compose file and image run the stack on one Docker host ([release][ref-doc-release])
+- **Docker Compose**: PostgreSQL, Redis, BullBoard, and JWKS locally, with optional `apis` and `vault` profiles. A separate production Compose file and image run the stack on one Docker host ([release][ref-doc-release])
 - **HashiCorp Vault**: Optional secret sync into `.env` ([docs][ref-doc-vault])
 - **Docs**: 30+ guides, including the [status code catalog][ref-doc-status-codes]
 - **AI harness**: Claude Code skills, agents, rules, and hooks for a design, plan, and build flow, with a Copilot digest ([docs][ref-doc-ai-harness])
@@ -211,21 +210,21 @@ pnpm install
 
 # Setup environment
 cp .env.example .env
+touch .env.docker
 
-# Set AUTH_TWO_FACTOR_ISSUER in .env (required, empty in .env.example)
-# AUTH_TWO_FACTOR_ISSUER=ACKNestJs
+# Set the required secrets and integration values in .env
 
-# Generate the JWT keys, JWKS files, and MongoDB keyfile under keys/,
+# Generate the JWT keys, and JWKS files under keys/,
 # and write the JWT keys and encryption secrets into .env
 pnpm generate:secret --direct-insert
 
 # Generate the Prisma client and src/generated/package/package.ts
 pnpm generate
 
-# Start infrastructure (MongoDB + Redis + BullBoard + JWKS)
-docker-compose up -d
+# Start PostgreSQL, the two Redis instances, BullBoard, and JWKS
+docker compose --env-file .env.docker --profile deps up -d
 
-# Push the schema (needs the MongoDB replica set above already running)
+# Apply the migrations (needs the PostgreSQL service above already running)
 pnpm db:migrate
 
 # Build the seeds, then seed the initial data, including the API keys
@@ -238,33 +237,30 @@ pnpm start:dev
 
 Swagger UI: `http://localhost:3000/docs`.
 
-The API also runs inside Compose through the `apis` profile: `docker-compose --profile apis up -d`. The container mounts the same `.env` the host app reads, so for it:
+The API also runs inside Compose through the `apis` profile: `docker compose --env-file .env.docker --profile deps --profile apis up -d`. The container mounts the same `.env` the host app reads, so for it:
 
-- `HTTP_HOST` is `0.0.0.0`.
-- `DATABASE_URL`, `CACHE_REDIS_URL`, `QUEUE_REDIS_URL`, and the two JWKS URIs point at the Compose service hosts `mongo`, `redis`, and `jwks-server`.
-- MongoDB reports `host.docker.internal:27017` as its replica set member host. `DOCKER_MONGO_PORT` changes the port, and the port in `DATABASE_URL` matches it.
-- Compose maps `host.docker.internal` to the host gateway on the `mongo` and `apis` services (`extra_hosts`), so the name resolves inside those two containers.
-- The host machine resolves `host.docker.internal` through its own OS. When it does not resolve, add `127.0.0.1 host.docker.internal` to the host's `/etc/hosts`.
+- `APP_HTTP_HOST` is `0.0.0.0`.
+- `DATABASE_URL`, `REDIS_CACHE_URL`, `REDIS_QUEUE_URL`, and the two JWKS URIs point at the Compose service hosts `postgres`, `redis-cache`, `redis-queue`, and `jwks-server`.
 
-The values, the steps, and the member host detail are in [Installation][ref-doc-installation].
+The values and the steps are in [Installation][ref-doc-installation].
 
 ## Database
 
-This boilerplate uses **MongoDB** (`prisma/schema.prisma` `provider = "mongodb"`). Prisma transactions need a replica set.
+This boilerplate uses **PostgreSQL** (`prisma/schema.prisma` `provider = "postgresql"`).
 
-- Schema sync: `pnpm db:migrate` (`prisma db push`)
-- No `prisma migrate` history, so shape changes go through `db push`
-- ObjectId helpers, transactions, and seeds assume MongoDB
+- Schema sync: `pnpm db:migrate` (`prisma migrate dev`) locally, `pnpm db:migrate:prod` (`prisma migrate deploy`) in a release
+- Ids are `uuidv7()` columns, so records sort by creation time
+- Seeds and transactions run through `DatabaseService`
 
-PostgreSQL is on the [TODO](#todo). Setup and seeding: [Database Documentation][ref-doc-database].
+Setup and seeding: [Database Documentation][ref-doc-database].
 
 ## Installation
 
-Docker is the recommended setup. Step-by-step (Compose first, then Atlas + Redis if you cannot use Docker): [Installation][ref-doc-installation].
+Docker is the recommended setup. Step-by-step (Compose first, then PostgreSQL + Redis if you cannot use Docker): [Installation][ref-doc-installation].
 
 ## Release
 
-Releasing the application against existing MongoDB, Redis, and JWKS services, on one host with Docker Compose, or through the CI/CD workflows: [Release][ref-doc-release].
+Releasing the application against existing PostgreSQL, Redis, and JWKS services, on one host with Docker Compose, or through the CI/CD workflows: [Release][ref-doc-release].
 
 ## License
 
@@ -320,7 +316,7 @@ If this boilerplate helped you, buy me a coffee to keep this project alive.
 [nestjs-shield]: https://img.shields.io/badge/nestjs-%23E0234E.svg?style=for-the-badge&logo=nestjs&logoColor=white
 [nodejs-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
 [typescript-shield]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
-[mongodb-shield]: https://img.shields.io/badge/MongoDB-white?style=for-the-badge&logo=mongodb&logoColor=4EA94B
+[postgresql-shield]: https://img.shields.io/badge/PostgreSQL-white?style=for-the-badge&logo=postgresql&logoColor=4169E1
 [jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
 [vitest-shield]: https://img.shields.io/badge/-vitest-%236E9F18?style=for-the-badge&logo=vitest&logoColor=white
 [pnpm-shield]: https://img.shields.io/badge/pnpm-%232C8EBB.svg?style=for-the-badge&logo=pnpm&logoColor=white&color=F9AD00
@@ -354,7 +350,7 @@ If this boilerplate helped you, buy me a coffee to keep this project alive.
 
 [ref-nestjs]: http://nestjs.com
 [ref-prisma]: https://www.prisma.io
-[ref-mongodb]: https://docs.mongodb.com/
+[ref-postgresql]: https://www.postgresql.org/docs/
 [ref-redis]: https://redis.io
 [ref-bullmq]: https://bullmq.io
 [ref-nodejs]: https://nodejs.org/

@@ -39,7 +39,7 @@ import {
     EnumTermPolicyType,
     Prisma,
 } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
+import type { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
@@ -132,10 +132,12 @@ describe('TermPolicyService', () => {
         size: 1024,
     };
 
-    const draftTermPolicy: TermPolicy = {
+    const draftTermPolicy: ITermPolicy = {
         id: 'term-policy-1',
         type: EnumTermPolicyType.privacy,
-        contents: [contentEn],
+        contents: [
+            { ...contentEn, id: 'content-1', termPolicyId: 'term-policy-1' },
+        ],
         version: 1,
         status: EnumTermPolicyStatus.draft,
         publishedAt: null,
@@ -145,13 +147,13 @@ describe('TermPolicyService', () => {
         updatedBy: null,
     };
 
-    const publishedTermPolicy: TermPolicy = {
+    const publishedTermPolicy: ITermPolicy = {
         ...draftTermPolicy,
         status: EnumTermPolicyStatus.published,
         publishedAt: timestamp,
     };
 
-    const emptyDraftTermPolicy: TermPolicy = {
+    const emptyDraftTermPolicy: ITermPolicy = {
         ...draftTermPolicy,
         contents: [],
     };
@@ -226,7 +228,7 @@ describe('TermPolicyService', () => {
                 totalPage: 0,
                 hasNext: false,
                 hasPrevious: false,
-                data: [] as TermPolicy[],
+                data: [] as ITermPolicy[],
             };
             termPolicyRepository.find.mockResolvedValue(page);
 
@@ -250,7 +252,7 @@ describe('TermPolicyService', () => {
                 limit: 20,
                 orderBy: [],
             };
-            const page: IResponsePaginationReturn<TermPolicy> = {
+            const page: IResponsePaginationReturn<ITermPolicy> = {
                 type: EnumPaginationType.offset,
                 count: 0,
                 perPage: 20,
@@ -284,7 +286,7 @@ describe('TermPolicyService', () => {
                 type: EnumPaginationType.cursor as const,
                 perPage: 20,
                 hasNext: false,
-                data: [] as TermPolicy[],
+                data: [] as ITermPolicy[],
             };
             termPolicyRepository.findPublished.mockResolvedValue(page);
 
@@ -305,7 +307,7 @@ describe('TermPolicyService', () => {
                 limit: 20,
                 orderBy: [],
             };
-            const page: IResponsePaginationReturn<TermPolicy> = {
+            const page: IResponsePaginationReturn<ITermPolicy> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
                 hasNext: false,

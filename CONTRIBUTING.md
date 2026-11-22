@@ -58,9 +58,9 @@ This project follows a [Code of Conduct][ref-code-of-conduct]. By participating,
 | --- | --- |
 | Node.js | 26.13.x+ |
 | pnpm | 10.25.x+ (pin pnpm 12.5.x+) |
-| Docker | 28.5.x+ (recommended for local MongoDB, Redis, JWKS, BullBoard) |
+| Docker | 28.5.x+ (recommended for local PostgreSQL, Redis, JWKS, BullBoard) |
 | Docker Compose | 2.40.x+ |
-| MongoDB | 8.0.x+ replica set (Compose locally, or Atlas without Docker) |
+| PostgreSQL | 18.x (Compose locally, or a hosted PostgreSQL without Docker) |
 | Redis | 6.2.x+ (Compose locally, or a hosted Redis without Docker) |
 
 ### Steps
@@ -75,17 +75,17 @@ cp .env.example .env
 # Set AUTH_TWO_FACTOR_ISSUER in .env (required, empty in .env.example)
 # AUTH_TWO_FACTOR_ISSUER=ACKNestJs
 
-# Generate the JWT keys, JWKS files, and MongoDB keyfile under keys/,
+# Generate the JWT keys, and JWKS files under keys/,
 # and write the JWT keys and encryption secrets into .env
 pnpm generate:secret --direct-insert
 
 # Generate the Prisma client and src/generated/package/package.ts
 pnpm generate
 
-# Start infrastructure (MongoDB + Redis + JWKS server + BullBoard)
+# Start infrastructure (PostgreSQL + Redis + JWKS server + BullBoard)
 docker-compose up -d
 
-# Push the schema (needs the MongoDB replica set above already running)
+# Apply the migrations (needs the PostgreSQL service above already running)
 pnpm db:migrate
 
 # Build the seeds, then seed the initial data, including the API keys
@@ -117,7 +117,7 @@ This project uses **TypeScript** with `strict`, `exactOptionalPropertyTypes`, an
     pnpm test
     ```
     - It runs the unit suite under `test/unit/`.
-    - The integration and e2e suites are held, so none exists: `package.json` defines no `test:integration` or `test:e2e` script, and `test/` holds `unit/` and `helpers/`.
+    - The integration suite is held: `package.json` defines no `test:integration` script, and `test/` holds `unit/` and `helpers/`.
 - `any` is a lint error in `src/` (`@typescript-eslint/no-explicit-any`).
 - `.forEach` is a lint error in `src/` and `test/`; iterate with `for...of`.
 - Every public method and function carries explicit types (`explicit-function-return-type`, `explicit-module-boundary-types`).
@@ -217,7 +217,6 @@ The Checklist and the gates:
 - The Husky pre-commit hook runs `lint-staged`, typecheck, deadcode, spell, and the unit tests locally.
 - The CI workflow (`.github/workflows/ci.yml`) runs lint, deadcode, spell, typecheck, and the build on pull requests to the branches it lists.
 - Once those pass, CI calls `test-unit.yml` (the unit suite with coverage) and `test-integration.yml`, which passes while `test/integration/` holds no spec.
-- `test-e2e.yml` runs on manual dispatch and calls `pnpm test:e2e`, which `package.json` does not define, so it fails.
 
 **PR will be rejected if:**
 
@@ -233,7 +232,7 @@ The Checklist and the gates:
 Open an issue using the **Bug Report** template. Include:
 
 - Description, steps to reproduce, expected vs actual behavior
-- Environment (Node, pnpm, Mongo setup, Docker vs manual, project version or commit)
+- Environment (Node, pnpm, PostgreSQL setup, Docker vs manual, project version or commit)
 - Relevant logs, API request/response, or error identity when useful
 
 ---

@@ -59,7 +59,7 @@ import type {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import { UserListResponseSchema } from '@modules/user/dtos/response/user.list.response.dto';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
 import { UserCreateRequestSchema } from '@modules/user/dtos/request/user.create.request.dto';
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
@@ -137,7 +137,7 @@ export class UserAdminController {
     @ApiKeyProtected()
     @Get('/get/:userId')
     async get(
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponseReturn<IUserProfile>> {
         return this.userGetOneUseCase.execute(userId);
@@ -191,7 +191,7 @@ export class UserAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @Body({ schema: UserUpdateStatusRequestSchema })
         body: UserUpdateStatusRequestDto
@@ -224,7 +224,7 @@ export class UserAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponseReturn<void>> {
         return this.userUpdatePasswordByAdminUseCase.execute(

@@ -37,7 +37,7 @@ describe('HealthDatabaseIndicator', () => {
 
     describe('isHealthy', () => {
         it('reports up when the ping command resolves', async () => {
-            databaseService.client.$runCommandRaw.mockResolvedValue({
+            databaseService.client.$queryRaw.mockResolvedValue({
                 ok: 1,
             });
             session.up.mockReturnValue({ database: { status: 'up' } });
@@ -50,14 +50,14 @@ describe('HealthDatabaseIndicator', () => {
             expect(healthIndicatorService.check).toHaveBeenCalledWith(
                 'database'
             );
-            expect(databaseService.client.$runCommandRaw).toHaveBeenCalledWith({
-                ping: 1,
-            });
+            expect(databaseService.client.$queryRaw).toHaveBeenCalledWith(
+                expect.arrayContaining(['SELECT 1'])
+            );
             expect(session.up).toHaveBeenCalledWith();
         });
 
         it('reports down with a fixed message when the ping command throws an Error', async () => {
-            databaseService.client.$runCommandRaw.mockRejectedValue(
+            databaseService.client.$queryRaw.mockRejectedValue(
                 new Error('connection refused')
             );
             session.down.mockReturnValue({ database: { status: 'down' } });
@@ -73,9 +73,7 @@ describe('HealthDatabaseIndicator', () => {
         });
 
         it('reports down with the same fixed message when a non-Error is thrown', async () => {
-            databaseService.client.$runCommandRaw.mockRejectedValue(
-                'not-an-error'
-            );
+            databaseService.client.$queryRaw.mockRejectedValue('not-an-error');
             session.down.mockReturnValue({ database: { status: 'down' } });
 
             const result = await indicator.isHealthy(

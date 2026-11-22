@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { RequestEmailSchema } from '@common/request/validations/request.email.validation';
 import {
     EnumProjectMemberRole,
@@ -28,10 +28,10 @@ export const WorkspaceInviteCreateRequestSchema = z.strictObject({
                 'Workspace role granted once the invite is accepted; owner can never be invited',
             example: EnumWorkspaceMemberRole.member,
         }),
-    projectId: RequestMongoIdSchema.optional().meta({
+    projectId: RequestUuidSchema.optional().meta({
         description:
             'Project to also join; must belong to the current workspace. Requires projectRole',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     projectRole: z.enum(EnumProjectMemberRole).optional().meta({
         description:

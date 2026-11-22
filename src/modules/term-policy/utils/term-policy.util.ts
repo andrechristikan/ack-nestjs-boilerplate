@@ -84,10 +84,14 @@ export class TermPolicyUtil {
     }
 
     toContents(
-        contents: TermPolicyContent[]
+        stored: TermPolicyContent[]
     ): ITermPolicyContent[] | TermPolicyContentInvalidException {
         const mapped: ITermPolicyContent[] = [];
-        for (const content of contents) {
+        for (const {
+            id: _id,
+            termPolicyId: _termPolicyId,
+            ...content
+        } of stored) {
             const language =
                 Object.values(EnumMessageLanguage).find(
                     value => value === content.language

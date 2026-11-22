@@ -1,4 +1,4 @@
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     RequestContext,
@@ -314,7 +314,7 @@ export class MfaSharedController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('passkeyId', { schema: RequestMongoIdSchema })
+        @Param('passkeyId', { schema: RequestUuidSchema })
         passkeyId: string,
         @Body({ schema: MfaPasskeyUpdateRequestSchema })
         body: MfaPasskeyUpdateRequestDto
@@ -343,7 +343,7 @@ export class MfaSharedController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
-        @Param('passkeyId', { schema: RequestMongoIdSchema })
+        @Param('passkeyId', { schema: RequestUuidSchema })
         passkeyId: string,
         @Body({ schema: MfaPasskeyDeleteRequestSchema })
         body: MfaPasskeyDeleteRequestDto

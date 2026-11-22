@@ -4,7 +4,7 @@ import {
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -80,7 +80,7 @@ export class PolicyAdminController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
         return this.policyListByRoleUseCase.execute(roleId);
@@ -104,7 +104,7 @@ export class PolicyAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
         @Body({ schema: PolicyRequestSchema })
         body: PolicyRequestDto
@@ -137,9 +137,9 @@ export class PolicyAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
-        @Param('policyId', { schema: RequestMongoIdSchema })
+        @Param('policyId', { schema: RequestUuidSchema })
         policyId: string,
         @Body({ schema: PolicyUpdateRequestSchema })
         body: PolicyUpdateRequestDto
@@ -173,9 +173,9 @@ export class PolicyAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
-        @Param('policyId', { schema: RequestMongoIdSchema })
+        @Param('policyId', { schema: RequestUuidSchema })
         policyId: string
     ): Promise<IResponseReturn<void>> {
         return this.policyDeleteByAdminUseCase.execute(

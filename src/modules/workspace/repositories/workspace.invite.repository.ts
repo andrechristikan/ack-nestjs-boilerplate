@@ -10,7 +10,10 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import { EnumWorkspaceInviteStatus } from '@generated/prisma-client/client';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
-import { WorkspaceInviteUserListSelect } from '@modules/workspace/constants/workspace.constant';
+import {
+    WorkspaceActiveFilter,
+    WorkspaceInviteUserListSelect,
+} from '@modules/workspace/constants/workspace.constant';
 import type { IWorkspaceInviteRepository } from '@modules/workspace/interfaces/workspace.invite-repository.interface';
 import type {
     IWorkspaceInviteCreateData,
@@ -207,9 +210,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 expiredAt: {
                     gt: today,
                 },
-                workspace: {
-                    deletedAt: null,
-                },
+                workspace: WorkspaceActiveFilter,
             },
         });
     }

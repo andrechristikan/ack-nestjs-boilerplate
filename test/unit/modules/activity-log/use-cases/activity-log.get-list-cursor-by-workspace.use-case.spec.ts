@@ -1,3 +1,4 @@
+import type { IActivityLogMasked } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -123,7 +124,10 @@ describe('ActivityLogGetListCursorByWorkspaceUseCase', () => {
                 hasNext: true,
                 data: [own, other],
             });
-            activityLogUtil.toMaskedList.mockReturnValue([own, hidden]);
+            activityLogUtil.toMaskedList.mockReturnValue([
+                own as unknown as IActivityLogMasked,
+                hidden as unknown as IActivityLogMasked,
+            ]);
 
             const result = await useCase.execute(
                 authContext,

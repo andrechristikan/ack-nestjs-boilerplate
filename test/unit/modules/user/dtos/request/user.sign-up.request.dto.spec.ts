@@ -6,7 +6,7 @@ describe('UserSignUpRequestSchema', () => {
         username: 'developer123',
         email: 'john.doe@example.com',
         name: 'John Doe',
-        countryId: '507f1f77bcf86cd799439012',
+        countryId: '01920000-0000-7000-8000-6cd799439012',
         password: 'abcDE12345@@!',
         marketing: true,
         cookies: true,
@@ -73,7 +73,7 @@ describe('UserSignUpRequestSchema', () => {
         expect(() =>
             UserSignUpRequestSchema.parse({
                 ...payload,
-                roleId: '507f1f77bcf86cd799439011',
+                roleId: '01920000-0000-7000-8000-6cd799439011',
             })
         ).toThrow();
     });

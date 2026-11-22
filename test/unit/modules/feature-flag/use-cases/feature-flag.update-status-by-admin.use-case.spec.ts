@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { FeatureFlag } from '@generated/prisma-client/client';
+import type { IFeatureFlag } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagUpdateStatusByAdminUseCase } from '@modules/feature-flag/use-cases/feature-flag.update-status-by-admin.use-case';
@@ -13,7 +13,7 @@ describe('FeatureFlagUpdateStatusByAdminUseCase', () => {
 
     let useCase: FeatureFlagUpdateStatusByAdminUseCase;
 
-    const featureFlag: FeatureFlag = {
+    const featureFlag: IFeatureFlag = {
         id: '507f1f77bcf86cd799439011',
         key: 'loginWithGoogle',
         description: 'Enables Google sign-in',
@@ -45,7 +45,6 @@ describe('FeatureFlagUpdateStatusByAdminUseCase', () => {
             const body: FeatureFlagUpdateStatusRequestDto = {
                 isEnable: false,
                 rolloutPercent: 0,
-                targetUserIds: [],
             };
             const updated = { ...featureFlag, isEnable: false };
             featureFlagService.updateStatusByAdmin.mockResolvedValue(updated);
@@ -58,7 +57,7 @@ describe('FeatureFlagUpdateStatusByAdminUseCase', () => {
             expect(result).toEqual({ data: updated });
             expect(featureFlagService.updateStatusByAdmin).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439011',
-                { isEnable: false, rolloutPercent: 0, targetUserIds: [] }
+                { isEnable: false, rolloutPercent: 0 }
             );
         });
     });

@@ -1,129 +1,40 @@
 import { FeatureFlagUpdateStatusRequestSchema } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
 
 describe('FeatureFlagUpdateStatusRequestSchema', () => {
-    it('parses isEnable, rolloutPercent, and targetUserIds', () => {
-        const result = FeatureFlagUpdateStatusRequestSchema.parse({
-            isEnable: true,
-            rolloutPercent: 50,
-            targetUserIds: ['507f1f77bcf86cd799439011'],
-        });
-
-        expect(result).toEqual({
-            isEnable: true,
-            rolloutPercent: 50,
-            targetUserIds: ['507f1f77bcf86cd799439011'],
-        });
-    });
-
-    it('rejects a body missing targetUserIds', () => {
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: false,
-                rolloutPercent: 0,
-            })
-        ).toThrow();
-    });
-
-    it('rejects a null targetUserIds', () => {
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: false,
-                rolloutPercent: 0,
-                targetUserIds: null,
-            })
-        ).toThrow();
-    });
-
-    it('parses an empty targetUserIds array', () => {
-        const result = FeatureFlagUpdateStatusRequestSchema.parse({
-            isEnable: true,
-            rolloutPercent: 100,
-            targetUserIds: [],
-        });
-
-        expect(result).toEqual({
-            isEnable: true,
-            rolloutPercent: 100,
-            targetUserIds: [],
-        });
-    });
-
-    it('rejects a rolloutPercent below 0', () => {
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: true,
-                rolloutPercent: -1,
-                targetUserIds: [],
-            })
-        ).toThrow();
-    });
-
-    it('rejects a rolloutPercent above 100', () => {
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: true,
-                rolloutPercent: 101,
-                targetUserIds: [],
-            })
-        ).toThrow();
-    });
-
-    it('rejects a non-integer rolloutPercent', () => {
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: true,
-                rolloutPercent: 50.5,
-                targetUserIds: [],
-            })
-        ).toThrow();
-    });
-
-    it('rejects a targetUserIds entry that is not a 24-character hex string', () => {
-        expect(() =>
+    it('parses the status and rollout percentage', () => {
+        expect(
             FeatureFlagUpdateStatusRequestSchema.parse({
                 isEnable: true,
                 rolloutPercent: 50,
-                targetUserIds: ['not-a-mongo-id'],
             })
-        ).toThrow();
+        ).toEqual({ isEnable: true, rolloutPercent: 50 });
     });
 
-    it('rejects a missing isEnable', () => {
+    it('rejects target users in a status update', () => {
         expect(() =>
             FeatureFlagUpdateStatusRequestSchema.parse({
+                isEnable: true,
                 rolloutPercent: 50,
                 targetUserIds: [],
             })
         ).toThrow();
     });
 
-    it('rejects an undeclared key', () => {
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: true,
-                rolloutPercent: 50,
-                targetUserIds: [],
-                extra: true,
-            })
-        ).toThrow();
-    });
+    it.each([-1, 101, 50.5])(
+        'rejects invalid rollout percentage %s',
+        rolloutPercent => {
+            expect(() =>
+                FeatureFlagUpdateStatusRequestSchema.parse({
+                    isEnable: true,
+                    rolloutPercent,
+                })
+            ).toThrow();
+        }
+    );
 
-    it('accepts 1000 targetUserIds and rejects 1001', () => {
-        const id = '507f1f77bcf86cd799439011';
-
+    it('rejects a missing status', () => {
         expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: true,
-                rolloutPercent: 50,
-                targetUserIds: new Array(1000).fill(id),
-            })
-        ).not.toThrow();
-        expect(() =>
-            FeatureFlagUpdateStatusRequestSchema.parse({
-                isEnable: true,
-                rolloutPercent: 50,
-                targetUserIds: new Array(1001).fill(id),
-            })
+            FeatureFlagUpdateStatusRequestSchema.parse({ rolloutPercent: 50 })
         ).toThrow();
     });
 });

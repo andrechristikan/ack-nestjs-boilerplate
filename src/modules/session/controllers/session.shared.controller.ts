@@ -7,7 +7,7 @@ import {
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -91,7 +91,7 @@ export class SessionSharedController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
-        @Param('sessionId', { schema: RequestMongoIdSchema })
+        @Param('sessionId', { schema: RequestUuidSchema })
         sessionId: string,
         @Body({ schema: SessionRevokeRequestSchema })
         body: SessionRevokeRequestDto

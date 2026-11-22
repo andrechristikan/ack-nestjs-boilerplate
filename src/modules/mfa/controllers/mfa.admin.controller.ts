@@ -4,7 +4,7 @@ import {
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -62,7 +62,7 @@ export class MfaAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponseReturn<void>> {
         return this.mfaResetByAdminUseCase.execute(

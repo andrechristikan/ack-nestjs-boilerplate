@@ -4,7 +4,7 @@ import type { ActivityLogAdminWorkspaceListRequestDto } from '@modules/activity-
 import { ActivityLogAdminWorkspaceListRequestSchema } from '@modules/activity-log/dtos/request/activity-log.admin-workspace-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { ResponsePagination } from '@common/response/decorators/response.decorator';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
@@ -58,7 +58,7 @@ export class ActivityLogAdminController {
     @ApiKeyProtected()
     @Get('/user/:userId/list')
     async listByUser(
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @Query({ schema: ActivityLogAdminListRequestSchema })
         query: ActivityLogAdminListRequestDto
@@ -91,7 +91,7 @@ export class ActivityLogAdminController {
     @ApiKeyProtected()
     @Get('/workspace/:workspaceId/list')
     async listByWorkspace(
-        @Param('workspaceId', { schema: RequestMongoIdSchema })
+        @Param('workspaceId', { schema: RequestUuidSchema })
         workspaceId: string,
         @Query({ schema: ActivityLogAdminWorkspaceListRequestSchema })
         query: ActivityLogAdminWorkspaceListRequestDto

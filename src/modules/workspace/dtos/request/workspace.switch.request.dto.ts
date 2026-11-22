@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 
 /** @public */
 export const WorkspaceSwitchRequestSchema = z.strictObject({
-    workspaceId: RequestMongoIdSchema.meta({
+    workspaceId: RequestUuidSchema.meta({
         description:
             'Workspace to switch into; caller must already be a member',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
 });
 

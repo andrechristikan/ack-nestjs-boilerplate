@@ -1,3 +1,4 @@
+import { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import type {
@@ -12,9 +13,27 @@ import { Injectable } from '@nestjs/common';
 export class MfaChallengeRepository implements IMfaChallengeRepository {
     constructor(private readonly databaseService: DatabaseService) {}
 
+    private toCreateInput(
+        data: IMfaChallengeCreateData
+    ): Prisma.MfaChallengeUncheckedCreateInput {
+        const { device, ...rest } = data;
+
+        return {
+            ...rest,
+            device:
+                device === null
+                    ? Prisma.DbNull
+                    : (device as unknown as Prisma.InputJsonObject),
+            createdBy: data.userId,
+            consumedAt: null,
+        };
+    }
+
     async create(data: IMfaChallengeCreateData): Promise<void> {
+        const input = this.toCreateInput(data);
+
         await this.databaseService.client.mfaChallenge.create({
-            data: { ...data, createdBy: data.userId, consumedAt: null },
+            data: input,
         });
     }
 
@@ -22,8 +41,10 @@ export class MfaChallengeRepository implements IMfaChallengeRepository {
         tx: IDatabaseTransactionClient,
         data: IMfaChallengeCreateData
     ): Promise<void> {
+        const input = this.toCreateInput(data);
+
         await tx.mfaChallenge.create({
-            data: { ...data, createdBy: data.userId, consumedAt: null },
+            data: input,
         });
     }
 

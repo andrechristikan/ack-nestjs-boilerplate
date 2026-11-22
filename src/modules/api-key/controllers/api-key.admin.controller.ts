@@ -18,7 +18,7 @@ import {
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -152,7 +152,7 @@ export class ApiKeyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
         return this.apiKeyResetByAdminUseCase.execute(
@@ -182,7 +182,7 @@ export class ApiKeyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateRequestSchema })
         body: ApiKeyUpdateRequestDto
@@ -215,7 +215,7 @@ export class ApiKeyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateDateRequestSchema })
         body: ApiKeyUpdateDateRequestDto
@@ -248,7 +248,7 @@ export class ApiKeyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateStatusRequestSchema })
         body: ApiKeyUpdateStatusRequestDto
@@ -281,7 +281,7 @@ export class ApiKeyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<IApiKey>> {
         return this.apiKeyDeleteByAdminUseCase.execute(

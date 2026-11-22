@@ -55,7 +55,6 @@ describe('UserUtil', () => {
         lastLoginWith: null,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-02-01T00:00:00.000Z'),
@@ -66,6 +65,7 @@ describe('UserUtil', () => {
 
     const iUser: IUser = {
         ...user,
+        photo: null,
         role: {
             id: 'role-marigold',
             name: 'user',

@@ -23,6 +23,11 @@ export const TermPolicyRefSelect = {
 } as const;
 
 /** @public */
+export const TermPolicyInclude = {
+    contents: true,
+} satisfies Prisma.TermPolicyInclude;
+
+/** @public */
 export const TermPolicyAcceptanceAnalyticSelect = {
     id: true,
     userId: true,

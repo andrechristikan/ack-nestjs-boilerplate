@@ -9,7 +9,12 @@ import type {
     ISessionAnalyticUserCount,
 } from '@modules/session/interfaces/session.interface';
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
+import type { Session } from '@generated/prisma-client/client';
+import type {
+    IRequestGeoLocation,
+    IRequestUserAgent,
+} from '@common/request/interfaces/request.interface';
 
 @Injectable()
 export class SessionAnalyticRepository implements ISessionAnalyticRepository {
@@ -30,6 +35,25 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
         };
     }
 
+    private toAnalyticSession(
+        row: Pick<
+            Session,
+            | 'id'
+            | 'userId'
+            | 'ipAddress'
+            | 'createdAt'
+            | 'geoLocation'
+            | 'userAgent'
+        >
+    ): ISessionAnalyticSession {
+        return {
+            ...row,
+            geoLocation:
+                row.geoLocation as unknown as IRequestGeoLocation | null,
+            userAgent: row.userAgent as unknown as IRequestUserAgent,
+        };
+    }
+
     async findActiveInRange(
         startDate: Date | null,
         endDate: Date | null,
@@ -38,7 +62,7 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
     ): Promise<ISessionAnalyticSession[]> {
         const where = this.buildActiveWhere(startDate, endDate, now, idleSince);
 
-        return this.databaseService.client.session.findMany({
+        const rows = await this.databaseService.client.session.findMany({
             where,
             select: SessionAnalyticSelect,
             orderBy: [
@@ -46,6 +70,8 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
                 { createdAt: EnumPaginationOrderDirectionType.asc },
             ],
         });
+
+        return rows.map(row => this.toAnalyticSession(row));
     }
 
     async findActiveWithGeoInRange(
@@ -61,10 +87,10 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
             idleSince
         );
 
-        return this.databaseService.client.session.findMany({
+        const rows = await this.databaseService.client.session.findMany({
             where: {
                 ...activeWhere,
-                geoLocation: { isSet: true },
+                geoLocation: { not: Prisma.DbNull },
             },
             select: SessionAnalyticSelect,
             orderBy: [
@@ -72,6 +98,8 @@ export class SessionAnalyticRepository implements ISessionAnalyticRepository {
                 { createdAt: EnumPaginationOrderDirectionType.asc },
             ],
         });
+
+        return rows.map(row => this.toAnalyticSession(row));
     }
 
     async countActiveByUser(

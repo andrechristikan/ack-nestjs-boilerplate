@@ -1,3 +1,4 @@
+import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -45,7 +46,7 @@ export class ProjectRepository implements IProjectRepository {
             where: {
                 id: projectId,
                 workspaceId,
-                deletedAt: null,
+                ...ProjectActiveFilter,
             },
         });
     }
@@ -69,7 +70,7 @@ export class ProjectRepository implements IProjectRepository {
                     AND: [
                         where ?? {},
                         { workspaceId },
-                        { deletedAt: null },
+                        ProjectActiveFilter,
                         ...(memberUserId
                             ? [{ members: { some: { userId: memberUserId } } }]
                             : []),
@@ -167,7 +168,7 @@ export class ProjectRepository implements IProjectRepository {
         const projects = await tx.project.findMany({
             where: {
                 workspaceId,
-                deletedAt: null,
+                ...ProjectActiveFilter,
             },
             select: { id: true },
         });

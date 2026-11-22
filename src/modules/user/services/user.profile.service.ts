@@ -91,12 +91,13 @@ export class UserProfileService {
 
     private deletePhotoEffect(
         userId: string,
-        photo: UserPhoto
+        key: string,
+        access: EnumAwsS3Accessibility
     ): IUserDeletePhotoEffect {
         return {
             queue: EnumUserQueue.user,
             name: EnumUserProcess.deletePhoto,
-            data: { userId, key: photo.key, access: photo.access },
+            data: { userId, key, access },
             priority: EnumQueuePriority.low,
             idempotencyKey: null,
         };
@@ -159,7 +160,7 @@ export class UserProfileService {
             return;
         }
 
-        const effect = this.deletePhotoEffect(userId, photo);
+        const effect = this.deletePhotoEffect(userId, photo.key, photo.access);
         await this.outboxService.addInTx(tx, effect);
     }
 
@@ -278,7 +279,11 @@ export class UserProfileService {
                 aws.extension
             );
             if (!isContentValid) {
-                const effect = this.deletePhotoEffect(userId, aws);
+                const effect = this.deletePhotoEffect(
+                    userId,
+                    aws.key,
+                    aws.access
+                );
                 await this.outboxService.add(effect);
 
                 throw new UserPhotoContentInvalidException();

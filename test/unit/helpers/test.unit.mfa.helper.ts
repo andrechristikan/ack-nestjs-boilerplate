@@ -7,6 +7,7 @@ import type { HelperHashService } from '@common/helper/services/helper.hash.serv
 import type { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { EnumFeatureFlagMetadataKey } from '@modules/feature-flag/enums/feature-flag.enum';
+import type { IMfa } from '@modules/mfa/interfaces/mfa.interface';
 import type { MfaPasskeyRepository } from '@modules/mfa/repositories/mfa.passkey.repository';
 import type { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 
@@ -104,4 +105,19 @@ export function stubMfaMetadataNumbers(
                 ? maxAttempts
                 : lockDurationInMinutes
     );
+}
+
+export function buildMfaBackupCodes(...hashes: string[]): IMfa['backupCodes'] {
+    const codes: IMfa['backupCodes'] = [];
+    for (const codeHash of hashes) {
+        codes.push({
+            id: `code-${codeHash}`,
+            mfaId: 'mfa-quartz',
+            codeHash,
+            usedAt: null,
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        });
+    }
+
+    return codes;
 }

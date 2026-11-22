@@ -11,7 +11,7 @@ describe('ProjectAdminListRequestSchema', () => {
             perPage: 20,
             search: 'revamp',
             orderBy: 'createdAt:desc',
-            workspaceId: '507f1f77bcf86cd799439011',
+            workspaceId: '01920000-0000-7000-8000-6cd799439011',
         });
 
         expect(result).toEqual({
@@ -19,7 +19,7 @@ describe('ProjectAdminListRequestSchema', () => {
             perPage: 20,
             search: 'revamp',
             orderBy: 'createdAt:desc',
-            workspaceId: '507f1f77bcf86cd799439011',
+            workspaceId: '01920000-0000-7000-8000-6cd799439011',
         });
     });
 

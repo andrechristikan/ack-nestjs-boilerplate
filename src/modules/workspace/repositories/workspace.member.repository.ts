@@ -1,3 +1,4 @@
+import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import type {
@@ -56,6 +57,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
             where: {
                 workspaceId,
                 role: EnumWorkspaceMemberRole.owner,
+                workspace: WorkspaceActiveFilter,
             },
         });
     }

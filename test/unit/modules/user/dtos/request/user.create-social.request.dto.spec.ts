@@ -8,7 +8,7 @@ describe('UserCreateSocialRequestSchema', () => {
     const payload = {
         username: 'developer123',
         name: 'John Doe',
-        countryId: '507f1f77bcf86cd799439012',
+        countryId: '01920000-0000-7000-8000-6cd799439012',
         marketing: true,
         cookies: true,
         inviteToken: 'a1b2c3d4e5',

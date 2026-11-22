@@ -10,10 +10,9 @@ paths:
 
 The compose files and services: `docker.md`, `docker-production.md`.
 
-## Mongo
+## PostgreSQL
 
-- One `ci/mongo/entrypoint.sh` serves both compose files and runs a single-node replica set; on a fresh volume it runs `rs.initiate` with member host `MONGO_REPLICA_SET_HOST`: `host.docker.internal:${DOCKER_MONGO_PORT:-27017}` locally, the variable publishing the host port, so host and containers share one URI, and `mongo:27017` in production.
-- The keyfile is `keys/mongo-keyfile`, mode 400, gitignored; both compose files bind it at `/etc/mongo/keyfile`. The `mongo` service sets `HOME: /tmp`, so root-run `mongosh` keeps history out of the volume.
+- Both compose files run the stock `postgres:18` image with no entrypoint script and no keyfile; the data lives on the `postgres_data` volume at `/var/lib/postgresql`, and the healthcheck is `pg_isready`.
 
 ## Every image
 

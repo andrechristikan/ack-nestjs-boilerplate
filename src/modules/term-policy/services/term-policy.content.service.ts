@@ -29,6 +29,7 @@ import { TermPolicyContentNotFoundException } from '@modules/term-policy/excepti
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import type {
+    ITermPolicy,
     ITermPolicyContent,
     ITermPolicyContentPresign,
     ITermPolicyContentUpload,
@@ -41,7 +42,6 @@ import {
     EnumActivityLogAction,
     EnumTermPolicyStatus,
 } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
@@ -58,7 +58,7 @@ export class TermPolicyContentService {
         private readonly fileService: FileService
     ) {}
 
-    private async findOneDraftById(termPolicyId: string): Promise<TermPolicy> {
+    private async findOneDraftById(termPolicyId: string): Promise<ITermPolicy> {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
@@ -77,7 +77,7 @@ export class TermPolicyContentService {
         return contents.find(c => c.language === language) ?? null;
     }
 
-    private assertKeyPath({ type, version }: TermPolicy, key: string): void {
+    private assertKeyPath({ type, version }: ITermPolicy, key: string): void {
         const isInPath = this.termPolicyUtil.isContentKeyInPath(
             type,
             version,
@@ -184,7 +184,7 @@ export class TermPolicyContentService {
         authContext: IAuthJwtAccessContext,
         termPolicyId: string,
         { key, size, language }: ITermPolicyContentUpload
-    ): Promise<TermPolicy> {
+    ): Promise<ITermPolicy> {
         const isSizeAllowed = this.termPolicyUtil.isContentSizeAllowed(size);
         if (!isSizeAllowed) {
             throw new TermPolicyContentSizeExceededException();
@@ -226,9 +226,7 @@ export class TermPolicyContentService {
                     await this.termPolicyRepository.updateContentInTx(
                         tx,
                         termPolicyId,
-                        contents,
-                        mappedContent,
-                        termPolicy.updatedAt
+                        mappedContent
                     );
                 if (!updated) {
                     throw new TermPolicyStatusInvalidException();
@@ -280,7 +278,7 @@ export class TermPolicyContentService {
         authContext: IAuthJwtAccessContext,
         termPolicyId: string,
         { key, size, language }: ITermPolicyContentUpload
-    ): Promise<TermPolicy> {
+    ): Promise<ITermPolicy> {
         const isSizeAllowed = this.termPolicyUtil.isContentSizeAllowed(size);
         if (!isSizeAllowed) {
             throw new TermPolicyContentSizeExceededException();
@@ -366,7 +364,7 @@ export class TermPolicyContentService {
         authContext: IAuthJwtAccessContext,
         termPolicyId: string,
         language: EnumMessageLanguage
-    ): Promise<TermPolicy> {
+    ): Promise<ITermPolicy> {
         const termPolicy = await this.findOneDraftById(termPolicyId);
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
         if (contents instanceof TermPolicyContentInvalidException) {
@@ -384,9 +382,7 @@ export class TermPolicyContentService {
                     await this.termPolicyRepository.removeContentInTx(
                         tx,
                         termPolicyId,
-                        contents,
-                        language,
-                        termPolicy.updatedAt
+                        language
                     );
                 if (!removed) {
                     throw new TermPolicyStatusInvalidException();

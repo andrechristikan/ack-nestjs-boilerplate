@@ -16,7 +16,7 @@ import {
     EnumUserReauthenticationAction,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { UserAgent } from '@generated/prisma-client/client';
+import type { IRequestUserAgent } from '@common/request/interfaces/request.interface';
 import { AuthJwtService } from '@modules/auth/services/auth.jwt.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { AuthUtil } from '@modules/auth/utils/auth.util';
@@ -89,7 +89,7 @@ export class UserAuthService {
         browser,
         device,
         os,
-    }: UserAgent): INotificationUserAgentDisplay {
+    }: IRequestUserAgent): INotificationUserAgentDisplay {
         return {
             browser: `${browser?.name ?? ''} ${browser?.version ?? ''}`,
             deviceDetail: `${device?.vendor ?? ''} ${device?.model ?? ''} (${device?.type ?? ''})`,

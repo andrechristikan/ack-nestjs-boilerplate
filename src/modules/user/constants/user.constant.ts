@@ -68,6 +68,7 @@ export const UserMobileNumberSummarySelect = {
 /** @public */
 export const UserWithRoleInclude = {
     role: { include: RoleWithPoliciesInclude },
+    photo: true,
 } satisfies Prisma.UserInclude;
 
 /** @public */

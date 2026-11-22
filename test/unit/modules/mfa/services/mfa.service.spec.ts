@@ -20,13 +20,14 @@ import {
     EnumActivityLogAction,
     EnumMfaPasskeyDeviceType,
 } from '@generated/prisma-client/client';
-import type { Mfa } from '@generated/prisma-client/client';
+import type { IMfa } from '@modules/mfa/interfaces/mfa.interface';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
+    buildMfaBackupCodes,
     stubBackupCodes,
     stubMfaMetadataNumbers,
 } from '@test/unit/helpers/test.unit.mfa.helper';
@@ -116,10 +117,10 @@ describe('MfaService', () => {
         priority: EnumQueuePriority.high,
         idempotencyKey: null,
     };
-    const baseMfa: Mfa = {
+    const baseMfa: IMfa = {
         id: 'mfa-quartz',
         userId: 'user-quartz',
-        backupCodes: ['hash-one', 'hash-two'],
+        backupCodes: buildMfaBackupCodes('hash-one', 'hash-two'),
         attempt: 0,
         lockedUntil: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -1209,7 +1210,6 @@ describe('MfaService', () => {
         });
 
         it('removes the used backup code by compare-and-set', async () => {
-            mfaRepository.findOneByUserIdInTx.mockResolvedValue(baseMfa);
             mfaRepository.consumeBackupCodeInTx.mockResolvedValue(true);
 
             await service.completeInTx(tx, 'user-quartz', {
@@ -1227,9 +1227,8 @@ describe('MfaService', () => {
             expect(mfaRepository.consumeBackupCodeInTx).toHaveBeenCalledWith(
                 tx,
                 'user-quartz',
-                ['hash-one', 'hash-two'],
-                ['hash-two'],
-                'user-quartz'
+                'hash-one',
+                now
             );
             expect(mfaTotpService.markUsedInTx).not.toHaveBeenCalled();
         });
@@ -1253,69 +1252,8 @@ describe('MfaService', () => {
             expect(mfaRepository.consumeBackupCodeInTx).not.toHaveBeenCalled();
         });
 
-        it('removes the matched hash from the row read in the transaction whatever its position', async () => {
-            mfaRepository.findOneByUserIdInTx.mockResolvedValue({
-                ...baseMfa,
-                backupCodes: ['hash-one', 'hash-two'],
-            });
-            mfaRepository.consumeBackupCodeInTx.mockResolvedValue(true);
-
-            await service.completeInTx(tx, 'user-quartz', {
-                method: EnumMfaMethod.backupCode,
-                totpStep: null,
-                backupCodeHash: 'hash-two',
-                passkey: null,
-            });
-
-            expect(mfaRepository.consumeBackupCodeInTx).toHaveBeenCalledWith(
-                tx,
-                'user-quartz',
-                ['hash-one', 'hash-two'],
-                ['hash-one'],
-                'user-quartz'
-            );
-        });
-
-        it('throws MfaInvalidException and consumes nothing when the hash is absent from the row read in the transaction', async () => {
-            mfaRepository.findOneByUserIdInTx.mockResolvedValue({
-                ...baseMfa,
-                backupCodes: ['hash-one'],
-            });
-
-            await expect(
-                service.completeInTx(tx, 'user-quartz', {
-                    method: EnumMfaMethod.backupCode,
-                    totpStep: null,
-                    backupCodeHash: 'hash-two',
-                    passkey: null,
-                })
-            ).rejects.toMatchObject({
-                module: 'mfa',
-                statusCode: EnumMfaStatusCodeError.invalid,
-            });
-            expect(mfaRepository.consumeBackupCodeInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws MfaInvalidException when the backup codes changed since the check', async () => {
-            mfaRepository.findOneByUserIdInTx.mockResolvedValue(baseMfa);
+        it('throws MfaInvalidException when the backup code was consumed since the check', async () => {
             mfaRepository.consumeBackupCodeInTx.mockResolvedValue(false);
-
-            await expect(
-                service.completeInTx(tx, 'user-quartz', {
-                    method: EnumMfaMethod.backupCode,
-                    totpStep: null,
-                    backupCodeHash: 'hash-one',
-                    passkey: null,
-                })
-            ).rejects.toMatchObject({
-                module: 'mfa',
-
-                statusCode: EnumMfaStatusCodeError.invalid,
-            });
-        });
-
-        it('throws MfaInvalidException when the Mfa row is gone', async () => {
-            mfaRepository.findOneByUserIdInTx.mockResolvedValue(null);
 
             await expect(
                 service.completeInTx(tx, 'user-quartz', {

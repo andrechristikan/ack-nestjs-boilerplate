@@ -9,7 +9,7 @@ describe('WorkspaceInviteCreateRequestSchema', () => {
     const payload = {
         email: 'invitee@example.com',
         workspaceRole: EnumWorkspaceMemberRole.member,
-        projectId: '507f1f77bcf86cd799439011',
+        projectId: '01920000-0000-7000-8000-6cd799439011',
         projectRole: EnumProjectMemberRole.member,
         expiryDuration: EnumWorkspaceInviteExpiry.sevenDays,
     };

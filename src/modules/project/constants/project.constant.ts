@@ -1,4 +1,5 @@
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
@@ -73,3 +74,17 @@ export const ProjectRoleProtectedDocErrors: IDocResponseEntry[] = [
         messagePath: 'workspace.error.memberGuardMissing',
     },
 ];
+
+/**
+ * Matches a `Project` that is not soft-deleted; spread it or list it under `AND` in an active-only read.
+ * @public
+ */
+export const ProjectActiveFilter = {
+    deletedAt: null,
+} as const satisfies Prisma.ProjectWhereInput;
+
+/**
+ * The only workspace role that sees and manages every project without a `ProjectMember` row.
+ * @public
+ */
+export const ProjectWorkspaceBypassRole = EnumWorkspaceMemberRole.owner;

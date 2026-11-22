@@ -3,8 +3,8 @@ import { UserExportRequestSchema } from '@modules/user/dtos/request/user.export.
 describe('UserExportRequestSchema', () => {
     const payload = {
         status: 'active,inactive',
-        roleId: '507f1f77bcf86cd799439011',
-        countryId: '507f1f77bcf86cd799439012',
+        roleId: '01920000-0000-7000-8000-6cd799439011',
+        countryId: '01920000-0000-7000-8000-6cd799439012',
     };
 
     it('parses a payload into exactly the declared fields', () => {
@@ -19,13 +19,13 @@ describe('UserExportRequestSchema', () => {
         expect(result).toEqual({});
     });
 
-    it('rejects a roleId that is not a MongoDB ObjectId', () => {
+    it('rejects a roleId that is not a UUID', () => {
         expect(() =>
             UserExportRequestSchema.parse({ ...payload, roleId: 'abc' })
         ).toThrow();
     });
 
-    it('rejects a countryId that is not a MongoDB ObjectId', () => {
+    it('rejects a countryId that is not a UUID', () => {
         expect(() =>
             UserExportRequestSchema.parse({ ...payload, countryId: 'abc' })
         ).toThrow();

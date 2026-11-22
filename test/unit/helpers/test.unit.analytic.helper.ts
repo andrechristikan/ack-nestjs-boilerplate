@@ -1,7 +1,11 @@
+import type {
+    IRequestUserAgent,
+    IRequestGeoLocation,
+} from '@common/request/interfaces/request.interface';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
+
 import type {
     IPaginationOrderBy,
     IPaginationQueryOffsetParams,
@@ -108,8 +112,8 @@ export function buildAnalyticSession(
     id: string,
     userId: string,
     createdAt: Date,
-    geoLocation: GeoLocation | null,
-    userAgent: UserAgent
+    geoLocation: IRequestGeoLocation | null,
+    userAgent: IRequestUserAgent
 ): ISessionAnalyticSession {
     return { id, userId, ipAddress: null, createdAt, geoLocation, userAgent };
 }

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { PaginationMaxFilterLength } from '@common/pagination/constants/pagination.constant';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationOffsetQuerySchema } from '@common/pagination/dtos/pagination.offset-query.dto';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     UserDefaultAvailableOrderBy,
     UserDefaultAvailableSearch,
@@ -38,13 +38,13 @@ export const UserListRequestSchema = PaginationOffsetQuerySchema.extend({
             description: `value with ',' delimiter, at most ${PaginationMaxFilterLength} characters`,
             example: Object.values(EnumUserStatus).join(','),
         }),
-    roleId: RequestMongoIdSchema.optional().meta({
+    roleId: RequestUuidSchema.optional().meta({
         description: 'Filter by roleId',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
-    countryId: RequestMongoIdSchema.optional().meta({
+    countryId: RequestUuidSchema.optional().meta({
         description: 'Filter by countryId',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
 });
 

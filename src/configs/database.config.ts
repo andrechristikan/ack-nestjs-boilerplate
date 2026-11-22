@@ -6,8 +6,8 @@ export interface IConfigDatabase {
     debugEnabled: boolean;
     seedTransactionTimeoutInMs: number;
     seedBatchSize: number;
-    serverSelectionTimeoutInMs: number;
     connectTimeoutInMs: number;
+    poolTimeoutInMs: number;
     slowQueryThresholdInMs: number;
     warnWindowInMs: number;
 }
@@ -18,8 +18,8 @@ export default registerAs('database', (): IConfigDatabase => {
         debugEnabled: process.env.DATABASE_DEBUG_ENABLED === 'true',
         seedTransactionTimeoutInMs: ms('60s'),
         seedBatchSize: 1000,
-        serverSelectionTimeoutInMs: ms('5s'),
         connectTimeoutInMs: ms('5s'),
+        poolTimeoutInMs: ms('5s'),
         slowQueryThresholdInMs: ms('500ms'),
         warnWindowInMs: ms('1m'),
     };

@@ -439,7 +439,7 @@ export type UserForgotPasswordResetRequestDto = z.infer<
 @ApiKeyProtected()
 @Get('/get/:userId')
 async get(
-    @Param('userId', { schema: RequestMongoIdSchema }) userId: string
+    @Param('userId', { schema: RequestUuidSchema }) userId: string
 ): Promise<IResponseReturn<IUserProfile>> {
     return this.userHttpService.getOne(userId);
 }

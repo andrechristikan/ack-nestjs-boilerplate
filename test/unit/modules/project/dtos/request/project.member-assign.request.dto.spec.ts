@@ -4,12 +4,12 @@ import { ProjectMemberAssignRequestSchema } from '@modules/project/dtos/request/
 describe('ProjectMemberAssignRequestSchema', () => {
     it('parses userId and role', () => {
         const result = ProjectMemberAssignRequestSchema.parse({
-            userId: '507f1f77bcf86cd799439011',
+            userId: '01920000-0000-7000-8000-6cd799439011',
             role: EnumProjectMemberRole.member,
         });
 
         expect(result).toEqual({
-            userId: '507f1f77bcf86cd799439011',
+            userId: '01920000-0000-7000-8000-6cd799439011',
             role: EnumProjectMemberRole.member,
         });
     });
@@ -26,7 +26,7 @@ describe('ProjectMemberAssignRequestSchema', () => {
     it('rejects a role outside EnumProjectMemberRole', () => {
         expect(() =>
             ProjectMemberAssignRequestSchema.parse({
-                userId: '507f1f77bcf86cd799439011',
+                userId: '01920000-0000-7000-8000-6cd799439011',
                 role: 'owner',
             })
         ).toThrow();
@@ -35,7 +35,7 @@ describe('ProjectMemberAssignRequestSchema', () => {
     it('rejects a missing role', () => {
         expect(() =>
             ProjectMemberAssignRequestSchema.parse({
-                userId: '507f1f77bcf86cd799439011',
+                userId: '01920000-0000-7000-8000-6cd799439011',
             })
         ).toThrow();
     });
@@ -43,7 +43,7 @@ describe('ProjectMemberAssignRequestSchema', () => {
     it('rejects an undeclared key', () => {
         expect(() =>
             ProjectMemberAssignRequestSchema.parse({
-                userId: '507f1f77bcf86cd799439011',
+                userId: '01920000-0000-7000-8000-6cd799439011',
                 role: EnumProjectMemberRole.member,
                 extra: true,
             })

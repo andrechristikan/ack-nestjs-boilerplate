@@ -10,6 +10,7 @@ import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import type {
     Prisma,
     TermPolicy,
+    TermPolicyContent,
     TermPolicyUserAcceptance,
 } from '@generated/prisma-client/client';
 import type { TermPolicyRecipientStateSelect } from '@modules/term-policy/constants/term-policy.constant';
@@ -18,6 +19,10 @@ import type {
     IUserRef,
 } from '@modules/user/interfaces/user.interface';
 import type { INotificationTermPolicyBatchRecipient } from '@modules/notification/interfaces/notification.interface';
+
+export interface ITermPolicy extends TermPolicy {
+    contents: TermPolicyContent[];
+}
 
 export interface ITermPolicyUserAcceptance extends TermPolicyUserAcceptance {
     user: IUserRef;

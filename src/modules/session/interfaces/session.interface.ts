@@ -5,11 +5,10 @@ import type {
 } from '@modules/session/enums/session.enum';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import type {
-    GeoLocation,
-    Prisma,
-    Session,
-    UserAgent,
-} from '@generated/prisma-client/client';
+    IRequestGeoLocation,
+    IRequestUserAgent,
+} from '@common/request/interfaces/request.interface';
+import type { Prisma, Session } from '@generated/prisma-client/client';
 import type {
     SessionListSelect,
     SessionLoginSelect,
@@ -46,8 +45,8 @@ export interface ISessionAnalyticSession {
     userId: string;
     ipAddress: string | null;
     createdAt: Date;
-    geoLocation: GeoLocation | null;
-    userAgent: UserAgent;
+    geoLocation: IRequestGeoLocation | null;
+    userAgent: IRequestUserAgent;
 }
 
 export interface ISessionAnalyticUserCount {

@@ -22,7 +22,7 @@ const [role, email] = await Promise.all([readRole, readEmail, gateCountry]);
 // never: const [role, , email] = await Promise.all([readRole, gateCountry, readEmail]);
 ```
 
-A sequential `await` whose dependency is visible in the code carries no comment: the call takes an earlier result, or it acts on the subject an earlier step changed (the same container, app, client, or loop iteration, as in a poll on its own probe; the same `tx`, whose MongoDB session runs one operation at a time). Sequential awaits on different subjects whose order matters occur only in these cases, each named in the method's `// Sequential by design: <case>` line:
+A sequential `await` whose dependency is visible in the code carries no comment: the call takes an earlier result, or it acts on the subject an earlier step changed (the same container, app, client, or loop iteration, as in a poll on its own probe; the same `tx`, whose connection runs one statement at a time). Sequential awaits on different subjects whose order matters occur only in these cases, each named in the method's `// Sequential by design: <case>` line:
 
 - a write that must not happen if an earlier step throws;
 - a gate that decides whether the request proceeds (a feature-flag gate, an existence or permission check) runs before the work it guards, so a closed gate starts no query and its exception is the one the caller sees;

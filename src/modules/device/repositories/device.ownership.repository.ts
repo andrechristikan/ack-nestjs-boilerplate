@@ -18,6 +18,7 @@ import {
 } from '@modules/device/constants/device.constant';
 import type {
     IDeviceOwnership,
+    IDeviceOwnershipInclude,
     IDeviceOwnershipLoginUpsert,
     IDeviceOwnershipWithSession,
     IDeviceRefresh,
@@ -38,7 +39,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
     private ownershipInclude(
         today: Date,
         idleSince: Date
-    ): Prisma.DeviceOwnershipInclude {
+    ): IDeviceOwnershipInclude {
         return {
             device: true,
             user: {

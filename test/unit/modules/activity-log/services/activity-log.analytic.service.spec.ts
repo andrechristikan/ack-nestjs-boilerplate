@@ -1,4 +1,5 @@
-import type { UserAgent } from '@generated/prisma-client/client';
+import type { IRequestUserAgent } from '@common/request/interfaces/request.interface';
+
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -11,7 +12,7 @@ import { ActivityLogWorkspaceVolumeContract } from '@modules/activity-log/contra
 import { ActivityLogAnalyticRepository } from '@modules/activity-log/repositories/activity-log.analytic.repository';
 
 describe('ActivityLogAnalyticService', () => {
-    const userAgent: UserAgent = {
+    const userAgent: IRequestUserAgent = {
         ua: null,
         browser: null,
         cpu: { architecture: null },

@@ -31,9 +31,9 @@ fi
 owner_prisma="${at_command_start}((npx|pnpm([[:space:]]+(exec|dlx))?)[[:space:]]+)?(([^[:space:];&|()]*/)?node_modules/\.bin/)?prisma[[:space:]]+(db|migrate|studio)${word_end}"
 owner_script="${at_command_start}pnpm([[:space:]]+-[^[:space:]]+)*([[:space:]]+run)?[[:space:]]+(db:migrate|db:studio|migration(:seed|:remove|:fresh)?)${word_end}"
 owner_node="${at_command_start}node([[:space:]]+[^[:space:];&|]+)*[[:space:]]+(\./)?dist/migration\.js${word_end}"
-owner_shell="${at_command_start}(mongosh?|redis-cli)${word_end}"
+owner_shell="${at_command_start}(psql|pg_dump|pg_restore|pg_dumpall|redis-cli)${word_end}"
 if printf '%s' "$cmd" | grep -qE "${owner_prisma}|${owner_script}|${owner_node}|${owner_shell}"; then
-    decide deny "Owner-only: db:migrate, db:studio, migration, migration:seed, migration:remove, migration:fresh, prisma db/migrate/studio (bare, npx, pnpm, pnpm exec, pnpm dlx, node_modules/.bin/prisma), node dist/migration.js, mongosh, redis-cli. Edit prisma/schema.prisma and hand back the commands the owner runs."
+    decide deny "Owner-only: db:migrate, db:studio, migration, migration:seed, migration:remove, migration:fresh, prisma db/migrate/studio (bare, npx, pnpm, pnpm exec, pnpm dlx, node_modules/.bin/prisma), node dist/migration.js, psql, pg_dump, pg_restore, redis-cli. Edit prisma/schema.prisma and hand back the commands the owner runs."
 fi
 
 # The root `.env` holds live credentials, `.env.harness` the harness keys (TYPESAFE_API_KEY, the MCP URLs), and
@@ -48,7 +48,7 @@ if printf '%s' "$env_cmd" | grep -qE "${env_file}|${dotenv_cli}"; then
     decide deny "The root .env, .env.harness, and .env.docker are the owner's and no agent reads them; .env.example and other .env.* files stay readable. Diagnose a boot failure from the container env (docker compose --env-file <the docker env file> --profile deps --profile apis exec -T <service> printenv, never printing a secret value) or the apis log (the same command with logs apis); hand the fix to the owner."
 fi
 
-# keys/ (JWT private keys, encryption-secret.env, the Mongo keyfile) and generated/vault/ (init.json: the Vault root
+# keys/ (JWT private keys, encryption-secret.env) and generated/vault/ (init.json: the Vault root
 # token and unseal key) are owner-only secret stores: a command naming one as a path token (`keys/x`, `./keys/x`,
 # `<dir>/keys/x`, `generated/vault`) reads it. `keys` inside another segment (`api-key/`, `api-keys/`) does not match.
 secret_path="(^|[[:space:]'\"\`=:(<>{,/])(keys/|generated/vault([[:space:]'\"\`);&|<>,}*?/]|$))"
@@ -77,7 +77,7 @@ fi
 
 compose_down_volumes="${at_command_start}((docker[[:space:]]+compose|docker-compose)([[:space:]]+[^[:space:];&|)]+)*[[:space:]]+)down([[:space:]]+[^[:space:];&|)]+)*[[:space:]]+(-[A-Za-z]*v[A-Za-z]*|--volumes(=[^[:space:];&|)]*)?)${word_end}"
 if printf '%s' "$cmd" | grep -qE "$compose_down_volumes"; then
-    decide ask "docker compose down with -v or --volumes deletes the named volumes mongo_data and redis_queue_data (the MongoDB data, the BullMQ queue data), and vault_data (Vault's storage) in ci/docker-compose.yml; plain down keeps them."
+    decide ask "docker compose down with -v or --volumes deletes the named volumes postgres_data and redis_queue_data (the PostgreSQL data, the BullMQ queue data), and vault_data (Vault's storage) in ci/docker-compose.yml; plain down keeps them."
 fi
 
 exit 0

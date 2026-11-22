@@ -1,3 +1,7 @@
+import type {
+    IRequestUserAgent,
+    IRequestGeoLocation,
+} from '@common/request/interfaces/request.interface';
 import { chunk } from 'lodash-es';
 import { CacheService } from '@common/cache/services/cache.service';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
@@ -14,7 +18,7 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { Duration } from 'luxon';
-import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
+
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
     AnalyticAnomalyDeviceProliferationSummaryCacheSchema,
@@ -101,7 +105,7 @@ describe('AnalyticAnomalyService', () => {
         hasPrevious: false,
         data: [],
     };
-    const emptyAgent: UserAgent = {
+    const emptyAgent: IRequestUserAgent = {
         ua: null,
         browser: null,
         cpu: { architecture: null },
@@ -109,14 +113,14 @@ describe('AnalyticAnomalyService', () => {
         engine: { name: null, version: null },
         os: { name: null, version: null },
     };
-    const nyc: GeoLocation = {
+    const nyc: IRequestGeoLocation = {
         latitude: 40.7,
         longitude: -74,
         country: 'US',
         region: 'NY',
         city: 'New York',
     };
-    const london: GeoLocation = {
+    const london: IRequestGeoLocation = {
         latitude: 51.5,
         longitude: -0.1,
         country: 'GB',
@@ -997,7 +1001,7 @@ describe('AnalyticAnomalyService', () => {
     describe('findImpossibleTravel', () => {
         const tenMinutesLater = new Date('2026-01-01T00:10:00.000Z');
         const nextDay = new Date('2026-01-02T00:00:00.000Z');
-        const nearNyc: GeoLocation = {
+        const nearNyc: IRequestGeoLocation = {
             ...nyc,
             latitude: 40.8,
             longitude: -74.1,

@@ -1,3 +1,4 @@
+import type { IRequestUserAgent } from '@common/request/interfaces/request.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MessageService } from '@common/message/services/message.service';
 import type {
@@ -26,7 +27,10 @@ export class ActivityLogUtil {
 
     private toMasked(row: IActivityLog, userId: string): IActivityLogMasked {
         if (row.createdBy === userId) {
-            return row;
+            return {
+                ...row,
+                userAgent: row.userAgent as unknown as IRequestUserAgent | null,
+            };
         }
 
         const { metadata } = row;

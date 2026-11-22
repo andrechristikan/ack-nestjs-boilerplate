@@ -4,7 +4,6 @@ import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -12,7 +11,6 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
-import type { Prisma } from '@generated/prisma-client/client';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { MigrationTermPolicyData } from '@migration/data/migration.term-policy.data';
 import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
@@ -46,7 +44,6 @@ export class MigrationTermPolicySeed
         protected readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly awsS3Service: AwsS3Service,
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly helperDateService: HelperDateService
@@ -178,10 +175,8 @@ export class MigrationTermPolicySeed
             const rows = await Promise.all(
                 missing.map(async termPolicy => {
                     const content = await this.buildContent(termPolicy);
-                    const contents: Prisma.TermPolicyContentCreateInput[] =
-                        this.databaseUtil.toPlainArray([content]);
 
-                    return { ...termPolicy, contents };
+                    return { ...termPolicy, contents: [content] };
                 })
             );
             const publishedAt = this.helperDateService.create();
@@ -194,7 +189,7 @@ export class MigrationTermPolicySeed
                             create: {
                                 type,
                                 version,
-                                contents,
+                                contents: { create: contents },
                                 status: EnumTermPolicyStatus.published,
                                 publishedAt,
                                 createdBy: MigrationUserSuperAdminId,

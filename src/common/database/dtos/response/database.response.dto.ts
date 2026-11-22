@@ -5,7 +5,7 @@ import { faker } from '@faker-js/faker';
 export const DatabaseResponseSchema = z.object({
     id: z.string().meta({
         description: 'Database document identifier',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     createdAt: z.date().meta({
         description: 'Date created at',
@@ -13,7 +13,7 @@ export const DatabaseResponseSchema = z.object({
     }),
     createdBy: z.string().nullable().meta({
         description: 'created by',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     updatedAt: z.date().meta({
         description: 'Date updated at',
@@ -21,7 +21,7 @@ export const DatabaseResponseSchema = z.object({
     }),
     updatedBy: z.string().nullable().meta({
         description: 'updated by',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     deletedAt: z.date().nullable().meta({
         description: 'Date delete at',
@@ -29,7 +29,7 @@ export const DatabaseResponseSchema = z.object({
     }),
     deletedBy: z.string().nullable().meta({
         description: 'Delete by',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
 });
 

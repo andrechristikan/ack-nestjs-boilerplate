@@ -1,8 +1,8 @@
 {
     "mcpServers": {
-        "mongodb": {
+        "postgres": {
             "command": "bash",
-            "args": [".claude/hooks/mcp.sh", "mongodb"]
+            "args": [".claude/hooks/mcp.sh", "postgres"]
         },
         "redis-cache": {
             "command": "bash",

@@ -18,7 +18,7 @@ export const FeatureFlagResponseSchema = DatabaseResponseSchema.omit({
     }),
     targetUserIds: z.array(z.string()).meta({
         description: 'Target user ids allow-list that bypasses rollout',
-        example: [faker.database.mongodbObjectId()],
+        example: [faker.string.uuid()],
     }),
     rolloutPercent: z.number().int().min(0).max(100).meta({
         description: 'Percentage of callers that receive the feature',

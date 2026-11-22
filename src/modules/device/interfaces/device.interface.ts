@@ -1,6 +1,8 @@
 import { EnumDevicePlatform } from '@generated/prisma-client/client';
 import type { Device, DeviceOwnership } from '@generated/prisma-client/client';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
+import type { Prisma } from '@generated/prisma-client/client';
+import type { UserRefSelect } from '@modules/user/constants/user.constant';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 
 export interface IDeviceIdentity {
@@ -57,4 +59,11 @@ export interface IDeviceOwnershipAnalyticUserCount {
 export interface IDeviceRemoveResult {
     deviceOwnership: IDeviceOwnership;
     revokedSessions: ISessionRef[];
+}
+
+export interface IDeviceOwnershipInclude {
+    device: true;
+    user: { select: typeof UserRefSelect };
+    revokedBy: { select: typeof UserRefSelect };
+    _count: { select: { sessions: { where: Prisma.SessionWhereInput } } };
 }

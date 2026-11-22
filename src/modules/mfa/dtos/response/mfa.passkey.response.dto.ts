@@ -6,7 +6,7 @@ import { EnumMfaPasskeyDeviceType } from '@generated/prisma-client/client';
 export const MfaPasskeyResponseSchema = z.object({
     id: z.string().meta({
         description: 'Passkey id',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     name: z.string().meta({
         description: 'Name the user gave the passkey',

@@ -10,7 +10,7 @@ import {
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { RequestMessageLanguageSchema } from '@common/request/validations/request.message-language.validation';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -161,7 +161,7 @@ export class TermPolicyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('termPolicyId', { schema: RequestMongoIdSchema })
+        @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicy>> {
         return this.termPolicyDeleteByAdminUseCase.execute(
@@ -218,7 +218,7 @@ export class TermPolicyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('termPolicyId', { schema: RequestMongoIdSchema })
+        @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto
@@ -249,7 +249,7 @@ export class TermPolicyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('termPolicyId', { schema: RequestMongoIdSchema })
+        @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyContentRequestSchema })
         body: TermPolicyContentRequestDto
@@ -280,7 +280,7 @@ export class TermPolicyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('termPolicyId', { schema: RequestMongoIdSchema })
+        @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string,
         @Body({ schema: TermPolicyRemoveContentRequestSchema })
         body: TermPolicyRemoveContentRequestDto
@@ -310,7 +310,7 @@ export class TermPolicyAdminController {
     @ApiKeyProtected()
     @Get('/content/:termPolicyId/:language/get')
     async getContent(
-        @Param('termPolicyId', { schema: RequestMongoIdSchema })
+        @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string,
         @Param('language', { schema: RequestMessageLanguageSchema })
         language: EnumMessageLanguage
@@ -338,7 +338,7 @@ export class TermPolicyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('termPolicyId', { schema: RequestMongoIdSchema })
+        @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyPublishByAdminUseCase.execute(
@@ -367,7 +367,7 @@ export class TermPolicyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('termPolicyId', { schema: RequestMongoIdSchema })
+        @Param('termPolicyId', { schema: RequestUuidSchema })
         termPolicyId: string
     ): Promise<IResponseReturn<void>> {
         return this.termPolicyResendEmailByAdminUseCase.execute(

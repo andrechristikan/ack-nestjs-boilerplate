@@ -9,7 +9,7 @@ export const TermPolicyPendingResponseSchema = z.object({
             z.object({
                 id: z.string().meta({
                     description: 'Identifier of the terms or policy',
-                    example: faker.database.mongodbObjectId(),
+                    example: faker.string.uuid(),
                 }),
                 type: z.enum(EnumTermPolicyType).meta({
                     description: 'Type of the terms or policy',

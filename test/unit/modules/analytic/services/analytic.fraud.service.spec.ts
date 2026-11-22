@@ -1,4 +1,5 @@
-import type { UserAgent } from '@generated/prisma-client/client';
+import type { IRequestUserAgent } from '@common/request/interfaces/request.interface';
+
 import { chunk } from 'lodash-es';
 import { Duration } from 'luxon';
 import { CacheService } from '@common/cache/services/cache.service';
@@ -64,7 +65,7 @@ import { UserForgotPasswordAnalyticService } from '@modules/user/services/user.f
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 
 describe('AnalyticFraudService', () => {
-    const userAgent: UserAgent = {
+    const userAgent: IRequestUserAgent = {
         ua: null,
         browser: null,
         cpu: { architecture: null },

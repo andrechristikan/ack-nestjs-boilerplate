@@ -14,7 +14,7 @@ import {
 import { RequestUploadTimeout } from '@common/request/constants/request.constant';
 import { EnumRequestThrottleRoute } from '@common/request/enums/request.enum';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { Response } from '@common/response/decorators/response.decorator';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
@@ -326,7 +326,7 @@ export class UserSharedController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
-        @Param('mobileNumberId', { schema: RequestMongoIdSchema })
+        @Param('mobileNumberId', { schema: RequestUuidSchema })
         mobileNumberId: string,
         @Body({ schema: UserUpdateMobileNumberRequestSchema })
         body: UserUpdateMobileNumberRequestDto
@@ -357,7 +357,7 @@ export class UserSharedController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
-        @Param('mobileNumberId', { schema: RequestMongoIdSchema })
+        @Param('mobileNumberId', { schema: RequestUuidSchema })
         mobileNumberId: string,
         @Body({ schema: UserDeleteMobileNumberRequestSchema })
         body: UserDeleteMobileNumberRequestDto
@@ -385,7 +385,7 @@ export class UserSharedController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('mobileNumberId', { schema: RequestMongoIdSchema })
+        @Param('mobileNumberId', { schema: RequestUuidSchema })
         mobileNumberId: string
     ): Promise<IResponseReturn<void>> {
         return this.userSendVerificationMobileNumberUseCase.execute(
@@ -408,7 +408,7 @@ export class UserSharedController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('mobileNumberId', { schema: RequestMongoIdSchema })
+        @Param('mobileNumberId', { schema: RequestUuidSchema })
         mobileNumberId: string,
         @Body({ schema: UserVerifyMobileNumberRequestSchema })
         body: UserVerifyMobileNumberRequestDto

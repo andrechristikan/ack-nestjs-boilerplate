@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 
 /** @public */
 export const WorkspaceJoinRequestCreateRequestSchema = z.strictObject({
-    workspaceId: RequestMongoIdSchema.meta({
+    workspaceId: RequestUuidSchema.meta({
         description:
             'Workspace to request joining; must be isPublic and not soft-deleted',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     message: z.string().max(500).optional().meta({
         description:

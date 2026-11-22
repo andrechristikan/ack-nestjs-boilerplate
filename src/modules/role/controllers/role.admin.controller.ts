@@ -17,7 +17,7 @@ import {
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -111,7 +111,7 @@ export class RoleAdminController {
     @ApiKeyProtected()
     @Get('/get/:roleId')
     async get(
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string
     ): Promise<IResponseReturn<RoleDto>> {
         return this.roleGetOneUseCase.execute(roleId);
@@ -165,7 +165,7 @@ export class RoleAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
         @Body({ schema: RoleUpdateRequestSchema })
         body: RoleUpdateRequestDto
@@ -198,7 +198,7 @@ export class RoleAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
-        @Param('roleId', { schema: RequestMongoIdSchema })
+        @Param('roleId', { schema: RequestUuidSchema })
         roleId: string
     ): Promise<IResponseReturn<void>> {
         return this.roleDeleteByAdminUseCase.execute(

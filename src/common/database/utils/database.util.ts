@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@generated/prisma-client/client';
-import { ObjectId } from 'bson';
+import { v7, validate } from 'uuid';
 import {
     DatabaseIdInvalidCode,
     DatabaseRawQueryFailedCode,
@@ -19,33 +19,38 @@ import { DatabaseTransactionExpiredException } from '@common/database/exceptions
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 
+/**
+ * UUID helpers, database error mapping and deep-clone casts to Prisma JSON input types.
+ */
 @Injectable()
 export class DatabaseUtil {
-    private readonly serverSelectionTimeoutInMs: number;
     private readonly connectTimeoutInMs: number;
+    private readonly poolTimeoutInMs: number;
 
     constructor(private readonly configService: ConfigService) {
-        this.serverSelectionTimeoutInMs = this.configService.get<number>(
-            'database.serverSelectionTimeoutInMs'
-        )!;
         this.connectTimeoutInMs = this.configService.get<number>(
             'database.connectTimeoutInMs'
         )!;
+        this.poolTimeoutInMs = this.configService.get<number>(
+            'database.poolTimeoutInMs'
+        )!;
     }
 
-    /** Appends the configured server-selection and connect timeouts to a connection url; the caller passes a url that carries neither parameter. */
+    /** Appends the configured connect and pool timeouts, in seconds, to a connection url; the caller passes a url that carries neither `connect_timeout` nor `pool_timeout`. */
     buildClientUrl(url: string): string {
         const separator = url.includes('?') ? '&' : '?';
+        const connectTimeout = Math.ceil(this.connectTimeoutInMs / 1000);
+        const poolTimeout = Math.ceil(this.poolTimeoutInMs / 1000);
 
-        return `${url}${separator}serverSelectionTimeoutMS=${this.serverSelectionTimeoutInMs}&connectTimeoutMS=${this.connectTimeoutInMs}`;
+        return `${url}${separator}connect_timeout=${connectTimeout}&pool_timeout=${poolTimeout}`;
     }
 
     checkIdIsValid(id: string): boolean {
-        return ObjectId.isValid(id);
+        return validate(id);
     }
 
     createId(): string {
-        return new ObjectId().toHexString();
+        return v7();
     }
 
     /** Masks a connection url for a log line: the password and query are dropped, the username keeps its first letter, and a string without `scheme://` returns `DatabaseUrlCensoredValue`. */
@@ -138,11 +143,35 @@ export class DatabaseUtil {
         return null;
     }
 
+    /**
+     * Deep-clones `data` and casts it to a Prisma-compatible plain object.
+     * `null` is converted to `Prisma.DbNull` (SQL NULL) because Prisma JSON
+     * writes reject raw null and `IS NULL` filters must match the stored value.
+     */
     toPlainObject<T, N = Prisma.JsonObject>(data: T): N {
+        if (data === null) {
+            return Prisma.DbNull as N;
+        }
+
         return structuredClone(data as unknown) as N;
     }
 
     toPlainArray<T, N = Prisma.JsonObject>(data: T): N[] {
         return structuredClone(data) as N[];
+    }
+
+    /**
+     * Nested-write fragment for a to-many relation that is rewritten wholesale:
+     * every existing row is deleted and the relation is repopulated from `rows`.
+     * An empty list produces a pure delete, so `createMany` is omitted.
+     */
+    replaceMany<T>(rows: T[]): {
+        deleteMany: Record<string, never>;
+        createMany?: { data: T[] };
+    } {
+        return {
+            deleteMany: {},
+            ...(rows.length > 0 ? { createMany: { data: rows } } : {}),
+        };
     }
 }

@@ -13,6 +13,13 @@ export const WorkspaceIdStoreKey = 'WorkspaceIdStoreKey';
 /** @public */
 export const WorkspaceContextStoreKey = 'WorkspaceContextStoreKey';
 
+/**
+ * Matches a `Workspace` that is not soft-deleted; spread it or list it under `AND` in an active-only read.
+ * @public
+ */
+export const WorkspaceActiveFilter = {
+    deletedAt: null,
+} as const satisfies Prisma.WorkspaceWhereInput;
 /** @public */
 export const WorkspaceInviteNoncePattern = '{workspaceId}:{email}';
 

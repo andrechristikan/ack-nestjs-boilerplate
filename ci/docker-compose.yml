@@ -1,6 +1,6 @@
 # Run from the repository root: docker compose --env-file .env.docker -f ci/docker-compose.yml --profile deps up -d
 # A release runs migrate and the application itself, so a release-managed instance starts deps alone. Without CI, add --profile apis to start migrate and apis; --profile vault starts Vault.
-# The DOCKER_* variables are read from .env.docker. The ten required keys (the eight credentials, DOCKER_APIS_UID, and DOCKER_APIS_GID) stop every command and name the one that is empty.
+# The DOCKER_* variables are read from .env.docker. The eight required keys (the six credentials, DOCKER_APIS_UID, and DOCKER_APIS_GID) stop every command and name the one that is empty.
 name: ack-nestjs-boilerplate
 
 services:
@@ -37,7 +37,7 @@ services:
         depends_on:
             migrate:
                 condition: service_completed_successfully
-            mongo:
+            postgres:
                 condition: service_healthy
             redis-queue:
                 condition: service_healthy
@@ -78,7 +78,7 @@ services:
         networks:
             - app-network
         depends_on:
-            mongo:
+            postgres:
                 condition: service_healthy
 
     jwks-server:
@@ -133,34 +133,17 @@ services:
             retries: 3
             start_period: 10s
 
-    mongo:
+    postgres:
         profiles: ['deps']
-        image: mongo:9.0.2
+        image: postgres:18
         environment:
-            HOME: /tmp
-            MONGO_INITDB_ROOT_USERNAME: ${DOCKER_MONGO_ROOT_USERNAME:?set DOCKER_MONGO_ROOT_USERNAME in .env.docker}
-            MONGO_INITDB_ROOT_PASSWORD: ${DOCKER_MONGO_ROOT_PASSWORD:?set DOCKER_MONGO_ROOT_PASSWORD in .env.docker}
-            MONGO_APP_USERNAME: ${DOCKER_MONGO_APP_USERNAME:?set DOCKER_MONGO_APP_USERNAME in .env.docker}
-            MONGO_APP_PASSWORD: ${DOCKER_MONGO_APP_PASSWORD:?set DOCKER_MONGO_APP_PASSWORD in .env.docker}
-            MONGO_APP_DATABASE: ${DOCKER_MONGO_APP_DATABASE:?set DOCKER_MONGO_APP_DATABASE in .env.docker}
-            MONGO_REPLICA_SET_HOST: mongo:27017
+            POSTGRES_DB: ${DOCKER_POSTGRES_DB:?set DOCKER_POSTGRES_DB in .env.docker}
+            POSTGRES_USER: ${DOCKER_POSTGRES_USER:?set DOCKER_POSTGRES_USER in .env.docker}
+            POSTGRES_PASSWORD: ${DOCKER_POSTGRES_PASSWORD:?set DOCKER_POSTGRES_PASSWORD in .env.docker}
         volumes:
             - type: volume
-              source: mongo_data
-              target: /data/db
-            - type: bind
-              source: ../keys/mongo-keyfile
-              target: /etc/mongo/keyfile
-              read_only: true
-              bind:
-                  create_host_path: false
-            - type: bind
-              source: ./mongo/entrypoint.sh
-              target: /entrypoint.sh
-              read_only: true
-              bind:
-                  create_host_path: false
-        entrypoint: ['/bin/bash', '/entrypoint.sh']
+              source: postgres_data
+              target: /var/lib/postgresql
         restart: unless-stopped
         networks:
             - app-network
@@ -173,12 +156,12 @@ services:
             test:
                 [
                     'CMD-SHELL',
-                    'if [ -n "$$MONGO_INITDB_ROOT_PASSWORD" ]; then mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "quit(db.hello().isWritablePrimary ? 0 : 1)"; else mongosh --quiet --eval "quit(db.hello().isWritablePrimary ? 0 : 1)"; fi',
+                    'pg_isready -q -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"',
                 ]
             interval: 10s
-            timeout: 10s
-            retries: 10
-            start_period: 40s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
 
     redis-queue:
         profiles: ['deps']
@@ -370,6 +353,6 @@ networks:
     vault-network:
 
 volumes:
-    mongo_data:
+    postgres_data:
     redis_queue_data:
     vault_data:

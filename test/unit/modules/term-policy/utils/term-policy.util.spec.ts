@@ -194,6 +194,8 @@ describe('TermPolicyUtil', () => {
 
     describe('toContents', () => {
         const stored = {
+            id: 'content-1',
+            termPolicyId: 'term-policy-1',
             language: EnumMessageLanguage.en,
             bucket: 'bucket',
             key: 'term/en.pdf',
@@ -208,7 +210,19 @@ describe('TermPolicyUtil', () => {
         it('returns the contents typed when every language is known', () => {
             const result = util.toContents([stored]);
 
-            expect(result).toEqual([stored]);
+            expect(result).toEqual([
+                {
+                    language: EnumMessageLanguage.en,
+                    bucket: 'bucket',
+                    key: 'term/en.pdf',
+                    cdnUrl: null,
+                    completedUrl: 'https://bucket/term/en.pdf',
+                    mime: 'application/pdf',
+                    extension: 'pdf',
+                    access: EnumAwsS3Accessibility.private,
+                    size: 10,
+                },
+            ]);
         });
 
         it('returns TermPolicyContentInvalidException for an unknown language', () => {

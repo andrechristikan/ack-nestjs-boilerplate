@@ -1,7 +1,11 @@
+import type {
+    IRequestUserAgent,
+    IRequestGeoLocation,
+} from '@common/request/interfaces/request.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { hostname } from 'os';
-import type { GeoLocation, UserAgent } from '@generated/prisma-client/client';
+
 import { RequestContextService } from '@common/request/services/request.context.service';
 
 describe('RequestContextService', () => {
@@ -31,7 +35,7 @@ describe('RequestContextService', () => {
                 country: 'US',
                 region: 'CA',
                 city: 'San Francisco',
-            } as GeoLocation;
+            } as IRequestGeoLocation;
 
             expect(service.resolveCity(geoLocation)).toBe('San Francisco');
         });
@@ -47,7 +51,7 @@ describe('RequestContextService', () => {
                 country: 'US',
                 region: 'CA',
                 city: null,
-            } as unknown as GeoLocation;
+            } as unknown as IRequestGeoLocation;
 
             expect(service.resolveCity(geoLocation)).toBe('Unknown Location');
         });
@@ -62,7 +66,7 @@ describe('RequestContextService', () => {
                 device: { type: null, vendor: 'Apple', model: 'iPhone' },
                 engine: null,
                 os: null,
-            } as unknown as UserAgent;
+            } as unknown as IRequestUserAgent;
 
             expect(service.resolveDevice(userAgent)).toBe('Apple iPhone');
         });
@@ -75,7 +79,7 @@ describe('RequestContextService', () => {
                 device: { type: null, vendor: 'Apple', model: null },
                 engine: null,
                 os: { name: 'macOS', version: null },
-            } as unknown as UserAgent;
+            } as unknown as IRequestUserAgent;
 
             expect(service.resolveDevice(userAgent)).toBe('macOS');
         });
@@ -93,7 +97,7 @@ describe('RequestContextService', () => {
                 device: null,
                 engine: null,
                 os: null,
-            } as unknown as UserAgent;
+            } as unknown as IRequestUserAgent;
 
             expect(service.resolveDevice(userAgent)).toBe('Chrome');
         });
@@ -106,7 +110,7 @@ describe('RequestContextService', () => {
                 device: null,
                 engine: null,
                 os: null,
-            } as unknown as UserAgent;
+            } as unknown as IRequestUserAgent;
 
             expect(service.resolveDevice(userAgent)).toBe('Unknown Device');
         });

@@ -4,9 +4,9 @@ describe('UserCreateRequestSchema', () => {
     const payload = {
         username: 'developer123',
         email: 'john.doe@example.com',
-        roleId: '507f1f77bcf86cd799439011',
+        roleId: '01920000-0000-7000-8000-6cd799439011',
         name: 'John Doe',
-        countryId: '507f1f77bcf86cd799439012',
+        countryId: '01920000-0000-7000-8000-6cd799439012',
     };
 
     it('parses a payload into exactly the declared fields', () => {

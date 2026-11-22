@@ -11,8 +11,8 @@ describe('UserListRequestSchema', () => {
         search: 'john',
         orderBy: 'createdAt:desc',
         status: 'active,inactive',
-        roleId: '507f1f77bcf86cd799439011',
-        countryId: '507f1f77bcf86cd799439012',
+        roleId: '01920000-0000-7000-8000-6cd799439011',
+        countryId: '01920000-0000-7000-8000-6cd799439012',
     };
 
     it('parses a payload into exactly the declared fields', () => {

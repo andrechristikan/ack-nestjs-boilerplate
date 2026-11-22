@@ -7,12 +7,14 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
+    IFeatureFlag,
     IFeatureFlagUpdateMetadata,
     IFeatureFlagUpdateStatus,
 } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import type { IFeatureFlagRepository } from '@modules/feature-flag/interfaces/feature-flag.repository.interface';
 import { Injectable } from '@nestjs/common';
-import type { FeatureFlag } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
+import { FeatureFlagInclude } from '@modules/feature-flag/constants/feature-flag.constant';
 
 @Injectable()
 export class FeatureFlagRepository implements IFeatureFlagRepository {
@@ -21,63 +23,114 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
         private readonly paginationService: PaginationService
     ) {}
 
+    private toFeatureFlag({
+        targetUsers,
+        ...flag
+    }: Prisma.FeatureFlagGetPayload<{
+        include: typeof FeatureFlagInclude;
+    }>): IFeatureFlag {
+        return { ...flag, targetUserIds: targetUsers.map(user => user.userId) };
+    }
+
     async findWithPaginationOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams
-    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
-        return this.paginationService.offset(
+    ): Promise<IResponsePaginationReturn<IFeatureFlag>> {
+        const result = await this.paginationService.offset(
             this.databaseService.client.featureFlag,
-            pagination
+            { ...pagination, include: FeatureFlagInclude }
         );
+
+        const data = result.data.map(row => this.toFeatureFlag(row));
+
+        return { ...result, data };
     }
 
     async findWithPaginationCursor(
         pagination: IPaginationQueryCursorParams
-    ): Promise<IResponsePaginationReturn<FeatureFlag>> {
-        return this.paginationService.cursor(
+    ): Promise<IResponsePaginationReturn<IFeatureFlag>> {
+        const result = await this.paginationService.cursor(
             this.databaseService.client.featureFlag,
-            pagination
+            { ...pagination, include: FeatureFlagInclude }
         );
+
+        const data = result.data.map(row => this.toFeatureFlag(row));
+
+        return { ...result, data };
     }
 
-    async findOneByKey(key: string): Promise<FeatureFlag | null> {
-        return this.databaseService.client.featureFlag.findUnique({
-            where: {
-                key,
-            },
+    async findOneByKey(key: string): Promise<IFeatureFlag | null> {
+        const row = await this.databaseService.client.featureFlag.findUnique({
+            where: { key },
+            include: FeatureFlagInclude,
         });
+
+        if (row === null) {
+            return null;
+        }
+        const flag = this.toFeatureFlag(row);
+
+        return flag;
     }
 
-    async findOneById(id: string): Promise<FeatureFlag | null> {
-        return this.databaseService.client.featureFlag.findFirst({
-            where: {
-                id,
-            },
+    async findOneById(id: string): Promise<IFeatureFlag | null> {
+        const row = await this.databaseService.client.featureFlag.findFirst({
+            where: { id },
+            include: FeatureFlagInclude,
         });
+
+        if (row === null) {
+            return null;
+        }
+        const flag = this.toFeatureFlag(row);
+
+        return flag;
     }
 
     async updateStatusInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        { isEnable, rolloutPercent, targetUserIds }: IFeatureFlagUpdateStatus
-    ): Promise<FeatureFlag | null> {
+        { isEnable, rolloutPercent }: IFeatureFlagUpdateStatus
+    ): Promise<IFeatureFlag | null> {
         const { count } = await tx.featureFlag.updateMany({
-            where: {
-                id,
-            },
-            data: {
-                isEnable,
-                rolloutPercent,
-                targetUserIds,
-            },
+            where: { id },
+            data: { isEnable, rolloutPercent },
         });
         if (count === 0) {
             return null;
         }
 
-        return tx.featureFlag.findFirst({
-            where: {
-                id,
-            },
+        const row = await tx.featureFlag.findFirst({
+            where: { id },
+            include: FeatureFlagInclude,
+        });
+
+        if (row === null) {
+            return null;
+        }
+        const flag = this.toFeatureFlag(row);
+
+        return flag;
+    }
+
+    async addTargetUserInTx(
+        tx: IDatabaseTransactionClient,
+        featureFlagId: string,
+        userId: string
+    ): Promise<void> {
+        await tx.featureFlagUser.upsert({
+            where: { featureFlagId_userId: { featureFlagId, userId } },
+            create: { featureFlagId, userId },
+            update: {},
+        });
+    }
+
+    async removeTargetUserInTx(
+        tx: IDatabaseTransactionClient,
+        featureFlagId: string,
+        userId: string
+    ): Promise<void> {
+        await tx.featureFlagUser.deleteMany({
+            where: { featureFlagId, userId },
         });
     }
 
@@ -85,14 +138,15 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
         tx: IDatabaseTransactionClient,
         id: string,
         { metadata }: IFeatureFlagUpdateMetadata
-    ): Promise<FeatureFlag> {
-        return tx.featureFlag.update({
-            where: {
-                id,
-            },
-            data: {
-                metadata,
-            },
+    ): Promise<IFeatureFlag> {
+        const row = await tx.featureFlag.update({
+            where: { id },
+            data: { metadata },
+            include: FeatureFlagInclude,
         });
+
+        const flag = this.toFeatureFlag(row);
+
+        return flag;
     }
 }

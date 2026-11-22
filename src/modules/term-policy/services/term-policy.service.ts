@@ -32,6 +32,7 @@ import {
 } from '@modules/term-policy/enums/term-policy.enum';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
 import type {
+    ITermPolicy,
     ITermPolicyContent,
     ITermPolicyContentUpload,
     ITermPolicyCreate,
@@ -49,7 +50,6 @@ import {
     EnumActivityLogAction,
     EnumTermPolicyStatus,
 } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 
@@ -152,7 +152,7 @@ export class TermPolicyService {
         pagination: IPaginationQueryOffsetParams,
         type?: Record<string, IPaginationIn>,
         status?: Record<string, IPaginationIn>
-    ): Promise<IResponsePaginationReturn<TermPolicy>> {
+    ): Promise<IResponsePaginationReturn<ITermPolicy>> {
         return this.termPolicyRepository.find(
             pagination,
             type ?? null,
@@ -163,7 +163,7 @@ export class TermPolicyService {
     async getListPublished(
         pagination: IPaginationQueryCursorParams,
         type?: Record<string, IPaginationIn>
-    ): Promise<IResponsePaginationReturn<TermPolicy>> {
+    ): Promise<IResponsePaginationReturn<ITermPolicy>> {
         return this.termPolicyRepository.findPublished(
             pagination,
             type ?? null
@@ -176,7 +176,7 @@ export class TermPolicyService {
         authContext: IAuthJwtAccessContext,
         termPolicyId: string,
         { contents, type, version }: ITermPolicyCreate
-    ): Promise<TermPolicy> {
+    ): Promise<ITermPolicy> {
         // Sequential by design: gate before the work it guards
         const isExist = await this.termPolicyRepository.existsByVersionAndType(
             version,
@@ -292,7 +292,7 @@ export class TermPolicyService {
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         termPolicyId: string
-    ): Promise<TermPolicy> {
+    ): Promise<ITermPolicy> {
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
@@ -360,7 +360,7 @@ export class TermPolicyService {
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         termPolicyId: string
-    ): Promise<TermPolicy> {
+    ): Promise<ITermPolicy> {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {
@@ -406,7 +406,7 @@ export class TermPolicyService {
             });
 
             const published =
-                await this.outboxService.withTransaction<TermPolicy>(
+                await this.outboxService.withTransaction<ITermPolicy>(
                     async tx => {
                         const isPublished =
                             await this.termPolicyRepository.publishInTx(
@@ -494,7 +494,7 @@ export class TermPolicyService {
         }
     }
 
-    async getPublishedByAdmin(termPolicyId: string): Promise<TermPolicy> {
+    async getPublishedByAdmin(termPolicyId: string): Promise<ITermPolicy> {
         const termPolicy =
             await this.termPolicyRepository.findOneById(termPolicyId);
         if (!termPolicy) {

@@ -1,3 +1,4 @@
+import type { IRequestUserAgent } from '@common/request/interfaces/request.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -8,7 +9,7 @@ import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { UserAgent } from '@generated/prisma-client/client';
+
 import { ActivityLogActionContract } from '@modules/activity-log/contracts/activity-log.action.contract';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
@@ -42,7 +43,7 @@ describe('ActivityLogService', () => {
         mock<HelperDateService>();
     const createdAt = new Date('2026-01-01T00:00:00.000Z');
 
-    const userAgent: UserAgent = {
+    const userAgent: IRequestUserAgent = {
         ua: null,
         browser: null,
         cpu: { architecture: null },

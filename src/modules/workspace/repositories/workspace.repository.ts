@@ -1,3 +1,4 @@
+import { WorkspaceActiveFilter } from '@modules/workspace/constants/workspace.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -43,7 +44,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         return this.databaseService.client.workspace.findFirst({
             where: {
                 id: workspaceId,
-                deletedAt: null,
+                ...WorkspaceActiveFilter,
             },
         });
     }
@@ -53,7 +54,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             where: {
                 slug,
                 isPublic: true,
-                deletedAt: null,
+                ...WorkspaceActiveFilter,
             },
         });
     }
@@ -87,7 +88,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
                 where: {
                     AND: [
                         where ?? {},
-                        { deletedAt: null },
+                        WorkspaceActiveFilter,
                         { id: { in: workspaceIds } },
                     ],
                 },

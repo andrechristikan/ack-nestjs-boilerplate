@@ -3,13 +3,12 @@ import fs from 'fs';
 import path from 'path';
 
 const EncryptionSecretLengthInBytes = 48;
-const MongoKeyfileLengthInBytes = 756;
 
 const Usage = `
-Usage: node scripts/generate-secret.ts <all|jwt|encryption|mongo> [--direct-insert]
+Usage: node scripts/generate-secret.ts <all|jwt|encryption> [--direct-insert]
 
 Commands:
-  all           Run jwt, encryption, then mongo, with the same --direct-insert choice for each.
+  all           Run jwt, then encryption, with the same --direct-insert choice for each.
   jwt           Generate the JWT keys (ES256 for access tokens, ES512 for refresh tokens) and JWKS:
                 1. Save the key pairs to ./keys as PEM files (always)
                 2. Create separate access/refresh JWKS files in ./keys (always)
@@ -20,10 +19,6 @@ Commands:
                 1. Write both to ./keys/encryption-secret.env (always)
                 2. Update .env with both secrets (only with --direct-insert)
                 Never touches the JWT key files, the JWKS files or the JWT variables.
-  mongo         Generate the MongoDB replica-set keyfile (756 random bytes, base64):
-                1. Write it to ./keys/mongo-keyfile, mode 0400 (always); an existing file is replaced
-                2. --direct-insert does nothing: the keyfile never goes into .env
-                Mounted by docker-compose.yml and ci/docker-compose.yml at /etc/mongo/keyfile.
 
   Key material and secret values are never printed; only file paths and KIDs are shown.
 
@@ -40,16 +35,14 @@ Examples:
   pnpm generate:secret:jwt --direct-insert
   pnpm generate:secret:encryption
   pnpm generate:secret:encryption --direct-insert
-  pnpm generate:secret:mongo
   node scripts/generate-secret.ts all --direct-insert
   node scripts/generate-secret.ts jwt --direct-insert
   node scripts/generate-secret.ts encryption --direct-insert
-  node scripts/generate-secret.ts mongo
 `;
 
 /**
  * Generates the secret targets — the JWT key pairs with their JWKS files, the
- * two encryption root secrets, and the MongoDB keyfile — one at a time, and optionally upserts only
+ * two encryption root secrets — one at a time, and optionally upserts only
  * that target's variables into the environment file.
  */
 class SecretGenerator {
@@ -61,7 +54,6 @@ class SecretGenerator {
     private readonly refreshTokenPrivateKeyPath: string;
     private readonly refreshTokenPublicKeyPath: string;
     private readonly encryptionSecretPath: string;
-    private readonly mongoKeyfilePath: string;
 
     constructor(keyDir: string) {
         this.keyDir = keyDir;
@@ -90,7 +82,6 @@ class SecretGenerator {
             this.keyDir,
             'encryption-secret.env'
         );
-        this.mongoKeyfilePath = path.join(this.keyDir, 'mongo-keyfile');
     }
 
     ensureDir(dir: string): void {
@@ -447,52 +438,6 @@ class SecretGenerator {
     }
 
     /**
-     * Generates the MongoDB replica-set keyfile into the keys directory: 756
-     * random bytes as base64, mode 0400 as `mongod` requires. An existing
-     * keyfile is read-only, so it is removed first. The content is never
-     * printed.
-     */
-    generateMongoKeyfile(): void {
-        try {
-            this.ensureDir(this.keyDir);
-
-            console.log('Generating MongoDB keyfile...');
-            fs.rmSync(this.mongoKeyfilePath, { force: true });
-            fs.writeFileSync(
-                this.mongoKeyfilePath,
-                crypto
-                    .randomBytes(MongoKeyfileLengthInBytes)
-                    .toString('base64'),
-                { mode: 0o400 }
-            );
-
-            try {
-                fs.chmodSync(this.mongoKeyfilePath, 0o400);
-            } catch {
-                console.warn(
-                    `Could not set permissions for ${this.mongoKeyfilePath}`
-                );
-            }
-
-            console.log('✅ MongoDB keyfile generated successfully!');
-            console.log('');
-            console.log(
-                '📁 File written (key material is NOT printed, for security):'
-            );
-            console.log(`   • Mongo keyfile: ${this.mongoKeyfilePath}`);
-            console.log('');
-            console.log(
-                '⏭️  .env not updated: the keyfile is mounted by docker compose, not read from .env.'
-            );
-        } catch (err) {
-            console.error(
-                `Failed to generate MongoDB keyfile: ${err instanceof Error ? err.message : String(err)}`
-            );
-            process.exit(1);
-        }
-    }
-
-    /**
      * Upserts the given variables into `.env`, creating it from `.env.example`
      * when absent with every `<placeholder>` value written empty, and keeps it at mode 600: it holds the private keys and
      * encryption roots, so only its owner reads it. Variables not named are left as they are.
@@ -556,13 +501,10 @@ function main(): void {
     if (command === 'all') {
         generator.generateJwtKeys(useDirectInsert);
         generator.generateEncryptionSecrets(useDirectInsert);
-        generator.generateMongoKeyfile();
     } else if (command === 'jwt') {
         generator.generateJwtKeys(useDirectInsert);
     } else if (command === 'encryption') {
         generator.generateEncryptionSecrets(useDirectInsert);
-    } else if (command === 'mongo') {
-        generator.generateMongoKeyfile();
     } else {
         console.error(Usage);
         process.exit(1);

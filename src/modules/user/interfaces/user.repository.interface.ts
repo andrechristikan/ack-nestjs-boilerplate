@@ -18,6 +18,7 @@ import type {
     IUserRecipient,
     IUserUpdateProfile,
     IUserUpdateStatus,
+    IUserWithPhoto,
 } from '@modules/user/interfaces/user.interface';
 import {
     EnumUserLoginFrom,
@@ -43,7 +44,7 @@ export interface IUserRepository {
         ids: string[],
         createdBefore: Date
     ): Promise<IUserRecipient[]>;
-    findOneById(id: string): Promise<User | null>;
+    findOneById(id: string): Promise<IUserWithPhoto | null>;
     findOneActiveById(id: string): Promise<User | null>;
     findOneActiveByEmail(email: string): Promise<User | null>;
     findNameById(userId: string): Promise<IUserName | null>;

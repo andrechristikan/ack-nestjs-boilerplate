@@ -1,3 +1,4 @@
+import type { UserPhoto } from '@generated/prisma-client/client';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -12,7 +13,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { Country, UserPhoto } from '@generated/prisma-client/client';
+import type { Country } from '@generated/prisma-client/client';
 import { NotFound } from '@aws-sdk/client-s3';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
@@ -145,6 +146,8 @@ describe('UserProfileService', () => {
     };
 
     const previousPhoto: UserPhoto = {
+        id: 'photo-persimmon',
+        userId: 'user-persimmon',
         bucket: 'bucket',
         key: 'photo-profile/user-persimmon/previous.png',
         cdnUrl: null,

@@ -1,7 +1,7 @@
 ---
 name: ack-spec
 description: >-
-    Creates or repairs unit specs for code that exists, to 100% coverage per file; the code on disk wins and src/ is not changed. Integration and e2e are held. Use for a coverage gap, a spec the code moved away from, or orphan specs. Not for new behaviour (ack-design), a red spec whose cause is unknown (ack-debug), or a src/ fix.
+    Creates or repairs unit specs for code that exists, to 100% coverage per file; the code on disk wins and src/ is not changed. Integration tests are held. Use for a coverage gap, a spec the code moved away from, or orphan specs. Not for new behaviour (ack-design), a red spec whose cause is unknown (ack-debug), or a src/ fix.
 blurb: 'unit specs to 100% for existing code; the code wins'
 disable-model-invocation: true
 context: fork
@@ -26,7 +26,7 @@ pnpm test <scope>
 pnpm exec vitest --clearCache
 ```
 
-Integration and e2e are held (`.claude/rules/testing.md`): a request for either is a hand-back naming the hold.
+Integration tests are held (`.claude/rules/testing.md`): a request for one is a hand-back naming the hold.
 
 ## 2. Classify
 

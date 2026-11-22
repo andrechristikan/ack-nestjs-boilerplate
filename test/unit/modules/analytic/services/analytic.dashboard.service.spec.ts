@@ -1,3 +1,4 @@
+import type { IRequestUserAgent } from '@common/request/interfaces/request.interface';
 import { CacheService } from '@common/cache/services/cache.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -16,7 +17,7 @@ import {
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import type { UserAgent } from '@generated/prisma-client/client';
+
 import { ActivityLogAnalyticService } from '@modules/activity-log/services/activity-log.analytic.service';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import {
@@ -955,7 +956,7 @@ describe('AnalyticDashboardService', () => {
     });
 
     describe('authSessionsUserAgent', () => {
-        const chrome: UserAgent = {
+        const chrome: IRequestUserAgent = {
             ua: null,
             browser: {
                 name: 'Chrome',
@@ -2101,7 +2102,7 @@ describe('AnalyticDashboardService', () => {
 
     describe('toBucketsByBrowser', () => {
         const createdAt = new Date('2026-01-01T00:00:00.000Z');
-        const emptyAgent: UserAgent = {
+        const emptyAgent: IRequestUserAgent = {
             ua: null,
             browser: null,
             cpu: { architecture: null },
@@ -2109,11 +2110,11 @@ describe('AnalyticDashboardService', () => {
             engine: { name: null, version: null },
             os: { name: null, version: null },
         };
-        const chrome: UserAgent = {
+        const chrome: IRequestUserAgent = {
             ...emptyAgent,
             browser: { name: 'Chrome', version: null, major: null, type: null },
         };
-        const ios: UserAgent = {
+        const ios: IRequestUserAgent = {
             ...emptyAgent,
             os: { name: 'iOS', version: null },
         };

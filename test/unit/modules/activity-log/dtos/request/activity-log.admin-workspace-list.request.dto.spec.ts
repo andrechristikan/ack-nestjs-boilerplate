@@ -2,7 +2,7 @@ import { ActivityLogDefaultAvailableOrderBy } from '@modules/activity-log/consta
 import { ActivityLogAdminWorkspaceListRequestSchema } from '@modules/activity-log/dtos/request/activity-log.admin-workspace-list.request.dto';
 
 describe('ActivityLogAdminWorkspaceListRequestSchema', () => {
-    const userId = '507f1f77bcf86cd799439011';
+    const userId = '01920000-0000-7000-8000-6cd799439011';
 
     it('parses the pagination fields and a user filter', () => {
         const result = ActivityLogAdminWorkspaceListRequestSchema.parse({

@@ -10,7 +10,7 @@ import {
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -112,7 +112,7 @@ export class WorkspaceAdminController {
     @ApiKeyProtected()
     @Get('/get/:workspaceId')
     async get(
-        @Param('workspaceId', { schema: RequestMongoIdSchema })
+        @Param('workspaceId', { schema: RequestUuidSchema })
         workspaceId: string
     ): Promise<IResponseReturn<Workspace>> {
         return this.workspaceGetByIdByAdminUseCase.execute(workspaceId);
@@ -134,7 +134,7 @@ export class WorkspaceAdminController {
     @ApiKeyProtected()
     @Get('/member/:workspaceId/list')
     async memberList(
-        @Param('workspaceId', { schema: RequestMongoIdSchema })
+        @Param('workspaceId', { schema: RequestUuidSchema })
         workspaceId: string,
         @Query({ schema: WorkspaceAdminMemberListRequestSchema })
         query: WorkspaceAdminMemberListRequestDto
@@ -163,7 +163,7 @@ export class WorkspaceAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
-        @Param('workspaceId', { schema: RequestMongoIdSchema })
+        @Param('workspaceId', { schema: RequestUuidSchema })
         workspaceId: string,
         @Body({ schema: WorkspaceTransferOwnershipRequestSchema })
         body: WorkspaceTransferOwnershipRequestDto

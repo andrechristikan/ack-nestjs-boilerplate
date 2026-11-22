@@ -39,6 +39,9 @@
             "@router/*": ["./src/router/*.ts"],
             "@migration/*": ["./src/migration/*.ts"],
             "@test/*": ["./test/*.ts"],
+            "@generated/prisma-client": [
+                "./src/generated/prisma-client/client.ts"
+            ],
             "@generated/*": ["./src/generated/*.ts"],
             "@instrument": ["./src/instrument.ts"],
             "@swagger": ["./src/swagger.ts"],

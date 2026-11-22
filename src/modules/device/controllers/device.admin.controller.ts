@@ -6,7 +6,7 @@ import {
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -78,7 +78,7 @@ export class DeviceAdminController {
     @ApiKeyProtected()
     @Get('/list')
     async list(
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @Query({ schema: DeviceAdminListRequestSchema })
         query: DeviceAdminListRequestDto
@@ -110,9 +110,9 @@ export class DeviceAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
-        @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
+        @Param('deviceOwnershipId', { schema: RequestUuidSchema })
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
         return this.deviceRemoveByAdminUseCase.execute(

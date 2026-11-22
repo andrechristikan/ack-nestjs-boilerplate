@@ -10,7 +10,6 @@ import { MessageService } from '@common/message/services/message.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { Mfa } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
@@ -21,6 +20,7 @@ import { MfaMethodUnavailableException } from '@modules/mfa/exceptions/mfa.metho
 import { MfaNotEnabledException } from '@modules/mfa/exceptions/mfa.not-enabled.exception';
 import { MfaPasskeyInvalidException } from '@modules/mfa/exceptions/mfa.passkey-invalid.exception';
 import type {
+    IMfa,
     IMfaBackupCodes,
     IMfaCheck,
     IMfaStatus,
@@ -39,6 +39,7 @@ import {
     EnumNotificationLoginLockedMethod,
 } from '@modules/notification/enums/notification.enum';
 import { NotificationService } from '@modules/notification/services/notification.service';
+import type { Mfa } from '@generated/prisma-client/client';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
@@ -132,10 +133,11 @@ export class MfaService {
     }
 
     private async checkBackupCode(
-        mfa: Mfa | null,
+        mfa: IMfa | null,
         backupCode: string | null
     ): Promise<IMfaCheck | null> {
-        const backupCodes = mfa?.backupCodes ?? [];
+        const backupCodes =
+            mfa?.backupCodes.map(({ codeHash }) => codeHash) ?? [];
         if (backupCodes.length === 0) {
             throw new MfaMethodUnavailableException();
         }
@@ -570,27 +572,12 @@ export class MfaService {
         }
 
         if (backupCodeHash !== null) {
-            const mfa = await this.mfaRepository.findOneByUserIdInTx(
-                tx,
-                userId
-            );
-            if (mfa === null) {
-                throw new MfaInvalidException();
-            }
-
-            if (!mfa.backupCodes.includes(backupCodeHash)) {
-                throw new MfaInvalidException();
-            }
-
-            const remainingBackupCodes = mfa.backupCodes.filter(
-                hash => hash !== backupCodeHash
-            );
+            const usedAt = this.helperDateService.create();
             const isConsumed = await this.mfaRepository.consumeBackupCodeInTx(
                 tx,
                 userId,
-                mfa.backupCodes,
-                remainingBackupCodes,
-                userId
+                backupCodeHash,
+                usedAt
             );
             if (!isConsumed) {
                 throw new MfaInvalidException();

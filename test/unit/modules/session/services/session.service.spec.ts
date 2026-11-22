@@ -1,3 +1,7 @@
+import type {
+    IRequestLog,
+    IRequestUserAgent,
+} from '@common/request/interfaces/request.interface';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
@@ -470,8 +474,8 @@ describe('SessionService', () => {
 
     describe('createInTx', () => {
         it('hashes the jti and passes only the digest to the repository', async () => {
-            const requestLog = {
-                userAgent: session.userAgent,
+            const requestLog: IRequestLog = {
+                userAgent: session.userAgent as unknown as IRequestUserAgent,
                 ipAddress: '127.0.0.1',
                 geoLocation: null,
             };

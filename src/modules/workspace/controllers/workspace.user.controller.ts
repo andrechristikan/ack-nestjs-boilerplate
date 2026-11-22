@@ -12,7 +12,7 @@ import {
     RequestThrottle,
 } from '@common/request/decorators/request.decorator';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -457,7 +457,7 @@ export class WorkspaceUserController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
-        @Param('workspaceMemberId', { schema: RequestMongoIdSchema })
+        @Param('workspaceMemberId', { schema: RequestUuidSchema })
         workspaceMemberId: string,
         @Body({ schema: WorkspaceMemberUpdateRoleRequestSchema })
         body: WorkspaceMemberUpdateRoleRequestDto
@@ -488,7 +488,7 @@ export class WorkspaceUserController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
-        @Param('workspaceMemberId', { schema: RequestMongoIdSchema })
+        @Param('workspaceMemberId', { schema: RequestUuidSchema })
         workspaceMemberId: string
     ): Promise<IResponseReturn<void>> {
         return this.workspaceRemoveMemberUseCase.execute(
@@ -579,7 +579,7 @@ export class WorkspaceUserController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
-        @Param('workspaceInviteId', { schema: RequestMongoIdSchema })
+        @Param('workspaceInviteId', { schema: RequestUuidSchema })
         workspaceInviteId: string,
         @Body({ schema: WorkspaceInviteResendRequestSchema })
         body: WorkspaceInviteResendRequestDto
@@ -610,7 +610,7 @@ export class WorkspaceUserController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
-        @Param('workspaceInviteId', { schema: RequestMongoIdSchema })
+        @Param('workspaceInviteId', { schema: RequestUuidSchema })
         workspaceInviteId: string
     ): Promise<IResponseReturn<void>> {
         return this.workspaceRevokeInviteUseCase.execute(
@@ -725,7 +725,7 @@ export class WorkspaceUserController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
-        @Param('workspaceJoinRequestId', { schema: RequestMongoIdSchema })
+        @Param('workspaceJoinRequestId', { schema: RequestUuidSchema })
         workspaceJoinRequestId: string
     ): Promise<IResponseReturn<void>> {
         return this.workspaceAcceptJoinRequestUseCase.execute(
@@ -754,7 +754,7 @@ export class WorkspaceUserController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
-        @Param('workspaceJoinRequestId', { schema: RequestMongoIdSchema })
+        @Param('workspaceJoinRequestId', { schema: RequestUuidSchema })
         workspaceJoinRequestId: string,
         @Body({ schema: WorkspaceJoinRequestRejectRequestSchema })
         body: WorkspaceJoinRequestRejectRequestDto

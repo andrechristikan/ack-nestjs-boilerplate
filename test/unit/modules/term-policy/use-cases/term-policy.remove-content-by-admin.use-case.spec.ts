@@ -13,7 +13,7 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
+import type { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
 import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
@@ -23,7 +23,7 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
     const termPolicyContentService: MockProxy<TermPolicyContentService> =
         mock<TermPolicyContentService>();
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
-    const termPolicy: TermPolicy = {
+    const termPolicy: ITermPolicy = {
         id: 'term-policy-1',
         type: EnumTermPolicyType.privacy,
         contents: [],

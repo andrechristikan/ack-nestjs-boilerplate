@@ -1,8 +1,9 @@
+// cspell:ignore sslmode
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { Prisma } from '@generated/prisma-client/client';
-import { ObjectId } from 'bson';
+import { v7, validate } from 'uuid';
 import { DatabaseIdInvalidException } from '@common/database/exceptions/database.id-invalid.exception';
 import { DatabaseTransactionExpiredException } from '@common/database/exceptions/database.transaction-expired.exception';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
@@ -22,8 +23,8 @@ describe('DatabaseUtil', () => {
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
-                        'database.serverSelectionTimeoutInMs': 5000,
                         'database.connectTimeoutInMs': 5000,
+                        'database.poolTimeoutInMs': 5000,
                     }),
                 },
             ],
@@ -33,99 +34,101 @@ describe('DatabaseUtil', () => {
     });
 
     describe('buildClientUrl', () => {
-        it('appends both timeouts with a question mark to a url with no query', () => {
-            expect(util.buildClientUrl('mongodb://h:27017/db')).toBe(
-                'mongodb://h:27017/db?serverSelectionTimeoutMS=5000&connectTimeoutMS=5000'
+        it('appends the connect and pool timeouts in seconds with a question mark to a url with no query', () => {
+            expect(util.buildClientUrl('postgresql://h:5432/db')).toBe(
+                'postgresql://h:5432/db?connect_timeout=5&pool_timeout=5'
             );
         });
 
-        it('appends both timeouts with an ampersand to a url with a query', () => {
+        it('appends the connect and pool timeouts in seconds with an ampersand to a url with a query', () => {
             expect(
-                util.buildClientUrl('mongodb://h:27017/db?replicaSet=rs0')
+                util.buildClientUrl('postgresql://h:5432/db?schema=public')
             ).toBe(
-                'mongodb://h:27017/db?replicaSet=rs0&serverSelectionTimeoutMS=5000&connectTimeoutMS=5000'
+                'postgresql://h:5432/db?schema=public&connect_timeout=5&pool_timeout=5'
             );
         });
 
-        it('carries the configured server selection and connect timeouts', async () => {
+        it('carries the configured connect and pool timeouts rounded up to whole seconds', async () => {
             const module: TestingModule = await Test.createTestingModule({
                 providers: [
                     DatabaseUtil,
                     {
                         provide: ConfigService,
                         useValue: buildConfigService({
-                            'database.serverSelectionTimeoutInMs': 1000,
                             'database.connectTimeoutInMs': 2000,
+                            'database.poolTimeoutInMs': 1500,
                         }),
                     },
                 ],
             }).compile();
 
             expect(
-                module.get(DatabaseUtil).buildClientUrl('mongodb://h:27017/db')
-            ).toBe(
-                'mongodb://h:27017/db?serverSelectionTimeoutMS=1000&connectTimeoutMS=2000'
-            );
+                module
+                    .get(DatabaseUtil)
+                    .buildClientUrl('postgresql://h:5432/db')
+            ).toBe('postgresql://h:5432/db?connect_timeout=2&pool_timeout=2');
         });
     });
 
     describe('checkIdIsValid', () => {
-        it('returns true for a valid ObjectId string', () => {
-            const id = new ObjectId().toHexString();
+        it('returns true for a valid UUID string', () => {
+            const id = v7();
 
             expect(util.checkIdIsValid(id)).toBe(true);
         });
 
-        it('returns false for an invalid ObjectId string', () => {
-            expect(util.checkIdIsValid('not-an-object-id')).toBe(false);
+        it('returns false for an invalid UUID string', () => {
+            expect(util.checkIdIsValid('not-a-uuid')).toBe(false);
         });
     });
 
     describe('censorUrl', () => {
         it('masks the password and keeps the first letter of the username', () => {
             expect(
-                util.censorUrl('mongodb://admin:hunter2@localhost:27017/ack')
-            ).toBe('mongodb://a***@localhost:27017/ack');
+                util.censorUrl('postgresql://admin:hunter2@localhost:5432/ack')
+            ).toBe('postgresql://a***@localhost:5432/ack');
         });
 
         it('keeps every host of a replica-set url and drops the query', () => {
             expect(
                 util.censorUrl(
-                    'mongodb://admin:hunter2@h1:27017,h2:27017,h3:27017/ack?replicaSet=rs0&authSource=admin'
+                    'postgresql://admin:hunter2@h1:5432,h2:5432,h3:5432/ack?schema=public'
                 )
-            ).toBe('mongodb://a***@h1:27017,h2:27017,h3:27017/ack');
+            ).toBe('postgresql://a***@h1:5432,h2:5432,h3:5432/ack');
         });
 
         it('keeps a url without credentials as is, minus the query', () => {
             expect(
-                util.censorUrl('mongodb://localhost:27017/ack?tls=true')
-            ).toBe('mongodb://localhost:27017/ack');
+                util.censorUrl(
+                    'postgresql://localhost:5432/ack?sslmode=require'
+                )
+            ).toBe('postgresql://localhost:5432/ack');
         });
 
         it('masks the password of a url that has no path', () => {
             expect(
-                util.censorUrl('mongodb://admin:hunter2@localhost:27017')
-            ).toBe('mongodb://a***@localhost:27017');
+                util.censorUrl('postgresql://admin:hunter2@localhost:5432')
+            ).toBe('postgresql://a***@localhost:5432');
         });
 
         it('keeps a url without credentials and without a path as is', () => {
-            expect(util.censorUrl('mongodb://localhost:27017')).toBe(
-                'mongodb://localhost:27017'
+            expect(util.censorUrl('postgresql://localhost:5432')).toBe(
+                'postgresql://localhost:5432'
             );
         });
 
         it('drops an empty username together with the password', () => {
             expect(
-                util.censorUrl('mongodb://:hunter2@localhost:27017/ack')
-            ).toBe('mongodb://localhost:27017/ack');
+                util.censorUrl('postgresql://:hunter2@localhost:5432/ack')
+            ).toBe('postgresql://localhost:5432/ack');
         });
 
         it('handles the srv scheme', () => {
             expect(
                 util.censorUrl(
-                    'mongodb+srv://admin:hunter2@cluster0.example.com/ack'
+                    'postgres://admin:hunter2@cluster0.example.com/ack'
                 )
-            ).toBe('mongodb+srv://a***@cluster0.example.com/ack');
+            ).toBe('postgres://a***@cluster0.example.com/ack');
         });
 
         it('returns the censored value for a string that is not a url', () => {
@@ -134,12 +137,12 @@ describe('DatabaseUtil', () => {
     });
 
     describe('createId', () => {
-        it('returns a fresh, valid ObjectId hex string every call', () => {
+        it('returns a fresh, valid UUID every call', () => {
             const first = util.createId();
             const second = util.createId();
 
-            expect(ObjectId.isValid(first)).toBe(true);
-            expect(ObjectId.isValid(second)).toBe(true);
+            expect(validate(first)).toBe(true);
+            expect(validate(second)).toBe(true);
             expect(first).not.toBe(second);
         });
     });
@@ -260,9 +263,9 @@ describe('DatabaseUtil', () => {
             );
         });
 
-        it('maps a P2010 server selection timeout to DatabaseUnavailableException', () => {
+        it('maps a P2010 unreachable database to DatabaseUnavailableException', () => {
             const error = new Prisma.PrismaClientKnownRequestError(
-                'Raw query failed. Code: `unknown`. Message: `Kind: Server selection timeout: No available servers.`',
+                "Raw query failed. Code: `unknown`. Message: `Can't reach database server at `h:5432``",
                 { code: 'P2010', clientVersion: '6.19.0' }
             );
 
@@ -299,6 +302,10 @@ describe('DatabaseUtil', () => {
     });
 
     describe('toPlainObject', () => {
+        it('maps a null JSON value to SQL NULL', () => {
+            expect(util.toPlainObject(null)).toBe(Prisma.DbNull);
+        });
+
         it('deep-clones the object into a distinct, structurally equal instance', () => {
             const data = { a: 1, nested: { b: 2 } };
 
@@ -317,6 +324,20 @@ describe('DatabaseUtil', () => {
 
             expect(result).toEqual(data);
             expect(result).not.toBe(data);
+        });
+    });
+
+    describe('replaceMany', () => {
+        it('deletes old rows and creates the provided rows', () => {
+            const rows = [{ value: 'one' }];
+            expect(util.replaceMany(rows)).toEqual({
+                deleteMany: {},
+                createMany: { data: rows },
+            });
+        });
+
+        it('only deletes old rows for an empty list', () => {
+            expect(util.replaceMany([])).toEqual({ deleteMany: {} });
         });
     });
 });
