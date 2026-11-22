@@ -31,8 +31,6 @@ services:
                   create_host_path: false
         networks:
             - app-network
-        extra_hosts:
-            - 'host.docker.internal:host-gateway'
         depends_on:
             redis-queue:
                 condition: service_healthy
