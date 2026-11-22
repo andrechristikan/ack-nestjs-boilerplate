@@ -10,7 +10,7 @@ import type {
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
-import type { Prisma } from '@generated/prisma-client/client';
+import type { TermPolicyContent } from '@generated/prisma-client/client';
 
 @Injectable()
 export class TermPolicyUtil {
@@ -84,14 +84,14 @@ export class TermPolicyUtil {
     }
 
     toContents(
-        contents: Prisma.JsonValue
+        stored: TermPolicyContent[]
     ): ITermPolicyContent[] | TermPolicyContentInvalidException {
         const mapped: ITermPolicyContent[] = [];
-        const stored = (contents ?? []) as unknown as (Omit<
-            ITermPolicyContent,
-            'language'
-        > & { language: string })[];
-        for (const content of stored) {
+        for (const {
+            id: _id,
+            termPolicyId: _termPolicyId,
+            ...content
+        } of stored) {
             const language =
                 Object.values(EnumMessageLanguage).find(
                     value => value === content.language

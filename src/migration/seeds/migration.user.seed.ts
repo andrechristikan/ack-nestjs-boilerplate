@@ -338,7 +338,6 @@ export class MigrationUserSeed
                                 },
                                 mfa: {
                                     create: {
-                                        backupCodes: [],
                                         lockedUntil: null,
                                         createdBy: MigrationUserSuperAdminId,
                                         updatedBy: MigrationUserSuperAdminId,

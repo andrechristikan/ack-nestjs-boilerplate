@@ -5,9 +5,15 @@ import type {
     EnumMfaPasskeyDeviceType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
+    Mfa,
+    MfaBackupCode,
 } from '@generated/prisma-client/client';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import type { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+
+export interface IMfa extends Mfa {
+    backupCodes: MfaBackupCode[];
+}
 
 export type IMfaChallengeDevice = {
     fingerprint: string;

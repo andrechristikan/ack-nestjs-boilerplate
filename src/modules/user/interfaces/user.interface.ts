@@ -32,6 +32,7 @@ import type {
     Prisma,
     User,
     UserMobileNumber,
+    UserPhoto,
     Verification,
 } from '@generated/prisma-client/client';
 import type {
@@ -60,7 +61,11 @@ export interface IUserDeletedIdentity {
     username: string;
 }
 
-export interface IUser extends User {
+export interface IUserWithPhoto extends User {
+    photo: UserPhoto | null;
+}
+
+export interface IUser extends IUserWithPhoto {
     role: IRoleWithPolicies;
 }
 
@@ -88,7 +93,7 @@ export interface IUserRef {
     id: string;
     name: string | null;
     username: string;
-    photo: Prisma.JsonValue;
+    photo: UserPhoto | null;
     createdAt: Date;
     createdBy: string | null;
     updatedAt: Date;
@@ -430,13 +435,3 @@ export interface IUserPurgeExpiredQueueResponse extends IQueueResponse {
     verifications: number;
     forgotPasswords: number;
 }
-
-export type IUserPhoto = {
-    bucket: string;
-    key: string;
-    cdnUrl: string | null;
-    completedUrl: string;
-    mime: string;
-    extension: string;
-    access: EnumAwsS3Accessibility;
-};

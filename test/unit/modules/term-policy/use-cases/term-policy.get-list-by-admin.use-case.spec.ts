@@ -8,7 +8,7 @@ import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { Prisma } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
+import type { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
 import {
     TermPolicyDefaultAvailableOrderBy,
     TermPolicyDefaultStatus,
@@ -36,7 +36,7 @@ describe('TermPolicyGetListByAdminUseCase', () => {
         totalPage: 1,
         hasNext: false,
         hasPrevious: false,
-        data: [] as TermPolicy[],
+        data: [] as ITermPolicy[],
     };
     const offsetParams = { skip: 0, limit: 20, orderBy: [] };
 

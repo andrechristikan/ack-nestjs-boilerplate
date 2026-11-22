@@ -40,7 +40,7 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
+import type { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
 import { TermPolicyContentExistException } from '@modules/term-policy/exceptions/term-policy.content-exist.exception';
 import { TermPolicyContentKeyInvalidException } from '@modules/term-policy/exceptions/term-policy.content-key-invalid.exception';
@@ -113,10 +113,16 @@ describe('TermPolicyContentService', () => {
         size: 1024,
     };
 
-    const draftTermPolicy: TermPolicy = {
+    const draftTermPolicy: ITermPolicy = {
         id: 'term-policy-1',
         type: EnumTermPolicyType.privacy,
-        contents: [existingContent] as unknown as TermPolicy['contents'],
+        contents: [
+            {
+                ...existingContent,
+                id: 'content-1',
+                termPolicyId: 'term-policy-1',
+            },
+        ],
         version: 1,
         status: EnumTermPolicyStatus.draft,
         publishedAt: null,
@@ -126,12 +132,7 @@ describe('TermPolicyContentService', () => {
         updatedBy: null,
     };
 
-    const editedDraftTermPolicy: TermPolicy = {
-        ...draftTermPolicy,
-        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-    };
-
-    const publishedTermPolicy: TermPolicy = {
+    const publishedTermPolicy: ITermPolicy = {
         ...draftTermPolicy,
         status: EnumTermPolicyStatus.published,
         publishedAt: timestamp,
@@ -789,40 +790,9 @@ describe('TermPolicyContentService', () => {
             expect(termPolicyRepository.updateContentInTx).toHaveBeenCalledWith(
                 tx,
                 'term-policy-1',
-                [existingContent],
-                { language: EnumMessageLanguage.en, ...mapped },
-                draftTermPolicy.updatedAt
+                { language: EnumMessageLanguage.en, ...mapped }
             );
             expect(result).toBe(draftTermPolicy);
-        });
-
-        it('passes the updatedAt of the draft it read to the guarded write', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(
-                editedDraftTermPolicy
-            );
-            const mapped: IAwsS3 = { ...existingContent };
-            awsS3Service.mapPresign.mockReturnValue(mapped);
-            termPolicyRepository.updateContentInTx.mockResolvedValue(true);
-
-            await service.updateContentByAdmin(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'term-policy-1',
-                {
-                    language: EnumMessageLanguage.en,
-                    size: 2048,
-                    key: 'term-policies/privacy/v1/en-2.hbs',
-                }
-            );
-
-            expect(termPolicyRepository.updateContentInTx).toHaveBeenCalledWith(
-                tx,
-                'term-policy-1',
-                [existingContent],
-                { language: EnumMessageLanguage.en, ...mapped },
-                editedDraftTermPolicy.updatedAt
-            );
         });
 
         it('throws TermPolicyStatusInvalidException when the guarded write misses', async () => {
@@ -1492,34 +1462,9 @@ describe('TermPolicyContentService', () => {
             expect(termPolicyRepository.removeContentInTx).toHaveBeenCalledWith(
                 tx,
                 'term-policy-1',
-                [existingContent],
-                EnumMessageLanguage.en,
-                draftTermPolicy.updatedAt
-            );
-            expect(result).toBe(draftTermPolicy);
-        });
-
-        it('passes the updatedAt of the draft it read to the guarded write', async () => {
-            termPolicyRepository.findOneById.mockResolvedValue(
-                editedDraftTermPolicy
-            );
-            termPolicyRepository.removeContentInTx.mockResolvedValue(true);
-
-            await service.removeContentByAdmin(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                'term-policy-1',
                 EnumMessageLanguage.en
             );
-
-            expect(termPolicyRepository.removeContentInTx).toHaveBeenCalledWith(
-                tx,
-                'term-policy-1',
-                [existingContent],
-                EnumMessageLanguage.en,
-                editedDraftTermPolicy.updatedAt
-            );
+            expect(result).toBe(draftTermPolicy);
         });
 
         it('throws TermPolicyStatusInvalidException when the guarded write misses', async () => {

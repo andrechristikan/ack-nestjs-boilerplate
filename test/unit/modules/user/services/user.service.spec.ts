@@ -14,7 +14,7 @@ import {
     EnumUserStatus,
     EnumVerificationType,
 } from '@generated/prisma-client/client';
-import type { Mfa } from '@generated/prisma-client/client';
+import type { IMfa } from '@modules/mfa/interfaces/mfa.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -107,7 +107,7 @@ describe('UserService', () => {
         updatedBy: null,
         policies: [],
     };
-    const mfa: Mfa = {
+    const mfa: IMfa = {
         id: 'mfa-cobalt',
         userId: 'user-cobalt',
         backupCodes: [],
@@ -555,7 +555,7 @@ describe('UserService', () => {
             verification: null,
             createdBy: 'admin-cobalt',
         };
-        const marigoldMfa: Mfa = {
+        const marigoldMfa: IMfa = {
             ...mfa,
             id: 'mfa-marigold',
             userId: 'user-marigold',

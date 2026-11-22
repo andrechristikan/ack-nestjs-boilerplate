@@ -18,7 +18,7 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { FeatureFlag } from '@generated/prisma-client/client';
+import type { IFeatureFlag } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import { FeatureFlagCache } from '@modules/feature-flag/caches/feature-flag.cache';
 import { FeatureFlagCacheSchema } from '@modules/feature-flag/constants/feature-flag.constant';
 import {
@@ -66,7 +66,7 @@ describe('FeatureFlagService', () => {
     const hashForTenPercent = '0000000a'.padEnd(64, '0');
     const hashForFiftyPercent = '00000032'.padEnd(64, '0');
 
-    const baseFlag: FeatureFlag = {
+    const baseFlag: IFeatureFlag = {
         id: '507f1f77bcf86cd799439011',
         key: EnumFeatureFlagKey.loginWithGoogle,
         description: 'Enables Google sign-in',
@@ -712,7 +712,7 @@ describe('FeatureFlagService', () => {
                 limit: 20,
                 skip: 0,
             };
-            const paginationReturn: IResponsePaginationReturn<FeatureFlag> = {
+            const paginationReturn: IResponsePaginationReturn<IFeatureFlag> = {
                 type: EnumPaginationType.offset,
                 count: 1,
                 perPage: 20,
@@ -743,7 +743,7 @@ describe('FeatureFlagService', () => {
                 orderBy: [],
                 limit: 20,
             };
-            const paginationReturn: IResponsePaginationReturn<FeatureFlag> = {
+            const paginationReturn: IResponsePaginationReturn<IFeatureFlag> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
                 hasNext: false,

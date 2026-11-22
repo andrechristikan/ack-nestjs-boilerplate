@@ -1,7 +1,6 @@
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type {
@@ -31,6 +30,7 @@ import type {
     IUserRecipient,
     IUserUpdateProfile,
     IUserUpdateStatus,
+    IUserWithPhoto,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserRepository } from '@modules/user/interfaces/user.repository.interface';
 import { Injectable } from '@nestjs/common';
@@ -47,7 +47,6 @@ import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 export class UserRepository implements IUserRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -137,9 +136,10 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async findOneById(id: string): Promise<User | null> {
+    async findOneById(id: string): Promise<IUserWithPhoto | null> {
         return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null },
+            include: { photo: true },
         });
     }
 
@@ -332,14 +332,22 @@ export class UserRepository implements IUserRepository {
     async updatePhotoProfileInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        photo: IAwsS3
+        { bucket, key, cdnUrl, completedUrl, mime, extension, access }: IAwsS3
     ): Promise<User> {
-        const plainPhoto = this.databaseUtil.toPlainObject(photo);
+        const photo = {
+            bucket,
+            key,
+            cdnUrl,
+            completedUrl,
+            mime,
+            extension,
+            access,
+        };
 
         return tx.user.update({
             where: { id: userId, deletedAt: null },
             data: {
-                photo: plainPhoto,
+                photo: { upsert: { create: photo, update: photo } },
             },
         });
     }
@@ -350,6 +358,7 @@ export class UserRepository implements IUserRepository {
         { email, username }: IUserDeletedIdentity,
         deletedAt: Date
     ): Promise<void> {
+        await tx.userPhoto.deleteMany({ where: { userId } });
         await tx.user.softDelete({
             where: { id: userId, deletedAt: null },
             data: {
@@ -364,7 +373,6 @@ export class UserRepository implements IUserRepository {
                 passwordLockedUntil: null,
                 name: null,
                 gender: null,
-                photo: Prisma.DbNull,
                 lastIPAddress: null,
                 lastLoginAt: null,
                 lastLoginFrom: null,

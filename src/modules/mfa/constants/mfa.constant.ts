@@ -21,3 +21,8 @@ export const MfaPasskeyCredentialSelect = {
     credentialId: true,
     transports: true,
 } satisfies Prisma.MfaPasskeySelect;
+
+/** @public */
+export const MfaInclude = {
+    backupCodes: { where: { usedAt: null } },
+} satisfies Prisma.MfaInclude;

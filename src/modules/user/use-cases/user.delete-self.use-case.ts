@@ -1,4 +1,3 @@
-import type { IUserPhoto } from '@modules/user/interfaces/user.interface';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
@@ -199,7 +198,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
                     await this.userProfileService.deleteOwnedPhotoInTx(
                         tx,
                         userId,
-                        user.photo as unknown as IUserPhoto | null
+                        user.photo
                     );
 
                     const revokeAllEntry = this.activityLogService.recordEffect(

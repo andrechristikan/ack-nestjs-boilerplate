@@ -51,7 +51,6 @@ describe('UserSendVerificationEmailUseCase', () => {
         lastLoginWith: EnumUserLoginWith.credential,
         lastWorkspaceId: null,
         lastWorkspaceChangedAt: null,
-        photo: null,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),

@@ -13,7 +13,7 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
+import type { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { TermPolicyPublishByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.publish-by-admin.use-case';
 
@@ -21,7 +21,7 @@ describe('TermPolicyPublishByAdminUseCase', () => {
     const termPolicyService: MockProxy<TermPolicyService> =
         mock<TermPolicyService>();
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
-    const termPolicy: TermPolicy = {
+    const termPolicy: ITermPolicy = {
         id: 'term-policy-1',
         type: EnumTermPolicyType.privacy,
         contents: [],

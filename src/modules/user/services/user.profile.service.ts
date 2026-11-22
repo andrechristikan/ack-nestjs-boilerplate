@@ -17,7 +17,7 @@ import type {
     IFileRandomFilenameOptions,
 } from '@common/file/interfaces/file.interface';
 import { FileService } from '@common/file/services/file.service';
-import type { IUserPhoto } from '@modules/user/interfaces/user.interface';
+import type { UserPhoto } from '@generated/prisma-client/client';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserPhotoContentInvalidException } from '@modules/user/exceptions/user.photo-content-invalid.exception';
@@ -91,12 +91,13 @@ export class UserProfileService {
 
     private deletePhotoEffect(
         userId: string,
-        photo: IUserPhoto
+        key: string,
+        access: EnumAwsS3Accessibility
     ): IUserDeletePhotoEffect {
         return {
             queue: EnumUserQueue.user,
             name: EnumUserProcess.deletePhoto,
-            data: { userId, key: photo.key, access: photo.access },
+            data: { userId, key, access },
             priority: EnumQueuePriority.low,
             idempotencyKey: null,
         };
@@ -105,7 +106,7 @@ export class UserProfileService {
     private async deletePreviousPhotoInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        previousPhoto: IUserPhoto | null,
+        previousPhoto: UserPhoto | null,
         currentKey: string
     ): Promise<void> {
         if (previousPhoto === null || previousPhoto.key === currentKey) {
@@ -119,7 +120,7 @@ export class UserProfileService {
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
-        previousPhoto: IUserPhoto | null,
+        previousPhoto: UserPhoto | null,
         photo: IAwsS3
     ): Promise<void> {
         const userId = authContext.userId;
@@ -148,7 +149,7 @@ export class UserProfileService {
     async deleteOwnedPhotoInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        photo: IUserPhoto | null
+        photo: UserPhoto | null
     ): Promise<void> {
         if (photo === null) {
             return;
@@ -159,7 +160,7 @@ export class UserProfileService {
             return;
         }
 
-        const effect = this.deletePhotoEffect(userId, photo);
+        const effect = this.deletePhotoEffect(userId, photo.key, photo.access);
         await this.outboxService.addInTx(tx, effect);
     }
 
@@ -278,7 +279,11 @@ export class UserProfileService {
                 aws.extension
             );
             if (!isContentValid) {
-                const effect = this.deletePhotoEffect(userId, aws);
+                const effect = this.deletePhotoEffect(
+                    userId,
+                    aws.key,
+                    aws.access
+                );
                 await this.outboxService.add(effect);
 
                 throw new UserPhotoContentInvalidException();
@@ -293,7 +298,7 @@ export class UserProfileService {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                user.photo as unknown as IUserPhoto | null,
+                user.photo,
                 aws
             );
 
@@ -372,7 +377,7 @@ export class UserProfileService {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                user.photo as unknown as IUserPhoto | null,
+                user.photo,
                 aws
             );
 

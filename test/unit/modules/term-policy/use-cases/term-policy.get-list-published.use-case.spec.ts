@@ -8,7 +8,7 @@ import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { Prisma } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
+import type { ITermPolicy } from '@modules/term-policy/interfaces/term-policy.interface';
 import {
     TermPolicyDefaultAvailableOrderBy,
     TermPolicyDefaultType,
@@ -32,7 +32,7 @@ describe('TermPolicyGetListPublishedUseCase', () => {
         type: EnumPaginationType.cursor as const,
         perPage: 20,
         hasNext: false,
-        data: [] as TermPolicy[],
+        data: [] as ITermPolicy[],
     };
     const cursorParams = {
         limit: 20,

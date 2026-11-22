@@ -1,3 +1,5 @@
+import type { FeatureFlag } from '@generated/prisma-client/client';
+
 export type IFeatureFlagMetadataValue =
     string | number | boolean | string[] | number[];
 
@@ -11,4 +13,8 @@ export interface IFeatureFlagUpdateStatus {
 
 export interface IFeatureFlagUpdateMetadata {
     metadata: IFeatureFlagMetadata;
+}
+
+export interface IFeatureFlag extends FeatureFlag {
+    targetUserIds: string[];
 }

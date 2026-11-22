@@ -187,7 +187,8 @@ model User {
   workspaceJoinRequests     WorkspaceJoinRequest[]     @relation("UserWorkspaceJoinRequests")
   projectMembers            ProjectMember[]            @relation("UserProjectMembers")
   termPolicyRecipients      TermPolicyRecipient[]      @relation("UserTermPolicyRecipients")
-  photo                     Json?
+  photo                     UserPhoto?                 @relation("UserPhoto")
+  featureFlagUsers          FeatureFlagUser[]          @relation("FeatureFlagUserUser")
   reviewedWorkspaceRequests WorkspaceJoinRequest[]     @relation("WorkspaceJoinRequestReviewedBy")
   sentWorkspaceInvites      WorkspaceInvite[]          @relation("WorkspaceInviteInvitedBy")
   acceptedWorkspaceInvites  WorkspaceInvite[]          @relation("WorkspaceInviteAcceptedBy")
@@ -308,6 +309,22 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
+model UserPhoto {
+  id           String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId       String                 @unique @db.Uuid
+  bucket       String
+  key          String
+  cdnUrl       String?
+  completedUrl String
+  mime         String
+  extension    String
+  access       EnumAwsS3Accessibility
+
+  user User @relation("UserPhoto", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_photos")
+}
+
 model Session {
   id                String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
   userId            String    @db.Uuid
@@ -392,7 +409,6 @@ model DeviceOwnership {
 model Mfa {
   id          String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
   userId      String    @db.Uuid
-  backupCodes String[]  @default([])
   attempt     Int       @default(0)
   lockedUntil DateTime?
 
@@ -401,10 +417,25 @@ model Mfa {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.Uuid
 
-  user User @relation("UserMfa", fields: [userId], references: [id], onDelete: Cascade)
+  user        User            @relation("UserMfa", fields: [userId], references: [id], onDelete: Cascade)
+  backupCodes MfaBackupCode[] @relation("MfaBackupCodes")
 
   @@unique(fields: [userId])
   @@map("mfas")
+}
+
+model MfaBackupCode {
+  id        String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  mfaId     String    @db.Uuid
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  mfa Mfa @relation("MfaBackupCodes", fields: [mfaId], references: [id], onDelete: Cascade)
+
+  @@unique(fields: [mfaId, codeHash])
+  @@index(fields: [mfaId, usedAt])
+  @@map("mfa_backup_codes")
 }
 
 model MfaTotp {
@@ -478,7 +509,7 @@ model MfaChallenge {
 model TermPolicy {
   id          String               @id @default(dbgenerated("uuidv7()")) @db.Uuid
   type        EnumTermPolicyType
-  contents    Json                 @default("[]")
+  contents    TermPolicyContent[]
   version     Int                  @default(1)
   status      EnumTermPolicyStatus @default(draft)
   publishedAt DateTime?
@@ -493,6 +524,25 @@ model TermPolicy {
   @@unique(fields: [type, version])
   @@index(fields: [type, status, version(sort: Desc)])
   @@map("term_policies")
+}
+
+model TermPolicyContent {
+  id           String                 @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  termPolicyId String                 @db.Uuid
+  language     String
+  bucket       String
+  key          String
+  cdnUrl       String?
+  completedUrl String
+  mime         String
+  extension    String
+  access       EnumAwsS3Accessibility
+  size         Int
+
+  termPolicy TermPolicy @relation(fields: [termPolicyId], references: [id], onDelete: Cascade)
+
+  @@unique(fields: [termPolicyId, language])
+  @@map("term_policy_contents")
 }
 
 model TermPolicyRecipient {
@@ -550,10 +600,23 @@ model FeatureFlag {
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.Uuid
 
-  targetUserIds String[] @default([]) @db.Uuid
+  targetUsers FeatureFlagUser[] @relation("FeatureFlagUserFeatureFlag")
 
   @@unique(fields: [key])
   @@map("feature_flags")
+}
+
+model FeatureFlagUser {
+  id            String @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  featureFlagId String @db.Uuid
+  userId        String @db.Uuid
+
+  featureFlag FeatureFlag @relation("FeatureFlagUserFeatureFlag", fields: [featureFlagId], references: [id], onDelete: Cascade)
+  user        User        @relation("FeatureFlagUserUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique(fields: [featureFlagId, userId])
+  @@index(fields: [userId])
+  @@map("feature_flag_users")
 }
 
 model ForgotPassword {

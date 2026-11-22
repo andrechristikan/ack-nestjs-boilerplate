@@ -1,4 +1,3 @@
-import type { IUserPhoto } from '@modules/user/interfaces/user.interface';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
@@ -69,9 +68,7 @@ export class UserExportByAdminUseCase implements IAppUseCase<
             roleId: user.roleId,
             status: user.status,
             countryId: user.countryId,
-            photo:
-                (user.photo as unknown as IUserPhoto | null)?.completedUrl ??
-                null,
+            photo: user.photo?.completedUrl ?? null,
             role: user.role.name,
         }));
 

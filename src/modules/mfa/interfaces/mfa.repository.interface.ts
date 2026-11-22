@@ -1,17 +1,17 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { Mfa } from '@generated/prisma-client/client';
+import type { IMfa } from '@modules/mfa/interfaces/mfa.interface';
 
 export interface IMfaRepository {
-    findOneByUserId(userId: string): Promise<Mfa | null>;
+    findOneByUserId(userId: string): Promise<IMfa | null>;
     findOneByUserIdInTx(
         tx: IDatabaseTransactionClient,
         userId: string
-    ): Promise<Mfa | null>;
+    ): Promise<IMfa | null>;
     createInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         createdBy: string
-    ): Promise<Mfa>;
+    ): Promise<IMfa>;
     deleteByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string
@@ -45,9 +45,8 @@ export interface IMfaRepository {
     consumeBackupCodeInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        currentBackupCodes: string[],
-        remainingBackupCodes: string[],
-        updatedBy: string
+        backupCodeHash: string,
+        usedAt: Date
     ): Promise<boolean>;
     resetByAdminInTx(
         tx: IDatabaseTransactionClient,

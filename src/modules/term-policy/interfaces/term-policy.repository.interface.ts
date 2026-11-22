@@ -7,6 +7,7 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type {
+    ITermPolicy,
     ITermPolicyAcceptanceRow,
     ITermPolicyContent,
     ITermPolicyRef,
@@ -16,27 +17,26 @@ import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
-import type { TermPolicy } from '@generated/prisma-client/client';
 
 export interface ITermPolicyRepository {
     find(
         { where, ...others }: IPaginationQueryOffsetParams,
         type: Record<string, IPaginationIn> | null,
         status: Record<string, IPaginationIn> | null
-    ): Promise<IResponsePaginationReturn<TermPolicy>>;
+    ): Promise<IResponsePaginationReturn<ITermPolicy>>;
     findPublished(
         { where, ...others }: IPaginationQueryCursorParams,
         type: Record<string, IPaginationIn> | null
-    ): Promise<IResponsePaginationReturn<TermPolicy>>;
+    ): Promise<IResponsePaginationReturn<ITermPolicy>>;
     findUserAccepted(
         userId: string,
         { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>>;
-    findOneById(termPolicyId: string): Promise<TermPolicy | null>;
+    findOneById(termPolicyId: string): Promise<ITermPolicy | null>;
     findOneByIdInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string
-    ): Promise<TermPolicy | null>;
+    ): Promise<ITermPolicy | null>;
     findLatestPublishedByTypes(
         types: EnumTermPolicyType[]
     ): Promise<ITermPolicyRef[]>;
@@ -73,7 +73,7 @@ export interface ITermPolicyRepository {
         type: EnumTermPolicyType,
         version: number,
         contents: ITermPolicyContent[]
-    ): Promise<TermPolicy>;
+    ): Promise<ITermPolicy>;
     deleteDraftInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string
@@ -81,9 +81,7 @@ export interface ITermPolicyRepository {
     updateContentInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
-        contents: ITermPolicyContent[],
-        content: ITermPolicyContent,
-        expectedUpdatedAt: Date
+        content: ITermPolicyContent
     ): Promise<boolean>;
     addContentInTx(
         tx: IDatabaseTransactionClient,
@@ -93,9 +91,7 @@ export interface ITermPolicyRepository {
     removeContentInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
-        contents: ITermPolicyContent[],
-        language: EnumMessageLanguage,
-        expectedUpdatedAt: Date
+        language: EnumMessageLanguage
     ): Promise<boolean>;
     publishInTx(
         tx: IDatabaseTransactionClient,

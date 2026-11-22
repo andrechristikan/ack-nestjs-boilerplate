@@ -1,4 +1,4 @@
-import type { IUserPhoto } from '@modules/user/interfaces/user.interface';
+import type { UserPhoto } from '@generated/prisma-client/client';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -145,7 +145,9 @@ describe('UserProfileService', () => {
         country,
     };
 
-    const previousPhoto: IUserPhoto = {
+    const previousPhoto: UserPhoto = {
+        id: 'photo-persimmon',
+        userId: 'user-persimmon',
         bucket: 'bucket',
         key: 'photo-profile/user-persimmon/previous.png',
         cdnUrl: null,
