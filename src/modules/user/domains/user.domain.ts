@@ -12,7 +12,7 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
-    EnumRoleType,
+    EnumRoleScope,
     EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -30,8 +30,8 @@ import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { CountryNotFoundException } from '@modules/country/exceptions/country.not-found.exception';
 import { CountryDomain } from '@modules/country/domains/country.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
-import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import { SessionDomain } from '@modules/session/domains/session.domain';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
@@ -139,20 +139,25 @@ export class UserDomain {
             throw new UserEmailNotVerifiedException();
         }
 
+        this.roleDomain.assertScope(user.role, EnumRoleScope.platform);
+
         return user;
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams<Prisma.UserWhereInput>,
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        status: Record<string, IPaginationIn> | undefined,
+        roleId: Record<string, IPaginationEqual> | undefined,
+        countryId: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.UserWhereInput
     ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.userRepository.findWithPaginationOffset(
             pagination,
             status,
             roleId,
-            countryId
+            countryId,
+            additionalWhere
         );
     }
 
@@ -219,12 +224,17 @@ export class UserDomain {
         password: IAuthPassword,
         updatedBy: string
     ): Promise<User> {
-        return this.userRepository.updatePasswordInTx(
+        const user = await this.userRepository.updatePasswordInTx(
             tx,
             userId,
             password,
             updatedBy
         );
+        if (!user) {
+            throw new UserNotFoundException();
+        }
+
+        return user;
     }
 
     async updateLoginInTx(
@@ -269,15 +279,13 @@ export class UserDomain {
         { countryId, email, name, roleId, username }: IUserCreateByAdmin,
         createdBy: string
     ): Promise<IUserCreateByAdminPrepared> {
-        const [checkRole, emailExist, checkCountry] = await Promise.all([
-            this.roleDomain.getById(roleId),
+        const [role, emailExist, checkCountry] = await Promise.all([
+            this.roleDomain.resolve(roleId, EnumRoleScope.platform),
             this.userRepository.existsByEmail(email),
             this.countryDomain.existsById(countryId),
         ]);
 
-        if (!checkRole) {
-            throw new RoleNotFoundException();
-        } else if (!checkCountry) {
+        if (!checkCountry) {
             throw new CountryNotFoundException();
         } else if (emailExist) {
             throw new UserEmailExistException();
@@ -309,7 +317,7 @@ export class UserDomain {
             this.userOnboardingDomain.buildPersonalWorkspaceContexts([
                 username,
             ]);
-        const isVerified = checkRole.type !== EnumRoleType.user;
+        const isVerified = role.key !== EnumRolePlatformKey.user;
         let verification: IUserOnboardingVerification | null;
         if (isVerified) {
             verification = this.buildVerifiedVerification(email);
@@ -324,7 +332,7 @@ export class UserDomain {
                 name: name ?? null,
                 username,
                 countryId,
-                roleId: checkRole.id,
+                roleId: role.id,
                 signUpFrom: EnumUserSignUpFrom.admin,
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified,
@@ -398,6 +406,10 @@ export class UserDomain {
                             userId,
                             { status }
                         );
+                    if (!row) {
+                        throw new UserNotFoundException();
+                    }
+
                     const actorMetadata =
                         this.userUtil.mapActivityLogActorMetadata(row);
                     const targetMetadata =

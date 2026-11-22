@@ -2,8 +2,9 @@ import { z } from 'zod';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { PaginationCursorQuerySchema } from '@common/pagination/dtos/pagination.cursor-query.dto';
 import {
-    RoleDefaultAvailableOrderBy,
+    RoleCursorAvailableOrderBy,
     RoleDefaultAvailableSearch,
+    RoleDefaultScope,
 } from '@modules/role/constants/role.list.constant';
 
 /**
@@ -22,13 +23,16 @@ export const RoleSystemListRequestSchema = PaginationCursorQuerySchema.extend({
         .union([z.string(), z.array(z.string())])
         .optional()
         .meta({
-            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${RoleDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
-            example: `${RoleDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
+            description: `Order by field in \`field:direction\` format (e.g. \`createdAt:desc\`). Available fields: ${RoleCursorAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}. Repeat the parameter to sort by multiple fields.`,
+            example: `${RoleCursorAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
         }),
-    type: z.string().optional().meta({
-        description: 'Filter by type, comma-delimited',
-        example: '',
-    }),
+    scope: z
+        .string()
+        .optional()
+        .meta({
+            description: `Filter by scope, comma-delimited. Available scopes: ${RoleDefaultScope.join(', ')}`,
+            example: '',
+        }),
 });
 
 /**

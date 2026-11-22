@@ -1,3 +1,4 @@
+import { subject } from '@casl/ability';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -5,7 +6,12 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import {
     TermPolicyDefaultAvailableOrderBy,
@@ -22,6 +28,7 @@ import { Injectable } from '@nestjs/common';
 export class TermPolicyHttpService {
     constructor(
         private readonly termPolicyDomain: TermPolicyDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -29,6 +36,10 @@ export class TermPolicyHttpService {
     async getListByAdmin(
         query: TermPolicyAdminListRequestDto
     ): Promise<IResponsePaginationReturn<TermPolicy>> {
+        const scopeWhere = this.policyAbilityDomain.scope(
+            EnumPolicyAction.read,
+            EnumPolicySubject.TermPolicy
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.TermPolicyWhereInput>(
                 query,
@@ -58,7 +69,8 @@ export class TermPolicyHttpService {
         const { data, ...others } = await this.termPolicyDomain.getListByAdmin(
             params,
             type?.where,
-            status?.where
+            status?.where,
+            scopeWhere
         );
         return {
             data,
@@ -108,6 +120,11 @@ export class TermPolicyHttpService {
     async deleteByAdmin(
         termPolicyId: string
     ): Promise<IResponseReturn<TermPolicy>> {
+        const termPolicy = await this.termPolicyDomain.getOne(termPolicyId);
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.TermPolicy, termPolicy)
+        );
         const deleted = await this.termPolicyDomain.deleteByAdmin(termPolicyId);
 
         return { data: deleted };
@@ -117,6 +134,11 @@ export class TermPolicyHttpService {
         termPolicyId: string,
         updatedBy: string
     ): Promise<IResponseReturn<void>> {
+        const termPolicy = await this.termPolicyDomain.getOne(termPolicyId);
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.TermPolicy, termPolicy)
+        );
         await this.termPolicyDomain.publishByAdmin(termPolicyId, updatedBy);
 
         return {};

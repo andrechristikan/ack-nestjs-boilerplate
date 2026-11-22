@@ -81,7 +81,11 @@ export class FeatureFlagDomain {
         }
 
         if (userId) {
-            if (featureFlag.targetUserIds.includes(userId)) {
+            if (
+                featureFlag.targetUsers.some(
+                    targetUser => targetUser.userId === userId
+                )
+            ) {
                 return;
             }
 
@@ -122,11 +126,14 @@ export class FeatureFlagDomain {
         }
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
+        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>,
+        additionalWhere: Prisma.FeatureFlagWhereInput
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.featureFlagRepository.findWithPaginationOffsetByAdmin(
-            pagination
+            pagination,
+            additionalWhere
         );
     }
 
@@ -134,6 +141,16 @@ export class FeatureFlagDomain {
         pagination: IPaginationQueryCursorParams<Prisma.FeatureFlagWhereInput>
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.featureFlagRepository.findWithPaginationCursor(pagination);
+    }
+
+    /** Returns the stored flag; callers judge it, this method does not. */
+    async getOne(id: string): Promise<FeatureFlag> {
+        const featureFlag = await this.featureFlagRepository.findOneById(id);
+        if (!featureFlag) {
+            throw new FeatureFlagNotFoundException();
+        }
+
+        return featureFlag;
     }
 
     async updateStatusByAdmin(
@@ -145,10 +162,12 @@ export class FeatureFlagDomain {
             throw new FeatureFlagNotFoundException();
         }
 
-        const [updated] = await Promise.all([
-            this.featureFlagRepository.updateStatus(id, data),
-            this.featureFlagCache.deleteCacheByKey(featureFlag.key),
-        ]);
+        const updated = await this.featureFlagRepository.updateStatus(id, data);
+        if (!updated) {
+            throw new FeatureFlagNotFoundException();
+        }
+
+        await this.featureFlagCache.deleteCacheByKey(featureFlag.key);
 
         return updated;
     }
@@ -170,10 +189,15 @@ export class FeatureFlagDomain {
             throw new FeatureFlagInvalidMetadataException();
         }
 
-        const [updated] = await Promise.all([
-            this.featureFlagRepository.updateMetadata(id, data),
-            this.featureFlagCache.deleteCacheByKey(featureFlag.key),
-        ]);
+        const updated = await this.featureFlagRepository.updateMetadata(
+            id,
+            data
+        );
+        if (!updated) {
+            throw new FeatureFlagNotFoundException();
+        }
+
+        await this.featureFlagCache.deleteCacheByKey(featureFlag.key);
 
         return updated;
     }

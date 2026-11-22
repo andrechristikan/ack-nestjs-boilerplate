@@ -7,35 +7,22 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type {
     IActivityLog,
     IActivityLogCreate,
+    IActivityLogScope,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Prisma } from '@generated/prisma-client/client';
 
 export interface IActivityLogRepository {
-    findUserScopedWithPaginationOffset(
-        userId: string,
+    /** Extra caller-supplied constraint, AND-composed first. */
+    findWithPaginationOffset(
+        scope: IActivityLogScope,
         {
             where,
             ...params
-        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
+        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>,
+        additionalWhere: Prisma.ActivityLogWhereInput
     ): Promise<IResponsePaginationReturn<IActivityLog>>;
-    findUserScopedWithPaginationCursor(
-        userId: string,
-        {
-            where,
-            ...params
-        }: IPaginationQueryCursorParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IPaginationCursorReturn<IActivityLog>>;
-    findByWorkspaceWithPaginationOffset(
-        workspaceId: string,
-        userId: string | null,
-        {
-            where,
-            ...params
-        }: IPaginationQueryOffsetParams<Prisma.ActivityLogWhereInput>
-    ): Promise<IResponsePaginationReturn<IActivityLog>>;
-    findByWorkspaceWithPaginationCursor(
-        workspaceId: string,
-        userId: string | null,
+    findWithPaginationCursor(
+        scope: IActivityLogScope,
         {
             where,
             ...params

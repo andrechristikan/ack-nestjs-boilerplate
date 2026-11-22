@@ -2,7 +2,7 @@ import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/dev
 import { DeviceAdminListRequestSchema } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -16,7 +16,6 @@ import type {
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -29,7 +28,6 @@ import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/dev
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceHttpService } from '@modules/device/services/device.http.service';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
@@ -51,15 +49,14 @@ export class DeviceAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.device,
+            subject: EnumPolicySubject.DeviceOwnership,
             action: [EnumPolicyAction.read],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -68,7 +65,7 @@ export class DeviceAdminController {
     async list(
         @Query({ schema: DeviceAdminListRequestSchema })
         query: DeviceAdminListRequestDto,
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
         return this.deviceHttpService.getListOffsetByAdmin(userId, query);
@@ -79,15 +76,14 @@ export class DeviceAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.device,
+            subject: EnumPolicySubject.DeviceOwnership,
             action: [EnumPolicyAction.read, EnumPolicyAction.delete],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -95,9 +91,9 @@ export class DeviceAdminController {
     @Delete('/remove/:deviceOwnershipId')
     async remove(
         @AuthJwtPayload('userId') removedBy: string,
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
-        @Param('deviceOwnershipId', { schema: RequestMongoIdSchema })
+        @Param('deviceOwnershipId', { schema: RequestUuidSchema })
         deviceOwnershipId: string
     ): Promise<IResponseReturn<void>> {
         return this.deviceHttpService.removeByAdmin(

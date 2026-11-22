@@ -49,7 +49,7 @@ Every request shape is a [zod][ref-zod] schema. Schemas reach the framework thro
 
 The subclass adds two rules on top of the framework pipe:
 
-- **Fail-closed on `body` and `param`.** An argument of either type arriving with no schema attached throws `RequestSchemaMissingException` instead of reaching the handler unchecked, so a body is bound as `@Body({ schema: <Module><Action>RequestSchema })` and a path param as `@Param('userId', { schema: RequestMongoIdSchema })`. A `query` argument with no schema still passes.
+- **Fail-closed on `body` and `param`.** An argument of either type arriving with no schema attached throws `RequestSchemaMissingException` instead of reaching the handler unchecked, so a body is bound as `@Body({ schema: <Module><Action>RequestSchema })` and a path param as `@Param('userId', { schema: RequestUuidSchema })`. A `query` argument with no schema still passes.
 - **Empty issue paths carry the argument name.** An issue whose Standard Schema `path` is empty is stamped with the bound argument name before `exceptionFactory` runs, so `errors[].property` reads as the parameter rather than as `Unknown`.
 
 The pipe also strips prototype-polluting keys from the value before validating.
@@ -129,16 +129,16 @@ A path param is validated by a zod schema bound on `@Param`, the same way a body
 ```typescript
 @Get('/get/:userId')
 findOne(
-  @Param('userId', { schema: RequestMongoIdSchema }) userId: string
+  @Param('userId', { schema: RequestUuidSchema }) userId: string
 ) {
   return this.userHttpService.getOne(userId);
 }
 ```
 
-`RequestMongoIdSchema` (`src/common/request/validations/request.mongo-id.validation.ts`) requires a 24-character hex ObjectId. A required non-empty string uses `RequestRequiredStringSchema`. An optional query uses `.optional()` on the schema:
+`RequestUuidSchema` (`src/common/request/validations/request.uuid.validation.ts`) requires a PostgreSQL UUID. A required non-empty string uses `RequestRequiredStringSchema`. An optional query uses `.optional()` on the schema:
 
 ```typescript
-@Query('userId', { schema: RequestMongoIdSchema.optional() })
+@Query('userId', { schema: RequestUuidSchema.optional() })
 userId?: string
 ```
 
@@ -177,8 +177,8 @@ Zod's own combinators build one schema from another. `.extend()`, `.omit()`, `.p
 ```typescript
 export const UserCreateRequestSchema = UserClaimUsernameRequestSchema.extend({
     email: z.string().trim().toLowerCase().max(100),
-    roleId: z.string().regex(/^[0-9a-fA-F]{24}$/),
-    countryId: z.string().regex(/^[0-9a-fA-F]{24}$/),
+    roleId: RequestUuidSchema,
+    countryId: RequestUuidSchema,
 });
 ```
 
@@ -231,7 +231,7 @@ A module-specific check goes in that module's `validations/` folder instead.
 
 Shared schemas:
 
-- `RequestMongoIdSchema` — 24-character hex MongoDB ObjectId
+- `RequestUuidSchema` — PostgreSQL UUID
 - `RequestRequiredStringSchema` — non-empty string
 - `RequestBooleanStringSchema` — `z.stringbool` accepting exactly `'true'` or `'false'`, case-sensitive; used by the boolean environment variables
 - `RequestEncryptionSecretSchema` — exactly 64 base64url characters; used by `APP_ENCRYPTION_SECRET_KEY` and `AUTH_TWO_FACTOR_ENCRYPTION_KEY`

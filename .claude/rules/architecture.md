@@ -29,12 +29,18 @@ its definition (`rules/nest-wiring.md`).
 - An i18n path composed by a tier 1 or tier 2 util travels with the row it stamps (`ActivityLogUtil.getDescription`) and is not a business rule. The repository still never resolves a message itself.
 - **A multi-step write on this repository's own model may open a transaction here** through `this.databaseService.withTransaction` (`rules/database.md`). A write that also touches another repository's model is not opened here; the domain composes those repositories inside `this.databaseService.withTransaction`.
 - **A repository never injects or calls another repository.** Same-feature siblings are composed by the domain.
+- **No CASL below the HTTP service.** A repository imports nothing from `@casl/*` and nothing of the policy module's ability types (`PolicyWhereInput`, `PolicyAbility`, `PolicyAbilitySubject`, `PolicyModelSubject`, `PolicyAbilityRule`).
+- **A collection query takes `additionalWhere: Prisma.<Model>WhereInput`.** It is required and trailing (`rules/null-safety.md`), model-typed, with the JSDoc line "Extra caller-supplied constraint, AND-composed first." It is a neutral caller constraint: the repository does not know where it came from and never validates, inspects or branches on it.
+  - The method composes `AND: [additionalWhere, …business filters]`, the extra constraint first.
+  - A caller that means no extra constraint passes `{}`. That object matches every row, so the method keeps the same business filters and the same result shape.
+- **A single-row read, update, or delete takes no ability predicate.** The statement is the identity plus the business filters. The write is by that id. A missing row returns `null` and the caller raises the feature not-found.
 - **It is the persistence port.** The class `implements I<Feature>[<Concern>]Repository` at
   `interfaces/<module>.[<concern>-]repository.interface.ts`. The interface file and the
   class file are separate (`rules/naming.md`). Callers inject the class (`UserRepository`);
-  Nest cannot inject an interface without a token. Domain and HTTP see `string` IDs.
-  ObjectId versus UUID is mapped in this class, not by leaking a Prisma engine type into a
-  domain signature. Public repository methods return named `I*` shapes, Prisma models, or
+  Nest cannot inject an interface without a token. Domain and HTTP see `string` IDs
+  throughout — the Prisma `@db.Uuid` column uses the same representation, so there is no
+  id-dialect mapping to own. A Prisma filter shape crosses this port only as `additionalWhere`
+  on a collection query; a domain forwards that argument and never builds one. A single-row method takes no Prisma filter. Public repository methods return named `I*` shapes, Prisma models, or
   primitives — not `unknown` or `Record<string, unknown>` (`rules/null-safety.md`).
 
 ## Domain — `<module>[.<concern>].domain.ts`
@@ -46,6 +52,7 @@ its definition (`rules/nest-wiring.md`).
 - Injects the repositories of its OWN feature as classes — **one or many, or none**. A domain whose work is pure rule validation reads no state and injects nothing; it still belongs here, because a rejection that RAISES is domain work wherever it rests (`rules/exceptions.md`). Another feature's data comes from that feature's domain, never from its repository (`rules/cross-module.md`). Injects other domains, utils and queue classes by the tier table below.
 - **Injects `DatabaseService` only to call `withTransaction`.** It never issues a model query on `client`. Feature data access still goes through a repository. This is the single hardest rule in the file.
 - **Opens a transaction when the work spans more than one repository.** It calls `this.databaseService.withTransaction` and passes the `tx` into each `*InTx` repository or domain method (`rules/database.md`). A single-repository write does not open one here.
+- **No CASL in a feature domain.** A domain imports nothing from `@casl/*` and none of the policy module's ability types, and it never calls `PolicyAbilityDomain` (`rules/security.md`). A collection method takes a trailing `additionalWhere: Prisma.<Model>WhereInput`, forwards it to the repository unchanged, and a caller with no extra constraint passes `{}`. A single-row read, update, or delete loads by identity, raises the feature not-found when the repository answers `null`, and writes by that id with no ability predicate.
 - Provided by `<feature>.domain.module.ts`, and it is the only layer another feature's domain, HTTP, or processor module ever consumes.
 
 ## HTTP service — `<module>[.<concern>].http.service.ts`
@@ -53,6 +60,7 @@ its definition (`rules/nest-wiring.md`).
 - **The controller's only collaborator**, one per HTTP concern. It is where a response DTO is born and where the HTTP shape of a request stops mattering.
 - It translates: a request DTO into the domain call — passing it through when nothing derives from it, or into `I<Module>*` interface parameters when something does — then the domain result into a response DTO, and a list result into the pagination response the scope requires (`rules/pagination.md`).
 - **It owns no business rule and reaches no repository.** A check that would be equally true for a queued job belongs to the domain; putting it here means the processor path silently skips it.
+- **It is the only layer that turns an ability into a constraint.** A list or other collection calls `PolicyAbilityDomain.scope` and passes that predicate down as `additionalWhere`. A single read, update, or delete loads the row by identity, returns the feature 404 when the row is missing, then calls `authorize` on the loaded record. The write is by that id and takes no ability predicate (`rules/security.md`).
 - Injects domains, and tier 1 / tier 2 kit for shaping. Provided by `<feature>.http.module.ts`.
 
 ## Processor service — `<module>[.<concern>].processor.service.ts`
@@ -186,8 +194,8 @@ It falls back onto the complexity axis, where YAGNI DOES reject it, when any of 
 
 **A repository MUST have a header interface** — `I<Feature>[<Concern>]Repository` at
 `interfaces/<module>.[<concern>-]repository.interface.ts` — and the class `implements` it.
-This is the persistence port: ID dialect (ObjectId versus UUID) and Prisma `where` shapes stay
-behind it. Callers inject the **class** (`userRepository: UserRepository`).
+This is the persistence port: Prisma `where` shapes stay behind it. Callers inject the
+**class** (`userRepository: UserRepository`).
 
 **A domain, HTTP service, processor service, and every `src/common/` service or util MUST NOT
 get a header interface.** Inject the class. One implementor, no token — an `IUserDomain` /

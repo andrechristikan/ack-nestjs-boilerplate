@@ -1,3 +1,4 @@
+import { subject } from '@casl/ability';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -5,11 +6,12 @@ import type {
     IResponsePaginationReturn,
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
-import type {
-    Workspace,
-    WorkspaceInvite,
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
 } from '@generated/prisma-client/client';
+import type { Workspace } from '@generated/prisma-client/client';
 import {
     WorkspaceInviteDefaultAvailableOrderBy,
     WorkspaceInviteDefaultAvailableSearch,
@@ -19,8 +21,10 @@ import type { WorkspaceInviteListRequestDto } from '@modules/workspace/dtos/requ
 import type { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
 import type { WorkspaceInviteResendRequestDto } from '@modules/workspace/dtos/request/workspace.invite-resend.request.dto';
+import type { WorkspaceInviteResponseDto } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
 import type { WorkspaceInvitePreviewResponseDto } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 import { WorkspaceInviteDomain } from '@modules/workspace/domains/workspace.invite.domain';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import type { IWorkspaceInviteList } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
@@ -29,6 +33,7 @@ import { Injectable } from '@nestjs/common';
 export class WorkspaceInviteHttpService {
     constructor(
         private readonly workspaceInviteDomain: WorkspaceInviteDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
@@ -38,6 +43,10 @@ export class WorkspaceInviteHttpService {
         workspaceId: string,
         query: WorkspaceInviteListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
+        const scopeWhere = this.policyAbilityDomain.scope(
+            EnumPolicyAction.read,
+            EnumPolicySubject.WorkspaceInvite
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.cursor<Prisma.WorkspaceInviteWhereInput>(
                 query,
@@ -63,7 +72,8 @@ export class WorkspaceInviteHttpService {
             await this.workspaceInviteDomain.getInvitesList(
                 workspaceId,
                 params,
-                status?.where
+                status?.where,
+                scopeWhere
             );
 
         return {
@@ -77,19 +87,25 @@ export class WorkspaceInviteHttpService {
         actorId: string,
         {
             email,
-            workspaceRole,
+            workspaceRoleId,
             projectId,
-            projectRole,
+            projectRoleId,
             expiryDuration,
         }: WorkspaceInviteCreateRequestDto
-    ): Promise<IResponseReturn<WorkspaceInvite>> {
+    ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.create,
+            subject(EnumPolicySubject.WorkspaceInvite, {
+                workspaceId: workspace.id,
+            })
+        );
         const invite = await this.workspaceInviteDomain.createInvite(
             workspace,
             actorId,
-            { email, workspaceRole, projectId, projectRole, expiryDuration }
+            { email, workspaceRoleId, projectId, projectRoleId, expiryDuration }
         );
 
-        return { data: invite };
+        return { data: this.workspaceUtil.mapInvite(invite) };
     }
 
     async resendInvite(
@@ -97,15 +113,23 @@ export class WorkspaceInviteHttpService {
         actorId: string,
         workspaceInviteId: string,
         { expiryDuration }: WorkspaceInviteResendRequestDto
-    ): Promise<IResponseReturn<WorkspaceInvite>> {
-        const invite = await this.workspaceInviteDomain.resendInvite(
+    ): Promise<IResponseReturn<WorkspaceInviteResponseDto>> {
+        const invite = await this.workspaceInviteDomain.getByIdAndWorkspace(
+            workspaceInviteId,
+            workspace.id
+        );
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.WorkspaceInvite, invite)
+        );
+        const resent = await this.workspaceInviteDomain.resendInvite(
             workspace,
             actorId,
             workspaceInviteId,
             expiryDuration
         );
 
-        return { data: invite };
+        return { data: this.workspaceUtil.mapInvite(resent) };
     }
 
     async revokeInvite(
@@ -113,6 +137,14 @@ export class WorkspaceInviteHttpService {
         actorId: string,
         workspaceInviteId: string
     ): Promise<void> {
+        const invite = await this.workspaceInviteDomain.getByIdAndWorkspace(
+            workspaceInviteId,
+            workspaceId
+        );
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.WorkspaceInvite, invite)
+        );
         await this.workspaceInviteDomain.revokeInvite(
             workspaceId,
             actorId,

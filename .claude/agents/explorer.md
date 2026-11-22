@@ -82,7 +82,7 @@ A file you did not open is not in your table.
 Third-party behaviour: a library's documented contract, a framework's lifecycle, an API's
 response shape, the meaning of a vendor error string, what a version bump changed.
 
-The stack you will most often be asked about: NestJS 12, TypeScript 6, Prisma 6 against MongoDB, BullMQ,
+The stack you will most often be asked about: NestJS 12, TypeScript 6, Prisma 6 against PostgreSQL, BullMQ,
 `@nestjs/cache-manager` with Keyv/Redis, zod 4 with `zod-openapi` and `@standard-schema/spec`,
 `nestjs-i18n`, Pino, Sentry, Passport, CASL, Luxon, AWS SDK (S3, SES), Firebase Admin,
 nest-commander, `node:crypto`, Vitest with `unplugin-swc` and `vitest-mock-extended`, knip,

@@ -4,8 +4,8 @@
  */
 export enum EnumRoleStatusCodeError {
     notFound = 50500,
-    exist = 50501,
-    predefinedNotFound = 50502,
-    forbidden = 50503,
-    used = 50504,
+    scopeMismatch = 50501,
+    exist = 50502,
+    used = 50503,
+    predefined = 50504,
 }

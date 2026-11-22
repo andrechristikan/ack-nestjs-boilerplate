@@ -19,13 +19,16 @@ export class PasswordHistoryDomain {
         private readonly passwordHistoryRepository: PasswordHistoryRepository
     ) {}
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListOffsetByAdmin(
         userId: string,
-        pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
+        pagination: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>,
+        additionalWhere: Prisma.PasswordHistoryWhereInput
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>> {
         return this.passwordHistoryRepository.findWithPaginationOffsetByAdmin(
             userId,
-            pagination
+            pagination,
+            additionalWhere
         );
     }
 

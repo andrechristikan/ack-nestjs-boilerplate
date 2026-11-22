@@ -2,7 +2,7 @@ import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/s
 import { SessionAdminListRequestSchema } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import { RequestThrottle } from '@common/request/decorators/request.decorator';
-import { RequestMongoIdSchema } from '@common/request/validations/request.mongo-id.validation';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import {
     Response,
     ResponsePagination,
@@ -20,7 +20,6 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
 
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
@@ -33,7 +32,6 @@ import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 
 @ApiTags('modules.admin.user.session')
@@ -49,15 +47,14 @@ export class SessionAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.session,
+            subject: EnumPolicySubject.Session,
             action: [EnumPolicyAction.read],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
@@ -66,7 +63,7 @@ export class SessionAdminController {
     async list(
         @Query({ schema: SessionAdminListRequestSchema })
         query: SessionAdminListRequestDto,
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.sessionHttpService.getListOffsetByAdmin(userId, query);
@@ -77,24 +74,23 @@ export class SessionAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.session,
+            subject: EnumPolicySubject.Session,
             action: [EnumPolicyAction.read, EnumPolicyAction.delete],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Delete('/revoke/:sessionId')
     async revoke(
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
-        @Param('sessionId', { schema: RequestMongoIdSchema })
+        @Param('sessionId', { schema: RequestUuidSchema })
         sessionId: string,
         @AuthJwtPayload('userId') revokedBy: string
     ): Promise<IResponseReturn<void>> {
@@ -110,22 +106,21 @@ export class SessionAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
-            action: [EnumPolicyAction.read],
+            subject: EnumPolicySubject.User,
+            action: [EnumPolicyAction.read, EnumPolicyAction.update],
         },
         {
-            subject: EnumPolicySubject.session,
+            subject: EnumPolicySubject.Session,
             action: [EnumPolicyAction.read, EnumPolicyAction.delete],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @RequestThrottle({ user: true })
     @Delete('/revoke-all')
     async revokeAll(
-        @Param('userId', { schema: RequestMongoIdSchema })
+        @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @AuthJwtPayload('userId') revokedBy: string
     ): Promise<IResponseReturn<void>> {

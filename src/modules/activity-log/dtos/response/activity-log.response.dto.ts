@@ -20,24 +20,24 @@ export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
 }).extend({
     createdBy: z.string().nullable().meta({
         description: 'Identifier of the user who performed the action',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     userId: z.string().meta({
         description:
             'Identifier of the user this entry belongs to: the actor for payload actions, the affected user for target actions',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     user: UserRefResponseSchema.meta({
         description:
             'Embedded user this entry belongs to: the actor for payload actions, the affected user for target actions',
         example: {
-            id: faker.database.mongodbObjectId(),
+            id: faker.string.uuid(),
             createdAt: faker.date.recent(),
-            createdBy: faker.database.mongodbObjectId(),
+            createdBy: faker.string.uuid(),
             updatedAt: faker.date.recent(),
-            updatedBy: faker.database.mongodbObjectId(),
+            updatedBy: faker.string.uuid(),
             deletedAt: faker.date.recent(),
-            deletedBy: faker.database.mongodbObjectId(),
+            deletedBy: faker.string.uuid(),
             name: faker.person.fullName(),
             username: faker.internet.username().toLowerCase(),
             photo: {
@@ -106,7 +106,7 @@ export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
         description:
             'Metadata recorded with the entry; the keys present depend on the action',
         example: {
-            targetUserId: faker.database.mongodbObjectId(),
+            targetUserId: faker.string.uuid(),
             targetUsername: faker.internet.username().toLowerCase(),
             timestamp: faker.date.recent().toISOString(),
         },

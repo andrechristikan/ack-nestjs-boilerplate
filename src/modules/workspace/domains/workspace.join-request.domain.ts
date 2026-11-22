@@ -8,9 +8,9 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
+    EnumRoleScope,
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
-    EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
 import type {
@@ -20,6 +20,9 @@ import type {
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { FeatureFlagDomain } from '@modules/feature-flag/domains/feature-flag.domain';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
+import { RoleDomain } from '@modules/role/domains/role.domain';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { UserDomain } from '@modules/user/domains/user.domain';
 import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
 import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
@@ -52,7 +55,8 @@ export class WorkspaceJoinRequestDomain {
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,
         private readonly notificationQueue: NotificationQueue,
-        private readonly featureFlagDomain: FeatureFlagDomain
+        private readonly featureFlagDomain: FeatureFlagDomain,
+        private readonly roleDomain: RoleDomain
     ) {
         this.homeUrl = this.configService.get<string>('home.url')!;
         this.joinRequestReviewLinkPattern = this.configService.get<string>(
@@ -175,18 +179,38 @@ export class WorkspaceJoinRequestDomain {
         return joinRequest;
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getJoinRequestsList(
         workspaceId: string,
         pagination: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
-        status?: Record<string, IPaginationIn>
+        status: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.WorkspaceJoinRequestWhereInput
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
         await this.assertJoinRequestAllowed();
 
         return this.workspaceJoinRequestRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
-            status
+            status,
+            additionalWhere
         );
+    }
+
+    /** Loads the join request in the workspace. */
+    async getByIdAndWorkspace(
+        workspaceJoinRequestId: string,
+        workspaceId: string
+    ): Promise<WorkspaceJoinRequest> {
+        const joinRequest =
+            await this.workspaceJoinRequestRepository.findByIdAndWorkspace(
+                workspaceJoinRequestId,
+                workspaceId
+            );
+        if (!joinRequest) {
+            throw new WorkspaceJoinRequestNotFoundException();
+        }
+
+        return joinRequest;
     }
 
     async acceptJoinRequest(
@@ -223,19 +247,32 @@ export class WorkspaceJoinRequestDomain {
         }
 
         await this.databaseService.withTransaction(async tx => {
+            const memberRole = await this.roleDomain.getByScopeAndKeyInTx(
+                tx,
+                EnumRoleScope.workspace,
+                EnumRoleWorkspaceKey.member
+            );
+            if (!memberRole) {
+                throw new RoleNotFoundException();
+            }
+
             await this.workspaceMemberDomain.createInTx(
                 tx,
                 joinRequest.workspaceId,
                 joinRequest.userId,
-                EnumWorkspaceMemberRole.member,
+                memberRole.id,
                 reviewerId
             );
-            await this.workspaceJoinRequestRepository.acceptInTx(
-                tx,
-                joinRequest.id,
-                reviewerId,
-                reviewedAt
-            );
+            const accepted =
+                await this.workspaceJoinRequestRepository.acceptInTx(
+                    tx,
+                    joinRequest.id,
+                    reviewerId,
+                    reviewedAt
+                );
+            if (!accepted) {
+                throw new WorkspaceJoinRequestNotFoundException();
+            }
         });
 
         this.activityLogDomain.stagePrepared(events);
@@ -285,12 +322,15 @@ export class WorkspaceJoinRequestDomain {
             events.push(workspaceJoinRejectedByAdminEvent);
         }
 
-        await this.workspaceJoinRequestRepository.reject(
+        const rejected = await this.workspaceJoinRequestRepository.reject(
             workspaceJoinRequestId,
             reviewerId,
             rejectReasonCode,
             reviewedAt
         );
+        if (!rejected) {
+            throw new WorkspaceJoinRequestNotFoundException();
+        }
 
         this.activityLogDomain.stagePrepared(events);
 

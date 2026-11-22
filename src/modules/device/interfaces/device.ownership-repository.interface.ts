@@ -5,7 +5,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { Prisma } from '@generated/prisma-client/client';
+import type { DeviceOwnership, Prisma } from '@generated/prisma-client/client';
 import type {
     IDeviceOwnership,
     IDeviceOwnershipLoginUpsert,
@@ -31,20 +31,22 @@ export interface IDeviceOwnershipRepository {
         deviceOwnershipId: string,
         removedBy: string,
         now: Date
-    ): Promise<IDeviceOwnership>;
+    ): Promise<IDeviceOwnership | null>;
     revokeAllByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         revokedBy: string,
         now: Date
     ): Promise<string[]>;
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationOffsetByAdmin(
         userId: string,
         {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>
+        isRevoked: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.DeviceOwnershipWhereInput
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>>;
     findActiveWithPaginationCursor(
         userId: string,
@@ -55,6 +57,10 @@ export interface IDeviceOwnershipRepository {
         }: IPaginationQueryCursorParams<Prisma.DeviceOwnershipWhereInput>
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>>;
     findTokensByUserId(userId: string): Promise<IDeviceOwnershipWithDevice[]>;
+    findOneActive(
+        userId: string,
+        deviceOwnershipId: string
+    ): Promise<DeviceOwnership | null>;
     existsActive(userId: string, deviceOwnershipId: string): Promise<boolean>;
     touchInTx(
         tx: IDatabaseTransactionClient,

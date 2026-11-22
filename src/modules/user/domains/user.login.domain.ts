@@ -312,8 +312,7 @@ export class UserLoginDomain {
                     isRequiredSetup: true,
                     challengeToken,
                     challengeExpiresInMs: expiresInMs,
-                    backupCodesRemaining:
-                        user.twoFactor?.backupCodes.length ?? 0,
+                    backupCodesRemaining: user.twoFactor.backupCodes.length,
                     otpauthUrl,
                     secret,
                 },
@@ -328,7 +327,7 @@ export class UserLoginDomain {
                 isRequiredSetup: false,
                 challengeToken,
                 challengeExpiresInMs: expiresInMs,
-                backupCodesRemaining: user.twoFactor?.backupCodes.length ?? 0,
+                backupCodesRemaining: user.twoFactor.backupCodes.length,
             },
         };
     }
@@ -392,8 +391,7 @@ export class UserLoginDomain {
         const recorded = await this.userTwoFactorRepository.verifyTwoFactorInTx(
             tx,
             user.id,
-            verified,
-            user.twoFactor?.backupCodes ?? []
+            verified
         );
         if (!recorded) {
             throw new AuthTwoFactorInvalidException();
@@ -407,8 +405,7 @@ export class UserLoginDomain {
     ): Promise<void> {
         const recorded = await this.userTwoFactorRepository.verifyTwoFactor(
             user.id,
-            verified,
-            user.twoFactor?.backupCodes ?? []
+            verified
         );
         if (!recorded) {
             throw new AuthTwoFactorInvalidException();

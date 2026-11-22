@@ -14,6 +14,7 @@ import {
     EnumDeviceNotificationProvider,
     Prisma,
 } from '@generated/prisma-client/client';
+import type { DeviceOwnership } from '@generated/prisma-client/client';
 import { ActivityLogDomain } from '@modules/activity-log/domains/activity-log.domain';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
@@ -42,15 +43,18 @@ export class DeviceDomain {
         private readonly helperDateService: HelperDateService
     ) {}
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.DeviceOwnershipWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>
+        isRevoked: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.DeviceOwnershipWhereInput
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
         return this.deviceOwnershipRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination,
-            isRevoked
+            isRevoked,
+            additionalWhere
         );
     }
 
@@ -258,6 +262,10 @@ export class DeviceDomain {
                             userId,
                             now
                         );
+                    if (!row) {
+                        throw new DeviceNotFoundException();
+                    }
+
                     await this.deviceRepository.clearNotificationByIdsInTx(
                         tx,
                         [row.deviceId],
@@ -296,6 +304,23 @@ export class DeviceDomain {
         }
     }
 
+    /** Returns the active ownership of the user; callers judge it, this method does not. */
+    async getOneActive(
+        userId: string,
+        deviceOwnershipId: string
+    ): Promise<DeviceOwnership> {
+        const deviceOwnership =
+            await this.deviceOwnershipRepository.findOneActive(
+                userId,
+                deviceOwnershipId
+            );
+        if (!deviceOwnership) {
+            throw new DeviceNotFoundException();
+        }
+
+        return deviceOwnership;
+    }
+
     async removeByAdmin(
         userId: string,
         deviceOwnershipId: string,
@@ -330,6 +355,10 @@ export class DeviceDomain {
                             removedBy,
                             now
                         );
+                    if (!row) {
+                        throw new DeviceNotFoundException();
+                    }
+
                     await this.deviceRepository.clearNotificationByIdsInTx(
                         tx,
                         [row.deviceId],

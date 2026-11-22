@@ -7,6 +7,7 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { FeatureFlagUpdateMetadataRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-metadata.request.dto';
 import type { FeatureFlagUpdateStatusRequestDto } from '@modules/feature-flag/dtos/request/feature-flag.update-status.request.dto';
+import type { IFeatureFlagWithTargetUsers } from '@modules/feature-flag/interfaces/feature-flag.interface';
 import type { IFeatureFlagRepository } from '@modules/feature-flag/interfaces/feature-flag.repository.interface';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
@@ -19,13 +20,41 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
         private readonly paginationService: PaginationService
     ) {}
 
+    private async updateScoped(
+        id: string,
+        data: Prisma.FeatureFlagUpdateManyMutationInput
+    ): Promise<FeatureFlag | null> {
+        const { count } =
+            await this.databaseService.client.featureFlag.updateMany({
+                where: { id },
+                data,
+            });
+        if (count === 0) {
+            return null;
+        }
+
+        return this.databaseService.client.featureFlag.findUnique({
+            where: { id },
+        });
+    }
+
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationOffsetByAdmin(
-        pagination: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>
+        {
+            where,
+            ...others
+        }: IPaginationQueryOffsetParams<Prisma.FeatureFlagWhereInput>,
+        additionalWhere: Prisma.FeatureFlagWhereInput
     ): Promise<IResponsePaginationReturn<FeatureFlag>> {
         return this.paginationService.offset<
             FeatureFlag,
             Prisma.FeatureFlagWhereInput
-        >(this.databaseService.client.featureFlag, pagination);
+        >(this.databaseService.client.featureFlag, {
+            ...others,
+            where: {
+                AND: [additionalWhere, where ?? {}],
+            },
+        });
     }
 
     async findWithPaginationCursor(
@@ -37,53 +66,36 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
         >(this.databaseService.client.featureFlag, pagination);
     }
 
-    async findOneByKey(key: string): Promise<FeatureFlag | null> {
+    async findOneByKey(
+        key: string
+    ): Promise<IFeatureFlagWithTargetUsers | null> {
         return this.databaseService.client.featureFlag.findUnique({
             where: {
                 key,
+            },
+            include: {
+                targetUsers: true,
             },
         });
     }
 
     async findOneById(id: string): Promise<FeatureFlag | null> {
         return this.databaseService.client.featureFlag.findFirst({
-            where: {
-                id,
-            },
+            where: { id },
         });
     }
 
     async updateStatus(
         id: string,
-        {
-            isEnable,
-            rolloutPercent,
-            targetUserIds,
-        }: FeatureFlagUpdateStatusRequestDto
-    ): Promise<FeatureFlag> {
-        return this.databaseService.client.featureFlag.update({
-            where: {
-                id,
-            },
-            data: {
-                isEnable,
-                rolloutPercent,
-                targetUserIds,
-            },
-        });
+        { isEnable, rolloutPercent }: FeatureFlagUpdateStatusRequestDto
+    ): Promise<FeatureFlag | null> {
+        return this.updateScoped(id, { isEnable, rolloutPercent });
     }
 
     async updateMetadata(
         id: string,
         { metadata }: FeatureFlagUpdateMetadataRequestDto
-    ): Promise<FeatureFlag> {
-        return this.databaseService.client.featureFlag.update({
-            where: {
-                id,
-            },
-            data: {
-                metadata,
-            },
-        });
+    ): Promise<FeatureFlag | null> {
+        return this.updateScoped(id, { metadata });
     }
 }

@@ -1,7 +1,5 @@
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationQueryCursorParams,
     IPaginationQueryOffsetParams,
@@ -20,8 +18,7 @@ import { Injectable } from '@nestjs/common';
 export class ProjectRepository implements IProjectRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly paginationService: PaginationService
     ) {}
 
     async findActiveByIdAndWorkspace(
@@ -30,15 +27,13 @@ export class ProjectRepository implements IProjectRepository {
     ): Promise<Project | null> {
         return this.databaseService.client.project.findFirst({
             where: {
-                id: projectId,
-                workspaceId,
-                OR: ProjectActiveFilter,
+                AND: [{ id: projectId }, { workspaceId }, ProjectActiveFilter],
             },
         });
     }
 
     async findByIdForAdmin(projectId: string): Promise<Project | null> {
-        return this.databaseService.client.project.findUnique({
+        return this.databaseService.client.project.findFirst({
             where: { id: projectId },
         });
     }
@@ -60,13 +55,14 @@ export class ProjectRepository implements IProjectRepository {
         return count > 0;
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationCursorForWorkspace(
         workspaceId: string,
-        memberUserId: string | null,
         {
-            where,
+            where: filters,
             ...others
-        }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>
+        }: IPaginationQueryCursorParams<Prisma.ProjectWhereInput>,
+        additionalWhere: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.cursor<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,
@@ -74,95 +70,119 @@ export class ProjectRepository implements IProjectRepository {
                 ...others,
                 where: {
                     AND: [
-                        where ?? {},
+                        additionalWhere,
+                        filters ?? {},
                         { workspaceId },
-                        { OR: ProjectActiveFilter },
-                        ...(memberUserId
-                            ? [{ members: { some: { userId: memberUserId } } }]
-                            : []),
+                        ProjectActiveFilter,
                     ],
                 },
             }
         );
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationOffsetForAdmin(
         {
-            where,
+            where: filters,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.ProjectWhereInput>,
-        workspaceId?: string
+        workspaceId: string | undefined,
+        additionalWhere: Prisma.ProjectWhereInput
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.offset<Project, Prisma.ProjectWhereInput>(
             this.databaseService.client.project,
             {
                 ...others,
                 where: {
-                    ...where,
-                    ...(workspaceId ? { workspaceId } : {}),
+                    AND: [
+                        additionalWhere,
+                        filters ?? {},
+                        ...(workspaceId ? [{ workspaceId }] : []),
+                    ],
                 },
             }
         );
     }
 
-    async create(
+    async createInTx(
+        tx: IDatabaseTransactionClient,
         workspaceId: string,
         { name, description }: ProjectCreateRequestDto,
-        slugCandidates: string[]
+        slug: string
     ): Promise<Project> {
-        for (const slug of slugCandidates) {
-            try {
-                return await this.databaseService.client.project.create({
-                    data: {
-                        workspaceId,
-                        name,
-                        slug,
-                        description,
-                        deletedAt: null,
-                    },
-                });
-            } catch (error: unknown) {
-                const isSlugCollision = this.databaseUtil.isUniqueCollision(
-                    error,
-                    'slug'
-                );
-                if (!isSlugCollision) {
-                    throw error;
-                }
-            }
-        }
-
-        throw new DatabaseUniqueValueGenerationFailedException();
+        return tx.project.create({
+            data: {
+                workspaceId,
+                name,
+                slug,
+                description,
+                deletedAt: null,
+            },
+        });
     }
 
     async updateDetails(
         projectId: string,
         { name, description }: ProjectUpdateRequestDto
-    ): Promise<Project> {
-        return this.databaseService.client.project.update({
-            where: { id: projectId },
-            data: {
-                name,
-                description,
-            },
+    ): Promise<Project | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.project.updateMany({
+                where: { id: projectId },
+                data: {
+                    name,
+                    description,
+                },
+            });
+            if (count === 0) {
+                return null;
+            }
+
+            return tx.project.findUnique({
+                where: { id: projectId },
+            });
         });
     }
 
-    async updateSlug(projectId: string, slug: string): Promise<Project> {
-        return this.databaseService.client.project.update({
-            where: { id: projectId },
-            data: {
-                slug,
-            },
+    async updateSlug(projectId: string, slug: string): Promise<Project | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.project.updateMany({
+                where: { id: projectId },
+                data: {
+                    slug,
+                },
+            });
+            if (count === 0) {
+                return null;
+            }
+
+            return tx.project.findUnique({
+                where: { id: projectId },
+            });
         });
     }
 
-    async softDelete(projectId: string, deletedAt: Date): Promise<void> {
-        await this.databaseService.client.project.softDelete({
-            where: { id: projectId },
-            data: {
-                deletedAt,
-            },
+    async softDelete(
+        projectId: string,
+        deletedAt: Date,
+        deletedBy: string
+    ): Promise<Project | null> {
+        return this.databaseService.withTransaction(async tx => {
+            const { count } = await tx.project.updateMany({
+                where: {
+                    AND: [{ id: projectId }, ProjectActiveFilter],
+                },
+                data: {
+                    deletedAt,
+                    deletedBy,
+                },
+            });
+            if (count === 0) {
+                return null;
+            }
+
+            return tx.project.findUnique({
+                where: { id: projectId },
+            });
         });
     }
 
@@ -175,7 +195,7 @@ export class ProjectRepository implements IProjectRepository {
         await tx.project.updateMany({
             where: {
                 workspaceId,
-                OR: ProjectActiveFilter,
+                ...ProjectActiveFilter,
             },
             data: {
                 deletedAt,

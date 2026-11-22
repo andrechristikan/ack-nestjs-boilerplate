@@ -1,24 +1,21 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { EnumProjectMemberRole } from '@generated/prisma-client/client';
+import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 
 /**
  * Validates the body for assigning a workspace member to a project.
  * @public
  */
 export const ProjectMemberAssignRequestSchema = z.strictObject({
-    userId: z
-        .string()
-        .regex(/^[0-9a-fA-F]{24}$/)
-        .meta({
-            description:
-                'User id to assign to the project; must already be a member of the parent workspace',
-            example: faker.database.mongodbObjectId(),
-        }),
-    role: z.enum(EnumProjectMemberRole).meta({
+    userId: RequestUuidSchema.meta({
         description:
-            'Project member role; assigning admin requires the caller to be workspace owner or admin',
-        example: EnumProjectMemberRole.member,
+            'User id to assign to the project; must already be a member of the parent workspace',
+        examples: [faker.string.uuid()],
+    }),
+    roleId: RequestUuidSchema.meta({
+        description:
+            'Id of the project role, taken from the shared role list with scope project; assigning the admin role requires the caller to hold manage on project members',
+        examples: [faker.string.uuid()],
     }),
 });
 

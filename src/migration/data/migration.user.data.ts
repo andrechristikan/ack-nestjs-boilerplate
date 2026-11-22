@@ -1,7 +1,8 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.platform-key.enum';
 import type { IMigrationUserData } from '@migration/interfaces/migration.interface';
 
-export const MigrationUserSuperAdminId = '6aac171205d6fc2f45c6d616';
+export const MigrationUserSuperAdminId = 'e838f465-4713-4cec-9519-00ca2288e5f3';
 
 const UserData: IMigrationUserData[] = [
     {
@@ -10,7 +11,7 @@ const UserData: IMigrationUserData[] = [
         email: 'superadmin@mail.com',
         username: 'superadmin',
         name: 'Super Admin',
-        role: 'superadmin',
+        role: EnumRolePlatformKey.superAdmin,
         password: 'aaAA@123',
     },
     {
@@ -19,7 +20,7 @@ const UserData: IMigrationUserData[] = [
         email: 'admin@mail.com',
         username: 'admin',
         name: 'Admin',
-        role: 'admin',
+        role: EnumRolePlatformKey.admin,
         password: 'aaAA@123',
     },
 ];
@@ -36,7 +37,19 @@ export const MigrationUserData: Record<
             email: 'user@mail.com',
             username: 'user',
             name: 'User',
-            role: 'user',
+            role: EnumRolePlatformKey.user,
+            password: 'aaAA@123',
+        },
+    ],
+    [EnumAppEnvironment.test]: [
+        ...UserData,
+        {
+            id: null,
+            country: 'ID',
+            email: 'user@mail.com',
+            username: 'user',
+            name: 'User',
+            role: EnumRolePlatformKey.user,
             password: 'aaAA@123',
         },
     ],

@@ -14,12 +14,14 @@ import {
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import {
     WorkspaceActiveFilter,
+    WorkspaceInviteRoleInclude,
     WorkspaceInviteUserListSelect,
 } from '@modules/workspace/constants/workspace.constant';
 import type { IWorkspaceInviteRepository } from '@modules/workspace/interfaces/workspace.invite-repository.interface';
 import type {
     IWorkspaceInviteCreateData,
     IWorkspaceInviteList,
+    IWorkspaceInviteWithRole,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -68,7 +70,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
 
     async findPendingByHashedToken(
         hashedToken: string
-    ): Promise<WorkspaceInvite | null> {
+    ): Promise<IWorkspaceInviteWithRole | null> {
         const today = this.helperDateService.create();
 
         return this.databaseService.client.workspaceInvite.findFirst({
@@ -78,10 +80,9 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 expiredAt: {
                     gt: today,
                 },
-                workspace: {
-                    OR: WorkspaceActiveFilter,
-                },
+                workspace: WorkspaceActiveFilter,
             },
+            include: WorkspaceInviteRoleInclude,
         });
     }
 
@@ -90,10 +91,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         workspaceId: string
     ): Promise<WorkspaceInvite | null> {
         return this.databaseService.client.workspaceInvite.findFirst({
-            where: {
-                id: workspaceInviteId,
-                workspaceId,
-            },
+            where: { id: workspaceInviteId, workspaceId },
         });
     }
 
@@ -112,13 +110,15 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         return count > 0;
     }
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationCursor(
         workspaceId: string,
         {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceInviteWhereInput>,
-        status?: Record<string, IPaginationIn>
+        status: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.WorkspaceInviteWhereInput
     ): Promise<IPaginationCursorReturn<IWorkspaceInviteList>> {
         return this.paginationService.cursor<
             IWorkspaceInviteList,
@@ -126,9 +126,14 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         >(this.databaseService.client.workspaceInvite, {
             ...others,
             where: {
-                ...where,
-                ...(status ?? {}),
-                workspaceId,
+                AND: [
+                    additionalWhere,
+                    {
+                        ...where,
+                        ...(status ?? {}),
+                        workspaceId,
+                    },
+                ],
             },
             select: WorkspaceInviteUserListSelect,
         });
@@ -138,27 +143,28 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         workspaceInviteId,
         workspaceId,
         email,
-        workspaceRole,
+        workspaceRoleId,
         projectId,
-        projectRole,
+        projectRoleId,
         hashedToken,
         reference,
         expiredAt,
         invitedByUserId,
-    }: IWorkspaceInviteCreateData): Promise<WorkspaceInvite> {
+    }: IWorkspaceInviteCreateData): Promise<IWorkspaceInviteWithRole> {
         return this.databaseService.client.workspaceInvite.create({
             data: {
                 id: workspaceInviteId,
                 workspaceId,
                 email,
-                workspaceRole,
+                workspaceRoleId,
                 projectId,
-                projectRole,
+                projectRoleId,
                 token: hashedToken,
                 reference,
                 expiredAt,
                 invitedByUserId,
             },
+            include: WorkspaceInviteRoleInclude,
         });
     }
 
@@ -167,23 +173,40 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         hashedToken: string,
         reference: string,
         expiredAt: Date
-    ): Promise<WorkspaceInvite> {
-        return this.databaseService.client.workspaceInvite.update({
+    ): Promise<IWorkspaceInviteWithRole | null> {
+        const { count } =
+            await this.databaseService.client.workspaceInvite.updateMany({
+                where: { id: workspaceInviteId },
+                data: {
+                    token: hashedToken,
+                    reference,
+                    expiredAt,
+                },
+            });
+        if (count === 0) {
+            return null;
+        }
+
+        return this.databaseService.client.workspaceInvite.findUnique({
             where: { id: workspaceInviteId },
-            data: {
-                token: hashedToken,
-                reference,
-                expiredAt,
-            },
+            include: WorkspaceInviteRoleInclude,
         });
     }
 
-    async revoke(workspaceInviteId: string): Promise<void> {
-        await this.databaseService.client.workspaceInvite.update({
+    async revoke(workspaceInviteId: string): Promise<WorkspaceInvite | null> {
+        const { count } =
+            await this.databaseService.client.workspaceInvite.updateMany({
+                where: { id: workspaceInviteId },
+                data: {
+                    status: EnumWorkspaceInviteStatus.revoked,
+                },
+            });
+        if (count === 0) {
+            return null;
+        }
+
+        return this.databaseService.client.workspaceInvite.findUnique({
             where: { id: workspaceInviteId },
-            data: {
-                status: EnumWorkspaceInviteStatus.revoked,
-            },
         });
     }
 

@@ -1,4 +1,11 @@
-import { Prisma } from '@generated/prisma-client/client';
+import { subject } from '@casl/ability';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import { UserDomain } from '@modules/user/domains/user.domain';
+import { PolicyAbilityDomain } from '@modules/policy/domains/policy.ability.domain';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -21,6 +28,8 @@ import { Injectable } from '@nestjs/common';
 export class DeviceHttpService {
     constructor(
         private readonly deviceDomain: DeviceDomain,
+        private readonly userDomain: UserDomain,
+        private readonly policyAbilityDomain: PolicyAbilityDomain,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly requestStoreService: RequestStoreService
     ) {}
@@ -29,6 +38,16 @@ export class DeviceHttpService {
         userId: string,
         query: DeviceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
+        const user = await this.userDomain.getOne(userId);
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.read,
+            subject(EnumPolicySubject.User, user)
+        );
+
+        const scopeWhere = this.policyAbilityDomain.scope(
+            EnumPolicyAction.read,
+            EnumPolicySubject.DeviceOwnership
+        );
         const { params, storePatch } =
             this.paginationQueryUtil.offset<Prisma.DeviceOwnershipWhereInput>(
                 query,
@@ -52,7 +71,8 @@ export class DeviceHttpService {
             await this.deviceDomain.getListOffsetByAdmin(
                 userId,
                 params,
-                isRevoked?.where
+                isRevoked?.where,
+                scopeWhere
             );
         const deviceOwnerships: IDeviceOwnershipDetail[] = data.map(
             deviceOwnership => ({
@@ -122,6 +142,14 @@ export class DeviceHttpService {
         deviceOwnershipId: string,
         removedBy: string
     ): Promise<IResponseReturn<void>> {
+        const deviceOwnership = await this.deviceDomain.getOneActive(
+            userId,
+            deviceOwnershipId
+        );
+        this.policyAbilityDomain.authorize(
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.DeviceOwnership, deviceOwnership)
+        );
         await this.deviceDomain.removeByAdmin(
             userId,
             deviceOwnershipId,

@@ -36,15 +36,18 @@ export class SessionDomain {
         private readonly helperDateService: HelperDateService
     ) {}
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>
+        isRevoked: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.SessionWhereInput
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.sessionRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination,
-            isRevoked
+            isRevoked,
+            additionalWhere
         );
     }
 

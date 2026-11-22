@@ -2,6 +2,8 @@
     "list": "Feature flags retrieved successfully.",
     "updateMetadata": "Feature flag metadata updated successfully.",
     "updateStatus": "Feature flag status updated successfully.",
+    "addTargetUser": "Feature flag target user added successfully.",
+    "removeTargetUser": "Feature flag target user removed successfully.",
     "error": {
         "notFound": "Feature flag not found.",
         "invalidMetadata": "Feature flag metadata is invalid.",

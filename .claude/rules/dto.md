@@ -40,7 +40,7 @@ export type UserUpdateProfileRequestDto = z.infer<
   `z.infer` type. No file-local helper schema and no second exported schema beside it. A
   nested shape is inlined into the parent object. A piece reused across schemas is a custom
   schema in `src/common/request/validations/request.<name>.validation.ts`
-  (`RequestMongoIdSchema`, `RequestBooleanStringSchema`). A second top-level schema is its own
+  (`RequestUuidSchema`, `RequestBooleanStringSchema`). A second top-level schema is its own
   file.
 - The schema is the source of truth; the type is `z.infer` of it and is never hand-written
   beside it. A hand-written interface mirroring a schema drifts (`rules/code-style.md`).

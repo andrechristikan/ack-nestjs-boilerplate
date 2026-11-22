@@ -112,18 +112,18 @@ Every caller follows one order:
 2. Write (a contract failure throws before anything commits; a failed write stages nothing).
 3. Stage the prepared events.
 
-A session or device path commits, then writes or purges the session cache, then stages. An id the metadata needs before the row exists is drawn first with `DatabaseUtil.createId()`, and a metadata `timestamp` is the domain's pre-write time. Example from `RoleDomain.createByAdmin`, whose private `prepareActivityLog` wraps `ActivityLogDomain.prepare`:
+A session or device path commits, then writes or purges the session cache, then stages. An id the metadata needs before the row exists is drawn first with `DatabaseUtil.createId()`, and a metadata `timestamp` is the domain's pre-write time. Example from `RoleDomain.updateByAdmin`, whose private `prepareActivityLog` wraps `ActivityLogDomain.prepare`:
 
 ```typescript
-const roleId = this.databaseUtil.createId();
+const timestamp = this.helperDateService.create();
 const events = [
     this.prepareActivityLog(
-        EnumActivityLogAction.adminRoleCreate,
-        { id: roleId, name: data.name, type: data.type },
-        this.helperDateService.create()
+        EnumActivityLogAction.adminRoleUpdate,
+        { ...role, name },
+        timestamp
     ),
 ];
-const created = await this.roleRepository.create(roleId, data);
+const updated = await this.roleRepository.update(id, { name, description });
 
 this.activityLogDomain.stagePrepared(events);
 ```
@@ -221,7 +221,7 @@ Each flushed log contains:
 - **userId** - the user the entry belongs to: the JWT user for a `payload` action, the staged `userId` for a `target` action
 - **user** - the same user as `userId`, embedded on read
 - **createdBy** - the user who performed the action (see [Actor and target rows](#actor-and-target-rows)); nullable in the response
-- **action** - `EnumActivityLogAction`, a Prisma enum; a new member reaches MongoDB through `pnpm db:migrate`
+- **action** - `EnumActivityLogAction`, a Prisma enum; a new member reaches PostgreSQL through `pnpm db:migrate`
 - **description** - localized text from `ActivityLogUtil.getDescription` (`activityLog.<action>`)
 - **ipAddress** - from the request store `IRequestLog` (may be null)
 - **userAgent** - from the request store `IRequestLog` (JSON)
@@ -253,7 +253,7 @@ Stored as `null` when empty. Each action's schema is a strict zod object, so a k
 | `adminDeviceRemove` | `targetUserId`, `targetUsername`, `timestamp`, `deviceOwnershipId`, `deviceId`, `sessionCount` |
 | `userRemoveDeviceByAdmin` | `actorUserId`, `timestamp`, `deviceOwnershipId`, `deviceId`, `sessionCount` |
 | `userRemoveDevice` | `deviceOwnershipId`, `deviceId`, `sessionCount` |
-| API key, role, term policy, and notification setting actions | Their own schemas; every key optional |
+| API key, role, term policy, and notification setting actions | Their own schemas; every key optional. Role actions carry `roleId`, `roleName`, `roleKey`, `roleScope`, and `timestamp` |
 | Every other action | None |
 
 The response returns `metadata` through `ActivityLogMetadataResponseSchema`, which declares every key above as optional, types `timestamp` as a string, and is `null` when nothing was stored. A stored key the schema does not declare is stripped from the response. The schema lives in `dtos/response/activity-log.metadata.response.dto.ts`.

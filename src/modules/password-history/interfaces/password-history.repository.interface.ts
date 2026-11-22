@@ -12,12 +12,14 @@ import {
 import type { PasswordHistory } from '@generated/prisma-client/client';
 
 export interface IPasswordHistoryRepository {
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationOffsetByAdmin(
         userId: string,
         {
             where,
             ...others
-        }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>
+        }: IPaginationQueryOffsetParams<Prisma.PasswordHistoryWhereInput>,
+        additionalWhere: Prisma.PasswordHistoryWhereInput
     ): Promise<IResponsePaginationReturn<IPasswordHistoryList>>;
     findWithPaginationCursor(
         userId: string,

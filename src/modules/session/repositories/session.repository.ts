@@ -31,13 +31,15 @@ export class SessionRepository implements ISessionRepository {
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
+    /** Extra caller-supplied constraint, AND-composed first. */
     async findWithPaginationOffsetByAdmin(
         userId: string,
         {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.SessionWhereInput>,
-        isRevoked?: Record<string, IPaginationEqual>
+        isRevoked: Record<string, IPaginationEqual> | undefined,
+        additionalWhere: Prisma.SessionWhereInput
     ): Promise<IResponsePaginationReturn<ISessionList>> {
         return this.paginationService.offset<
             ISessionList,
@@ -45,9 +47,14 @@ export class SessionRepository implements ISessionRepository {
         >(this.databaseService.client.session, {
             ...others,
             where: {
-                ...where,
-                ...isRevoked,
-                userId,
+                AND: [
+                    additionalWhere,
+                    {
+                        ...where,
+                        ...isRevoked,
+                        userId,
+                    },
+                ],
             },
             select: SessionListSelect,
         });

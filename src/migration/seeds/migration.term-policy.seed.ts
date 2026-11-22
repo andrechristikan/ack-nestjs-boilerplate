@@ -1,6 +1,5 @@
 import { EnumAppEnvironment } from '@app/enums/app.enum';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import { MigrationTermPolicyData } from '@migration/data/migration.term-policy.data';
 import { MigrationUserSuperAdminId } from '@migration/data/migration.user.data';
@@ -9,7 +8,6 @@ import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/reque
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EnumTermPolicyStatus } from '@generated/prisma-client/client';
-import type { Prisma } from '@generated/prisma-client/client';
 import { Command } from 'nest-commander';
 
 /**
@@ -32,8 +30,7 @@ export class MigrationTermPolicySeed
 
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly configService: ConfigService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly configService: ConfigService
     ) {
         super();
 
@@ -53,10 +50,8 @@ export class MigrationTermPolicySeed
         try {
             await this.databaseService.withTransaction(
                 async tx => {
-                    for (const termPolicy of this.termPolicies) {
-                        const plainContents: Prisma.TermPolicyContentCreateInput[] =
-                            this.databaseUtil.toPlainArray(termPolicy.contents);
-
+                    for (const { contents: _contents, ...termPolicy } of this
+                        .termPolicies) {
                         await tx.termPolicy.upsert({
                             where: {
                                 type_version: {
@@ -66,7 +61,6 @@ export class MigrationTermPolicySeed
                             },
                             create: {
                                 ...termPolicy,
-                                contents: plainContents,
                                 status: EnumTermPolicyStatus.published,
                                 createdBy: MigrationUserSuperAdminId,
                                 updatedBy: MigrationUserSuperAdminId,

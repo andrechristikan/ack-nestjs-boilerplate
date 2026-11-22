@@ -1,24 +1,28 @@
 import { z } from 'zod';
-import { faker } from '@faker-js/faker';
+import { EnumRoleScope } from '@generated/prisma-client/client';
 import { RoleUpdateRequestSchema } from '@modules/role/dtos/request/role.update.request.dto';
 
 /**
- * Validates the body for creating a role.
+ * Validates the body for creating a role; the key is the lowercase identifier, the name is the display label.
  * @public
  */
 export const RoleCreateRequestSchema = RoleUpdateRequestSchema.extend({
-    name: z
+    scope: z.enum(EnumRoleScope).meta({
+        description: 'Scope the role applies to',
+        example: EnumRoleScope.workspace,
+    }),
+    key: z
         .string()
         .trim()
         .toLowerCase()
         .min(3)
-        .max(30)
-        .regex(/^[a-zA-Z0-9]+$/)
+        .max(50)
+        .regex(/^[a-z0-9.]+$/)
         .meta({
-            description: 'Name of role',
-            example: faker.person.jobTitle(),
-        })
-        .transform(value => value as Lowercase<string>),
+            description:
+                'Unique key of role within its scope, lowercase letters, digits and dots',
+            example: 'workspace.editor',
+        }),
 });
 
 /**

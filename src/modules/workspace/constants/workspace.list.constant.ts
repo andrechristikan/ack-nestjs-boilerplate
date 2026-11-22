@@ -1,9 +1,9 @@
 import {
     EnumWorkspaceInviteStatus,
     EnumWorkspaceJoinRequestStatus,
-    EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.workspace-key.enum';
 
 /**
  * Fields the workspace lists search.
@@ -44,9 +44,8 @@ export const WorkspaceMemberDefaultAvailableOrderBy = [
  * Workspace roles the workspace member list filter accepts.
  * @public
  */
-export const WorkspaceMemberDefaultRole = Object.values(
-    EnumWorkspaceMemberRole
-);
+
+export const WorkspaceMemberDefaultRole = Object.values(EnumRoleWorkspaceKey);
 
 /**
  * Fields the workspace invite list searches.

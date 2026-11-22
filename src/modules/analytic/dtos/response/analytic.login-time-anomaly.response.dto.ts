@@ -8,7 +8,7 @@ import { faker } from '@faker-js/faker';
 export const AnalyticLoginTimeAnomalyResponseSchema = z.object({
     userId: z.string().meta({
         description: 'Identifier of the user who logged in',
-        example: faker.database.mongodbObjectId(),
+        example: faker.string.uuid(),
     }),
     lastHour: z.number().meta({
         description: 'Hour of day the last login happened, from 0 to 23',

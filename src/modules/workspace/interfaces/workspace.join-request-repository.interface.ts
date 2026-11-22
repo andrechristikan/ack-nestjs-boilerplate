@@ -20,13 +20,15 @@ export interface IWorkspaceJoinRequestRepository {
         workspaceJoinRequestId: string,
         workspaceId: string
     ): Promise<WorkspaceJoinRequest | null>;
+    /** Extra caller-supplied constraint, AND-composed first. */
     findWithPaginationCursor(
         workspaceId: string,
         {
             where,
             ...others
         }: IPaginationQueryCursorParams<Prisma.WorkspaceJoinRequestWhereInput>,
-        status?: Record<string, IPaginationIn>
+        status: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.WorkspaceJoinRequestWhereInput
     ): Promise<IPaginationCursorReturn<WorkspaceJoinRequest>>;
     createPending({
         workspaceId,
@@ -38,13 +40,13 @@ export interface IWorkspaceJoinRequestRepository {
         workspaceJoinRequestId: string,
         reviewerId: string,
         reviewedAt: Date
-    ): Promise<void>;
+    ): Promise<WorkspaceJoinRequest | null>;
     reject(
         workspaceJoinRequestId: string,
         reviewerId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason,
         reviewedAt: Date
-    ): Promise<void>;
+    ): Promise<WorkspaceJoinRequest | null>;
     cancelPendingByWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string

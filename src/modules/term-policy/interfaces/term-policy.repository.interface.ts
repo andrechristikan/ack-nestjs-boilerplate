@@ -8,7 +8,8 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
 import type { TermPolicyRemoveContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.remove-content.request.dto';
 import type {
-    ITermPolicyContent,
+    ITermPolicy,
+    ITermPolicyContentCreate,
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import {
@@ -19,13 +20,15 @@ import {
 import type { TermPolicy } from '@generated/prisma-client/client';
 
 export interface ITermPolicyRepository {
+    /** Extra caller-supplied constraint, AND-composed first. */
     find(
         {
             where,
             ...others
         }: IPaginationQueryOffsetParams<Prisma.TermPolicyWhereInput>,
-        type?: Record<string, IPaginationIn>,
-        status?: Record<string, IPaginationIn>
+        type: Record<string, IPaginationIn> | undefined,
+        status: Record<string, IPaginationIn> | undefined,
+        additionalWhere: Prisma.TermPolicyWhereInput
     ): Promise<IResponsePaginationReturn<TermPolicy>>;
     findPublished(
         {
@@ -41,7 +44,7 @@ export interface ITermPolicyRepository {
             ...others
         }: IPaginationQueryCursorParams<Prisma.TermPolicyUserAcceptanceWhereInput>
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>>;
-    findOneById(termPolicyId: string): Promise<TermPolicy | null>;
+    findOneById(termPolicyId: string): Promise<ITermPolicy | null>;
     findLatestPublishedByType(type: EnumTermPolicyType): Promise<{
         id: string;
         type: EnumTermPolicyType;
@@ -73,26 +76,24 @@ export interface ITermPolicyRepository {
     create(
         termPolicyId: string,
         { type, version }: TermPolicyCreateRequestDto,
-        contents: ITermPolicyContent[]
+        contents: ITermPolicyContentCreate[]
     ): Promise<TermPolicy>;
-    delete(termPolicyId: string): Promise<TermPolicy>;
+    delete(termPolicyId: string): Promise<TermPolicy | null>;
     updateContent(
         termPolicyId: string,
-        contents: ITermPolicyContent[],
-        content: ITermPolicyContent
-    ): Promise<TermPolicy>;
+        content: ITermPolicyContentCreate
+    ): Promise<TermPolicy | null>;
     addContent(
         termPolicyId: string,
-        newContent: ITermPolicyContent
-    ): Promise<TermPolicy>;
+        newContent: ITermPolicyContentCreate
+    ): Promise<TermPolicy | null>;
     removeContent(
         termPolicyId: string,
-        contents: ITermPolicyContent[],
         { language }: TermPolicyRemoveContentRequestDto
-    ): Promise<TermPolicy>;
+    ): Promise<TermPolicy | null>;
     publishInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
-        contents: ITermPolicyContent[]
-    ): Promise<TermPolicy>;
+        contents: ITermPolicyContentCreate[]
+    ): Promise<TermPolicy | null>;
 }

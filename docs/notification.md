@@ -108,6 +108,8 @@ Handles the main event orchestration. `NotificationProcessor` dispatches a consu
 | `NotificationTermPolicyDomain` | policy publication and acceptance |
 | `NotificationWorkspaceDomain` | invites and join requests |
 
+The invite payload (`INotificationWorkspaceInvitePayload`) names the invited role through `workspaceRoleName`, the display name of the workspace role the invite carries. The invite email template renders it, and the invite push job carries it.
+
 That domain then:
 
 1. Fetches the target user, and for a push-capable event the user's device tokens alongside it. A user that does not resolve as active ends the job with a skip message rather than an error, so the job is not retried.
