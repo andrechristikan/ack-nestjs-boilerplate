@@ -26,7 +26,6 @@ export const MigrationTermPolicyData: Record<
     IMigrationTermPolicyData[]
 > = {
     [EnumAppEnvironment.local]: TermPolicyData,
-    [EnumAppEnvironment.test]: TermPolicyData,
     [EnumAppEnvironment.development]: TermPolicyData,
     [EnumAppEnvironment.staging]: TermPolicyData,
     [EnumAppEnvironment.production]: TermPolicyData,

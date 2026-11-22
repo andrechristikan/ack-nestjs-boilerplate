@@ -43,7 +43,6 @@ export const MigrationUserData: Record<
     IMigrationUserData[]
 > = {
     [EnumAppEnvironment.local]: UserData,
-    [EnumAppEnvironment.test]: UserData,
     [EnumAppEnvironment.development]: MigrationUserDeployedData,
     [EnumAppEnvironment.staging]: MigrationUserDeployedData,
     [EnumAppEnvironment.production]: MigrationUserDeployedData,

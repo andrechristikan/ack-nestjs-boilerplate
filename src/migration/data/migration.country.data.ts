@@ -17,7 +17,6 @@ export const MigrationCountryData: Record<
     Prisma.CountryCreateInput[]
 > = {
     [EnumAppEnvironment.local]: CountryData,
-    [EnumAppEnvironment.test]: CountryData,
     [EnumAppEnvironment.development]: CountryData,
     [EnumAppEnvironment.staging]: CountryData,
     [EnumAppEnvironment.production]: CountryData,

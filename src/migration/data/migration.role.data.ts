@@ -28,7 +28,6 @@ export const MigrationRoleData: Record<
     IMigrationRoleData[]
 > = {
     [EnumAppEnvironment.local]: RoleData,
-    [EnumAppEnvironment.test]: RoleData,
     [EnumAppEnvironment.development]: RoleData,
     [EnumAppEnvironment.staging]: RoleData,
     [EnumAppEnvironment.production]: RoleData,
