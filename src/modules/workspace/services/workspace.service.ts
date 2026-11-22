@@ -19,6 +19,7 @@ import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
+import { WorkspaceSlugRegex } from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceOwnerTransferRequiredException } from '@modules/workspace/exceptions/workspace.owner-transfer-required.exception';
@@ -39,7 +40,6 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 
 @Injectable()
 export class WorkspaceService {
-    private readonly slugRegex: RegExp;
     private readonly slugPrefix: string;
     private readonly slugMaxLength: number;
     private readonly slugMaxAttempts: number;
@@ -55,7 +55,6 @@ export class WorkspaceService {
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
-        this.slugRegex = this.configService.get<RegExp>('workspace.slugRegex')!;
         this.slugPrefix = this.configService.get<string>(
             'workspace.slugPrefix'
         )!;
@@ -68,7 +67,7 @@ export class WorkspaceService {
     }
 
     private isSlugAllowed(slug: string): boolean {
-        const isPatternValid = this.slugRegex.test(slug);
+        const isPatternValid = WorkspaceSlugRegex.test(slug);
 
         return slug.length <= this.slugMaxLength && isPatternValid;
     }

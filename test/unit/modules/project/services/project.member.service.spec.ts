@@ -112,11 +112,9 @@ describe('ProjectMemberService', () => {
     };
 
     const bypassActor: IProjectMemberActor = {
-        userId: '507f1f77bcf86cd799439033',
         hasWorkspaceBypass: true,
     };
     const plainActor: IProjectMemberActor = {
-        userId: '507f1f77bcf86cd799439033',
         hasWorkspaceBypass: false,
     };
 
@@ -535,6 +533,39 @@ describe('ProjectMemberService', () => {
             });
         });
 
+        it('throws ProjectMemberPeerForbiddenException when an actor without workspace bypass promotes a member to admin', async () => {
+            projectMemberRepository.findByIdAndProject.mockResolvedValue(
+                baseProjectMember
+            );
+
+            const rejection = service.getRoleUpdatableMember(
+                baseProject,
+                plainActor,
+                baseProjectMember.id,
+                EnumProjectMemberRole.admin
+            );
+
+            await expect(rejection).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
+            });
+        });
+
+        it('returns the member when an actor without workspace bypass moves no admin role', async () => {
+            projectMemberRepository.findByIdAndProject.mockResolvedValue(
+                baseProjectMember
+            );
+
+            const result = await service.getRoleUpdatableMember(
+                baseProject,
+                plainActor,
+                baseProjectMember.id,
+                EnumProjectMemberRole.viewer
+            );
+
+            expect(result).toBe(baseProjectMember);
+        });
+
         it('returns the member read from the project', async () => {
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 baseProjectMember
@@ -556,6 +587,7 @@ describe('ProjectMemberService', () => {
             projectMemberRepository.findByIdAndProject.mockResolvedValue(null);
 
             const rejection = service.getRemovableMember(
+                authContext,
                 baseProject,
                 bypassActor,
                 '507f1f77bcf86cd799439021'
@@ -573,13 +605,14 @@ describe('ProjectMemberService', () => {
         it('throws ProjectMemberPeerForbiddenException when the actor targets themselves', async () => {
             const targetMember = {
                 ...baseProjectMember,
-                userId: bypassActor.userId,
+                userId: authContext.userId,
             };
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
             );
 
             const rejection = service.getRemovableMember(
+                authContext,
                 baseProject,
                 bypassActor,
                 targetMember.id
@@ -601,6 +634,7 @@ describe('ProjectMemberService', () => {
             );
 
             const rejection = service.getRemovableMember(
+                authContext,
                 baseProject,
                 plainActor,
                 targetMember.id
@@ -622,6 +656,7 @@ describe('ProjectMemberService', () => {
             );
 
             const result = await service.getRemovableMember(
+                authContext,
                 baseProject,
                 bypassActor,
                 targetMember.id
@@ -651,7 +686,6 @@ describe('ProjectMemberService', () => {
                 apiKeyContext,
                 authContext,
                 project,
-                bypassActor,
                 targetMember,
                 EnumProjectMemberRole.member
             );
@@ -662,7 +696,7 @@ describe('ProjectMemberService', () => {
                 project.id,
                 targetMember.userId,
                 EnumProjectMemberRole.member,
-                bypassActor.userId
+                authContext.userId
             );
             expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
@@ -672,8 +706,8 @@ describe('ProjectMemberService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.projectMemberAssigned,
-                    userId: bypassActor.userId,
-                    createdBy: bypassActor.userId,
+                    userId: authContext.userId,
+                    createdBy: authContext.userId,
                     workspaceId: project.workspaceId,
                     metadata: { targetUserId: targetMember.userId },
                 }
@@ -687,9 +721,9 @@ describe('ProjectMemberService', () => {
                 {
                     action: EnumActivityLogAction.projectMemberAssignedByAdmin,
                     userId: targetMember.userId,
-                    createdBy: bypassActor.userId,
+                    createdBy: authContext.userId,
                     workspaceId: project.workspaceId,
-                    metadata: { actorUserId: bypassActor.userId },
+                    metadata: { actorUserId: authContext.userId },
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -703,7 +737,7 @@ describe('ProjectMemberService', () => {
             const targetMember = {
                 ...baseWorkspaceMember,
                 workspaceId: project.workspaceId,
-                userId: bypassActor.userId,
+                userId: authContext.userId,
             };
             projectMemberRepository.createInTx.mockResolvedValue(
                 baseProjectMemberRow
@@ -715,7 +749,6 @@ describe('ProjectMemberService', () => {
                 apiKeyContext,
                 authContext,
                 project,
-                bypassActor,
                 targetMember,
                 EnumProjectMemberRole.member
             );
@@ -742,7 +775,6 @@ describe('ProjectMemberService', () => {
                 apiKeyContext,
                 authContext,
                 baseProject,
-                plainActor,
                 targetMember,
                 EnumProjectMemberRole.viewer
             );
@@ -769,7 +801,6 @@ describe('ProjectMemberService', () => {
                 apiKeyContext,
                 authContext,
                 project,
-                bypassActor,
                 targetMember,
                 EnumProjectMemberRole.admin
             );
@@ -788,8 +819,8 @@ describe('ProjectMemberService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.projectMemberRoleUpdated,
-                    userId: bypassActor.userId,
-                    createdBy: bypassActor.userId,
+                    userId: authContext.userId,
+                    createdBy: authContext.userId,
                     workspaceId: project.workspaceId,
                     metadata: { targetUserId: targetMember.userId },
                 }
@@ -803,9 +834,9 @@ describe('ProjectMemberService', () => {
                 {
                     action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
                     userId: targetMember.userId,
-                    createdBy: bypassActor.userId,
+                    createdBy: authContext.userId,
                     workspaceId: project.workspaceId,
-                    metadata: { actorUserId: bypassActor.userId },
+                    metadata: { actorUserId: authContext.userId },
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -817,7 +848,7 @@ describe('ProjectMemberService', () => {
         it('adds only the actor entry when the actor changes its own role', async () => {
             const targetMember = {
                 ...baseProjectMember,
-                userId: bypassActor.userId,
+                userId: authContext.userId,
             };
             projectMemberRepository.updateRoleInTx.mockResolvedValue(true);
 
@@ -827,7 +858,6 @@ describe('ProjectMemberService', () => {
                 apiKeyContext,
                 authContext,
                 baseProject,
-                bypassActor,
                 targetMember,
                 EnumProjectMemberRole.admin
             );
@@ -854,7 +884,6 @@ describe('ProjectMemberService', () => {
                 apiKeyContext,
                 authContext,
                 baseProject,
-                plainActor,
                 targetMember
             );
 
@@ -880,7 +909,6 @@ describe('ProjectMemberService', () => {
                 apiKeyContext,
                 authContext,
                 project,
-                bypassActor,
                 targetMember
             );
 
@@ -899,8 +927,8 @@ describe('ProjectMemberService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.projectMemberRemoved,
-                    userId: bypassActor.userId,
-                    createdBy: bypassActor.userId,
+                    userId: authContext.userId,
+                    createdBy: authContext.userId,
                     workspaceId: project.workspaceId,
                     metadata: { targetUserId: targetMember.userId },
                 }
@@ -914,9 +942,9 @@ describe('ProjectMemberService', () => {
                 {
                     action: EnumActivityLogAction.projectMemberRemovedByAdmin,
                     userId: targetMember.userId,
-                    createdBy: bypassActor.userId,
+                    createdBy: authContext.userId,
                     workspaceId: project.workspaceId,
-                    metadata: { actorUserId: bypassActor.userId },
+                    metadata: { actorUserId: authContext.userId },
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -979,45 +1007,6 @@ describe('ProjectMemberService', () => {
                 }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, firstEntry);
-        });
-    });
-
-    describe('assertPeerAllowed', () => {
-        it('does not throw when the actor has workspace bypass', () => {
-            expect(() =>
-                service.assertPeerAllowed(
-                    bypassActor,
-                    EnumProjectMemberRole.admin
-                )
-            ).not.toThrow();
-        });
-
-        it('does not throw when no role involved is admin', () => {
-            expect(() =>
-                service.assertPeerAllowed(
-                    plainActor,
-                    EnumProjectMemberRole.member,
-                    EnumProjectMemberRole.viewer
-                )
-            ).not.toThrow();
-        });
-
-        it('throws ProjectMemberPeerForbiddenException when an actor without workspace bypass touches an admin role', () => {
-            let captured: unknown;
-            try {
-                service.assertPeerAllowed(
-                    plainActor,
-                    EnumProjectMemberRole.member,
-                    EnumProjectMemberRole.admin
-                );
-            } catch (error) {
-                captured = error;
-            }
-
-            expect(captured).toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
-            });
         });
     });
 });

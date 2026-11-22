@@ -187,6 +187,6 @@
         "npm": "please-use-pnpm",
         "yarn": "please-use-pnpm",
         "node": ">= 26.13.0",
-        "pnpm": ">= 10.25.0"
+        "pnpm": ">= 12.5.0"
     }
 }

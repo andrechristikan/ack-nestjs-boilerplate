@@ -57,7 +57,7 @@ describe('UserImportByAdminUseCase', () => {
             rows: [
                 {
                     username: 'bramble2fox',
-                    email: 'bramble@example.com',
+                    encryptedEmail: 'encrypted-email',
                     name: null,
                 },
             ],

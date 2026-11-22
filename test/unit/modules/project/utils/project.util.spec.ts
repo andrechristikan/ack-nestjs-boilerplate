@@ -51,25 +51,19 @@ describe('ProjectUtil', () => {
     });
 
     describe('mapMemberActor', () => {
-        it('maps the workspace member to its user id and workspace bypass', () => {
+        it('maps the workspace member to its workspace bypass', () => {
             const result = util.mapMemberActor({
                 ...member,
                 role: EnumWorkspaceMemberRole.admin,
             });
 
-            expect(result).toEqual({
-                userId: '507f1f77bcf86cd799439013',
-                hasWorkspaceBypass: true,
-            });
+            expect(result).toEqual({ hasWorkspaceBypass: true });
         });
 
         it('maps a plain workspace member to no bypass', () => {
             const result = util.mapMemberActor(member);
 
-            expect(result).toEqual({
-                userId: '507f1f77bcf86cd799439013',
-                hasWorkspaceBypass: false,
-            });
+            expect(result).toEqual({ hasWorkspaceBypass: false });
         });
     });
 });

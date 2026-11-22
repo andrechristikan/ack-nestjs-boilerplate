@@ -135,7 +135,7 @@ export const NotificationKindContract: INotificationKindContracts = {
         pendingChannels: [EnumNotificationChannel.email],
         deliveredChannels: [EnumNotificationChannel.silent],
         queuePriority: EnumQueuePriority.medium,
-        secrets: [],
+        secrets: ['mobileNumber'],
         keyPattern: EnumNotificationKeyPattern.referencePattern,
         metadataFields: ['mobileNumber'],
         templateFields: ['reference', 'mobileNumber'],

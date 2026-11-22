@@ -11,7 +11,7 @@ import { HelperEncryptionService } from '@common/helper/services/helper.encrypti
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { EnumNotificationStep } from '@modules/notification/enums/notification.enum';
+import { EnumNotificationEmailProcess } from '@modules/notification/enums/notification.enum';
 import {
     buildSealedNotificationPayload,
     buildUnsealedNotificationPayloads,
@@ -27,7 +27,7 @@ describe('NotificationUtil', () => {
             buildConfigService({
                 ...TestUnitKitConfigValues,
                 'notification.idempotencyKey.stepPattern':
-                    '{notificationId}-{step}',
+                    '{process}-{notificationId}',
             }) as ConfigService,
             new HelperEncryptionService(),
             new HelperDateService(
@@ -109,19 +109,13 @@ describe('NotificationUtil', () => {
     });
 
     describe('toStepKey', () => {
-        it('fills the step pattern', () => {
+        it('fills the step pattern with the process and the notification id', () => {
             expect(
                 util.toStepKey(
                     'notification-id',
-                    EnumNotificationStep.sendEmail
+                    EnumNotificationEmailProcess.send
                 )
-            ).toBe('notification-id-sendEmail');
-        });
-    });
-
-    describe('toSealedField', () => {
-        it('returns the encrypted field name', () => {
-            expect(util.toSealedField('link')).toBe('encryptedLink');
+            ).toBe('send-notification-id');
         });
     });
 
@@ -164,6 +158,34 @@ describe('NotificationUtil', () => {
                 workspaceId: 'workspace-id',
                 workspaceName: 'Acme',
                 inviterName: 'Alice',
+            });
+        });
+
+        it('keeps a secret metadata field sealed under its sealed name for a sealed context', () => {
+            const sealed = util.encryptPayload('+6281234567890', 'user-id');
+
+            const result = util.toMetadata(
+                EnumNotificationKind.verifiedMobileNumber,
+                { reference: 'VRF-abc', encryptedMobileNumber: sealed },
+                'ana'
+            );
+
+            expect(result).toEqual({
+                username: 'ana',
+                encryptedMobileNumber: sealed,
+            });
+        });
+
+        it('returns a secret metadata field plain under its plain name for an opened context', () => {
+            const result = util.toMetadata(
+                EnumNotificationKind.verifiedMobileNumber,
+                { reference: 'VRF-abc', mobileNumber: '+6281234567890' },
+                'ana'
+            );
+
+            expect(result).toEqual({
+                username: 'ana',
+                mobileNumber: '+6281234567890',
             });
         });
 
@@ -327,6 +349,12 @@ describe('NotificationUtil', () => {
                     marketingEmailOff,
                 ])
             ).toContain(EnumNotificationChannel.email);
+        });
+    });
+
+    describe('toSealedField', () => {
+        it('returns the encrypted field name', () => {
+            expect(util['toSealedField']('link')).toBe('encryptedLink');
         });
     });
 });

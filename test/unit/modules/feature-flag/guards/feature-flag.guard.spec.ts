@@ -29,7 +29,6 @@ describe('FeatureFlagGuard', () => {
     beforeEach(async () => {
         configService = buildConfigService({
             'featureFlag.anonymous.idMaxLength': 20,
-            'featureFlag.anonymous.idRegex': /^[a-zA-Z0-9-_]+$/,
         });
 
         const module: TestingModule = await Test.createTestingModule({
@@ -47,9 +46,6 @@ describe('FeatureFlagGuard', () => {
     it('reads the anonymous id config once, in the constructor', () => {
         expect(configService.get).toHaveBeenCalledWith(
             'featureFlag.anonymous.idMaxLength'
-        );
-        expect(configService.get).toHaveBeenCalledWith(
-            'featureFlag.anonymous.idRegex'
         );
     });
 

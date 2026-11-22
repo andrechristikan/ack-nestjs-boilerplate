@@ -92,6 +92,7 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
 
             expect(result).toEqual({});
             expect(workspaceMemberService.getPeerTarget).toHaveBeenCalledWith(
+                authContext,
                 'workspace-1',
                 member,
                 'member-2'
@@ -105,7 +106,6 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
                 apiKeyContext,
                 authContext,
                 'workspace-1',
-                member,
                 targetMember,
                 EnumWorkspaceMemberRole.admin
             );

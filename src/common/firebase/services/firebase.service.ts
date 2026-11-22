@@ -27,7 +27,7 @@ export class FirebaseService implements OnModuleInit {
     private readonly logger = new Logger(FirebaseService.name);
 
     private readonly projectId: string | null;
-    private readonly clientEmail: string | null;
+    private readonly clientEmailAddress: string | null;
     private readonly hasPrivateKey: boolean;
     private readonly privateKey: string | null;
 
@@ -42,8 +42,8 @@ export class FirebaseService implements OnModuleInit {
         const projectId = this.configService.get<string | null>(
             'firebase.projectId'
         );
-        const clientEmail = this.configService.get<string | null>(
-            'firebase.clientEmail'
+        const clientEmailAddress = this.configService.get<string | null>(
+            'firebase.clientEmailAddress'
         );
         const privateKey = this.configService.get<string | null>(
             'firebase.privateKey'
@@ -53,7 +53,7 @@ export class FirebaseService implements OnModuleInit {
         );
 
         this.projectId = projectId ?? null;
-        this.clientEmail = clientEmail ?? null;
+        this.clientEmailAddress = clientEmailAddress ?? null;
         this.hasPrivateKey = !!privateKey;
         this.privateKey = normalizedPrivateKey;
     }
@@ -90,7 +90,11 @@ export class FirebaseService implements OnModuleInit {
     }
 
     async onModuleInit(): Promise<void> {
-        if (!this.projectId || !this.clientEmail || !this.hasPrivateKey) {
+        if (
+            !this.projectId ||
+            !this.clientEmailAddress ||
+            !this.hasPrivateKey
+        ) {
             this.logger.warn(
                 'Firebase credentials not configured. Push notifications will be disabled.'
             );
@@ -106,7 +110,7 @@ export class FirebaseService implements OnModuleInit {
             this.app = firebaseAdmin.initializeApp({
                 credential: firebaseAdmin.cert({
                     projectId: this.projectId,
-                    clientEmail: this.clientEmail,
+                    clientEmail: this.clientEmailAddress,
                     privateKey: this.privateKey,
                 }),
             });

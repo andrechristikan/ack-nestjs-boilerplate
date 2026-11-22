@@ -4,7 +4,6 @@ import {
     RequestCustomLangHeaderName,
     RequestIdHeaderName,
     RequestThrottleHeaderName,
-    RequestWorkspaceIdHeaderName,
 } from '@common/request/constants/request.constant';
 import {
     EnumRequestThrottleName,
@@ -19,6 +18,7 @@ import {
 import { ApiKeyHeaderName } from '@modules/api-key/constants/api-key.constant';
 import { AuthHeaderName } from '@modules/auth/constants/auth.constant';
 import { FeatureFlagAnonymousIdHeaderName } from '@modules/feature-flag/constants/feature-flag.constant';
+import { WorkspaceIdHeaderName } from '@modules/workspace/constants/workspace.constant';
 import type {
     IRequestThrottlePolicy,
     IRequestThrottleRoutePolicies,
@@ -110,7 +110,7 @@ export default registerAs('request', (): IConfigRequest => {
                 ResponseTimestampHeaderName,
                 ApiKeyHeaderName,
                 ResponseTimezoneHeaderName,
-                RequestWorkspaceIdHeaderName,
+                WorkspaceIdHeaderName,
                 FeatureFlagAnonymousIdHeaderName,
                 RequestIdHeaderName,
                 RequestCorrelationIdHeaderName,

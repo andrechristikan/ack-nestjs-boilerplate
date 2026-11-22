@@ -67,7 +67,7 @@ describe('NotificationEmailQueue', () => {
                         'notification.idempotencyKey.referencePattern':
                             '{process}-{reference}',
                         'notification.idempotencyKey.stepPattern':
-                            '{notificationId}-{step}',
+                            '{process}-{notificationId}',
                         'notification.idempotencyKey.termPolicyBatchPattern':
                             '{process}-{termPolicyId}-{batchId}',
                         'notification.idempotencyKey.termPolicyBatchResendPattern':
@@ -88,7 +88,7 @@ describe('NotificationEmailQueue', () => {
     });
 
     describe('sendEffect', () => {
-        it('returns the email send effect keyed by the sendEmail step with the kind priority', () => {
+        it('returns the email send effect keyed by the send process and the notification id with the kind priority', () => {
             const context: INotificationSealedData = {
                 userId: 'user-id',
                 proceedBy: 'actor-id',
@@ -126,7 +126,7 @@ describe('NotificationEmailQueue', () => {
                     completedSteps: [],
                 },
                 priority: EnumQueuePriority.medium,
-                idempotencyKey: 'notification-id-sendEmail',
+                idempotencyKey: 'send-notification-id',
             });
         });
     });

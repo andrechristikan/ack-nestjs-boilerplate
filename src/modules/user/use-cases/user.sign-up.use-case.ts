@@ -77,7 +77,7 @@ export class UserSignUpUseCase implements IAppUseCase<
         this.appName = this.configService.get<string>('app.name')!;
         this.defaultRole = this.configService.get<string>('user.default.role')!;
         this.createTimeoutInMs = this.configService.get<number>(
-            'user.create.timeoutInMs'
+            'user.createTimeoutInMs'
         )!;
     }
 

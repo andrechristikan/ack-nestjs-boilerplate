@@ -53,7 +53,6 @@ describe('ProjectUpdateMemberRoleUseCase', () => {
     );
 
     const actor: IProjectMemberActor = {
-        userId: actorMember.userId,
         hasWorkspaceBypass: true,
     };
 
@@ -153,7 +152,6 @@ describe('ProjectUpdateMemberRoleUseCase', () => {
                 apiKeyContext,
                 authContext,
                 project,
-                actor,
                 targetMember,
                 body.role
             );

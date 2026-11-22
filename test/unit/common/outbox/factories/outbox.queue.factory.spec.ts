@@ -27,7 +27,7 @@ describe('OutboxQueueFactory', () => {
     describe('createRegisterQueueOptions', () => {
         it('builds the default job options with the outbox backoff delay', () => {
             stubConfigValues(configService, {
-                'queue.job.attempts': 5,
+                'queue.job.maxAttempts': 5,
                 'queue.job.keepLogs': 100,
                 'queue.job.outboxBackoffDelayInMs': 10000,
                 'queue.job.removeOnCompleteAgeInSeconds': 3600,

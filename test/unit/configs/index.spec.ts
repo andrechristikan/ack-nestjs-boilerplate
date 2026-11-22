@@ -274,7 +274,7 @@ const FirebaseRows: IEnvKeyRow[] = [
         derivedPaths: [],
     },
     {
-        key: 'FIREBASE_CLIENT_EMAIL',
+        key: 'FIREBASE_CLIENT_EMAIL_ADDRESS',
         alternateValue: 'other-firebase@example.com',
         derivedPaths: [],
     },

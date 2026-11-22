@@ -64,7 +64,6 @@ export class ProjectUpdateMemberRoleUseCase implements IAppUseCase<
                     apiKeyContext,
                     authContext,
                     projectContext.project,
-                    actor,
                     targetMember,
                     role
                 )

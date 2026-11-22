@@ -6,6 +6,12 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 import { UserNameSelect } from '@modules/user/constants/user.constant';
 
 /** @public */
+export const WorkspaceIdHeaderName = 'x-workspace-id';
+
+/** @public */
+export const WorkspaceSlugRegex = /^[0-9a-z-]+$/;
+
+/** @public */
 export const WorkspaceRoleMetaKey = 'WorkspaceRoleMetaKey';
 
 /** @public */

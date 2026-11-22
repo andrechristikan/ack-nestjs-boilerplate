@@ -102,9 +102,9 @@ describe('TermPolicyRecipientService', () => {
         pendingBatchIds: [],
     };
 
-    describe('emailBatchSize', () => {
+    describe('batchSize', () => {
         it('carries the configured email batch size', () => {
-            expect(service.emailBatchSize).toBe(3);
+            expect(service.batchSize).toBe(3);
         });
     });
 

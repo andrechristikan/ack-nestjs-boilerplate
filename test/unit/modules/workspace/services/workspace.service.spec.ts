@@ -80,7 +80,6 @@ describe('WorkspaceService', () => {
         mock<FeatureFlagService>();
 
     const configValues: Record<string, unknown> = {
-        'workspace.slugRegex': /^[a-z0-9-]+$/,
         'workspace.slugPrefix': 'ws-',
         'workspace.slugMaxLength': 12,
         'workspace.slugMaxAttempts': 3,
@@ -339,6 +338,12 @@ describe('WorkspaceService', () => {
     describe('assertSlugAllowed', () => {
         it('throws WorkspaceSlugInvalidException when the slug has an upper-case letter', () => {
             expect(() => service.assertSlugAllowed('Acme')).toThrow(
+                WorkspaceSlugInvalidException
+            );
+        });
+
+        it('throws WorkspaceSlugInvalidException when the slug has an underscore', () => {
+            expect(() => service.assertSlugAllowed('Bad_Slug')).toThrow(
                 WorkspaceSlugInvalidException
             );
         });

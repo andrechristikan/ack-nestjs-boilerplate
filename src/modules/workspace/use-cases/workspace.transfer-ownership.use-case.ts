@@ -44,8 +44,8 @@ export class WorkspaceTransferOwnershipUseCase implements IAppUseCase<
         const actorMember = workspaceContext.workspaceMember;
         const [targetMember] = await Promise.all([
             this.workspaceMemberService.getTransferTarget(
+                authContext,
                 workspaceId,
-                actorMember,
                 targetUserId
             ),
             this.workspaceService.assertOwnedCapAvailable(targetUserId),

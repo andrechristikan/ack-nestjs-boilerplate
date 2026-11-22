@@ -42,7 +42,7 @@ export class ProjectMemberService {
         private readonly activityLogQueue: ActivityLogQueue
     ) {}
 
-    assertPeerAllowed(
+    private assertPeerAllowed(
         { hasWorkspaceBypass }: IProjectMemberActor,
         ...rolesInvolved: EnumProjectMemberRole[]
     ): void {
@@ -184,6 +184,7 @@ export class ProjectMemberService {
     }
 
     async getRemovableMember(
+        authContext: IAuthJwtAccessContext,
         project: Project,
         actor: IProjectMemberActor,
         targetMemberId: string
@@ -197,7 +198,7 @@ export class ProjectMemberService {
             throw new ProjectMemberNotFoundException();
         }
 
-        if (targetMember.userId === actor.userId) {
+        if (targetMember.userId === authContext.userId) {
             throw new ProjectMemberPeerForbiddenException();
         }
 
@@ -212,7 +213,6 @@ export class ProjectMemberService {
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         project: Project,
-        actor: IProjectMemberActor,
         targetMember: WorkspaceMember,
         role: EnumProjectMemberRole
     ): Promise<IProjectMember> {
@@ -221,7 +221,7 @@ export class ProjectMemberService {
             project.id,
             targetMember.userId,
             role,
-            actor.userId
+            authContext.userId
         );
         const actorEntry = this.activityLogQueue.recordEffect(
             requestContext,
@@ -230,14 +230,14 @@ export class ProjectMemberService {
             null,
             {
                 action: EnumActivityLogAction.projectMemberAssigned,
-                userId: actor.userId,
-                createdBy: actor.userId,
+                userId: authContext.userId,
+                createdBy: authContext.userId,
                 workspaceId: project.workspaceId,
                 metadata: { targetUserId: targetMember.userId },
             }
         );
         const entries = [actorEntry];
-        if (targetMember.userId !== actor.userId) {
+        if (targetMember.userId !== authContext.userId) {
             const assigneeEntry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
@@ -246,9 +246,9 @@ export class ProjectMemberService {
                 {
                     action: EnumActivityLogAction.projectMemberAssignedByAdmin,
                     userId: targetMember.userId,
-                    createdBy: actor.userId,
+                    createdBy: authContext.userId,
                     workspaceId: project.workspaceId,
-                    metadata: { actorUserId: actor.userId },
+                    metadata: { actorUserId: authContext.userId },
                 }
             );
             entries.push(assigneeEntry);
@@ -264,7 +264,6 @@ export class ProjectMemberService {
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         project: Project,
-        actor: IProjectMemberActor,
         targetMember: ProjectMember,
         newRole: EnumProjectMemberRole
     ): Promise<void> {
@@ -285,14 +284,14 @@ export class ProjectMemberService {
             null,
             {
                 action: EnumActivityLogAction.projectMemberRoleUpdated,
-                userId: actor.userId,
-                createdBy: actor.userId,
+                userId: authContext.userId,
+                createdBy: authContext.userId,
                 workspaceId: project.workspaceId,
                 metadata: { targetUserId: targetMember.userId },
             }
         );
         const entries = [actorEntry];
-        if (targetMember.userId !== actor.userId) {
+        if (targetMember.userId !== authContext.userId) {
             const targetEntry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
@@ -301,9 +300,9 @@ export class ProjectMemberService {
                 {
                     action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
                     userId: targetMember.userId,
-                    createdBy: actor.userId,
+                    createdBy: authContext.userId,
                     workspaceId: project.workspaceId,
-                    metadata: { actorUserId: actor.userId },
+                    metadata: { actorUserId: authContext.userId },
                 }
             );
             entries.push(targetEntry);
@@ -317,7 +316,6 @@ export class ProjectMemberService {
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         project: Project,
-        actor: IProjectMemberActor,
         targetMember: ProjectMember
     ): Promise<void> {
         const removed = await this.projectMemberRepository.removeMemberInTx(
@@ -336,8 +334,8 @@ export class ProjectMemberService {
             null,
             {
                 action: EnumActivityLogAction.projectMemberRemoved,
-                userId: actor.userId,
-                createdBy: actor.userId,
+                userId: authContext.userId,
+                createdBy: authContext.userId,
                 workspaceId: project.workspaceId,
                 metadata: { targetUserId: targetMember.userId },
             }
@@ -350,9 +348,9 @@ export class ProjectMemberService {
             {
                 action: EnumActivityLogAction.projectMemberRemovedByAdmin,
                 userId: targetMember.userId,
-                createdBy: actor.userId,
+                createdBy: authContext.userId,
                 workspaceId: project.workspaceId,
-                metadata: { actorUserId: actor.userId },
+                metadata: { actorUserId: authContext.userId },
             }
         );
         await this.outboxService.addManyInTx(tx, [actorEntry, targetEntry]);

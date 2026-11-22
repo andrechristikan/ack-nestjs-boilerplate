@@ -41,7 +41,7 @@ describe('UserVerificationUtil', () => {
             'verification.tokenLength': 32,
             'verification.resendInMinutes': 5,
             'verification.linkPattern':
-                '{frontendBaseUrl}/verify?token={token}',
+                '{frontendBaseUrl}/verify-email?token={token}',
         });
 
         vi.setSystemTime(now);
@@ -72,7 +72,7 @@ describe('UserVerificationUtil', () => {
                 token: 'random-token',
                 hashedToken,
                 expiredInMinutes: 15,
-                link: 'https://example.com/verify?token=random-token',
+                link: 'https://example.com/verify-email?token=random-token',
                 resendInMinutes: 5,
             });
         });
@@ -88,13 +88,13 @@ describe('UserVerificationUtil', () => {
                 resendInMinutes: 5,
                 token: 'random-token',
                 hashedToken,
-                link: 'https://example.com/verify?token=random-token',
+                link: 'https://example.com/verify-email?token=random-token',
             };
 
             expect(util.mapEmailContext('user-flint', verification)).toEqual({
                 userId: 'user-flint',
                 proceedBy: 'user-flint',
-                link: 'https://example.com/verify?token=random-token',
+                link: 'https://example.com/verify-email?token=random-token',
                 expiredAt: '2026-03-01T00:15:00.000Z',
                 expiredInMinutes: 15,
                 reference: 'VRF-random-token',

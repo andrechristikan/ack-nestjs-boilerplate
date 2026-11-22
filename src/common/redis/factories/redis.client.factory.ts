@@ -13,22 +13,22 @@ export class RedisClientFactory implements OnApplicationShutdown {
     private readonly cacheKeyPrefix: string;
     private readonly queueUrl: string;
     private readonly queueConnectTimeoutInMs: number;
-    private readonly queueMaxRetriesPerRequest: number;
+    private readonly maxRetriesPerRequest: number;
     private readonly commandTimeoutInMs: number;
     private readonly connectTimeoutInMs: number;
     private readonly connectionNamePrefix: string;
 
     constructor(private readonly configService: ConfigService) {
         this.cacheUrl = this.configService.get<string>('redis.cache.url')!;
-        const cacheNamespace = this.configService.get<string>(
+        const namespace = this.configService.get<string>(
             'redis.cache.namespace'
         )!;
-        this.cacheKeyPrefix = `${cacheNamespace}:`;
+        this.cacheKeyPrefix = `${namespace}:`;
         this.queueUrl = this.configService.get<string>('redis.queue.url')!;
         this.queueConnectTimeoutInMs = this.configService.get<number>(
             'redis.queue.connectTimeoutInMs'
         )!;
-        this.queueMaxRetriesPerRequest = this.configService.get<number>(
+        this.maxRetriesPerRequest = this.configService.get<number>(
             'redis.queue.maxRetriesPerRequest'
         )!;
         this.commandTimeoutInMs = this.configService.get<number>(
@@ -82,7 +82,7 @@ export class RedisClientFactory implements OnApplicationShutdown {
             lazyConnect: true,
             enableOfflineQueue: false,
             connectTimeout: this.queueConnectTimeoutInMs,
-            maxRetriesPerRequest: this.queueMaxRetriesPerRequest,
+            maxRetriesPerRequest: this.maxRetriesPerRequest,
             connectionName: `${this.connectionNamePrefix}:queue`,
         });
     }

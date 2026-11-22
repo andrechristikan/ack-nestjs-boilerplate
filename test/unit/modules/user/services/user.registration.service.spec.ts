@@ -211,7 +211,7 @@ describe('UserRegistrationService', () => {
             token: 'raw-token',
             hashedToken:
                 '34d328009b123fbbb0dc93f18b3e6de1ecf7b1a5783c33dff7ffe1926f09e943',
-            link: 'https://example.com/verify?token=raw-token',
+            link: 'https://example.com/verify-email?token=raw-token',
         };
         const acceptedTermPolicyTypes = [
             EnumTermPolicyType.termsOfService,

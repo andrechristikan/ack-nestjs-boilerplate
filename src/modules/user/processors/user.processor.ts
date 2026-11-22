@@ -4,7 +4,7 @@ import type {
     IUserDeletePhotoPayload,
     IUserDeleteSelfPayload,
     IUserExportByAdminPayload,
-    IUserImportByAdminPayload,
+    IUserImportByAdminEncryptedPayload,
 } from '@modules/user/interfaces/user.interface';
 import { UserProcessDeletePhotoUseCase } from '@modules/user/use-cases/user.process-delete-photo.use-case';
 import { UserProcessDeleteSelfUseCase } from '@modules/user/use-cases/user.process-delete-self.use-case';
@@ -66,7 +66,7 @@ export class UserProcessor extends QueueProcessorBase {
 
                 return await this.userProcessImportByAdminUseCase.execute(
                     outboxId,
-                    data as IUserImportByAdminPayload
+                    data as IUserImportByAdminEncryptedPayload
                 );
             }
             case EnumUserProcess.exportByAdmin: {

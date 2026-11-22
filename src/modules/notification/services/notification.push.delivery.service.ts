@@ -16,10 +16,10 @@ import type {
     INotificationPushTokenPair,
     INotificationStepFailure,
 } from '@modules/notification/interfaces/notification.interface';
+import { NotificationPushDeliveryNotFoundException } from '@modules/notification/exceptions/notification.push-delivery-not-found.exception';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { NotificationRepository } from '@modules/notification/repositories/notification.repository';
 import { Injectable } from '@nestjs/common';
-import { UnrecoverableError } from 'bullmq';
 
 @Injectable()
 export class NotificationPushDeliveryService {
@@ -37,7 +37,7 @@ export class NotificationPushDeliveryService {
             { properties: { process } }
         );
 
-        throw new UnrecoverableError(message);
+        throw new NotificationPushDeliveryNotFoundException(message);
     }
 
     private toEncryptedTokens(

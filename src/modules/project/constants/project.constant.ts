@@ -5,6 +5,9 @@ import { EnumProjectStatusCodeError } from '@modules/project/enums/project.statu
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 /** @public */
+export const ProjectSlugRegex = /^[0-9a-z-]+$/;
+
+/** @public */
 export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
 
 /** @public */

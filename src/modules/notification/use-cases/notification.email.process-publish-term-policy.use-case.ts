@@ -7,18 +7,18 @@ import { NotificationService } from '@modules/notification/services/notification
 import type {
     INotificationEmailBulkOutcome,
     INotificationEmailBulkQueuePayload,
-    INotificationEmailPublishTermPolicyResult,
     INotificationTermPolicyBatchRecipientEncryptedPayload,
 } from '@modules/notification/interfaces/notification.interface';
 import { TermPolicyRecipientService } from '@modules/term-policy/services/term-policy.recipient.service';
 import { Injectable } from '@nestjs/common';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { ITermPolicyPublishPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 
 @Injectable()
 export class NotificationEmailProcessPublishTermPolicyUseCase implements IAppUseCase<
     [INotificationEmailBulkQueuePayload<ITermPolicyPublishPayload>],
-    INotificationEmailPublishTermPolicyResult
+    IQueueResponse
 > {
     constructor(
         private readonly termPolicyRecipientService: TermPolicyRecipientService,
@@ -70,11 +70,11 @@ export class NotificationEmailProcessPublishTermPolicyUseCase implements IAppUse
         batchId,
         proceedBy,
         recipients,
-    }: INotificationEmailBulkQueuePayload<ITermPolicyPublishPayload>): Promise<INotificationEmailPublishTermPolicyResult> {
+    }: INotificationEmailBulkQueuePayload<ITermPolicyPublishPayload>): Promise<IQueueResponse> {
         const message = this.messageService.setMessage(
             'notification.queue.email.publishTermPolicy'
         );
-        const processed: INotificationEmailPublishTermPolicyResult = {
+        const processed: IQueueResponse = {
             message,
         };
 

@@ -39,7 +39,7 @@ export const ActivityLogActionContract: IActivityLogActionContracts = {
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogUserTargetMetadataSchema,
     },
-    [EnumActivityLogAction.userStatusUpdated]: {
+    [EnumActivityLogAction.userStatusUpdatedByAdmin]: {
         user: EnumActivityLogUser.target,
         workspace: EnumActivityLogWorkspace.none,
         metadata: ActivityLogUserTargetMetadataSchema,

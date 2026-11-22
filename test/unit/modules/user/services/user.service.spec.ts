@@ -74,8 +74,8 @@ describe('UserService', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const configValues: Record<string, unknown> = {
         ...TestUnitUserConfigValues,
-        'user.deleteSelf.emailPattern': 'deleted.{id}',
-        'user.deleteSelf.usernamePattern': 'deleted.{id}',
+        'user.deleteSelfEmailPattern': 'deleted.{id}',
+        'user.deleteSelfUsernamePattern': 'deleted.{id}',
     };
 
     const tx = {} as IDatabaseTransactionClient;
@@ -1160,16 +1160,16 @@ describe('UserService', () => {
             ).toBe(EnumActivityLogAction.userBlockedByAdmin);
         });
 
-        it('resolves userStatusUpdated for inactive', () => {
+        it('resolves userStatusUpdatedByAdmin for inactive', () => {
             expect(
                 service.resolveStatusActivityLogAction(EnumUserStatus.inactive)
-            ).toBe(EnumActivityLogAction.userStatusUpdated);
+            ).toBe(EnumActivityLogAction.userStatusUpdatedByAdmin);
         });
 
-        it('resolves userStatusUpdated for active', () => {
+        it('resolves userStatusUpdatedByAdmin for active', () => {
             expect(
                 service.resolveStatusActivityLogAction(EnumUserStatus.active)
-            ).toBe(EnumActivityLogAction.userStatusUpdated);
+            ).toBe(EnumActivityLogAction.userStatusUpdatedByAdmin);
         });
     });
 

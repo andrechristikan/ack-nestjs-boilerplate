@@ -43,6 +43,7 @@ export class WorkspaceUpdateMemberRoleUseCase implements IAppUseCase<
         const workspaceId = workspaceContext.workspace.id;
         const actorMember = workspaceContext.workspaceMember;
         const targetMember = await this.workspaceMemberService.getPeerTarget(
+            authContext,
             workspaceId,
             actorMember,
             targetMemberId
@@ -56,7 +57,6 @@ export class WorkspaceUpdateMemberRoleUseCase implements IAppUseCase<
                     apiKeyContext,
                     authContext,
                     workspaceId,
-                    actorMember,
                     targetMember,
                     role
                 )

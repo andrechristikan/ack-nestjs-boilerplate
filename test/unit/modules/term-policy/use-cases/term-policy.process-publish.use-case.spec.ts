@@ -99,13 +99,9 @@ describe('TermPolicyProcessPublishUseCase', () => {
         };
 
         beforeEach(() => {
-            Object.defineProperty(
-                termPolicyRecipientService,
-                'emailBatchSize',
-                {
-                    value: 3,
-                }
-            );
+            Object.defineProperty(termPolicyRecipientService, 'batchSize', {
+                value: 3,
+            });
             termPolicyRecipientService.buildBatch.mockImplementation(users => {
                 const recipients = [];
                 for (const { id, email, username } of users) {

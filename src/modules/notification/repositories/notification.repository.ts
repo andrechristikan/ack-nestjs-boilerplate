@@ -193,20 +193,22 @@ export class NotificationRepository implements INotificationRepository {
     async markAllAsRead(
         userId: string,
         excludedTypes: EnumNotificationType[]
-    ): Promise<Prisma.BatchPayload> {
+    ): Promise<number> {
         const readAt = this.helperDateService.create();
         const visibleWhere = this.buildVisibleWhere(userId, excludedTypes);
+        const { count } =
+            await this.databaseService.client.notification.updateMany({
+                where: {
+                    ...visibleWhere,
+                    isRead: false,
+                },
+                data: {
+                    isRead: true,
+                    readAt,
+                },
+            });
 
-        return this.databaseService.client.notification.updateMany({
-            where: {
-                ...visibleWhere,
-                isRead: false,
-            },
-            data: {
-                isRead: true,
-                readAt,
-            },
-        });
+        return count;
     }
 
     async updateDeliveryProcessedAt(

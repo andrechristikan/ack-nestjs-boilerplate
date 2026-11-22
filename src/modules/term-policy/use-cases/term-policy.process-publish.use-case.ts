@@ -128,7 +128,7 @@ export class TermPolicyProcessPublishUseCase implements IAppUseCase<
         const createdBefore = this.helperDateService.createFromIso(
             data.recipientCutoffAt
         );
-        const batchSize = this.termPolicyRecipientService.emailBatchSize;
+        const batchSize = this.termPolicyRecipientService.batchSize;
         let cursor: string | null = null;
         let index = 0;
         let candidateCounts = 0;

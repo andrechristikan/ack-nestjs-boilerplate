@@ -12,6 +12,6 @@ export class ProjectUtil {
     mapMemberActor(workspaceMember: WorkspaceMember): IProjectMemberActor {
         const hasWorkspaceBypass = this.hasWorkspaceBypass(workspaceMember);
 
-        return { userId: workspaceMember.userId, hasWorkspaceBypass };
+        return { hasWorkspaceBypass };
     }
 }

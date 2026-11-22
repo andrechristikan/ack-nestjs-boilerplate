@@ -84,7 +84,7 @@ export const AppEnvSchema = z
         SENTRY_PROFILES_SAMPLE_RATE: z.coerce.number().min(0).max(1),
 
         FIREBASE_PROJECT_ID: RequestOptionalEnvStringSchema,
-        FIREBASE_CLIENT_EMAIL: RequestOptionalEnvEmailSchema,
+        FIREBASE_CLIENT_EMAIL_ADDRESS: RequestOptionalEnvEmailSchema,
         FIREBASE_PRIVATE_KEY: RequestOptionalEnvStringSchema,
     })
     .superRefine((env, ctx) => {
@@ -136,11 +136,11 @@ export const AppEnvSchema = z
 
         requireAll(
             env.FIREBASE_PROJECT_ID !== null ||
-                env.FIREBASE_CLIENT_EMAIL !== null ||
+                env.FIREBASE_CLIENT_EMAIL_ADDRESS !== null ||
                 env.FIREBASE_PRIVATE_KEY !== null,
             [
                 'FIREBASE_PROJECT_ID',
-                'FIREBASE_CLIENT_EMAIL',
+                'FIREBASE_CLIENT_EMAIL_ADDRESS',
                 'FIREBASE_PRIVATE_KEY',
             ],
             'a Firebase key is set'

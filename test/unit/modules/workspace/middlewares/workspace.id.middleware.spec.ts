@@ -3,10 +3,12 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { NextFunction, Response } from 'express';
-import { RequestWorkspaceIdHeaderName } from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IRequestApp } from '@common/request/interfaces/request.interface';
-import { WorkspaceIdStoreKey } from '@modules/workspace/constants/workspace.constant';
+import {
+    WorkspaceIdHeaderName,
+    WorkspaceIdStoreKey,
+} from '@modules/workspace/constants/workspace.constant';
 import { WorkspaceIdMiddleware } from '@modules/workspace/middlewares/workspace.id.middleware';
 
 describe('WorkspaceIdMiddleware', () => {
@@ -37,7 +39,7 @@ describe('WorkspaceIdMiddleware', () => {
     describe('use', () => {
         it('stores the workspace header value when present', () => {
             const req = {
-                headers: { [RequestWorkspaceIdHeaderName]: 'workspace-1' },
+                headers: { [WorkspaceIdHeaderName]: 'workspace-1' },
             } as unknown as IRequestApp;
 
             middleware.use(req, res, next);
@@ -62,7 +64,7 @@ describe('WorkspaceIdMiddleware', () => {
 
         it('stores null when the workspace header is not a string', () => {
             const req = {
-                headers: { [RequestWorkspaceIdHeaderName]: ['a', 'b'] },
+                headers: { [WorkspaceIdHeaderName]: ['a', 'b'] },
             } as unknown as IRequestApp;
 
             middleware.use(req, res, next);

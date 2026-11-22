@@ -18,17 +18,11 @@ export interface IConfigAnalytic {
     maxWindowInMs: number;
     anomaly: {
         lookbackInMs: number;
-        impossibleTravel: {
-            minDistanceKm: number;
-            maxDeltaInMs: number;
-        };
-        loginSpikeIp: {
-            windowInMs: number;
-            minUniqueAccounts: number;
-        };
-        deviceProliferation: {
-            zScoreThreshold: number;
-        };
+        impossibleTravelMinDistanceKm: number;
+        impossibleTravelMaxDeltaInMs: number;
+        loginSpikeIpWindowInMs: number;
+        loginSpikeIpMinUniqueAccounts: number;
+        deviceProliferationZScoreThreshold: number;
     };
     device: {
         inactivityInMs: number;
@@ -41,31 +35,19 @@ export interface IConfigAnalytic {
         };
     };
     fraud: {
-        credentialStuffing: {
-            windowInMs: number;
-            minUniqueAccounts: number;
-        };
-        accountTakeover: {
-            newDeviceAfterPasswordChangeInMs: number;
-        };
-        massRegistration: {
-            windowInMs: number;
-            minAccountsPerIp: number;
-        };
-        passwordResetEnumeration: {
-            windowInMs: number;
-            minRequestsPerIp: number;
-        };
-        sharedFingerprint: {
-            minUsersPerFingerprint: number;
-        };
+        credentialStuffingWindowInMs: number;
+        credentialStuffingMinUniqueAccounts: number;
+        accountTakeoverNewDeviceAfterPasswordChangeInMs: number;
+        massRegistrationWindowInMs: number;
+        massRegistrationMinAccountsPerIp: number;
+        passwordResetEnumerationWindowInMs: number;
+        passwordResetEnumerationMinRequestsPerIp: number;
+        sharedFingerprintMinUsersPerFingerprint: number;
         sessionAfterAdmin: {
             sessionAfterAdminRevokeInMs: number;
         };
-        forgotPasswordTokenAbuse: {
-            windowInMs: number;
-            minUnusedTokens: number;
-        };
+        forgotPasswordTokenAbuseWindowInMs: number;
+        forgotPasswordTokenAbuseMinUnusedTokens: number;
         weights: {
             sessionAfterAdmin: number;
             impossibleTravel: number;
@@ -81,9 +63,7 @@ export interface IConfigAnalytic {
             reviewMax: number;
             elevateMax: number;
         };
-        riskScore: {
-            lookbackInMs: number;
-        };
+        riskScoreLookbackInMs: number;
         nearLockoutOffset: number;
     };
     project: {
@@ -117,17 +97,11 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
     maxWindowInMs: ms('90d'),
     anomaly: {
         lookbackInMs: ms('30d'),
-        impossibleTravel: {
-            minDistanceKm: 500,
-            maxDeltaInMs: ms('1h'),
-        },
-        loginSpikeIp: {
-            windowInMs: ms('10m'),
-            minUniqueAccounts: 5,
-        },
-        deviceProliferation: {
-            zScoreThreshold: 3,
-        },
+        impossibleTravelMinDistanceKm: 500,
+        impossibleTravelMaxDeltaInMs: ms('1h'),
+        loginSpikeIpWindowInMs: ms('10m'),
+        loginSpikeIpMinUniqueAccounts: 5,
+        deviceProliferationZScoreThreshold: 3,
     },
     device: {
         inactivityInMs: ms('30d'),
@@ -140,31 +114,19 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
         },
     },
     fraud: {
-        credentialStuffing: {
-            windowInMs: ms('5m'),
-            minUniqueAccounts: 10,
-        },
-        accountTakeover: {
-            newDeviceAfterPasswordChangeInMs: ms('1h'),
-        },
-        massRegistration: {
-            windowInMs: ms('1h'),
-            minAccountsPerIp: 5,
-        },
-        passwordResetEnumeration: {
-            windowInMs: ms('10m'),
-            minRequestsPerIp: 10,
-        },
-        sharedFingerprint: {
-            minUsersPerFingerprint: 2,
-        },
+        credentialStuffingWindowInMs: ms('5m'),
+        credentialStuffingMinUniqueAccounts: 10,
+        accountTakeoverNewDeviceAfterPasswordChangeInMs: ms('1h'),
+        massRegistrationWindowInMs: ms('1h'),
+        massRegistrationMinAccountsPerIp: 5,
+        passwordResetEnumerationWindowInMs: ms('10m'),
+        passwordResetEnumerationMinRequestsPerIp: 10,
+        sharedFingerprintMinUsersPerFingerprint: 2,
         sessionAfterAdmin: {
             sessionAfterAdminRevokeInMs: ms('5m'),
         },
-        forgotPasswordTokenAbuse: {
-            windowInMs: ms('24h'),
-            minUnusedTokens: 5,
-        },
+        forgotPasswordTokenAbuseWindowInMs: ms('24h'),
+        forgotPasswordTokenAbuseMinUnusedTokens: 5,
         weights: {
             sessionAfterAdmin: 50,
             impossibleTravel: 40,
@@ -180,9 +142,7 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
             reviewMax: 60,
             elevateMax: 90,
         },
-        riskScore: {
-            lookbackInMs: ms('24h'),
-        },
+        riskScoreLookbackInMs: ms('24h'),
         nearLockoutOffset: 1,
     },
     project: {

@@ -52,7 +52,6 @@ describe('ProjectRemoveMemberUseCase', () => {
     );
 
     const actor: IProjectMemberActor = {
-        userId: actorMember.userId,
         hasWorkspaceBypass: true,
     };
 
@@ -138,7 +137,7 @@ describe('ProjectRemoveMemberUseCase', () => {
             expect(result).toEqual({});
             expect(
                 projectMemberService.getRemovableMember
-            ).toHaveBeenCalledWith(project, actor, targetMemberId);
+            ).toHaveBeenCalledWith(authContext, project, actor, targetMemberId);
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(projectMemberService.removeMemberInTx).toHaveBeenCalledWith(
                 tx,
@@ -146,7 +145,6 @@ describe('ProjectRemoveMemberUseCase', () => {
                 apiKeyContext,
                 authContext,
                 project,
-                actor,
                 targetMember
             );
         });

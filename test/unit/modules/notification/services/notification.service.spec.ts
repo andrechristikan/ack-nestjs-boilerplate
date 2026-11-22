@@ -125,7 +125,7 @@ describe('NotificationService', () => {
             '{process}-{joinRequestId}-{userId}',
         'notification.idempotencyKey.userTermPolicyPattern':
             '{process}-{userId}-{termPolicyId}',
-        'notification.idempotencyKey.stepPattern': '{notificationId}-{step}',
+        'notification.idempotencyKey.stepPattern': '{process}-{notificationId}',
         'notification.idempotencyKey.termPolicyBatchPattern':
             '{process}-{termPolicyId}-{batchId}',
         'notification.idempotencyKey.termPolicyBatchResendPattern':
@@ -306,6 +306,39 @@ describe('NotificationService', () => {
             notificationEmailQueue.sendEffect.mockReturnValue(emailEffect);
             notificationPushQueue.sendEffect.mockReturnValue(pushEffect);
             notificationSmsQueue.sendEffect.mockReturnValue(smsEffect);
+        });
+
+        it('stores the sealed secret field in the metadata and no plain value', async () => {
+            const sealedMobileNumber = buildSealedNotificationPayload(
+                '+6281234567890',
+                'user-id'
+            );
+
+            await service.createInTx(
+                tx,
+                'notification-id',
+                EnumNotificationKind.verifiedMobileNumber,
+                {
+                    userId: 'user-id',
+                    proceedBy: 'actor-id',
+                    reference: 'VRF-abc',
+                    encryptedMobileNumber: sealedMobileNumber,
+                    snapshot: null,
+                    verificationId: null,
+                },
+                recipient
+            );
+
+            expect(notificationRepository.createInTx).toHaveBeenCalledWith(
+                tx,
+                EnumNotificationKind.verifiedMobileNumber,
+                expect.objectContaining({
+                    metadata: {
+                        username: 'invitee',
+                        encryptedMobileNumber: sealedMobileNumber,
+                    },
+                })
+            );
         });
 
         it('creates the notification and adds the email and push effects its queue classes return on the same tx', async () => {
@@ -730,9 +763,7 @@ describe('NotificationService', () => {
             notificationUserSettingRepository.findUserSetting.mockResolvedValue(
                 settings
             );
-            notificationRepository.markAllAsRead.mockResolvedValue({
-                count: 3,
-            });
+            notificationRepository.markAllAsRead.mockResolvedValue(3);
 
             const result = await service.markAllAsRead('user-id');
 
@@ -978,28 +1009,23 @@ describe('NotificationService', () => {
         });
     });
 
-    describe('toCleanupStaleTokensResult', () => {
-        it('reports the removed count', () => {
-            expect(service.toCleanupStaleTokensResult(5)).toEqual({
-                message: 'notification.queue.push.cleanupStaleTokens',
-                countRemovedTokens: 5,
-            });
-        });
-    });
-
     describe('toMessageProperties', () => {
         const title = 'notification.notify.welcome.title';
 
         it('keeps only the primitive metadata values', () => {
             expect(
-                service.toMessageProperties(title, {
-                    username: 'ana',
-                    age: 3,
-                    isNew: true,
-                    nested: { a: 1 },
-                    list: [1],
-                    missing: null,
-                })
+                service.toMessageProperties(
+                    title,
+                    {
+                        username: 'ana',
+                        age: 3,
+                        isNew: true,
+                        nested: { a: 1 },
+                        list: [1],
+                        missing: null,
+                    },
+                    'user-id'
+                )
             ).toEqual({ username: 'ana', age: 3, isNew: true });
         });
 
@@ -1007,7 +1033,8 @@ describe('NotificationService', () => {
             const result = service.toMessageProperties(
                 NotificationKindContract[EnumNotificationKind.newDeviceLogin]
                     .title,
-                { username: 'ana', loginAt: '2026-03-01T00:05:00.000Z' }
+                { username: 'ana', loginAt: '2026-03-01T00:05:00.000Z' },
+                'user-id'
             );
 
             expect(result).toEqual({
@@ -1016,25 +1043,53 @@ describe('NotificationService', () => {
             });
         });
 
+        it('opens each sealed secret of the kind for the recipient into its plain property', () => {
+            const result = service.toMessageProperties(
+                NotificationKindContract[
+                    EnumNotificationKind.verifiedMobileNumber
+                ].title,
+                {
+                    username: 'ana',
+                    encryptedMobileNumber: buildSealedNotificationPayload(
+                        '+6281234567890',
+                        'user-1'
+                    ),
+                },
+                'user-1'
+            );
+
+            expect(result).toEqual({
+                username: 'ana',
+                mobileNumber: '+6281234567890',
+            });
+        });
+
         it('keeps the properties as they are for a title no contract row owns', () => {
             const result = service.toMessageProperties(
                 'notification.notify.unknown.title',
-                { username: 'ana' }
+                { username: 'ana' },
+                'user-id'
             );
 
             expect(result).toEqual({ username: 'ana' });
         });
 
         it('returns empty properties for null metadata', () => {
-            expect(service.toMessageProperties(title, null)).toEqual({});
+            expect(service.toMessageProperties(title, null, 'user-id')).toEqual(
+                {}
+            );
         });
 
         it('returns empty properties for array metadata', () => {
-            expect(service.toMessageProperties(title, ['ana'])).toEqual({});
+            expect(
+                service.toMessageProperties(title, ['ana'], 'user-id')
+            ).toEqual({});
         });
 
         it('returns empty properties for primitive metadata', () => {
-            expect(service.toMessageProperties(title, 'ana')).toEqual({});
+            expect(
+                service.toMessageProperties(title, 'ana', 'user-id')
+            ).toEqual({});
         });
     });
 

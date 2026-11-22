@@ -50,7 +50,8 @@ export class NotificationGetListCursorUseCase implements IAppUseCase<
             const metadataProperties =
                 this.notificationService.toMessageProperties(
                     notification.title,
-                    notification.metadata
+                    notification.metadata,
+                    notification.userId
                 );
             const properties =
                 this.notificationService.toRejectReasonProperties(

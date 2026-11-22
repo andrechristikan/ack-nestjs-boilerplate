@@ -12,6 +12,7 @@ import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.d
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
 import { QueueProcessor } from '@common/queue/decorators/queue.decorator';
+import { NotificationPushDeliveryNotFoundException } from '@modules/notification/exceptions/notification.push-delivery-not-found.exception';
 import { EnumNotificationQueue } from '@modules/notification/enums/notification.enum';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 
@@ -57,8 +58,14 @@ export class NotificationPushProcessor extends QueueProcessorBase {
                     );
             }
         } catch (error: unknown) {
-            if (error instanceof HelperDecryptFailedException) {
-                throw new UnrecoverableError(error.message);
+            if (
+                error instanceof HelperDecryptFailedException ||
+                error instanceof NotificationPushDeliveryNotFoundException
+            ) {
+                const unrecoverable = new UnrecoverableError(error.message);
+                unrecoverable.cause = error;
+
+                throw unrecoverable;
             }
 
             if (

@@ -14,7 +14,7 @@ import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 export interface IFirebaseCredentials {
     projectId: string | null;
-    clientEmail: string | null;
+    clientEmailAddress: string | null;
     privateKey: string | null;
 }
 
@@ -24,7 +24,7 @@ export async function createFirebaseService(
     const configService = buildConfigService({
         ...TestUnitKitConfigValues,
         'firebase.projectId': credentials.projectId,
-        'firebase.clientEmail': credentials.clientEmail,
+        'firebase.clientEmailAddress': credentials.clientEmailAddress,
         'firebase.privateKey': credentials.privateKey,
     });
 

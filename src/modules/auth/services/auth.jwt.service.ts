@@ -118,7 +118,7 @@ export class AuthJwtService {
         try {
             return this.helperEncryptionService.derBase64ToPem(raw, label);
         } catch (error) {
-            throw new AuthJwtConfigInvalidException(configKey, expected, error);
+            throw new AuthJwtConfigInvalidException(error, configKey, expected);
         }
     }
 

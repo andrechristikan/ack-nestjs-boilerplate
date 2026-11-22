@@ -32,7 +32,7 @@ describe('FirebaseService', () => {
 
     const fullCredentials: IFirebaseCredentials = {
         projectId: 'project-1',
-        clientEmail: 'sa@project-1.iam.gserviceaccount.com',
+        clientEmailAddress: 'sa@project-1.iam.gserviceaccount.com',
         privateKey: rawPrivateKey,
     };
 
@@ -60,10 +60,10 @@ describe('FirebaseService', () => {
             expect(notConfigured.isInitialized()).toBe(false);
         });
 
-        it('warns and skips initialization when clientEmail is missing', async () => {
+        it('warns and skips initialization when clientEmailAddress is missing', async () => {
             const notConfigured = await createFirebaseService({
                 ...fullCredentials,
-                clientEmail: null,
+                clientEmailAddress: null,
             });
 
             await notConfigured.onModuleInit();
@@ -112,7 +112,7 @@ describe('FirebaseService', () => {
 
             expect(firebaseAdmin.cert).toHaveBeenCalledWith({
                 projectId: fullCredentials.projectId,
-                clientEmail: fullCredentials.clientEmail,
+                clientEmail: fullCredentials.clientEmailAddress,
                 privateKey: normalizedPrivateKey,
             });
             expect(firebaseAdmin.initializeApp).toHaveBeenCalledWith({

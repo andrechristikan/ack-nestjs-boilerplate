@@ -132,8 +132,8 @@ describe('UserSignUpUseCase', () => {
         'app.name': 'ACK Boilerplate',
         'user.default.role': 'user',
         'user.default.country': 'ID',
-        'user.create.timeoutInMs': 5000,
-        'user.create.bulkTimeoutInMs': 30000,
+        'user.createTimeoutInMs': 5000,
+        'user.createBulkTimeoutInMs': 30000,
     };
     const contextWords = [
         'ACK Boilerplate',
@@ -245,12 +245,12 @@ describe('UserSignUpUseCase', () => {
         reference: 'VRF-bramble',
         token: 'raw-token',
         hashedToken: 'hashed-token',
-        link: 'https://example.com/verify?token=raw-token',
+        link: 'https://example.com/verify-email?token=raw-token',
     };
     const verificationContext: INotificationVerificationLinkContext = {
         userId: 'user-bramble',
         proceedBy: 'user-bramble',
-        link: 'https://example.com/verify?token=raw-token',
+        link: 'https://example.com/verify-email?token=raw-token',
         expiredAt: '2026-03-05T00:00:00.000Z',
         expiredInMinutes: 15,
         reference: 'VRF-bramble',

@@ -5,10 +5,7 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type {
-    EnumDeviceNotificationProvider,
-    Prisma,
-} from '@generated/prisma-client/client';
+import type { EnumDeviceNotificationProvider } from '@generated/prisma-client/client';
 import type {
     IDeviceOwnership,
     IDeviceOwnershipLoginUpsert,
@@ -92,5 +89,5 @@ export interface IDeviceOwnershipRepository {
         userId: string,
         tokens: string[]
     ): Promise<void>;
-    clearStaleTokens(thresholdInMs: number): Promise<Prisma.BatchPayload>;
+    clearStaleTokens(thresholdInMs: number): Promise<number>;
 }

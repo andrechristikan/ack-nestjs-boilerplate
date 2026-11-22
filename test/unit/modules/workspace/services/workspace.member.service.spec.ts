@@ -304,7 +304,6 @@ describe('WorkspaceMemberService', () => {
         });
     });
     describe('getTransferTarget', () => {
-        const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
         const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
         const activeTarget = {
             ...target,
@@ -313,7 +312,7 @@ describe('WorkspaceMemberService', () => {
 
         it('throws WorkspaceSelfTransferException when the target is the actor', async () => {
             await expect(
-                service.getTransferTarget('workspace-1', actor, 'user-1')
+                service.getTransferTarget(authContext, 'workspace-1', 'user-1')
             ).rejects.toMatchObject({
                 constructor: WorkspaceSelfTransferException,
                 module: 'workspace',
@@ -330,7 +329,7 @@ describe('WorkspaceMemberService', () => {
             );
 
             await expect(
-                service.getTransferTarget('workspace-1', actor, 'user-2')
+                service.getTransferTarget(authContext, 'workspace-1', 'user-2')
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
@@ -358,7 +357,11 @@ describe('WorkspaceMemberService', () => {
                 );
 
                 await expect(
-                    service.getTransferTarget('workspace-1', actor, 'user-2')
+                    service.getTransferTarget(
+                        authContext,
+                        'workspace-1',
+                        'user-2'
+                    )
                 ).rejects.toMatchObject({
                     constructor: WorkspaceTransferTargetInactiveException,
                     module: 'workspace',
@@ -374,7 +377,7 @@ describe('WorkspaceMemberService', () => {
             );
 
             await expect(
-                service.getTransferTarget('workspace-1', actor, 'user-2')
+                service.getTransferTarget(authContext, 'workspace-1', 'user-2')
             ).resolves.toBe(activeTarget);
             expect(
                 workspaceMemberRepository.findOneByWorkspaceAndUserWithUser
@@ -506,13 +509,14 @@ describe('WorkspaceMemberService', () => {
         const tx = {} as IDatabaseTransactionClient;
         const actor = { ...baseMember, id: 'member-1', userId: 'user-1' };
         const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
+        const actorContext = buildAuthJwtAccessContext('actor-1');
 
         it('promotes the target and demotes the actor on the tx given, in that order', async () => {
             await service.transferOwnershipInTx(
                 tx,
                 requestContext,
                 apiKeyContext,
-                authContext,
+                actorContext,
                 'workspace-1',
                 actor,
                 target
@@ -534,7 +538,7 @@ describe('WorkspaceMemberService', () => {
                 tx,
                 requestContext,
                 apiKeyContext,
-                authContext,
+                actorContext,
                 'workspace-1',
                 actor,
                 target
@@ -544,12 +548,12 @@ describe('WorkspaceMemberService', () => {
                 1,
                 requestContext,
                 apiKeyContext,
-                authContext,
+                actorContext,
                 null,
                 {
                     action: EnumActivityLogAction.workspaceOwnershipTransferred,
-                    userId: 'user-1',
-                    createdBy: 'user-1',
+                    userId: 'actor-1',
+                    createdBy: 'actor-1',
                     workspaceId: 'workspace-1',
                     metadata: { targetUserId: 'user-2' },
                 }
@@ -558,14 +562,14 @@ describe('WorkspaceMemberService', () => {
                 2,
                 requestContext,
                 apiKeyContext,
-                authContext,
+                actorContext,
                 null,
                 {
                     action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
                     userId: 'user-2',
-                    createdBy: 'user-1',
+                    createdBy: 'actor-1',
                     workspaceId: 'workspace-1',
-                    metadata: { actorUserId: 'user-1' },
+                    metadata: { actorUserId: 'actor-1' },
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -587,7 +591,7 @@ describe('WorkspaceMemberService', () => {
                     tx,
                     requestContext,
                     apiKeyContext,
-                    authContext,
+                    actorContext,
                     'workspace-1',
                     actor,
                     target
@@ -611,7 +615,7 @@ describe('WorkspaceMemberService', () => {
                     tx,
                     requestContext,
                     apiKeyContext,
-                    authContext,
+                    actorContext,
                     'workspace-1',
                     actor,
                     target
@@ -909,7 +913,7 @@ describe('WorkspaceMemberService', () => {
         const actor = {
             ...baseMember,
             id: 'member-1',
-            userId: 'user-1',
+            userId: 'row-user',
             role: EnumWorkspaceMemberRole.admin,
         };
         const target = {
@@ -926,7 +930,12 @@ describe('WorkspaceMemberService', () => {
             );
 
             await expect(
-                service.getPeerTarget('workspace-1', actor, 'member-2')
+                service.getPeerTarget(
+                    authContext,
+                    'workspace-1',
+                    actor,
+                    'member-2'
+                )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
@@ -941,7 +950,12 @@ describe('WorkspaceMemberService', () => {
             });
 
             await expect(
-                service.getPeerTarget('workspace-1', actor, 'member-2')
+                service.getPeerTarget(
+                    authContext,
+                    'workspace-1',
+                    actor,
+                    'member-2'
+                )
             ).rejects.toMatchObject({
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
@@ -956,7 +970,12 @@ describe('WorkspaceMemberService', () => {
             });
 
             await expect(
-                service.getPeerTarget('workspace-1', actor, 'member-2')
+                service.getPeerTarget(
+                    authContext,
+                    'workspace-1',
+                    actor,
+                    'member-2'
+                )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
                 module: 'workspace',
@@ -970,7 +989,12 @@ describe('WorkspaceMemberService', () => {
             );
 
             await expect(
-                service.getPeerTarget('workspace-1', actor, 'member-2')
+                service.getPeerTarget(
+                    authContext,
+                    'workspace-1',
+                    actor,
+                    'member-2'
+                )
             ).resolves.toBe(target);
             expect(
                 workspaceMemberRepository.findByIdAndWorkspace
@@ -980,12 +1004,7 @@ describe('WorkspaceMemberService', () => {
 
     describe('updateMemberRoleInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
-        const actor = {
-            ...baseMember,
-            id: 'member-1',
-            userId: 'user-1',
-            role: EnumWorkspaceMemberRole.admin,
-        };
+        const actorContext = buildAuthJwtAccessContext('actor-1');
         const target = {
             ...baseMember,
             id: 'member-2',
@@ -998,9 +1017,8 @@ describe('WorkspaceMemberService', () => {
                 tx,
                 requestContext,
                 apiKeyContext,
-                authContext,
+                actorContext,
                 'workspace-1',
-                actor,
                 target,
                 EnumWorkspaceMemberRole.admin
             );
@@ -1017,12 +1035,12 @@ describe('WorkspaceMemberService', () => {
                 1,
                 requestContext,
                 apiKeyContext,
-                authContext,
+                actorContext,
                 null,
                 {
                     action: EnumActivityLogAction.workspaceMemberRoleUpdated,
-                    userId: 'user-1',
-                    createdBy: 'user-1',
+                    userId: 'actor-1',
+                    createdBy: 'actor-1',
                     workspaceId: 'workspace-1',
                     metadata: { targetUserId: 'user-2' },
                 }
@@ -1031,14 +1049,14 @@ describe('WorkspaceMemberService', () => {
                 2,
                 requestContext,
                 apiKeyContext,
-                authContext,
+                actorContext,
                 null,
                 {
                     action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
                     userId: 'user-2',
-                    createdBy: 'user-1',
+                    createdBy: 'actor-1',
                     workspaceId: 'workspace-1',
-                    metadata: { actorUserId: 'user-1' },
+                    metadata: { actorUserId: 'actor-1' },
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -1058,9 +1076,8 @@ describe('WorkspaceMemberService', () => {
                     tx,
                     requestContext,
                     apiKeyContext,
-                    authContext,
+                    actorContext,
                     'workspace-1',
-                    actor,
                     target,
                     EnumWorkspaceMemberRole.admin
                 )

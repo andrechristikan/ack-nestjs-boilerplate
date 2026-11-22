@@ -30,6 +30,6 @@ export default registerAs('notification', (): IConfigNotification => ({
         termPolicyBatchResendPattern:
             '{process}-{termPolicyId}-{batchId}-{resendNonce}',
         userTermPolicyPattern: '{process}-{userId}-{termPolicyId}',
-        stepPattern: '{notificationId}-{step}',
+        stepPattern: '{process}-{notificationId}',
     },
 }));

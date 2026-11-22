@@ -22,9 +22,9 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class UserCreateUtil {
     private readonly personalNamePattern: string;
-    private readonly workspaceSlugPrefix: string;
-    private readonly workspaceSlugMaxLength: number;
-    private readonly workspaceSlugMaxAttempts: number;
+    private readonly slugPrefix: string;
+    private readonly slugMaxLength: number;
+    private readonly slugMaxAttempts: number;
 
     constructor(
         private readonly databaseUtil: DatabaseUtil,
@@ -34,13 +34,13 @@ export class UserCreateUtil {
         this.personalNamePattern = this.configService.get<string>(
             'workspace.personalNamePattern'
         )!;
-        this.workspaceSlugPrefix = this.configService.get<string>(
+        this.slugPrefix = this.configService.get<string>(
             'workspace.slugPrefix'
         )!;
-        this.workspaceSlugMaxLength = this.configService.get<number>(
+        this.slugMaxLength = this.configService.get<number>(
             'workspace.slugMaxLength'
         )!;
-        this.workspaceSlugMaxAttempts = this.configService.get<number>(
+        this.slugMaxAttempts = this.configService.get<number>(
             'workspace.slugMaxAttempts'
         )!;
     }
@@ -119,9 +119,9 @@ export class UserCreateUtil {
             const workspaceId = this.databaseUtil.createId();
             const slugCandidates =
                 this.helperStringService.generateSlugCandidates(
-                    this.workspaceSlugPrefix,
-                    this.workspaceSlugMaxLength,
-                    this.workspaceSlugMaxAttempts
+                    this.slugPrefix,
+                    this.slugMaxLength,
+                    this.slugMaxAttempts
                 );
             const name = this.personalNamePattern.replace(
                 '{username}',

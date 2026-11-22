@@ -39,7 +39,7 @@ describe('UserForgotPasswordUseCase', () => {
         hashedToken: 'hashed-token',
         expiredInMinutes: 15,
         resendInMinutes: 5,
-        link: 'https://example.com/reset?token=raw-token',
+        link: 'https://example.com/forgot-password?token=raw-token',
     };
 
     beforeEach(async () => {

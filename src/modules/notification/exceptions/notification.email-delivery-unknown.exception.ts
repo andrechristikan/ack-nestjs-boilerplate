@@ -4,9 +4,9 @@ import { QueueException } from '@common/queue/exceptions/queue.exception';
 export class NotificationEmailDeliveryUnknownException extends QueueException {
     constructor(
         readonly message: string,
+        readonly rawError: unknown,
         readonly batchId: string,
-        readonly unknownCount: number,
-        readonly rawError: unknown = null
+        readonly unknownCount: number
     ) {
         super(message, true, rawError);
     }

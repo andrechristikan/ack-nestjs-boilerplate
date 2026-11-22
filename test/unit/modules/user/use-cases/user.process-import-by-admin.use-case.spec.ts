@@ -50,7 +50,7 @@ import type {
     IUser,
     IUserCreateWithWorkspaceInput,
     IUserImport,
-    IUserImportByAdminPayload,
+    IUserImportByAdminEncryptedPayload,
     IUserCreateWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
 import { UserImportService } from '@modules/user/services/user.import.service';
@@ -63,7 +63,10 @@ import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.pr
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
-import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
+import {
+    TestUnitUserConfigValues,
+    buildSealedImportRows,
+} from '@test/unit/helpers/test.unit.user.helper';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
@@ -72,6 +75,7 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 
 describe('UserProcessImportByAdminUseCase', () => {
     const userImportService: MockProxy<UserImportService> =
@@ -102,7 +106,7 @@ describe('UserProcessImportByAdminUseCase', () => {
         ...TestUnitUserConfigValues,
         'user.default.role': 'user',
         'user.default.country': 'ID',
-        'user.create.bulkTimeoutInMs': 30000,
+        'user.createBulkTimeoutInMs': 30000,
     };
     const activityLog: IActivityLogActorPayload = {
         apiKeyId: 'api-key-1',
@@ -117,8 +121,8 @@ describe('UserProcessImportByAdminUseCase', () => {
             name: null,
         },
     ];
-    const payload: IUserImportByAdminPayload = {
-        rows,
+    const payload: IUserImportByAdminEncryptedPayload = {
+        rows: buildSealedImportRows(rows, activityLog.actorUserId),
         activityLog,
         created: null,
     };
@@ -277,6 +281,7 @@ describe('UserProcessImportByAdminUseCase', () => {
                 UserCreateUtil,
                 HelperStringService,
                 HelperDateService,
+                HelperEncryptionService,
                 { provide: MessageService, useValue: messageService },
                 {
                     provide: ConfigService,

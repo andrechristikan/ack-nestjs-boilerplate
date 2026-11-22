@@ -1,7 +1,6 @@
 import {
     EnumNotificationKind,
     EnumNotificationPushProcess,
-    EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import type {
@@ -67,7 +66,7 @@ export class NotificationPushQueue extends QueueBase implements OnModuleInit {
         const { queuePriority } = NotificationKindContract[kind];
         const idempotencyKey = this.notificationUtil.toStepKey(
             notificationId,
-            EnumNotificationStep.sendPush
+            EnumNotificationPushProcess.send
         );
 
         return {

@@ -26,9 +26,9 @@ import { NotificationSettingInvalidException } from '@modules/notification/excep
 import type {
     INotificationCreateEntry,
     INotificationCreateRecipient,
-    INotificationPushCleanupStaleTokensResult,
     INotificationRecipientRecord,
     INotificationSealedData,
+    INotificationSealedRecord,
     INotificationSnapshot,
     INotificationUserSettingPreference,
     INotificationUserSettingUpdate,
@@ -302,12 +302,8 @@ export class NotificationService {
 
     async markAllAsRead(userId: string): Promise<number> {
         const excludedTypes = await this.findMutedInAppTypes(userId);
-        const batchUpdated = await this.notificationRepository.markAllAsRead(
-            userId,
-            excludedTypes
-        );
 
-        return batchUpdated.count;
+        return this.notificationRepository.markAllAsRead(userId, excludedTypes);
     }
 
     async updateUserSettingInTx(
@@ -386,20 +382,11 @@ export class NotificationService {
         );
     }
 
-    toCleanupStaleTokensResult(
-        countRemovedTokens: number
-    ): INotificationPushCleanupStaleTokensResult {
-        const message = this.messageService.setMessage(
-            'notification.queue.push.cleanupStaleTokens'
-        );
-
-        return { message, countRemovedTokens };
-    }
-
-    /** The message properties of a stored notification: the metadata's primitive values, the kind's date fields formatted for display. The kind is the one whose contract row owns the title. */
+    /** The message properties of a stored notification: the metadata with each sealed secret of the kind opened for the recipient, its primitive values, the kind's date fields formatted for display. The kind is the one whose contract row owns the title. */
     toMessageProperties(
         title: string,
-        metadata: Prisma.JsonValue
+        metadata: Prisma.JsonValue,
+        userId: string
     ): IMessageProperties {
         const properties: IMessageProperties = {};
         if (
@@ -410,7 +397,14 @@ export class NotificationService {
             return properties;
         }
 
-        for (const [key, value] of Object.entries(metadata)) {
+        const kind = this.findKindByTitle(title);
+        const stored = metadata as INotificationSealedRecord;
+        let record = stored;
+        if (kind !== null) {
+            record = this.notificationUtil.openContext(kind, stored, userId);
+        }
+
+        for (const [key, value] of Object.entries(record)) {
             if (
                 typeof value === 'string' ||
                 typeof value === 'number' ||
@@ -420,7 +414,6 @@ export class NotificationService {
             }
         }
 
-        const kind = this.findKindByTitle(title);
         if (kind === null) {
             return properties;
         }

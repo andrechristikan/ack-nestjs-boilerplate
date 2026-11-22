@@ -150,7 +150,11 @@ describe('NotificationGetListCursorUseCase', () => {
             expect(requestStoreService.get).not.toHaveBeenCalled();
             expect(
                 notificationService.toMessageProperties
-            ).toHaveBeenCalledWith(stored.title, stored.metadata);
+            ).toHaveBeenCalledWith(
+                stored.title,
+                stored.metadata,
+                stored.userId
+            );
             expect(
                 notificationService.toRejectReasonProperties
             ).toHaveBeenCalledWith(metadataProperties, 'en');
@@ -210,7 +214,11 @@ describe('NotificationGetListCursorUseCase', () => {
 
             expect(
                 notificationService.toMessageProperties
-            ).toHaveBeenCalledWith(stored.title, stored.metadata);
+            ).toHaveBeenCalledWith(
+                stored.title,
+                stored.metadata,
+                stored.userId
+            );
             expect(messageService.setMessage).toHaveBeenCalledWith(
                 'notification.notify.newDeviceLogin.body',
                 { customLanguage: 'en', properties }

@@ -381,24 +381,25 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         });
     }
 
-    async clearStaleTokens(
-        thresholdInMs: number
-    ): Promise<Prisma.BatchPayload> {
+    async clearStaleTokens(thresholdInMs: number): Promise<number> {
         const today = this.helperDateService.create();
         const thresholdDate = this.helperDateService.backward(
             today,
             Duration.fromMillis(thresholdInMs)
         );
 
-        return this.databaseService.client.deviceOwnership.updateMany({
-            where: {
-                notificationToken: { not: null },
-                lastActiveAt: { lt: thresholdDate },
-            },
-            data: {
-                notificationToken: null,
-                notificationProvider: null,
-            },
-        });
+        const { count } =
+            await this.databaseService.client.deviceOwnership.updateMany({
+                where: {
+                    notificationToken: { not: null },
+                    lastActiveAt: { lt: thresholdDate },
+                },
+                data: {
+                    notificationToken: null,
+                    notificationProvider: null,
+                },
+            });
+
+        return count;
     }
 }

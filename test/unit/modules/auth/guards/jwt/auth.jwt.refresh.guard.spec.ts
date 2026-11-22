@@ -61,7 +61,7 @@ describe('AuthJwtRefreshGuard', () => {
     });
 
     describe('handleRequest', () => {
-        it('returns the context translated from the validated payload and the bearer token', () => {
+        it('returns the access fields translated from the validated payload with no token property', () => {
             authService.validateJwtRefreshGuard.mockReturnValue(payload);
 
             const result = guard.handleRequest(
@@ -71,7 +71,13 @@ describe('AuthJwtRefreshGuard', () => {
                 executionContext
             );
 
-            expect(result).toEqual(authContext);
+            expect(result).toStrictEqual({
+                userId: 'user-1',
+                sessionId: 'session-1',
+                deviceOwnershipId: 'device-1',
+                loginWith: EnumUserLoginWith.credential,
+            });
+            expect(result).not.toHaveProperty('token');
         });
 
         it('stores the refresh context and the actor id', () => {

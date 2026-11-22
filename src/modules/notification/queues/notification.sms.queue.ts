@@ -4,7 +4,6 @@ import {
     EnumNotificationKind,
     EnumNotificationQueue,
     EnumNotificationSmsProcess,
-    EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationRecipientRecord,
@@ -36,7 +35,7 @@ export class NotificationSmsQueue extends QueueBase {
         const { queuePriority } = NotificationKindContract[kind];
         const idempotencyKey = this.notificationUtil.toStepKey(
             notificationId,
-            EnumNotificationStep.sendSms
+            EnumNotificationSmsProcess.send
         );
 
         return {

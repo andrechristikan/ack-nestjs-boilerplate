@@ -8,7 +8,6 @@ export interface IConfigFeatureFlag {
     leaseTtlInMs: number;
     anonymous: {
         idMaxLength: number;
-        idRegex: RegExp;
     };
 }
 
@@ -19,6 +18,5 @@ export default registerAs('featureFlag', (): IConfigFeatureFlag => ({
     leaseTtlInMs: ms('10s'),
     anonymous: {
         idMaxLength: 100,
-        idRegex: /^[a-zA-Z0-9-_]+$/,
     },
 }));

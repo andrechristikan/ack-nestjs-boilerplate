@@ -78,12 +78,12 @@ describe('AnalyticAnomalyService', () => {
         configService = buildConfigService({
             ...TestUnitKitConfigValues,
             'analytic.fraud.nearLockoutOffset': 1,
-            'analytic.anomaly.impossibleTravel.minDistanceKm': 500,
-            'analytic.anomaly.impossibleTravel.maxDeltaInMs': 3600000,
-            'analytic.anomaly.loginSpikeIp.minUniqueAccounts': 2,
-            'analytic.anomaly.loginSpikeIp.windowInMs': 600000,
+            'analytic.anomaly.impossibleTravelMinDistanceKm': 500,
+            'analytic.anomaly.impossibleTravelMaxDeltaInMs': 3600000,
+            'analytic.anomaly.loginSpikeIpMinUniqueAccounts': 2,
+            'analytic.anomaly.loginSpikeIpWindowInMs': 600000,
             'analytic.anomaly.lookbackInMs': 2592000000,
-            'analytic.anomaly.deviceProliferation.zScoreThreshold': 3,
+            'analytic.anomaly.deviceProliferationZScoreThreshold': 3,
             'app.timezone': 'Asia/Jakarta',
         });
         featureFlagService.getMetadataNumber.mockResolvedValue(5);

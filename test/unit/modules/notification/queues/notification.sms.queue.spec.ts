@@ -36,7 +36,7 @@ describe('NotificationSmsQueue', () => {
                     useValue: buildConfigService({
                         ...TestUnitKitConfigValues,
                         'notification.idempotencyKey.stepPattern':
-                            '{notificationId}-{step}',
+                            '{process}-{notificationId}',
                     }),
                 },
                 NotificationUtil,
@@ -53,7 +53,7 @@ describe('NotificationSmsQueue', () => {
     });
 
     describe('sendEffect', () => {
-        it('returns the sms send effect keyed by the sendSms step with the kind priority', () => {
+        it('returns the sms send effect keyed by the send process and the notification id with the kind priority', () => {
             const context: INotificationSealedData = {
                 userId: 'user-id',
                 proceedBy: 'user-id',
@@ -93,7 +93,7 @@ describe('NotificationSmsQueue', () => {
                     completedSteps: [],
                 },
                 priority: EnumQueuePriority.medium,
-                idempotencyKey: 'notification-id-sendSms',
+                idempotencyKey: 'send-notification-id',
             });
         });
     });

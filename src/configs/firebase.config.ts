@@ -2,7 +2,7 @@ import { registerAs } from '@nestjs/config';
 
 export interface IConfigFirebase {
     projectId: string | null;
-    clientEmail: string | null;
+    clientEmailAddress: string | null;
     privateKey: string | null;
 }
 
@@ -12,10 +12,10 @@ export default registerAs('firebase', (): IConfigFirebase => {
             process.env.FIREBASE_PROJECT_ID === ''
                 ? null
                 : (process.env.FIREBASE_PROJECT_ID ?? null),
-        clientEmail:
-            process.env.FIREBASE_CLIENT_EMAIL === ''
+        clientEmailAddress:
+            process.env.FIREBASE_CLIENT_EMAIL_ADDRESS === ''
                 ? null
-                : (process.env.FIREBASE_CLIENT_EMAIL ?? null),
+                : (process.env.FIREBASE_CLIENT_EMAIL_ADDRESS ?? null),
         privateKey:
             process.env.FIREBASE_PRIVATE_KEY === ''
                 ? null

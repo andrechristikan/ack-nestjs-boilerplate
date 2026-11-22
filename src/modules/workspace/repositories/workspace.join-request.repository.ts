@@ -12,7 +12,10 @@ import {
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
 } from '@generated/prisma-client/client';
-import type { WorkspaceJoinRequest } from '@generated/prisma-client/client';
+import type {
+    Prisma,
+    WorkspaceJoinRequest,
+} from '@generated/prisma-client/client';
 import type { IWorkspaceJoinRequestRepository } from '@modules/workspace/interfaces/workspace.join-request-repository.interface';
 import type {
     IWorkspaceJoinRequestCreateData,
@@ -55,6 +58,41 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
             });
 
         return count;
+    }
+
+    private async cancelPendingInTx(
+        tx: IDatabaseTransactionClient,
+        filter: Prisma.WorkspaceJoinRequestWhereInput,
+        updatedBy: string
+    ): Promise<void> {
+        const now = this.helperDateService.create();
+        const pending = await tx.workspaceJoinRequest.findMany({
+            where: {
+                ...filter,
+                status: EnumWorkspaceJoinRequestStatus.pending,
+            },
+            select: { id: true, expiredAt: true },
+        });
+
+        await Promise.all(
+            pending.map(({ id, expiredAt }) => {
+                const nonce = this.helperHashService.sha256Hash(id);
+                return tx.workspaceJoinRequest.updateMany({
+                    where: {
+                        id,
+                        status: EnumWorkspaceJoinRequestStatus.pending,
+                    },
+                    data: {
+                        status:
+                            expiredAt <= now
+                                ? EnumWorkspaceJoinRequestStatus.expired
+                                : EnumWorkspaceJoinRequestStatus.cancelled,
+                        nonce,
+                        updatedBy,
+                    },
+                });
+            })
+        );
     }
 
     async expireStalePending(): Promise<number> {
@@ -217,34 +255,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         workspaceId: string,
         updatedBy: string
     ): Promise<void> {
-        const now = this.helperDateService.create();
-        const pending = await tx.workspaceJoinRequest.findMany({
-            where: {
-                workspaceId,
-                status: EnumWorkspaceJoinRequestStatus.pending,
-            },
-            select: { id: true, expiredAt: true },
-        });
-
-        await Promise.all(
-            pending.map(({ id, expiredAt }) => {
-                const nonce = this.helperHashService.sha256Hash(id);
-                return tx.workspaceJoinRequest.updateMany({
-                    where: {
-                        id,
-                        status: EnumWorkspaceJoinRequestStatus.pending,
-                    },
-                    data: {
-                        status:
-                            expiredAt <= now
-                                ? EnumWorkspaceJoinRequestStatus.expired
-                                : EnumWorkspaceJoinRequestStatus.cancelled,
-                        nonce,
-                        updatedBy,
-                    },
-                });
-            })
-        );
+        await this.cancelPendingInTx(tx, { workspaceId }, updatedBy);
     }
 
     async cancelPendingByRequesterInTx(
@@ -252,34 +263,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         userId: string,
         updatedBy: string
     ): Promise<void> {
-        const now = this.helperDateService.create();
-        const pending = await tx.workspaceJoinRequest.findMany({
-            where: {
-                userId,
-                status: EnumWorkspaceJoinRequestStatus.pending,
-            },
-            select: { id: true, expiredAt: true },
-        });
-
-        await Promise.all(
-            pending.map(({ id, expiredAt }) => {
-                const nonce = this.helperHashService.sha256Hash(id);
-                return tx.workspaceJoinRequest.updateMany({
-                    where: {
-                        id,
-                        status: EnumWorkspaceJoinRequestStatus.pending,
-                    },
-                    data: {
-                        status:
-                            expiredAt <= now
-                                ? EnumWorkspaceJoinRequestStatus.expired
-                                : EnumWorkspaceJoinRequestStatus.cancelled,
-                        nonce,
-                        updatedBy,
-                    },
-                });
-            })
-        );
+        await this.cancelPendingInTx(tx, { userId }, updatedBy);
     }
 
     async cancelPendingByUserInTx(

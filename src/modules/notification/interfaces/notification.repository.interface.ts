@@ -10,7 +10,6 @@ import type {
 import {
     EnumNotificationChannel,
     EnumNotificationType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { Notification } from '@generated/prisma-client/client';
 
@@ -43,7 +42,7 @@ export interface INotificationRepository {
     markAllAsRead(
         userId: string,
         excludedTypes: EnumNotificationType[]
-    ): Promise<Prisma.BatchPayload>;
+    ): Promise<number>;
     updateDeliveryProcessedAt(
         notificationId: string,
         channel: EnumNotificationChannel,

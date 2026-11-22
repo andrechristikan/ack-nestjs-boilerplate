@@ -284,6 +284,34 @@ describe('NotificationQueue', () => {
             ).toBe('482913');
         });
 
+        it('returns the verifiedMobileNumber effect with the number sealed against the recipient and no plain number', () => {
+            const result = queue.notify(
+                EnumNotificationKind.verifiedMobileNumber,
+                {
+                    userId: 'user-id',
+                    proceedBy: 'user-id',
+                    reference: 'VRF-abc',
+                    mobileNumber: '+6281234567890',
+                }
+            );
+
+            expect(result.data.context).toEqual({
+                userId: 'user-id',
+                proceedBy: 'user-id',
+                verificationId: null,
+                encryptedMobileNumber: expect.any(String),
+                reference: 'VRF-abc',
+                snapshot: null,
+            });
+            expect(result.data.context).not.toHaveProperty('mobileNumber');
+            expect(
+                buildUnsealedNotificationPayload(
+                    String(result.data.context.encryptedMobileNumber),
+                    'user-id'
+                )
+            ).toBe('+6281234567890');
+        });
+
         it('returns the userImportResult effect on the notification queue keyed by the import row id with the counts and reasons unsealed', () => {
             const result = queue.notify(EnumNotificationKind.userImportResult, {
                 userId: 'admin-id',

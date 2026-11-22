@@ -65,7 +65,6 @@ export enum EnumNotificationLoginLockedMethod {
 /** @public */
 export enum EnumNotificationStep {
     sendEmail = 'sendEmail',
-    sendPush = 'sendPush',
     sendSms = 'sendSms',
     updateProcessAt = 'updateProcessAt',
     sendMulticast = 'sendMulticast',

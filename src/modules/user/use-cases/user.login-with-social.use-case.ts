@@ -104,7 +104,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     ) {
         this.defaultRole = this.configService.get<string>('user.default.role')!;
         this.createTimeoutInMs = this.configService.get<number>(
-            'user.create.timeoutInMs'
+            'user.createTimeoutInMs'
         )!;
     }
 

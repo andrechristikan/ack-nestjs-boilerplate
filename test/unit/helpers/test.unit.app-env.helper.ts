@@ -118,7 +118,7 @@ function buildValidEnv(): Record<string, string> {
         SENTRY_PROFILES_SAMPLE_RATE: '0.3',
 
         FIREBASE_PROJECT_ID: 'firebase-project',
-        FIREBASE_CLIENT_EMAIL: 'firebase@example.com',
+        FIREBASE_CLIENT_EMAIL_ADDRESS: 'firebase@example.com',
         FIREBASE_PRIVATE_KEY: 'firebase-private-key',
     };
 }

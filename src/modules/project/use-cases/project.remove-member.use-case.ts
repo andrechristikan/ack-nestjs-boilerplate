@@ -46,6 +46,7 @@ export class ProjectRemoveMemberUseCase implements IAppUseCase<
             workspaceContext.workspaceMember
         );
         const targetMember = await this.projectMemberService.getRemovableMember(
+            authContext,
             projectContext.project,
             actor,
             targetMemberId
@@ -59,7 +60,6 @@ export class ProjectRemoveMemberUseCase implements IAppUseCase<
                     apiKeyContext,
                     authContext,
                     projectContext.project,
-                    actor,
                     targetMember
                 )
             );

@@ -32,6 +32,7 @@ export class MigrationWorkspaceSeed
     private readonly logger = new Logger(MigrationWorkspaceSeed.name);
 
     private readonly env: EnumAppEnvironment;
+    private readonly personalNamePattern: string;
     private readonly slugPrefix: string;
     private readonly slugMaxLength: number;
     private readonly slugMaxAttempts: number;
@@ -50,6 +51,9 @@ export class MigrationWorkspaceSeed
         this.env = this.configService.get<EnumAppEnvironment>('app.env')!;
         this.users = MigrationUserData[this.env];
 
+        this.personalNamePattern = this.configService.get<string>(
+            'workspace.personalNamePattern'
+        )!;
         this.slugPrefix = this.configService.get<string>(
             'workspace.slugPrefix'
         )!;
@@ -73,11 +77,17 @@ export class MigrationWorkspaceSeed
         );
     }
 
+    private buildPersonalName(username: string): string {
+        return this.personalNamePattern.replace('{username}', () => username);
+    }
+
     private async createDefaultWorkspace(user: {
         id: string;
         username: string;
     }): Promise<void> {
         const slugCandidates = this.drawSlugCandidates();
+
+        const name = this.buildPersonalName(user.username);
 
         for (const slug of slugCandidates) {
             try {
@@ -85,7 +95,7 @@ export class MigrationWorkspaceSeed
                     async tx => {
                         const workspace = await tx.workspace.create({
                             data: {
-                                name: `${user.username}'s Workspace`,
+                                name,
                                 slug,
                                 deletedAt: null,
                                 createdBy: MigrationUserSuperAdminId,
@@ -209,15 +219,21 @@ export class MigrationWorkspaceSeed
                 await this.databaseService.client.workspace.findMany({
                     where: {
                         OR: seededUsers.map<Prisma.WorkspaceWhereInput>(
-                            user => ({
-                                name: `${user.username}'s Workspace`,
-                                members: {
-                                    some: {
-                                        userId: user.id,
-                                        role: EnumWorkspaceMemberRole.owner,
+                            user => {
+                                const name = this.buildPersonalName(
+                                    user.username
+                                );
+
+                                return {
+                                    name,
+                                    members: {
+                                        some: {
+                                            userId: user.id,
+                                            role: EnumWorkspaceMemberRole.owner,
+                                        },
                                     },
-                                },
-                            })
+                                };
+                            }
                         ),
                     },
                     select: {

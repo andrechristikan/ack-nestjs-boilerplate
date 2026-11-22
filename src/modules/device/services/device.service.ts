@@ -150,12 +150,7 @@ export class DeviceService {
     async cleanupStaleNotificationTokens(
         thresholdInMs: number
     ): Promise<number> {
-        const { count } =
-            await this.deviceOwnershipRepository.clearStaleTokens(
-                thresholdInMs
-            );
-
-        return count;
+        return this.deviceOwnershipRepository.clearStaleTokens(thresholdInMs);
     }
 
     async upsertForLoginInTx(

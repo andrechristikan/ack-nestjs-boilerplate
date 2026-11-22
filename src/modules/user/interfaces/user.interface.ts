@@ -246,6 +246,10 @@ export interface IUserImport {
     name: string | null;
 }
 
+export interface IUserImportEncrypted extends Omit<IUserImport, 'email'> {
+    encryptedEmail: string;
+}
+
 export interface IUserImportPrepared {
     inputs: IUserCreateWithWorkspaceInput[];
     passwordHasheds: IAuthPasswordTemporary[];
@@ -377,8 +381,8 @@ export interface IUserDeletePhotoPayload {
     access: EnumAwsS3Accessibility;
 }
 
-export interface IUserImportByAdminPayload {
-    rows: IUserImport[];
+export interface IUserImportByAdminEncryptedPayload {
+    rows: IUserImportEncrypted[];
     activityLog: IActivityLogActorPayload;
     created: number | null;
 }
@@ -443,7 +447,7 @@ export interface IUserDeletePhotoEffect extends IOutboxEffect {
 export interface IUserImportByAdminEffect extends IOutboxEffect {
     queue: EnumUserQueue.user;
     name: EnumUserProcess.importByAdmin;
-    data: IUserImportByAdminPayload;
+    data: IUserImportByAdminEncryptedPayload;
 }
 
 export interface IUserExportByAdminEffect extends IOutboxEffect {

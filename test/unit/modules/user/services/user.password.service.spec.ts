@@ -94,7 +94,8 @@ describe('UserPasswordService', () => {
         'forgotPassword.tokenLength': 32,
         'forgotPassword.resendInMinutes': 5,
         'forgotPassword.retentionInMs': 7776000000,
-        'forgotPassword.linkPattern': '{frontendBaseUrl}/reset?token={token}',
+        'forgotPassword.linkPattern':
+            '{frontendBaseUrl}/forgot-password?token={token}',
     };
 
     const baseUser: IUser = {
@@ -110,7 +111,7 @@ describe('UserPasswordService', () => {
             '34d328009b123fbbb0dc93f18b3e6de1ecf7b1a5783c33dff7ffe1926f09e943',
         expiredInMinutes: 15,
         resendInMinutes: 5,
-        link: 'https://example.com/reset?token=raw-token',
+        link: 'https://example.com/forgot-password?token=raw-token',
     };
 
     beforeAll(() => {
@@ -587,7 +588,7 @@ describe('UserPasswordService', () => {
                 {
                     userId: 'user-hollow',
                     proceedBy: 'user-hollow',
-                    link: 'https://example.com/reset?token=raw-token',
+                    link: 'https://example.com/forgot-password?token=raw-token',
                     reference: 'FGT-hollow',
                     expiredAt: '2026-03-01T00:15:00.000Z',
                     expiredInMinutes: 15,
@@ -836,7 +837,7 @@ describe('UserPasswordService', () => {
                     '34d328009b123fbbb0dc93f18b3e6de1ecf7b1a5783c33dff7ffe1926f09e943',
                 expiredInMinutes: 15,
                 resendInMinutes: 5,
-                link: 'https://example.com/reset?token=raw-token',
+                link: 'https://example.com/forgot-password?token=raw-token',
             });
         });
     });

@@ -17,7 +17,7 @@ import {
     buildSealedNotificationPayload,
     TestPushStampedAt,
 } from '@test/unit/helpers/test.unit.notification-push.helper';
-import { UnrecoverableError } from 'bullmq';
+import { NotificationPushDeliveryNotFoundException } from '@modules/notification/exceptions/notification.push-delivery-not-found.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { IFirebasePushResult } from '@common/firebase/interfaces/firebase.interface';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
@@ -90,7 +90,7 @@ describe('NotificationPushDeliveryService', () => {
             );
         });
 
-        it('throws an UnrecoverableError naming the process when no delivery row matches', async () => {
+        it('throws a NotificationPushDeliveryNotFoundException naming the process when no delivery row matches', async () => {
             notificationRepository.updateDeliveryProcessedAt.mockResolvedValue(
                 false
             );
@@ -102,7 +102,7 @@ describe('NotificationPushDeliveryService', () => {
                     'proceed-by-id'
                 )
             ).rejects.toMatchObject({
-                constructor: UnrecoverableError,
+                constructor: NotificationPushDeliveryNotFoundException,
                 message: 'notification.queue.push.error.deliveryNotFound',
             });
             expect(messageService.setMessage).toHaveBeenCalledWith(
@@ -313,12 +313,12 @@ describe('NotificationPushDeliveryService', () => {
                         rawError: new Error('prisma secret'),
                     },
                     {
-                        step: EnumNotificationStep.sendPush,
+                        step: EnumNotificationStep.sendSms,
                         rawError: new Error('boom'),
                     },
                 ])
             ).toBe(
-                `notification.queue.push.error.stepsFailed|${EnumNotificationStep.sendEmail}, ${EnumNotificationStep.sendPush}`
+                `notification.queue.push.error.stepsFailed|${EnumNotificationStep.sendEmail}, ${EnumNotificationStep.sendSms}`
             );
         });
     });
@@ -352,7 +352,7 @@ describe('NotificationPushDeliveryService', () => {
             );
         });
 
-        it('throws an UnrecoverableError when no delivery row matches', async () => {
+        it('throws a NotificationPushDeliveryNotFoundException when no delivery row matches', async () => {
             notificationRepository.updateDeliverySentAtInTx.mockResolvedValue(
                 false
             );
@@ -366,7 +366,7 @@ describe('NotificationPushDeliveryService', () => {
                     'proceed-by-id'
                 )
             ).rejects.toMatchObject({
-                constructor: UnrecoverableError,
+                constructor: NotificationPushDeliveryNotFoundException,
                 message: 'notification.queue.push.error.deliveryNotFound',
             });
         });

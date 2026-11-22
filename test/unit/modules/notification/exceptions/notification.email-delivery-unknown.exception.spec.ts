@@ -8,6 +8,7 @@ describe('NotificationEmailDeliveryUnknownException', () => {
         it('declares a fatal QueueException naming the batch and the unknown count', () => {
             const exception = new NotificationEmailDeliveryUnknownException(
                 message,
+                null,
                 'batch-id',
                 2
             );
@@ -26,9 +27,9 @@ describe('NotificationEmailDeliveryUnknownException', () => {
             const cause = new Error('socket hang up');
             const exception = new NotificationEmailDeliveryUnknownException(
                 message,
+                cause,
                 'batch-id',
-                2,
-                cause
+                2
             );
 
             expect(exception).toMatchObject({ rawError: cause, cause });

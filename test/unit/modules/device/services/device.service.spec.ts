@@ -270,9 +270,7 @@ describe('DeviceService', () => {
 
     describe('cleanupStaleNotificationTokens', () => {
         it('clears ownership tokens stale beyond the given threshold', async () => {
-            deviceOwnershipRepository.clearStaleTokens.mockResolvedValue({
-                count: 5,
-            });
+            deviceOwnershipRepository.clearStaleTokens.mockResolvedValue(5);
 
             const result = await service.cleanupStaleNotificationTokens(1000);
 

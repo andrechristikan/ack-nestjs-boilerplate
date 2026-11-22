@@ -13,10 +13,7 @@ import type {
     INotificationWorkspaceInviteFields,
 } from '@modules/notification/interfaces/notification.interface';
 import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
-import {
-    EnumNotificationKind,
-    EnumNotificationStep,
-} from '@modules/notification/enums/notification.enum';
+import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -50,6 +47,12 @@ export class NotificationUtil {
         }
 
         return picked;
+    }
+
+    private toSealedField(field: string): string {
+        const head = field.charAt(0).toUpperCase();
+
+        return `encrypted${head}${field.slice(1)}`;
     }
 
     resolveChannels(
@@ -88,12 +91,6 @@ export class NotificationUtil {
         return hasUserFacingChannel ? surviving : [];
     }
 
-    toSealedField(field: string): string {
-        const head = field.charAt(0).toUpperCase();
-
-        return `encrypted${head}${field.slice(1)}`;
-    }
-
     /** Returns the context with each secret field of the kind decrypted from its `encrypted<Field>` value. */
     openContext(
         kind: EnumNotificationKind,
@@ -125,15 +122,23 @@ export class NotificationUtil {
         return opened;
     }
 
-    /** The context values the kind's `metadataFields` name, plus `username`. */
+    /** The context values the kind's `metadataFields` name, plus `username`; a secret field is copied in the form the context holds, plain when it holds the plain key, else under its `encrypted<Field>` name. */
     toMetadata(
         kind: EnumNotificationKind,
         context: INotificationSealedRecord,
         username: string
     ): Record<string, string> {
-        const { metadataFields } = NotificationKindContract[kind];
+        const { metadataFields, secrets } = NotificationKindContract[kind];
+        const secretFields = new Set(secrets);
+        const fields = metadataFields.map(field => {
+            const isSealed =
+                secretFields.has(field) && !Object.hasOwn(context, field);
+            const sealedField = this.toSealedField(field);
 
-        return this.pickFields(metadataFields, context, username);
+            return isSealed ? sealedField : field;
+        });
+
+        return this.pickFields(fields, context, username);
     }
 
     /** The context values the kind's `templateFields` name, plus `username`, with each `dateFields` value in RFC 2822. */
@@ -220,10 +225,10 @@ export class NotificationUtil {
         return sealed;
     }
 
-    toStepKey(notificationId: string, step: EnumNotificationStep): string {
+    toStepKey(notificationId: string, process: string): string {
         return this.helperStringService.fillPattern(this.stepPattern, {
+            process,
             notificationId,
-            step,
         });
     }
 }

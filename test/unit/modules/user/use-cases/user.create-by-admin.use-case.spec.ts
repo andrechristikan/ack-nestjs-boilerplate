@@ -103,8 +103,8 @@ describe('UserCreateByAdminUseCase', () => {
         ...TestUnitUserConfigValues,
         'user.default.role': 'user',
         'user.default.country': 'ID',
-        'user.create.timeoutInMs': 5000,
-        'user.create.bulkTimeoutInMs': 30000,
+        'user.createTimeoutInMs': 5000,
+        'user.createBulkTimeoutInMs': 30000,
     };
     const activityEntry = buildActivityLogCreateManyEffect('activity-entry');
     const welcomeEffect: INotificationNotifyEffect = {
@@ -605,7 +605,7 @@ describe('UserCreateByAdminUseCase', () => {
             );
         });
 
-        it('passes timeoutInMs to withTransaction', async () => {
+        it('passes createTimeoutInMs to withTransaction', async () => {
             await useCase['createAdminUsers'](
                 requestContext,
                 apiKeyContext,

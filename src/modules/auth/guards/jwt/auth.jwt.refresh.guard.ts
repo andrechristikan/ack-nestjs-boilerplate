@@ -2,6 +2,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import type {
+    IAuthJwtAccessContext,
     IAuthJwtRefreshContext,
     IAuthJwtRefreshTokenPayload,
 } from '@modules/auth/interfaces/auth.interface';
@@ -24,7 +25,7 @@ export class AuthJwtRefreshGuard extends AuthGuard(AuthJwtRefreshGuardKey) {
         super();
     }
 
-    handleRequest<T = IAuthJwtRefreshContext>(
+    handleRequest<T = IAuthJwtAccessContext>(
         err: Error | null,
         user: IAuthJwtRefreshTokenPayload | false,
         info: Error | string | undefined,
@@ -44,22 +45,21 @@ export class AuthJwtRefreshGuard extends AuthGuard(AuthJwtRefreshGuardKey) {
             throw new AuthJwtRefreshTokenInvalidException();
         }
 
-        const authContext: IAuthJwtRefreshContext = {
+        const accessContext: IAuthJwtAccessContext = {
             userId: payload.userId,
             sessionId: payload.sessionId,
             deviceOwnershipId: payload.deviceOwnershipId,
             loginWith: payload.loginWith,
-            token: bearer,
         };
         this.requestStoreService.set<IAuthJwtRefreshContext>(
             AuthJwtRefreshContextStoreKey,
-            authContext
+            { ...accessContext, token: bearer }
         );
         this.requestStoreService.set<string>(
             RequestActorStoreKey,
-            authContext.userId
+            accessContext.userId
         );
 
-        return authContext as T;
+        return accessContext as T;
     }
 }

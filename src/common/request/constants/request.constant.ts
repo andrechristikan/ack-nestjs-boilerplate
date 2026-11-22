@@ -55,9 +55,6 @@ export const RequestIdHeaderName = 'x-request-id';
 export const RequestThrottleHeaderName = 'X-RateLimit';
 
 /** @public */
-export const RequestWorkspaceIdHeaderName = 'x-workspace-id';
-
-/** @public */
 export const RequestHelmetCacheControlHeaderName = 'Cache-Control';
 
 /** @public */

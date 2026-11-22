@@ -79,53 +79,53 @@ export class AnalyticFraudService {
         private readonly analyticFraudRepository: AnalyticFraudRepository
     ) {
         this.credentialStuffingWindowInMs = this.configService.get<number>(
-            'analytic.fraud.credentialStuffing.windowInMs'
+            'analytic.fraud.credentialStuffingWindowInMs'
         )!;
         this.credentialStuffingMinUniqueAccounts =
             this.configService.get<number>(
-                'analytic.fraud.credentialStuffing.minUniqueAccounts'
+                'analytic.fraud.credentialStuffingMinUniqueAccounts'
             )!;
         this.accountTakeoverNewDeviceAfterPasswordChangeInMs =
             this.configService.get<number>(
-                'analytic.fraud.accountTakeover.newDeviceAfterPasswordChangeInMs'
+                'analytic.fraud.accountTakeoverNewDeviceAfterPasswordChangeInMs'
             )!;
         this.massRegistrationWindowInMs = this.configService.get<number>(
-            'analytic.fraud.massRegistration.windowInMs'
+            'analytic.fraud.massRegistrationWindowInMs'
         )!;
         this.massRegistrationMinAccountsPerIp = this.configService.get<number>(
-            'analytic.fraud.massRegistration.minAccountsPerIp'
+            'analytic.fraud.massRegistrationMinAccountsPerIp'
         )!;
         this.passwordResetEnumerationWindowInMs =
             this.configService.get<number>(
-                'analytic.fraud.passwordResetEnumeration.windowInMs'
+                'analytic.fraud.passwordResetEnumerationWindowInMs'
             )!;
         this.passwordResetEnumerationMinRequestsPerIp =
             this.configService.get<number>(
-                'analytic.fraud.passwordResetEnumeration.minRequestsPerIp'
+                'analytic.fraud.passwordResetEnumerationMinRequestsPerIp'
             )!;
         this.sharedFingerprintMinUsersPerFingerprint =
             this.configService.get<number>(
-                'analytic.fraud.sharedFingerprint.minUsersPerFingerprint'
+                'analytic.fraud.sharedFingerprintMinUsersPerFingerprint'
             )!;
         this.sessionAfterAdminRevokeInMs = this.configService.get<number>(
             'analytic.fraud.sessionAfterAdmin.sessionAfterAdminRevokeInMs'
         )!;
         this.forgotPasswordTokenAbuseWindowInMs =
             this.configService.get<number>(
-                'analytic.fraud.forgotPasswordTokenAbuse.windowInMs'
+                'analytic.fraud.forgotPasswordTokenAbuseWindowInMs'
             )!;
         this.forgotPasswordTokenAbuseMinUnusedTokens =
             this.configService.get<number>(
-                'analytic.fraud.forgotPasswordTokenAbuse.minUnusedTokens'
+                'analytic.fraud.forgotPasswordTokenAbuseMinUnusedTokens'
             )!;
         this.riskScoreLookbackInMs = this.configService.get<number>(
-            'analytic.fraud.riskScore.lookbackInMs'
+            'analytic.fraud.riskScoreLookbackInMs'
         )!;
         this.impossibleTravelMinDistanceKm = this.configService.get<number>(
-            'analytic.anomaly.impossibleTravel.minDistanceKm'
+            'analytic.anomaly.impossibleTravelMinDistanceKm'
         )!;
         this.impossibleTravelMaxDeltaInMs = this.configService.get<number>(
-            'analytic.anomaly.impossibleTravel.maxDeltaInMs'
+            'analytic.anomaly.impossibleTravelMaxDeltaInMs'
         )!;
         this.sessionAfterAdmin = this.configService.get<number>(
             'analytic.fraud.weights.sessionAfterAdmin'

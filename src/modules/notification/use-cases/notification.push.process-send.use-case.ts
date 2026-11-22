@@ -73,9 +73,14 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
 
         if (!done.includes(EnumNotificationStep.sendMulticast)) {
             const { title, body } = NotificationKindContract[kind];
-            const metadata = this.notificationUtil.toMetadata(
+            const opened = this.notificationUtil.openContext(
                 kind,
                 context,
+                userId
+            );
+            const metadata = this.notificationUtil.toMetadata(
+                kind,
+                opened,
                 username
             );
             const properties = this.notificationUtil.toDisplayProperties(

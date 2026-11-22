@@ -126,7 +126,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             });
             userService.revokesSessionsOn.mockReturnValue(true);
             userService.resolveStatusActivityLogAction.mockReturnValue(
-                EnumActivityLogAction.userStatusUpdated
+                EnumActivityLogAction.userStatusUpdatedByAdmin
             );
         });
 
@@ -350,7 +350,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 authContext,
                 null,
                 expect.objectContaining({
-                    action: EnumActivityLogAction.userStatusUpdated,
+                    action: EnumActivityLogAction.userStatusUpdatedByAdmin,
                 })
             );
         });
@@ -374,7 +374,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     EnumActivityLogAction.adminUserStatusUpdated
                 ),
                 buildActivityLogCreateManyEffect(
-                    EnumActivityLogAction.userStatusUpdated
+                    EnumActivityLogAction.userStatusUpdatedByAdmin
                 ),
             ]);
         });

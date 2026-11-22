@@ -27,7 +27,7 @@ describe('WorkspaceQueueFactory', () => {
     describe('createRegisterQueueOptions', () => {
         it('builds the default job options and no connection from queue config', () => {
             stubConfigValues(configService, {
-                'queue.job.attempts': 5,
+                'queue.job.maxAttempts': 5,
                 'queue.job.keepLogs': 100,
                 'queue.job.workspaceBackoffDelayInMs': 2500,
                 'queue.job.removeOnCompleteAgeInSeconds': 3600,

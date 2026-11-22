@@ -171,7 +171,7 @@ describe('UserProcessDeleteSelfUseCase', () => {
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
-                        'user.deleteSelf.timeoutInMs': 30000,
+                        'user.deleteSelfTimeoutInMs': 30000,
                     }),
                 },
             ],
@@ -348,7 +348,7 @@ describe('UserProcessDeleteSelfUseCase', () => {
             ).toHaveBeenCalledWith('workspace-two', now, 'user-cinder');
         });
 
-        it('opens the transaction with user.deleteSelf.timeoutInMs', async () => {
+        it('opens the transaction with user.deleteSelfTimeoutInMs', async () => {
             await useCase.execute(payload);
 
             expect(databaseService.withTransaction).toHaveBeenCalledWith(

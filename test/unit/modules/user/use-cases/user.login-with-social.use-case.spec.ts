@@ -158,7 +158,7 @@ describe('UserLoginWithSocialUseCase', () => {
         ...TestUnitUserConfigValues,
         'workspace.slugMaxAttempts': 2,
         'user.default.role': 'user',
-        'user.create.timeoutInMs': 5000,
+        'user.createTimeoutInMs': 5000,
     };
     const tokens: IAuthToken = {
         tokenType: 'Bearer',

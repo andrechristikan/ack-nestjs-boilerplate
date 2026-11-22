@@ -32,8 +32,6 @@ import {
     buildApiKeyContext,
     buildAuthJwtAccessContext,
     buildRequestContext,
-    buildUser,
-    buildUserContext,
     buildWorkspace,
     buildWorkspaceContext,
     buildWorkspaceMember,
@@ -59,10 +57,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
     const member: WorkspaceMember = buildWorkspaceMember('user-1');
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
-    const userContext = buildUserContext(
-        buildUser('user-1', 'jane@example.com')
-    );
-    const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const authContext = buildAuthJwtAccessContext('actor-1');
     const workspaceContext = buildWorkspaceContext(buildWorkspace(), member);
 
     let useCase: WorkspaceRemoveMemberUseCase;
@@ -130,6 +125,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 )
             ).rejects.toBe(refusal);
             expect(workspaceMemberService.getPeerTarget).toHaveBeenCalledWith(
+                authContext,
                 'workspace-1',
                 member,
                 'member-2'
@@ -252,8 +248,8 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 workspaceContext,
                 {
                     action: EnumActivityLogAction.workspaceMemberRemoved,
-                    userId: 'user-1',
-                    createdBy: 'user-1',
+                    userId: 'actor-1',
+                    createdBy: 'actor-1',
                     workspaceId: 'workspace-1',
                     metadata: { targetUserId: 'user-2' },
                 }
@@ -267,9 +263,9 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 {
                     action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
                     userId: 'user-2',
-                    createdBy: 'user-1',
+                    createdBy: 'actor-1',
                     workspaceId: 'workspace-1',
-                    metadata: { actorUserId: 'user-1' },
+                    metadata: { actorUserId: 'actor-1' },
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [

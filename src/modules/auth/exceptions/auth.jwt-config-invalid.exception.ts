@@ -3,9 +3,9 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 /** @public */
 export class AuthJwtConfigInvalidException extends AppUnknownException {
     constructor(
+        readonly cause: unknown,
         readonly configKey: string,
-        readonly expected: string,
-        readonly cause: unknown
+        readonly expected: string
     ) {
         super(
             cause,

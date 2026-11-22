@@ -1016,7 +1016,7 @@ enum EnumPasswordHistoryType {
 enum EnumActivityLogAction {
   userCreated
   userBlockedByAdmin
-  userStatusUpdated
+  userStatusUpdatedByAdmin
   userProfileUpdated
   userNotificationSettingUpdated
   userPhotoProfileUpdated

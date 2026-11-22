@@ -10,7 +10,9 @@ export class AnalyticQueueFactory implements RegisterQueueOptionsFactory {
     constructor(private readonly configService: ConfigService) {}
 
     createRegisterQueueOptions(): RegisterQueueOptions {
-        const attempts = this.configService.get<number>('queue.job.attempts')!;
+        const maxAttempts = this.configService.get<number>(
+            'queue.job.maxAttempts'
+        )!;
         const keepLogs = this.configService.get<number>('queue.job.keepLogs')!;
         const backoffDelayInMs = this.configService.get<number>(
             'queue.job.analyticBackoffDelayInMs'
@@ -24,7 +26,7 @@ export class AnalyticQueueFactory implements RegisterQueueOptionsFactory {
 
         return {
             defaultJobOptions: {
-                attempts,
+                attempts: maxAttempts,
                 keepLogs,
                 backoff: {
                     type: 'exponential',

@@ -98,7 +98,7 @@ describe('WorkspaceTransferOwnershipUseCase', () => {
             expect(result).toEqual({});
             expect(
                 workspaceMemberService.getTransferTarget
-            ).toHaveBeenCalledWith('workspace-1', member, 'user-2');
+            ).toHaveBeenCalledWith(authContext, 'workspace-1', 'user-2');
             expect(
                 workspaceService.assertOwnedCapAvailable
             ).toHaveBeenCalledWith('user-2');

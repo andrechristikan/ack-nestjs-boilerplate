@@ -3,6 +3,7 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import type { IUserImportByAdminQueueResponse } from '@modules/user/interfaces/user.interface';
@@ -19,12 +20,13 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
+import { UserImportEncryptionPurpose } from '@modules/user/constants/user.constant';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
-    IUserImportByAdminPayload,
+    IUserImportByAdminEncryptedPayload,
 } from '@modules/user/interfaces/user.interface';
 import { UserImportService } from '@modules/user/services/user.import.service';
 import { UserService } from '@modules/user/services/user.service';
@@ -36,12 +38,13 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserProcessImportByAdminUseCase implements IAppUseCase<
-    [string, IUserImportByAdminPayload],
+    [string, IUserImportByAdminEncryptedPayload],
     IUserImportByAdminQueueResponse
 > {
     private readonly defaultRole: string;
     private readonly defaultCountry: string;
     private readonly createBulkTimeoutInMs: number;
+    private readonly encryptionSecret: string;
 
     constructor(
         private readonly userImportService: UserImportService,
@@ -61,6 +64,7 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
+        private readonly helperEncryptionService: HelperEncryptionService,
         private readonly messageService: MessageService,
         private readonly configService: ConfigService
     ) {
@@ -69,7 +73,10 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
             'user.default.country'
         )!;
         this.createBulkTimeoutInMs = this.configService.get<number>(
-            'user.create.bulkTimeoutInMs'
+            'user.createBulkTimeoutInMs'
+        )!;
+        this.encryptionSecret = this.configService.get<string>(
+            'app.encryptionSecret'
         )!;
     }
 
@@ -196,7 +203,11 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
 
     async execute(
         outboxId: string,
-        { rows, activityLog, created: recorded }: IUserImportByAdminPayload
+        {
+            rows,
+            activityLog,
+            created: recorded,
+        }: IUserImportByAdminEncryptedPayload
     ): Promise<IUserImportByAdminQueueResponse> {
         if (recorded !== null) {
             const message = this.messageService.setMessage(
@@ -207,6 +218,16 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         }
 
         const { actorUserId } = activityLog;
+        const opened = rows.map(({ encryptedEmail, ...row }) => {
+            const email = this.helperEncryptionService.aes256Decrypt(
+                encryptedEmail,
+                this.encryptionSecret,
+                UserImportEncryptionPurpose,
+                actorUserId
+            );
+
+            return { ...row, email };
+        });
         // Sequential by design: a cheap check before the expensive or external work it guards
         const [role, countryId] = await Promise.all([
             this.roleService.getByName(this.defaultRole),
@@ -214,7 +235,7 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         ]);
         const { inputs, passwordHasheds, passwordStrings } =
             await this.userImportService.prepareImportByAdmin(
-                rows,
+                opened,
                 actorUserId,
                 role,
                 countryId

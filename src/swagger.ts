@@ -30,14 +30,14 @@ export default async function (app: NestApplication): Promise<void> {
     const appUrl: string = configService.get<string>('app.url')!;
 
     const appAuthorName: string = configService.get<string>('app.author.name')!;
-    const appAuthorEmailAddress: string = configService.get<string>(
+    const emailAddress: string = configService.get<string>(
         'app.author.emailAddress'
     )!;
 
     const docName: string = configService.get<string>('doc.name')!;
     const docVersion: string = configService.get<string>('doc.version')!;
     const docPrefix: string = configService.get<string>('doc.prefix')!;
-    const docJsonUrlPattern: string =
+    const jsonUrlPattern: string =
         configService.get<string>('doc.jsonUrlPattern')!;
 
     const logger = new Logger(`${appName}-Doc`);
@@ -54,7 +54,7 @@ export default async function (app: NestApplication): Promise<void> {
                     },
                 })
             )
-            .setContact(appAuthorName, appUrl, appAuthorEmailAddress)
+            .setContact(appAuthorName, appUrl, emailAddress)
             .addServer('/')
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
@@ -101,7 +101,7 @@ export default async function (app: NestApplication): Promise<void> {
         app.use(docPrefix, helmet.referrerPolicy({ policy: 'no-referrer' }));
 
         SwaggerModule.setup(docPrefix, app, document, {
-            jsonDocumentUrl: docJsonUrlPattern.replace(
+            jsonDocumentUrl: jsonUrlPattern.replace(
                 '{docPrefix}',
                 () => docPrefix
             ),

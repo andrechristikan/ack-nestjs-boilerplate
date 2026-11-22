@@ -15,19 +15,15 @@ export interface IConfigUser {
         role: string;
         country: string;
     };
-    create: {
-        timeoutInMs: number;
-        bulkTimeoutInMs: number;
-    };
+    createTimeoutInMs: number;
+    createBulkTimeoutInMs: number;
     export: {
         pathPattern: string;
         presignExpiresInSeconds: number;
     };
-    deleteSelf: {
-        timeoutInMs: number;
-        emailPattern: string;
-        usernamePattern: string;
-    };
+    deleteSelfTimeoutInMs: number;
+    deleteSelfEmailPattern: string;
+    deleteSelfUsernamePattern: string;
 }
 
 export default registerAs('user', (): IConfigUser => ({
@@ -43,17 +39,13 @@ export default registerAs('user', (): IConfigUser => ({
         role: 'user',
         country: 'ID',
     },
-    create: {
-        timeoutInMs: ms('10s'),
-        bulkTimeoutInMs: ms('30s'),
-    },
+    createTimeoutInMs: ms('10s'),
+    createBulkTimeoutInMs: ms('30s'),
     export: {
         pathPattern: '{temporaryPath}/exports/users/{outboxId}.csv',
         presignExpiresInSeconds: ms('24h') / 1000,
     },
-    deleteSelf: {
-        timeoutInMs: ms('30s'),
-        emailPattern: 'deleted.{id}',
-        usernamePattern: 'deleted.{id}',
-    },
+    deleteSelfTimeoutInMs: ms('30s'),
+    deleteSelfEmailPattern: 'deleted.{id}',
+    deleteSelfUsernamePattern: 'deleted.{id}',
 }));

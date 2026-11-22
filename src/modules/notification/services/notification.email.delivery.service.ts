@@ -141,9 +141,9 @@ export class NotificationEmailDeliveryService {
 
             throw new NotificationEmailDeliveryUnknownException(
                 message,
+                err,
                 batchId,
-                recipients.length,
-                err
+                recipients.length
             );
         }
 
@@ -155,6 +155,7 @@ export class NotificationEmailDeliveryService {
 
             throw new NotificationEmailDeliveryUnknownException(
                 message,
+                null,
                 batchId,
                 recipients.length
             );
@@ -197,9 +198,9 @@ export class NotificationEmailDeliveryService {
 
             throw new NotificationEmailDeliveryUnknownException(
                 message,
+                markOutcome.reason,
                 batchId,
-                sentUserIds.length,
-                markOutcome.reason
+                sentUserIds.length
             );
         }
         if (releaseOutcome.status === 'rejected') {
@@ -210,9 +211,9 @@ export class NotificationEmailDeliveryService {
 
             throw new NotificationEmailDeliveryUnknownException(
                 message,
+                releaseOutcome.reason,
                 batchId,
-                failedUserIds.length,
-                releaseOutcome.reason
+                failedUserIds.length
             );
         }
 
@@ -239,6 +240,7 @@ export class NotificationEmailDeliveryService {
 
             throw new NotificationEmailDeliveryUnknownException(
                 message,
+                null,
                 batchId,
                 unknownCount
             );

@@ -412,13 +412,13 @@ describe('UserVerificationService', () => {
             hashedToken:
                 'a67fa39caab4a23f78752354d1927f69d4e367be6229afb97c3aaddf7d138739',
             expiredInMinutes: 5,
-            link: 'https://example.com/verify?token=random-token',
+            link: 'https://example.com/verify-email?token=random-token',
             resendInMinutes: 7,
         };
         const context: INotificationVerificationLinkContext = {
             userId: 'user-flint',
             proceedBy: 'user-flint',
-            link: 'https://example.com/verify?token=random-token',
+            link: 'https://example.com/verify-email?token=random-token',
             expiredAt: '2026-03-01T00:05:00.000Z',
             expiredInMinutes: 5,
             reference: 'VRF-token',

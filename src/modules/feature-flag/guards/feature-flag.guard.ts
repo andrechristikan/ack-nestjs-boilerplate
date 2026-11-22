@@ -3,6 +3,7 @@ import { RequestActorStoreKey } from '@common/request/constants/request.constant
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     FeatureFlagAnonymousIdHeaderName,
+    FeatureFlagAnonymousIdRegex,
     FeatureFlagKeyPathMetaKey,
 } from '@modules/feature-flag/constants/feature-flag.constant';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
@@ -14,8 +15,7 @@ import { Reflector } from '@nestjs/core';
 
 @Injectable()
 export class FeatureFlagGuard implements CanActivate {
-    private readonly anonymousIdMaxLength: number;
-    private readonly anonymousIdRegex: RegExp;
+    private readonly idMaxLength: number;
 
     constructor(
         private readonly featureFlagService: FeatureFlagService,
@@ -23,11 +23,8 @@ export class FeatureFlagGuard implements CanActivate {
         private readonly configService: ConfigService,
         private readonly requestStoreService: RequestStoreService
     ) {
-        this.anonymousIdMaxLength = this.configService.get<number>(
+        this.idMaxLength = this.configService.get<number>(
             'featureFlag.anonymous.idMaxLength'
-        )!;
-        this.anonymousIdRegex = this.configService.get<RegExp>(
-            'featureFlag.anonymous.idRegex'
         )!;
     }
 
@@ -44,10 +41,10 @@ export class FeatureFlagGuard implements CanActivate {
         if (
             typeof rawAnonymousId === 'string' &&
             rawAnonymousId.length > 0 &&
-            rawAnonymousId.length <= this.anonymousIdMaxLength
+            rawAnonymousId.length <= this.idMaxLength
         ) {
             const isAnonymousIdValid =
-                this.anonymousIdRegex.test(rawAnonymousId);
+                FeatureFlagAnonymousIdRegex.test(rawAnonymousId);
             if (isAnonymousIdValid) {
                 anonymousId = rawAnonymousId;
             }

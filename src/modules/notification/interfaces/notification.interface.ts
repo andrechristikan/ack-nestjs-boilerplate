@@ -364,15 +364,6 @@ export type INotificationKindContracts = {
     [K in EnumNotificationKind]: INotificationKindContract<K>;
 };
 
-export type INotificationEmailPublishTermPolicyResult = {
-    message: string;
-};
-
-export type INotificationPushCleanupStaleTokensResult = {
-    message: string;
-    countRemovedTokens: number;
-};
-
 export type INotificationTemplateName = Exclude<
     EnumNotificationKind,
     | EnumNotificationKind.userAcceptTermPolicy

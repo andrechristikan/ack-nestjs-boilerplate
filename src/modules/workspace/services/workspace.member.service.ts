@@ -195,11 +195,11 @@ export class WorkspaceMemberService {
     }
 
     async getTransferTarget(
+        authContext: IAuthJwtAccessContext,
         workspaceId: string,
-        actorMember: WorkspaceMember,
         targetUserId: string
     ): Promise<WorkspaceMember> {
-        if (targetUserId === actorMember.userId) {
+        if (targetUserId === authContext.userId) {
             throw new WorkspaceSelfTransferException();
         }
 
@@ -277,8 +277,8 @@ export class WorkspaceMemberService {
             null,
             {
                 action: EnumActivityLogAction.workspaceOwnershipTransferred,
-                userId: actorMember.userId,
-                createdBy: actorMember.userId,
+                userId: authContext.userId,
+                createdBy: authContext.userId,
                 workspaceId,
                 metadata: { targetUserId: targetMember.userId },
             }
@@ -291,9 +291,9 @@ export class WorkspaceMemberService {
             {
                 action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
                 userId: targetMember.userId,
-                createdBy: actorMember.userId,
+                createdBy: authContext.userId,
                 workspaceId,
-                metadata: { actorUserId: actorMember.userId },
+                metadata: { actorUserId: authContext.userId },
             }
         );
         await this.outboxService.addManyInTx(tx, [ownerEntry, newOwnerEntry]);
@@ -415,7 +415,6 @@ export class WorkspaceMemberService {
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         workspaceId: string,
-        actorMember: WorkspaceMember,
         targetMember: WorkspaceMember,
         newRole: EnumWorkspaceMemberRole
     ): Promise<void> {
@@ -436,8 +435,8 @@ export class WorkspaceMemberService {
             null,
             {
                 action: EnumActivityLogAction.workspaceMemberRoleUpdated,
-                userId: actorMember.userId,
-                createdBy: actorMember.userId,
+                userId: authContext.userId,
+                createdBy: authContext.userId,
                 workspaceId,
                 metadata: { targetUserId: targetMember.userId },
             }
@@ -450,15 +449,16 @@ export class WorkspaceMemberService {
             {
                 action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
                 userId: targetMember.userId,
-                createdBy: actorMember.userId,
+                createdBy: authContext.userId,
                 workspaceId,
-                metadata: { actorUserId: actorMember.userId },
+                metadata: { actorUserId: authContext.userId },
             }
         );
         await this.outboxService.addManyInTx(tx, [actorEntry, targetEntry]);
     }
 
     async getPeerTarget(
+        authContext: IAuthJwtAccessContext,
         workspaceId: string,
         actorMember: WorkspaceMember,
         targetMemberId: string
@@ -472,7 +472,7 @@ export class WorkspaceMemberService {
             throw new WorkspaceMemberNotFoundException();
         }
 
-        if (targetMember.userId === actorMember.userId) {
+        if (targetMember.userId === authContext.userId) {
             throw new WorkspaceMemberPeerForbiddenException();
         }
 

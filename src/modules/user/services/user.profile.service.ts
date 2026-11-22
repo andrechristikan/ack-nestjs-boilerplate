@@ -41,9 +41,9 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 @Injectable()
 export class UserProfileService {
     private readonly logger = new Logger(UserProfileService.name);
-    private readonly photoFilenameRandomLength: number;
+    private readonly filenameRandomLength: number;
     private readonly uploadPhotoProfilePathPattern: string;
-    private readonly photoMaxSizeInBytes: number;
+    private readonly maxSizeInBytes: number;
 
     constructor(
         private readonly userRepository: UserRepository,
@@ -54,13 +54,13 @@ export class UserProfileService {
         private readonly userQueue: UserQueue,
         private readonly configService: ConfigService
     ) {
-        this.photoFilenameRandomLength = this.configService.get<number>(
+        this.filenameRandomLength = this.configService.get<number>(
             'user.photo.filenameRandomLength'
         )!;
         this.uploadPhotoProfilePathPattern = this.configService.get<string>(
             'user.uploadPhotoProfilePathPattern'
         )!;
-        this.photoMaxSizeInBytes = this.configService.get<number>(
+        this.maxSizeInBytes = this.configService.get<number>(
             'user.photo.maxSizeInBytes'
         )!;
     }
@@ -79,7 +79,7 @@ export class UserProfileService {
     }
 
     private isPhotoSizeAllowed(size: number): boolean {
-        return size <= this.photoMaxSizeInBytes;
+        return size <= this.maxSizeInBytes;
     }
 
     private async deletePreviousPhotoInTx(
@@ -123,7 +123,7 @@ export class UserProfileService {
         return this.fileService.createRandomFilename({
             path,
             extension,
-            randomLength: this.photoFilenameRandomLength,
+            randomLength: this.filenameRandomLength,
         });
     }
 

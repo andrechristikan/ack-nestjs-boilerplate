@@ -32,7 +32,7 @@ export class UserProcessDeleteSelfUseCase implements IAppUseCase<
     [IUserDeleteSelfPayload],
     IQueueResponse
 > {
-    private readonly timeoutInMs: number;
+    private readonly deleteSelfTimeoutInMs: number;
 
     constructor(
         private readonly userService: UserService,
@@ -56,8 +56,8 @@ export class UserProcessDeleteSelfUseCase implements IAppUseCase<
         private readonly messageService: MessageService,
         private readonly configService: ConfigService
     ) {
-        this.timeoutInMs = this.configService.get<number>(
-            'user.deleteSelf.timeoutInMs'
+        this.deleteSelfTimeoutInMs = this.configService.get<number>(
+            'user.deleteSelfTimeoutInMs'
         )!;
     }
 
@@ -197,7 +197,7 @@ export class UserProcessDeleteSelfUseCase implements IAppUseCase<
                             ...workspaceEntries,
                         ]);
                     },
-                    { timeout: this.timeoutInMs }
+                    { timeout: this.deleteSelfTimeoutInMs }
                 );
             }
 

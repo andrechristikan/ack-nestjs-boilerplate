@@ -24,7 +24,7 @@ import { Duration } from 'luxon';
 
 @Injectable()
 export class MfaChallengeService {
-    private readonly challengeTtlInMs: number;
+    private readonly challengeExpiresInMs: number;
     private readonly retentionInMs: number;
     private readonly encryptionSecret: string;
 
@@ -36,8 +36,8 @@ export class MfaChallengeService {
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
-        this.challengeTtlInMs = this.configService.get<number>(
-            'mfa.challengeTtlInMs'
+        this.challengeExpiresInMs = this.configService.get<number>(
+            'mfa.challengeExpiresInMs'
         )!;
         this.retentionInMs = this.configService.get<number>(
             'mfa.challengeRetentionInMs'
@@ -113,7 +113,7 @@ export class MfaChallengeService {
         const now = this.helperDateService.create();
         const expiredAt = this.helperDateService.forward(
             now,
-            Duration.fromObject({ milliseconds: this.challengeTtlInMs })
+            Duration.fromObject({ milliseconds: this.challengeExpiresInMs })
         );
 
         const sealedDevice = this.sealDevice(device, userId);
@@ -138,7 +138,7 @@ export class MfaChallengeService {
         const { challengeToken, data } = this.prepareCreate(input);
         await this.mfaChallengeRepository.create(data);
 
-        return { challengeToken, expiresInMs: this.challengeTtlInMs };
+        return { challengeToken, expiresInMs: this.challengeExpiresInMs };
     }
 
     /** Stores the challenge row on the given tx under the SHA-256 hash of a new token and answers the raw token; the push token is stored encrypted. */
@@ -149,7 +149,7 @@ export class MfaChallengeService {
         const { challengeToken, data } = this.prepareCreate(input);
         await this.mfaChallengeRepository.createInTx(tx, data);
 
-        return { challengeToken, expiresInMs: this.challengeTtlInMs };
+        return { challengeToken, expiresInMs: this.challengeExpiresInMs };
     }
 
     /** Reads the live challenge of a token and purpose without claiming it; no live row throws MfaChallengeInvalidException. */

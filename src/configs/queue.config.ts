@@ -3,7 +3,7 @@ import ms from 'ms';
 
 export interface IConfigQueue {
     job: {
-        attempts: number;
+        maxAttempts: number;
         keepLogs: number;
         removeOnCompleteAgeInSeconds: number;
         removeOnFailAgeInSeconds: number;
@@ -25,7 +25,7 @@ export interface IConfigQueue {
 
 export default registerAs('queue', (): IConfigQueue => ({
     job: {
-        attempts: 3,
+        maxAttempts: 3,
         keepLogs: 20,
         removeOnCompleteAgeInSeconds: ms('7d') / 1000,
         removeOnFailAgeInSeconds: ms('14d') / 1000,

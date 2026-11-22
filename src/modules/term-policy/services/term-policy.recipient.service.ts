@@ -20,7 +20,7 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class TermPolicyRecipientService {
-    readonly emailBatchSize: number;
+    readonly batchSize: number;
 
     constructor(
         private readonly termPolicyRecipientRepository: TermPolicyRecipientRepository,
@@ -30,8 +30,7 @@ export class TermPolicyRecipientService {
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
-        this.emailBatchSize =
-            this.configService.get<number>('email.batchSize')!;
+        this.batchSize = this.configService.get<number>('email.batchSize')!;
     }
 
     private listPendingBatchIds(

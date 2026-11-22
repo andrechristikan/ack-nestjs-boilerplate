@@ -5,7 +5,7 @@
     "listByWorkspace": "Workspace activity history has been retrieved.",
     "userCreated": "User account has been created",
     "userBlockedByAdmin": "User account has been blocked",
-    "userStatusUpdated": "Your status has been updated",
+    "userStatusUpdatedByAdmin": "Your status has been updated",
     "userProfileUpdated": "Your profile has been updated",
     "userNotificationSettingUpdated": "Your notification settings has been updated",
     "userPhotoProfileUpdated": "Your profile photo has been updated",

@@ -27,6 +27,7 @@ import { NotificationUtil } from '@modules/notification/utils/notification.util'
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
+import { buildSealedNotificationPayload } from '@test/unit/helpers/test.unit.notification-push.helper';
 
 describe('NotificationPushProcessSendUseCase', () => {
     const firebaseService: MockProxy<FirebaseService> = mock<FirebaseService>();
@@ -125,6 +126,41 @@ describe('NotificationPushProcessSendUseCase', () => {
                     properties: {
                         username: 'invitee',
                         passwordExpiredAt: 'Mon, 01 Jun 2026 00:00:00 +0000',
+                    },
+                }
+            );
+        });
+
+        it('sends the body with each sealed secret field opened to its plain property and no sealed key', async () => {
+            notificationPushDeliveryService.sendMulticast.mockResolvedValue({
+                encryptedFailureTokens: [],
+                encryptedPendingTokens: [],
+                failure: null,
+            });
+            notificationService.decryptFailureTokens.mockReturnValue([]);
+
+            await useCase.execute('outbox-id', {
+                ...data,
+                kind: EnumNotificationKind.verifiedMobileNumber,
+                context: {
+                    userId: 'user-id',
+                    proceedBy: 'actor-id',
+                    reference: 'VRF-abc',
+                    encryptedMobileNumber: buildSealedNotificationPayload(
+                        '+6281234567890',
+                        'user-id'
+                    ),
+                    snapshot: null,
+                    verificationId: null,
+                },
+            });
+
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'notification.notify.verifiedMobileNumber.body',
+                {
+                    properties: {
+                        username: 'invitee',
+                        mobileNumber: '+6281234567890',
                     },
                 }
             );

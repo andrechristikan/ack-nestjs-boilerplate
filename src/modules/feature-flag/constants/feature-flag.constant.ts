@@ -4,6 +4,9 @@ import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 
 /** @public */
+export const FeatureFlagAnonymousIdRegex = /^[a-zA-Z0-9-_]+$/;
+
+/** @public */
 export const FeatureFlagKeyPathMetaKey = 'FeatureFlagKeyPathMetaKey';
 
 /** @public */

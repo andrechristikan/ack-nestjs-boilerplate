@@ -6,7 +6,6 @@ import {
     EnumNotificationEmailProcess,
     EnumNotificationKind,
     EnumNotificationQueue,
-    EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationEmailPublishTermPolicyEffect,
@@ -58,7 +57,7 @@ export class NotificationEmailQueue extends QueueBase {
         const { queuePriority } = NotificationKindContract[kind];
         const idempotencyKey = this.notificationUtil.toStepKey(
             notificationId,
-            EnumNotificationStep.sendEmail
+            EnumNotificationEmailProcess.send
         );
 
         return {

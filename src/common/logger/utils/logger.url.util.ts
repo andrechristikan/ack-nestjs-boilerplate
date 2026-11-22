@@ -32,7 +32,7 @@ export class LoggerUrlUtil {
         return true;
     }
 
-    maskPath(path: string): string {
+    private maskPath(path: string): string {
         return path
             .split('/')
             .map(segment =>

@@ -51,6 +51,7 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
         const workspaceId = workspaceContext.workspace.id;
         const actorMember = workspaceContext.workspaceMember;
         const removed = await this.workspaceMemberService.getPeerTarget(
+            authContext,
             workspaceId,
             actorMember,
             targetMemberId
@@ -84,8 +85,8 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
                     workspaceContext,
                     {
                         action: EnumActivityLogAction.workspaceMemberRemoved,
-                        userId: actorMember.userId,
-                        createdBy: actorMember.userId,
+                        userId: authContext.userId,
+                        createdBy: authContext.userId,
                         workspaceId,
                         metadata: { targetUserId: removed.userId },
                     }
@@ -98,9 +99,9 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
                     {
                         action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
                         userId: removed.userId,
-                        createdBy: actorMember.userId,
+                        createdBy: authContext.userId,
                         workspaceId,
-                        metadata: { actorUserId: actorMember.userId },
+                        metadata: { actorUserId: authContext.userId },
                     }
                 );
                 await this.outboxService.addManyInTx(tx, [

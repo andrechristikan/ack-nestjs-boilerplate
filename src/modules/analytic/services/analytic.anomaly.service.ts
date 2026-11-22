@@ -58,23 +58,23 @@ export class AnalyticAnomalyService {
         private readonly analyticAnomalyRepository: AnalyticAnomalyRepository
     ) {
         this.impossibleTravelMinDistanceKm = this.configService.get<number>(
-            'analytic.anomaly.impossibleTravel.minDistanceKm'
+            'analytic.anomaly.impossibleTravelMinDistanceKm'
         )!;
         this.impossibleTravelMaxDeltaInMs = this.configService.get<number>(
-            'analytic.anomaly.impossibleTravel.maxDeltaInMs'
+            'analytic.anomaly.impossibleTravelMaxDeltaInMs'
         )!;
         this.loginSpikeIpMinUniqueAccounts = this.configService.get<number>(
-            'analytic.anomaly.loginSpikeIp.minUniqueAccounts'
+            'analytic.anomaly.loginSpikeIpMinUniqueAccounts'
         )!;
         this.loginSpikeIpWindowInMs = this.configService.get<number>(
-            'analytic.anomaly.loginSpikeIp.windowInMs'
+            'analytic.anomaly.loginSpikeIpWindowInMs'
         )!;
         this.lookbackInMs = this.configService.get<number>(
             'analytic.anomaly.lookbackInMs'
         )!;
         this.deviceProliferationZScoreThreshold =
             this.configService.get<number>(
-                'analytic.anomaly.deviceProliferation.zScoreThreshold'
+                'analytic.anomaly.deviceProliferationZScoreThreshold'
             )!;
     }
 

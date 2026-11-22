@@ -18,7 +18,6 @@ export interface IProjectMember extends ProjectMember {
 }
 
 export interface IProjectMemberActor {
-    userId: string;
     hasWorkspaceBypass: boolean;
 }
 

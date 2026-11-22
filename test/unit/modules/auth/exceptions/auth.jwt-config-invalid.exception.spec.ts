@@ -9,9 +9,9 @@ describe('AuthJwtConfigInvalidException', () => {
             const cause = new Error('boom');
 
             const exception = new AuthJwtConfigInvalidException(
+                cause,
                 'auth.jwt.accessToken.privateKey',
-                'PKCS#8 DER private key',
-                cause
+                'PKCS#8 DER private key'
             );
 
             expect(exception).toBeInstanceOf(AppUnknownException);

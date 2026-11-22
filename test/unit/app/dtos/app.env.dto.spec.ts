@@ -132,7 +132,7 @@ describe('AppEnvSchema', () => {
                 AWS_SES_ENDPOINT: null,
                 SENTRY_DSN: null,
                 FIREBASE_PROJECT_ID: null,
-                FIREBASE_CLIENT_EMAIL: null,
+                FIREBASE_CLIENT_EMAIL_ADDRESS: null,
                 FIREBASE_PRIVATE_KEY: null,
             });
         });
@@ -483,7 +483,7 @@ describe('AppEnvSchema', () => {
             'AWS_SES_ENDPOINT',
             'SENTRY_DSN',
             'FIREBASE_PROJECT_ID',
-            'FIREBASE_CLIENT_EMAIL',
+            'FIREBASE_CLIENT_EMAIL_ADDRESS',
             'FIREBASE_PRIVATE_KEY',
         ];
 
@@ -792,7 +792,8 @@ describe('AppEnvSchema', () => {
     describe('Firebase refinement', () => {
         const firebaseComplete = {
             FIREBASE_PROJECT_ID: 'project',
-            FIREBASE_CLIENT_EMAIL: 'firebase@project.iam.gserviceaccount.com',
+            FIREBASE_CLIENT_EMAIL_ADDRESS:
+                'firebase@project.iam.gserviceaccount.com',
             FIREBASE_PRIVATE_KEY: 'private-key',
         };
         const firebaseKeys = Object.keys(firebaseComplete);
@@ -827,16 +828,16 @@ describe('AppEnvSchema', () => {
             });
         }
 
-        it('rejects a FIREBASE_CLIENT_EMAIL that is not an email address', () => {
+        it('rejects a FIREBASE_CLIENT_EMAIL_ADDRESS that is not an email address', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
                 ...firebaseComplete,
-                FIREBASE_CLIENT_EMAIL: 'not-an-email',
+                FIREBASE_CLIENT_EMAIL_ADDRESS: 'not-an-email',
             });
 
             expect(result.error?.issues).toEqual([
                 expect.objectContaining({
-                    path: ['FIREBASE_CLIENT_EMAIL'],
+                    path: ['FIREBASE_CLIENT_EMAIL_ADDRESS'],
                     code: 'custom',
                 }),
             ]);
@@ -846,7 +847,7 @@ describe('AppEnvSchema', () => {
             const result = AppEnvSchema.safeParse({
                 ...validEnv,
                 FIREBASE_PROJECT_ID: '',
-                FIREBASE_CLIENT_EMAIL: '',
+                FIREBASE_CLIENT_EMAIL_ADDRESS: '',
                 FIREBASE_PRIVATE_KEY: '',
             });
 

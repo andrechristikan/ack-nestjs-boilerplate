@@ -59,7 +59,6 @@ describe('ProjectService', () => {
     let service: ProjectService;
 
     const configValues: Record<string, unknown> = {
-        'project.slugRegex': /^[0-9a-z-]+$/,
         'project.slugPrefix': 'p-',
         'project.slugMaxLength': 30,
         'project.slugMaxAttempts': 5,

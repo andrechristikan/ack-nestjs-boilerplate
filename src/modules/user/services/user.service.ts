@@ -82,10 +82,10 @@ export class UserService {
         private readonly configService: ConfigService
     ) {
         this.deleteSelfEmailPattern = this.configService.get<string>(
-            'user.deleteSelf.emailPattern'
+            'user.deleteSelfEmailPattern'
         )!;
         this.deleteSelfUsernamePattern = this.configService.get<string>(
-            'user.deleteSelf.usernamePattern'
+            'user.deleteSelfUsernamePattern'
         )!;
     }
 
@@ -504,6 +504,6 @@ export class UserService {
     ): EnumActivityLogAction {
         return status === EnumUserStatus.blocked
             ? EnumActivityLogAction.userBlockedByAdmin
-            : EnumActivityLogAction.userStatusUpdated;
+            : EnumActivityLogAction.userStatusUpdatedByAdmin;
     }
 }

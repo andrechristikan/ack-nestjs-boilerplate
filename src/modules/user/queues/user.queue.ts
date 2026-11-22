@@ -1,6 +1,9 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
+import { ConfigService } from '@nestjs/config';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { UserImportEncryptionPurpose } from '@modules/user/constants/user.constant';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import { EnumUserProcess, EnumUserQueue } from '@modules/user/enums/user.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -19,11 +22,19 @@ import type {
 
 @Injectable()
 export class UserQueue extends QueueBase {
+    private readonly encryptionSecret: string;
+
     constructor(
         @InjectQueue(EnumUserQueue.user)
-        protected readonly queue: Queue
+        protected readonly queue: Queue,
+        private readonly configService: ConfigService,
+        private readonly helperEncryptionService: HelperEncryptionService
     ) {
         super(queue);
+
+        this.encryptionSecret = this.configService.get<string>(
+            'app.encryptionSecret'
+        )!;
     }
 
     deletePhotoEffect(
@@ -46,7 +57,21 @@ export class UserQueue extends QueueBase {
         return {
             queue: EnumUserQueue.user,
             name: EnumUserProcess.importByAdmin,
-            data: { rows, activityLog, created: null },
+            data: {
+                rows: rows.map(({ email, ...row }) => {
+                    const encryptedEmail =
+                        this.helperEncryptionService.aes256Encrypt(
+                            email,
+                            this.encryptionSecret,
+                            UserImportEncryptionPurpose,
+                            activityLog.actorUserId
+                        );
+
+                    return { ...row, encryptedEmail };
+                }),
+                activityLog,
+                created: null,
+            },
             priority: EnumQueuePriority.medium,
             idempotencyKey: null,
         };

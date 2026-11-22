@@ -71,7 +71,6 @@ export class ProjectAssignMemberUseCase implements IAppUseCase<
                         apiKeyContext,
                         authContext,
                         projectContext.project,
-                        actor,
                         assignable,
                         role
                     )

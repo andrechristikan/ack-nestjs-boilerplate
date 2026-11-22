@@ -35,10 +35,9 @@ export class QueueModule {
                                     'queue.job.defaultBackoffDelayInMs'
                                 )!,
                             },
-                            attempts:
-                                configService.get<number>(
-                                    'queue.job.attempts'
-                                )!,
+                            attempts: configService.get<number>(
+                                'queue.job.maxAttempts'
+                            )!,
                             removeOnComplete: {
                                 age: configService.get<number>(
                                     'queue.job.removeOnCompleteAgeInSeconds'

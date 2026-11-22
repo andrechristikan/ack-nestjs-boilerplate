@@ -28,34 +28,6 @@ describe('LoggerUrlUtil', () => {
         });
     });
 
-    describe('maskPath', () => {
-        it('keeps an empty segment', () => {
-            expect(util.maskPath('/')).toBe('/');
-        });
-
-        it('keeps a route parameter segment', () => {
-            expect(util.maskPath('/:userId')).toBe('/:userId');
-        });
-
-        it('keeps a version segment', () => {
-            expect(util.maskPath('/v1')).toBe('/v1');
-        });
-
-        it('keeps a static kebab-case segment', () => {
-            expect(util.maskPath('/sign-up')).toBe('/sign-up');
-        });
-
-        it('redacts a purely numeric segment', () => {
-            expect(util.maskPath('/123')).toBe(`/${LoggerRedactedValue}`);
-        });
-
-        it('redacts a Mongo-id-shaped segment', () => {
-            expect(util.maskPath('/507f1f77bcf86cd799439011')).toBe(
-                `/${LoggerRedactedValue}`
-            );
-        });
-    });
-
     describe('matchesPatterns', () => {
         it('returns false when the url is empty', () => {
             expect(util.matchesPatterns('', ['/a'])).toBe(false);
@@ -211,6 +183,34 @@ describe('LoggerUrlUtil', () => {
 
         it('rejects a multi-wildcard glob whose middle segment only fits inside the tail', () => {
             expect(util['matchesGlob']('/aXzz', '/a*z*zz')).toBe(false);
+        });
+    });
+
+    describe('maskPath', () => {
+        it('keeps an empty segment', () => {
+            expect(util['maskPath']('/')).toBe('/');
+        });
+
+        it('keeps a route parameter segment', () => {
+            expect(util['maskPath']('/:userId')).toBe('/:userId');
+        });
+
+        it('keeps a version segment', () => {
+            expect(util['maskPath']('/v1')).toBe('/v1');
+        });
+
+        it('keeps a static kebab-case segment', () => {
+            expect(util['maskPath']('/sign-up')).toBe('/sign-up');
+        });
+
+        it('redacts a purely numeric segment', () => {
+            expect(util['maskPath']('/123')).toBe(`/${LoggerRedactedValue}`);
+        });
+
+        it('redacts a Mongo-id-shaped segment', () => {
+            expect(util['maskPath']('/507f1f77bcf86cd799439011')).toBe(
+                `/${LoggerRedactedValue}`
+            );
         });
     });
 });

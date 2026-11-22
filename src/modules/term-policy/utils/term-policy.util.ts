@@ -16,7 +16,7 @@ import type { TermPolicyContent } from '@generated/prisma-client/client';
 export class TermPolicyUtil {
     private readonly uploadContentPathPattern: string;
     private readonly contentPublicPathPattern: string;
-    private readonly contentMaxSizeInBytes: number;
+    private readonly maxSizeInBytes: number;
     private readonly contentKeyRandomLength: number;
 
     constructor(
@@ -29,7 +29,7 @@ export class TermPolicyUtil {
         this.contentPublicPathPattern = this.configService.get<string>(
             'termPolicy.contentPublicPathPattern'
         )!;
-        this.contentMaxSizeInBytes = this.configService.get<number>(
+        this.maxSizeInBytes = this.configService.get<number>(
             'termPolicy.content.maxSizeInBytes'
         )!;
         this.contentKeyRandomLength = this.configService.get<number>(
@@ -48,7 +48,7 @@ export class TermPolicyUtil {
     }
 
     isContentSizeAllowed(size: number): boolean {
-        return size <= this.contentMaxSizeInBytes;
+        return size <= this.maxSizeInBytes;
     }
 
     isContentKeyInPath(

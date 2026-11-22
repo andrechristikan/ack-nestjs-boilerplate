@@ -33,7 +33,7 @@ describe('NotificationPushQueue', () => {
         configService = buildConfigService({
             ...TestUnitKitConfigValues,
             'notification.idempotencyKey.stepPattern':
-                '{notificationId}-{step}',
+                '{process}-{notificationId}',
             'notification.push.cleanupStaleTokensCron': '0 3 * * *',
         });
         const module = await Test.createTestingModule({
@@ -101,7 +101,7 @@ describe('NotificationPushQueue', () => {
     });
 
     describe('sendEffect', () => {
-        it('returns the push send effect keyed by the sendPush step with the kind priority', () => {
+        it('returns the push send effect keyed by the send process and the notification id with the kind priority', () => {
             const context: INotificationSealedData = {
                 userId: 'user-id',
                 proceedBy: 'actor-id',
@@ -141,7 +141,7 @@ describe('NotificationPushQueue', () => {
                     encryptedFailureTokens: null,
                 },
                 priority: EnumQueuePriority.medium,
-                idempotencyKey: 'notification-id-sendPush',
+                idempotencyKey: 'send-notification-id',
             });
         });
     });

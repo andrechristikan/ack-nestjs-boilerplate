@@ -12,15 +12,28 @@ import {
 } from '@generated/prisma-client/client';
 import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import { buildRequestContext } from '@test/unit/helpers/test.unit.request.helper';
+import { ConfigService } from '@nestjs/config';
+import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
+import { UserImportEncryptionPurpose } from '@modules/user/constants/user.constant';
+import { TestUnitKitEncryptionSecret } from '@test/unit/helpers/test.unit.kit.helper';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('UserQueue', () => {
     const userQueue: MockProxy<Queue> = mock<Queue>();
+    const helperEncryptionService = new HelperEncryptionService();
     let queue: UserQueue;
 
     beforeEach(async () => {
         const module = await Test.createTestingModule({
             providers: [
                 UserQueue,
+                HelperEncryptionService,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        'app.encryptionSecret': TestUnitKitEncryptionSecret,
+                    }),
+                },
                 {
                     provide: getQueueToken(EnumUserQueue.user),
                     useValue: userQueue,
@@ -57,7 +70,7 @@ describe('UserQueue', () => {
     });
 
     describe('importByAdminEffect', () => {
-        it('returns the medium-priority importByAdmin effect holding the rows and the activity payload given, created null, no business key', () => {
+        it('returns the medium-priority importByAdmin effect sealing each row email against the actor id, created null, no business key', () => {
             const rows = [
                 {
                     username: 'bramble2fox',
@@ -77,10 +90,29 @@ describe('UserQueue', () => {
             expect(effect).toEqual({
                 queue: EnumUserQueue.user,
                 name: EnumUserProcess.importByAdmin,
-                data: { rows, activityLog, created: null },
+                data: {
+                    rows: [
+                        {
+                            username: 'bramble2fox',
+                            encryptedEmail: expect.any(String),
+                            name: null,
+                        },
+                    ],
+                    activityLog,
+                    created: null,
+                },
                 priority: EnumQueuePriority.medium,
                 idempotencyKey: null,
             });
+            expect(effect.data.rows[0]).not.toHaveProperty('email');
+            expect(
+                helperEncryptionService.aes256Decrypt(
+                    effect.data.rows[0]!.encryptedEmail,
+                    TestUnitKitEncryptionSecret,
+                    UserImportEncryptionPurpose,
+                    'admin-bramble'
+                )
+            ).toBe('bramble@example.com');
         });
     });
 

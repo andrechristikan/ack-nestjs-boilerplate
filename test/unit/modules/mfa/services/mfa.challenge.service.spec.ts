@@ -90,7 +90,7 @@ describe('MfaChallengeService', () => {
                     provide: ConfigService,
                     useValue: buildConfigService({
                         ...TestUnitKitConfigValues,
-                        'mfa.challengeTtlInMs': 300000,
+                        'mfa.challengeExpiresInMs': 300000,
                         'mfa.challengeRetentionInMs': 604800000,
                     }),
                 },

@@ -11,6 +11,7 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
+import { ProjectSlugRegex } from '@modules/project/constants/project.constant';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectSlugInvalidException } from '@modules/project/exceptions/project.slug-invalid.exception';
 import type {
@@ -26,7 +27,6 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 
 @Injectable()
 export class ProjectService {
-    private readonly slugRegex: RegExp;
     private readonly slugPrefix: string;
     private readonly slugMaxLength: number;
     private readonly slugMaxAttempts: number;
@@ -40,7 +40,6 @@ export class ProjectService {
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
-        this.slugRegex = this.configService.get<RegExp>('project.slugRegex')!;
         this.slugPrefix = this.configService.get<string>('project.slugPrefix')!;
         this.slugMaxLength = this.configService.get<number>(
             'project.slugMaxLength'
@@ -54,7 +53,7 @@ export class ProjectService {
     }
 
     private isSlugAllowed(slug: string): boolean {
-        const isPatternValid = this.slugRegex.test(slug);
+        const isPatternValid = ProjectSlugRegex.test(slug);
 
         return slug.length <= this.slugMaxLength && isPatternValid;
     }

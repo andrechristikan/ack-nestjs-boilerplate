@@ -46,7 +46,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
     ],
     IResponseReturn<DatabaseIdResponseDto>
 > {
-    private readonly timeoutInMs: number;
+    private readonly createTimeoutInMs: number;
 
     constructor(
         private readonly userService: UserService,
@@ -68,8 +68,8 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
-        this.timeoutInMs = this.configService.get<number>(
-            'user.create.timeoutInMs'
+        this.createTimeoutInMs = this.configService.get<number>(
+            'user.createTimeoutInMs'
         )!;
     }
 
@@ -78,7 +78,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         inputs: IUserCreateWithWorkspaceInput[],
         effects: IOutboxEffect[],
-        timeoutInMs: number,
+        createTimeoutInMs: number,
         createdBy: string
     ): Promise<IUser[]> {
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
@@ -151,7 +151,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
 
                         return users;
                     },
-                    { timeout: timeoutInMs }
+                    { timeout: createTimeoutInMs }
                 );
             } catch (error: unknown) {
                 const isSlugCollision = this.databaseUtil.isUniqueCollision(
@@ -225,7 +225,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
             apiKeyContext,
             [input],
             effects,
-            this.timeoutInMs,
+            this.createTimeoutInMs,
             authContext.userId
         );
         const created = users[0]!;
