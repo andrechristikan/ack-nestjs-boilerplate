@@ -192,7 +192,7 @@ See [package.json][ref-package-json] for the full list.
 - **OpenAPI 3.1**: Swagger UI and `generated/swagger.json` from the same route schemas (off in production)
 - **Zod contracts**: Request and response shapes checked end to end
 - **i18n**: Localized messages via `x-custom-lang`
-- **Vitest**: Unit suite under `test/unit/`. `pnpm test:cov` enforces 100% coverage. The integration and e2e suites are held, so none exists.
+- **Vitest**: Unit suite under `test/unit/`. `pnpm test:cov` enforces 100% coverage. The integration suite is held.
 - **Lint & hooks**: ESLint (incl. security), Prettier, cspell, knip, Husky, and commitlint
 - **Docker Compose**: PostgreSQL, Redis, BullBoard, and JWKS locally, with optional `apis` and `vault` profiles. A separate production Compose file and image run the stack on one Docker host ([release][ref-doc-release])
 - **HashiCorp Vault**: Optional secret sync into `.env` ([docs][ref-doc-vault])
@@ -210,9 +210,9 @@ pnpm install
 
 # Setup environment
 cp .env.example .env
+touch .env.docker
 
-# Set AUTH_TWO_FACTOR_ISSUER in .env (required, empty in .env.example)
-# AUTH_TWO_FACTOR_ISSUER=ACKNestJs
+# Set the required secrets and integration values in .env
 
 # Generate the JWT keys, and JWKS files under keys/,
 # and write the JWT keys and encryption secrets into .env
@@ -221,8 +221,8 @@ pnpm generate:secret --direct-insert
 # Generate the Prisma client and src/generated/package/package.ts
 pnpm generate
 
-# Start infrastructure (PostgreSQL + Redis + BullBoard + JWKS)
-docker-compose up -d
+# Start PostgreSQL, the two Redis instances, BullBoard, and JWKS
+docker compose --env-file .env.docker --profile deps up -d
 
 # Apply the migrations (needs the PostgreSQL service above already running)
 pnpm db:migrate
@@ -237,10 +237,10 @@ pnpm start:dev
 
 Swagger UI: `http://localhost:3000/docs`.
 
-The API also runs inside Compose through the `apis` profile: `docker-compose --profile apis up -d`. The container mounts the same `.env` the host app reads, so for it:
+The API also runs inside Compose through the `apis` profile: `docker compose --env-file .env.docker --profile deps --profile apis up -d`. The container mounts the same `.env` the host app reads, so for it:
 
-- `HTTP_HOST` is `0.0.0.0`.
-- `DATABASE_URL`, `CACHE_REDIS_URL`, `QUEUE_REDIS_URL`, and the two JWKS URIs point at the Compose service hosts `postgres`, `redis`, and `jwks-server`.
+- `APP_HTTP_HOST` is `0.0.0.0`.
+- `DATABASE_URL`, `REDIS_CACHE_URL`, `REDIS_QUEUE_URL`, and the two JWKS URIs point at the Compose service hosts `postgres`, `redis-cache`, `redis-queue`, and `jwks-server`.
 
 The values and the steps are in [Installation][ref-doc-installation].
 

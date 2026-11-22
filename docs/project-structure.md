@@ -452,7 +452,7 @@ Below are explanations for the root folders and files outside `src/`:
 
 - **.github/**: GitHub-specific configuration: Actions workflows, issue and pull request templates, and Dependabot settings.
     - `.github/workflows/test-unit.yml` runs `NODE_ENV=test pnpm test` on `workflow_dispatch`.
-    - `.github/workflows/test-integration.yml` and `test-e2e.yml` run `pnpm test:integration` and `pnpm test:e2e` on `workflow_dispatch`. `package.json` defines neither script, so both fail.
+    - `.github/workflows/test-integration.yml` runs on `workflow_dispatch` and passes while the integration suite is held.
     - `.github/workflows/linter.yml` runs on `pull_request` and `workflow_dispatch`.
     - The three `release-with-*.yml` workflows build `ci/dockerfile.production` and deploy it, as described in [Release](release.md).
     - Dependabot bumps the production Dockerfile and `ci/docker-compose.production.yml` within the current major version.
@@ -482,12 +482,12 @@ Below are explanations for the root folders and files outside `src/`:
     - `encryption-secret.env`
     - the MongoDB keyfile `mongo-keyfile`
 - **logs/**: Directory for application logs. Not tracked by git.
-- **prisma/**: Contains `schema.prisma`, the single source of truth for the database schema. MongoDB has no migration files.
+- **prisma/**: Contains `schema.prisma` and the committed PostgreSQL migrations.
 - **scripts/**: Node runs both scripts directly as TypeScript.
-    - `generate-secret.ts` writes the JWT keys, JWKS, encryption secrets, and the MongoDB keyfile (`pnpm generate:secret`).
+    - `generate-secret.ts` writes the JWT keys, JWKS, and encryption secrets (`pnpm generate:secret`).
     - `generate-package.ts` writes `src/generated/package/package.ts` (`pnpm generate:package`).
 - **test/**: The Vitest spec tree.
-    - `test/` holds `unit/` and `helpers/`. The integration and e2e suites are held, so no folder exists for them.
+    - `test/` holds `unit/` and `helpers/`. The integration suite is held.
     - `test/unit/` holds the unit specs.
         - They mirror `src/` (`test/unit/app/`, `test/unit/common/`, `test/unit/modules/`, `test/unit/queues/`).
         - Unit-only helpers sit in `test/unit/helpers/`.
@@ -513,7 +513,7 @@ Below are explanations for the root folders and files outside `src/`:
 - **.prettierrc**: Configuration for Prettier code formatter.
 - **.swcrc**: Configuration for SWC JavaScript/TypeScript compiler.
 - **cspell.json**: Configuration for code spell checking to maintain code quality and consistency.
-- **docker-compose.yml**: Docker Compose configuration for local development: MongoDB replica set, Redis, BullBoard, and the JWKS server, with the `apis` and `vault` profiles. Production uses `ci/docker-compose.production.yml`.
+- **docker-compose.yml**: Docker Compose configuration for local development: PostgreSQL, separate Redis instances, BullBoard, and the JWKS server, with the `deps` and `apis` profiles. Production uses `ci/docker-compose.yml`.
 - **dockerfile**: The development image behind the `apis` profile of `docker-compose.yml`.
 - **eslint.config.mjs**: ESLint flat configuration.
     - It ignores `docs/`, `.github/`, `.husky/`, `generated/`, and `src/generated/`.
