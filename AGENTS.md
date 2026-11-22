@@ -9,7 +9,7 @@ An opinionated, production-shaped NestJS starter. It is a boilerplate: no extern
 
 ## Stack
 
-NestJS, TypeScript strict, native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`), SWC build, Vitest (unit; integration and e2e on Testcontainers held). Node and pnpm versions are `engines` and `packageManager` in `package.json`; pnpm only: `engines` and the `preinstall` guard reject `npm` and `yarn`. Prisma with PostgreSQL 18 and migration files under `prisma/migrations/`: `prisma migrate` applies the schema. Redis: cache (`REDIS_CACHE_URL`) and BullMQ (`REDIS_QUEUE_URL`) on separate instances. Every transport shape is a zod schema, validated by `RequestSchemaValidationPipe` on the way in and `ResponseInterceptor` on the way out; Swagger through `zod-openapi`; nestjs-i18n from `src/languages/`; Pino logging; Sentry (`src/instrument.ts`); nest-commander seeds (`src/migration.ts`); Vault for secrets.
+NestJS, TypeScript strict, native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`), SWC build, Vitest (unit; integration on Testcontainers held). Node and pnpm versions are `engines` and `packageManager` in `package.json`; pnpm only: `engines` and the `preinstall` guard reject `npm` and `yarn`. Prisma with PostgreSQL 18 and migration files under `prisma/migrations/`: `prisma migrate` applies the schema. Redis: cache (`REDIS_CACHE_URL`) and BullMQ (`REDIS_QUEUE_URL`) on separate instances. Every transport shape is a zod schema, validated by `RequestSchemaValidationPipe` on the way in and `ResponseInterceptor` on the way out; Swagger through `zod-openapi`; nestjs-i18n from `src/languages/`; Pino logging; Sentry (`src/instrument.ts`); nest-commander seeds (`src/migration.ts`); Vault for secrets.
 
 ## Layout
 
@@ -30,7 +30,7 @@ src/modules/            feature modules
 src/router/             http/ mounts controllers under /public /system /admin /user /shared; processor/ provides every processor and imports their use-case modules
 prisma/schema.prisma    editable; the owner applies it locally, `migrate` in a release
 test/unit/              unit specs mirroring src/, no Docker
-test/integration/ e2e/  held, not created (.claude/rules/testing.md)
+test/integration/       held, not created (.claude/rules/testing.md)
 test/helpers/           helpers two or more test types share
 docs/                   durable project documentation
 scripts/                generate-secret.ts, generate-package.ts

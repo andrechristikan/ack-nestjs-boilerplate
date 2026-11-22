@@ -117,7 +117,7 @@ This project uses **TypeScript** with `strict`, `exactOptionalPropertyTypes`, an
     pnpm test
     ```
     - It runs the unit suite under `test/unit/`.
-    - The integration and e2e suites are held, so none exists: `package.json` defines no `test:integration` or `test:e2e` script, and `test/` holds `unit/` and `helpers/`.
+    - The integration suite is held: `package.json` defines no `test:integration` script, and `test/` holds `unit/` and `helpers/`.
 - `any` is a lint error in `src/` (`@typescript-eslint/no-explicit-any`).
 - `.forEach` is a lint error in `src/` and `test/`; iterate with `for...of`.
 - Every public method and function carries explicit types (`explicit-function-return-type`, `explicit-module-boundary-types`).
@@ -217,7 +217,6 @@ The Checklist and the gates:
 - The Husky pre-commit hook runs `lint-staged`, typecheck, deadcode, spell, and the unit tests locally.
 - The CI workflow (`.github/workflows/ci.yml`) runs lint, deadcode, spell, typecheck, and the build on pull requests to the branches it lists.
 - Once those pass, CI calls `test-unit.yml` (the unit suite with coverage) and `test-integration.yml`, which passes while `test/integration/` holds no spec.
-- `test-e2e.yml` runs on manual dispatch and calls `pnpm test:e2e`, which `package.json` does not define, so it fails.
 
 **PR will be rejected if:**
 

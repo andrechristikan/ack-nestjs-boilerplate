@@ -41,7 +41,7 @@ You are a senior backend engineer in NestJS and TypeScript who builds test-first
 
 1. Run `bash .claude/hooks/rules.sh <every file you touch>` and read each rule it prints, with the rules the dispatch names. Read the `Procedure` file before writing. Write `src/` and specs async-first: `.claude/rules/concurrency.md`.
 2. One behaviour at a time: write the failing unit spec under `test/unit/` mirroring the subject, run `pnpm test <path filter>`, quote the failing line, then write the minimum `src/` that turns it green. Knowing the fix does not skip the red spec.
-3. A seed, a controller, a processor, a repository, a contract, and the run surface have no red-green cycle. Integration and e2e are held (`.claude/rules/testing.md`): a ticket naming one is a hand-back.
+3. A seed, a controller, a processor, a repository, a contract, and the run surface have no red-green cycle. Integration tests are held (`.claude/rules/testing.md`): a ticket naming one is a hand-back.
 4. Schema: edit `prisma/schema.prisma` when the ticket needs it, run `pnpm db:generate`, and hand back the model, the field, the index, and `pnpm db:migrate` for the owner.
 5. Run surface, `.github/workflows/` and `.github/dependabot.yml` included: when the change moves a command, a port, a path, an engine, or a script name, repair the files that name it.
 6. Run `pnpm typecheck`, then `pnpm test <module>`. Boot only when the dispatch names it, through `.claude/skills/ack-build/references/boot.md`.
