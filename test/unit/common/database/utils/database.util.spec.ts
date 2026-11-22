@@ -23,6 +23,7 @@ describe('DatabaseUtil', () => {
                     provide: ConfigService,
                     useValue: buildConfigService({
                         'database.connectTimeoutInMs': 5000,
+                        'database.poolTimeoutInMs': 5000,
                     }),
                 },
             ],
@@ -32,19 +33,21 @@ describe('DatabaseUtil', () => {
     });
 
     describe('buildClientUrl', () => {
-        it('appends the connect timeout in seconds with a question mark to a url with no query', () => {
+        it('appends the connect and pool timeouts in seconds with a question mark to a url with no query', () => {
             expect(util.buildClientUrl('postgresql://h:5432/db')).toBe(
-                'postgresql://h:5432/db?connect_timeout=5'
+                'postgresql://h:5432/db?connect_timeout=5&pool_timeout=5'
             );
         });
 
-        it('appends the connect timeout in seconds with an ampersand to a url with a query', () => {
+        it('appends the connect and pool timeouts in seconds with an ampersand to a url with a query', () => {
             expect(
                 util.buildClientUrl('postgresql://h:5432/db?schema=public')
-            ).toBe('postgresql://h:5432/db?schema=public&connect_timeout=5');
+            ).toBe(
+                'postgresql://h:5432/db?schema=public&connect_timeout=5&pool_timeout=5'
+            );
         });
 
-        it('carries the configured connect timeout rounded up to whole seconds', async () => {
+        it('carries the configured connect and pool timeouts rounded up to whole seconds', async () => {
             const module: TestingModule = await Test.createTestingModule({
                 providers: [
                     DatabaseUtil,
@@ -52,6 +55,7 @@ describe('DatabaseUtil', () => {
                         provide: ConfigService,
                         useValue: buildConfigService({
                             'database.connectTimeoutInMs': 2000,
+                            'database.poolTimeoutInMs': 1500,
                         }),
                     },
                 ],
@@ -61,7 +65,7 @@ describe('DatabaseUtil', () => {
                 module
                     .get(DatabaseUtil)
                     .buildClientUrl('postgresql://h:5432/db')
-            ).toBe('postgresql://h:5432/db?connect_timeout=2');
+            ).toBe('postgresql://h:5432/db?connect_timeout=2&pool_timeout=2');
         });
     });
 
@@ -80,48 +84,50 @@ describe('DatabaseUtil', () => {
     describe('censorUrl', () => {
         it('masks the password and keeps the first letter of the username', () => {
             expect(
-                util.censorUrl('mongodb://admin:hunter2@localhost:27017/ack')
-            ).toBe('mongodb://a***@localhost:27017/ack');
+                util.censorUrl('postgresql://admin:hunter2@localhost:5432/ack')
+            ).toBe('postgresql://a***@localhost:5432/ack');
         });
 
         it('keeps every host of a replica-set url and drops the query', () => {
             expect(
                 util.censorUrl(
-                    'mongodb://admin:hunter2@h1:27017,h2:27017,h3:27017/ack?replicaSet=rs0&authSource=admin'
+                    'postgresql://admin:hunter2@h1:5432,h2:5432,h3:5432/ack?schema=public'
                 )
-            ).toBe('mongodb://a***@h1:27017,h2:27017,h3:27017/ack');
+            ).toBe('postgresql://a***@h1:5432,h2:5432,h3:5432/ack');
         });
 
         it('keeps a url without credentials as is, minus the query', () => {
             expect(
-                util.censorUrl('mongodb://localhost:27017/ack?tls=true')
-            ).toBe('mongodb://localhost:27017/ack');
+                util.censorUrl(
+                    'postgresql://localhost:5432/ack?sslmode=require'
+                )
+            ).toBe('postgresql://localhost:5432/ack');
         });
 
         it('masks the password of a url that has no path', () => {
             expect(
-                util.censorUrl('mongodb://admin:hunter2@localhost:27017')
-            ).toBe('mongodb://a***@localhost:27017');
+                util.censorUrl('postgresql://admin:hunter2@localhost:5432')
+            ).toBe('postgresql://a***@localhost:5432');
         });
 
         it('keeps a url without credentials and without a path as is', () => {
-            expect(util.censorUrl('mongodb://localhost:27017')).toBe(
-                'mongodb://localhost:27017'
+            expect(util.censorUrl('postgresql://localhost:5432')).toBe(
+                'postgresql://localhost:5432'
             );
         });
 
         it('drops an empty username together with the password', () => {
             expect(
-                util.censorUrl('mongodb://:hunter2@localhost:27017/ack')
-            ).toBe('mongodb://localhost:27017/ack');
+                util.censorUrl('postgresql://:hunter2@localhost:5432/ack')
+            ).toBe('postgresql://localhost:5432/ack');
         });
 
         it('handles the srv scheme', () => {
             expect(
                 util.censorUrl(
-                    'mongodb+srv://admin:hunter2@cluster0.example.com/ack'
+                    'postgres://admin:hunter2@cluster0.example.com/ack'
                 )
-            ).toBe('mongodb+srv://a***@cluster0.example.com/ack');
+            ).toBe('postgres://a***@cluster0.example.com/ack');
         });
 
         it('returns the censored value for a string that is not a url', () => {
@@ -256,9 +262,9 @@ describe('DatabaseUtil', () => {
             );
         });
 
-        it('maps a P2010 server selection timeout to DatabaseUnavailableException', () => {
+        it('maps a P2010 unreachable database to DatabaseUnavailableException', () => {
             const error = new Prisma.PrismaClientKnownRequestError(
-                'Raw query failed. Code: `unknown`. Message: `Kind: Server selection timeout: No available servers.`',
+                "Raw query failed. Code: `unknown`. Message: `Can't reach database server at `h:5432``",
                 { code: 'P2010', clientVersion: '6.19.0' }
             );
 

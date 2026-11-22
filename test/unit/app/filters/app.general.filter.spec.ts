@@ -135,8 +135,8 @@ describe('AppGeneralFilter', () => {
             expect(warn).not.toHaveBeenCalled();
         });
 
-        const serverSelectionTimeout = new Prisma.PrismaClientKnownRequestError(
-            'Raw query failed. Code: `unknown`. Message: `Kind: Server selection timeout: No available servers.`',
+        const unreachableDatabase = new Prisma.PrismaClientKnownRequestError(
+            "Raw query failed. Code: `unknown`. Message: `Can't reach database server at `h:5432``",
             { code: 'P2010', clientVersion: '6.19.0' }
         );
         const initializationError = new Prisma.PrismaClientInitializationError(
@@ -267,7 +267,7 @@ describe('AppGeneralFilter', () => {
         it('logs and reports a P2010 server selection timeout first in the database window', async () => {
             databaseService.isFirstUnavailableInWindow.mockReturnValue(true);
 
-            await filter.catch(serverSelectionTimeout, argumentsHost);
+            await filter.catch(unreachableDatabase, argumentsHost);
 
             expect(response.status).toHaveBeenCalledWith(
                 HttpStatus.SERVICE_UNAVAILABLE
@@ -283,7 +283,7 @@ describe('AppGeneralFilter', () => {
         it('answers 503 without a report for a P2010 server selection timeout inside the database window', async () => {
             databaseService.isFirstUnavailableInWindow.mockReturnValue(false);
 
-            await filter.catch(serverSelectionTimeout, argumentsHost);
+            await filter.catch(unreachableDatabase, argumentsHost);
 
             expect(response.status).toHaveBeenCalledWith(
                 HttpStatus.SERVICE_UNAVAILABLE

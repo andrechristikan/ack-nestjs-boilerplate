@@ -117,7 +117,7 @@ describe('DatabaseService', () => {
         });
 
         it('wraps a failed ping once in AppUnknownException', async () => {
-            const error = new Error('Server selection timeout');
+            const error = new Error("Can't reach database server");
             client.$connect.mockResolvedValue(undefined);
             client.$queryRaw.mockRejectedValue(error);
 

@@ -25,18 +25,24 @@ import { DatabaseWriteConflictException } from '@common/database/exceptions/data
 @Injectable()
 export class DatabaseUtil {
     private readonly connectTimeoutInMs: number;
+    private readonly poolTimeoutInMs: number;
 
     constructor(private readonly configService: ConfigService) {
         this.connectTimeoutInMs = this.configService.get<number>(
             'database.connectTimeoutInMs'
         )!;
+        this.poolTimeoutInMs = this.configService.get<number>(
+            'database.poolTimeoutInMs'
+        )!;
     }
 
-    /** Appends the configured connect timeout, in seconds, to a connection url; the caller passes a url that does not carry `connect_timeout`. */
+    /** Appends the configured connect and pool timeouts, in seconds, to a connection url; the caller passes a url that carries neither `connect_timeout` nor `pool_timeout`. */
     buildClientUrl(url: string): string {
         const separator = url.includes('?') ? '&' : '?';
+        const connectTimeout = Math.ceil(this.connectTimeoutInMs / 1000);
+        const poolTimeout = Math.ceil(this.poolTimeoutInMs / 1000);
 
-        return `${url}${separator}connect_timeout=${Math.ceil(this.connectTimeoutInMs / 1000)}`;
+        return `${url}${separator}connect_timeout=${connectTimeout}&pool_timeout=${poolTimeout}`;
     }
 
     checkIdIsValid(id: string): boolean {

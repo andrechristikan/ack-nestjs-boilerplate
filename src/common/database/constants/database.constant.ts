@@ -18,7 +18,8 @@ export const DatabaseRawQueryFailedCode = 'P2010';
 
 /** @public */
 export const DatabaseUnavailableMessages: readonly string[] = [
-    'Server selection timeout',
+    "Can't reach database server",
+    'Timed out fetching a new connection',
 ];
 
 /** @public */

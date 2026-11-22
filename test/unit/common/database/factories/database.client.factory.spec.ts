@@ -19,7 +19,7 @@ describe('DatabaseClientFactory', () => {
         vi.resetAllMocks();
 
         databaseUtil.buildClientUrl.mockReturnValue(
-            'postgresql://h:5432/db?connect_timeout=5'
+            'postgresql://h:5432/db?connect_timeout=5&pool_timeout=5'
         );
 
         const module: TestingModule = await Test.createTestingModule({
