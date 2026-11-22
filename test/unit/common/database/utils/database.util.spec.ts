@@ -1,3 +1,4 @@
+// cspell:ignore sslmode
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -301,6 +302,10 @@ describe('DatabaseUtil', () => {
     });
 
     describe('toPlainObject', () => {
+        it('maps a null JSON value to SQL NULL', () => {
+            expect(util.toPlainObject(null)).toBe(Prisma.DbNull);
+        });
+
         it('deep-clones the object into a distinct, structurally equal instance', () => {
             const data = { a: 1, nested: { b: 2 } };
 
@@ -319,6 +324,20 @@ describe('DatabaseUtil', () => {
 
             expect(result).toEqual(data);
             expect(result).not.toBe(data);
+        });
+    });
+
+    describe('replaceMany', () => {
+        it('deletes old rows and creates the provided rows', () => {
+            const rows = [{ value: 'one' }];
+            expect(util.replaceMany(rows)).toEqual({
+                deleteMany: {},
+                createMany: { data: rows },
+            });
+        });
+
+        it('only deletes old rows for an empty list', () => {
+            expect(util.replaceMany([])).toEqual({ deleteMany: {} });
         });
     });
 });
