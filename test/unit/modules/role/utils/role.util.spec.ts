@@ -1,6 +1,7 @@
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { EnumRoleType } from '@generated/prisma-client/client';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { RoleUtil } from '@modules/role/utils/role.util';
 
@@ -21,7 +22,10 @@ describe('RoleUtil', () => {
         it('maps the role fields and timestamp into activity log metadata', () => {
             const role: IRole = {
                 id: 'role-1',
-                type: EnumRoleType.admin,
+                scope: EnumRoleScope.platform,
+                key: EnumRolePlatformKey.admin,
+                policyRevision: 0,
+                description: null,
                 name: 'manager',
                 isImmutable: false,
             };
@@ -32,7 +36,8 @@ describe('RoleUtil', () => {
             expect(result).toEqual({
                 roleId: role.id,
                 roleName: role.name,
-                roleType: role.type,
+                roleKey: role.key,
+                roleScope: role.scope,
                 timestamp,
             });
         });

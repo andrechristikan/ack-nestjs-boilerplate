@@ -8,6 +8,8 @@ import { NotificationSharedController } from '@modules/notification/controllers/
 import { NotificationUseCaseModule } from '@modules/notification/notification.use-case.module';
 import { PasswordHistorySharedController } from '@modules/password-history/controllers/password-history.shared.controller';
 import { PasswordHistoryUseCaseModule } from '@modules/password-history/password-history.use-case.module';
+import { RoleSharedController } from '@modules/role/controllers/role.shared.controller';
+import { RoleUseCaseModule } from '@modules/role/role.use-case.module';
 import { SessionSharedController } from '@modules/session/controllers/session.shared.controller';
 import { SessionUseCaseModule } from '@modules/session/session.use-case.module';
 import { TermPolicySharedController } from '@modules/term-policy/controllers/term-policy.shared.controller';
@@ -28,6 +30,7 @@ import { Module } from '@nestjs/common';
         DeviceSharedController,
         NotificationSharedController,
         MfaSharedController,
+        RoleSharedController,
     ],
     providers: [],
     exports: [],
@@ -40,6 +43,7 @@ import { Module } from '@nestjs/common';
         TermPolicyUseCaseModule,
         NotificationUseCaseModule,
         MfaUseCaseModule,
+        RoleUseCaseModule,
 
         UserModule,
         WorkspaceModule,

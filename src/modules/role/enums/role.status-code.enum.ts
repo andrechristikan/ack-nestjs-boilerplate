@@ -2,10 +2,9 @@
 export enum EnumRoleStatusCodeError {
     notFound = 50500,
     exist = 50501,
-    forbidden = 50502,
-    used = 50503,
-    rankForbidden = 50504,
-    selfForbidden = 50505,
-    immutable = 50506,
-    hasPolicies = 50507,
+    used = 50502,
+    rankForbidden = 50503,
+    selfForbidden = 50504,
+    immutable = 50505,
+    scopeMismatch = 50506,
 }

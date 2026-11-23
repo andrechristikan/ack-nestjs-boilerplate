@@ -1,79 +1,58 @@
-import { EnumRoleType } from '@generated/prisma-client/client';
+import { EnumRoleScope } from '@generated/prisma-client/client';
 import { RoleCreateRequestSchema } from '@modules/role/dtos/request/role.create.request.dto';
 
 describe('RoleCreateRequestSchema', () => {
-    it('parses name, description, and type into exactly the declared fields', () => {
+    const payload = {
+        scope: EnumRoleScope.workspace,
+        key: 'auditor',
+        name: 'Auditor',
+    };
+
+    it('parses the required fields with the description optional', () => {
+        expect(RoleCreateRequestSchema.parse(payload)).toEqual(payload);
+    });
+
+    it('keeps the case of the key', () => {
         const result = RoleCreateRequestSchema.parse({
-            name: 'manager',
-            description: 'Team lead role',
-            type: EnumRoleType.admin,
+            ...payload,
+            key: 'projectAuditor',
         });
 
-        expect(result).toEqual({
-            name: 'manager',
-            description: 'Team lead role',
-            type: EnumRoleType.admin,
+        expect(result.key).toBe('projectAuditor');
+    });
+
+    it.each(['ab', '1abc', 'with-dash', 'a'.repeat(31)])(
+        'rejects the key %s',
+        key => {
+            expect(() =>
+                RoleCreateRequestSchema.parse({ ...payload, key })
+            ).toThrow();
+        }
+    );
+
+    it('fails a 31-character key on max, not on regex', () => {
+        const result = RoleCreateRequestSchema.safeParse({
+            ...payload,
+            key: 'a'.repeat(31),
         });
+
+        expect(result.error?.issues).toHaveLength(1);
+        expect(result.error?.issues[0]?.code).toBe('too_big');
     });
 
-    it('trims and lowercases the name', () => {
-        const result = RoleCreateRequestSchema.parse({
-            name: '  Manager  ',
-            type: EnumRoleType.admin,
+    it('fails a 2-character key on min, not on regex', () => {
+        const result = RoleCreateRequestSchema.safeParse({
+            ...payload,
+            key: 'ab',
         });
 
-        expect(result.name).toBe('manager');
+        expect(result.error?.issues).toHaveLength(1);
+        expect(result.error?.issues[0]?.code).toBe('too_small');
     });
 
-    it('rejects a name shorter than 3 characters', () => {
+    it('rejects a scope outside EnumRoleScope', () => {
         expect(() =>
-            RoleCreateRequestSchema.parse({
-                name: 'ab',
-                type: EnumRoleType.admin,
-            })
+            RoleCreateRequestSchema.parse({ ...payload, scope: 'galaxy' })
         ).toThrow();
-    });
-
-    it('rejects a name longer than 30 characters', () => {
-        expect(() =>
-            RoleCreateRequestSchema.parse({
-                name: 'a'.repeat(31),
-                type: EnumRoleType.admin,
-            })
-        ).toThrow();
-    });
-
-    it('rejects a name with a non-alphanumeric character', () => {
-        expect(() =>
-            RoleCreateRequestSchema.parse({
-                name: 'team-lead',
-                type: EnumRoleType.admin,
-            })
-        ).toThrow();
-    });
-
-    it('rejects a missing name', () => {
-        expect(() =>
-            RoleCreateRequestSchema.parse({ type: EnumRoleType.admin })
-        ).toThrow();
-    });
-
-    it('rejects an undeclared key', () => {
-        expect(() =>
-            RoleCreateRequestSchema.parse({
-                name: 'manager',
-                type: EnumRoleType.admin,
-                extra: true,
-            })
-        ).toThrow();
-    });
-
-    it('rejects the superAdmin type', () => {
-        expect(
-            RoleCreateRequestSchema.safeParse({
-                name: 'manager',
-                type: EnumRoleType.superAdmin,
-            }).success
-        ).toBe(false);
     });
 });

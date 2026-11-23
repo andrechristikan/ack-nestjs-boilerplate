@@ -1,7 +1,14 @@
+import { subject } from '@casl/ability';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -22,6 +29,7 @@ export class RoleCreateByAdminUseCase implements IAppUseCase<
         IApiKeyContext,
         IAuthJwtAccessContext,
         IUserContext,
+        IPolicyContext,
         RoleCreateRequestDto,
     ],
     IResponseReturn<RoleDto>
@@ -32,7 +40,8 @@ export class RoleCreateByAdminUseCase implements IAppUseCase<
         private readonly activityLogService: ActivityLogService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
@@ -40,32 +49,37 @@ export class RoleCreateByAdminUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         userContext: IUserContext,
+        policyContext: IPolicyContext,
         body: RoleCreateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
+        this.policyAbilityService.authorize(
+            policyContext,
+            EnumPolicyAction.create,
+            subject(EnumPolicySubject.Role, {
+                scope: body.scope,
+                key: body.key,
+            })
+        );
         const roleId = this.databaseUtil.createId();
         const created = await this.outboxService.withTransaction(async tx => {
             const role = await this.roleService.createByAdminInTx(
                 tx,
                 roleId,
                 {
+                    scope: body.scope,
+                    key: body.key,
                     name: body.name,
                     description: body.description ?? null,
-                    type: body.type,
                 },
                 {
                     roleId: userContext.user.roleId,
-                    roleType: userContext.user.role.type,
+                    roleKey: userContext.user.role.key,
                 }
             );
 
             const timestamp = this.helperDateService.create();
             const metadata = this.roleUtil.mapActivityLogMetadata(
-                {
-                    id: roleId,
-                    name: body.name,
-                    type: body.type,
-                    isImmutable: false,
-                },
+                role,
                 timestamp
             );
             const effect = this.activityLogService.recordEffect(

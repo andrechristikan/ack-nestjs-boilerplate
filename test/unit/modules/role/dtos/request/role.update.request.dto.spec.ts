@@ -1,74 +1,36 @@
-import { EnumRoleType } from '@generated/prisma-client/client';
 import { RoleUpdateRequestSchema } from '@modules/role/dtos/request/role.update.request.dto';
 
 describe('RoleUpdateRequestSchema', () => {
-    it('parses description and type into exactly the declared fields', () => {
-        const result = RoleUpdateRequestSchema.parse({
-            description: 'Team lead role',
-            type: EnumRoleType.admin,
-        });
+    const payload = { name: 'Auditor', description: 'Reads logs' };
 
-        expect(result).toEqual({
-            description: 'Team lead role',
-            type: EnumRoleType.admin,
-        });
+    it('parses a payload into exactly the declared fields', () => {
+        expect(RoleUpdateRequestSchema.parse(payload)).toEqual(payload);
     });
 
-    it('parses a null description to clear it', () => {
-        const result = RoleUpdateRequestSchema.parse({
-            description: null,
-            type: EnumRoleType.user,
-        });
+    it('accepts null to clear the description', () => {
+        const cleared = { ...payload, description: null };
 
-        expect(result).toEqual({ description: null, type: EnumRoleType.user });
+        expect(RoleUpdateRequestSchema.parse(cleared)).toEqual(cleared);
     });
 
-    it('rejects a body missing the description', () => {
+    it('requires the description, an update is a full replace', () => {
         expect(() =>
-            RoleUpdateRequestSchema.parse({ type: EnumRoleType.user })
+            RoleUpdateRequestSchema.parse({ name: 'Auditor' })
         ).toThrow();
     });
 
-    it('rejects a missing type', () => {
+    it('rejects scope and key as undeclared keys, they never change', () => {
         expect(() =>
-            RoleUpdateRequestSchema.parse({ description: 'Team lead role' })
+            RoleUpdateRequestSchema.parse({ ...payload, key: 'auditor' })
+        ).toThrow();
+        expect(() =>
+            RoleUpdateRequestSchema.parse({ ...payload, scope: 'platform' })
         ).toThrow();
     });
 
-    it('rejects a description over 500 characters', () => {
+    it('rejects a name shorter than 3 characters', () => {
         expect(() =>
-            RoleUpdateRequestSchema.parse({
-                description: 'a'.repeat(501),
-                type: EnumRoleType.admin,
-            })
+            RoleUpdateRequestSchema.parse({ ...payload, name: 'ab' })
         ).toThrow();
-    });
-
-    it('rejects an invalid type', () => {
-        expect(() =>
-            RoleUpdateRequestSchema.parse({
-                description: 'Team lead role',
-                type: 'invalid',
-            })
-        ).toThrow();
-    });
-
-    it('rejects an undeclared key', () => {
-        expect(() =>
-            RoleUpdateRequestSchema.parse({
-                description: 'Team lead role',
-                type: EnumRoleType.admin,
-                extra: true,
-            })
-        ).toThrow();
-    });
-
-    it('rejects the superAdmin type', () => {
-        expect(
-            RoleUpdateRequestSchema.safeParse({
-                description: 'Team lead role',
-                type: EnumRoleType.superAdmin,
-            }).success
-        ).toBe(false);
     });
 });

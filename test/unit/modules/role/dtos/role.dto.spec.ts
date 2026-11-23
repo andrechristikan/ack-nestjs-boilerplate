@@ -1,7 +1,7 @@
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import { RoleSchema } from '@modules/role/dtos/role.dto';
 
@@ -14,8 +14,11 @@ describe('RoleSchema', () => {
         createdBy: 'user-1',
         updatedAt,
         updatedBy: 'user-1',
-        subject: EnumPolicySubject.role,
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.manage],
+        conditions: null,
+        inverted: false,
+        reason: null,
     };
     const row = {
         id: 'role-1',
@@ -25,7 +28,9 @@ describe('RoleSchema', () => {
         updatedBy: 'user-1',
         name: 'manager',
         description: 'Team lead role',
-        type: EnumRoleType.admin,
+        scope: EnumRoleScope.platform,
+        key: 'admin',
+        policyRevision: 0,
         policies: [policy],
     };
 

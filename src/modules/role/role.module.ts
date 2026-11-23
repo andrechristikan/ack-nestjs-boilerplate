@@ -1,11 +1,10 @@
-import { RoleCache } from '@modules/role/caches/role.cache';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 
-/** Shared module: RoleService for the role guard and the user, device, policy, and session use cases. */
+/** Shared module: RoleService for the user, device, policy, workspace, project, and session use cases. */
 @Global()
 @Module({})
 export class RoleModule {
@@ -13,8 +12,8 @@ export class RoleModule {
         return {
             module: RoleModule,
             controllers: [],
-            providers: [RoleRepository, RoleService, RoleUtil, RoleCache],
-            exports: [RoleService, RoleUtil, RoleCache],
+            providers: [RoleRepository, RoleService, RoleUtil],
+            exports: [RoleService, RoleUtil],
             imports: [],
         };
     }

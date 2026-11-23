@@ -7,7 +7,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import {
     RoleDefaultAvailableOrderBy,
     RoleDefaultAvailableSearch,
-    RoleDefaultType,
+    RoleDefaultScope,
     RoleSystemListCursorScope,
 } from '@modules/role/constants/role.list.constant';
 import type { RoleSystemListRequestDto } from '@modules/role/dtos/request/role.system-list.request.dto';
@@ -36,21 +36,24 @@ export class RoleGetListCursorBySystemUseCase implements IAppUseCase<
             availableSearch: RoleDefaultAvailableSearch,
             availableOrderBy: RoleDefaultAvailableOrderBy,
         });
-        const type = this.paginationFilterUtil.inEnum(
-            Prisma.RoleScalarFieldEnum.type,
-            query.type,
-            RoleDefaultType
+        const scopeFilter = this.paginationFilterUtil.inEnum(
+            Prisma.RoleScalarFieldEnum.scope,
+            query.scope,
+            RoleDefaultScope
         );
         this.requestStoreService.merge(PaginationStoreKey, {
             ...storePatch,
             filters: {
                 ...storePatch.filters,
-                ...(type?.storeFilter ?? {}),
+                ...(scopeFilter?.storeFilter ?? {}),
             },
         });
 
         const { data, ...others } =
-            await this.roleService.getListCursorBySystem(params, type?.where);
+            await this.roleService.getListCursorBySystem(
+                params,
+                scopeFilter?.where ?? null
+            );
         const roles: RoleListResponseDto[] = data.map(
             ({ _count, ...role }) => ({
                 ...role,

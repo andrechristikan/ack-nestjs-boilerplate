@@ -1,6 +1,7 @@
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { RoleGetListOffsetByAdminUseCase } from '@modules/role/use-cases/role.get-list-offset-by-admin.use-case';
 import { RoleGetListCursorBySystemUseCase } from '@modules/role/use-cases/role.get-list-cursor-by-system.use-case';
+import { RoleGetListCursorBySharedUseCase } from '@modules/role/use-cases/role.get-list-cursor-by-shared.use-case';
 import { RoleGetOneUseCase } from '@modules/role/use-cases/role.get-one.use-case';
 import { RoleCreateByAdminUseCase } from '@modules/role/use-cases/role.create-by-admin.use-case';
 import { RoleUpdateByAdminUseCase } from '@modules/role/use-cases/role.update-by-admin.use-case';
@@ -12,6 +13,7 @@ import { Module } from '@nestjs/common';
     providers: [
         RoleGetListOffsetByAdminUseCase,
         RoleGetListCursorBySystemUseCase,
+        RoleGetListCursorBySharedUseCase,
         RoleGetOneUseCase,
         RoleCreateByAdminUseCase,
         RoleUpdateByAdminUseCase,
@@ -20,6 +22,7 @@ import { Module } from '@nestjs/common';
     exports: [
         RoleGetListOffsetByAdminUseCase,
         RoleGetListCursorBySystemUseCase,
+        RoleGetListCursorBySharedUseCase,
         RoleGetOneUseCase,
         RoleCreateByAdminUseCase,
         RoleUpdateByAdminUseCase,

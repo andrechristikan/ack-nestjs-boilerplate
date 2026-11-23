@@ -27,12 +27,12 @@ export const RoleSystemListRequestSchema = PaginationCursorQuerySchema.extend({
             description: `Order by field in \`field:direction\` format (e.g. \`${RoleDefaultAvailableOrderBy[0]}:desc\`). Available fields: ${RoleDefaultAvailableOrderBy.join(', ')}. Available directions: ${Object.values(EnumPaginationOrderDirectionType).join(', ')}.`,
             example: `${RoleDefaultAvailableOrderBy[0]}:${EnumPaginationOrderDirectionType.desc}`,
         }),
-    type: z
+    scope: z
         .string()
         .max(PaginationMaxFilterLength)
         .optional()
         .meta({
-            description: `Filter by type, comma-delimited, at most ${PaginationMaxFilterLength} characters`,
+            description: `Filter by scope, comma-delimited, at most ${PaginationMaxFilterLength} characters`,
             example: '',
         }),
 });

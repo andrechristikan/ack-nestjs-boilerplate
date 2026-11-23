@@ -1,4 +1,10 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -26,6 +32,7 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
         IApiKeyContext,
         IAuthJwtAccessContext,
         IUserContext,
+        IPolicyContext,
         string,
         RoleUpdateRequestDto,
     ],
@@ -37,7 +44,8 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
         private readonly activityLogService: ActivityLogService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
@@ -45,9 +53,15 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         userContext: IUserContext,
+        policyContext: IPolicyContext,
         id: string,
         body: RoleUpdateRequestDto
     ): Promise<IResponseReturn<RoleDto>> {
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.update,
+            EnumPolicySubject.Role
+        );
         try {
             const updated = await this.outboxService.withTransaction(
                 async tx => {
@@ -55,13 +69,14 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
                         tx,
                         id,
                         {
+                            name: body.name,
                             description: body.description,
-                            type: body.type,
                         },
                         {
                             roleId: userContext.user.roleId,
-                            roleType: userContext.user.role.type,
-                        }
+                            roleKey: userContext.user.role.key,
+                        },
+                        additionalWhere
                     );
 
                     const timestamp = this.helperDateService.create();

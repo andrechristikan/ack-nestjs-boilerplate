@@ -1,3 +1,5 @@
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -7,7 +9,6 @@ import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
-import { EnumRoleType } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import {
     RoleDefaultAvailableOrderBy,
@@ -38,7 +39,9 @@ describe('RoleGetListCursorBySystemUseCase', () => {
         id: 'role-1',
         name: 'manager',
         description: null,
-        type: EnumRoleType.admin,
+        scope: EnumRoleScope.platform,
+        key: EnumRolePlatformKey.admin,
+        policyRevision: 0,
         isImmutable: false,
         createdAt: now,
         createdBy: 'user-1',
@@ -92,13 +95,13 @@ describe('RoleGetListCursorBySystemUseCase', () => {
     });
 
     describe('execute', () => {
-        it('parses the cursor query, merges the type filter, and maps policy count rows', async () => {
-            const query: RoleSystemListRequestDto = { type: 'admin' };
-            const typeFilter = {
-                where: { type: { in: [EnumRoleType.admin] } },
-                storeFilter: { type: [EnumRoleType.admin] },
+        it('parses the cursor query, merges the scope filter, and maps policy count rows', async () => {
+            const query: RoleSystemListRequestDto = { scope: 'platform' };
+            const scopeFilter = {
+                where: { scope: { in: [EnumRoleScope.platform] } },
+                storeFilter: { scope: [EnumRoleScope.platform] },
             };
-            paginationFilterUtil.inEnum.mockReturnValue(typeFilter);
+            paginationFilterUtil.inEnum.mockReturnValue(scopeFilter);
             const cursorPage: IPaginationCursorReturn<IRoleWithPolicyCount> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
@@ -122,11 +125,11 @@ describe('RoleGetListCursorBySystemUseCase', () => {
             });
             expect(roleService.getListCursorBySystem).toHaveBeenCalledWith(
                 cursorPagination,
-                typeFilter.where
+                scopeFilter.where
             );
         });
 
-        it('merges an empty filter set when type is absent', async () => {
+        it('merges an empty filter set when scope is absent', async () => {
             const query: RoleSystemListRequestDto = {};
             paginationFilterUtil.inEnum.mockReturnValue(null);
             const emptyCursorPage: IPaginationCursorReturn<IRoleWithPolicyCount> =
@@ -148,7 +151,7 @@ describe('RoleGetListCursorBySystemUseCase', () => {
             );
             expect(roleService.getListCursorBySystem).toHaveBeenCalledWith(
                 cursorPagination,
-                undefined
+                null
             );
         });
     });

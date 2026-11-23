@@ -1,4 +1,4 @@
-import { EnumRoleType } from '@generated/prisma-client/client';
+import { EnumRoleScope } from '@generated/prisma-client/client';
 import { RoleAdminListRequestSchema } from '@modules/role/dtos/request/role.admin-list.request.dto';
 import {
     RoleDefaultAvailableSearch,
@@ -6,13 +6,13 @@ import {
 } from '@modules/role/constants/role.list.constant';
 
 describe('RoleAdminListRequestSchema', () => {
-    it('parses page, perPage, search, orderBy, and type', () => {
+    it('parses page, perPage, search, orderBy, and scope', () => {
         const result = RoleAdminListRequestSchema.parse({
             page: 1,
             perPage: 20,
             search: 'lead',
             orderBy: 'createdAt:desc',
-            type: EnumRoleType.admin,
+            scope: EnumRoleScope.platform,
         });
 
         expect(result).toEqual({
@@ -20,7 +20,7 @@ describe('RoleAdminListRequestSchema', () => {
             perPage: 20,
             search: 'lead',
             orderBy: 'createdAt:desc',
-            type: EnumRoleType.admin,
+            scope: EnumRoleScope.platform,
         });
     });
 
@@ -83,12 +83,12 @@ describe('RoleAdminListRequestSchema', () => {
         );
     });
 
-    it('accepts a type of 256 characters and rejects one of 257', () => {
+    it('accepts a scope of 256 characters and rejects one of 257', () => {
         expect(() =>
-            RoleAdminListRequestSchema.parse({ type: 'a'.repeat(256) })
+            RoleAdminListRequestSchema.parse({ scope: 'a'.repeat(256) })
         ).not.toThrow();
         expect(() =>
-            RoleAdminListRequestSchema.parse({ type: 'a'.repeat(257) })
+            RoleAdminListRequestSchema.parse({ scope: 'a'.repeat(257) })
         ).toThrow();
     });
 });

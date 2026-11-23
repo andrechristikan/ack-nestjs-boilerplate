@@ -1,115 +1,79 @@
-import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import { subject } from '@casl/ability';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
+import { OutboxService } from '@common/outbox/services/outbox.service';
+import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumActivityLogAction,
-    EnumRoleType,
-    EnumUserSignUpFrom,
-    EnumUserSignUpWith,
-    EnumUserStatus,
+    EnumPolicyAction,
+    EnumPolicySubject,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
-import type { Role } from '@generated/prisma-client/client';
-import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
-import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
-import { OutboxService } from '@common/outbox/services/outbox.service';
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import {
-    buildRequestContext,
-    buildApiKeyContext,
-    buildUserContext,
-    buildAuthJwtAccessContext,
-} from '@test/unit/helpers/test.unit.request.helper';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { RoleService } from '@modules/role/services/role.service';
-import { RoleUtil } from '@modules/role/utils/role.util';
-import type { IUser } from '@modules/user/interfaces/user.interface';
+import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import type {
-    IRoleActor,
+    IRole,
     IRoleWithPolicies,
 } from '@modules/role/interfaces/role.interface';
+import { RoleService } from '@modules/role/services/role.service';
+import { RoleUtil } from '@modules/role/utils/role.util';
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import {
+    buildApiKeyContext,
+    buildAuthJwtAccessContext,
+    buildRequestContext,
+    buildUser,
+    buildUserContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { RoleCreateByAdminUseCase } from '@modules/role/use-cases/role.create-by-admin.use-case';
 
 describe('RoleCreateByAdminUseCase', () => {
     const roleService: MockProxy<RoleService> = mock<RoleService>();
+    const roleUtil: MockProxy<RoleUtil> = mock<RoleUtil>();
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
+    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const helperDateService: MockProxy<HelperDateService> =
         mock<HelperDateService>();
-    const roleUtil: MockProxy<RoleUtil> = mock<RoleUtil>();
-    const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
 
-    const now = new Date('2026-01-01T00:00:00.000Z');
-    const role: Role = {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const now = new Date('2026-01-20T00:00:00.000Z');
+    const role: IRole = {
         id: 'role-1',
-        name: 'manager',
+        scope: EnumRoleScope.platform,
+        key: 'auditor',
+        name: 'Auditor',
         description: null,
-        type: EnumRoleType.admin,
+        policyRevision: 0,
         isImmutable: false,
-        createdAt: now,
-        createdBy: 'user-1',
-        updatedAt: now,
-        updatedBy: 'user-1',
     };
-    const roleWithPolicies: IRoleWithPolicies = { ...role, policies: [] };
-    const actorRole: IRoleWithPolicies = {
-        ...roleWithPolicies,
-        id: 'role-actor',
-        type: EnumRoleType.superAdmin,
-    };
-    const actorUser: IUser = {
-        id: 'user-actor',
-        name: null,
-        username: 'actor',
-        isVerified: true,
-        verifiedAt: now,
-        email: 'actor@example.com',
-        roleId: actorRole.id,
-        password: null,
-        passwordExpired: null,
-        passwordCreated: null,
-        passwordAttempt: 0,
-        passwordLockedUntil: null,
-        signUpAt: now,
-        signUpFrom: EnumUserSignUpFrom.website,
-        signUpWith: EnumUserSignUpWith.credential,
-        status: EnumUserStatus.active,
-        gender: null,
-        countryId: 'country-1',
-        lastLoginAt: null,
-        lastIPAddress: null,
-        lastLoginFrom: null,
-        lastLoginWith: null,
-        lastWorkspaceId: null,
-        lastWorkspaceChangedAt: null,
-        photo: null,
+    const roleWithPolicies: IRoleWithPolicies = {
+        ...role,
         createdAt: now,
         createdBy: null,
         updatedAt: now,
         updatedBy: null,
-        deletedAt: null,
-        deletedBy: null,
-        role: actorRole,
+        policies: [],
     };
-    const actor: IRoleActor = {
-        roleId: actorRole.id,
-        roleType: EnumRoleType.superAdmin,
-    };
-    const metadata = { roleId: role.id };
-    const requestContext = buildRequestContext();
-    const apiKeyContext = buildApiKeyContext();
-    const userContext = buildUserContext(actorUser);
-    const authContext = buildAuthJwtAccessContext(actorUser.id);
     const effect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
         name: EnumActivityLogProcess.createMany,
@@ -117,8 +81,30 @@ describe('RoleCreateByAdminUseCase', () => {
         priority: EnumQueuePriority.low,
         idempotencyKey: null,
     };
+    const metadata = { roleId: 'role-1' };
+    const requestContext = buildRequestContext();
+    const apiKeyContext = buildApiKeyContext();
+    const user = buildUser('user-1', 'admin@example.com');
+    const userContext = buildUserContext(user);
+    const authContext = buildAuthJwtAccessContext(user.id);
+    const actor = { roleId: user.roleId, roleKey: user.role.key };
 
     let useCase: RoleCreateByAdminUseCase;
+
+    const body = {
+        scope: EnumRoleScope.platform,
+        key: 'auditor',
+        name: 'Auditor',
+    };
+
+    const args = [
+        requestContext,
+        apiKeyContext,
+        authContext,
+        userContext,
+        policyContext,
+        body,
+    ] as const;
 
     beforeEach(async () => {
         vi.resetAllMocks();
@@ -129,15 +115,22 @@ describe('RoleCreateByAdminUseCase', () => {
             async fn => fn(tx) as never
         );
 
+        databaseUtil.createId.mockReturnValue('role-1');
+        roleService.createByAdminInTx.mockResolvedValue(roleWithPolicies);
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleCreateByAdminUseCase,
                 { provide: RoleService, useValue: roleService },
+                { provide: RoleUtil, useValue: roleUtil },
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperDateService, useValue: helperDateService },
-                { provide: RoleUtil, useValue: roleUtil },
             ],
         }).compile();
 
@@ -145,55 +138,53 @@ describe('RoleCreateByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        const body: RoleCreateRequestDto = {
-            name: 'manager',
-            type: EnumRoleType.admin,
-        };
-
-        it('creates the role on the outbox transaction and wraps the result', async () => {
-            databaseUtil.createId.mockReturnValue(role.id);
-            roleService.createByAdminInTx.mockResolvedValue(roleWithPolicies);
-
-            const result = await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                userContext,
-                body
-            );
+        it('creates the role under a fresh id for the acting platform role and wraps the result', async () => {
+            const result = await useCase.execute(...args);
 
             expect(result).toEqual({ data: roleWithPolicies });
             expect(roleService.createByAdminInTx).toHaveBeenCalledWith(
                 tx,
-                role.id,
+                'role-1',
                 {
-                    name: 'manager',
+                    scope: EnumRoleScope.platform,
+                    key: 'auditor',
+                    name: 'Auditor',
                     description: null,
-                    type: EnumRoleType.admin,
                 },
                 actor
             );
         });
 
-        it('adds the create activity entry from the drawn id and the passed context on the same tx', async () => {
-            databaseUtil.createId.mockReturnValue(role.id);
-            roleService.createByAdminInTx.mockResolvedValue(roleWithPolicies);
+        it('authorizes the create of the requested role', async () => {
+            await useCase.execute(...args);
 
-            await useCase.execute(
-                requestContext,
-                apiKeyContext,
-                authContext,
-                userContext,
-                body
+            expect(policyAbilityService.authorize).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.create,
+                subject(EnumPolicySubject.Role, {
+                    scope: EnumRoleScope.platform,
+                    key: 'auditor',
+                })
             );
+        });
+
+        it('leaves the services uncalled when the ability refuses the create', async () => {
+            policyAbilityService.authorize.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(useCase.execute(...args)).rejects.toBeInstanceOf(
+                PolicyForbiddenException
+            );
+            expect(roleService.createByAdminInTx).not.toHaveBeenCalled();
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('adds the create activity entry from the created role on the same transaction', async () => {
+            await useCase.execute(...args);
 
             expect(roleUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
-                {
-                    id: role.id,
-                    name: 'manager',
-                    type: EnumRoleType.admin,
-                    isImmutable: false,
-                },
+                roleWithPolicies,
                 now
             );
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
@@ -208,18 +199,9 @@ describe('RoleCreateByAdminUseCase', () => {
 
         it('adds no entry when the write throws', async () => {
             const failure = new Error('create failed');
-            databaseUtil.createId.mockReturnValue(role.id);
             roleService.createByAdminInTx.mockRejectedValue(failure);
 
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    body
-                )
-            ).rejects.toBe(failure);
+            await expect(useCase.execute(...args)).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });

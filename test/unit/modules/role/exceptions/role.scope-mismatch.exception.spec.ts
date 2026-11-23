@@ -1,23 +1,23 @@
 import { HttpStatus } from '@nestjs/common';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
-import { RoleHasPoliciesException } from '@modules/role/exceptions/role.has-policies.exception';
+import { RoleScopeMismatchException } from '@modules/role/exceptions/role.scope-mismatch.exception';
 
-describe('RoleHasPoliciesException', () => {
+describe('RoleScopeMismatchException', () => {
     describe('constructor', () => {
-        it('declares the role module contract for a role holding policies', () => {
-            const exception = new RoleHasPoliciesException();
+        it('declares the role module contract for a role of the wrong scope', () => {
+            const exception = new RoleScopeMismatchException();
 
             expect(exception).toBeInstanceOf(AppBaseException);
             expect(exception).toMatchObject({
                 module: 'role',
-                statusCode: EnumRoleStatusCodeError.hasPolicies,
+                statusCode: EnumRoleStatusCodeError.scopeMismatch,
                 statusCodeKey:
                     EnumRoleStatusCodeError[
-                        EnumRoleStatusCodeError.hasPolicies
+                        EnumRoleStatusCodeError.scopeMismatch
                     ],
                 httpStatus: HttpStatus.BAD_REQUEST,
-                messagePath: 'role.error.hasPolicies',
+                messagePath: 'role.error.scopeMismatch',
             });
         });
     });
