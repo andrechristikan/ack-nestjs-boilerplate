@@ -10,12 +10,12 @@ import {
     EnumActivityLogAction,
     EnumMfaChallengePurpose,
     EnumPasswordHistoryType,
-    EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import type { PasswordHistory, User } from '@generated/prisma-client/client';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
@@ -125,15 +125,10 @@ describe('UserResetPasswordUseCase', () => {
         deletedBy: null,
         role: {
             id: 'role-linden',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
     const password: IAuthPassword = {

@@ -6,7 +6,6 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { MessageService } from '@common/message/services/message.service';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import {
     EnumNotificationKind,
     EnumNotificationStep,
@@ -45,7 +44,7 @@ describe('NotificationEmailProcessSendUseCase', () => {
             workspaceName: 'Acme',
             inviterName: 'Alice',
             reference: 'WI-ref',
-            workspaceMemberRole: EnumWorkspaceMemberRole.member,
+            workspaceMemberRole: 'member',
             expiredAt: '2024-01-08T00:00:00.000Z',
             encryptedInviteAcceptLink: 'cipher(https://app.test/invite/token)',
             snapshot: null,
@@ -150,7 +149,7 @@ describe('NotificationEmailProcessSendUseCase', () => {
                     username: 'invitee',
                     workspaceName: 'Acme',
                     inviterName: 'Alice',
-                    workspaceMemberRole: EnumWorkspaceMemberRole.member,
+                    workspaceMemberRole: 'member',
                     inviteAcceptLink: 'https://app.test/invite/token',
                     reference: 'WI-ref',
                     expiredAt: 'Mon, 08 Jan 2024 00:00:00 +0000',

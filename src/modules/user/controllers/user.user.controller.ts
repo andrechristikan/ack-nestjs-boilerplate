@@ -14,7 +14,6 @@ import {
     AuthJwtAccessContext,
     AuthJwtAccessProtected,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
     UserContext,
@@ -26,7 +25,6 @@ import type { UserDeleteSelfRequestDto } from '@modules/user/dtos/request/user.d
 import { UserDeleteSelfUseCase } from '@modules/user/use-cases/user.delete-self.use-case';
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumRoleType } from '@generated/prisma-client/client';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -44,7 +42,6 @@ export class UserUserController {
     @Doc({ summary: 'user delete their account' })
     @Response('user.deleteSelf')
     @TermPolicyAcceptanceProtected()
-    @RoleProtected(EnumRoleType.user)
     @UserProtected()
     @RequestThrottle({ user: true, route: EnumRequestThrottleRoute.strict })
     @AuthJwtAccessProtected()

@@ -1,3 +1,4 @@
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
 import type { UserListRequestDto } from '@modules/user/dtos/request/user.list.request.dto';
 import { UserListRequestSchema } from '@modules/user/dtos/request/user.list.request.dto';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
@@ -29,12 +30,13 @@ import { UserUpdateStatusByAdminUseCase } from '@modules/user/use-cases/user.upd
 import { UserUpdatePasswordByAdminUseCase } from '@modules/user/use-cases/user.update-password-by-admin.use-case';
 import { UserImportByAdminUseCase } from '@modules/user/use-cases/user.import-by-admin.use-case';
 import { UserExportByAdminUseCase } from '@modules/user/use-cases/user.export-by-admin.use-case';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import {
+    PolicyContext,
+    PolicyProtected,
+} from '@modules/policy/decorators/policy.decorator';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 import {
     UserContext,
@@ -108,49 +110,51 @@ export class UserAdminController {
     @ResponsePagination('user.list', { schema: UserListResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
     async list(
+        @PolicyContext() policyContext: IPolicyContext,
         @Query({ schema: UserListRequestSchema }) query: UserListRequestDto
     ): Promise<IResponsePaginationReturn<IUserList>> {
-        return this.userGetListOffsetByAdminUseCase.execute(query);
+        return this.userGetListOffsetByAdminUseCase.execute(
+            policyContext,
+            query
+        );
     }
 
     @Doc({ summary: 'get detail an user' })
     @Response('user.get', { schema: UserProfileResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/get/:userId')
     async get(
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponseReturn<IUserProfile>> {
-        return this.userGetOneUseCase.execute(userId);
+        return this.userGetOneUseCase.execute(policyContext, userId);
     }
 
     @Doc({ summary: 'create a user' })
     @Response('user.create', { schema: DatabaseIdResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -177,10 +181,9 @@ export class UserAdminController {
     @Response('user.updateStatus')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -191,6 +194,7 @@ export class UserAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @Body({ schema: UserUpdateStatusRequestSchema })
@@ -201,6 +205,7 @@ export class UserAdminController {
             apiKeyContext,
             authContext,
             userContext,
+            policyContext,
             userId,
             body
         );
@@ -210,10 +215,9 @@ export class UserAdminController {
     @Response('user.updatePassword')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -224,6 +228,7 @@ export class UserAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponseReturn<void>> {
@@ -232,6 +237,7 @@ export class UserAdminController {
             apiKeyContext,
             authContext,
             userContext,
+            policyContext,
             userId
         );
     }
@@ -240,10 +246,9 @@ export class UserAdminController {
     @Response('user.import', { schema: UserImportResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -278,10 +283,9 @@ export class UserAdminController {
     @ResponseFile({ maxDataExportConfigKey: 'user.maxDataExport' })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -289,9 +293,10 @@ export class UserAdminController {
     @HttpCode(HttpStatus.OK)
     @Post('/export')
     async export(
+        @PolicyContext() policyContext: IPolicyContext,
         @Query({ schema: UserExportRequestSchema })
         query: UserExportRequestDto
     ): Promise<IResponseFileReturn> {
-        return this.userExportByAdminUseCase.execute(query);
+        return this.userExportByAdminUseCase.execute(policyContext, query);
     }
 }

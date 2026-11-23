@@ -1,4 +1,4 @@
-import { EnumRoleType } from '@generated/prisma-client/client';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { UserLoginResponseSchema } from '@modules/user/dtos/response/user.login.response.dto';
 
@@ -7,7 +7,7 @@ describe('UserLoginResponseSchema', () => {
 
     const tokens = {
         tokenType: 'Bearer',
-        roleType: EnumRoleType.user,
+        roleKey: EnumRolePlatformKey.user,
         expiresIn: 3600,
         accessToken: 'access-token-value',
         refreshToken: 'refresh-token-value',

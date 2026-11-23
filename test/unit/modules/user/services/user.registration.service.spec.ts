@@ -9,13 +9,13 @@ import {
     EnumActivityLogAction,
     EnumDevicePlatform,
     EnumPasswordHistoryType,
-    EnumRoleType,
     EnumTermPolicyType,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
@@ -130,15 +130,10 @@ describe('UserRegistrationService', () => {
         deletedBy: null,
         role: {
             id: 'role-1',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
     const created: IUser[] = [createdUser];

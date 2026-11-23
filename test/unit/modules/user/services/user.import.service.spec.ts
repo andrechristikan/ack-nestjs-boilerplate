@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -5,11 +6,11 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
-    EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -31,7 +32,6 @@ import type { IUserCreateVerification } from '@modules/user/interfaces/user.crea
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
-import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 
 describe('UserImportService', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
@@ -57,21 +57,12 @@ describe('UserImportService', () => {
 
     const role: IRole = {
         id: 'role-thistle',
-        type: EnumRoleType.user,
-        isImmutable: false,
+        scope: EnumRoleScope.platform,
+        key: EnumRolePlatformKey.user,
+        policyRevision: 0,
         name: 'user',
-    };
-    const roleWithPolicies: IRoleWithPolicies = {
-        id: role.id,
-        name: role.name,
         description: null,
-        type: role.type,
         isImmutable: false,
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-        policies: [],
     };
 
     const baseUser: IUser = {
@@ -106,7 +97,7 @@ describe('UserImportService', () => {
         updatedBy: null,
         deletedAt: null,
         deletedBy: null,
-        role: roleWithPolicies,
+        role: { ...role },
     };
 
     const password: IAuthPassword = {
@@ -522,14 +513,15 @@ describe('UserImportService', () => {
             const users = [{ ...baseUser, id: 'user-export-one' }];
             userRepository.findExport.mockResolvedValue(users);
 
-            const result = await service.exportByAdmin(null, null, null);
+            const result = await service.exportByAdmin(null, null, null, null);
 
             expect(result).toBe(users);
             expect(userRepository.findExport).toHaveBeenCalledWith(
                 null,
                 null,
                 null,
-                3
+                3,
+                null
             );
         });
 
@@ -539,13 +531,14 @@ describe('UserImportService', () => {
             const roleId = { roleId: { equals: 'role-thistle' } };
             const countryId = { countryId: { equals: 'country-thistle' } };
 
-            await service.exportByAdmin(status, roleId, countryId);
+            await service.exportByAdmin(status, roleId, countryId, null);
 
             expect(userRepository.findExport).toHaveBeenCalledWith(
                 status,
                 roleId,
                 countryId,
-                3
+                3,
+                null
             );
         });
 
@@ -558,7 +551,7 @@ describe('UserImportService', () => {
             userRepository.findExport.mockResolvedValue(users);
 
             await expect(
-                service.exportByAdmin(null, null, null)
+                service.exportByAdmin(null, null, null, null)
             ).rejects.toMatchObject({
                 module: 'file',
                 statusCode: EnumFileStatusCodeError.exceedMaxDataExport,

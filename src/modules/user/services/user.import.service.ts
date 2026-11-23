@@ -9,6 +9,7 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
 } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
 import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
@@ -165,13 +166,15 @@ export class UserImportService {
     async exportByAdmin(
         status: Record<string, IPaginationIn> | null,
         roleId: Record<string, IPaginationEqual> | null,
-        countryId: Record<string, IPaginationEqual> | null
+        countryId: Record<string, IPaginationEqual> | null,
+        additionalWhere: Prisma.UserWhereInput | null
     ): Promise<IUser[]> {
         const users = await this.userRepository.findExport(
             status,
             roleId,
             countryId,
-            this.maxDataExport + 1
+            this.maxDataExport + 1,
+            additionalWhere
         );
 
         if (users.length > this.maxDataExport) {

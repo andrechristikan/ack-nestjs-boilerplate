@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { EnumRoleType } from '@generated/prisma-client/client';
 
 /** @public */
 export const AuthTokenResponseSchema = z.object({
@@ -8,9 +7,9 @@ export const AuthTokenResponseSchema = z.object({
         description: 'Token type prefix sent with the access token',
         example: 'Bearer',
     }),
-    roleType: z.enum(EnumRoleType).meta({
-        description: 'Role type encoded in the issued tokens',
-        example: EnumRoleType.user,
+    roleKey: z.string().meta({
+        description: 'Key of the platform role the user holds',
+        example: 'user',
     }),
     expiresIn: z.number().meta({
         description: 'timestamp in minutes',

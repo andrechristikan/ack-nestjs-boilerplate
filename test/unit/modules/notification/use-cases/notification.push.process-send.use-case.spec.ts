@@ -10,7 +10,6 @@ import { HelperEncryptionService } from '@common/helper/services/helper.encrypti
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import {
     EnumNotificationKind,
     EnumNotificationPushProcess,
@@ -53,7 +52,7 @@ describe('NotificationPushProcessSendUseCase', () => {
             workspaceName: 'Acme',
             inviterName: 'Alice',
             reference: 'WI-ref',
-            workspaceMemberRole: EnumWorkspaceMemberRole.member,
+            workspaceMemberRole: 'member',
             expiredAt: '2024-01-08T00:00:00.000Z',
             encryptedLink: 'cipher(https://app.test/invite/token)',
             snapshot: null,

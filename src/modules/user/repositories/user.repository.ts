@@ -87,16 +87,22 @@ export class UserRepository implements IUserRepository {
         { where, ...params }: IPaginationQueryOffsetParams,
         status: Record<string, IPaginationIn> | null,
         roleId: Record<string, IPaginationEqual> | null,
-        countryId: Record<string, IPaginationEqual> | null
+        countryId: Record<string, IPaginationEqual> | null,
+        additionalWhere: Prisma.UserWhereInput | null
     ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.paginationService.offset(this.databaseService.client.user, {
             ...params,
             where: {
-                ...where,
-                ...status,
-                ...countryId,
-                ...roleId,
-                deletedAt: null,
+                AND: [
+                    additionalWhere ?? {},
+                    {
+                        ...where,
+                        ...status,
+                        ...countryId,
+                        ...roleId,
+                        deletedAt: null,
+                    },
+                ],
             },
             select: UserAdminListSelect,
         });
@@ -181,9 +187,12 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async findOneProfileById(id: string): Promise<IUserProfile | null> {
-        return this.databaseService.client.user.findUnique({
-            where: { id, deletedAt: null },
+    async findOneProfileById(
+        id: string,
+        additionalWhere: Prisma.UserWhereInput | null
+    ): Promise<IUserProfile | null> {
+        return this.databaseService.client.user.findFirst({
+            where: { AND: [additionalWhere ?? {}, { id, deletedAt: null }] },
             include: {
                 ...UserWithRoleInclude,
                 country: true,
@@ -211,9 +220,12 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async findOneWithRoleById(id: string): Promise<IUser | null> {
-        return this.databaseService.client.user.findUnique({
-            where: { id, deletedAt: null },
+    async findOneWithRoleById(
+        id: string,
+        additionalWhere: Prisma.UserWhereInput | null
+    ): Promise<IUser | null> {
+        return this.databaseService.client.user.findFirst({
+            where: { AND: [additionalWhere ?? {}, { id, deletedAt: null }] },
             include: UserWithRoleInclude,
         });
     }
@@ -240,14 +252,20 @@ export class UserRepository implements IUserRepository {
         status: Record<string, IPaginationIn> | null,
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null,
-        take: number
+        take: number,
+        additionalWhere: Prisma.UserWhereInput | null
     ): Promise<IUser[]> {
         return this.databaseService.client.user.findMany({
             where: {
-                ...status,
-                ...countryId,
-                ...roleId,
-                deletedAt: null,
+                AND: [
+                    additionalWhere ?? {},
+                    {
+                        ...status,
+                        ...countryId,
+                        ...roleId,
+                        deletedAt: null,
+                    },
+                ],
             },
             include: UserWithRoleInclude,
             take,

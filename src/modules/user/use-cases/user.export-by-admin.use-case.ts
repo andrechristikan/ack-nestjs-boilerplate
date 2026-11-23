@@ -1,3 +1,9 @@
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
@@ -14,17 +20,26 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class UserExportByAdminUseCase implements IAppUseCase<
-    [UserExportRequestDto],
+    [IPolicyContext, UserExportRequestDto],
     IResponseFileReturn
 > {
     constructor(
         private readonly userImportService: UserImportService,
         private readonly fileService: FileService,
         private readonly paginationFilterUtil: PaginationFilterUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
-    async execute(query: UserExportRequestDto): Promise<IResponseFileReturn> {
+    async execute(
+        policyContext: IPolicyContext,
+        query: UserExportRequestDto
+    ): Promise<IResponseFileReturn> {
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.read,
+            EnumPolicySubject.User
+        );
         const status = this.paginationFilterUtil.inEnum(
             Prisma.UserScalarFieldEnum.status,
             query.status,
@@ -49,7 +64,8 @@ export class UserExportByAdminUseCase implements IAppUseCase<
         const data = await this.userImportService.exportByAdmin(
             status?.where ?? null,
             roleId?.where ?? null,
-            countryId?.where ?? null
+            countryId?.where ?? null,
+            additionalWhere
         );
 
         const users: UserExportResponseDto[] = data.map(user => ({

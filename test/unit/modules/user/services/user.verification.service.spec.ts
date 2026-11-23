@@ -7,12 +7,12 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
-    EnumRoleType,
     EnumUserReauthenticationAction,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import type { Verification } from '@generated/prisma-client/client';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
@@ -122,15 +122,10 @@ describe('UserVerificationService', () => {
         deletedBy: null,
         role: {
             id: 'role-flint',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
 

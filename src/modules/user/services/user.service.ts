@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -13,14 +14,14 @@ import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
-    EnumRoleType,
+    EnumRoleScope,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { User } from '@generated/prisma-client/client';
+import type { Prisma, User } from '@generated/prisma-client/client';
 import type {
     IAuthJwtAccessContext,
     IAuthPassword,
@@ -113,8 +114,9 @@ export class UserService {
 
     private isDeleteSelfRefused({ role }: IUser): boolean {
         return (
-            role.type === EnumRoleType.admin ||
-            role.type === EnumRoleType.superAdmin
+            role.scope === EnumRoleScope.platform &&
+            (role.key === EnumRolePlatformKey.admin ||
+                role.key === EnumRolePlatformKey.superAdmin)
         );
     }
 
@@ -126,7 +128,10 @@ export class UserService {
         authContext: IAuthJwtAccessContext,
         requiredVerified: boolean
     ): Promise<IUser> {
-        const user = await this.userRepository.findOneById(authContext.userId);
+        const user = await this.userRepository.findOneWithRoleById(
+            authContext.userId,
+            null
+        );
         if (!user) {
             throw new UserAccountNotFoundException();
         } else if (user.status === EnumUserStatus.blocked) {
@@ -150,22 +155,24 @@ export class UserService {
             throw new UserEmailNotVerifiedException();
         }
 
-        const role = await this.roleService.getOne(user.roleId);
+        this.roleService.assertScope(user.role, EnumRoleScope.platform);
 
-        return { ...user, role };
+        return user;
     }
 
     async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams,
-        status?: Record<string, IPaginationIn>,
-        roleId?: Record<string, IPaginationEqual>,
-        countryId?: Record<string, IPaginationEqual>
+        status: Record<string, IPaginationIn> | null,
+        roleId: Record<string, IPaginationEqual> | null,
+        countryId: Record<string, IPaginationEqual> | null,
+        additionalWhere: Prisma.UserWhereInput | null
     ): Promise<IResponsePaginationReturn<IUserList>> {
         return this.userRepository.findWithPaginationOffset(
             pagination,
-            status ?? null,
-            roleId ?? null,
-            countryId ?? null
+            status,
+            roleId,
+            countryId,
+            additionalWhere
         );
     }
 
@@ -300,8 +307,14 @@ export class UserService {
         );
     }
 
-    async getOne(id: string): Promise<IUserProfile> {
-        const user = await this.userRepository.findOneProfileById(id);
+    async getOne(
+        id: string,
+        additionalWhere: Prisma.UserWhereInput | null
+    ): Promise<IUserProfile> {
+        const user = await this.userRepository.findOneProfileById(
+            id,
+            additionalWhere
+        );
         if (!user) {
             throw new UserNotFoundException();
         }
@@ -389,8 +402,14 @@ export class UserService {
         }
     }
 
-    async getOneWithRole(userId: string): Promise<IUser> {
-        const user = await this.userRepository.findOneWithRoleById(userId);
+    async getOneWithRole(
+        userId: string,
+        additionalWhere: Prisma.UserWhereInput | null
+    ): Promise<IUser> {
+        const user = await this.userRepository.findOneWithRoleById(
+            userId,
+            additionalWhere
+        );
         if (!user) {
             throw new UserNotFoundException();
         }

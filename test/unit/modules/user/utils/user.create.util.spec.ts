@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -5,14 +6,12 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
-    EnumProjectMemberRole,
-    EnumRoleType,
     EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumWorkspaceInviteStatus,
-    EnumWorkspaceMemberRole,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -48,7 +47,9 @@ describe('UserCreateUtil', () => {
         id: 'role-harbor',
         name: 'user',
         description: null,
-        type: EnumRoleType.user,
+        scope: EnumRoleScope.platform,
+        key: EnumRolePlatformKey.user,
+        policyRevision: 0,
         isImmutable: false,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -206,9 +207,9 @@ describe('UserCreateUtil', () => {
                 workspaceId: 'workspace-harbor',
                 email: 'harbor@example.com',
                 token: 'hashed-token',
-                workspaceRole: EnumWorkspaceMemberRole.member,
+                workspaceRoleId: 'role-workspace-member',
                 projectId: 'project-harbor',
-                projectRole: EnumProjectMemberRole.admin,
+                projectRoleId: 'role-project-admin',
                 reference: 'WIN-harbor',
                 expiredAt: new Date('2026-02-01T00:00:00.000Z'),
                 status: EnumWorkspaceInviteStatus.pending,
@@ -228,9 +229,9 @@ describe('UserCreateUtil', () => {
                 workspaceId: 'workspace-harbor',
                 workspaceInviteId: 'invite-harbor',
                 invitedByUserId: 'inviter-harbor',
-                workspaceMemberRole: EnumWorkspaceMemberRole.member,
+                workspaceMemberRoleId: 'role-workspace-member',
                 projectId: 'project-harbor',
-                projectMemberRole: EnumProjectMemberRole.admin,
+                projectMemberRoleId: 'role-project-admin',
             });
         });
 
@@ -244,9 +245,9 @@ describe('UserCreateUtil', () => {
                 workspaceId: 'workspace-harbor',
                 email: 'harbor@example.com',
                 token: 'hashed-token',
-                workspaceRole: EnumWorkspaceMemberRole.admin,
+                workspaceRoleId: 'role-workspace-admin',
                 projectId: null,
-                projectRole: null,
+                projectRoleId: null,
                 reference: 'WIN-harbor',
                 expiredAt: new Date('2026-02-01T00:00:00.000Z'),
                 status: EnumWorkspaceInviteStatus.pending,
@@ -263,7 +264,7 @@ describe('UserCreateUtil', () => {
 
             expect(result).toMatchObject({
                 projectId: null,
-                projectMemberRole: null,
+                projectMemberRoleId: null,
             });
         });
     });
@@ -443,9 +444,9 @@ describe('UserCreateUtil', () => {
                 workspaceId: 'workspace-harbor',
                 workspaceInviteId: 'invite-harbor',
                 invitedByUserId: 'inviter-harbor',
-                workspaceMemberRole: EnumWorkspaceMemberRole.member,
+                workspaceMemberRoleId: 'role-workspace-member',
                 projectId: null,
-                projectMemberRole: null,
+                projectMemberRoleId: null,
             };
             const input = { ...personalInput, workspaceContext: inviteContext };
 
@@ -486,9 +487,9 @@ describe('UserCreateUtil', () => {
                 workspaceId: 'workspace-harbor',
                 workspaceInviteId: 'invite-harbor',
                 invitedByUserId: user.id,
-                workspaceMemberRole: EnumWorkspaceMemberRole.admin,
+                workspaceMemberRoleId: 'role-workspace-admin',
                 projectId: 'project-harbor',
-                projectMemberRole: EnumProjectMemberRole.admin,
+                projectMemberRoleId: 'role-project-admin',
             };
             const input = { ...personalInput, workspaceContext: inviteContext };
 

@@ -6,7 +6,6 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { AwsSESService } from '@common/aws/services/aws.ses.service';
 import { MessageService } from '@common/message/services/message.service';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationEmailSendUnregisteredPayload } from '@modules/notification/interfaces/notification.interface';
 import { NotificationEmailDeliveryService } from '@modules/notification/services/notification.email.delivery.service';
@@ -33,7 +32,7 @@ describe('NotificationEmailProcessSendUnregisteredUseCase', () => {
             workspaceName: 'Acme',
             inviterName: 'Alice',
             reference: 'WI-ref',
-            workspaceMemberRole: EnumWorkspaceMemberRole.member,
+            workspaceMemberRole: 'member',
             expiredAt: '2024-01-08T00:00:00.000Z',
             encryptedInviteAcceptLink:
                 'cipher(https://app.test/sign-up?invite=token)',
@@ -103,7 +102,7 @@ describe('NotificationEmailProcessSendUnregisteredUseCase', () => {
                     username: 'invitee@example.com',
                     workspaceName: 'Acme',
                     inviterName: 'Alice',
-                    workspaceMemberRole: EnumWorkspaceMemberRole.member,
+                    workspaceMemberRole: 'member',
                     inviteAcceptLink: 'https://app.test/sign-up?invite=token',
                     reference: 'WI-ref',
                     expiredAt: 'Mon, 08 Jan 2024 00:00:00 +0000',

@@ -1,37 +1,21 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import {
-    EnumPolicyAction,
-    EnumPolicySubject,
-    EnumRoleType,
     EnumUserGender,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import { UserProfileResponseSchema } from '@modules/user/dtos/response/user.profile.response.dto';
 
 describe('UserProfileResponseSchema', () => {
-    const policy = {
-        id: 'policy-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-        updatedBy: 'user-1',
-        subject: EnumPolicySubject.user,
-        action: [EnumPolicyAction.manage],
-    };
-
     const role = {
         id: 'role-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: 'user-1',
-        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-        updatedBy: 'user-1',
         name: 'Admin',
-        description: 'Administrator role',
-        type: EnumRoleType.admin,
-        policies: [policy],
+        scope: EnumRoleScope.platform,
+        key: EnumRolePlatformKey.admin,
     };
 
     const country = {

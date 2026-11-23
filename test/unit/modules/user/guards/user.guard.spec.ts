@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -5,12 +6,12 @@ import { Reflector } from '@nestjs/core';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import { EnumAuthStatusCodeError } from '@modules/auth/enums/auth.status-code.enum';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -44,7 +45,9 @@ describe('UserGuard', () => {
         id: 'role-lantern',
         name: 'user',
         description: null,
-        type: EnumRoleType.user,
+        scope: EnumRoleScope.platform,
+        key: EnumRolePlatformKey.user,
+        policyRevision: 0,
         isImmutable: false,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,

@@ -22,7 +22,6 @@ import {
     EnumNotificationType,
     EnumTermPolicyType,
     EnumUserReauthenticationAction,
-    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import { DeviceService } from '@modules/device/services/device.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -142,7 +141,7 @@ describe('NotificationService', () => {
         workspaceName: 'Acme',
         inviterName: 'Alice',
         reference: 'WI-ref',
-        workspaceMemberRole: EnumWorkspaceMemberRole.member,
+        workspaceMemberRole: 'member',
         expiredAt: 'Mon, 08 Jan 2024 00:00:00 +0000',
         inviteAcceptLink: 'https://app.test/invite/token',
     };
@@ -154,7 +153,7 @@ describe('NotificationService', () => {
         workspaceName: 'Acme',
         inviterName: 'Alice',
         reference: 'WI-ref',
-        workspaceMemberRole: EnumWorkspaceMemberRole.member,
+        workspaceMemberRole: 'member',
         expiredAt: 'Mon, 08 Jan 2024 00:00:00 +0000',
         inviteAcceptLink: 'https://app.test/invite/token',
     };
@@ -371,7 +370,7 @@ describe('NotificationService', () => {
                         workspaceName: 'Acme',
                         inviterName: 'Alice',
                         reference: 'WI-ref',
-                        workspaceMemberRole: EnumWorkspaceMemberRole.member,
+                        workspaceMemberRole: 'member',
                         expiredAt: 'Mon, 08 Jan 2024 00:00:00 +0000',
                         encryptedInviteAcceptLink: 'encrypted-link',
                         snapshot: null,
@@ -552,7 +551,7 @@ describe('NotificationService', () => {
                         workspaceName: 'Acme',
                         inviterName: 'Alice',
                         reference: 'WI-ref',
-                        workspaceMemberRole: EnumWorkspaceMemberRole.member,
+                        workspaceMemberRole: 'member',
                         expiredAt: 'Mon, 08 Jan 2024 00:00:00 +0000',
                         encryptedInviteAcceptLink: 'encrypted-link',
                     },

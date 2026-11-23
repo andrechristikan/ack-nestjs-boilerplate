@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import type { UserPhoto } from '@generated/prisma-client/client';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
@@ -7,11 +8,11 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
-    EnumRoleType,
     EnumUserGender,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import type { Country } from '@generated/prisma-client/client';
 import { NotFound } from '@aws-sdk/client-s3';
@@ -87,7 +88,9 @@ describe('UserProfileService', () => {
         id: 'role-persimmon',
         name: 'user',
         description: null,
-        type: EnumRoleType.user,
+        scope: EnumRoleScope.platform,
+        key: EnumRolePlatformKey.user,
+        policyRevision: 0,
         isImmutable: false,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,

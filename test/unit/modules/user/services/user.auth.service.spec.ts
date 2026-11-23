@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
@@ -12,7 +13,6 @@ import {
     EnumActivityLogAction,
     EnumDevicePlatform,
     EnumMfaChallengePurpose,
-    EnumRoleType,
     EnumUserReauthenticationAction,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -20,6 +20,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import type {
     DeviceOwnership,
@@ -165,15 +166,10 @@ describe('UserAuthService', () => {
         deletedBy: null,
         role: {
             id: 'role-halcyon',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
 
@@ -752,7 +748,8 @@ describe('UserAuthService', () => {
             ).resolves.toBe(baseUser);
 
             expect(userRepository.findOneWithRoleById).toHaveBeenCalledWith(
-                baseUser.id
+                baseUser.id,
+                null
             );
         });
 
@@ -907,7 +904,7 @@ describe('UserAuthService', () => {
         const apiKeyContext = buildApiKeyContext();
         const tokens: IAuthToken = {
             tokenType: 'Bearer',
-            roleType: EnumRoleType.user,
+            roleKey: EnumRolePlatformKey.user,
             expiresIn: 3600,
             accessToken: 'access-token',
             refreshToken: 'refresh-token',
@@ -1523,7 +1520,8 @@ describe('UserAuthService', () => {
                 service.getOneForMfaLogin('user-halcyon')
             ).resolves.toBe(baseUser);
             expect(userRepository.findOneWithRoleById).toHaveBeenCalledWith(
-                'user-halcyon'
+                'user-halcyon',
+                null
             );
             expect(mfaService.isEnabled).toHaveBeenCalledWith('user-halcyon');
         });
@@ -1591,7 +1589,8 @@ describe('UserAuthService', () => {
                 service.getOneForPasskeyLogin('user-halcyon')
             ).resolves.toBe(baseUser);
             expect(userRepository.findOneWithRoleById).toHaveBeenCalledWith(
-                'user-halcyon'
+                'user-halcyon',
+                null
             );
             expect(mfaService.isEnabled).not.toHaveBeenCalled();
         });

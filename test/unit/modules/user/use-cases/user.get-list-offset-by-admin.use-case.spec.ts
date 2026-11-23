@@ -1,3 +1,8 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -17,8 +22,13 @@ import {
     UserDefaultAvailableSearch,
 } from '@modules/user/constants/user.list.constant';
 import { UserGetListOffsetByAdminUseCase } from '@modules/user/use-cases/user.get-list-offset-by-admin.use-case';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('UserGetListOffsetByAdminUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'User'> = { id: 'scoped-1' };
     const userService: MockProxy<UserService> = mock<UserService>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
@@ -31,9 +41,14 @@ describe('UserGetListOffsetByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 UserGetListOffsetByAdminUseCase,
                 { provide: UserService, useValue: userService },
                 {
@@ -88,7 +103,9 @@ describe('UserGetListOffsetByAdminUseCase', () => {
                 });
             userService.getListOffsetByAdmin.mockResolvedValue(response);
 
-            await expect(useCase.execute(query)).resolves.toBe(response);
+            await expect(useCase.execute(policyContext, query)).resolves.toBe(
+                response
+            );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
                 expect.objectContaining({
@@ -107,11 +124,12 @@ describe('UserGetListOffsetByAdminUseCase', () => {
                 params,
                 { status: { in: [EnumUserStatus.active] } },
                 { roleId: { equals: 'role-cinder' } },
-                { countryId: { equals: 'country-cinder' } }
+                { countryId: { equals: 'country-cinder' } },
+                scoped
             );
         });
 
-        it('calls the domain with undefined wheres when no filter applies', async () => {
+        it('calls the domain with null wheres when no filter applies', async () => {
             const params = { skip: 0, limit: 20, orderBy: [] };
             paginationQueryUtil.offset.mockReturnValue({
                 params,
@@ -121,13 +139,14 @@ describe('UserGetListOffsetByAdminUseCase', () => {
             paginationFilterUtil.equalString.mockReturnValue(null);
             userService.getListOffsetByAdmin.mockResolvedValue(response);
 
-            await useCase.execute(query);
+            await useCase.execute(policyContext, query);
 
             expect(userService.getListOffsetByAdmin).toHaveBeenCalledWith(
                 params,
-                undefined,
-                undefined,
-                undefined
+                null,
+                null,
+                null,
+                scoped
             );
         });
     });

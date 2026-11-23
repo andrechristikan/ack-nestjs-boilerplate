@@ -25,7 +25,7 @@ import {
     EnumUserLoginWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import type { User } from '@generated/prisma-client/client';
+import type { Prisma, User } from '@generated/prisma-client/client';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 
 export interface IUserRepository {
@@ -33,7 +33,8 @@ export interface IUserRepository {
         { where, ...params }: IPaginationQueryOffsetParams,
         status: Record<string, IPaginationIn> | null,
         roleId: Record<string, IPaginationEqual> | null,
-        countryId: Record<string, IPaginationEqual> | null
+        countryId: Record<string, IPaginationEqual> | null,
+        additionalWhere: Prisma.UserWhereInput | null
     ): Promise<IResponsePaginationReturn<IUserList>>;
     findActiveRecipientsCursor(
         cursor: string | null,
@@ -53,16 +54,23 @@ export interface IUserRepository {
         userId: string
     ): Promise<string | null>;
     findOneWithRoleByEmail(email: string): Promise<IUser | null>;
-    findOneProfileById(id: string): Promise<IUserProfile | null>;
+    findOneProfileById(
+        id: string,
+        additionalWhere: Prisma.UserWhereInput | null
+    ): Promise<IUserProfile | null>;
     findOneActiveProfileById(id: string): Promise<IUserProfile | null>;
-    findOneWithRoleById(id: string): Promise<IUser | null>;
+    findOneWithRoleById(
+        id: string,
+        additionalWhere: Prisma.UserWhereInput | null
+    ): Promise<IUser | null>;
     findByEmails(emails: string[]): Promise<IUser[]>;
     findByUsernames(usernames: string[]): Promise<IUser[]>;
     findExport(
         status: Record<string, IPaginationIn> | null,
         roleId: Record<string, IPaginationEqual> | null,
         countryId: Record<string, IPaginationEqual> | null,
-        take: number
+        take: number,
+        additionalWhere: Prisma.UserWhereInput | null
     ): Promise<IUser[]>;
     existsByEmail(email: string): Promise<boolean>;
     existsByUsername(username: string): Promise<boolean>;

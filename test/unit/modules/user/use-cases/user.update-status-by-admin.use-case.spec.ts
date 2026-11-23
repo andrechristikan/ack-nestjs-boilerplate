@@ -1,3 +1,13 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -5,10 +15,10 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
-    EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import { UserService } from '@modules/user/services/user.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
@@ -33,8 +43,13 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('UserUpdateStatusByAdminUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'User'> = { id: 'scoped-1' };
     const userService: MockProxy<UserService> = mock<UserService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
@@ -85,20 +100,16 @@ describe('UserUpdateStatusByAdminUseCase', () => {
         deletedBy: null,
         role: {
             id: 'role-cinder',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
         helperDateService.create.mockReturnValue(now);
         outboxService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
@@ -106,6 +117,10 @@ describe('UserUpdateStatusByAdminUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 UserUpdateStatusByAdminUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: SessionService, useValue: sessionService },
@@ -132,7 +147,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
         const admin: IUser = {
             ...baseUser,
             id: 'admin-cinder',
-            role: { ...baseUser.role, type: EnumRoleType.admin },
+            role: { ...baseUser.role, key: EnumRolePlatformKey.admin },
         };
         const requestContext = buildRequestContext();
         const apiKeyContext = buildApiKeyContext();
@@ -208,18 +223,31 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     userContext,
+                    policyContext,
                     'user-cinder',
                     dto
                 )
             ).resolves.toEqual({});
 
+            expect(policyAbilityService.scope).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.update,
+                EnumPolicySubject.User
+            );
+            expect(userService.getOneWithRole).toHaveBeenCalledWith(
+                expect.any(String),
+                scoped
+            );
             expect(userService.assertNotSelf).toHaveBeenCalledWith(
                 'user-cinder',
                 'admin-cinder'
             );
             expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.user
+                EnumRolePlatformKey.admin,
+                expect.objectContaining({
+                    scope: EnumRoleScope.platform,
+                    key: EnumRolePlatformKey.user,
+                })
             );
             expect(userService.updateStatusByAdminInTx).toHaveBeenCalledWith(
                 tx,
@@ -307,6 +335,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 apiKeyContext,
                 { ...authContext, userId: 'admin-other' },
                 userContext,
+                policyContext,
                 'user-cinder',
                 { status: EnumUserStatus.blocked }
             );
@@ -332,6 +361,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 userContext,
+                policyContext,
                 'user-cinder',
                 {
                     status: EnumUserStatus.inactive,
@@ -358,6 +388,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 userContext,
+                policyContext,
                 'user-cinder',
                 {
                     status: EnumUserStatus.inactive,
@@ -382,6 +413,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 userContext,
+                policyContext,
                 'user-cinder',
                 {
                     status: EnumUserStatus.active,
@@ -409,6 +441,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 userContext,
+                policyContext,
                 'user-cinder',
                 {
                     status: EnumUserStatus.blocked,
@@ -446,6 +479,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     userContext,
+                    policyContext,
                     'user-cinder',
                     {
                         status: EnumUserStatus.blocked,
@@ -465,6 +499,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     userContext,
+                    policyContext,
                     'user-cinder',
                     {
                         status: EnumUserStatus.blocked,
@@ -487,6 +522,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     userContext,
+                    policyContext,
                     'user-cinder',
                     {
                         status: EnumUserStatus.blocked,
@@ -512,6 +548,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     userContext,
+                    policyContext,
                     'user-cinder',
                     {
                         status: EnumUserStatus.blocked,

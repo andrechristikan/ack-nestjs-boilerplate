@@ -153,9 +153,9 @@ export class UserCreateUtil {
             workspaceId: invite.workspaceId,
             workspaceInviteId: invite.id,
             invitedByUserId: invite.invitedByUserId,
-            workspaceMemberRole: invite.workspaceRole,
+            workspaceMemberRoleId: invite.workspaceRoleId,
             projectId: invite.projectId ?? null,
-            projectMemberRole: invite.projectRole ?? null,
+            projectMemberRoleId: invite.projectRoleId ?? null,
         };
     }
 

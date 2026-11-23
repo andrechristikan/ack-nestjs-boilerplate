@@ -1,3 +1,9 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
@@ -7,12 +13,12 @@ import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
-    EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import type { PasswordHistory, User } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
@@ -43,8 +49,13 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('UserUpdatePasswordByAdminUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'User'> = { id: 'scoped-1' };
     const userService: MockProxy<UserService> = mock<UserService>();
     const userPasswordService: MockProxy<UserPasswordService> =
         mock<UserPasswordService>();
@@ -97,21 +108,16 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
         deletedBy: null,
         role: {
             id: 'role-linden',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
     const admin: IUser = {
         ...user,
         id: 'admin-linden',
-        role: { ...user.role, type: EnumRoleType.admin },
+        role: { ...user.role, key: EnumRolePlatformKey.admin },
     };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
@@ -158,6 +164,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
         activityLogService.recordEffect.mockImplementation(
             (
                 _requestContext,
@@ -182,6 +189,10 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 UserUpdatePasswordByAdminUseCase,
                 { provide: UserService, useValue: userService },
                 { provide: UserPasswordService, useValue: userPasswordService },
@@ -267,6 +278,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     userContext,
+                    policyContext,
                     'user-linden'
                 )
             ).resolves.toEqual({});
@@ -276,11 +288,15 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 'admin-linden'
             );
             expect(userService.getOneWithRole).toHaveBeenCalledWith(
-                'user-linden'
+                'user-linden',
+                scoped
             );
             expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.user
+                EnumRolePlatformKey.admin,
+                expect.objectContaining({
+                    scope: EnumRoleScope.platform,
+                    key: EnumRolePlatformKey.user,
+                })
             );
             expect(notificationService.getSnapshot).toHaveBeenCalledWith(user);
             expect(userService.updatePasswordInTx).toHaveBeenCalledWith(
@@ -382,6 +398,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 userContext,
+                policyContext,
                 'user-linden'
             );
 
@@ -399,6 +416,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                 apiKeyContext,
                 { ...authContext, userId: 'admin-other' },
                 userContext,
+                policyContext,
                 'user-linden'
             );
 
@@ -435,6 +453,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     userContext,
+                    policyContext,
                     'user-linden'
                 )
             ).rejects.toThrow('rank');
@@ -453,6 +472,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     userContext,
+                    policyContext,
                     'user-linden'
                 )
             ).rejects.toThrow('read');
@@ -472,6 +492,7 @@ describe('UserUpdatePasswordByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     userContext,
+                    policyContext,
                     'user-linden'
                 )
             ).rejects.toBe(cause);

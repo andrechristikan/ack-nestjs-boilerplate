@@ -1,13 +1,18 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumAwsS3Accessibility,
-    EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import { EnumFileExtensionDocument } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
@@ -19,8 +24,13 @@ import { UserImportService } from '@modules/user/services/user.import.service';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserExportByAdminUseCase } from '@modules/user/use-cases/user.export-by-admin.use-case';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('UserExportByAdminUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'User'> = { id: 'scoped-1' };
     const userImportService: MockProxy<UserImportService> =
         mock<UserImportService>();
     const fileService: MockProxy<FileService> = mock<FileService>();
@@ -65,23 +75,23 @@ describe('UserExportByAdminUseCase', () => {
         deletedBy: null,
         role: {
             id: 'role-fable',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 UserExportByAdminUseCase,
                 { provide: UserImportService, useValue: userImportService },
                 { provide: FileService, useValue: fileService },
@@ -132,7 +142,7 @@ describe('UserExportByAdminUseCase', () => {
             userImportService.exportByAdmin.mockResolvedValue([user]);
             fileService.writeCsv.mockReturnValue('csv-content');
 
-            const result = await useCase.execute(query);
+            const result = await useCase.execute(policyContext, query);
 
             expect(result).toEqual({
                 data: 'csv-content',
@@ -151,7 +161,8 @@ describe('UserExportByAdminUseCase', () => {
             expect(userImportService.exportByAdmin).toHaveBeenCalledWith(
                 { status: { in: [EnumUserStatus.active] } },
                 { roleId: { equals: 'role-fable' } },
-                { countryId: { equals: 'country-fable' } }
+                { countryId: { equals: 'country-fable' } },
+                scoped
             );
             expect(fileService.writeCsv).toHaveBeenCalledWith([
                 expect.objectContaining({
@@ -169,7 +180,7 @@ describe('UserExportByAdminUseCase', () => {
             userImportService.exportByAdmin.mockResolvedValue([user]);
             fileService.writeCsv.mockReturnValue('csv-content');
 
-            await useCase.execute(query);
+            await useCase.execute(policyContext, query);
 
             expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
                 'status',
@@ -179,7 +190,8 @@ describe('UserExportByAdminUseCase', () => {
             expect(userImportService.exportByAdmin).toHaveBeenCalledWith(
                 null,
                 null,
-                null
+                null,
+                scoped
             );
             expect(fileService.writeCsv).toHaveBeenCalledWith([
                 expect.objectContaining({ photo: null }),

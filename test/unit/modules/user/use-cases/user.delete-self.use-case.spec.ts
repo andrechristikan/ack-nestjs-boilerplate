@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
@@ -6,11 +7,11 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
-    EnumRoleType,
     EnumUserReauthenticationAction,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { UserService } from '@modules/user/services/user.service';
@@ -143,15 +144,10 @@ describe('UserDeleteSelfUseCase', () => {
         deletedBy: null,
         role: {
             id: 'role-cinder',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
     const requestContext = buildRequestContext();
@@ -257,7 +253,7 @@ describe('UserDeleteSelfUseCase', () => {
         it('throws UserDeleteSelfForbiddenException for a superAdmin before the password check', async () => {
             const superAdmin: IUser = {
                 ...baseUser,
-                role: { ...baseUser.role, type: EnumRoleType.superAdmin },
+                role: { ...baseUser.role, key: EnumRolePlatformKey.superAdmin },
             };
             const failure = new UserDeleteSelfForbiddenException();
             userService.assertSelfDeletable.mockImplementation(() => {

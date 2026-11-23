@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -10,12 +11,12 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumActivityLogAction,
-    EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import {
@@ -71,7 +72,7 @@ describe('UserRefreshUseCase', () => {
     const now = new Date('2026-03-01T00:00:00.000Z');
     const tokens: IAuthToken = {
         tokenType: 'Bearer',
-        roleType: EnumRoleType.user,
+        roleKey: EnumRolePlatformKey.user,
         expiresIn: 3600,
         accessToken: 'access-token',
         refreshToken: 'refresh-token',
@@ -117,15 +118,10 @@ describe('UserRefreshUseCase', () => {
         deletedBy: null,
         role: {
             id: 'role-bramble',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
     const requestContext = buildRequestContext();

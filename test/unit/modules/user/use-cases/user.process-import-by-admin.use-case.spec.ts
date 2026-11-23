@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
@@ -19,12 +20,12 @@ import {
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
-    EnumRoleType,
     EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IAuthPasswordTemporary } from '@modules/auth/interfaces/auth.interface';
@@ -149,7 +150,10 @@ describe('UserProcessImportByAdminUseCase', () => {
     const role: IRole = {
         id: 'role-bramble',
         name: 'user',
-        type: EnumRoleType.user,
+        scope: EnumRoleScope.platform,
+        key: EnumRolePlatformKey.user,
+        policyRevision: 0,
+        description: null,
         isImmutable: false,
     };
     const password: IAuthPasswordTemporary = {
@@ -226,15 +230,10 @@ describe('UserProcessImportByAdminUseCase', () => {
         deletedBy: null,
         role: {
             id: 'role-bramble',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
     const stageInput = {
@@ -271,7 +270,7 @@ describe('UserProcessImportByAdminUseCase', () => {
                 : welcomeEffect
         );
         outboxService.withTransaction.mockImplementation(async fn => fn(tx));
-        roleService.getByName.mockResolvedValue(role);
+        roleService.getRefByScopeAndKey.mockResolvedValue(role);
         countryService.getIdByAlpha2Code.mockResolvedValue('country-bramble');
         userImportService.prepareImportByAdmin.mockResolvedValue({
             inputs: [input],
@@ -329,7 +328,10 @@ describe('UserProcessImportByAdminUseCase', () => {
                 created: 1,
                 failed: 0,
             });
-            expect(roleService.getByName).toHaveBeenCalledWith('user');
+            expect(roleService.getRefByScopeAndKey).toHaveBeenCalledWith(
+                EnumRoleScope.platform,
+                'user'
+            );
             expect(countryService.getIdByAlpha2Code).toHaveBeenCalledWith('ID');
             expect(userImportService.prepareImportByAdmin).toHaveBeenCalledWith(
                 rows,
@@ -395,7 +397,7 @@ describe('UserProcessImportByAdminUseCase', () => {
                 created: 3,
                 failed: 0,
             });
-            expect(roleService.getByName).not.toHaveBeenCalled();
+            expect(roleService.getRefByScopeAndKey).not.toHaveBeenCalled();
             expect(countryService.getIdByAlpha2Code).not.toHaveBeenCalled();
             expect(
                 userImportService.prepareImportByAdmin
@@ -454,7 +456,7 @@ describe('UserProcessImportByAdminUseCase', () => {
         });
 
         it('throws RoleNotFoundException before preparing when the default role is missing', async () => {
-            roleService.getByName.mockRejectedValue(
+            roleService.getRefByScopeAndKey.mockRejectedValue(
                 new RoleNotFoundException()
             );
 

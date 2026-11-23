@@ -3,11 +3,11 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumRoleType,
     EnumUserGender,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { IUserProfile } from '@modules/user/interfaces/user.interface';
@@ -58,15 +58,10 @@ describe('UserGetProfileUseCase', () => {
         deletedBy: null,
         role: {
             id: 'role-sable',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
         mobileNumbers: [],
         country: {

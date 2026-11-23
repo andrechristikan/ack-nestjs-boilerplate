@@ -1,3 +1,4 @@
+import { EnumRoleScope } from '@generated/prisma-client/client';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
@@ -153,11 +154,11 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         { countryId, email, name, roleId, username }: UserCreateRequestDto
     ): Promise<IResponseReturn<DatabaseIdResponseDto>> {
         // Sequential by design: gate before the work it guards
-        const role = await this.roleService.getById(roleId);
-        this.roleService.assertActorOutranks(
-            userContext.user.role.type,
-            role.type
+        const role = await this.roleService.getRefByIdForScope(
+            roleId,
+            EnumRoleScope.platform
         );
+        this.roleService.assertActorOutranks(userContext.user.role.key, role);
 
         const [emailExist, usernameCheck] = await Promise.all([
             this.userService.existsByEmail(email),

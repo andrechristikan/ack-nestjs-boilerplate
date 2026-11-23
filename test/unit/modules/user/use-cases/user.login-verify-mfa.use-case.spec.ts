@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import { Test } from '@nestjs/testing';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import type { TestingModule } from '@nestjs/testing';
@@ -7,7 +8,6 @@ import {
     EnumActivityLogAction,
     EnumDevicePlatform,
     EnumMfaChallengePurpose,
-    EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
@@ -66,7 +66,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
     const now = new Date('2026-03-01T00:00:00.000Z');
     const tokens: IAuthToken = {
         tokenType: 'Bearer',
-        roleType: EnumRoleType.user,
+        roleKey: EnumRolePlatformKey.user,
         expiresIn: 3600,
         accessToken: 'access-token',
         refreshToken: 'refresh-token',

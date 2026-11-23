@@ -17,7 +17,6 @@ import {
     EnumUserLoginWith,
     EnumUserReauthenticationAction,
     EnumWorkspaceJoinRejectReason,
-    EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
 import {
@@ -121,7 +120,7 @@ export interface INotificationWorkspaceInviteFields {
     workspaceName: string;
     inviterName: string;
     reference: string;
-    workspaceMemberRole: EnumWorkspaceMemberRole;
+    workspaceMemberRole: string;
     expiredAt: string;
     inviteAcceptLink: string;
 }

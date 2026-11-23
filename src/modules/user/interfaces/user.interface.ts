@@ -8,7 +8,6 @@ import { EnumFileExtensionImage } from '@common/file/enums/file.enum';
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
-    EnumProjectMemberRole,
     EnumTermPolicyType,
     EnumUserGender,
     EnumUserLoginFrom,
@@ -16,7 +15,6 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
-    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type {
     AuthenticationResponseJSON,
@@ -48,10 +46,7 @@ import type {
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
-import type {
-    IRole,
-    IRoleWithPolicies,
-} from '@modules/role/interfaces/role.interface';
+import type { IRole, IRoleRef } from '@modules/role/interfaces/role.interface';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
@@ -66,7 +61,7 @@ export interface IUserWithPhoto extends User {
 }
 
 export interface IUser extends IUserWithPhoto {
-    role: IRoleWithPolicies;
+    role: IRoleRef;
 }
 
 export interface IUserContext {
@@ -167,9 +162,9 @@ export interface IUserSignUpWorkspaceInvite {
     workspaceId: string;
     workspaceInviteId: string;
     invitedByUserId: string;
-    workspaceMemberRole: EnumWorkspaceMemberRole;
+    workspaceMemberRoleId: string;
     projectId: string | null;
-    projectMemberRole: EnumProjectMemberRole | null;
+    projectMemberRoleId: string | null;
 }
 
 export type IUserSignUpWorkspaceContext =

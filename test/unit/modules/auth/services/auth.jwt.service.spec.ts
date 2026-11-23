@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import { EnumHelperPemLabel } from '@common/helper/enums/helper.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -8,12 +9,12 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { generateKeyPairSync } from 'node:crypto';
 import { Duration } from 'luxon';
 import {
-    EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
@@ -92,21 +93,16 @@ describe('AuthJwtService', () => {
         deletedBy: null,
         role: {
             id: 'role-1',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
 
     const tokens: IAuthToken = {
         tokenType: 'Bearer',
-        roleType: EnumRoleType.user,
+        roleKey: EnumRolePlatformKey.user,
         expiresIn: 900,
         accessToken: 'signed-access-token',
         refreshToken: 'signed-refresh-token',
@@ -653,7 +649,7 @@ describe('AuthJwtService', () => {
 
             expect(result).toEqual({
                 tokenType: 'Bearer',
-                roleType: EnumRoleType.user,
+                roleKey: EnumRolePlatformKey.user,
                 expiresIn: 900,
                 accessToken: 'signed-access-token',
                 refreshToken: 'signed-refresh-token',

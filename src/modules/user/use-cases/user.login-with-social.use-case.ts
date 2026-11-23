@@ -6,6 +6,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import {
+    EnumRoleScope,
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
@@ -109,7 +110,10 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                 loginSocial.username
             );
         const [role, usernameCheck] = await Promise.all([
-            this.roleService.getByName(this.defaultRole),
+            this.roleService.getRefByScopeAndKey(
+                EnumRoleScope.platform,
+                this.defaultRole
+            ),
             this.userService.checkUsername(loginSocial.username),
             this.countryService.getOne(loginSocial.countryId),
         ]);
@@ -168,13 +172,13 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                             );
                             if (
                                 inputContext.projectId &&
-                                inputContext.projectMemberRole
+                                inputContext.projectMemberRoleId
                             ) {
                                 await this.projectMemberService.createInTx(
                                     tx,
                                     inputContext.projectId,
                                     input.userId,
-                                    inputContext.projectMemberRole,
+                                    inputContext.projectMemberRoleId,
                                     input.userId
                                 );
                             }

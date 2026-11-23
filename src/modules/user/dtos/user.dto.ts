@@ -10,7 +10,7 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
 } from '@generated/prisma-client/client';
-import { RoleSchema } from '@modules/role/dtos/role.dto';
+import { RoleRefResponseSchema } from '@modules/role/dtos/response/role.ref.response.dto';
 
 /** @public */
 export const UserSchema = DatabaseResponseSchema.extend({
@@ -38,7 +38,7 @@ export const UserSchema = DatabaseResponseSchema.extend({
         description: 'Identifier of the role assigned to the user',
         example: faker.string.uuid(),
     }),
-    role: RoleSchema.meta({
+    role: RoleRefResponseSchema.meta({
         description: 'Role assigned to the user',
     }),
     passwordExpired: z.date().nullable().meta({

@@ -1,3 +1,4 @@
+import { EnumRoleScope } from '@generated/prisma-client/client';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
@@ -179,7 +180,10 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         const { actorUserId } = activityLog;
         // Sequential by design: gate before the work it guards; write after the preparation
         const [role, countryId] = await Promise.all([
-            this.roleService.getByName(this.defaultRole),
+            this.roleService.getRefByScopeAndKey(
+                EnumRoleScope.platform,
+                this.defaultRole
+            ),
             this.countryService.getIdByAlpha2Code(this.defaultCountry),
         ]);
         const { inputs, passwordHasheds, passwordStrings } =

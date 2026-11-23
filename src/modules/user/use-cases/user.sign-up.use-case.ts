@@ -1,3 +1,4 @@
+import { EnumRoleScope } from '@generated/prisma-client/client';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
@@ -118,13 +119,13 @@ export class UserSignUpUseCase implements IAppUseCase<
                             );
                             if (
                                 workspaceContext.projectId &&
-                                workspaceContext.projectMemberRole
+                                workspaceContext.projectMemberRoleId
                             ) {
                                 await this.projectMemberService.createInTx(
                                     tx,
                                     workspaceContext.projectId,
                                     input.userId,
-                                    workspaceContext.projectMemberRole,
+                                    workspaceContext.projectMemberRoleId,
                                     input.userId
                                 );
                             }
@@ -236,7 +237,10 @@ export class UserSignUpUseCase implements IAppUseCase<
             signUp.name
         );
         const [role, emailExist, usernameCheck] = await Promise.all([
-            this.roleService.getByName(this.defaultRole),
+            this.roleService.getRefByScopeAndKey(
+                EnumRoleScope.platform,
+                this.defaultRole
+            ),
             this.userService.existsByEmail(signUp.email),
             this.userService.checkUsername(signUp.username),
             this.countryService.getOne(signUp.countryId),

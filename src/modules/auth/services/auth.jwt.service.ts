@@ -160,7 +160,7 @@ export class AuthJwtService {
     ): IAuthToken {
         return {
             tokenType: AuthBearerScheme,
-            roleType: user.role.type,
+            roleKey: user.role.key,
             expiresIn,
             accessToken,
             refreshToken,

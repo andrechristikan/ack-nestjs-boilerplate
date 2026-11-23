@@ -409,7 +409,10 @@ export class UserAuthService {
     }
 
     async getOneForSocialLoginById(userId: string): Promise<IUser> {
-        const user = await this.userRepository.findOneWithRoleById(userId);
+        const user = await this.userRepository.findOneWithRoleById(
+            userId,
+            null
+        );
 
         return this.assertSocialLoginAllowed(user);
     }
@@ -591,7 +594,7 @@ export class UserAuthService {
     /** Resolves the active verified user of an MFA login challenge; a user with MFA off throws MfaNotEnabledException. */
     async getOneForMfaLogin(userId: string): Promise<IUser> {
         const [user, isMfaEnabled] = await Promise.all([
-            this.userRepository.findOneWithRoleById(userId),
+            this.userRepository.findOneWithRoleById(userId, null),
             this.mfaService.isEnabled(userId),
         ]);
         if (!user) {
@@ -609,7 +612,10 @@ export class UserAuthService {
 
     /** Resolves the active verified user of a passkey; a missing or inactive user throws the credential error. */
     async getOneForPasskeyLogin(userId: string): Promise<IUser> {
-        const user = await this.userRepository.findOneWithRoleById(userId);
+        const user = await this.userRepository.findOneWithRoleById(
+            userId,
+            null
+        );
         if (!user || user.status !== EnumUserStatus.active) {
             throw new UserCredentialInvalidException();
         }

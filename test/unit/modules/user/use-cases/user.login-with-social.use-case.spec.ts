@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
@@ -16,8 +17,6 @@ import {
     EnumActivityLogAction,
     EnumDevicePlatform,
     EnumPasswordHistoryType,
-    EnumProjectMemberRole,
-    EnumRoleType,
     EnumTermPolicyType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
@@ -26,7 +25,7 @@ import {
     EnumUserStatus,
     EnumVerificationType,
     EnumWorkspaceInviteStatus,
-    EnumWorkspaceMemberRole,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import type { Country, WorkspaceInvite } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -139,7 +138,7 @@ describe('UserLoginWithSocialUseCase', () => {
     };
     const tokens: IAuthToken = {
         tokenType: 'Bearer',
-        roleType: EnumRoleType.user,
+        roleKey: EnumRolePlatformKey.user,
         expiresIn: 3600,
         accessToken: 'access-token',
         refreshToken: 'refresh-token',
@@ -224,15 +223,10 @@ describe('UserLoginWithSocialUseCase', () => {
         deletedBy: null,
         role: {
             id: 'role-bramble',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
     const committedUser: IUser = baseUser;
@@ -270,9 +264,9 @@ describe('UserLoginWithSocialUseCase', () => {
         workspaceId: 'workspace-invite',
         workspaceInviteId: 'invite-bramble',
         invitedByUserId: 'user-inviter',
-        workspaceMemberRole: EnumWorkspaceMemberRole.member,
+        workspaceMemberRoleId: 'role-workspace-member',
         projectId: 'project-bramble',
-        projectMemberRole: EnumProjectMemberRole.admin,
+        projectMemberRoleId: 'role-project-admin',
     };
     const password: IAuthPassword = {
         passwordHash: 'hashed',
@@ -331,7 +325,10 @@ describe('UserLoginWithSocialUseCase', () => {
     const role: IRole = {
         id: 'role-bramble',
         name: 'user',
-        type: EnumRoleType.user,
+        scope: EnumRoleScope.platform,
+        key: EnumRolePlatformKey.user,
+        policyRevision: 0,
+        description: null,
         isImmutable: false,
     };
     const invite: WorkspaceInvite = {
@@ -343,9 +340,9 @@ describe('UserLoginWithSocialUseCase', () => {
         workspaceId: 'workspace-invite',
         email: 'bramble@example.com',
         token: 'hashed-token',
-        workspaceRole: EnumWorkspaceMemberRole.member,
+        workspaceRoleId: 'role-workspace-member',
         projectId: 'project-bramble',
-        projectRole: EnumProjectMemberRole.admin,
+        projectRoleId: 'role-project-admin',
         reference: 'WIN-bramble',
         expiredAt: new Date('2026-02-01T00:00:00.000Z'),
         status: EnumWorkspaceInviteStatus.pending,
@@ -373,7 +370,7 @@ describe('UserLoginWithSocialUseCase', () => {
         ]);
         workspaceUtil.countSlugAttempts.mockReturnValue(2);
         workspaceUtil.buildOwnedUsers.mockReturnValue([]);
-        roleService.getByName.mockResolvedValue(role);
+        roleService.getRefByScopeAndKey.mockResolvedValue(role);
         countryService.getOne.mockResolvedValue(country);
         workspaceMemberService.resolveLastWorkspaceId.mockResolvedValue(null);
 
@@ -607,7 +604,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 )
             ).resolves.toEqual({ data: tokenOutcome });
 
-            expect(roleService.getByName).not.toHaveBeenCalled();
+            expect(roleService.getRefByScopeAndKey).not.toHaveBeenCalled();
             expect(userAuthService.getOneForSocialLogin).toHaveBeenCalledWith(
                 'bramble@example.com'
             );
@@ -827,7 +824,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 tx,
                 'project-bramble',
                 'user-bramble',
-                EnumProjectMemberRole.admin,
+                'role-project-admin',
                 'user-bramble'
             );
             expect(projectMemberService.createInTx).toHaveBeenCalledBefore(
@@ -1019,7 +1016,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 dto
             );
 
-            expect(roleService.getByName).not.toHaveBeenCalled();
+            expect(roleService.getRefByScopeAndKey).not.toHaveBeenCalled();
             expect(
                 userRegistrationService.buildSocialCreate
             ).not.toHaveBeenCalled();
@@ -1053,7 +1050,7 @@ describe('UserLoginWithSocialUseCase', () => {
         });
 
         it('throws RoleNotFoundException before preparing when the default role is missing', async () => {
-            roleService.getByName.mockRejectedValue(
+            roleService.getRefByScopeAndKey.mockRejectedValue(
                 new RoleNotFoundException()
             );
 
@@ -1271,7 +1268,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 tx,
                 'project-bramble',
                 'user-bramble',
-                EnumProjectMemberRole.admin,
+                'role-project-admin',
                 'user-bramble'
             );
             expect(
@@ -1358,7 +1355,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 workspaceContext: {
                     ...inviteContext,
                     projectId: null,
-                    projectMemberRole: null,
+                    projectMemberRoleId: null,
                 },
             });
 

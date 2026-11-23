@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { Test } from '@nestjs/testing';
@@ -9,12 +10,12 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
-    EnumRoleType,
     EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import type { Country } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
@@ -147,15 +148,10 @@ describe('UserCreateByAdminUseCase', () => {
         deletedBy: null,
         role: {
             id: 'role-bramble',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
     const committedUser: IUser = baseUser;
@@ -226,7 +222,10 @@ describe('UserCreateByAdminUseCase', () => {
     const role: IRole = {
         id: 'role-bramble',
         name: 'user',
-        type: EnumRoleType.user,
+        scope: EnumRoleScope.platform,
+        key: EnumRolePlatformKey.user,
+        policyRevision: 0,
+        description: null,
         isImmutable: false,
     };
 
@@ -250,7 +249,7 @@ describe('UserCreateByAdminUseCase', () => {
         ]);
         workspaceUtil.countSlugAttempts.mockReturnValue(1);
         workspaceUtil.buildOwnedUsers.mockReturnValue([]);
-        roleService.getByName.mockResolvedValue(role);
+        roleService.getRefByScopeAndKey.mockResolvedValue(role);
         countryService.getOne.mockResolvedValue(country);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -294,7 +293,7 @@ describe('UserCreateByAdminUseCase', () => {
         const actor: IUser = {
             ...baseUser,
             id: 'admin-bramble',
-            role: { ...baseUser.role, type: EnumRoleType.admin },
+            role: { ...baseUser.role, key: EnumRolePlatformKey.admin },
             roleId: 'role-actor-bramble',
         };
         const requestContext = buildRequestContext();
@@ -303,7 +302,7 @@ describe('UserCreateByAdminUseCase', () => {
         const authContext = buildAuthJwtAccessContext(actor.id);
 
         beforeEach(() => {
-            roleService.getById.mockResolvedValue(role);
+            roleService.getRefByIdForScope.mockResolvedValue(role);
             userService.existsByEmail.mockResolvedValue(false);
             userService.checkUsername.mockResolvedValue(clearUsername);
             userService.prepareCreateByAdmin.mockResolvedValue({
@@ -330,8 +329,8 @@ describe('UserCreateByAdminUseCase', () => {
             });
 
             expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.user
+                EnumRolePlatformKey.admin,
+                role
             );
             expect(userService.prepareCreateByAdmin).toHaveBeenCalledWith(
                 {
@@ -405,7 +404,9 @@ describe('UserCreateByAdminUseCase', () => {
         });
 
         it('throws RoleNotFoundException before the rank and identity gates when the role is missing', async () => {
-            roleService.getById.mockRejectedValue(new RoleNotFoundException());
+            roleService.getRefByIdForScope.mockRejectedValue(
+                new RoleNotFoundException()
+            );
 
             await expect(
                 useCase.execute(
@@ -444,8 +445,8 @@ describe('UserCreateByAdminUseCase', () => {
                 statusCode: EnumRoleStatusCodeError.rankForbidden,
             });
             expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.user
+                EnumRolePlatformKey.admin,
+                role
             );
             expect(countryService.getOne).not.toHaveBeenCalled();
             expect(userService.existsByEmail).not.toHaveBeenCalled();

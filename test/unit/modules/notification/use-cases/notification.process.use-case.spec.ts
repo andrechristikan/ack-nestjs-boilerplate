@@ -10,7 +10,6 @@ import {
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
-    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type {
     NotificationUserSetting,
@@ -54,7 +53,7 @@ describe('NotificationProcessUseCase', () => {
             workspaceName: 'Acme',
             inviterName: 'Alice',
             reference: 'WI-ref',
-            workspaceMemberRole: EnumWorkspaceMemberRole.member,
+            workspaceMemberRole: 'member',
             expiredAt: 'Mon, 08 Jan 2024 00:00:00 +0000',
             encryptedLink: 'encrypted-link',
             snapshot: null,

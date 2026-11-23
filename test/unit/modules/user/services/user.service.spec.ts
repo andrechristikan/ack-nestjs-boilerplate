@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import { HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
@@ -6,13 +7,13 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
-    EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumVerificationType,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import type { Mfa } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
@@ -99,7 +100,9 @@ describe('UserService', () => {
         id: 'role-cobalt',
         name: 'user',
         description: null,
-        type: EnumRoleType.user,
+        scope: EnumRoleScope.platform,
+        key: EnumRolePlatformKey.user,
+        policyRevision: 0,
         isImmutable: false,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -153,8 +156,6 @@ describe('UserService', () => {
         role,
     };
 
-    const { role: _role, ...userRow } = baseUser;
-
     beforeEach(async () => {
         vi.resetAllMocks();
 
@@ -196,7 +197,7 @@ describe('UserService', () => {
 
     describe('validateUserGuard', () => {
         it('throws UserAccountNotFoundException when the user row is gone', async () => {
-            userRepository.findOneById.mockResolvedValue(null);
+            userRepository.findOneWithRoleById.mockResolvedValue(null);
 
             const call = service.validateUserGuard(
                 {
@@ -219,8 +220,8 @@ describe('UserService', () => {
         });
 
         it('throws UserBlockedForbiddenException when the user is blocked', async () => {
-            userRepository.findOneById.mockResolvedValue({
-                ...userRow,
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
                 status: EnumUserStatus.blocked,
             });
 
@@ -244,8 +245,8 @@ describe('UserService', () => {
         });
 
         it('throws UserInactiveForbiddenException when the user is not active', async () => {
-            userRepository.findOneById.mockResolvedValue({
-                ...userRow,
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
                 status: EnumUserStatus.inactive,
             });
 
@@ -269,8 +270,7 @@ describe('UserService', () => {
         });
 
         it('skips the password expiry check for a social session', async () => {
-            userRepository.findOneById.mockResolvedValue(userRow);
-            roleService.getOne.mockResolvedValue(role);
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
             authPasswordUtil.isPasswordExpired.mockReturnValue(true);
 
             await expect(
@@ -286,7 +286,7 @@ describe('UserService', () => {
         });
 
         it('throws UserPasswordExpiredException for an expired credential session', async () => {
-            userRepository.findOneById.mockResolvedValue(userRow);
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
             authPasswordUtil.isPasswordExpired.mockReturnValue(true);
 
             const call = service.validateUserGuard(
@@ -309,8 +309,8 @@ describe('UserService', () => {
         });
 
         it('throws UserEmailNotVerifiedException when verification is required and missing', async () => {
-            userRepository.findOneById.mockResolvedValue({
-                ...userRow,
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
                 isVerified: false,
             });
             authPasswordUtil.isPasswordExpired.mockReturnValue(false);
@@ -335,8 +335,7 @@ describe('UserService', () => {
         });
 
         it('returns the user when every check passes', async () => {
-            userRepository.findOneById.mockResolvedValue(userRow);
-            roleService.getOne.mockResolvedValue(role);
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
             authPasswordUtil.isPasswordExpired.mockReturnValue(false);
 
             await expect(
@@ -348,15 +347,19 @@ describe('UserService', () => {
                     true
                 )
             ).resolves.toEqual(baseUser);
-            expect(userRepository.findOneById).toHaveBeenCalledWith(
-                'user-cobalt'
+            expect(userRepository.findOneWithRoleById).toHaveBeenCalledWith(
+                'user-cobalt',
+                null
             );
-            expect(roleService.getOne).toHaveBeenCalledWith(role.id);
+            expect(roleService.assertScope).toHaveBeenCalledWith(
+                baseUser.role,
+                EnumRoleScope.platform
+            );
         });
 
         it('does not read the role for a blocked user', async () => {
-            userRepository.findOneById.mockResolvedValue({
-                ...userRow,
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
                 status: EnumUserStatus.blocked,
             });
 
@@ -373,7 +376,7 @@ describe('UserService', () => {
 
                 statusCode: EnumUserStatusCodeError.blockedForbidden,
             });
-            expect(roleService.getOne).not.toHaveBeenCalled();
+            expect(roleService.assertScope).not.toHaveBeenCalled();
         });
     });
 
@@ -433,11 +436,19 @@ describe('UserService', () => {
             const countryId = { countryId: { equals: 'country-cobalt' } };
 
             await expect(
-                service.getListOffsetByAdmin(params, status, roleId, countryId)
+                service.getListOffsetByAdmin(
+                    params,
+                    status,
+                    roleId,
+                    countryId,
+                    { id: 'scoped' }
+                )
             ).resolves.toBe(response);
             expect(
                 userRepository.findWithPaginationOffset
-            ).toHaveBeenCalledWith(params, status, roleId, countryId);
+            ).toHaveBeenCalledWith(params, status, roleId, countryId, {
+                id: 'scoped',
+            });
         });
 
         it('passes null filters when none is given', async () => {
@@ -458,12 +469,18 @@ describe('UserService', () => {
             };
             userRepository.findWithPaginationOffset.mockResolvedValue(page);
 
-            const result = await service.getListOffsetByAdmin(pagination);
+            const result = await service.getListOffsetByAdmin(
+                pagination,
+                null,
+                null,
+                null,
+                null
+            );
 
             expect(result).toBe(page);
             expect(
                 userRepository.findWithPaginationOffset
-            ).toHaveBeenCalledWith(pagination, null, null, null);
+            ).toHaveBeenCalledWith(pagination, null, null, null, null);
         });
     });
 
@@ -794,29 +811,43 @@ describe('UserService', () => {
             },
         };
 
-        it('returns the profile', async () => {
+        it('returns the profile and hands the scope predicate to the repository', async () => {
+            const additionalWhere = { id: profile.id };
             userRepository.findOneProfileById.mockResolvedValue(profile);
 
-            await expect(service.getOne(profile.id)).resolves.toBe(profile);
+            await expect(
+                service.getOne(profile.id, additionalWhere)
+            ).resolves.toBe(profile);
+            expect(userRepository.findOneProfileById).toHaveBeenCalledWith(
+                profile.id,
+                additionalWhere
+            );
         });
 
         it('throws UserNotFoundException when the profile is missing', async () => {
             userRepository.findOneProfileById.mockResolvedValue(null);
 
-            await expect(service.getOne('missing')).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-                statusCodeKey:
-                    EnumUserStatusCodeError[EnumUserStatusCodeError.notFound],
-                messagePath: 'user.error.notFound',
-            });
+            await expect(service.getOne('missing', null)).rejects.toMatchObject(
+                {
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.notFound,
+                    statusCodeKey:
+                        EnumUserStatusCodeError[
+                            EnumUserStatusCodeError.notFound
+                        ],
+                    messagePath: 'user.error.notFound',
+                }
+            );
         });
     });
 
     describe('prepareCreateByAdmin', () => {
         const role1: IRole = {
             id: 'role-cobalt',
-            type: EnumRoleType.user,
+            scope: EnumRoleScope.platform,
+            key: EnumRolePlatformKey.user,
+            policyRevision: 0,
+            description: null,
             isImmutable: false,
             name: 'user',
         };
@@ -1039,16 +1070,16 @@ describe('UserService', () => {
         it('returns the user with its role', async () => {
             userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
 
-            await expect(service.getOneWithRole('user-cobalt')).resolves.toBe(
-                baseUser
-            );
+            await expect(
+                service.getOneWithRole('user-cobalt', null)
+            ).resolves.toBe(baseUser);
         });
 
         it('throws UserNotFoundException when the user is missing', async () => {
             userRepository.findOneWithRoleById.mockResolvedValue(null);
 
             await expect(
-                service.getOneWithRole('user-cobalt')
+                service.getOneWithRole('user-cobalt', null)
             ).rejects.toMatchObject({
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
@@ -1065,7 +1096,7 @@ describe('UserService', () => {
         it('throws UserDeleteSelfForbiddenException for an admin role', () => {
             const admin: IUser = {
                 ...baseUser,
-                role: { ...role, type: EnumRoleType.admin },
+                role: { ...role, key: EnumRolePlatformKey.admin },
             };
 
             expect(() => service.assertSelfDeletable(admin)).toThrow(
@@ -1311,13 +1342,13 @@ describe('UserService', () => {
             expect(
                 service['isDeleteSelfRefused']({
                     ...baseUser,
-                    role: { ...role, type: EnumRoleType.admin },
+                    role: { ...role, key: EnumRolePlatformKey.admin },
                 })
             ).toBe(true);
             expect(
                 service['isDeleteSelfRefused']({
                     ...baseUser,
-                    role: { ...role, type: EnumRoleType.superAdmin },
+                    role: { ...role, key: EnumRolePlatformKey.superAdmin },
                 })
             ).toBe(true);
         });
