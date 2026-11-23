@@ -27,7 +27,7 @@ import ProjectConfig from '@configs/project.config';
 import AnalyticConfig from '@configs/analytic.config';
 import ActivityLogConfig from '@configs/activity-log.config';
 import OutboxConfig from '@configs/outbox.config';
-import RoleConfig from '@configs/role.config';
+import PolicyConfig from '@configs/policy.config';
 import HelperConfig from '@configs/helper.config';
 import MfaConfig from '@configs/mfa.config';
 
@@ -61,7 +61,7 @@ export default [
     AnalyticConfig,
     ActivityLogConfig,
     OutboxConfig,
-    RoleConfig,
+    PolicyConfig,
     HelperConfig,
     MfaConfig,
 ];

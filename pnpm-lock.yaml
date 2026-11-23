@@ -181,6 +181,9 @@ importers:
       '@casl/ability':
         specifier: ^7.0.1
         version: 7.0.1
+      '@casl/prisma':
+        specifier: ^2.2.0
+        version: 2.2.0(@casl/ability@7.0.1)(@prisma/client@6.19.0(prisma@6.19.0(typescript@6.0.3))(typescript@6.0.3))
       '@faker-js/faker':
         specifier: ^10.6.0
         version: 10.6.0
@@ -647,6 +650,12 @@ packages:
 
   '@casl/ability@7.0.1':
     resolution: {integrity: sha512-krOW1zQGEie5lH6fpryrcsPvc5r2pe5Vn5xbthuzc5X9gwzHIyZgGGgw9dMoSLHXdjB4BIVxGG/HBkG+1NuyZQ==}
+
+  '@casl/prisma@2.2.0':
+    resolution: {integrity: sha512-WJjCgxQjp1rQUXnph7J7vkzIUcJ2gcdMlByCp6KSn4vRr0BeD3Yfyxo2KdZsyeAGjJBluUkXM4pYyWKr82TnXw==}
+    peerDependencies:
+      '@casl/ability': ^7.0.0
+      '@prisma/client': ^4.16.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
 
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -6664,6 +6673,13 @@ snapshots:
   '@casl/ability@7.0.1':
     dependencies:
       '@ucast/mongo2js': 2.0.0
+
+  '@casl/prisma@2.2.0(@casl/ability@7.0.1)(@prisma/client@6.19.0(prisma@6.19.0(typescript@6.0.3))(typescript@6.0.3))':
+    dependencies:
+      '@casl/ability': 7.0.1
+      '@prisma/client': 6.19.0(prisma@6.19.0(typescript@6.0.3))(typescript@6.0.3)
+      '@ucast/core': 2.0.0
+      '@ucast/js': 4.0.1
 
   '@colors/colors@1.5.0':
     optional: true

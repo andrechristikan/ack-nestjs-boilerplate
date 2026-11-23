@@ -56,19 +56,21 @@ describe('DatabaseClientFactory', () => {
     });
 
     describe('create', () => {
-        it('builds the audit extension and applies it through $extends', () => {
+        it('applies the audit extension, then the CASL extension, through $extends', () => {
             const extension = Symbol('audit-extension');
-            const extendedClient = Symbol('extended-client');
+            const finalClient = Symbol('final-client');
+            const secondExtend = vi.fn().mockReturnValue(finalClient);
             databaseExtensionFactory.build.mockReturnValue(extension as never);
             const extendSpy = vi
                 .spyOn(factory, '$extends')
-                .mockReturnValue(extendedClient as never);
+                .mockReturnValue({ $extends: secondExtend } as never);
 
             const result = factory.create();
 
             expect(databaseExtensionFactory.build).toHaveBeenCalledTimes(1);
             expect(extendSpy).toHaveBeenCalledWith(extension);
-            expect(result).toBe(extendedClient);
+            expect(secondExtend).toHaveBeenCalledTimes(1);
+            expect(result).toBe(finalClient);
         });
     });
 });

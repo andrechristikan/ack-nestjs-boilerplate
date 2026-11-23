@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createCaslExtension } from '@casl/prisma/runtime';
 import { PrismaClient } from '@generated/prisma-client/client';
 import type {
     IDatabaseClient,
@@ -35,6 +36,8 @@ export class DatabaseClientFactory extends PrismaClient<
     create(): IDatabaseClient {
         const extension = this.databaseExtensionFactory.build();
 
-        return this.$extends(extension);
+        const extended = this.$extends(extension);
+
+        return extended.$extends(createCaslExtension());
     }
 }

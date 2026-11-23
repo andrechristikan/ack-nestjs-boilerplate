@@ -34,22 +34,28 @@ model ApiKey {
 }
 
 model Role {
-  id          String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  name        String
-  description String?
-  type        EnumRoleType @default(user)
-  isImmutable Boolean      @default(false)
+  id             String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  scope          EnumRoleScope
+  key            String
+  name           String
+  description    String?
+  policyRevision Int           @default(0)
+  isImmutable    Boolean       @default(false)
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
   updatedAt DateTime @updatedAt
   updatedBy String?  @db.Uuid
 
-  policies Policy[] @relation("RolePolicy")
-  users    User[]   @relation("UserRole")
+  policies                        Policy[]          @relation("RolePolicy")
+  users                           User[]            @relation("UserRole")
+  workspaceMembers                WorkspaceMember[] @relation("WorkspaceMemberRole")
+  projectMembers                  ProjectMember[]   @relation("ProjectMemberRole")
+  workspaceInvitesAsWorkspaceRole WorkspaceInvite[] @relation("WorkspaceInviteWorkspaceRole")
+  workspaceInvitesAsProjectRole   WorkspaceInvite[] @relation("WorkspaceInviteProjectRole")
 
-  @@unique(fields: [name])
-  @@index(fields: [type, createdAt(sort: Desc), id(sort: Desc)])
+  @@unique(fields: [scope, key])
+  @@index(fields: [scope, createdAt(sort: Desc), id(sort: Desc)])
   @@map("roles")
 }
 
@@ -59,6 +65,10 @@ model Policy {
   subject EnumPolicySubject
   action  EnumPolicyAction[]
 
+  conditions Json?
+  inverted   Boolean @default(false)
+  reason     String?
+
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
   updatedAt DateTime @updatedAt
@@ -66,7 +76,7 @@ model Policy {
 
   role Role @relation("RolePolicy", fields: [roleId], references: [id], onDelete: Cascade)
 
-  @@unique(fields: [roleId, subject])
+  @@index(fields: [roleId, subject])
   @@map("policies")
 }
 
@@ -735,14 +745,15 @@ model Workspace {
 }
 
 model WorkspaceMember {
-  id          String                  @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  workspaceId String                  @db.Uuid
-  userId      String                  @db.Uuid
-  role        EnumWorkspaceMemberRole
-  joinedAt    DateTime                @default(now())
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  workspaceId String   @db.Uuid
+  userId      String   @db.Uuid
+  roleId      String   @db.Uuid
+  joinedAt    DateTime @default(now())
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation("UserWorkspaceMembers", fields: [userId], references: [id], onDelete: Cascade)
+  role      Role      @relation("WorkspaceMemberRole", fields: [roleId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
@@ -750,8 +761,8 @@ model WorkspaceMember {
   updatedBy String?  @db.Uuid
 
   @@unique(fields: [workspaceId, userId])
-  @@index(fields: [userId, role])
-  @@index(fields: [workspaceId, role, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [userId, roleId])
+  @@index(fields: [workspaceId, roleId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [workspaceId, joinedAt, id])
   @@map("workspace_members")
@@ -761,9 +772,9 @@ model WorkspaceInvite {
   id               String                    @id @default(dbgenerated("uuidv7()")) @db.Uuid
   workspaceId      String                    @db.Uuid
   email            String
-  workspaceRole    EnumWorkspaceMemberRole
+  workspaceRoleId  String                    @db.Uuid
   projectId        String?                   @db.Uuid
-  projectRole      EnumProjectMemberRole?
+  projectRoleId    String?                   @db.Uuid
   token            String
   reference        String
   expiredAt        DateTime
@@ -773,10 +784,12 @@ model WorkspaceInvite {
   acceptedByUserId String?                   @db.Uuid
   nonce            String
 
-  workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  project    Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  invitedBy  User      @relation("WorkspaceInviteInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
-  acceptedBy User?     @relation("WorkspaceInviteAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project       Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workspaceRole Role      @relation("WorkspaceInviteWorkspaceRole", fields: [workspaceRoleId], references: [id], onDelete: Cascade)
+  projectRole   Role?     @relation("WorkspaceInviteProjectRole", fields: [projectRoleId], references: [id], onDelete: SetNull)
+  invitedBy     User      @relation("WorkspaceInviteInvitedBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  acceptedBy    User?     @relation("WorkspaceInviteAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
@@ -848,14 +861,15 @@ model Project {
 }
 
 model ProjectMember {
-  id        String                @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  projectId String                @db.Uuid
-  userId    String                @db.Uuid
-  role      EnumProjectMemberRole
-  joinedAt  DateTime              @default(now())
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  projectId String   @db.Uuid
+  userId    String   @db.Uuid
+  roleId    String   @db.Uuid
+  joinedAt  DateTime @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User    @relation("UserProjectMembers", fields: [userId], references: [id], onDelete: Cascade)
+  role    Role    @relation("ProjectMemberRole", fields: [roleId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   createdBy String?  @db.Uuid
@@ -864,7 +878,7 @@ model ProjectMember {
 
   @@unique(fields: [projectId, userId])
   @@index(fields: [userId])
-  @@index(fields: [projectId, role, createdAt(sort: Desc), id(sort: Desc)])
+  @@index(fields: [projectId, roleId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [projectId, createdAt(sort: Desc), id(sort: Desc)])
   @@index(fields: [projectId, joinedAt, id])
   @@map("project_members")
@@ -937,10 +951,10 @@ enum EnumUserLoginWith {
   passkey
 }
 
-enum EnumRoleType {
-  superAdmin
-  admin
-  user
+enum EnumRoleScope {
+  platform
+  workspace
+  project
 }
 
 enum EnumPolicyAction {
@@ -953,18 +967,24 @@ enum EnumPolicyAction {
 
 enum EnumPolicySubject {
   all
-  apiKey
-  role
-  user
-  session
-  activityLog
-  passwordHistory
-  termPolicy
-  featureFlag
-  device
-  workspace
-  project
-  analytic
+  ApiKey
+  Role
+  User
+  Session
+  ActivityLog
+  PasswordHistory
+  TermPolicy
+  FeatureFlag
+  Device
+  DeviceOwnership
+  Workspace
+  WorkspaceMember
+  WorkspaceInvite
+  WorkspaceJoinRequest
+  Project
+  ProjectMember
+  Analytic
+  WorkspaceAnalytic
 }
 
 enum EnumApiKeyType {
@@ -1182,12 +1202,6 @@ enum EnumMfaChallengePurpose {
   resetPassword
 }
 
-enum EnumWorkspaceMemberRole {
-  owner
-  admin
-  member
-}
-
 enum EnumWorkspaceInviteStatus {
   pending
   accepted
@@ -1211,12 +1225,6 @@ enum EnumWorkspaceJoinRejectReason {
   wrongWorkspace
   memberLimitReached
   other
-}
-
-enum EnumProjectMemberRole {
-  admin
-  member
-  viewer
 }
 
 enum EnumOutboxStatus {
