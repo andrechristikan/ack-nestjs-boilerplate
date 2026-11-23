@@ -14,7 +14,7 @@ import type {
 } from '@modules/api-key/interfaces/api-key.interface';
 import type { IApiKeyRepository } from '@modules/api-key/interfaces/api-key.repository.interface';
 import { Injectable } from '@nestjs/common';
-import type { ApiKey } from '@generated/prisma-client/client';
+import type { ApiKey, Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class ApiKeyRepository implements IApiKeyRepository {
@@ -26,16 +26,18 @@ export class ApiKeyRepository implements IApiKeyRepository {
     async findWithPagination(
         { where, ...params }: IPaginationQueryOffsetParams,
         isActive: Record<string, IPaginationEqual> | null,
-        type: Record<string, IPaginationIn> | null
+        type: Record<string, IPaginationIn> | null,
+        additionalWhere: Prisma.ApiKeyWhereInput | null
     ): Promise<IResponsePaginationReturn<IApiKey>> {
         return this.paginationService.offset(
             this.databaseService.client.apiKey,
             {
                 ...params,
                 where: {
-                    ...where,
-                    ...isActive,
-                    ...type,
+                    AND: [
+                        additionalWhere ?? {},
+                        { ...where, ...isActive, ...type },
+                    ],
                 },
                 select: ApiKeySelect,
             }
@@ -66,11 +68,12 @@ export class ApiKeyRepository implements IApiKeyRepository {
 
     async findOneByIdInTx(
         tx: IDatabaseTransactionClient,
-        id: string
+        id: string,
+        additionalWhere: Prisma.ApiKeyWhereInput | null
     ): Promise<IApiKey | null> {
-        return tx.apiKey.findUnique({
+        return tx.apiKey.findFirst({
             where: {
-                id,
+                AND: [additionalWhere ?? {}, { id }],
             },
             select: ApiKeySelect,
         });
@@ -95,7 +98,7 @@ export class ApiKeyRepository implements IApiKeyRepository {
             return null;
         }
 
-        return this.findOneByIdInTx(tx, id);
+        return this.findOneByIdInTx(tx, id, null);
     }
 
     async updateNameInTx(
@@ -134,7 +137,7 @@ export class ApiKeyRepository implements IApiKeyRepository {
             return null;
         }
 
-        return this.findOneByIdInTx(tx, id);
+        return this.findOneByIdInTx(tx, id, null);
     }
 
     async updateHashInTx(
@@ -155,7 +158,7 @@ export class ApiKeyRepository implements IApiKeyRepository {
             return null;
         }
 
-        return this.findOneByIdInTx(tx, id);
+        return this.findOneByIdInTx(tx, id, null);
     }
 
     async deleteInTx(

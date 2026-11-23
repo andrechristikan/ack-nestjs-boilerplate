@@ -1,3 +1,9 @@
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -16,6 +22,7 @@ export class SessionRevokeAllByAdminUseCase implements IAppUseCase<
         IApiKeyContext,
         IAuthJwtAccessContext,
         IUserContext,
+        IPolicyContext,
         string,
     ],
     IResponseReturn<void>
@@ -23,7 +30,8 @@ export class SessionRevokeAllByAdminUseCase implements IAppUseCase<
     constructor(
         private readonly sessionService: SessionService,
         private readonly roleService: RoleService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
@@ -31,15 +39,24 @@ export class SessionRevokeAllByAdminUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         userContext: IUserContext,
+        policyContext: IPolicyContext,
         userId: string
     ): Promise<IResponseReturn<void>> {
         this.sessionService.assertNotSelf(userId, authContext.userId);
 
         // Sequential by design: gate before the work it guards
-        const targetRole = await this.roleService.getOneByUserId(userId);
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.read,
+            EnumPolicySubject.User
+        );
+        const targetRole = await this.roleService.getOneByUserId(
+            userId,
+            additionalWhere
+        );
         this.roleService.assertActorOutranks(
-            userContext.user.role.type,
-            targetRole.type
+            userContext.user.role.key,
+            targetRole
         );
 
         const revokedAt = this.helperDateService.create();

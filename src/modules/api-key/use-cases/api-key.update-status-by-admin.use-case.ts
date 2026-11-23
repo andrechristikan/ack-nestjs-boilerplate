@@ -1,3 +1,9 @@
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
@@ -26,6 +32,7 @@ export class ApiKeyUpdateStatusByAdminUseCase implements IAppUseCase<
         IRequestContext,
         IApiKeyContext,
         IAuthJwtAccessContext,
+        IPolicyContext,
         string,
         ApiKeyUpdateStatusRequestDto,
     ],
@@ -37,16 +44,23 @@ export class ApiKeyUpdateStatusByAdminUseCase implements IAppUseCase<
         private readonly activityLogService: ActivityLogService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
+        policyContext: IPolicyContext,
         id: string,
         { isActive }: ApiKeyUpdateStatusRequestDto
     ): Promise<IResponseReturn<IApiKey>> {
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.update,
+            EnumPolicySubject.ApiKey
+        );
         try {
             const updated = await this.outboxService.withTransaction(
                 async tx => {
@@ -54,7 +68,8 @@ export class ApiKeyUpdateStatusByAdminUseCase implements IAppUseCase<
                         await this.apiKeyService.updateStatusByAdminInTx(
                             tx,
                             id,
-                            isActive
+                            isActive,
+                            additionalWhere
                         );
 
                     const timestamp = this.helperDateService.create();

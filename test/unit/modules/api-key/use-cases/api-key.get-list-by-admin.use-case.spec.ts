@@ -1,3 +1,12 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -22,8 +31,13 @@ import type { ApiKeyListRequestDto } from '@modules/api-key/dtos/request/api-key
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import type { IApiKey } from '@modules/api-key/interfaces/api-key.interface';
 import { ApiKeyGetListByAdminUseCase } from '@modules/api-key/use-cases/api-key.get-list-by-admin.use-case';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('ApiKeyGetListByAdminUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'ApiKey'> = { id: 'scoped-1' };
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
@@ -57,6 +71,7 @@ describe('ApiKeyGetListByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
         paginationQueryUtil.offset.mockReturnValue({
             params: pagination,
             storePatch: {},
@@ -64,6 +79,10 @@ describe('ApiKeyGetListByAdminUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 ApiKeyGetListByAdminUseCase,
                 { provide: ApiKeyService, useValue: apiKeyService },
                 {
@@ -126,7 +145,7 @@ describe('ApiKeyGetListByAdminUseCase', () => {
             };
             apiKeyService.getListByAdmin.mockResolvedValue(page);
 
-            const result = await useCase.execute(query);
+            const result = await useCase.execute(policyContext, query);
 
             expect(result).toEqual(page);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
@@ -151,10 +170,16 @@ describe('ApiKeyGetListByAdminUseCase', () => {
                     },
                 }
             );
+            expect(policyAbilityService.scope).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.read,
+                EnumPolicySubject.ApiKey
+            );
             expect(apiKeyService.getListByAdmin).toHaveBeenCalledWith(
                 pagination,
                 isActiveFilter.where,
-                typeFilter.where
+                typeFilter.where,
+                scoped
             );
         });
 
@@ -174,7 +199,7 @@ describe('ApiKeyGetListByAdminUseCase', () => {
             };
             apiKeyService.getListByAdmin.mockResolvedValue(emptyPage);
 
-            await useCase.execute(query);
+            await useCase.execute(policyContext, query);
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
@@ -182,8 +207,9 @@ describe('ApiKeyGetListByAdminUseCase', () => {
             );
             expect(apiKeyService.getListByAdmin).toHaveBeenCalledWith(
                 pagination,
-                undefined,
-                undefined
+                null,
+                null,
+                scoped
             );
         });
     });

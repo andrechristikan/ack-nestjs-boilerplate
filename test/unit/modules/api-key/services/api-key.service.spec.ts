@@ -133,13 +133,21 @@ describe('ApiKeyService', () => {
             };
             apiKeyRepository.findWithPagination.mockResolvedValue(page);
 
-            const result = await service.getListByAdmin(pagination);
+            const result = await service.getListByAdmin(
+                pagination,
+                null,
+                null,
+                {
+                    id: 'scoped',
+                }
+            );
 
             expect(result).toBe(page);
             expect(apiKeyRepository.findWithPagination).toHaveBeenCalledWith(
                 pagination,
                 null,
-                null
+                null,
+                { id: 'scoped' }
             );
         });
 
@@ -166,14 +174,16 @@ describe('ApiKeyService', () => {
             const result = await service.getListByAdmin(
                 pagination,
                 isActive,
-                type
+                type,
+                null
             );
 
             expect(result).toBe(page);
             expect(apiKeyRepository.findWithPagination).toHaveBeenCalledWith(
                 pagination,
                 isActive,
-                type
+                type,
+                null
             );
         });
     });
@@ -280,7 +290,7 @@ describe('ApiKeyService', () => {
             apiKeyRepository.findOneByIdInTx.mockResolvedValue(null);
 
             await expect(
-                service.updateStatusByAdminInTx(tx, 'missing', true)
+                service.updateStatusByAdminInTx(tx, 'missing', true, null)
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
@@ -302,7 +312,7 @@ describe('ApiKeyService', () => {
             apiKeyRepository.findOneByIdInTx.mockResolvedValue(expiredApiKey);
 
             await expect(
-                service.updateStatusByAdminInTx(tx, apiKey.id, true)
+                service.updateStatusByAdminInTx(tx, apiKey.id, true, null)
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.expired,
@@ -323,7 +333,8 @@ describe('ApiKeyService', () => {
             const result = await service.updateStatusByAdminInTx(
                 tx,
                 apiKey.id,
-                false
+                false,
+                null
             );
 
             expect(result).toBe(updated);
@@ -345,7 +356,7 @@ describe('ApiKeyService', () => {
             apiKeyRepository.updateStatusInTx.mockResolvedValue(null);
 
             await expect(
-                service.updateStatusByAdminInTx(tx, apiKey.id, false)
+                service.updateStatusByAdminInTx(tx, apiKey.id, false, null)
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
@@ -361,11 +372,26 @@ describe('ApiKeyService', () => {
     });
 
     describe('updateByAdminInTx', () => {
+        it('reads the key through the scope before the write', async () => {
+            apiKeyRepository.findOneByIdInTx.mockResolvedValue(null);
+
+            await expect(
+                service.updateByAdminInTx(tx, 'key-1', 'Name', {
+                    id: 'scoped',
+                })
+            ).rejects.toMatchObject({ module: 'apiKey' });
+            expect(apiKeyRepository.findOneByIdInTx).toHaveBeenCalledWith(
+                tx,
+                'key-1',
+                { id: 'scoped' }
+            );
+        });
+
         it('throws ApiKeyNotFoundException when the api key does not exist', async () => {
             apiKeyRepository.findOneByIdInTx.mockResolvedValue(null);
 
             await expect(
-                service.updateByAdminInTx(tx, 'missing', 'New Name')
+                service.updateByAdminInTx(tx, 'missing', 'New Name', null)
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
@@ -385,7 +411,7 @@ describe('ApiKeyService', () => {
             });
 
             await expect(
-                service.updateByAdminInTx(tx, apiKey.id, 'New Name')
+                service.updateByAdminInTx(tx, apiKey.id, 'New Name', null)
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.inactive,
@@ -406,7 +432,8 @@ describe('ApiKeyService', () => {
             const result = await service.updateByAdminInTx(
                 tx,
                 apiKey.id,
-                'New Name'
+                'New Name',
+                null
             );
 
             expect(result).toBe(renamed);
@@ -470,7 +497,8 @@ describe('ApiKeyService', () => {
                 tx,
                 apiKey.id,
                 yesterday,
-                nextYear
+                nextYear,
+                null
             );
 
             expect(result).toBe(updated);
@@ -499,7 +527,8 @@ describe('ApiKeyService', () => {
                     tx,
                     apiKey.id,
                     startAt,
-                    new Date('2025-01-01T00:00:00.000Z')
+                    new Date('2025-01-01T00:00:00.000Z'),
+                    null
                 )
             ).rejects.toMatchObject({
                 module: 'apiKey',
@@ -523,6 +552,7 @@ describe('ApiKeyService', () => {
                 tx,
                 apiKey.id,
                 null,
+                null,
                 null
             );
 
@@ -539,7 +569,13 @@ describe('ApiKeyService', () => {
             apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
             apiKeyRepository.updateDatesInTx.mockResolvedValue(apiKey);
 
-            await service.updateDatesByAdminInTx(tx, apiKey.id, startAt, null);
+            await service.updateDatesByAdminInTx(
+                tx,
+                apiKey.id,
+                startAt,
+                null,
+                null
+            );
 
             expect(apiKeyRepository.updateDatesInTx).toHaveBeenCalledWith(
                 tx,
@@ -553,7 +589,13 @@ describe('ApiKeyService', () => {
             apiKeyRepository.findOneByIdInTx.mockResolvedValue(null);
 
             await expect(
-                service.updateDatesByAdminInTx(tx, 'missing', startAt, endAt)
+                service.updateDatesByAdminInTx(
+                    tx,
+                    'missing',
+                    startAt,
+                    endAt,
+                    null
+                )
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
@@ -573,7 +615,13 @@ describe('ApiKeyService', () => {
             });
 
             await expect(
-                service.updateDatesByAdminInTx(tx, apiKey.id, startAt, endAt)
+                service.updateDatesByAdminInTx(
+                    tx,
+                    apiKey.id,
+                    startAt,
+                    endAt,
+                    null
+                )
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.inactive,
@@ -599,7 +647,8 @@ describe('ApiKeyService', () => {
                 tx,
                 apiKey.id,
                 startAt,
-                endAt
+                endAt,
+                null
             );
 
             expect(result).toBe(updated);
@@ -621,7 +670,13 @@ describe('ApiKeyService', () => {
             apiKeyRepository.updateDatesInTx.mockResolvedValue(null);
 
             await expect(
-                service.updateDatesByAdminInTx(tx, apiKey.id, startAt, endAt)
+                service.updateDatesByAdminInTx(
+                    tx,
+                    apiKey.id,
+                    startAt,
+                    endAt,
+                    null
+                )
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.inactive,
@@ -641,7 +696,7 @@ describe('ApiKeyService', () => {
             apiKeyRepository.findOneByIdInTx.mockResolvedValue(null);
 
             await expect(
-                service.resetByAdminInTx(tx, 'missing')
+                service.resetByAdminInTx(tx, 'missing', null)
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
@@ -661,7 +716,7 @@ describe('ApiKeyService', () => {
             });
 
             await expect(
-                service.resetByAdminInTx(tx, apiKey.id)
+                service.resetByAdminInTx(tx, apiKey.id, null)
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.inactive,
@@ -681,7 +736,7 @@ describe('ApiKeyService', () => {
             const updated: ApiKey = { ...apiKey, hash: 'new-hash' };
             apiKeyRepository.updateHashInTx.mockResolvedValue(updated);
 
-            const result = await service.resetByAdminInTx(tx, apiKey.id);
+            const result = await service.resetByAdminInTx(tx, apiKey.id, null);
 
             expect(result).toEqual({ apiKey: updated, secret: 'new-secret' });
             expect(apiKeyCredentialUtil.createHash).toHaveBeenCalledWith(
@@ -707,7 +762,7 @@ describe('ApiKeyService', () => {
             apiKeyRepository.updateHashInTx.mockResolvedValue(null);
 
             await expect(
-                service.resetByAdminInTx(tx, apiKey.id)
+                service.resetByAdminInTx(tx, apiKey.id, null)
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.inactive,
@@ -727,7 +782,7 @@ describe('ApiKeyService', () => {
             apiKeyRepository.findOneByIdInTx.mockResolvedValue(null);
 
             await expect(
-                service.deleteByAdminInTx(tx, 'missing')
+                service.deleteByAdminInTx(tx, 'missing', null)
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,
@@ -744,7 +799,7 @@ describe('ApiKeyService', () => {
             apiKeyRepository.findOneByIdInTx.mockResolvedValue(apiKey);
             apiKeyRepository.deleteInTx.mockResolvedValue(true);
 
-            const result = await service.deleteByAdminInTx(tx, apiKey.id);
+            const result = await service.deleteByAdminInTx(tx, apiKey.id, null);
 
             expect(result).toBe(apiKey);
             expect(apiKeyRepository.deleteInTx).toHaveBeenCalledWith(
@@ -763,7 +818,7 @@ describe('ApiKeyService', () => {
             apiKeyRepository.deleteInTx.mockResolvedValue(false);
 
             await expect(
-                service.deleteByAdminInTx(tx, apiKey.id)
+                service.deleteByAdminInTx(tx, apiKey.id, null)
             ).rejects.toMatchObject({
                 module: 'apiKey',
                 statusCode: EnumApiKeyStatusCodeError.notFound,

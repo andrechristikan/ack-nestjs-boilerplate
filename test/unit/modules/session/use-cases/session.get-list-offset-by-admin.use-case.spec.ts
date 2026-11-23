@@ -1,3 +1,13 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import { RoleService } from '@modules/role/services/role.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -15,8 +25,14 @@ import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/s
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionGetListOffsetByAdminUseCase } from '@modules/session/use-cases/session.get-list-offset-by-admin.use-case';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('SessionGetListOffsetByAdminUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'User'> = { id: 'scoped-1' };
+    const roleService: MockProxy<RoleService> = mock<RoleService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
@@ -28,8 +44,14 @@ describe('SessionGetListOffsetByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
+                { provide: RoleService, useValue: roleService },
                 SessionGetListOffsetByAdminUseCase,
                 { provide: SessionService, useValue: sessionService },
                 {
@@ -74,7 +96,21 @@ describe('SessionGetListOffsetByAdminUseCase', () => {
                 paginationResult
             );
 
-            const result = await useCase.execute('user-1', query);
+            const result = await useCase.execute(
+                policyContext,
+                'user-1',
+                query
+            );
+
+            expect(policyAbilityService.scope).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.read,
+                EnumPolicySubject.User
+            );
+            expect(roleService.getOneByUserId).toHaveBeenCalledWith(
+                'user-1',
+                scoped
+            );
 
             expect(result).toEqual({
                 data: [],
@@ -127,7 +163,7 @@ describe('SessionGetListOffsetByAdminUseCase', () => {
                 data: [],
             });
 
-            await useCase.execute('user-1', query);
+            await useCase.execute(policyContext, 'user-1', query);
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

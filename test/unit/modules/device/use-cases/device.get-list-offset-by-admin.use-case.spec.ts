@@ -1,3 +1,13 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import { RoleService } from '@modules/role/services/role.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -13,8 +23,14 @@ import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/dev
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { DeviceDefaultAvailableOrderBy } from '@modules/device/constants/device.list.constant';
 import { DeviceGetListOffsetByAdminUseCase } from '@modules/device/use-cases/device.get-list-offset-by-admin.use-case';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('DeviceGetListOffsetByAdminUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'User'> = { id: 'scoped-1' };
+    const roleService: MockProxy<RoleService> = mock<RoleService>();
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
         mock<PaginationQueryUtil>();
@@ -74,9 +90,15 @@ describe('DeviceGetListOffsetByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
+                { provide: RoleService, useValue: roleService },
                 DeviceGetListOffsetByAdminUseCase,
                 { provide: DeviceService, useValue: deviceService },
                 {
@@ -116,7 +138,26 @@ describe('DeviceGetListOffsetByAdminUseCase', () => {
                 data: [deviceOwnership],
             });
 
-            const result = await useCase.execute('user-1', query);
+            const result = await useCase.execute(
+                policyContext,
+                'user-1',
+                query
+            );
+
+            expect(policyAbilityService.scope).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.read,
+                EnumPolicySubject.User
+            );
+            expect(policyAbilityService.scope).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.read,
+                EnumPolicySubject.DeviceOwnership
+            );
+            expect(roleService.getOneByUserId).toHaveBeenCalledWith(
+                'user-1',
+                scoped
+            );
 
             expect(result.data).toEqual([
                 {
@@ -139,7 +180,8 @@ describe('DeviceGetListOffsetByAdminUseCase', () => {
             expect(deviceService.getListOffsetByAdmin).toHaveBeenCalledWith(
                 'user-1',
                 params,
-                { isRevoked: { equals: true } }
+                { isRevoked: { equals: true } },
+                scoped
             );
         });
 
@@ -158,7 +200,7 @@ describe('DeviceGetListOffsetByAdminUseCase', () => {
                 data: [],
             });
 
-            await useCase.execute('user-1', query);
+            await useCase.execute(policyContext, 'user-1', query);
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
@@ -167,7 +209,8 @@ describe('DeviceGetListOffsetByAdminUseCase', () => {
             expect(deviceService.getListOffsetByAdmin).toHaveBeenCalledWith(
                 'user-1',
                 params,
-                undefined
+                null,
+                scoped
             );
         });
     });

@@ -26,7 +26,6 @@ import type { FeatureFlagTargetUserRequestDto } from '@modules/feature-flag/dtos
 import { FeatureFlagAddTargetUserByAdminUseCase } from '@modules/feature-flag/use-cases/feature-flag.add-target-user-by-admin.use-case';
 import { FeatureFlagRemoveTargetUserByAdminUseCase } from '@modules/feature-flag/use-cases/feature-flag.remove-target-user-by-admin.use-case';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import {
@@ -43,7 +42,6 @@ import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 import type { FeatureFlag } from '@generated/prisma-client/client';
 
@@ -67,10 +65,9 @@ export class FeatureFlagAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.featureFlag,
+        subject: EnumPolicySubject.FeatureFlag,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -89,10 +86,9 @@ export class FeatureFlagAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.featureFlag,
+        subject: EnumPolicySubject.FeatureFlag,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -116,10 +112,9 @@ export class FeatureFlagAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.featureFlag,
+        subject: EnumPolicySubject.FeatureFlag,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -143,10 +138,9 @@ export class FeatureFlagAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.featureFlag,
+        subject: EnumPolicySubject.FeatureFlag,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -170,10 +164,9 @@ export class FeatureFlagAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.featureFlag,
+        subject: EnumPolicySubject.FeatureFlag,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()

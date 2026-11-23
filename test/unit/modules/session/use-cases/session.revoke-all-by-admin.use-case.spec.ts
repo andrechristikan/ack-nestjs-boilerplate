@@ -1,12 +1,18 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumRoleType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -24,8 +30,13 @@ import type { ISessionRef } from '@modules/session/interfaces/session.interface'
 import { UserNotSelfException } from '@modules/user/exceptions/user.not-self.exception';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { SessionRevokeAllByAdminUseCase } from '@modules/session/use-cases/session.revoke-all-by-admin.use-case';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('SessionRevokeAllByAdminUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'User'> = { id: 'scoped-1' };
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const helperDateService: MockProxy<HelperDateService> =
@@ -34,13 +45,19 @@ describe('SessionRevokeAllByAdminUseCase', () => {
     const userRole: IRole = {
         id: 'role-user',
         name: 'user',
-        type: EnumRoleType.user,
+        scope: EnumRoleScope.platform,
+        key: EnumRolePlatformKey.user,
+        policyRevision: 0,
+        description: null,
         isImmutable: false,
     };
     const superAdminRole: IRole = {
         id: 'role-root',
         name: 'superadmin',
-        type: EnumRoleType.superAdmin,
+        scope: EnumRoleScope.platform,
+        key: EnumRolePlatformKey.superAdmin,
+        policyRevision: 0,
+        description: null,
         isImmutable: false,
     };
     const admin: IUser = {
@@ -77,15 +94,10 @@ describe('SessionRevokeAllByAdminUseCase', () => {
         deletedBy: null,
         role: {
             id: 'role-admin',
+            scope: EnumRoleScope.platform,
+            key: 'admin',
             name: 'admin',
-            description: null,
-            type: EnumRoleType.admin,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
     const requestContext = buildRequestContext();
@@ -96,8 +108,13 @@ describe('SessionRevokeAllByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 SessionRevokeAllByAdminUseCase,
                 { provide: SessionService, useValue: sessionService },
                 { provide: RoleService, useValue: roleService },
@@ -119,6 +136,7 @@ describe('SessionRevokeAllByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 userContext,
+                policyContext,
                 'admin-1'
             );
 
@@ -139,13 +157,17 @@ describe('SessionRevokeAllByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 userContext,
+                policyContext,
                 'root-1'
             );
 
             await expect(rejection).rejects.toBe(rankForbidden);
             expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.superAdmin
+                EnumRolePlatformKey.admin,
+                expect.objectContaining({
+                    scope: EnumRoleScope.platform,
+                    key: EnumRolePlatformKey.superAdmin,
+                })
             );
             expect(sessionService.revokeAllByAdmin).not.toHaveBeenCalled();
         });
@@ -164,6 +186,7 @@ describe('SessionRevokeAllByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 userContext,
+                policyContext,
                 'user-1'
             );
 
@@ -173,8 +196,11 @@ describe('SessionRevokeAllByAdminUseCase', () => {
                 'admin-1'
             );
             expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.user
+                EnumRolePlatformKey.admin,
+                expect.objectContaining({
+                    scope: EnumRoleScope.platform,
+                    key: EnumRolePlatformKey.user,
+                })
             );
             expect(sessionService.revokeAllByAdmin).toHaveBeenCalledWith(
                 requestContext,
@@ -196,6 +222,7 @@ describe('SessionRevokeAllByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 userContext,
+                policyContext,
                 'user-1'
             );
 

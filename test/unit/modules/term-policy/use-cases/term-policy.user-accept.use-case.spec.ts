@@ -3,12 +3,12 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumRoleType,
     EnumTermPolicyType,
     EnumUserGender,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import {
     buildRequestContext,
@@ -58,15 +58,10 @@ describe('TermPolicyUserAcceptUseCase', () => {
         deletedBy: null,
         role: {
             id: 'role-1',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'User',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: timestamp,
-            createdBy: null,
-            updatedAt: timestamp,
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
     const requestContext = buildRequestContext();

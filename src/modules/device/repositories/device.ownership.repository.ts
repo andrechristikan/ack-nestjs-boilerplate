@@ -138,13 +138,15 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         deviceOwnershipId: string,
         removedBy: string,
         now: Date,
-        idleSince: Date
+        idleSince: Date,
+        additionalWhere: Prisma.DeviceOwnershipWhereInput | null
     ): Promise<IDeviceOwnership | null> {
         const { count } = await tx.deviceOwnership.updateMany({
             where: {
-                id: deviceOwnershipId,
-                userId,
-                isRevoked: false,
+                AND: [
+                    additionalWhere ?? {},
+                    { id: deviceOwnershipId, userId, isRevoked: false },
+                ],
             },
             data: {
                 isRevoked: true,
@@ -192,7 +194,8 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         userId: string,
         { where, ...others }: IPaginationQueryOffsetParams,
         isRevoked: Record<string, IPaginationEqual> | null,
-        idleSince: Date
+        idleSince: Date,
+        additionalWhere: Prisma.DeviceOwnershipWhereInput | null
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
         const today = this.helperDateService.create();
         const ownershipInclude = this.ownershipInclude(today, idleSince);
@@ -202,9 +205,10 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
             {
                 ...others,
                 where: {
-                    ...where,
-                    ...isRevoked,
-                    userId,
+                    AND: [
+                        additionalWhere ?? {},
+                        { ...where, ...isRevoked, userId },
+                    ],
                 },
                 include: ownershipInclude,
             }

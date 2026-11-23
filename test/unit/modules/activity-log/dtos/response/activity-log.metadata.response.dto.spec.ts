@@ -17,7 +17,7 @@ describe('ActivityLogMetadataResponseSchema', () => {
         apiKeyType: 'default',
         roleId: 'role-1',
         roleName: 'admin',
-        roleType: 'admin',
+        roleKey: 'admin',
         termPolicyId: 'term-policy-1',
         termPolicyType: 'termsOfService',
         termPolicyVersion: 1,

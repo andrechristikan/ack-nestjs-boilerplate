@@ -5,7 +5,7 @@ describe('ActivityLogRoleMetadataSchema', () => {
     const payload = {
         roleId: 'role-1',
         roleName: 'admin',
-        roleType: 'admin',
+        roleKey: 'admin',
         timestamp,
     };
 

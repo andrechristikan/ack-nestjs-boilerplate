@@ -4,7 +4,7 @@ import {
     EnumApiKeyType,
     EnumNotificationChannel,
     EnumNotificationType,
-    EnumRoleType,
+    EnumRoleScope,
     EnumTermPolicyType,
 } from '@generated/prisma-client/client';
 
@@ -79,9 +79,13 @@ export const ActivityLogMetadataResponseSchema = z.object({
         description: 'Name of the affected role',
         example: 'admin',
     }),
-    roleType: z.string().optional().meta({
-        description: 'Type of the affected role',
-        example: EnumRoleType.admin,
+    roleKey: z.string().optional().meta({
+        description: 'Key of the affected role',
+        example: 'admin',
+    }),
+    roleScope: z.string().optional().meta({
+        description: 'Scope of the affected role',
+        example: EnumRoleScope.platform,
     }),
     termPolicyId: z.string().optional().meta({
         description: 'Identifier of the affected term policy',

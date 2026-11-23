@@ -1,3 +1,9 @@
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
@@ -19,7 +25,13 @@ import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interf
 
 @Injectable()
 export class ApiKeyResetByAdminUseCase implements IAppUseCase<
-    [IRequestContext, IApiKeyContext, IAuthJwtAccessContext, string],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IPolicyContext,
+        string,
+    ],
     IResponseReturn<ApiKeyCreateResponseDto>
 > {
     constructor(
@@ -28,21 +40,29 @@ export class ApiKeyResetByAdminUseCase implements IAppUseCase<
         private readonly activityLogService: ActivityLogService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
+        policyContext: IPolicyContext,
         id: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.update,
+            EnumPolicySubject.ApiKey
+        );
         try {
             const { apiKey, secret } = await this.outboxService.withTransaction(
                 async tx => {
                     const reset = await this.apiKeyService.resetByAdminInTx(
                         tx,
-                        id
+                        id,
+                        additionalWhere
                     );
 
                     const timestamp = this.helperDateService.create();

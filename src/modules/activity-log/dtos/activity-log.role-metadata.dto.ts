@@ -4,7 +4,8 @@ import { z } from 'zod';
 export const ActivityLogRoleMetadataSchema = z.strictObject({
     roleId: z.string().exactOptional(),
     roleName: z.string().exactOptional(),
-    roleType: z.string().exactOptional(),
+    roleKey: z.string().exactOptional(),
+    roleScope: z.string().exactOptional(),
     timestamp: z.union([z.string(), z.date()]).exactOptional(),
 });
 

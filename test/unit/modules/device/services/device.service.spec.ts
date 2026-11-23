@@ -137,7 +137,8 @@ describe('DeviceService', () => {
     });
 
     describe('getListOffsetByAdmin', () => {
-        it('delegates to the ownership repository with the revoked filter', async () => {
+        it('delegates to the ownership repository with the revoked filter and the scope predicate', async () => {
+            const additionalWhere = { userId: 'user-1' };
             const pagination = { skip: 0, limit: 20, orderBy: [] };
             const page = {
                 type: EnumPaginationType.offset as const,
@@ -157,7 +158,8 @@ describe('DeviceService', () => {
             const result = await service.getListOffsetByAdmin(
                 'user-1',
                 pagination,
-                { isRevoked: { equals: true } }
+                { isRevoked: { equals: true } },
+                additionalWhere
             );
 
             expect(result).toBe(page);
@@ -167,7 +169,8 @@ describe('DeviceService', () => {
                 'user-1',
                 pagination,
                 { isRevoked: { equals: true } },
-                idleSince
+                idleSince,
+                additionalWhere
             );
             expect(helperDateService.backward).toHaveBeenCalledWith(
                 now,
@@ -197,13 +200,15 @@ describe('DeviceService', () => {
 
             const result = await service.getListOffsetByAdmin(
                 'user-1',
-                pagination
+                pagination,
+                null,
+                null
             );
 
             expect(result).toBe(page);
             expect(
                 deviceOwnershipRepository.findWithPaginationOffsetByAdmin
-            ).toHaveBeenCalledWith('user-1', pagination, null, idleSince);
+            ).toHaveBeenCalledWith('user-1', pagination, null, idleSince, null);
         });
     });
 
@@ -929,12 +934,15 @@ describe('DeviceService', () => {
                 deviceOwnershipDetail
             );
 
+            const additionalWhere = { userId: 'user-1' };
+
             const result = await service.removeOwnershipInTx(
                 tx,
                 'user-1',
                 'device-ownership-1',
                 'admin-1',
-                now
+                now,
+                additionalWhere
             );
 
             expect(result).toBe(deviceOwnershipDetail);
@@ -946,7 +954,8 @@ describe('DeviceService', () => {
                 'device-ownership-1',
                 'admin-1',
                 now,
-                idleSince
+                idleSince,
+                additionalWhere
             );
             expect(helperDateService.backward).toHaveBeenCalledWith(
                 now,
@@ -965,7 +974,8 @@ describe('DeviceService', () => {
                     'user-1',
                     'device-ownership-1',
                     'admin-1',
-                    now
+                    now,
+                    null
                 )
             ).rejects.toMatchObject({
                 constructor: DeviceNotFoundException,

@@ -15,7 +15,7 @@ import type {
 } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { Session } from '@generated/prisma-client/client';
+import type { Prisma, Session } from '@generated/prisma-client/client';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type {
@@ -474,7 +474,8 @@ export class SessionService {
         userId: string,
         deviceOwnershipId: string,
         removedBy: string,
-        now: Date
+        now: Date,
+        additionalWhere: Prisma.DeviceOwnershipWhereInput | null
     ): Promise<IDeviceRemoveResult> {
         const revokedSessions = await this.revokeByDeviceOwnershipInTx(
             tx,
@@ -488,7 +489,8 @@ export class SessionService {
             userId,
             deviceOwnershipId,
             removedBy,
-            now
+            now,
+            additionalWhere
         );
 
         return { deviceOwnership, revokedSessions };
@@ -661,7 +663,8 @@ export class SessionService {
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         userId: string,
-        deviceOwnershipId: string
+        deviceOwnershipId: string,
+        additionalWhere: Prisma.DeviceOwnershipWhereInput | null
     ): Promise<void> {
         const removedBy = authContext.userId;
         const now = this.helperDateService.create();
@@ -674,7 +677,8 @@ export class SessionService {
                         userId,
                         deviceOwnershipId,
                         removedBy,
-                        now
+                        now,
+                        additionalWhere
                     );
 
                 const actorMetadata =

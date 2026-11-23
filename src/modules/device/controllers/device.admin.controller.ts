@@ -1,3 +1,4 @@
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
 import type { DeviceAdminListRequestDto } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import { DeviceAdminListRequestSchema } from '@modules/device/dtos/request/device.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -18,7 +19,6 @@ import type {
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 import {
     ApiKeyContext,
@@ -32,8 +32,10 @@ import { DeviceOwnershipResponseSchema } from '@modules/device/dtos/response/dev
 import type { IDeviceOwnershipDetail } from '@modules/device/interfaces/device.interface';
 import { DeviceGetListOffsetByAdminUseCase } from '@modules/device/use-cases/device.get-list-offset-by-admin.use-case';
 import { DeviceRemoveByAdminUseCase } from '@modules/device/use-cases/device.remove-by-admin.use-case';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import {
+    PolicyContext,
+    PolicyProtected,
+} from '@modules/policy/decorators/policy.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
     UserContext,
@@ -63,27 +65,31 @@ export class DeviceAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.device,
+            subject: EnumPolicySubject.Device,
             action: [EnumPolicyAction.read],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
     async list(
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @Query({ schema: DeviceAdminListRequestSchema })
         query: DeviceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
-        return this.deviceGetListOffsetByAdminUseCase.execute(userId, query);
+        return this.deviceGetListOffsetByAdminUseCase.execute(
+            policyContext,
+            userId,
+            query
+        );
     }
 
     @Doc({ summary: 'admin remove user Device' })
@@ -91,15 +97,14 @@ export class DeviceAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.device,
+            subject: EnumPolicySubject.Device,
             action: [EnumPolicyAction.read, EnumPolicyAction.delete],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -110,6 +115,7 @@ export class DeviceAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @Param('deviceOwnershipId', { schema: RequestUuidSchema })
@@ -120,6 +126,7 @@ export class DeviceAdminController {
             apiKeyContext,
             authContext,
             userContext,
+            policyContext,
             userId,
             deviceOwnershipId
         );

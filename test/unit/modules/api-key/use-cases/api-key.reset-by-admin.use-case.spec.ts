@@ -1,3 +1,12 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -31,8 +40,13 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('ApiKeyResetByAdminUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'ApiKey'> = { id: 'scoped-1' };
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
     const apiKeyUtil: MockProxy<ApiKeyUtil> = mock<ApiKeyUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
@@ -78,6 +92,7 @@ describe('ApiKeyResetByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
         helperDateService.create.mockReturnValue(now);
         apiKeyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
         activityLogService.recordEffect.mockReturnValue(effect);
@@ -87,6 +102,10 @@ describe('ApiKeyResetByAdminUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 ApiKeyResetByAdminUseCase,
                 { provide: ApiKeyService, useValue: apiKeyService },
                 { provide: ApiKeyUtil, useValue: apiKeyUtil },
@@ -114,13 +133,20 @@ describe('ApiKeyResetByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                policyContext,
                 apiKey.id
             );
 
             expect(result).toEqual({ data: reset });
+            expect(policyAbilityService.scope).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.update,
+                EnumPolicySubject.ApiKey
+            );
             expect(apiKeyService.resetByAdminInTx).toHaveBeenCalledWith(
                 tx,
-                apiKey.id
+                apiKey.id,
+                scoped
             );
             expect(apiKeyUtil.mapCreate).toHaveBeenCalledWith(
                 apiKey,
@@ -139,6 +165,7 @@ describe('ApiKeyResetByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                policyContext,
                 apiKey.id
             );
 
@@ -168,6 +195,7 @@ describe('ApiKeyResetByAdminUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    policyContext,
                     apiKey.id
                 )
             ).rejects.toBe(failure);
@@ -187,6 +215,7 @@ describe('ApiKeyResetByAdminUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    policyContext,
                     apiKey.id
                 )
             ).rejects.toBeInstanceOf(ApiKeyInactiveException);
@@ -202,6 +231,7 @@ describe('ApiKeyResetByAdminUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    policyContext,
                     apiKey.id
                 )
             ).rejects.toMatchObject({

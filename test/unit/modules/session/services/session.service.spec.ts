@@ -1,3 +1,4 @@
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import type {
     IRequestLog,
     IRequestUserAgent,
@@ -34,7 +35,6 @@ import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import {
     EnumActivityLogAction,
     EnumDevicePlatform,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 import type { Session } from '@generated/prisma-client/client';
 import {
@@ -619,7 +619,7 @@ describe('SessionService', () => {
     describe('getRefreshedTokens', () => {
         const tokens: IAuthToken = {
             tokenType: 'Bearer',
-            roleType: EnumRoleType.user,
+            roleKey: EnumRolePlatformKey.user,
             expiresIn: 3600,
             accessToken: 'access-token',
             refreshToken: 'refresh-token',
@@ -1409,7 +1409,8 @@ describe('SessionService', () => {
             _count: { sessions: 2 },
         };
 
-        it('revokes the ownership sessions with their purge row, then removes the ownership, on the given tx', async () => {
+        it('revokes the ownership sessions with their purge row, then removes the ownership under the scope predicate, on the given tx', async () => {
+            const additionalWhere = { userId: 'user-1' };
             const calls: string[] = [];
             sessionRepository.revokeByDeviceOwnershipInTx.mockImplementation(
                 async () => {
@@ -1430,7 +1431,8 @@ describe('SessionService', () => {
                     'user-1',
                     'device-ownership-1',
                     'user-1',
-                    now
+                    now,
+                    additionalWhere
                 )
             ).resolves.toEqual({ deviceOwnership, revokedSessions });
 
@@ -1448,7 +1450,8 @@ describe('SessionService', () => {
                 'user-1',
                 'device-ownership-1',
                 'user-1',
-                now
+                now,
+                additionalWhere
             );
             expect(calls).toEqual(['revokeSessions', 'removeOwnership']);
             expect(outboxService.withTransaction).not.toHaveBeenCalled();
@@ -1473,7 +1476,8 @@ describe('SessionService', () => {
                     'user-1',
                     'device-ownership-1',
                     'user-1',
-                    now
+                    now,
+                    null
                 )
             ).resolves.toEqual({ deviceOwnership, revokedSessions: [] });
 
@@ -1482,6 +1486,7 @@ describe('SessionService', () => {
     });
 
     describe('removeDeviceOwnershipByAdmin', () => {
+        const additionalWhere = { userId: 'user-1' };
         const now = new Date('2026-01-05T00:00:00.000Z');
         const revokedSessions: ISessionRef[] = [{ id: 'session-1' }];
         const deviceOwnership: IDeviceOwnership = {
@@ -1553,7 +1558,8 @@ describe('SessionService', () => {
                 apiKeyContext,
                 authContext,
                 'user-1',
-                'device-ownership-1'
+                'device-ownership-1',
+                additionalWhere
             );
 
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
@@ -1571,7 +1577,8 @@ describe('SessionService', () => {
                 'user-1',
                 'device-ownership-1',
                 'admin-1',
-                now
+                now,
+                additionalWhere
             );
         });
 
@@ -1581,7 +1588,8 @@ describe('SessionService', () => {
                 apiKeyContext,
                 authContext,
                 'user-1',
-                'device-ownership-1'
+                'device-ownership-1',
+                additionalWhere
             );
 
             expect(deviceUtil.mapActivityLogActorMetadata).toHaveBeenCalledWith(
@@ -1633,7 +1641,8 @@ describe('SessionService', () => {
                 apiKeyContext,
                 authContext,
                 'admin-1',
-                'device-ownership-1'
+                'device-ownership-1',
+                additionalWhere
             );
 
             expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
@@ -1653,7 +1662,8 @@ describe('SessionService', () => {
                     apiKeyContext,
                     authContext,
                     'user-1',
-                    'device-ownership-1'
+                    'device-ownership-1',
+                    additionalWhere
                 )
             ).rejects.toMatchObject({
                 statusCode: EnumDeviceStatusCodeError.notFound,
@@ -1674,7 +1684,8 @@ describe('SessionService', () => {
                     apiKeyContext,
                     authContext,
                     'user-1',
-                    'device-ownership-1'
+                    'device-ownership-1',
+                    additionalWhere
                 )
             ).rejects.toBe(notFound);
         });
@@ -1690,7 +1701,8 @@ describe('SessionService', () => {
                     apiKeyContext,
                     authContext,
                     'user-1',
-                    'device-ownership-1'
+                    'device-ownership-1',
+                    additionalWhere
                 )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,

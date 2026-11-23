@@ -234,7 +234,8 @@ describe('DeviceRemoveUseCase', () => {
                 'user-1',
                 'device-ownership-1',
                 'user-1',
-                now
+                now,
+                null
             );
             expect(deviceUtil.mapActivityLogMetadata).toHaveBeenCalledWith(
                 deviceOwnership,

@@ -1,3 +1,9 @@
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -24,6 +30,7 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
         IApiKeyContext,
         IAuthJwtAccessContext,
         IUserContext,
+        IPolicyContext,
         string,
     ],
     IResponseReturn<void>
@@ -37,7 +44,8 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
         private readonly activityLogService: ActivityLogService,
         private readonly userUtil: UserUtil,
         private readonly outboxService: OutboxService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
@@ -45,15 +53,24 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         userContext: IUserContext,
+        policyContext: IPolicyContext,
         userId: string
     ): Promise<IResponseReturn<void>> {
         this.userService.assertNotSelf(userId, authContext.userId);
 
         // Sequential by design: gate before the work it guards; write must not run if an earlier step throws
-        const target = await this.userService.getOneWithRole(userId);
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.update,
+            EnumPolicySubject.User
+        );
+        const target = await this.userService.getOneWithRole(
+            userId,
+            additionalWhere
+        );
         this.roleService.assertActorOutranks(
-            userContext.user.role.type,
-            target.role.type
+            userContext.user.role.key,
+            target.role
         );
         this.userService.assertUnblocked(target);
 

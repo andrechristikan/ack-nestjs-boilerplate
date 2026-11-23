@@ -1,3 +1,4 @@
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     RequestContext,
@@ -10,7 +11,6 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 import {
     ApiKeyContext,
@@ -23,8 +23,10 @@ import {
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 import { MfaResetByAdminUseCase } from '@modules/mfa/use-cases/mfa.reset-by-admin.use-case';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import {
+    PolicyContext,
+    PolicyProtected,
+} from '@modules/policy/decorators/policy.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
     UserContext,
@@ -48,10 +50,9 @@ export class MfaAdminController {
     @Response('mfa.resetByAdmin')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -62,6 +63,7 @@ export class MfaAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponseReturn<void>> {
@@ -70,6 +72,7 @@ export class MfaAdminController {
             apiKeyContext,
             authContext,
             userContext,
+            policyContext,
             userId
         );
     }

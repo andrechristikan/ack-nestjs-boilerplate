@@ -1,3 +1,10 @@
+import { RoleService } from '@modules/role/services/role.service';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
 import { Prisma } from '@generated/prisma-client/client';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
@@ -13,20 +20,35 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class DeviceGetListOffsetByAdminUseCase implements IAppUseCase<
-    [string, DeviceAdminListRequestDto],
+    [IPolicyContext, string, DeviceAdminListRequestDto],
     IResponsePaginationReturn<IDeviceOwnershipDetail>
 > {
     constructor(
         private readonly deviceService: DeviceService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly paginationFilterUtil: PaginationFilterUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly roleService: RoleService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
+        policyContext: IPolicyContext,
         userId: string,
         query: DeviceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipDetail>> {
+        // Sequential by design: gate before the work it guards
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.read,
+            EnumPolicySubject.User
+        );
+        const ownershipWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.read,
+            EnumPolicySubject.DeviceOwnership
+        );
+        await this.roleService.getOneByUserId(userId, additionalWhere);
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
             availableOrderBy: DeviceDefaultAvailableOrderBy,
         });
@@ -46,7 +68,8 @@ export class DeviceGetListOffsetByAdminUseCase implements IAppUseCase<
             await this.deviceService.getListOffsetByAdmin(
                 userId,
                 params,
-                isRevoked?.where
+                isRevoked?.where ?? null,
+                ownershipWhere
             );
         const deviceOwnerships: IDeviceOwnershipDetail[] = data.map(
             deviceOwnership => ({

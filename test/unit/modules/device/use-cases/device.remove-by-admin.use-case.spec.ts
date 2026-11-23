@@ -1,12 +1,20 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import { EnumRolePlatformKey } from '@modules/role/enums/role.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumRoleType,
+    EnumPolicyAction,
+    EnumPolicySubject,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import {
     buildRequestContext,
@@ -21,8 +29,13 @@ import type { IRole } from '@modules/role/interfaces/role.interface';
 import { SessionService } from '@modules/session/services/session.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { DeviceRemoveByAdminUseCase } from '@modules/device/use-cases/device.remove-by-admin.use-case';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('DeviceRemoveByAdminUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'User'> = { id: 'scoped-1' };
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
     const admin: IUser = {
@@ -59,15 +72,10 @@ describe('DeviceRemoveByAdminUseCase', () => {
         deletedBy: null,
         role: {
             id: 'role-admin',
+            scope: EnumRoleScope.platform,
+            key: 'admin',
             name: 'admin',
-            description: null,
-            type: EnumRoleType.admin,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
     const requestContext = buildRequestContext();
@@ -77,16 +85,24 @@ describe('DeviceRemoveByAdminUseCase', () => {
     const userRole: IRole = {
         id: 'role-user',
         name: 'user',
-        type: EnumRoleType.user,
+        scope: EnumRoleScope.platform,
+        key: EnumRolePlatformKey.user,
+        policyRevision: 0,
+        description: null,
         isImmutable: false,
     };
     let useCase: DeviceRemoveByAdminUseCase;
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 DeviceRemoveByAdminUseCase,
                 { provide: SessionService, useValue: sessionService },
                 { provide: RoleService, useValue: roleService },
@@ -106,15 +122,22 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 userContext,
+                policyContext,
                 'user-1',
                 'device-ownership-1'
             );
 
             expect(result).toEqual({});
-            expect(roleService.getOneByUserId).toHaveBeenCalledWith('user-1');
+            expect(roleService.getOneByUserId).toHaveBeenCalledWith(
+                'user-1',
+                scoped
+            );
             expect(roleService.assertActorOutranks).toHaveBeenCalledWith(
-                EnumRoleType.admin,
-                EnumRoleType.user
+                EnumRolePlatformKey.admin,
+                expect.objectContaining({
+                    scope: EnumRoleScope.platform,
+                    key: EnumRolePlatformKey.user,
+                })
             );
             expect(
                 sessionService.removeDeviceOwnershipByAdmin
@@ -123,7 +146,13 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 apiKeyContext,
                 authContext,
                 'user-1',
-                'device-ownership-1'
+                'device-ownership-1',
+                scoped
+            );
+            expect(policyAbilityService.scope).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.delete,
+                EnumPolicySubject.DeviceOwnership
             );
         });
 
@@ -140,6 +169,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     userContext,
+                    policyContext,
                     'user-1',
                     'device-ownership-1'
                 )
@@ -150,7 +180,9 @@ describe('DeviceRemoveByAdminUseCase', () => {
             const rankForbidden = new RoleRankForbiddenException();
             roleService.getOneByUserId.mockResolvedValue({
                 ...userRole,
-                type: EnumRoleType.superAdmin,
+                scope: EnumRoleScope.platform,
+                key: EnumRolePlatformKey.superAdmin,
+                policyRevision: 0,
             });
             roleService.assertActorOutranks.mockImplementation(() => {
                 throw rankForbidden;
@@ -162,6 +194,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
                     apiKeyContext,
                     authContext,
                     userContext,
+                    policyContext,
                     'user-1',
                     'device-ownership-1'
                 )

@@ -95,7 +95,8 @@ export class DeviceRemoveUseCase implements IAppUseCase<
                         userId,
                         deviceOwnershipId,
                         userId,
-                        now
+                        now,
+                        null
                     );
 
                 const metadata = this.deviceUtil.mapActivityLogMetadata(

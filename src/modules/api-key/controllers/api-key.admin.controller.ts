@@ -1,3 +1,4 @@
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
 import type { ApiKeyListRequestDto } from '@modules/api-key/dtos/request/api-key.list.request.dto';
 import { ApiKeyListRequestSchema } from '@modules/api-key/dtos/request/api-key.list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -46,7 +47,10 @@ import {
     ApiKeyContext,
     ApiKeyProtected,
 } from '@modules/api-key/decorators/api-key.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import {
+    PolicyContext,
+    PolicyProtected,
+} from '@modules/policy/decorators/policy.decorator';
 import {
     AuthJwtAccessContext,
     AuthJwtAccessProtected,
@@ -54,14 +58,12 @@ import {
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 import type {
     IApiKey,
     IApiKeyContext,
 } from '@modules/api-key/interfaces/api-key.interface';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { ApiKeyUpdateStatusRequestSchema } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import type { ApiKeyUpdateStatusRequestDto } from '@modules/api-key/dtos/request/api-key.update-status.request.dto';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
@@ -90,29 +92,28 @@ export class ApiKeyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
     async list(
+        @PolicyContext() policyContext: IPolicyContext,
         @Query({ schema: ApiKeyListRequestSchema }) query: ApiKeyListRequestDto
     ): Promise<IResponsePaginationReturn<IApiKey>> {
-        return this.apiKeyGetListByAdminUseCase.execute(query);
+        return this.apiKeyGetListByAdminUseCase.execute(policyContext, query);
     }
 
     @Doc({ summary: 'create an api key' })
     @Response('apiKey.create', { schema: ApiKeyCreateResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -139,10 +140,9 @@ export class ApiKeyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -152,6 +152,7 @@ export class ApiKeyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<ApiKeyCreateResponseDto>> {
@@ -159,6 +160,7 @@ export class ApiKeyAdminController {
             requestContext,
             apiKeyContext,
             authContext,
+            policyContext,
             apiKeyId
         );
     }
@@ -169,10 +171,9 @@ export class ApiKeyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -182,6 +183,7 @@ export class ApiKeyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateRequestSchema })
@@ -191,6 +193,7 @@ export class ApiKeyAdminController {
             requestContext,
             apiKeyContext,
             authContext,
+            policyContext,
             apiKeyId,
             body
         );
@@ -202,10 +205,9 @@ export class ApiKeyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -215,6 +217,7 @@ export class ApiKeyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateDateRequestSchema })
@@ -224,6 +227,7 @@ export class ApiKeyAdminController {
             requestContext,
             apiKeyContext,
             authContext,
+            policyContext,
             apiKeyId,
             body
         );
@@ -235,10 +239,9 @@ export class ApiKeyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -248,6 +251,7 @@ export class ApiKeyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string,
         @Body({ schema: ApiKeyUpdateStatusRequestSchema })
@@ -257,6 +261,7 @@ export class ApiKeyAdminController {
             requestContext,
             apiKeyContext,
             authContext,
+            policyContext,
             apiKeyId,
             body
         );
@@ -268,10 +273,9 @@ export class ApiKeyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.apiKey,
+        subject: EnumPolicySubject.ApiKey,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -281,6 +285,7 @@ export class ApiKeyAdminController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('apiKeyId', { schema: RequestUuidSchema })
         apiKeyId: string
     ): Promise<IResponseReturn<IApiKey>> {
@@ -288,6 +293,7 @@ export class ApiKeyAdminController {
             requestContext,
             apiKeyContext,
             authContext,
+            policyContext,
             apiKeyId
         );
     }

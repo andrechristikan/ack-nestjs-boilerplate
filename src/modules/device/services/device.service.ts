@@ -16,6 +16,7 @@ import {
     EnumDeviceNotificationProvider,
     EnumDevicePlatform,
 } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
@@ -75,7 +76,8 @@ export class DeviceService {
     async getListOffsetByAdmin(
         userId: string,
         pagination: IPaginationQueryOffsetParams,
-        isRevoked?: Record<string, IPaginationEqual>
+        isRevoked: Record<string, IPaginationEqual> | null,
+        additionalWhere: Prisma.DeviceOwnershipWhereInput | null
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
         const now = this.helperDateService.create();
         const idleSince = this.helperDateService.backward(
@@ -86,8 +88,9 @@ export class DeviceService {
         return this.deviceOwnershipRepository.findWithPaginationOffsetByAdmin(
             userId,
             pagination,
-            isRevoked ?? null,
-            idleSince
+            isRevoked,
+            idleSince,
+            additionalWhere
         );
     }
 
@@ -274,7 +277,8 @@ export class DeviceService {
         userId: string,
         deviceOwnershipId: string,
         removedBy: string,
-        now: Date
+        now: Date,
+        additionalWhere: Prisma.DeviceOwnershipWhereInput | null
     ): Promise<IDeviceOwnership> {
         const idleSince = this.helperDateService.backward(
             now,
@@ -287,7 +291,8 @@ export class DeviceService {
                 deviceOwnershipId,
                 removedBy,
                 now,
-                idleSince
+                idleSince,
+                additionalWhere
             );
         if (deviceOwnership === null) {
             throw new DeviceNotFoundException();

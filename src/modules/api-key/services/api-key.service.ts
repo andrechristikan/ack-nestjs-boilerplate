@@ -11,7 +11,7 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
-import type { ApiKey } from '@generated/prisma-client/client';
+import type { ApiKey, Prisma } from '@generated/prisma-client/client';
 import { ApiKeyCacheSchema } from '@modules/api-key/constants/api-key.constant';
 import { ApiKeyEndAtNotFutureException } from '@modules/api-key/exceptions/api-key.end-at-not-future.exception';
 import { ApiKeyExpiredException } from '@modules/api-key/exceptions/api-key.expired.exception';
@@ -148,13 +148,15 @@ export class ApiKeyService {
 
     async getListByAdmin(
         pagination: IPaginationQueryOffsetParams,
-        isActive?: Record<string, IPaginationEqual>,
-        type?: Record<string, IPaginationIn>
+        isActive: Record<string, IPaginationEqual> | null,
+        type: Record<string, IPaginationIn> | null,
+        additionalWhere: Prisma.ApiKeyWhereInput | null
     ): Promise<IResponsePaginationReturn<IApiKey>> {
         return this.apiKeyRepository.findWithPagination(
             pagination,
-            isActive ?? null,
-            type ?? null
+            isActive,
+            type,
+            additionalWhere
         );
     }
 
@@ -198,10 +200,15 @@ export class ApiKeyService {
     async updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        isActive: boolean
+        isActive: boolean,
+        additionalWhere: Prisma.ApiKeyWhereInput | null
     ): Promise<IApiKey> {
         const today = this.helperDateService.create();
-        const apiKey = await this.apiKeyRepository.findOneByIdInTx(tx, id);
+        const apiKey = await this.apiKeyRepository.findOneByIdInTx(
+            tx,
+            id,
+            additionalWhere
+        );
         if (!apiKey) {
             throw new ApiKeyNotFoundException();
         }
@@ -229,10 +236,15 @@ export class ApiKeyService {
     async updateByAdminInTx(
         tx: IDatabaseTransactionClient,
         id: string,
-        name: string
+        name: string,
+        additionalWhere: Prisma.ApiKeyWhereInput | null
     ): Promise<IApiKey> {
         // Sequential by design: gate before the work it guards
-        const found = await this.apiKeyRepository.findOneByIdInTx(tx, id);
+        const found = await this.apiKeyRepository.findOneByIdInTx(
+            tx,
+            id,
+            additionalWhere
+        );
         const apiKey = this.getValidApiKey(found, true);
 
         const updated = await this.apiKeyRepository.updateNameInTx(
@@ -249,7 +261,8 @@ export class ApiKeyService {
         tx: IDatabaseTransactionClient,
         id: string,
         startAt: Date | null,
-        endAt: Date | null
+        endAt: Date | null,
+        additionalWhere: Prisma.ApiKeyWhereInput | null
     ): Promise<IApiKey> {
         let newStartAt: Date | null = null;
         let newEndAt: Date | null = null;
@@ -267,7 +280,11 @@ export class ApiKeyService {
         }
 
         // Sequential by design: gate before the work it guards
-        const found = await this.apiKeyRepository.findOneByIdInTx(tx, id);
+        const found = await this.apiKeyRepository.findOneByIdInTx(
+            tx,
+            id,
+            additionalWhere
+        );
         const apiKey = this.getValidApiKey(found, true);
 
         const updated = await this.apiKeyRepository.updateDatesInTx(
@@ -287,9 +304,14 @@ export class ApiKeyService {
 
     async resetByAdminInTx(
         tx: IDatabaseTransactionClient,
-        id: string
+        id: string,
+        additionalWhere: Prisma.ApiKeyWhereInput | null
     ): Promise<IApiKeyWithSecret> {
-        const found = await this.apiKeyRepository.findOneByIdInTx(tx, id);
+        const found = await this.apiKeyRepository.findOneByIdInTx(
+            tx,
+            id,
+            additionalWhere
+        );
         const apiKey = this.getValidApiKey(found, true);
 
         const secret: string = this.createSecret();
@@ -313,10 +335,15 @@ export class ApiKeyService {
 
     async deleteByAdminInTx(
         tx: IDatabaseTransactionClient,
-        id: string
+        id: string,
+        additionalWhere: Prisma.ApiKeyWhereInput | null
     ): Promise<IApiKey> {
         // Sequential by design: gate before the work it guards
-        const apiKey = await this.apiKeyRepository.findOneByIdInTx(tx, id);
+        const apiKey = await this.apiKeyRepository.findOneByIdInTx(
+            tx,
+            id,
+            additionalWhere
+        );
         if (!apiKey) {
             throw new ApiKeyNotFoundException();
         }

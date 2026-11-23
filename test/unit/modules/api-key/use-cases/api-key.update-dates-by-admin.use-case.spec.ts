@@ -1,3 +1,12 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -31,8 +40,13 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('ApiKeyUpdateDatesByAdminUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'ApiKey'> = { id: 'scoped-1' };
     const apiKeyService: MockProxy<ApiKeyService> = mock<ApiKeyService>();
     const apiKeyUtil: MockProxy<ApiKeyUtil> = mock<ApiKeyUtil>();
     const activityLogService: MockProxy<ActivityLogService> =
@@ -78,6 +92,7 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
         helperDateService.create.mockReturnValue(now);
         apiKeyUtil.mapActivityLogMetadata.mockReturnValue(metadata);
         activityLogService.recordEffect.mockReturnValue(effect);
@@ -87,6 +102,10 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 ApiKeyUpdateDatesByAdminUseCase,
                 { provide: ApiKeyService, useValue: apiKeyService },
                 { provide: ApiKeyUtil, useValue: apiKeyUtil },
@@ -112,6 +131,7 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                policyContext,
                 apiKey.id,
                 {
                     startAt,
@@ -120,11 +140,17 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
             );
 
             expect(result).toEqual({ data: updated });
+            expect(policyAbilityService.scope).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.update,
+                EnumPolicySubject.ApiKey
+            );
             expect(apiKeyService.updateDatesByAdminInTx).toHaveBeenCalledWith(
                 tx,
                 apiKey.id,
                 startAt,
-                endAt
+                endAt,
+                scoped
             );
         });
 
@@ -135,6 +161,7 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                policyContext,
                 apiKey.id,
                 { startAt, endAt }
             );
@@ -165,6 +192,7 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    policyContext,
                     apiKey.id,
                     { startAt, endAt }
                 )
@@ -185,6 +213,7 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    policyContext,
                     apiKey.id,
                     { startAt, endAt }
                 )
@@ -201,6 +230,7 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    policyContext,
                     apiKey.id,
                     { startAt, endAt }
                 )

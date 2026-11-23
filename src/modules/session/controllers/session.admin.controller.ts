@@ -1,3 +1,4 @@
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
 import type { SessionAdminListRequestDto } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import { SessionAdminListRequestSchema } from '@modules/session/dtos/request/session.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -23,8 +24,10 @@ import {
     AuthJwtAccessContext,
     AuthJwtAccessProtected,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import {
+    PolicyContext,
+    PolicyProtected,
+} from '@modules/policy/decorators/policy.decorator';
 import { SessionResponseSchema } from '@modules/session/dtos/response/session.response.dto';
 import type { ISessionList } from '@modules/session/interfaces/session.interface';
 import { SessionGetListOffsetByAdminUseCase } from '@modules/session/use-cases/session.get-list-offset-by-admin.use-case';
@@ -40,7 +43,6 @@ import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -63,27 +65,31 @@ export class SessionAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.session,
+            subject: EnumPolicySubject.Session,
             action: [EnumPolicyAction.read],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
     async list(
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @Query({ schema: SessionAdminListRequestSchema })
         query: SessionAdminListRequestDto
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        return this.sessionGetListOffsetByAdminUseCase.execute(userId, query);
+        return this.sessionGetListOffsetByAdminUseCase.execute(
+            policyContext,
+            userId,
+            query
+        );
     }
 
     @Doc({ summary: 'admin revoke user Session' })
@@ -91,15 +97,14 @@ export class SessionAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.session,
+            subject: EnumPolicySubject.Session,
             action: [EnumPolicyAction.read, EnumPolicyAction.delete],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -110,6 +115,7 @@ export class SessionAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('userId', { schema: RequestUuidSchema })
         userId: string,
         @Param('sessionId', { schema: RequestUuidSchema })
@@ -120,6 +126,7 @@ export class SessionAdminController {
             apiKeyContext,
             authContext,
             userContext,
+            policyContext,
             userId,
             sessionId
         );
@@ -130,15 +137,14 @@ export class SessionAdminController {
     @TermPolicyAcceptanceProtected()
     @PolicyProtected(
         {
-            subject: EnumPolicySubject.user,
+            subject: EnumPolicySubject.User,
             action: [EnumPolicyAction.read],
         },
         {
-            subject: EnumPolicySubject.session,
+            subject: EnumPolicySubject.Session,
             action: [EnumPolicyAction.read, EnumPolicyAction.delete],
         }
     )
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -149,6 +155,7 @@ export class SessionAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('userId', { schema: RequestUuidSchema })
         userId: string
     ): Promise<IResponseReturn<void>> {
@@ -157,6 +164,7 @@ export class SessionAdminController {
             apiKeyContext,
             authContext,
             userContext,
+            policyContext,
             userId
         );
     }

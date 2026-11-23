@@ -28,7 +28,6 @@ import {
     AuthJwtAccessProtected,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
 import type { TermPolicyContentPresignRequestDto } from '@modules/term-policy/dtos/request/term-policy.content-presign.request.dto';
@@ -67,7 +66,6 @@ import { ApiTags } from '@nestjs/swagger';
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -98,10 +96,9 @@ export class TermPolicyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -118,10 +115,9 @@ export class TermPolicyAdminController {
     @Response('termPolicy.create', { schema: TermPolicyResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -148,10 +144,9 @@ export class TermPolicyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -178,14 +173,13 @@ export class TermPolicyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [
             EnumPolicyAction.read,
             EnumPolicyAction.create,
             EnumPolicyAction.update,
         ],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -205,10 +199,9 @@ export class TermPolicyAdminController {
     @Response('termPolicy.updateContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -236,10 +229,9 @@ export class TermPolicyAdminController {
     @Response('termPolicy.addContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -267,10 +259,9 @@ export class TermPolicyAdminController {
     @Response('termPolicy.removeContent')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -300,10 +291,9 @@ export class TermPolicyAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -325,10 +315,9 @@ export class TermPolicyAdminController {
     @Response('termPolicy.publish')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -353,10 +342,9 @@ export class TermPolicyAdminController {
     @Response('termPolicy.resendEmail')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.termPolicy,
+        subject: EnumPolicySubject.TermPolicy,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
