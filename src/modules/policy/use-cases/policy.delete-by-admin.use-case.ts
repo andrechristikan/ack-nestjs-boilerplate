@@ -8,6 +8,13 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
+import { subject } from '@casl/ability';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyUtil } from '@modules/policy/utils/policy.util';
 import { RoleService } from '@modules/role/services/role.service';
@@ -24,6 +31,7 @@ export class PolicyDeleteByAdminUseCase implements IAppUseCase<
         IApiKeyContext,
         IAuthJwtAccessContext,
         IUserContext,
+        IPolicyContext,
         string,
         string,
     ],
@@ -31,6 +39,7 @@ export class PolicyDeleteByAdminUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly policyService: PolicyService,
+        private readonly policyAbilityService: PolicyAbilityService,
         private readonly roleService: RoleService,
         private readonly policyUtil: PolicyUtil,
         private readonly activityLogService: ActivityLogService,
@@ -43,14 +52,30 @@ export class PolicyDeleteByAdminUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         userContext: IUserContext,
+        policyContext: IPolicyContext,
         roleId: string,
         id: string
     ): Promise<IResponseReturn<void>> {
         // Sequential by design: gate before the work it guards
-        await this.roleService.assertWritableByActor(roleId, {
-            roleId: userContext.user.roleId,
-            roleType: userContext.user.role.type,
-        });
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.read,
+            EnumPolicySubject.Role
+        );
+        const role = await this.roleService.getWritableByActor(
+            roleId,
+            {
+                roleId: userContext.user.roleId,
+                roleKey: userContext.user.role.key,
+            },
+            additionalWhere
+        );
+        this.policyService.assertRoleWritable(role);
+        this.policyAbilityService.authorize(
+            policyContext,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.Role, role)
+        );
 
         try {
             await this.outboxService.withTransaction(async tx => {
@@ -73,8 +98,7 @@ export class PolicyDeleteByAdminUseCase implements IAppUseCase<
                     }
                 );
                 await this.outboxService.addInTx(tx, effect);
-                const roleEffect = this.roleService.invalidateEffect(roleId);
-                await this.outboxService.addInTx(tx, roleEffect);
+                await this.roleService.bumpPolicyRevisionInTx(tx, roleId);
             });
 
             return {};

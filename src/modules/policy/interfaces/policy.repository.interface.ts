@@ -1,10 +1,14 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { Policy } from '@generated/prisma-client/client';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
-import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
+import type {
+    IPolicyCreate,
+    IPolicyRule,
+    IPolicyUpdate,
+} from '@modules/policy/interfaces/policy.interface';
 
 export interface IPolicyRepository {
     findManyByRoleId(roleId: string): Promise<Policy[]>;
+    findManyRulesByRoleId(roleId: string): Promise<IPolicyRule[]>;
     findOneByRoleIdAndId(roleId: string, id: string): Promise<Policy | null>;
     findOneByRoleIdAndIdInTx(
         tx: IDatabaseTransactionClient,
@@ -14,13 +18,13 @@ export interface IPolicyRepository {
     createInTx(
         tx: IDatabaseTransactionClient,
         roleId: string,
-        data: PolicyRequestDto
+        data: IPolicyCreate
     ): Promise<Policy>;
     updateInTx(
         tx: IDatabaseTransactionClient,
         roleId: string,
         id: string,
-        data: PolicyUpdateRequestDto
+        data: IPolicyUpdate
     ): Promise<Policy | null>;
     deleteInTx(
         tx: IDatabaseTransactionClient,

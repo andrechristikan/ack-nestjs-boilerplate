@@ -16,35 +16,40 @@ import type {
 } from '@common/request/interfaces/request.interface';
 import {
     EnumApiKeyType,
-    EnumProjectMemberRole,
-    EnumRoleType,
+    EnumRoleScope,
     EnumUserGender,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
-    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type {
     ApiKey,
     Project,
-    ProjectMember,
     Workspace,
-    WorkspaceMember,
 } from '@generated/prisma-client/client';
+import { EnumRoleProjectKey } from '@modules/role/enums/role.enum';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
+import type { IRoleRef } from '@modules/role/interfaces/role.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type {
     IAuthJwtAccessContext,
     IAuthJwtRefreshContext,
     IAuthSocialContext,
 } from '@modules/auth/interfaces/auth.interface';
-import type { IProjectContext } from '@modules/project/interfaces/project.interface';
+import type {
+    IProjectContext,
+    IProjectMemberWithRole,
+} from '@modules/project/interfaces/project.interface';
 import type {
     IUser,
     IUserContext,
 } from '@modules/user/interfaces/user.interface';
-import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceContext,
+    IWorkspaceMemberWithRole,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
@@ -79,6 +84,14 @@ export function buildRequestLog(): IRequestLog {
 
 export function buildRequestContext(): IRequestContext {
     return { requestLog: buildRequestLog(), language: 'en' };
+}
+
+export function buildRoleRef(
+    scope: EnumRoleScope,
+    key: string,
+    id: string = `role-${scope}-${key}`
+): IRoleRef {
+    return { id, scope, key, name: key, policyRevision: 0 };
 }
 
 export function buildUser(id: string, email: string): IUser {
@@ -116,18 +129,7 @@ export function buildUser(id: string, email: string): IUser {
         updatedBy: null,
         deletedAt: null,
         deletedBy: null,
-        role: {
-            id: 'role-1',
-            name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: date,
-            createdBy: null,
-            updatedAt: date,
-            updatedBy: null,
-            policies: [],
-        },
+        role: buildRoleRef(EnumRoleScope.platform, 'user'),
     };
 }
 
@@ -151,9 +153,10 @@ export function buildWorkspace(): Workspace {
 
 export function buildWorkspaceMember(
     userId: string,
-    role: EnumWorkspaceMemberRole = EnumWorkspaceMemberRole.admin
-): WorkspaceMember {
+    roleKey: EnumRoleWorkspaceKey = EnumRoleWorkspaceKey.admin
+): IWorkspaceMemberWithRole {
     const date = new Date('2026-01-01T00:00:00.000Z');
+    const role = buildRoleRef(EnumRoleScope.workspace, roleKey);
 
     return {
         id: 'member-1',
@@ -163,6 +166,7 @@ export function buildWorkspaceMember(
         updatedBy: null,
         workspaceId: 'workspace-1',
         userId,
+        roleId: role.id,
         role,
         joinedAt: date,
     };
@@ -207,14 +211,16 @@ export function buildProject(): Project {
 
 export function buildProjectMember(
     userId: string,
-    role: EnumProjectMemberRole = EnumProjectMemberRole.member
-): ProjectMember {
+    roleKey: EnumRoleProjectKey = EnumRoleProjectKey.member
+): IProjectMemberWithRole {
     const date = new Date('2026-01-01T00:00:00.000Z');
+    const role = buildRoleRef(EnumRoleScope.project, roleKey);
 
     return {
         id: 'project-member-1',
         projectId: 'project-1',
         userId,
+        roleId: role.id,
         role,
         joinedAt: date,
         createdAt: date,
@@ -261,14 +267,14 @@ export function buildUserContext(user: IUser): IUserContext {
 
 export function buildWorkspaceContext(
     workspace: Workspace,
-    workspaceMember: WorkspaceMember
+    workspaceMember: IWorkspaceMemberWithRole
 ): IWorkspaceContext {
     return { workspaceId: workspace.id, workspace, workspaceMember };
 }
 
 export function buildProjectContext(
     project: Project,
-    projectMember: ProjectMember | null
+    projectMember: IProjectMemberWithRole | null
 ): IProjectContext {
     return { project, projectMember };
 }

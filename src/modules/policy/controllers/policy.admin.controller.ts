@@ -1,3 +1,4 @@
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
 import { Doc } from '@common/doc/decorators/doc.decorator';
 import {
     RequestContext,
@@ -10,7 +11,6 @@ import type { IResponseReturn } from '@common/response/interfaces/response.inter
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 import {
     ApiKeyContext,
@@ -20,20 +20,22 @@ import {
     AuthJwtAccessContext,
     AuthJwtAccessProtected,
 } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import {
+    PolicyContext,
+    PolicyProtected,
+} from '@modules/policy/decorators/policy.decorator';
 import { PolicySchema } from '@modules/policy/dtos/policy.dto';
 import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
-import { PolicyRequestSchema } from '@modules/policy/dtos/request/policy.request.dto';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
+import { PolicyCreateRequestSchema } from '@modules/policy/dtos/request/policy.create.request.dto';
+import type { PolicyCreateRequestDto } from '@modules/policy/dtos/request/policy.create.request.dto';
 import { PolicyUpdateRequestSchema } from '@modules/policy/dtos/request/policy.update.request.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
 import { PolicyListResponseSchema } from '@modules/policy/dtos/response/policy.list.response.dto';
 import type { PolicyListResponseDto } from '@modules/policy/dtos/response/policy.list.response.dto';
-import { PolicyListByRoleUseCase } from '@modules/policy/use-cases/policy.list-by-role.use-case';
+import { PolicyListByRoleByAdminUseCase } from '@modules/policy/use-cases/policy.list-by-role-by-admin.use-case';
 import { PolicyCreateByAdminUseCase } from '@modules/policy/use-cases/policy.create-by-admin.use-case';
 import { PolicyUpdateByAdminUseCase } from '@modules/policy/use-cases/policy.update-by-admin.use-case';
 import { PolicyDeleteByAdminUseCase } from '@modules/policy/use-cases/policy.delete-by-admin.use-case';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import {
     UserContext,
@@ -60,7 +62,7 @@ import type { IUserContext } from '@modules/user/interfaces/user.interface';
 })
 export class PolicyAdminController {
     constructor(
-        private readonly policyListByRoleUseCase: PolicyListByRoleUseCase,
+        private readonly policyListByRoleByAdminUseCase: PolicyListByRoleByAdminUseCase,
         private readonly policyCreateByAdminUseCase: PolicyCreateByAdminUseCase,
         private readonly policyUpdateByAdminUseCase: PolicyUpdateByAdminUseCase,
         private readonly policyDeleteByAdminUseCase: PolicyDeleteByAdminUseCase
@@ -70,30 +72,32 @@ export class PolicyAdminController {
     @Response('policy.listByRole', { schema: PolicyListResponseSchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.role,
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
     async list(
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('roleId', { schema: RequestUuidSchema })
         roleId: string
     ): Promise<IResponseReturn<PolicyListResponseDto>> {
-        return this.policyListByRoleUseCase.execute(roleId);
+        return this.policyListByRoleByAdminUseCase.execute(
+            policyContext,
+            roleId
+        );
     }
 
     @Doc({ summary: 'grant a policy to a role' })
     @Response('policy.create', { schema: PolicySchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.role,
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read, EnumPolicyAction.create],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -104,29 +108,30 @@ export class PolicyAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
-        @Body({ schema: PolicyRequestSchema })
-        body: PolicyRequestDto
+        @Body({ schema: PolicyCreateRequestSchema })
+        body: PolicyCreateRequestDto
     ): Promise<IResponseReturn<PolicyDto>> {
         return this.policyCreateByAdminUseCase.execute(
             requestContext,
             apiKeyContext,
             authContext,
             userContext,
+            policyContext,
             roleId,
             body
         );
     }
 
-    @Doc({ summary: 'update the action list of a role policy' })
+    @Doc({ summary: 'replace a role policy' })
     @Response('policy.update', { schema: PolicySchema })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.role,
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -137,6 +142,7 @@ export class PolicyAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
         @Param('policyId', { schema: RequestUuidSchema })
@@ -149,6 +155,7 @@ export class PolicyAdminController {
             apiKeyContext,
             authContext,
             userContext,
+            policyContext,
             roleId,
             policyId,
             body
@@ -159,10 +166,9 @@ export class PolicyAdminController {
     @Response('policy.delete')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.role,
+        subject: EnumPolicySubject.Role,
         action: [EnumPolicyAction.read, EnumPolicyAction.delete],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
@@ -173,6 +179,7 @@ export class PolicyAdminController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @UserContext() userContext: IUserContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('roleId', { schema: RequestUuidSchema })
         roleId: string,
         @Param('policyId', { schema: RequestUuidSchema })
@@ -183,6 +190,7 @@ export class PolicyAdminController {
             apiKeyContext,
             authContext,
             userContext,
+            policyContext,
             roleId,
             policyId
         );

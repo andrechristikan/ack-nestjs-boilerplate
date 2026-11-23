@@ -1,9 +1,14 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { Prisma } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
-import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
-import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
+import { PolicyRuleSelect } from '@modules/policy/constants/policy.constant';
 import type { IPolicyRepository } from '@modules/policy/interfaces/policy.repository.interface';
+import type {
+    IPolicyCreate,
+    IPolicyRule,
+    IPolicyUpdate,
+} from '@modules/policy/interfaces/policy.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -13,6 +18,15 @@ export class PolicyRepository implements IPolicyRepository {
     async findManyByRoleId(roleId: string): Promise<Policy[]> {
         return this.databaseService.client.policy.findMany({
             where: { roleId },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        });
+    }
+
+    async findManyRulesByRoleId(roleId: string): Promise<IPolicyRule[]> {
+        return this.databaseService.client.policy.findMany({
+            where: { roleId },
+            select: PolicyRuleSelect,
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         });
     }
 
@@ -38,10 +52,14 @@ export class PolicyRepository implements IPolicyRepository {
     async createInTx(
         tx: IDatabaseTransactionClient,
         roleId: string,
-        data: PolicyRequestDto
+        data: IPolicyCreate
     ): Promise<Policy> {
         return tx.policy.create({
-            data: { ...data, roleId },
+            data: {
+                ...data,
+                conditions: data.conditions ?? Prisma.DbNull,
+                roleId,
+            },
         });
     }
 
@@ -49,11 +67,14 @@ export class PolicyRepository implements IPolicyRepository {
         tx: IDatabaseTransactionClient,
         roleId: string,
         id: string,
-        data: PolicyUpdateRequestDto
+        data: IPolicyUpdate
     ): Promise<Policy | null> {
         const { count } = await tx.policy.updateMany({
             where: { id, roleId },
-            data,
+            data: {
+                ...data,
+                conditions: data.conditions ?? Prisma.DbNull,
+            },
         });
         if (count === 0) {
             return null;

@@ -11,14 +11,15 @@ describe('PolicySchema', () => {
         createdBy: 'user-1',
         updatedAt: new Date('2026-01-02T00:00:00.000Z'),
         updatedBy: 'user-1',
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.manage],
+        conditions: null,
+        inverted: false,
+        reason: null,
     };
 
     it('parses a row into exactly the declared fields', () => {
-        const result = PolicySchema.parse(row);
-
-        expect(result).toEqual(row);
+        expect(PolicySchema.parse(row)).toEqual(row);
     });
 
     it('strips deletedAt and deletedBy inherited from DatabaseResponseSchema', () => {
@@ -31,6 +32,23 @@ describe('PolicySchema', () => {
         expect(result).toEqual(row);
     });
 
+    it('keeps an object of conditions, the inversion flag, and the reason', () => {
+        const withRule = {
+            ...row,
+            conditions: { workspaceId: '${workspaceId}' },
+            inverted: true,
+            reason: 'Owners cannot be removed',
+        };
+
+        expect(PolicySchema.parse(withRule)).toEqual(withRule);
+    });
+
+    it('rejects conditions that are not an object', () => {
+        expect(() =>
+            PolicySchema.parse({ ...row, conditions: ['x'] })
+        ).toThrow();
+    });
+
     it('rejects an empty action list', () => {
         expect(() => PolicySchema.parse({ ...row, action: [] })).toThrow();
     });
@@ -38,17 +56,6 @@ describe('PolicySchema', () => {
     it('rejects a subject outside EnumPolicySubject', () => {
         expect(() =>
             PolicySchema.parse({ ...row, subject: 'unknownSubject' })
-        ).toThrow();
-    });
-
-    it('accepts one action per EnumPolicyAction and rejects more', () => {
-        const actions = Object.values(EnumPolicyAction);
-
-        expect(() =>
-            PolicySchema.parse({ ...row, action: actions })
-        ).not.toThrow();
-        expect(() =>
-            PolicySchema.parse({ ...row, action: [...actions, actions[0]] })
         ).toThrow();
     });
 });

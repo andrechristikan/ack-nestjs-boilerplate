@@ -2,7 +2,7 @@
 export enum EnumPolicyStatusCodeError {
     forbidden = 51100,
     notFound = 51101,
-    exist = 51102,
-    guardMissing = 51103,
-    roleTypeInvalid = 51104,
+    guardMissing = 51102,
+    immutable = 51103,
+    invalidRule = 51104,
 }

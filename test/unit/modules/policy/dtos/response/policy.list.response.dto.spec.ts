@@ -11,8 +11,11 @@ describe('PolicyListResponseSchema', () => {
         createdBy: 'user-1',
         updatedAt: new Date('2026-01-02T00:00:00.000Z'),
         updatedBy: 'user-1',
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.manage],
+        conditions: null,
+        inverted: false,
+        reason: null,
     };
     const row = { policies: [policy] };
 

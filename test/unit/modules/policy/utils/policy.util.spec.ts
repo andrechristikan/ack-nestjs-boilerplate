@@ -15,8 +15,11 @@ describe('PolicyUtil', () => {
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         updatedBy: null,
         roleId: 'role-1',
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.User,
         action: [EnumPolicyAction.read, EnumPolicyAction.update],
+        conditions: null,
+        inverted: false,
+        reason: null,
     };
 
     let util: PolicyUtil;
@@ -35,7 +38,7 @@ describe('PolicyUtil', () => {
 
             expect(result).toEqual({
                 roleId: 'role-1',
-                subject: EnumPolicySubject.user,
+                subject: EnumPolicySubject.User,
                 action: `${EnumPolicyAction.read},${EnumPolicyAction.update}`,
             });
         });

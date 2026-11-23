@@ -1,11 +1,13 @@
 import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
-import { PolicyAbilityFactory } from '@modules/policy/factories/policy.factory';
+import { PolicyCache } from '@modules/policy/caches/policy.cache';
+import { PolicyAbilityFactory } from '@modules/policy/factories/policy.ability.factory';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyUtil } from '@modules/policy/utils/policy.util';
 
-/** Shared module: PolicyService for the policy guard. */
+/** Shared module: PolicyService and PolicyAbilityService for the policy guards and use cases. */
 @Global()
 @Module({})
 export class PolicyModule {
@@ -16,10 +18,12 @@ export class PolicyModule {
             providers: [
                 PolicyRepository,
                 PolicyAbilityFactory,
+                PolicyAbilityService,
+                PolicyCache,
                 PolicyService,
                 PolicyUtil,
             ],
-            exports: [PolicyService, PolicyUtil],
+            exports: [PolicyService, PolicyAbilityService, PolicyUtil],
             imports: [],
         };
     }

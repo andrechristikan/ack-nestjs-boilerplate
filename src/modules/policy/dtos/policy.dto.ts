@@ -4,6 +4,7 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
 } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
 
 /** @public */
 export const PolicySchema = DatabaseResponseSchema.omit({
@@ -12,18 +13,39 @@ export const PolicySchema = DatabaseResponseSchema.omit({
 }).extend({
     subject: z.enum(EnumPolicySubject).meta({
         description: 'Policy subject',
-        example: EnumPolicySubject.user,
+        example: EnumPolicySubject.User,
     }),
     action: z
         .array(z.enum(EnumPolicyAction))
         .min(1)
-        .max(Object.values(EnumPolicyAction).length)
         .meta({
-            description:
-                'Policy action base on subject, at most one per policy action',
+            description: 'Policy action base on subject',
             default: [EnumPolicyAction.manage],
             example: [EnumPolicyAction.manage],
         }),
+    conditions: z
+        .custom<Prisma.JsonValue>(
+            value =>
+                value !== null &&
+                typeof value === 'object' &&
+                !Array.isArray(value)
+        )
+        .meta({
+            type: 'object',
+            description:
+                'Prisma where-input the rule applies to, null for the whole subject',
+            example: { workspaceId: '${workspaceId}' },
+        })
+        .nullable(),
+    inverted: z.boolean().meta({
+        description: 'Whether the rule denies instead of allows',
+        default: false,
+        example: false,
+    }),
+    reason: z.string().max(500).nullable().meta({
+        description: 'Why an inverted rule denies',
+        example: 'Owners cannot be removed',
+    }),
 });
 
 /** @public */
