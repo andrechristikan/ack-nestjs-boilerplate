@@ -1,5 +1,5 @@
 import { CacheService } from '@common/cache/services/cache.service';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -24,7 +24,7 @@ export class MigrationTemplateEmailNotificationSeed
     constructor(
         protected readonly cacheService: CacheService,
         private readonly notificationTemplateService: NotificationTemplateService,
-        private readonly awsSESService: AwsSESService
+        private readonly awsSesService: AwsSesService
     ) {
         super(cacheService);
     }
@@ -32,8 +32,8 @@ export class MigrationTemplateEmailNotificationSeed
     async seed(): Promise<void> {
         this.logger.log('Seeding Emails...');
 
-        const isSESInitialized = this.awsSESService.isInitialized();
-        if (!isSESInitialized) {
+        const isSesInitialized = this.awsSesService.isInitialized();
+        if (!isSesInitialized) {
             this.logger.warn(
                 'AWS SES is not configured. Skipping email template seed.'
             );

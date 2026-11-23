@@ -76,7 +76,7 @@ describe('UserVerifyEmailUseCase', () => {
         gender: null,
         countryId: 'country-1',
         lastLoginAt: null,
-        lastIPAddress: null,
+        lastIpAddress: null,
         lastLoginFrom: EnumUserLoginFrom.website,
         lastLoginWith: EnumUserLoginWith.credential,
         lastWorkspaceId: null,

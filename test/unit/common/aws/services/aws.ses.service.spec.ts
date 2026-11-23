@@ -1,9 +1,9 @@
 import { SESClient } from '@aws-sdk/client-ses';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import type {
-    IAwsSESSend,
-    IAwsSESSendBulk,
-    IAwsSESTemplate,
+    IAwsSesSend,
+    IAwsSesSendBulk,
+    IAwsSesTemplate,
 } from '@common/aws/interfaces/aws.ses.interface';
 import {
     createAwsSesService,
@@ -16,7 +16,7 @@ vi.mock('@aws-sdk/client-ses', async importOriginal => {
     return { ...actual, SESClient: vi.fn() };
 });
 
-describe('AwsSESService', () => {
+describe('AwsSesService', () => {
     const send = vi.fn();
 
     const configValues: Record<string, unknown> = {
@@ -210,7 +210,7 @@ describe('AwsSESService', () => {
     });
 
     describe('createTemplate', () => {
-        const template: IAwsSESTemplate = {
+        const template: IAwsSesTemplate = {
             name: 'welcome',
             subject: 'Welcome',
             htmlBody: '<p>Welcome</p>',
@@ -256,7 +256,7 @@ describe('AwsSESService', () => {
     });
 
     describe('updateTemplate', () => {
-        const template: IAwsSESTemplate = {
+        const template: IAwsSesTemplate = {
             name: 'welcome',
             subject: 'Welcome',
             htmlBody: '<p>Welcome</p>',
@@ -323,7 +323,7 @@ describe('AwsSESService', () => {
     });
 
     describe('send', () => {
-        const payload: IAwsSESSend = {
+        const payload: IAwsSesSend = {
             templateName: 'welcome',
             templateData: { name: 'Jane' },
             sender: 'noreply@example.com',
@@ -414,7 +414,7 @@ describe('AwsSESService', () => {
     });
 
     describe('sendBulk', () => {
-        const payload: IAwsSESSendBulk = {
+        const payload: IAwsSesSendBulk = {
             templateName: 'welcome',
             defaultTemplateData: { name: 'Team' },
             sender: 'noreply@example.com',

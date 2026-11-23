@@ -357,7 +357,7 @@ export class UserRepository implements IUserRepository {
                 name: null,
                 gender: null,
                 photo: null,
-                lastIPAddress: null,
+                lastIpAddress: null,
                 lastLoginAt: null,
                 lastLoginFrom: null,
                 lastLoginWith: null,
@@ -508,7 +508,7 @@ export class UserRepository implements IUserRepository {
             where: { id: userId, deletedAt: null },
             data: {
                 lastLoginAt: loginAt,
-                lastIPAddress: ipAddress,
+                lastIpAddress: ipAddress,
                 lastLoginFrom: loginFrom,
                 lastLoginWith: loginWith,
                 updatedBy: userId,

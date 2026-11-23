@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -20,7 +20,7 @@ import { buildSealedNotificationPayload } from '@test/unit/helpers/test.unit.not
 describe('NotificationEmailProcessSendUnregisteredUseCase', () => {
     const notificationEmailDeliveryService: MockProxy<NotificationEmailDeliveryService> =
         mock<NotificationEmailDeliveryService>();
-    const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
+    const awsSesService: MockProxy<AwsSesService> = mock<AwsSesService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     let useCase: NotificationEmailProcessSendUnregisteredUseCase;
 
@@ -45,7 +45,7 @@ describe('NotificationEmailProcessSendUnregisteredUseCase', () => {
 
     beforeEach(async () => {
         messageService.setMessage.mockImplementation((path: string) => path);
-        awsSESService.isInitialized.mockReturnValue(true);
+        awsSesService.isInitialized.mockReturnValue(true);
         const module = await Test.createTestingModule({
             providers: [
                 NotificationEmailProcessSendUnregisteredUseCase,
@@ -54,7 +54,7 @@ describe('NotificationEmailProcessSendUnregisteredUseCase', () => {
                     provide: NotificationEmailDeliveryService,
                     useValue: notificationEmailDeliveryService,
                 },
-                { provide: AwsSESService, useValue: awsSESService },
+                { provide: AwsSesService, useValue: awsSesService },
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
@@ -68,7 +68,7 @@ describe('NotificationEmailProcessSendUnregisteredUseCase', () => {
 
     describe('execute', () => {
         it('returns the sesNotInitialized message and sends nothing while SES is not initialized', async () => {
-            awsSESService.isInitialized.mockReturnValue(false);
+            awsSesService.isInitialized.mockReturnValue(false);
 
             const result = await useCase.execute(data);
 

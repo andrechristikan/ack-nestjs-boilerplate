@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { EnumHelperPemLabel } from '@common/helper/enums/helper.enum';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
-import { FirebasePrivateKeyPemMarker } from '@common/firebase/constants/firebase.constant';
+import {
+    FirebaseEscapedNewlineRegex,
+    FirebasePrivateKeyPemMarker,
+} from '@common/firebase/constants/firebase.constant';
 
 @Injectable()
 export class FirebaseUtil {
@@ -10,7 +13,10 @@ export class FirebaseUtil {
     ) {}
 
     normalizePrivateKey(rawKey: string | null): string | null {
-        const unescaped = (rawKey ?? '').replace(/\\n/g, '\n');
+        const unescaped = (rawKey ?? '').replace(
+            FirebaseEscapedNewlineRegex,
+            '\n'
+        );
 
         if (!unescaped.trim()) {
             return null;

@@ -70,7 +70,7 @@ describe('AuthSocialAppleGuard', () => {
                 emailVerified: true,
                 subject: 'subject-jane',
             };
-            authService.validateOAuthApple.mockResolvedValue(authContext);
+            authService.validateOauthApple.mockResolvedValue(authContext);
 
             const result = await guard.canActivate(
                 buildHttpExecutionContext(request)
@@ -81,7 +81,7 @@ describe('AuthSocialAppleGuard', () => {
                 AuthSocialContextStoreKey,
                 authContext
             );
-            expect(authService.validateOAuthApple).toHaveBeenCalledWith(
+            expect(authService.validateOauthApple).toHaveBeenCalledWith(
                 'id-token'
             );
         });

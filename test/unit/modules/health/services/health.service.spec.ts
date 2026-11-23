@@ -11,7 +11,7 @@ import type {
 } from '@nestjs/terminus';
 import { HealthAppleIndicator } from '@modules/health/indicators/health.apple.indicator';
 import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3-bucket.indicator';
-import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
+import { HealthAwsSesIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
 import { HealthDatabaseIndicator } from '@modules/health/indicators/health.database.indicator';
 import { HealthService } from '@modules/health/services/health.service';
 import { HealthFirebaseIndicator } from '@modules/health/indicators/health.firebase.indicator';
@@ -29,8 +29,8 @@ describe('HealthService', () => {
         mock<HealthInstanceIndicator>();
     const awsS3BucketIndicator: MockProxy<HealthAwsS3BucketIndicator> =
         mock<HealthAwsS3BucketIndicator>();
-    const awsSESIndicator: MockProxy<HealthAwsSESIndicator> =
-        mock<HealthAwsSESIndicator>();
+    const awsSesIndicator: MockProxy<HealthAwsSesIndicator> =
+        mock<HealthAwsSesIndicator>();
     const databaseIndicator: MockProxy<HealthDatabaseIndicator> =
         mock<HealthDatabaseIndicator>();
     const redisIndicator: MockProxy<HealthRedisIndicator> =
@@ -68,7 +68,7 @@ describe('HealthService', () => {
                     provide: HealthAwsS3BucketIndicator,
                     useValue: awsS3BucketIndicator,
                 },
-                { provide: HealthAwsSESIndicator, useValue: awsSESIndicator },
+                { provide: HealthAwsSesIndicator, useValue: awsSesIndicator },
                 {
                     provide: HealthDatabaseIndicator,
                     useValue: databaseIndicator,
@@ -102,7 +102,7 @@ describe('HealthService', () => {
             awsS3BucketIndicator.isHealthy.mockResolvedValue({
                 s3PublicBucket: { status: 'up' },
             });
-            awsSESIndicator.isHealthy.mockResolvedValue({
+            awsSesIndicator.isHealthy.mockResolvedValue({
                 ses: { status: 'up' },
             });
 
@@ -126,7 +126,7 @@ describe('HealthService', () => {
             );
 
             await checks[2]!();
-            expect(awsSESIndicator.isHealthy).toHaveBeenCalledWith('ses');
+            expect(awsSesIndicator.isHealthy).toHaveBeenCalledWith('ses');
         });
     });
 

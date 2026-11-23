@@ -1,8 +1,14 @@
+import {
+    RequestEmailDomainLabelRegex,
+    RequestEmailFormatRegex,
+    RequestEmailLocalPartRegex,
+    RequestEmailTldRegex,
+} from '@common/request/constants/request.constant';
 import { z } from 'zod';
 
 /** @public */
 export const RequestEmailSchema = z.string().superRefine((value, ctx) => {
-    if (!/\S+@\S+\.\S+/.test(value)) {
+    if (!RequestEmailFormatRegex.test(value)) {
         ctx.addIssue({
             code: 'custom',
             message: 'request.error.email.invalid',
@@ -71,7 +77,7 @@ export const RequestEmailSchema = z.string().superRefine((value, ctx) => {
             return;
         }
 
-        if (!/^[a-zA-Z0-9-]+$/.test(label)) {
+        if (!RequestEmailDomainLabelRegex.test(label)) {
             ctx.addIssue({
                 code: 'custom',
                 message: 'request.error.email.domainInvalidChars',
@@ -81,10 +87,10 @@ export const RequestEmailSchema = z.string().superRefine((value, ctx) => {
     }
 
     const tld = domainLabels[domainLabels.length - 1]!;
-    if (!/^[a-zA-Z]{2,}$/.test(tld)) {
+    if (!RequestEmailTldRegex.test(tld)) {
         ctx.addIssue({
             code: 'custom',
-            message: 'request.error.email.invalidTLD',
+            message: 'request.error.email.invalidTld',
         });
         return;
     }
@@ -113,7 +119,7 @@ export const RequestEmailSchema = z.string().superRefine((value, ctx) => {
         return;
     }
 
-    if (!/^[a-zA-Z0-9-_.]+$/.test(localPart)) {
+    if (!RequestEmailLocalPartRegex.test(localPart)) {
         ctx.addIssue({
             code: 'custom',
             message: 'request.error.email.invalidChars',

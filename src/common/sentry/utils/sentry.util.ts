@@ -1,3 +1,7 @@
+import {
+    SentryFormKeySeparatorRegex,
+    SentryRequestTargetRegex,
+} from '@common/sentry/constants/sentry.constant';
 import type { Breadcrumb, Event, Log, RequestEventData } from '@sentry/nestjs';
 import {
     LoggerRedactedValue,
@@ -25,7 +29,7 @@ export class SentryUtil {
         }
 
         const target = name.slice(separator + 1);
-        if (!/^(?:\/|https?:\/\/)/.test(target)) {
+        if (!SentryRequestTargetRegex.test(target)) {
             return name;
         }
 
@@ -40,7 +44,7 @@ export class SentryUtil {
 
     private isSensitiveFormKey(key: string): boolean {
         return key
-            .split(/[[\].]/)
+            .split(SentryFormKeySeparatorRegex)
             .some(segment => this.isSensitiveKey(segment));
     }
 

@@ -6,13 +6,13 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { TemplateDoesNotExistException } from '@aws-sdk/client-ses';
 import type { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type { INotificationTemplateName } from '@modules/notification/interfaces/notification.interface';
 import { NotificationTemplateService } from '@modules/notification/services/notification.template.service';
 
 describe('NotificationTemplateService', () => {
-    const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
+    const awsSesService: MockProxy<AwsSesService> = mock<AwsSesService>();
     const templateDir = join(
         import.meta.dirname,
         '../../../../../src/modules/notification/templates'
@@ -156,7 +156,7 @@ describe('NotificationTemplateService', () => {
         const module = await Test.createTestingModule({
             providers: [
                 NotificationTemplateService,
-                { provide: AwsSESService, useValue: awsSESService },
+                { provide: AwsSesService, useValue: awsSesService },
             ],
         }).compile();
         service = module.get(NotificationTemplateService);
@@ -166,14 +166,14 @@ describe('NotificationTemplateService', () => {
         it.each(templates)(
             'creates the $name template from $file',
             async ({ name, file, subject }) => {
-                awsSESService.createTemplate.mockResolvedValue({
+                awsSesService.createTemplate.mockResolvedValue({
                     $metadata: {},
                 });
 
                 await expect(
                     service.emailImport(name)
                 ).resolves.toBeUndefined();
-                expect(awsSESService.createTemplate).toHaveBeenCalledWith({
+                expect(awsSesService.createTemplate).toHaveBeenCalledWith({
                     name,
                     subject,
                     htmlBody: readFileSync(join(templateDir, file), 'utf8'),
@@ -183,7 +183,7 @@ describe('NotificationTemplateService', () => {
 
         it('throws an AppUnknownException naming the import when the create call rejects', async () => {
             const error = new Error('ses down');
-            awsSESService.createTemplate.mockRejectedValue(error);
+            awsSesService.createTemplate.mockRejectedValue(error);
 
             await expect(
                 service.emailImport(EnumNotificationKind.workspaceInvite)
@@ -201,18 +201,18 @@ describe('NotificationTemplateService', () => {
                 $metadata: {},
                 Template: { TemplateName: EnumNotificationKind.welcome },
             };
-            awsSESService.getTemplate.mockResolvedValue(template);
+            awsSesService.getTemplate.mockResolvedValue(template);
 
             const result = await service.getEmail(EnumNotificationKind.welcome);
 
             expect(result).toBe(template);
-            expect(awsSESService.getTemplate).toHaveBeenCalledWith({
+            expect(awsSesService.getTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationKind.welcome,
             });
         });
 
         it('returns null for the template-not-found answer', async () => {
-            awsSESService.getTemplate.mockRejectedValue(
+            awsSesService.getTemplate.mockRejectedValue(
                 new TemplateDoesNotExistException({
                     message: 'missing',
                     $metadata: {},
@@ -226,7 +226,7 @@ describe('NotificationTemplateService', () => {
 
         it('throws an AppUnknownException naming the get for any other error', async () => {
             const error = new Error('ses down');
-            awsSESService.getTemplate.mockRejectedValue(error);
+            awsSesService.getTemplate.mockRejectedValue(error);
 
             await expect(
                 service.getEmail(EnumNotificationKind.welcome)
@@ -240,19 +240,19 @@ describe('NotificationTemplateService', () => {
 
     describe('emailDelete', () => {
         it('deletes the template', async () => {
-            awsSESService.deleteTemplate.mockResolvedValue({ $metadata: {} });
+            awsSesService.deleteTemplate.mockResolvedValue({ $metadata: {} });
 
             await expect(
                 service.emailDelete(EnumNotificationKind.welcome)
             ).resolves.toBeUndefined();
-            expect(awsSESService.deleteTemplate).toHaveBeenCalledWith({
+            expect(awsSesService.deleteTemplate).toHaveBeenCalledWith({
                 name: EnumNotificationKind.welcome,
             });
         });
 
         it('throws an AppUnknownException naming the delete when the delete call rejects', async () => {
             const error = new Error('ses down');
-            awsSESService.deleteTemplate.mockRejectedValue(error);
+            awsSesService.deleteTemplate.mockRejectedValue(error);
 
             await expect(
                 service.emailDelete(EnumNotificationKind.welcome)
@@ -266,7 +266,7 @@ describe('NotificationTemplateService', () => {
         it.each(labels)(
             'names the lowercase words of %s in the failure',
             async (name, label) => {
-                awsSESService.deleteTemplate.mockRejectedValue(
+                awsSesService.deleteTemplate.mockRejectedValue(
                     new Error('ses down')
                 );
 

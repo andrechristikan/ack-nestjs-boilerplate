@@ -117,11 +117,11 @@ describe('HelperDateService', () => {
         });
     });
 
-    describe('formatToRFC2822', () => {
+    describe('formatToRfc2822', () => {
         it('formats the date as RFC2822 in the configured timezone', () => {
             const date = new Date('2026-01-01T00:00:00.000Z');
 
-            const result = service.formatToRFC2822(date);
+            const result = service.formatToRfc2822(date);
 
             expect(result).toBe(
                 DateTime.fromJSDate(date).setZone('Asia/Jakarta').toRFC2822()

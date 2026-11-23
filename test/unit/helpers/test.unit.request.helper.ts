@@ -104,7 +104,7 @@ export function buildUser(id: string, email: string): IUser {
         gender: EnumUserGender.male,
         countryId: 'country-1',
         lastLoginAt: null,
-        lastIPAddress: null,
+        lastIpAddress: null,
         lastLoginFrom: EnumUserLoginFrom.website,
         lastLoginWith: EnumUserLoginWith.credential,
         lastWorkspaceId: null,

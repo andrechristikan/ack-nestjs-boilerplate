@@ -18,8 +18,8 @@ The decorator nearest the method runs first. Keep this order, skipping what a ro
 @UserProtected()                       // 9.  User status
 @FeatureFlagProtected(...)             // 10. Feature flag; reads RequestActorStoreKey, so above JWT
 @RequestThrottleProtected({ user: true }) // 11. Per-user throttle guard; runs after JWT
-@AuthJWTAccessProtected()              // 12. JWT; a social login guard sits above 10, so the flag runs first
-@APIKeyProtected()                     // 13. API key; @APIKeySystemProtected() on every system route
+@AuthJwtAccessProtected()              // 12. JWT; a social login guard sits above 10, so the flag runs first
+@ApiKeyProtected()                     // 13. API key; @ApiKeySystemProtected() on every system route
 @FileUploadSingle() @RequestTimeout(RequestUploadTimeout) // 14. Upload routes: multipart interceptor, then timeout
 @HttpCode(HttpStatus.OK)               // 15. @Post only
 @Get('/endpoint')                      // 16. HTTP method, always last

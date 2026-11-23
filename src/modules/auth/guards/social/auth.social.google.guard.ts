@@ -30,7 +30,7 @@ export class AuthSocialGoogleGuard implements CanActivate {
         }
 
         const { email, emailVerified, subject } =
-            await this.authService.validateOAuthGoogle(requestHeaders[1]!);
+            await this.authService.validateOauthGoogle(requestHeaders[1]!);
         this.requestStoreService.set<IAuthSocialContext>(
             AuthSocialContextStoreKey,
             { email, emailVerified, subject }

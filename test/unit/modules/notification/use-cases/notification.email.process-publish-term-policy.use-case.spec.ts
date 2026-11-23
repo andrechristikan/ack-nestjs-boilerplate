@@ -7,7 +7,7 @@ import {
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { MessageService } from '@common/message/services/message.service';
@@ -31,7 +31,7 @@ describe('NotificationEmailProcessPublishTermPolicyUseCase', () => {
         mock<NotificationEmailDeliveryService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
+    const awsSesService: MockProxy<AwsSesService> = mock<AwsSesService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     let useCase: NotificationEmailProcessPublishTermPolicyUseCase;
@@ -80,7 +80,7 @@ describe('NotificationEmailProcessPublishTermPolicyUseCase', () => {
 
     beforeEach(async () => {
         messageService.setMessage.mockImplementation((path: string) => path);
-        awsSESService.isInitialized.mockReturnValue(true);
+        awsSesService.isInitialized.mockReturnValue(true);
         termPolicyRecipientService.claim.mockResolvedValue({
             claimNonce: 'claim-id',
             userIds: ['user-1', 'user-2'],
@@ -101,7 +101,7 @@ describe('NotificationEmailProcessPublishTermPolicyUseCase', () => {
                     useValue: notificationEmailDeliveryService,
                 },
                 { provide: NotificationService, useValue: notificationService },
-                { provide: AwsSESService, useValue: awsSESService },
+                { provide: AwsSesService, useValue: awsSesService },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: MessageService, useValue: messageService },
                 ...TestUnitKitProviders,
@@ -116,7 +116,7 @@ describe('NotificationEmailProcessPublishTermPolicyUseCase', () => {
 
     describe('execute', () => {
         it('returns the job message without claiming when SES is uninitialized', async () => {
-            awsSESService.isInitialized.mockReturnValue(false);
+            awsSesService.isInitialized.mockReturnValue(false);
 
             const result = await useCase.execute(payload);
 

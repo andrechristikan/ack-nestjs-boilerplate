@@ -18,7 +18,7 @@ An outbound HTTP call goes through `HttpClient` from `@nestjs/http-client`, neve
 - Elsewhere, `private readonly` by default; `protected readonly` for a value forwarded to `super(...)` or a member a subclass reads (`queue` on a `QueueBase` subclass, `options`, `storageService`, and `reflector` on `RequestThrottleDefaultGuard`, `configService` on the two JWT strategies).
 - Values forwarded to `super(...)` come first, in `super`'s order, then the injected collaborators.
 - A field assigned in the constructor is `private readonly`; one another class reads is a `readonly` field, never a parameter property (`DatabaseService.client`).
-- The one mutable field is a third-party client an `onModuleInit` adapter creates: `AWSS3Service.s3Client`, `AWSSESService.sesClient`, `FirebaseService.app`, `FirebaseService.messaging`; and the static `QueueWorkerBase.connection`, which `QueueWorkerFactory` sets.
+- The one mutable field is a third-party client an `onModuleInit` adapter creates: `AwsS3Service.s3Client`, `AwsSesService.sesClient`, `FirebaseService.app`, `FirebaseService.messaging`; and the static `QueueWorkerBase.connection`, which `QueueWorkerFactory` sets.
 
 ## Logger
 
@@ -28,7 +28,7 @@ An outbound HTTP call goes through `HttpClient` from `@nestjs/http-client`, neve
 
 - A `ConfigService.get<T>('namespace.key')` read names `T` and runs once, into a `private readonly` constructor field. A module `useFactory`, a queue options factory, a `super(...)` argument, `bootstrap.ts`, `configure.ts`, and `swagger.ts` read where they build.
 - A field or a local holding a config value takes its name from the path, and no other word:
-    - the last segment, whole (`cacheTtlInMs` for `auth.xAPIKey.cacheTtlInMs`);
+    - the last segment, whole (`cacheTtlInMs` for `auth.xApiKey.cacheTtlInMs`);
     - an earlier segment only where the bare last segment is a generic word that names no subject on its own (`name`, `url`, `env`, `length`, `count`, `prefix`, `role`, `user`: `appName` for `app.name`, `throttleUser` for `request.throttle.user`), or where the class holds the same key of two connections or integrations (`cacheUrl` and `queueUrl` for `redis.cache.url` and `redis.queue.url`, `s3Public` for `aws.s3.public`); sibling objects repeating key names are flattened (`config.md`, Names);
     - a leading word of the last segment drops only when it repeats the class name (`backoffDelayInMs` for `queue.job.emailBackoffDelayInMs` in `NotificationEmailQueueFactory`).
 - A TTL, an outbound HTTP timeout, a retry or backoff count, size threshold, chunk size, cron pattern, rate limit, unique-value retry budget (`*MaxAttempts`), or idempotency key pattern (`<namespace>.idempotencyKey.<name>Pattern`, `effects.md`) is a camelCase config key, never a literal or bare `const` outside `src/configs/`; constants and flag metadata: `config.md`, Layers.

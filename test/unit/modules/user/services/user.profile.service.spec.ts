@@ -122,7 +122,7 @@ describe('UserProfileService', () => {
         gender: EnumUserGender.female,
         countryId: country.id,
         lastLoginAt: null,
-        lastIPAddress: null,
+        lastIpAddress: null,
         lastLoginFrom: null,
         lastLoginWith: null,
         lastWorkspaceId: null,

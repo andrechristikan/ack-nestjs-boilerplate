@@ -67,7 +67,7 @@ describe('UserListResponseSchema', () => {
             signUpFrom: EnumUserSignUpFrom.website,
             gender: null,
             lastLoginAt: null,
-            lastIPAddress: null,
+            lastIpAddress: null,
             lastLoginFrom: null,
             lastLoginWith: null,
             mfa: null,

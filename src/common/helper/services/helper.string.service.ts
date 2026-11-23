@@ -1,5 +1,6 @@
 import {
     HelperStringAlphanumericCharacters,
+    HelperStringLeadingSlashesRegex,
     HelperStringPatternTokenRegex,
     HelperStringUppercaseAlphanumericCharacters,
 } from '@common/helper/constants/helper.constant';
@@ -52,7 +53,7 @@ export class HelperStringService {
     }
 
     stripLeadingSlashes(path: string): string {
-        return path.replace(/^\/+/, '');
+        return path.replace(HelperStringLeadingSlashesRegex, '');
     }
 
     generateSlug(prefix: string, maxLength: number): string {

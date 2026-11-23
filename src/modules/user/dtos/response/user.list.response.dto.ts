@@ -11,7 +11,7 @@ export const UserListResponseSchema = UserSchema.omit({
     signUpWith: true,
     gender: true,
     lastLoginAt: true,
-    lastIPAddress: true,
+    lastIpAddress: true,
     lastLoginFrom: true,
     lastLoginWith: true,
 });

@@ -7,6 +7,8 @@ import { HelperArrayService } from '@common/helper/services/helper.array.service
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
     RequestCustomLangHeaderName,
+    RequestCustomLanguageListSeparatorRegex,
+    RequestCustomLanguageSubtagSeparatorRegex,
     RequestLanguageStoreKey,
 } from '@common/request/constants/request.constant';
 
@@ -30,8 +32,8 @@ export class RequestCustomLanguageMiddleware implements NestMiddleware {
 
     private normalizeLanguage(language: string): string {
         return language
-            .split(/[,;]/)[0]!
-            .split(/[-_]/)[0]!
+            .split(RequestCustomLanguageListSeparatorRegex)[0]!
+            .split(RequestCustomLanguageSubtagSeparatorRegex)[0]!
             .trim()
             .toLowerCase();
     }

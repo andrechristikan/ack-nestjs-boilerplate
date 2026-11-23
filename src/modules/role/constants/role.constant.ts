@@ -47,3 +47,6 @@ export const RoleProtectedDocErrors: IDocResponseEntry[] = [
         messagePath: 'user.error.guardMissing',
     },
 ];
+
+/** @public */
+export const RoleNameRegex = /^[a-zA-Z0-9]+$/;

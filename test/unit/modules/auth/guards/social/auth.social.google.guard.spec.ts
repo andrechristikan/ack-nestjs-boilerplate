@@ -70,7 +70,7 @@ describe('AuthSocialGoogleGuard', () => {
                 emailVerified: true,
                 subject: 'subject-jane',
             };
-            authService.validateOAuthGoogle.mockResolvedValue(authContext);
+            authService.validateOauthGoogle.mockResolvedValue(authContext);
 
             const result = await guard.canActivate(
                 buildHttpExecutionContext(request)
@@ -81,7 +81,7 @@ describe('AuthSocialGoogleGuard', () => {
                 AuthSocialContextStoreKey,
                 authContext
             );
-            expect(authService.validateOAuthGoogle).toHaveBeenCalledWith(
+            expect(authService.validateOauthGoogle).toHaveBeenCalledWith(
                 'id-token'
             );
         });

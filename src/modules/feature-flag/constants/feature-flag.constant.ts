@@ -30,3 +30,6 @@ export const FeatureFlagProtectedDocErrors: IDocResponseEntry[] = [
         messagePath: 'featureFlag.error.notConfigured',
     },
 ];
+
+/** @public */
+export const FeatureFlagMetadataKeyRegex = /^[a-z][a-zA-Z0-9]*$/;

@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { MessageService } from '@common/message/services/message.service';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import {
@@ -25,7 +25,7 @@ describe('NotificationEmailProcessSendUseCase', () => {
     const notificationEmailDeliveryService: MockProxy<NotificationEmailDeliveryService> =
         mock<NotificationEmailDeliveryService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
+    const awsSesService: MockProxy<AwsSesService> = mock<AwsSesService>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     let useCase: NotificationEmailProcessSendUseCase;
 
@@ -59,7 +59,7 @@ describe('NotificationEmailProcessSendUseCase', () => {
 
     beforeEach(async () => {
         messageService.setMessage.mockImplementation((path: string) => path);
-        awsSESService.isInitialized.mockReturnValue(true);
+        awsSesService.isInitialized.mockReturnValue(true);
         const module = await Test.createTestingModule({
             providers: [
                 NotificationEmailProcessSendUseCase,
@@ -69,7 +69,7 @@ describe('NotificationEmailProcessSendUseCase', () => {
                     useValue: notificationEmailDeliveryService,
                 },
                 { provide: OutboxService, useValue: outboxService },
-                { provide: AwsSESService, useValue: awsSESService },
+                { provide: AwsSesService, useValue: awsSesService },
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
@@ -83,7 +83,7 @@ describe('NotificationEmailProcessSendUseCase', () => {
 
     describe('execute', () => {
         it('returns the sesNotInitialized message and touches nothing while SES is not initialized', async () => {
-            awsSESService.isInitialized.mockReturnValue(false);
+            awsSesService.isInitialized.mockReturnValue(false);
 
             const result = await useCase.execute('outbox-id', data);
 

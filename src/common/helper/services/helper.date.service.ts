@@ -68,7 +68,7 @@ export class HelperDateService {
         return DateTime.fromJSDate(date).setZone(this.timezone).toMillis();
     }
 
-    formatToRFC2822(date: Date): string {
+    formatToRfc2822(date: Date): string {
         return DateTime.fromJSDate(date).setZone(this.timezone).toRFC2822()!;
     }
 

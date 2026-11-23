@@ -9,7 +9,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
@@ -100,7 +100,7 @@ describe('WorkspaceInviteService', () => {
         mock<ActivityLogQueue>();
     let databaseUtil: DatabaseUtil;
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
-    const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
+    const awsSesService: MockProxy<AwsSesService> = mock<AwsSesService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     let helperStringService: HelperStringService;
 
@@ -267,7 +267,7 @@ describe('WorkspaceInviteService', () => {
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 ...TestUnitKitProviders,
                 { provide: OutboxService, useValue: outboxService },
-                { provide: AwsSESService, useValue: awsSESService },
+                { provide: AwsSesService, useValue: awsSesService },
                 {
                     provide: ConfigService,
                     useValue: buildConfigService({
@@ -289,7 +289,7 @@ describe('WorkspaceInviteService', () => {
 
     describe('assertEmailDeliverable', () => {
         it('throws AwsSesNotConfiguredException when SES is not initialized', () => {
-            awsSESService.isInitialized.mockReturnValue(false);
+            awsSesService.isInitialized.mockReturnValue(false);
 
             expect(() => service.assertEmailDeliverable()).toThrow(
                 AwsSesNotConfiguredException
@@ -297,7 +297,7 @@ describe('WorkspaceInviteService', () => {
         });
 
         it('returns when SES is initialized', () => {
-            awsSESService.isInitialized.mockReturnValue(true);
+            awsSesService.isInitialized.mockReturnValue(true);
 
             expect(() => service.assertEmailDeliverable()).not.toThrow();
         });

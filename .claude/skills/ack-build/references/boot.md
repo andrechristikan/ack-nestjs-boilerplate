@@ -10,5 +10,5 @@ Every agent boot runs the app in the `apis` container, never on the host. Each s
 
 The containers stay up for the next boot; a boot never runs `docker compose down`. The proof does not wait on `typecheck:watch`: run `pnpm typecheck` beside the boot.
 
-- A booted request sends `x-api-key: local_<key>:<secret>`: the seed prefixes the `migration.api-key.data.ts` key with the environment (`APIKeyCredentialUtil.createKey`). The session's notification proof in `/ack-build`, Prove, passes once the SES or FCM call is made; a sandbox `MessageRejected` for an unverified address is no finding.
+- A booted request sends `x-api-key: local_<key>:<secret>`: the seed prefixes the `migration.api-key.data.ts` key with the environment (`ApiKeyCredentialUtil.createKey`). The session's notification proof in `/ack-build`, Prove, passes once the SES or FCM call is made; a sandbox `MessageRejected` for an unverified address is no finding.
 - The root `.env`, `.env.harness`, and `.env.docker`, `keys/`, and `generated/vault/` are unreadable, and a command that prints the environment is denied (`Read` deny, `guard-bash.sh`). Diagnose a boot auth failure from `docker compose --env-file .env.docker --profile deps --profile apis exec -T <service> printenv`, printing no secret, and the `apis` log; the owner fixes `.env` or `.env.docker`.

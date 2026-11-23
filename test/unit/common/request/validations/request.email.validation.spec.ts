@@ -132,7 +132,7 @@ describe('RequestEmailSchema', () => {
         ).toEqual([
             expect.objectContaining({
                 code: 'custom',
-                message: 'request.error.email.invalidTLD',
+                message: 'request.error.email.invalidTld',
             }),
         ]);
     });

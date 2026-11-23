@@ -4,7 +4,7 @@ import { EnumHealthQueue } from '@modules/health/enums/health.enum';
 import { HealthQueueFactory } from '@modules/health/factories/health.queue.factory';
 import { HealthAppleIndicator } from '@modules/health/indicators/health.apple.indicator';
 import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3-bucket.indicator';
-import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
+import { HealthAwsSesIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
 import { HealthDatabaseIndicator } from '@modules/health/indicators/health.database.indicator';
 import { HealthFirebaseIndicator } from '@modules/health/indicators/health.firebase.indicator';
 import { HealthGoogleIndicator } from '@modules/health/indicators/health.google.indicator';
@@ -27,7 +27,7 @@ import { TerminusModule } from '@nestjs/terminus';
         HealthService,
         HealthUtil,
         HealthAwsS3BucketIndicator,
-        HealthAwsSESIndicator,
+        HealthAwsSesIndicator,
         HealthDatabaseIndicator,
         HealthInstanceIndicator,
         HealthRedisIndicator,

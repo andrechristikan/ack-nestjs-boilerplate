@@ -29,16 +29,16 @@ import type {
     UpdateTemplateCommandOutput,
 } from '@aws-sdk/client-ses';
 import type {
-    IAwsSESGetTemplate,
-    IAwsSESSend,
-    IAwsSESSendBulk,
-    IAwsSESTemplate,
+    IAwsSesGetTemplate,
+    IAwsSesSend,
+    IAwsSesSendBulk,
+    IAwsSesTemplate,
 } from '@common/aws/interfaces/aws.ses.interface';
 import { AwsSesTemplateBodyRequiredException } from '@common/aws/exceptions/aws.ses-template-body-required.exception';
 
 @Injectable()
-export class AwsSESService implements OnModuleInit {
-    private readonly logger = new Logger(AwsSESService.name);
+export class AwsSesService implements OnModuleInit {
+    private readonly logger = new Logger(AwsSesService.name);
 
     private readonly accessKeyId: string | null;
     private readonly secretAccessKey: string | null;
@@ -156,7 +156,7 @@ export class AwsSESService implements OnModuleInit {
 
     async getTemplate({
         name,
-    }: IAwsSESGetTemplate): Promise<GetTemplateCommandOutput> {
+    }: IAwsSesGetTemplate): Promise<GetTemplateCommandOutput> {
         const isInitialized = this.isInitialized();
         if (!isInitialized) {
             this.logger.warn(
@@ -183,7 +183,7 @@ export class AwsSESService implements OnModuleInit {
         subject,
         htmlBody,
         plainTextBody,
-    }: IAwsSESTemplate): Promise<CreateTemplateCommandOutput> {
+    }: IAwsSesTemplate): Promise<CreateTemplateCommandOutput> {
         const isInitialized = this.isInitialized();
         if (!isInitialized) {
             this.logger.warn(
@@ -219,7 +219,7 @@ export class AwsSESService implements OnModuleInit {
         subject,
         htmlBody,
         plainTextBody,
-    }: IAwsSESTemplate): Promise<UpdateTemplateCommandOutput> {
+    }: IAwsSesTemplate): Promise<UpdateTemplateCommandOutput> {
         const isInitialized = this.isInitialized();
         if (!isInitialized) {
             this.logger.warn(
@@ -252,7 +252,7 @@ export class AwsSESService implements OnModuleInit {
 
     async deleteTemplate({
         name,
-    }: IAwsSESGetTemplate): Promise<DeleteTemplateCommandOutput> {
+    }: IAwsSesGetTemplate): Promise<DeleteTemplateCommandOutput> {
         const isInitialized = this.isInitialized();
         if (!isInitialized) {
             this.logger.warn(
@@ -282,7 +282,7 @@ export class AwsSESService implements OnModuleInit {
         cc,
         templateName,
         templateData,
-    }: IAwsSESSend): Promise<SendTemplatedEmailCommandOutput> {
+    }: IAwsSesSend): Promise<SendTemplatedEmailCommandOutput> {
         const isInitialized = this.isInitialized();
         if (!isInitialized) {
             this.logger.warn(
@@ -323,7 +323,7 @@ export class AwsSESService implements OnModuleInit {
         cc,
         templateName,
         defaultTemplateData,
-    }: IAwsSESSendBulk): Promise<SendBulkTemplatedEmailCommandOutput> {
+    }: IAwsSesSendBulk): Promise<SendBulkTemplatedEmailCommandOutput> {
         const isInitialized = this.isInitialized();
         if (!isInitialized) {
             this.logger.warn(

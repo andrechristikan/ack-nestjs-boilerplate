@@ -1,3 +1,4 @@
+import { FeatureFlagMetadataKeyRegex } from '@modules/feature-flag/constants/feature-flag.constant';
 import { z } from 'zod';
 import { EnumFeatureFlagMetadataKey } from '@modules/feature-flag/enums/feature-flag.enum';
 import {
@@ -21,7 +22,7 @@ export const FeatureFlagUpdateMetadataRequestSchema = z
                     .max(64, {
                         error: () => 'featureFlag.error.invalidMetadata',
                     })
-                    .regex(/^[a-z][a-zA-Z0-9]*$/, {
+                    .regex(FeatureFlagMetadataKeyRegex, {
                         error: () => 'featureFlag.error.invalidMetadata',
                     }),
                 z.union(

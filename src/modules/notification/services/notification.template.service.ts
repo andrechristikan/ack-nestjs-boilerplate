@@ -1,7 +1,8 @@
+import { NotificationTemplateLabelWordRegex } from '@modules/notification/constants/notification.constant';
 import { TemplateDoesNotExistException } from '@aws-sdk/client-ses';
 import type { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type {
     INotificationTemplateEmail,
@@ -13,10 +14,13 @@ import { join } from 'path';
 
 @Injectable()
 export class NotificationTemplateService {
-    constructor(private readonly awsSESService: AwsSESService) {}
+    constructor(private readonly awsSesService: AwsSesService) {}
 
     private toTemplateLabel(name: INotificationTemplateName): string {
-        return name.replace(/[A-Z]/g, letter => ` ${letter.toLowerCase()}`);
+        return name.replace(
+            NotificationTemplateLabelWordRegex,
+            letter => ` ${letter.toLowerCase()}`
+        );
     }
 
     private getTemplateEmail(
@@ -260,7 +264,7 @@ export class NotificationTemplateService {
         try {
             const template = this.getTemplateEmail(name);
 
-            await this.awsSESService.createTemplate({
+            await this.awsSesService.createTemplate({
                 name,
                 subject: template.subject,
                 htmlBody: template.htmlBody,
@@ -278,7 +282,7 @@ export class NotificationTemplateService {
         name: INotificationTemplateName
     ): Promise<GetTemplateCommandOutput | null> {
         try {
-            return await this.awsSESService.getTemplate({ name });
+            return await this.awsSesService.getTemplate({ name });
         } catch (err: unknown) {
             if (err instanceof TemplateDoesNotExistException) {
                 return null;
@@ -294,7 +298,7 @@ export class NotificationTemplateService {
 
     async emailDelete(name: INotificationTemplateName): Promise<void> {
         try {
-            await this.awsSESService.deleteTemplate({ name });
+            await this.awsSesService.deleteTemplate({ name });
         } catch (err: unknown) {
             const label = this.toTemplateLabel(name);
             throw new AppUnknownException(

@@ -19,15 +19,15 @@ import { NotificationEmailProcessPublishTermPolicyUseCase } from '@modules/notif
 import { NotificationEmailProcessSendUseCase } from '@modules/notification/use-cases/notification.email.process-send.use-case';
 import { NotificationEmailProcessSendUnregisteredUseCase } from '@modules/notification/use-cases/notification.email.process-send-unregistered.use-case';
 import {
-    AwsSESRateLimitDurationInMs,
-    AwsSESRateLimitPerDuration,
+    AwsSesRateLimitDurationInMs,
+    AwsSesRateLimitPerDuration,
 } from '@common/aws/constants/aws.constant';
 import type { ITermPolicyPublishPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 
 @QueueProcessor(EnumNotificationQueue.notificationEmail, {
     limiter: {
-        max: AwsSESRateLimitPerDuration,
-        duration: AwsSESRateLimitDurationInMs,
+        max: AwsSesRateLimitPerDuration,
+        duration: AwsSesRateLimitDurationInMs,
     },
 })
 export class NotificationEmailProcessor extends QueueProcessorBase {

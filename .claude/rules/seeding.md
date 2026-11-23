@@ -34,18 +34,18 @@ src/migration/
 `layering.md`, `cross-module.md` (repository ownership and the one `ActivityLog` writer included), and the activity-log contract and side-effect rules (`effects.md`) do not bind a seed.
 
 - A seed writes every model it seeds, `ActivityLog` included, through `this.databaseService.client` or the `tx` of `withTransaction`; never through a feature repository or a feature service method that writes the database.
-- A seed injects `DatabaseService`, `ConfigService`, and `src/common/` kit services (`DatabaseUtil`, `HelperHashService`, `AWSS3Service`, `AWSSESService`).
+- A seed injects `DatabaseService`, `ConfigService`, and `src/common/` kit services (`DatabaseUtil`, `HelperHashService`, `AwsS3Service`, `AwsSesService`).
 - A seed injects a feature service only for work that writes no database: a non-database integration, the SES templates (`NotificationTemplateService`), or a password build (`AuthPasswordService.create`, `createRandom`).
-- A seed may inject any module's util and read any contract (`APIKeyCredentialUtil`, `ActivityLogUtil`, `UserTermPolicyContract`). The seeded user's email verification comes from `UserVerificationUtil.createVerified(email)`.
+- A seed may inject any module's util and read any contract (`ApiKeyCredentialUtil`, `ActivityLogUtil`, `UserTermPolicyContract`). The seeded user's email verification comes from `UserVerificationUtil.createVerified(email)`.
 - A seed injects no queue class and adds no request side effect.
-- `MigrationModule` imports `CommonModule` and the kit modules its seeds use (`AWSModule`), and a feature `<Module>Module` only for an injection allowed above (`NotificationModule` for the SES templates); it imports no use-case module.
+- `MigrationModule` imports `CommonModule` and the kit modules its seeds use (`AwsModule`), and a feature `<Module>Module` only for an injection allowed above (`NotificationModule` for the SES templates); it imports no use-case module.
 - What binds a seed: `naming.md`, `code-style.md`, `injectable.md`, `null-safety.md`, `concurrency.md`, `discipline.md`, and this file.
 
 ## Term policies
 
 The `termPolicy` seed publishes version 1 of every `EnumTermPolicyType`, `publishedAt` set, each with an `en` content at key `term-policies/<type>/v1/en-<random>.hbs` (`termPolicy.uploadContentPathPattern`, `TermPolicyUtil.getContentKey`).
 
-- When `AWSS3Service.isInitialized()`, it uploads the content to the private bucket and copies it to the public one; otherwise it logs a `warn` and still writes the complete row.
+- When `AwsS3Service.isInitialized()`, it uploads the content to the private bucket and copies it to the public one; otherwise it logs a `warn` and still writes the complete row.
 - It fails when a required type (`termsOfService`, `privacy`) is not published after the run.
 - `nest-cli.json` `assets` (`**/**/templates/*`) copies the term-policy templates to `dist/modules/term-policy/templates/`; the seed runs from `dist/migration/seeds/` and reads `join(import.meta.dirname, '../../modules/term-policy/templates', <file>)`.
 

@@ -15,7 +15,7 @@ import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type {
@@ -75,7 +75,7 @@ describe('TermPolicyService', () => {
     const termPolicyRepository: MockProxy<TermPolicyRepository> =
         mock<TermPolicyRepository>();
     const awsS3Service: MockProxy<AwsS3Service> = mock<AwsS3Service>();
-    const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
+    const awsSesService: MockProxy<AwsSesService> = mock<AwsSesService>();
     const databaseService: MockProxy<DatabaseService> = mock<DatabaseService>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
@@ -216,7 +216,7 @@ describe('TermPolicyService', () => {
                     useValue: termPolicyRepository,
                 },
                 { provide: AwsS3Service, useValue: awsS3Service },
-                { provide: AwsSESService, useValue: awsSESService },
+                { provide: AwsSesService, useValue: awsSesService },
                 TermPolicyUtil,
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
@@ -243,7 +243,7 @@ describe('TermPolicyService', () => {
 
     describe('assertEmailDeliverable', () => {
         it('throws AwsSesNotConfiguredException when SES is not initialized', () => {
-            awsSESService.isInitialized.mockReturnValue(false);
+            awsSesService.isInitialized.mockReturnValue(false);
 
             expect(() => service.assertEmailDeliverable()).toThrow(
                 AwsSesNotConfiguredException
@@ -251,7 +251,7 @@ describe('TermPolicyService', () => {
         });
 
         it('returns when SES is initialized', () => {
-            awsSESService.isInitialized.mockReturnValue(true);
+            awsSesService.isInitialized.mockReturnValue(true);
 
             expect(() => service.assertEmailDeliverable()).not.toThrow();
         });

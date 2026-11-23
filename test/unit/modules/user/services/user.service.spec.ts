@@ -15,7 +15,7 @@ import {
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -63,7 +63,7 @@ describe('UserService', () => {
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
     const roleService: MockProxy<RoleService> = mock<RoleService>();
-    const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
+    const awsSesService: MockProxy<AwsSesService> = mock<AwsSesService>();
     const authPasswordService: MockProxy<AuthPasswordService> =
         mock<AuthPasswordService>();
 
@@ -125,7 +125,7 @@ describe('UserService', () => {
                     useValue: userVerificationService,
                 },
                 { provide: RoleService, useValue: roleService },
-                { provide: AwsSESService, useValue: awsSESService },
+                { provide: AwsSesService, useValue: awsSesService },
                 { provide: AuthPasswordService, useValue: authPasswordService },
                 DatabaseUtil,
                 HelperDateService,
@@ -145,7 +145,7 @@ describe('UserService', () => {
 
     describe('assertEmailDeliverable', () => {
         it('throws AwsSesNotConfiguredException when SES is not initialized', () => {
-            awsSESService.isInitialized.mockReturnValue(false);
+            awsSesService.isInitialized.mockReturnValue(false);
 
             expect(() => service.assertEmailDeliverable()).toThrow(
                 AwsSesNotConfiguredException
@@ -153,7 +153,7 @@ describe('UserService', () => {
         });
 
         it('returns when SES is initialized', () => {
-            awsSESService.isInitialized.mockReturnValue(true);
+            awsSesService.isInitialized.mockReturnValue(true);
 
             expect(() => service.assertEmailDeliverable()).not.toThrow();
         });
@@ -346,7 +346,7 @@ describe('UserService', () => {
                 gender: null,
                 countryId: 'country-cobalt',
                 lastLoginAt: null,
-                lastIPAddress: null,
+                lastIpAddress: null,
                 lastLoginFrom: null,
                 lastLoginWith: null,
                 lastWorkspaceId: null,

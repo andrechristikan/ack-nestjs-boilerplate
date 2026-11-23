@@ -1,3 +1,7 @@
+import {
+    UserBackupCodeRegex,
+    UserDigitsRegex,
+} from '@modules/user/constants/user.constant';
 import { z } from 'zod';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaPasskeyAuthenticationResponseSchema } from '@modules/mfa/validations/mfa.passkey-authentication-response.validation';
@@ -17,7 +21,7 @@ export const UserLoginVerifyMfaRequestSchema = z.strictObject({
         .string()
         .min(1)
         .max(32)
-        .regex(/^[0-9]+$/, {
+        .regex(UserDigitsRegex, {
             error: () => 'mfa.error.codeRequired',
         })
         .optional()
@@ -29,7 +33,7 @@ export const UserLoginVerifyMfaRequestSchema = z.strictObject({
         .string()
         .min(1)
         .max(32)
-        .regex(/^[A-Z0-9]+$/, {
+        .regex(UserBackupCodeRegex, {
             error: () => 'mfa.error.codeRequired',
         })
         .optional()

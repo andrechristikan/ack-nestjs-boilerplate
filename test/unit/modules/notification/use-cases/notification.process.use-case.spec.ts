@@ -104,7 +104,7 @@ describe('NotificationProcessUseCase', () => {
         gender: null,
         countryId: 'country-id',
         lastLoginAt: null,
-        lastIPAddress: null,
+        lastIpAddress: null,
         lastLoginFrom: null,
         lastLoginWith: null,
         lastWorkspaceId: null,

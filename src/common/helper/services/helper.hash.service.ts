@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { argon2, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { HelperHashArgon2PhcRegex } from '@common/helper/constants/helper.constant';
+import {
+    HelperHashArgon2PhcRegex,
+    HelperHashBase64PaddingRegex,
+} from '@common/helper/constants/helper.constant';
 import type { IHelperHashArgon2Parameters } from '@common/helper/interfaces/helper.interface';
 import type { IConfigHelperArgon2 } from '@configs/helper.config';
 
@@ -43,7 +46,7 @@ export class HelperHashService {
             passes,
         });
 
-        return `$argon2id$v=19$m=${this.argon2MemoryInKib},t=${passes},p=${parallelism}$${salt.toString('base64').replace(/=+$/, '')}$${tag.toString('base64').replace(/=+$/, '')}`;
+        return `$argon2id$v=19$m=${this.argon2MemoryInKib},t=${passes},p=${parallelism}$${salt.toString('base64').replace(HelperHashBase64PaddingRegex, '')}$${tag.toString('base64').replace(HelperHashBase64PaddingRegex, '')}`;
     }
 
     async argon2Compare(value: string, hash: string): Promise<boolean> {

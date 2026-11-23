@@ -64,3 +64,9 @@ export const FileImportDocErrors: IDocResponseEntry[] = [
         messagePath: 'file.error.exceedMaxDataImport',
     },
 ];
+
+/** @public */
+export const FileNonPrintableRegex = /[^ -~]/g;
+
+/** @public */
+export const FileUnsafeFilenameCharRegex = /["\\/]/g;

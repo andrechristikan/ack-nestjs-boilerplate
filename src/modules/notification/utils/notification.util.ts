@@ -165,7 +165,7 @@ export class NotificationUtil {
             const value = properties[field];
             if (typeof value === 'string') {
                 const date = this.helperDateService.createFromIso(value);
-                displayed[field] = this.helperDateService.formatToRFC2822(date);
+                displayed[field] = this.helperDateService.formatToRfc2822(date);
             }
         }
 

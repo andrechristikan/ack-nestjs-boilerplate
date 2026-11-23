@@ -3,7 +3,7 @@ import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -51,7 +51,7 @@ export class TermPolicyService {
     constructor(
         private readonly termPolicyRepository: TermPolicyRepository,
         private readonly awsS3Service: AwsS3Service,
-        private readonly awsSESService: AwsSESService,
+        private readonly awsSesService: AwsSesService,
         private readonly termPolicyUtil: TermPolicyUtil,
         private readonly helperArrayService: HelperArrayService,
         private readonly outboxService: OutboxService,
@@ -86,7 +86,7 @@ export class TermPolicyService {
     }
 
     assertEmailDeliverable(): void {
-        const isSesInitialized = this.awsSESService.isInitialized();
+        const isSesInitialized = this.awsSesService.isInitialized();
         if (!isSesInitialized) {
             throw new AwsSesNotConfiguredException();
         }

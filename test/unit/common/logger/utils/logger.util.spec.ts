@@ -362,14 +362,14 @@ describe('LoggerUtil', () => {
         });
     });
 
-    describe('extractClientIP', () => {
+    describe('extractClientIp', () => {
         it('returns request.ip when present', () => {
             const request = {
                 ...baseRequest,
                 ip: '9.9.9.9',
             } as unknown as IRequestApp;
 
-            expect(util['extractClientIP'](request)).toBe('9.9.9.9');
+            expect(util['extractClientIp'](request)).toBe('9.9.9.9');
         });
 
         it('falls back to the socket remote address', () => {
@@ -379,7 +379,7 @@ describe('LoggerUtil', () => {
                 socket: { remoteAddress: '8.8.8.8' },
             } as unknown as IRequestApp;
 
-            expect(util['extractClientIP'](request)).toBe('8.8.8.8');
+            expect(util['extractClientIp'](request)).toBe('8.8.8.8');
         });
 
         it('ignores x-forwarded-for and x-real-ip, which a client can spoof', () => {
@@ -393,7 +393,7 @@ describe('LoggerUtil', () => {
                 },
             } as unknown as IRequestApp;
 
-            expect(util['extractClientIP'](request)).toBe('unknown');
+            expect(util['extractClientIp'](request)).toBe('unknown');
         });
 
         it('returns unknown when headers carry no address', () => {
@@ -404,7 +404,7 @@ describe('LoggerUtil', () => {
                 headers: {},
             } as unknown as IRequestApp;
 
-            expect(util['extractClientIP'](request)).toBe('unknown');
+            expect(util['extractClientIp'](request)).toBe('unknown');
         });
 
         it('returns unknown when there are no headers at all', () => {
@@ -415,7 +415,7 @@ describe('LoggerUtil', () => {
                 headers: undefined,
             } as unknown as IRequestApp;
 
-            expect(util['extractClientIP'](request)).toBe('unknown');
+            expect(util['extractClientIp'](request)).toBe('unknown');
         });
     });
 

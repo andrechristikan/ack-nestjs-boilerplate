@@ -1,3 +1,4 @@
+import { AuthPasswordContextWordSeparatorRegex } from '@modules/auth/constants/auth.constant';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -90,7 +91,9 @@ export class AuthPasswordService {
         const lowered = password.toLowerCase();
         const words = contextWords
             .flatMap(contextWord =>
-                contextWord.toLowerCase().split(/[^\p{L}\p{N}]+/u)
+                contextWord
+                    .toLowerCase()
+                    .split(AuthPasswordContextWordSeparatorRegex)
             )
             .filter(word => word.length >= this.contextWordMinLength);
         const hasContextWord = words.some(word => lowered.includes(word));

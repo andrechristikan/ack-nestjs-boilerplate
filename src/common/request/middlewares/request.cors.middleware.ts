@@ -1,3 +1,4 @@
+import { RequestCorsOriginSchemeRegex } from '@common/request/constants/request.constant';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import type { NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
@@ -130,7 +131,7 @@ export class RequestCorsMiddleware implements NestMiddleware {
         hostname: string;
         port: string;
     } {
-        const scheme = /^(https?):\/\//i.exec(pattern);
+        const scheme = RequestCorsOriginSchemeRegex.exec(pattern);
         const authority =
             scheme === null ? pattern : pattern.slice(scheme[0].length);
         const parts = authority.split(':');

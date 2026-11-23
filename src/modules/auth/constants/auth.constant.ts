@@ -144,3 +144,6 @@ export const AuthSocialAppleProtectedDocErrors: IDocResponseEntry[] = [
         messagePath: 'auth.error.providerUnavailable',
     },
 ];
+
+/** @public */
+export const AuthPasswordContextWordSeparatorRegex = /[^\p{L}\p{N}]+/u;

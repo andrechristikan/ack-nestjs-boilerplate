@@ -151,7 +151,7 @@ model User {
   gender                 EnumUserGender?
   countryId              String             @db.ObjectId
   lastLoginAt            DateTime?
-  lastIPAddress          String?
+  lastIpAddress          String?
   lastLoginFrom          EnumUserLoginFrom?
   lastLoginWith          EnumUserLoginWith?
   lastWorkspaceId        String?            @db.ObjectId

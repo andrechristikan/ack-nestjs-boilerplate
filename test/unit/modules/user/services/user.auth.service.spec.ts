@@ -444,7 +444,7 @@ describe('UserAuthService', () => {
                 gender: null,
                 countryId: 'country-halcyon',
                 lastLoginAt: null,
-                lastIPAddress: null,
+                lastIpAddress: null,
                 lastLoginFrom: EnumUserLoginFrom.website,
                 lastLoginWith: EnumUserLoginWith.credential,
                 lastWorkspaceId: null,

@@ -1,6 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -72,7 +72,7 @@ export class WorkspaceInviteService {
         private readonly featureFlagService: FeatureFlagService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly outboxService: OutboxService,
-        private readonly awsSESService: AwsSESService,
+        private readonly awsSesService: AwsSesService,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
         private readonly helperStringService: HelperStringService,
@@ -182,7 +182,7 @@ export class WorkspaceInviteService {
     }
 
     assertEmailDeliverable(): void {
-        const isSesInitialized = this.awsSESService.isInitialized();
+        const isSesInitialized = this.awsSesService.isInitialized();
         if (!isSesInitialized) {
             throw new AwsSesNotConfiguredException();
         }

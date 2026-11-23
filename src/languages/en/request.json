@@ -49,7 +49,7 @@
             "domainLabelLength": "{property} domain label cannot exceed 63 characters.",
             "domainLabelDash": "{property} domain label cannot start or end with a dash.",
             "domainInvalidChars": "{property} domain label can only contain alphanumeric and dash characters.",
-            "invalidTLD": "{property} TLD must be at least 2 characters and contain only letters."
+            "invalidTld": "{property} TLD must be at least 2 characters and contain only letters."
         }
     }
 }

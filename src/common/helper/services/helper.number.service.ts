@@ -1,11 +1,11 @@
+import { HelperNumberIntegerRegex } from '@common/helper/constants/helper.constant';
 import { Injectable } from '@nestjs/common';
 import { randomInt } from 'node:crypto';
 
 @Injectable()
 export class HelperNumberService {
     checkString(number: string): boolean {
-        const regex = /^-?\d+$/;
-        return regex.test(number);
+        return HelperNumberIntegerRegex.test(number);
     }
 
     randomDigits(length: number): string {

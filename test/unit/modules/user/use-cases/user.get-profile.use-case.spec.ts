@@ -63,7 +63,7 @@ describe('UserGetProfileUseCase', () => {
         gender: EnumUserGender.female,
         countryId: 'country-sable',
         lastLoginAt: null,
-        lastIPAddress: null,
+        lastIpAddress: null,
         lastLoginFrom: null,
         lastLoginWith: null,
         lastWorkspaceId: null,

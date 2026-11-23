@@ -21,3 +21,9 @@ export const MfaPasskeyCredentialSelect = {
     credentialId: true,
     transports: true,
 } satisfies Prisma.MfaPasskeySelect;
+
+/** @public */
+export const MfaTotpCodeRegex = /^[0-9]+$/;
+
+/** @public */
+export const MfaPasskeyBase64UrlRegex = /^[A-Za-z0-9_-]+$/;

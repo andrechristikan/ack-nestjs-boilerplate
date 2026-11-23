@@ -1,20 +1,20 @@
-export interface IAwsSESTemplate {
+export interface IAwsSesTemplate {
     name: string;
     subject: string;
     htmlBody?: string;
     plainTextBody?: string;
 }
 
-export interface IAwsSESGetTemplate {
+export interface IAwsSesGetTemplate {
     name: string;
 }
 
-export interface IAwsSESSendBulkRecipient {
+export interface IAwsSesSendBulkRecipient {
     recipient: string;
     templateData?: Record<string, string>;
 }
 
-export interface IAwsSESSend {
+export interface IAwsSesSend {
     templateName: string;
     templateData?: Record<string, string>;
     sender: string;
@@ -24,10 +24,10 @@ export interface IAwsSESSend {
     bcc?: string[];
 }
 
-export interface IAwsSESSendBulk extends Omit<
-    IAwsSESSend,
+export interface IAwsSesSendBulk extends Omit<
+    IAwsSesSend,
     'recipients' | 'templateData'
 > {
-    recipients: IAwsSESSendBulkRecipient[];
+    recipients: IAwsSesSendBulkRecipient[];
     defaultTemplateData?: Record<string, string>;
 }

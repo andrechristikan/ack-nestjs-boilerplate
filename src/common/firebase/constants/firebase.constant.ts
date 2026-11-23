@@ -31,3 +31,6 @@ export const FirebaseRateLimitDurationInMs = 60000;
 
 /** @public */
 export const FirebasePrivateKeyPemMarker = '-----BEGIN';
+
+/** @public */
+export const FirebaseEscapedNewlineRegex = /\\n/g;

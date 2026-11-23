@@ -81,7 +81,7 @@ export const UserSchema = DatabaseResponseSchema.extend({
         description: 'Last login time of user',
         example: faker.date.recent(),
     }),
-    lastIPAddress: z.string().nullable().meta({
+    lastIpAddress: z.string().nullable().meta({
         description: 'Last IP Address of user',
         example: faker.internet.ipv4(),
     }),

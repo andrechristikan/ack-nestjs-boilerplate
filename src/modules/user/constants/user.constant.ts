@@ -84,7 +84,7 @@ export const UserAdminListSelect = {
     gender: true,
     countryId: true,
     lastLoginAt: true,
-    lastIPAddress: true,
+    lastIpAddress: true,
     lastLoginFrom: true,
     lastLoginWith: true,
     lastWorkspaceId: true,
@@ -157,3 +157,12 @@ export const UserPasswordMinLength = 8;
 
 /** @public */
 export const UserPasswordMaxLength = 64;
+
+/** @public */
+export const UserDigitsRegex = /^[0-9]+$/;
+
+/** @public */
+export const UserBackupCodeRegex = /^[A-Z0-9]+$/;
+
+/** @public */
+export const UserBadWordSeparatorRegex = /[^a-zA-Z]+/g;

@@ -10,7 +10,7 @@ import {
 import { buildSealedNotificationPayload } from '@test/unit/helpers/test.unit.notification-push.helper';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { EnumHelperStatusCodeError } from '@common/helper/enums/helper.status-code.enum';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
@@ -26,7 +26,7 @@ import { NotificationRepository } from '@modules/notification/repositories/notif
 import { NotificationEmailDeliveryService } from '@modules/notification/services/notification.email.delivery.service';
 
 describe('NotificationEmailDeliveryService', () => {
-    const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
+    const awsSesService: MockProxy<AwsSesService> = mock<AwsSesService>();
     const notificationRepository: MockProxy<NotificationRepository> =
         mock<NotificationRepository>();
     const messageService: MockProxy<MessageService> = mock<MessageService>();
@@ -50,7 +50,7 @@ describe('NotificationEmailDeliveryService', () => {
                 NotificationEmailDeliveryService,
                 NotificationUtil,
                 { provide: MessageService, useValue: messageService },
-                { provide: AwsSESService, useValue: awsSESService },
+                { provide: AwsSesService, useValue: awsSesService },
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
@@ -105,7 +105,7 @@ describe('NotificationEmailDeliveryService', () => {
     describe('send', () => {
         it('sends the template named by the kind from noreply with the home and support values', async () => {
             const output = { $metadata: {}, MessageId: 'message-1' };
-            awsSESService.send.mockResolvedValue(output);
+            awsSesService.send.mockResolvedValue(output);
 
             const result = await service.send(
                 EnumNotificationKind.workspaceInvite,
@@ -113,7 +113,7 @@ describe('NotificationEmailDeliveryService', () => {
                 { workspaceName: 'Acme' }
             );
 
-            expect(awsSESService.send).toHaveBeenCalledWith({
+            expect(awsSesService.send).toHaveBeenCalledWith({
                 templateName: EnumNotificationKind.workspaceInvite,
                 recipients: ['invitee@example.com'],
                 sender: 'noreply@example.com',
@@ -160,7 +160,7 @@ describe('NotificationEmailDeliveryService', () => {
             ];
 
         it('sends one bulk email with each email decrypted under its own user id and returns every user as sent', async () => {
-            awsSESService.sendBulk.mockResolvedValue({
+            awsSesService.sendBulk.mockResolvedValue({
                 $metadata: {},
                 Status: [
                     { Status: BulkEmailStatus.Success },
@@ -174,8 +174,8 @@ describe('NotificationEmailDeliveryService', () => {
                 recipients
             );
 
-            expect(awsSESService.sendBulk).toHaveBeenCalledTimes(1);
-            expect(awsSESService.sendBulk).toHaveBeenCalledWith({
+            expect(awsSesService.sendBulk).toHaveBeenCalledTimes(1);
+            expect(awsSesService.sendBulk).toHaveBeenCalledWith({
                 templateName: EnumNotificationKind.publishTermPolicy,
                 recipients: [
                     {
@@ -204,7 +204,7 @@ describe('NotificationEmailDeliveryService', () => {
         });
 
         it('sorts a success, another status, and a missing status into sent, failed, and unknown', async () => {
-            awsSESService.sendBulk.mockResolvedValue({
+            awsSesService.sendBulk.mockResolvedValue({
                 $metadata: {},
                 Status: [
                     { Status: BulkEmailStatus.Success },
@@ -250,12 +250,12 @@ describe('NotificationEmailDeliveryService', () => {
                 module: 'helper',
                 statusCode: EnumHelperStatusCodeError.decryptFailed,
             });
-            expect(awsSESService.sendBulk).not.toHaveBeenCalled();
+            expect(awsSesService.sendBulk).not.toHaveBeenCalled();
         });
 
         it('throws the unknown-delivery exception chaining the error when sendBulk throws', async () => {
             const error = new Error('socket hang up');
-            awsSESService.sendBulk.mockRejectedValue(error);
+            awsSesService.sendBulk.mockRejectedValue(error);
 
             const attempt = service.sendPublishTermPolicy(
                 data,
@@ -295,7 +295,7 @@ describe('NotificationEmailDeliveryService', () => {
         ])(
             'throws the unknown-delivery exception on %s',
             async (_label, output) => {
-                awsSESService.sendBulk.mockResolvedValue(output);
+                awsSesService.sendBulk.mockResolvedValue(output);
 
                 await expect(
                     service.sendPublishTermPolicy(data, batchId, recipients)

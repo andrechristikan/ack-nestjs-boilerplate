@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { FileService } from '@common/file/services/file.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
@@ -49,7 +49,7 @@ export async function createInitializedAwsS3Service(
 export async function createAwsSesService(
     configValues: Record<string, unknown>,
     overrides: Record<string, unknown>
-): Promise<AwsSESService> {
+): Promise<AwsSesService> {
     const configService = buildConfigService({
         ...configValues,
         ...overrides,
@@ -57,18 +57,18 @@ export async function createAwsSesService(
 
     const module = await Test.createTestingModule({
         providers: [
-            AwsSESService,
+            AwsSesService,
             { provide: ConfigService, useValue: configService },
         ],
     }).compile();
 
-    return module.get(AwsSESService);
+    return module.get(AwsSesService);
 }
 
 export async function createInitializedAwsSesService(
     configValues: Record<string, unknown>,
     overrides: Record<string, unknown>
-): Promise<AwsSESService> {
+): Promise<AwsSesService> {
     const service = await createAwsSesService(configValues, overrides);
     service.onModuleInit();
 

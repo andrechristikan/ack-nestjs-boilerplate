@@ -2,6 +2,9 @@ import { HttpException, Injectable } from '@nestjs/common';
 import type { Response } from 'express';
 import stripAnsi from 'strip-ansi';
 import {
+    LoggerMessageDecorationRegex,
+    LoggerMessageLineNumberPrefixRegex,
+    LoggerMessageWhitespaceRegex,
     LoggerRedactMaxArrayLength,
     LoggerRedactMaxDepth,
     LoggerRedactedValue,
@@ -74,7 +77,7 @@ export class LoggerUtil {
         );
     }
 
-    private extractClientIP(request: IRequestApp): string {
+    private extractClientIp(request: IRequestApp): string {
         if (request.ip) {
             return request.ip;
         }
@@ -106,9 +109,9 @@ export class LoggerUtil {
     sanitizeMessage(message: unknown): unknown {
         if (typeof message === 'string') {
             return stripAnsi(message)
-                .replaceAll(/[~→]/g, '')
-                .replaceAll(/^\s*\d+\s+/gm, '')
-                .replaceAll(/\s+/g, ' ')
+                .replaceAll(LoggerMessageDecorationRegex, '')
+                .replaceAll(LoggerMessageLineNumberPrefixRegex, '')
+                .replaceAll(LoggerMessageWhitespaceRegex, ' ')
                 .trim();
         }
 
@@ -126,7 +129,7 @@ export class LoggerUtil {
         if (request.headers.referer) {
             referer = this.loggerUrlUtil.maskUrl(request.headers.referer);
         }
-        const clientIp = this.extractClientIP(request);
+        const clientIp = this.extractClientIp(request);
         const query = this.redactValue(request.query);
         const params = this.serializeParams(request.params);
         const headers = this.redactValue(request.headers);

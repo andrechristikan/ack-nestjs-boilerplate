@@ -7,3 +7,6 @@ export const NotificationPayloadEncryptionPurpose = 'notification.payload';
 export const NotificationReadStateSelect = {
     isRead: true,
 } satisfies Prisma.NotificationSelect;
+
+/** @public */
+export const NotificationTemplateLabelWordRegex = /[A-Z]/g;

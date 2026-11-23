@@ -5,6 +5,7 @@ import {
     HelperEncryptionKeyDigest,
     HelperEncryptionKeyLengthInBytes,
     HelperEncryptionPayloadSeparator,
+    HelperEncryptionPemLineRegex,
     HelperEncryptionSaltLengthInBytes,
     HelperEncryptionSecretLengthInBytes,
 } from '@common/helper/constants/helper.constant';
@@ -142,7 +143,8 @@ export class HelperEncryptionService {
 
     derBase64ToPem(der: string, label: EnumHelperPemLabel): string {
         const body = Buffer.from(der, 'base64').toString('base64');
-        const lines = body.match(/.{1,64}/g)?.join('\n') ?? '';
+        const lines =
+            body.match(HelperEncryptionPemLineRegex)?.join('\n') ?? '';
         const pem = `-----BEGIN ${label}-----\n${lines}\n-----END ${label}-----\n`;
 
         if (label === EnumHelperPemLabel.privateKey) {

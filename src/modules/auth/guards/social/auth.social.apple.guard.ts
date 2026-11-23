@@ -30,7 +30,7 @@ export class AuthSocialAppleGuard implements CanActivate {
         }
 
         const { email, emailVerified, subject } =
-            await this.authService.validateOAuthApple(requestHeaders[1]!);
+            await this.authService.validateOauthApple(requestHeaders[1]!);
         this.requestStoreService.set<IAuthSocialContext>(
             AuthSocialContextStoreKey,
             { email, emailVerified, subject }

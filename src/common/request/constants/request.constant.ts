@@ -87,3 +87,34 @@ export const RequestTrustedProxyPresets: ReadonlySet<string> = new Set([
     'linklocal',
     'uniquelocal',
 ]);
+
+/** @public */
+export const RequestCorsOriginSchemeRegex = /^(https?):\/\//i;
+
+/** @public */
+export const RequestCustomLanguageListSeparatorRegex = /[,;]/;
+
+/** @public */
+export const RequestCustomLanguageSubtagSeparatorRegex = /[-_]/;
+
+/** @public */
+export const RequestEmailFormatRegex = /\S+@\S+\.\S+/;
+
+/** @public */
+export const RequestEmailDomainLabelRegex = /^[a-zA-Z0-9-]+$/;
+
+/** @public */
+export const RequestEmailTldRegex = /^[a-zA-Z]{2,}$/;
+
+/** @public */
+export const RequestEmailLocalPartRegex = /^[a-zA-Z0-9-_.]+$/;
+
+/** @public */
+export const RequestEncryptionSecretRegex = /^[A-Za-z0-9_-]+$/;
+
+/** @public */
+export const RequestMongoIdRegex = /^[0-9a-fA-F]+$/;
+
+/** @public */
+export const RequestSesIdentityArnRegex =
+    /^arn:aws[a-z-]*:ses:[a-z0-9-]+:\d{12}:identity\/.+$/;

@@ -113,3 +113,12 @@ export const LoggerSentryQueryKeys: string[] = [
     'http.query',
     'http.fragment',
 ];
+
+/** @public */
+export const LoggerMessageDecorationRegex = /[~→]/g;
+
+/** @public */
+export const LoggerMessageLineNumberPrefixRegex = /^\s*\d+\s+/gm;
+
+/** @public */
+export const LoggerMessageWhitespaceRegex = /\s+/g;

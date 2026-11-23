@@ -3,7 +3,7 @@ import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 import { HealthAppleIndicator } from '@modules/health/indicators/health.apple.indicator';
 import { HealthAwsS3BucketIndicator } from '@modules/health/indicators/health.aws-s3-bucket.indicator';
-import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
+import { HealthAwsSesIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
 import { HealthDatabaseIndicator } from '@modules/health/indicators/health.database.indicator';
 import { HealthFirebaseIndicator } from '@modules/health/indicators/health.firebase.indicator';
 import { HealthGoogleIndicator } from '@modules/health/indicators/health.google.indicator';
@@ -25,7 +25,7 @@ export class HealthService {
         private readonly health: HealthCheckService,
         private readonly healthInstanceIndicator: HealthInstanceIndicator,
         private readonly healthAwsS3BucketIndicator: HealthAwsS3BucketIndicator,
-        private readonly healthAwsSESIndicator: HealthAwsSESIndicator,
+        private readonly healthAwsSesIndicator: HealthAwsSesIndicator,
         private readonly healthDatabaseIndicator: HealthDatabaseIndicator,
         private readonly healthRedisIndicator: HealthRedisIndicator,
         private readonly healthSentryIndicator: HealthSentryIndicator,
@@ -103,7 +103,7 @@ export class HealthService {
                     EnumAwsS3Accessibility.private
                 ),
             () =>
-                this.healthAwsSESIndicator.isHealthy(
+                this.healthAwsSesIndicator.isHealthy(
                     EnumHealthIndicatorKey.ses
                 ),
         ]);

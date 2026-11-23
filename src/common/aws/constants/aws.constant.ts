@@ -2,9 +2,9 @@
 export const AwsS3MaxPartNumber = 10000;
 
 /** @public */
-export const AwsSESRateLimitPerDuration = 10;
+export const AwsSesRateLimitPerDuration = 10;
 /** @public */
-export const AwsSESRateLimitDurationInMs = 1000;
+export const AwsSesRateLimitDurationInMs = 1000;
 
 /** @public */
 export const AwsS3ObjectKeyRegex =

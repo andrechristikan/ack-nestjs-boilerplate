@@ -1,6 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationCursorReturn,
@@ -76,7 +76,7 @@ export class UserService {
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly roleService: RoleService,
-        private readonly awsSESService: AwsSESService,
+        private readonly awsSesService: AwsSesService,
         private readonly authPasswordService: AuthPasswordService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
@@ -118,7 +118,7 @@ export class UserService {
     }
 
     assertEmailDeliverable(): void {
-        const isSesInitialized = this.awsSESService.isInitialized();
+        const isSesInitialized = this.awsSesService.isInitialized();
         if (!isSesInitialized) {
             throw new AwsSesNotConfiguredException();
         }

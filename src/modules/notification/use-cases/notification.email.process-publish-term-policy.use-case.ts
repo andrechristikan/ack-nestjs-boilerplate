@@ -1,4 +1,4 @@
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
@@ -24,7 +24,7 @@ export class NotificationEmailProcessPublishTermPolicyUseCase implements IAppUse
         private readonly termPolicyRecipientService: TermPolicyRecipientService,
         private readonly notificationEmailDeliveryService: NotificationEmailDeliveryService,
         private readonly notificationService: NotificationService,
-        private readonly awsSESService: AwsSESService,
+        private readonly awsSesService: AwsSesService,
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
         private readonly messageService: MessageService
@@ -78,8 +78,8 @@ export class NotificationEmailProcessPublishTermPolicyUseCase implements IAppUse
             message,
         };
 
-        const isSESInitialized = this.awsSESService.isInitialized();
-        if (!isSESInitialized) {
+        const isSesInitialized = this.awsSesService.isInitialized();
+        if (!isSesInitialized) {
             return processed;
         }
 

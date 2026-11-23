@@ -84,7 +84,7 @@ describe('UserProfileResponseSchema', () => {
         countryId: 'country-1',
         gender: EnumUserGender.male,
         lastLoginAt: new Date('2026-02-01T00:00:00.000Z'),
-        lastIPAddress: '127.0.0.1',
+        lastIpAddress: '127.0.0.1',
         lastLoginFrom: EnumUserLoginFrom.website,
         lastLoginWith: EnumUserLoginWith.credential,
         photo: null,

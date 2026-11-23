@@ -3,8 +3,8 @@ import type {
     BulkEmailDestinationStatus,
     SendTemplatedEmailCommandOutput,
 } from '@aws-sdk/client-ses';
-import type { IAwsSESSendBulkRecipient } from '@common/aws/interfaces/aws.ses.interface';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import type { IAwsSesSendBulkRecipient } from '@common/aws/interfaces/aws.ses.interface';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
@@ -27,7 +27,7 @@ export class NotificationEmailDeliveryService {
     private readonly defaultTemplateData: Record<string, string>;
 
     constructor(
-        private readonly awsSESService: AwsSESService,
+        private readonly awsSesService: AwsSesService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
         private readonly notificationRepository: NotificationRepository,
@@ -53,7 +53,7 @@ export class NotificationEmailDeliveryService {
         userId,
         encryptedEmail,
         username,
-    }: INotificationTermPolicyBatchRecipientEncryptedPayload): IAwsSESSendBulkRecipient {
+    }: INotificationTermPolicyBatchRecipientEncryptedPayload): IAwsSesSendBulkRecipient {
         const recipient = this.notificationUtil.decryptPayload(
             encryptedEmail,
             userId
@@ -102,7 +102,7 @@ export class NotificationEmailDeliveryService {
         email: string,
         templateData: Record<string, string>
     ): Promise<SendTemplatedEmailCommandOutput> {
-        return this.awsSESService.send({
+        return this.awsSesService.send({
             templateName: kind,
             recipients: [email],
             sender: this.noReplyAddress,
@@ -122,7 +122,7 @@ export class NotificationEmailDeliveryService {
 
         let statuses: BulkEmailDestinationStatus[];
         try {
-            const result = await this.awsSESService.sendBulk({
+            const result = await this.awsSesService.sendBulk({
                 templateName: EnumNotificationKind.publishTermPolicy,
                 recipients: destinations,
                 sender: this.noReplyAddress,

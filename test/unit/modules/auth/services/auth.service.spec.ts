@@ -314,7 +314,7 @@ describe('AuthService', () => {
         });
     });
 
-    describe('validateOAuthApple', () => {
+    describe('validateOauthApple', () => {
         it('passes the nonce claim of the verified payload to consumeNonce', async () => {
             authSocialService.verifyApple.mockResolvedValue({
                 email: 'jane@example.com',
@@ -323,7 +323,7 @@ describe('AuthService', () => {
                 nonce: 'plain-nonce',
             } as VerifyAppleIdTokenResponse);
 
-            await service.validateOAuthApple('id-token');
+            await service.validateOauthApple('id-token');
 
             expect(authSocialService.consumeNonce).toHaveBeenCalledWith(
                 'plain-nonce'
@@ -337,7 +337,7 @@ describe('AuthService', () => {
                 sub: 'subject-jane',
             } as VerifyAppleIdTokenResponse);
 
-            await service.validateOAuthApple('id-token');
+            await service.validateOauthApple('id-token');
 
             expect(authSocialService.consumeNonce).toHaveBeenCalledWith(null);
         });
@@ -351,7 +351,7 @@ describe('AuthService', () => {
             } as VerifyAppleIdTokenResponse);
             authSocialService.consumeNonce.mockRejectedValue(invalid);
 
-            const rejection = service.validateOAuthApple('id-token');
+            const rejection = service.validateOauthApple('id-token');
 
             await expect(rejection).rejects.toBe(invalid);
         });
@@ -365,7 +365,7 @@ describe('AuthService', () => {
             } as VerifyAppleIdTokenResponse);
             authSocialService.consumeNonce.mockRejectedValue(failure);
 
-            const rejection = service.validateOAuthApple('id-token');
+            const rejection = service.validateOauthApple('id-token');
 
             await expect(rejection).rejects.toBe(failure);
         });
@@ -376,7 +376,7 @@ describe('AuthService', () => {
             );
 
             await expect(
-                service.validateOAuthApple('id-token')
+                service.validateOauthApple('id-token')
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
@@ -393,7 +393,7 @@ describe('AuthService', () => {
             } as VerifyAppleIdTokenResponse);
 
             await expect(
-                service.validateOAuthApple('id-token')
+                service.validateOauthApple('id-token')
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialAppleInvalid,
@@ -411,7 +411,7 @@ describe('AuthService', () => {
             } as VerifyAppleIdTokenResponse;
             authSocialService.verifyApple.mockResolvedValue(applePayload);
 
-            const result = await service.validateOAuthApple('id-token');
+            const result = await service.validateOauthApple('id-token');
 
             expect(result).toEqual({
                 email: 'jane@example.com',
@@ -427,7 +427,7 @@ describe('AuthService', () => {
             const notConfigured = new AuthSocialAppleNotConfiguredException();
             authSocialService.verifyApple.mockRejectedValue(notConfigured);
 
-            const rejection = service.validateOAuthApple('id-token');
+            const rejection = service.validateOauthApple('id-token');
 
             await expect(rejection).rejects.toBe(notConfigured);
         });
@@ -438,7 +438,7 @@ describe('AuthService', () => {
             );
             authSocialService.verifyApple.mockRejectedValue(invalid);
 
-            const rejection = service.validateOAuthApple('id-token');
+            const rejection = service.validateOauthApple('id-token');
 
             await expect(rejection).rejects.toBe(invalid);
         });
@@ -449,7 +449,7 @@ describe('AuthService', () => {
             });
             authSocialService.verifyApple.mockRejectedValue(cause);
 
-            const rejection = service.validateOAuthApple('id-token');
+            const rejection = service.validateOauthApple('id-token');
 
             await expect(rejection).rejects.toMatchObject({
                 constructor: AuthProviderUnavailableException,
@@ -463,7 +463,7 @@ describe('AuthService', () => {
             const cause = new Error('apple verification failed');
             authSocialService.verifyApple.mockRejectedValue(cause);
 
-            const rejection = service.validateOAuthApple('id-token');
+            const rejection = service.validateOauthApple('id-token');
 
             await expect(rejection).rejects.toMatchObject({
                 module: 'auth',
@@ -473,7 +473,7 @@ describe('AuthService', () => {
         });
     });
 
-    describe('validateOAuthGoogle', () => {
+    describe('validateOauthGoogle', () => {
         it('passes the nonce claim of the verified payload to consumeNonce', async () => {
             authSocialService.verifyGoogle.mockResolvedValue({
                 email: 'jane@example.com',
@@ -482,7 +482,7 @@ describe('AuthService', () => {
                 nonce: 'plain-nonce',
             } as TokenPayload);
 
-            await service.validateOAuthGoogle('id-token');
+            await service.validateOauthGoogle('id-token');
 
             expect(authSocialService.consumeNonce).toHaveBeenCalledWith(
                 'plain-nonce'
@@ -496,7 +496,7 @@ describe('AuthService', () => {
                 sub: 'subject-jane',
             } as TokenPayload);
 
-            await service.validateOAuthGoogle('id-token');
+            await service.validateOauthGoogle('id-token');
 
             expect(authSocialService.consumeNonce).toHaveBeenCalledWith(null);
         });
@@ -510,7 +510,7 @@ describe('AuthService', () => {
             } as TokenPayload);
             authSocialService.consumeNonce.mockRejectedValue(invalid);
 
-            const rejection = service.validateOAuthGoogle('id-token');
+            const rejection = service.validateOauthGoogle('id-token');
 
             await expect(rejection).rejects.toBe(invalid);
         });
@@ -524,7 +524,7 @@ describe('AuthService', () => {
             } as TokenPayload);
             authSocialService.consumeNonce.mockRejectedValue(failure);
 
-            const rejection = service.validateOAuthGoogle('id-token');
+            const rejection = service.validateOauthGoogle('id-token');
 
             await expect(rejection).rejects.toBe(failure);
         });
@@ -535,7 +535,7 @@ describe('AuthService', () => {
             );
 
             await expect(
-                service.validateOAuthGoogle('id-token')
+                service.validateOauthGoogle('id-token')
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
@@ -552,7 +552,7 @@ describe('AuthService', () => {
             } as TokenPayload);
 
             await expect(
-                service.validateOAuthGoogle('id-token')
+                service.validateOauthGoogle('id-token')
             ).rejects.toMatchObject({
                 module: 'auth',
                 statusCode: EnumAuthStatusCodeError.socialGoogleInvalid,
@@ -570,7 +570,7 @@ describe('AuthService', () => {
             } as TokenPayload;
             authSocialService.verifyGoogle.mockResolvedValue(googlePayload);
 
-            const result = await service.validateOAuthGoogle('id-token');
+            const result = await service.validateOauthGoogle('id-token');
 
             expect(result).toEqual({
                 email: 'jane@example.com',
@@ -583,7 +583,7 @@ describe('AuthService', () => {
             const googlePayload = { sub: 'subject-jane' } as TokenPayload;
             authSocialService.verifyGoogle.mockResolvedValue(googlePayload);
 
-            const result = await service.validateOAuthGoogle('id-token');
+            const result = await service.validateOauthGoogle('id-token');
 
             expect(result).toEqual({
                 email: '',
@@ -596,7 +596,7 @@ describe('AuthService', () => {
             const notConfigured = new AuthSocialGoogleNotConfiguredException();
             authSocialService.verifyGoogle.mockRejectedValue(notConfigured);
 
-            const rejection = service.validateOAuthGoogle('id-token');
+            const rejection = service.validateOauthGoogle('id-token');
 
             await expect(rejection).rejects.toBe(notConfigured);
         });
@@ -607,7 +607,7 @@ describe('AuthService', () => {
             );
             authSocialService.verifyGoogle.mockRejectedValue(invalid);
 
-            const rejection = service.validateOAuthGoogle('id-token');
+            const rejection = service.validateOauthGoogle('id-token');
 
             await expect(rejection).rejects.toBe(invalid);
         });
@@ -618,7 +618,7 @@ describe('AuthService', () => {
             });
             authSocialService.verifyGoogle.mockRejectedValue(cause);
 
-            const rejection = service.validateOAuthGoogle('id-token');
+            const rejection = service.validateOauthGoogle('id-token');
 
             await expect(rejection).rejects.toMatchObject({
                 constructor: AuthProviderUnavailableException,
@@ -632,7 +632,7 @@ describe('AuthService', () => {
             const cause = new Error('google verification failed');
             authSocialService.verifyGoogle.mockRejectedValue(cause);
 
-            const rejection = service.validateOAuthGoogle('id-token');
+            const rejection = service.validateOauthGoogle('id-token');
 
             await expect(rejection).rejects.toMatchObject({
                 module: 'auth',

@@ -1,3 +1,4 @@
+import { UserBadWordSeparatorRegex } from '@modules/user/constants/user.constant';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -55,7 +56,9 @@ export class UserUtil {
     }
 
     hasBadWord(str: string): boolean {
-        return this.profanity.exists(str.replace(/[^a-zA-Z]+/g, ' '));
+        return this.profanity.exists(
+            str.replace(UserBadWordSeparatorRegex, ' ')
+        );
     }
 
     getDisplayName(user: IUserName): string {

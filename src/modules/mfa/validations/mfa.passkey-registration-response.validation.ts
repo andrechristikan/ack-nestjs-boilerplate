@@ -1,34 +1,25 @@
+import { MfaPasskeyBase64UrlRegex } from '@modules/mfa/constants/mfa.constant';
 import { z } from 'zod';
 
 /** @public */
 export const MfaPasskeyRegistrationResponseSchema = z.strictObject({
-    id: z
-        .string()
-        .min(1)
-        .max(1364)
-        .regex(/^[A-Za-z0-9_-]+$/)
-        .meta({
-            description:
-                'Base64url credential id of the new passkey, at most 1364 characters',
-            example: 'AbC_-123',
-        }),
-    rawId: z
-        .string()
-        .min(1)
-        .max(1364)
-        .regex(/^[A-Za-z0-9_-]+$/)
-        .meta({
-            description:
-                'Base64url raw credential id of the new passkey, at most 1364 characters',
-            example: 'AbC_-123',
-        }),
+    id: z.string().min(1).max(1364).regex(MfaPasskeyBase64UrlRegex).meta({
+        description:
+            'Base64url credential id of the new passkey, at most 1364 characters',
+        example: 'AbC_-123',
+    }),
+    rawId: z.string().min(1).max(1364).regex(MfaPasskeyBase64UrlRegex).meta({
+        description:
+            'Base64url raw credential id of the new passkey, at most 1364 characters',
+        example: 'AbC_-123',
+    }),
     response: z
         .strictObject({
             clientDataJSON: z
                 .string()
                 .min(1)
                 .max(4096)
-                .regex(/^[A-Za-z0-9_-]+$/)
+                .regex(MfaPasskeyBase64UrlRegex)
                 .meta({
                     description:
                         'Base64url client data of the registration ceremony, at most 4096 characters',
@@ -38,7 +29,7 @@ export const MfaPasskeyRegistrationResponseSchema = z.strictObject({
                 .string()
                 .min(1)
                 .max(16384)
-                .regex(/^[A-Za-z0-9_-]+$/)
+                .regex(MfaPasskeyBase64UrlRegex)
                 .meta({
                     description:
                         'Base64url attestation object of the authenticator, at most 16384 characters',
@@ -48,7 +39,7 @@ export const MfaPasskeyRegistrationResponseSchema = z.strictObject({
                 .string()
                 .min(1)
                 .max(4096)
-                .regex(/^[A-Za-z0-9_-]+$/)
+                .regex(MfaPasskeyBase64UrlRegex)
                 .meta({
                     description:
                         'Base64url authenticator data, at most 4096 characters',
@@ -59,7 +50,7 @@ export const MfaPasskeyRegistrationResponseSchema = z.strictObject({
                 .string()
                 .min(1)
                 .max(2048)
-                .regex(/^[A-Za-z0-9_-]+$/)
+                .regex(MfaPasskeyBase64UrlRegex)
                 .meta({
                     description:
                         'Base64url public key of the credential, at most 2048 characters',

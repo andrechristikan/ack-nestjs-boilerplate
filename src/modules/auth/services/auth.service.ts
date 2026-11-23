@@ -201,7 +201,7 @@ export class AuthService {
         return user;
     }
 
-    async validateOAuthApple(idToken: string): Promise<IAuthSocialContext> {
+    async validateOauthApple(idToken: string): Promise<IAuthSocialContext> {
         const payload = await this.verifyApplePayload(idToken);
 
         await this.authSocialService.consumeNonce(payload.nonce ?? null);
@@ -213,7 +213,7 @@ export class AuthService {
         };
     }
 
-    async validateOAuthGoogle(idToken: string): Promise<IAuthSocialContext> {
+    async validateOauthGoogle(idToken: string): Promise<IAuthSocialContext> {
         const payload = await this.verifyGooglePayload(idToken);
 
         await this.authSocialService.consumeNonce(payload.nonce ?? null);

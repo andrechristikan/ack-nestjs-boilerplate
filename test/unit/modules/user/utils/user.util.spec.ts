@@ -45,7 +45,7 @@ describe('UserUtil', () => {
         gender: null,
         countryId: 'country-marigold',
         lastLoginAt: null,
-        lastIPAddress: null,
+        lastIpAddress: null,
         lastLoginFrom: null,
         lastLoginWith: null,
         lastWorkspaceId: null,

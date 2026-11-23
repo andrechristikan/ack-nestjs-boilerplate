@@ -2,26 +2,26 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AwsSESService } from '@common/aws/services/aws.ses.service';
+import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { HealthIndicatorService } from '@nestjs/terminus';
-import { HealthAwsSESIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
+import { HealthAwsSesIndicator } from '@modules/health/indicators/health.aws-ses.indicator';
 import { EnumHealthIndicatorKey } from '@modules/health/enums/health.enum';
 
-describe('HealthAwsSESIndicator', () => {
-    const awsSESService: MockProxy<AwsSESService> = mock<AwsSESService>();
+describe('HealthAwsSesIndicator', () => {
+    const awsSesService: MockProxy<AwsSesService> = mock<AwsSesService>();
     const healthIndicatorService: MockProxy<HealthIndicatorService> =
         mock<HealthIndicatorService>();
     const session = { up: vi.fn(), down: vi.fn() };
 
-    let indicator: HealthAwsSESIndicator;
+    let indicator: HealthAwsSesIndicator;
 
     beforeEach(async () => {
         healthIndicatorService.check.mockReturnValue(session as never);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                HealthAwsSESIndicator,
-                { provide: AwsSESService, useValue: awsSESService },
+                HealthAwsSesIndicator,
+                { provide: AwsSesService, useValue: awsSesService },
                 {
                     provide: HealthIndicatorService,
                     useValue: healthIndicatorService,
@@ -29,12 +29,12 @@ describe('HealthAwsSESIndicator', () => {
             ],
         }).compile();
 
-        indicator = module.get(HealthAwsSESIndicator);
+        indicator = module.get(HealthAwsSesIndicator);
     });
 
     describe('isHealthy', () => {
         it('reports down as not configured when SES is not initialized', async () => {
-            awsSESService.isInitialized.mockReturnValue(false);
+            awsSesService.isInitialized.mockReturnValue(false);
             session.down.mockReturnValue({ ses: { status: 'down' } });
 
             const result = await indicator.isHealthy(
@@ -45,12 +45,12 @@ describe('HealthAwsSESIndicator', () => {
             expect(session.down).toHaveBeenCalledWith(
                 'AWS SES is not configured'
             );
-            expect(awsSESService.checkConnection).not.toHaveBeenCalled();
+            expect(awsSesService.checkConnection).not.toHaveBeenCalled();
         });
 
         it('reports up when the connection check resolves true', async () => {
-            awsSESService.isInitialized.mockReturnValue(true);
-            awsSESService.checkConnection.mockResolvedValue(true);
+            awsSesService.isInitialized.mockReturnValue(true);
+            awsSesService.checkConnection.mockResolvedValue(true);
             session.up.mockReturnValue({ ses: { status: 'up' } });
 
             const result = await indicator.isHealthy(
@@ -63,8 +63,8 @@ describe('HealthAwsSESIndicator', () => {
         });
 
         it('reports down when the connection check resolves false', async () => {
-            awsSESService.isInitialized.mockReturnValue(true);
-            awsSESService.checkConnection.mockResolvedValue(false);
+            awsSesService.isInitialized.mockReturnValue(true);
+            awsSesService.checkConnection.mockResolvedValue(false);
             session.down.mockReturnValue({ ses: { status: 'down' } });
 
             const result = await indicator.isHealthy(
@@ -78,8 +78,8 @@ describe('HealthAwsSESIndicator', () => {
         });
 
         it('reports down with a fixed message when the connection check throws an Error', async () => {
-            awsSESService.isInitialized.mockReturnValue(true);
-            awsSESService.checkConnection.mockRejectedValue(
+            awsSesService.isInitialized.mockReturnValue(true);
+            awsSesService.checkConnection.mockRejectedValue(
                 new Error('SES unreachable')
             );
             session.down.mockReturnValue({ ses: { status: 'down' } });
@@ -95,8 +95,8 @@ describe('HealthAwsSESIndicator', () => {
         });
 
         it('reports down with the same fixed message when a non-Error is thrown', async () => {
-            awsSESService.isInitialized.mockReturnValue(true);
-            awsSESService.checkConnection.mockRejectedValue('not-an-error');
+            awsSesService.isInitialized.mockReturnValue(true);
+            awsSesService.checkConnection.mockRejectedValue('not-an-error');
             session.down.mockReturnValue({ ses: { status: 'down' } });
 
             const result = await indicator.isHealthy(

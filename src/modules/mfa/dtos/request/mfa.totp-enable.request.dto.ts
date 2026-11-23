@@ -1,3 +1,4 @@
+import { MfaTotpCodeRegex } from '@modules/mfa/constants/mfa.constant';
 import { z } from 'zod';
 import { UserReauthenticationRequestSchema } from '@modules/user/dtos/request/user.reauthentication.request.dto';
 
@@ -10,7 +11,7 @@ export const MfaTotpEnableRequestSchema =
             .string()
             .min(1)
             .max(32)
-            .regex(/^[0-9]+$/, {
+            .regex(MfaTotpCodeRegex, {
                 error: () => 'mfa.error.codeRequired',
             })
             .meta({

@@ -1,3 +1,7 @@
+import {
+    FileNonPrintableRegex,
+    FileUnsafeFilenameCharRegex,
+} from '@common/file/constants/file.constant';
 import { Injectable } from '@nestjs/common';
 import { FileExtensionContract } from '@common/file/contracts/file.extension.contract';
 import type { IFileRandomFilenameOptions } from '@common/file/interfaces/file.interface';
@@ -64,8 +68,8 @@ export class FileService {
 
     sanitizeFilename(filename: string): string {
         return filename
-            .replace(/[^ -~]/g, '')
-            .replace(/["\\/]/g, '')
+            .replace(FileNonPrintableRegex, '')
+            .replace(FileUnsafeFilenameCharRegex, '')
             .trim();
     }
 
