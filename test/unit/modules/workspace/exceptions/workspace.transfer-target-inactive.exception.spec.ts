@@ -11,7 +11,7 @@ describe('WorkspaceTransferTargetInactiveException', () => {
             expect(exception).toBeInstanceOf(AppBaseException);
             expect(exception).toMatchObject({
                 module: 'workspace',
-                statusCode: 51626,
+                statusCode: 51625,
                 statusCodeKey:
                     EnumWorkspaceStatusCodeError[
                         EnumWorkspaceStatusCodeError.transferTargetInactive

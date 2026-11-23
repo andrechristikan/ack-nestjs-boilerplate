@@ -1,5 +1,7 @@
-import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import {
+    EnumAwsS3Accessibility,
+    EnumRoleScope,
+} from '@generated/prisma-client/client';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
 
 describe('WorkspaceMemberResponseSchema', () => {
@@ -33,7 +35,12 @@ describe('WorkspaceMemberResponseSchema', () => {
         workspaceId: 'workspace-1',
         userId: 'user-1',
         user,
-        role: EnumWorkspaceMemberRole.member,
+        role: {
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'member',
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
 

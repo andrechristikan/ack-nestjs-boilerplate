@@ -1,3 +1,4 @@
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -10,14 +11,10 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumActivityLogAction,
-    EnumProjectMemberRole,
     EnumWorkspaceInviteStatus,
-    EnumWorkspaceMemberRole,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
-import type {
-    WorkspaceInvite,
-    WorkspaceMember,
-} from '@generated/prisma-client/client';
+import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
@@ -67,9 +64,9 @@ describe('WorkspaceClaimInviteUseCase', () => {
         workspaceId: 'workspace-1',
         email: 'invitee@example.com',
         token: 'hashed-token',
-        workspaceRole: EnumWorkspaceMemberRole.member,
+        workspaceRoleId: 'role-workspace-member',
         projectId: null,
-        projectRole: null,
+        projectRoleId: null,
         reference: 'WIN-abc123',
         expiredAt: new Date('2026-02-01T00:00:00.000Z'),
         status: EnumWorkspaceInviteStatus.pending,
@@ -78,7 +75,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
         acceptedByUserId: null,
         nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     };
-    const existingMember: WorkspaceMember = {
+    const existingMember: IWorkspaceMemberWithRole = {
         id: 'member-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -86,7 +83,14 @@ describe('WorkspaceClaimInviteUseCase', () => {
         updatedBy: null,
         workspaceId: 'workspace-1',
         userId: 'user-2',
-        role: EnumWorkspaceMemberRole.member,
+        roleId: 'role-workspace-member',
+        role: {
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'member',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
@@ -215,7 +219,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 tx,
                 'workspace-1',
                 'user-2',
-                EnumWorkspaceMemberRole.member,
+                'role-workspace-member',
                 'user-2'
             );
             expect(
@@ -265,7 +269,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
             const projectInvite: WorkspaceInvite = {
                 ...invite,
                 projectId: 'project-1',
-                projectRole: EnumProjectMemberRole.member,
+                projectRoleId: 'role-project-member',
             };
             workspaceInviteService.validateInviteForEmail.mockResolvedValue(
                 projectInvite
@@ -296,7 +300,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 tx,
                 'project-1',
                 'user-2',
-                EnumProjectMemberRole.member,
+                'role-project-member',
                 'user-2'
             );
         });

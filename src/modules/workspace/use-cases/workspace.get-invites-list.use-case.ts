@@ -1,3 +1,9 @@
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -21,20 +27,27 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceGetInvitesListUseCase implements IAppUseCase<
-    [IWorkspaceContext, WorkspaceInviteListRequestDto],
+    [IWorkspaceContext, IPolicyContext, WorkspaceInviteListRequestDto],
     IResponsePaginationReturn<IWorkspaceInviteList>
 > {
     constructor(
         private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly paginationFilterUtil: PaginationFilterUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
         workspaceContext: IWorkspaceContext,
+        policyContext: IPolicyContext,
         query: WorkspaceInviteListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.read,
+            EnumPolicySubject.WorkspaceInvite
+        );
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: WorkspaceInviteUserListCursorScope,
             availableSearch: WorkspaceInviteDefaultAvailableSearch,
@@ -57,7 +70,8 @@ export class WorkspaceGetInvitesListUseCase implements IAppUseCase<
             await this.workspaceInviteService.getInvitesList(
                 workspaceContext.workspace.id,
                 params,
-                status?.where
+                status?.where ?? null,
+                additionalWhere
             );
 
         return {

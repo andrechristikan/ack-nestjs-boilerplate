@@ -1,3 +1,8 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -16,8 +21,13 @@ import type { WorkspaceAdminMemberListRequestDto } from '@modules/workspace/dtos
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceGetMembersListByAdminUseCase } from '@modules/workspace/use-cases/workspace.get-members-list-by-admin.use-case';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('WorkspaceGetMembersListByAdminUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'WorkspaceMember'> = { id: 'scoped-1' };
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
@@ -38,6 +48,7 @@ describe('WorkspaceGetMembersListByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
         paginationQueryUtil.cursor.mockReturnValue({
             params: cursorPagination,
             storePatch: {},
@@ -49,6 +60,10 @@ describe('WorkspaceGetMembersListByAdminUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 WorkspaceGetMembersListByAdminUseCase,
                 {
                     provide: WorkspaceMemberService,
@@ -82,7 +97,7 @@ describe('WorkspaceGetMembersListByAdminUseCase', () => {
                 page
             );
 
-            await useCase.execute('workspace-1', query);
+            await useCase.execute(policyContext, 'workspace-1', query);
 
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
                 availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
@@ -93,7 +108,7 @@ describe('WorkspaceGetMembersListByAdminUseCase', () => {
             );
             expect(
                 workspaceMemberService.getMembersListByAdmin
-            ).toHaveBeenCalledWith('workspace-1', offsetPagination);
+            ).toHaveBeenCalledWith('workspace-1', offsetPagination, scoped);
         });
     });
 });

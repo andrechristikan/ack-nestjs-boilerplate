@@ -1,9 +1,15 @@
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+    Prisma,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
 import {
     WorkspaceMemberDefaultAvailableOrderBy,
     WorkspaceMemberDefaultRole,
@@ -20,26 +26,33 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceGetMembersListUseCase implements IAppUseCase<
-    [IWorkspaceContext, WorkspaceMemberListRequestDto],
+    [IWorkspaceContext, IPolicyContext, WorkspaceMemberListRequestDto],
     IResponsePaginationReturn<IWorkspaceMember>
 > {
     constructor(
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly paginationFilterUtil: PaginationFilterUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
         workspaceContext: IWorkspaceContext,
+        policyContext: IPolicyContext,
         query: WorkspaceMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.read,
+            EnumPolicySubject.WorkspaceMember
+        );
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: WorkspaceMemberUserListCursorScope,
             availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
         });
-        const role = this.paginationFilterUtil.inEnum(
-            Prisma.WorkspaceMemberScalarFieldEnum.role,
+        const roleKey = this.paginationFilterUtil.inEnum(
+            Prisma.RoleScalarFieldEnum.key,
             query.role,
             WorkspaceMemberDefaultRole
         );
@@ -47,7 +60,7 @@ export class WorkspaceGetMembersListUseCase implements IAppUseCase<
             ...storePatch,
             filters: {
                 ...storePatch.filters,
-                ...(role?.storeFilter ?? {}),
+                ...(roleKey?.storeFilter ?? {}),
             },
         });
 
@@ -55,7 +68,8 @@ export class WorkspaceGetMembersListUseCase implements IAppUseCase<
             await this.workspaceMemberService.getMembersList(
                 workspaceContext.workspace.id,
                 params,
-                role?.where
+                roleKey?.where ?? null,
+                additionalWhere
             );
 
         return {

@@ -1,3 +1,4 @@
+import type { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
     IPaginationCursorReturn,
@@ -12,12 +13,14 @@ export interface IWorkspaceJoinRequestRepository {
     expireStalePending(): Promise<number>;
     findByIdAndWorkspace(
         workspaceJoinRequestId: string,
-        workspaceId: string
+        workspaceId: string,
+        additionalWhere: Prisma.WorkspaceJoinRequestWhereInput | null
     ): Promise<WorkspaceJoinRequest | null>;
     findWithPaginationCursor(
         workspaceId: string,
         { where, ...others }: IPaginationQueryCursorParams,
-        status: Record<string, IPaginationIn> | null
+        status: Record<string, IPaginationIn> | null,
+        additionalWhere: Prisma.WorkspaceJoinRequestWhereInput | null
     ): Promise<IPaginationCursorReturn<WorkspaceJoinRequest>>;
     createPendingInTx(
         tx: IDatabaseTransactionClient,

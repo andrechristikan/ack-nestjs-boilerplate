@@ -1,3 +1,6 @@
+import type { Prisma } from '@generated/prisma-client/client';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
+import { RoleService } from '@modules/role/services/role.service';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
@@ -15,9 +18,9 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
+    EnumRoleScope,
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
-    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type {
     Workspace,
@@ -66,6 +69,7 @@ export class WorkspaceJoinRequestService {
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberService: WorkspaceMemberService,
+        private readonly roleService: RoleService,
         private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly userService: UserService,
         private readonly notificationService: NotificationService,
@@ -266,23 +270,27 @@ export class WorkspaceJoinRequestService {
     async getJoinRequestsList(
         workspaceId: string,
         pagination: IPaginationQueryCursorParams,
-        status?: Record<string, IPaginationIn>
+        status: Record<string, IPaginationIn> | null,
+        additionalWhere: Prisma.WorkspaceJoinRequestWhereInput | null
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
         return this.workspaceJoinRequestRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
-            status ?? null
+            status,
+            additionalWhere
         );
     }
 
     async getPendingById(
         workspaceJoinRequestId: string,
-        workspaceId: string
+        workspaceId: string,
+        additionalWhere: Prisma.WorkspaceJoinRequestWhereInput | null
     ): Promise<WorkspaceJoinRequest> {
         const joinRequest =
             await this.workspaceJoinRequestRepository.findByIdAndWorkspace(
                 workspaceJoinRequestId,
-                workspaceId
+                workspaceId,
+                additionalWhere
             );
         if (!joinRequest) {
             throw new WorkspaceJoinRequestNotFoundException();
@@ -306,6 +314,10 @@ export class WorkspaceJoinRequestService {
         const reviewerId = authContext.userId;
         const reviewedAt = this.helperDateService.create();
 
+        const memberRole = await this.roleService.getRefByScopeAndKey(
+            EnumRoleScope.workspace,
+            EnumRoleWorkspaceKey.member
+        );
         try {
             await this.outboxService.withTransaction(async tx => {
                 const accepted =
@@ -323,7 +335,7 @@ export class WorkspaceJoinRequestService {
                     tx,
                     joinRequest.workspaceId,
                     joinRequest.userId,
-                    EnumWorkspaceMemberRole.member,
+                    memberRole.id,
                     reviewerId
                 );
                 const email = await this.userService.getEmailByIdInTx(

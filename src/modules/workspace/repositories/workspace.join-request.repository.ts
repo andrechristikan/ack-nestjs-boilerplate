@@ -1,3 +1,4 @@
+import type { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -86,12 +87,15 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
 
     async findByIdAndWorkspace(
         workspaceJoinRequestId: string,
-        workspaceId: string
+        workspaceId: string,
+        additionalWhere: Prisma.WorkspaceJoinRequestWhereInput | null
     ): Promise<WorkspaceJoinRequest | null> {
         return this.databaseService.client.workspaceJoinRequest.findFirst({
             where: {
-                id: workspaceJoinRequestId,
-                workspaceId,
+                AND: [
+                    additionalWhere ?? {},
+                    { id: workspaceJoinRequestId, workspaceId },
+                ],
             },
         });
     }
@@ -99,16 +103,20 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
     async findWithPaginationCursor(
         workspaceId: string,
         { where, ...others }: IPaginationQueryCursorParams,
-        status: Record<string, IPaginationIn> | null
+        status: Record<string, IPaginationIn> | null,
+        additionalWhere: Prisma.WorkspaceJoinRequestWhereInput | null
     ): Promise<IPaginationCursorReturn<WorkspaceJoinRequest>> {
         return this.paginationService.cursor(
             this.databaseService.client.workspaceJoinRequest,
             {
                 ...others,
                 where: {
-                    ...where,
-                    ...(status ?? {}),
-                    workspaceId,
+                    AND: [
+                        additionalWhere ?? {},
+                        where ?? {},
+                        status ?? {},
+                        { workspaceId },
+                    ],
                 },
             }
         );

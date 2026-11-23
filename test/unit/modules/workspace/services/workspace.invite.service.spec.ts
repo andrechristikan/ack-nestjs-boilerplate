@@ -1,3 +1,4 @@
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import type {
     INotificationEmailSendUnregisteredEffect,
@@ -22,15 +23,13 @@ import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
-    EnumProjectMemberRole,
     EnumWorkspaceInviteStatus,
-    EnumWorkspaceMemberRole,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import type {
     Project,
     Workspace,
     WorkspaceInvite,
-    WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
@@ -147,9 +146,9 @@ describe('WorkspaceInviteService', () => {
         workspaceId: 'workspace-1',
         email: 'invitee@example.com',
         token: 'hashed-token',
-        workspaceRole: EnumWorkspaceMemberRole.member,
+        workspaceRoleId: 'role-workspace-member',
         projectId: null,
-        projectRole: null,
+        projectRoleId: null,
         reference: 'WIN-abc123',
         expiredAt: new Date('2026-02-01T00:00:00.000Z'),
         status: EnumWorkspaceInviteStatus.pending,
@@ -192,14 +191,15 @@ describe('WorkspaceInviteService', () => {
 
     const baseCreate: IWorkspaceInviteCreate = {
         email: 'invitee@example.com' as Lowercase<string>,
-        workspaceRole: EnumWorkspaceMemberRole.member,
+        workspaceRoleId: 'role-workspace-member',
         projectId: null,
-        projectRole: null,
+        projectRoleId: null,
         expiryDuration: null,
     };
 
     const unregisteredNotice: IWorkspaceInviteNotice = {
         workspaceName: 'Acme',
+        workspaceRoleName: 'Member',
         inviterName: 'Bramble',
         inviteeUserId: null,
     };
@@ -495,7 +495,7 @@ describe('WorkspaceInviteService', () => {
     });
 
     describe('assertInviteeNotMember', () => {
-        const member: WorkspaceMember = {
+        const member: IWorkspaceMemberWithRole = {
             id: 'member-1',
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             createdBy: null,
@@ -503,7 +503,14 @@ describe('WorkspaceInviteService', () => {
             updatedBy: null,
             workspaceId: 'workspace-1',
             userId: 'user-2',
-            role: EnumWorkspaceMemberRole.member,
+            roleId: 'role-workspace-member',
+            role: {
+                id: 'role-workspace-member',
+                scope: EnumRoleScope.workspace,
+                key: 'member',
+                name: 'member',
+                policyRevision: 0,
+            },
             joinedAt: new Date('2026-01-01T00:00:00.000Z'),
         };
 
@@ -624,7 +631,7 @@ describe('WorkspaceInviteService', () => {
             );
 
             await expect(
-                service.getInvitesList('workspace-1', pagination)
+                service.getInvitesList('workspace-1', pagination, null, null)
             ).rejects.toMatchObject({
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
 
@@ -650,7 +657,9 @@ describe('WorkspaceInviteService', () => {
 
             const result = await service.getInvitesList(
                 'workspace-1',
-                pagination
+                pagination,
+                null,
+                null
             );
 
             expect(result).toBe(page);
@@ -662,7 +671,7 @@ describe('WorkspaceInviteService', () => {
             );
             expect(
                 workspaceInviteRepository.findWithPaginationCursor
-            ).toHaveBeenCalledWith('workspace-1', pagination, null);
+            ).toHaveBeenCalledWith('workspace-1', pagination, null, null);
         });
 
         it('forwards the status filter to the repository', async () => {
@@ -674,13 +683,14 @@ describe('WorkspaceInviteService', () => {
             const result = await service.getInvitesList(
                 'workspace-1',
                 pagination,
-                status
+                status,
+                null
             );
 
             expect(result).toBe(page);
             expect(
                 workspaceInviteRepository.findWithPaginationCursor
-            ).toHaveBeenCalledWith('workspace-1', pagination, status);
+            ).toHaveBeenCalledWith('workspace-1', pagination, status, null);
         });
     });
 
@@ -732,7 +742,7 @@ describe('WorkspaceInviteService', () => {
             await expect(
                 service.assertProjectRolePaired({
                     ...baseCreate,
-                    projectRole: EnumProjectMemberRole.member,
+                    projectRoleId: 'role-project-member',
                 })
             ).rejects.toMatchObject({
                 module: 'workspace',
@@ -750,7 +760,7 @@ describe('WorkspaceInviteService', () => {
                 service.assertProjectRolePaired({
                     ...baseCreate,
                     projectId: 'project-1',
-                    projectRole: EnumProjectMemberRole.member,
+                    projectRoleId: 'role-project-member',
                 })
             ).resolves.toBeUndefined();
             expect(
@@ -766,7 +776,7 @@ describe('WorkspaceInviteService', () => {
         const pairedCreate = {
             ...baseCreate,
             projectId: 'project-1',
-            projectRole: EnumProjectMemberRole.member,
+            projectRoleId: 'role-project-member',
         };
 
         it('throws WorkspaceInviteProjectMismatchException when the project is not active in the workspace', () => {
@@ -831,7 +841,7 @@ describe('WorkspaceInviteService', () => {
                 {
                     ...baseCreate,
                     projectId: 'project-1',
-                    projectRole: EnumProjectMemberRole.member,
+                    projectRoleId: 'role-project-member',
                     expiryDuration: 14,
                 },
                 unregisteredNotice
@@ -855,9 +865,9 @@ describe('WorkspaceInviteService', () => {
                 workspaceInviteId: 'invite-new',
                 workspaceId: 'workspace-1',
                 email: 'invitee@example.com',
-                workspaceRole: EnumWorkspaceMemberRole.member,
+                workspaceRoleId: 'role-workspace-member',
                 projectId: 'project-1',
-                projectRole: EnumProjectMemberRole.member,
+                projectRoleId: 'role-project-member',
                 hashedToken: 'hashed-token',
                 reference: 'WIN-abc123',
                 expiredAt: tokenData.expiredAt,
@@ -961,7 +971,7 @@ describe('WorkspaceInviteService', () => {
                     workspaceName: 'Acme',
                     inviterName: 'Bramble',
                     reference: 'WIN-abc123',
-                    workspaceMemberRole: EnumWorkspaceMemberRole.member,
+                    workspaceMemberRole: 'Member',
                     expiredAt: expiredAtIso,
                     inviteAcceptLink: tokenData.claimLink,
                 }
@@ -1000,7 +1010,7 @@ describe('WorkspaceInviteService', () => {
                 workspaceName: 'Acme',
                 inviterName: 'Bramble',
                 reference: 'WIN-abc123',
-                workspaceMemberRole: EnumWorkspaceMemberRole.member,
+                workspaceMemberRole: 'Member',
                 expiredAt: expiredAtIso,
                 inviteAcceptLink: tokenData.signUpLink,
             });
@@ -1339,7 +1349,7 @@ describe('WorkspaceInviteService', () => {
             );
 
             await expect(
-                service.getPendingById('invite-1', 'workspace-1')
+                service.getPendingById('invite-1', 'workspace-1', null)
             ).rejects.toMatchObject({
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,
 
@@ -1364,7 +1374,7 @@ describe('WorkspaceInviteService', () => {
             );
 
             await expect(
-                service.getPendingById('invite-1', 'workspace-1')
+                service.getPendingById('invite-1', 'workspace-1', null)
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteNotFoundException,
                 module: 'workspace',
@@ -1384,7 +1394,7 @@ describe('WorkspaceInviteService', () => {
             });
 
             await expect(
-                service.getPendingById('invite-1', 'workspace-1')
+                service.getPendingById('invite-1', 'workspace-1', null)
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteAlreadyProcessedException,
                 module: 'workspace',
@@ -1399,15 +1409,18 @@ describe('WorkspaceInviteService', () => {
                 baseInvite
             );
 
+            const additionalWhere = { workspaceId: 'workspace-1' };
+
             const result = await service.getPendingById(
                 'invite-1',
-                'workspace-1'
+                'workspace-1',
+                additionalWhere
             );
 
             expect(result).toBe(baseInvite);
             expect(
                 workspaceInviteRepository.findByIdAndWorkspace
-            ).toHaveBeenCalledWith('invite-1', 'workspace-1');
+            ).toHaveBeenCalledWith('invite-1', 'workspace-1', additionalWhere);
         });
     });
 
@@ -1419,7 +1432,7 @@ describe('WorkspaceInviteService', () => {
             helperDateService.create.mockReturnValue(baseInvite.expiredAt);
 
             await expect(
-                service.getResendableById('invite-1', 'workspace-1')
+                service.getResendableById('invite-1', 'workspace-1', null)
             ).rejects.toMatchObject({
                 constructor: WorkspaceInviteInvalidException,
                 module: 'workspace',
@@ -1435,7 +1448,7 @@ describe('WorkspaceInviteService', () => {
             });
 
             await expect(
-                service.getResendableById('invite-1', 'workspace-1')
+                service.getResendableById('invite-1', 'workspace-1', null)
             ).rejects.toMatchObject({
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
@@ -1452,12 +1465,18 @@ describe('WorkspaceInviteService', () => {
                 new Date('2026-01-31T23:59:59.000Z')
             );
 
+            const additionalWhere = { workspaceId: 'workspace-1' };
+
             const result = await service.getResendableById(
                 'invite-1',
-                'workspace-1'
+                'workspace-1',
+                additionalWhere
             );
 
             expect(result).toBe(baseInvite);
+            expect(
+                workspaceInviteRepository.findByIdAndWorkspace
+            ).toHaveBeenCalledWith('invite-1', 'workspace-1', additionalWhere);
             expect(
                 featureFlagService.validateFeatureFlagMetadata
             ).toHaveBeenCalledTimes(1);
@@ -2047,9 +2066,9 @@ describe('WorkspaceInviteService', () => {
             workspaceId: 'workspace-1',
             workspaceInviteId: 'invite-1',
             invitedByUserId: 'user-1',
-            workspaceMemberRole: EnumWorkspaceMemberRole.member,
+            workspaceMemberRoleId: 'role-workspace-member',
             projectId: 'project-1',
-            projectMemberRole: EnumProjectMemberRole.member,
+            projectMemberRoleId: 'role-project-member',
         };
 
         beforeEach(() => {
@@ -2080,7 +2099,7 @@ describe('WorkspaceInviteService', () => {
                 tx,
                 'workspace-1',
                 'user-2',
-                EnumWorkspaceMemberRole.member,
+                'role-workspace-member',
                 'user-2'
             );
             expect(workspaceInviteRepository.acceptInTx).toHaveBeenCalledWith(
@@ -2122,6 +2141,14 @@ describe('WorkspaceInviteService', () => {
     });
 
     describe('mapInvitePreview', () => {
+        const workspaceRoleRef = {
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'Member',
+            policyRevision: 0,
+        };
+
         it('uses the inviter name when present', () => {
             const inviter: IUserName = {
                 name: 'Jane Doe',
@@ -2131,13 +2158,14 @@ describe('WorkspaceInviteService', () => {
             const result = service.mapInvitePreview(
                 workspace,
                 baseInvite,
-                inviter
+                inviter,
+                workspaceRoleRef
             );
 
             expect(result).toEqual({
                 workspaceName: 'Acme',
                 inviterName: 'Jane Doe',
-                workspaceRole: EnumWorkspaceMemberRole.member,
+                workspaceRole: workspaceRoleRef,
                 expiredAt: baseInvite.expiredAt,
             });
         });
@@ -2151,7 +2179,8 @@ describe('WorkspaceInviteService', () => {
             const result = service.mapInvitePreview(
                 workspace,
                 baseInvite,
-                inviter
+                inviter,
+                workspaceRoleRef
             );
 
             expect(result.inviterName).toBe('jane');
@@ -2161,7 +2190,8 @@ describe('WorkspaceInviteService', () => {
             const result = service.mapInvitePreview(
                 workspace,
                 baseInvite,
-                null
+                null,
+                workspaceRoleRef
             );
 
             expect(result.inviterName).toBe('Acme');

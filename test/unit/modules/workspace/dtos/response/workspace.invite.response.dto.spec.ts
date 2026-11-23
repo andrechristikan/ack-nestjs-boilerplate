@@ -1,8 +1,4 @@
-import {
-    EnumProjectMemberRole,
-    EnumWorkspaceInviteStatus,
-    EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
+import { EnumWorkspaceInviteStatus } from '@generated/prisma-client/client';
 import { WorkspaceInviteResponseSchema } from '@modules/workspace/dtos/response/workspace.invite.response.dto';
 
 describe('WorkspaceInviteResponseSchema', () => {
@@ -14,9 +10,9 @@ describe('WorkspaceInviteResponseSchema', () => {
         updatedBy: 'user-1',
         workspaceId: 'workspace-1',
         email: 'invitee@example.com',
-        workspaceRole: EnumWorkspaceMemberRole.member,
+        workspaceRoleId: 'role-workspace-member',
         projectId: 'project-1',
-        projectRole: EnumProjectMemberRole.member,
+        projectRoleId: 'role-project-member',
         reference: 'WIN-abc123',
         expiredAt: new Date('2026-02-01T00:00:00.000Z'),
         status: EnumWorkspaceInviteStatus.pending,
@@ -31,15 +27,15 @@ describe('WorkspaceInviteResponseSchema', () => {
         expect(result).toEqual(row);
     });
 
-    it('allows null projectId, projectRole, acceptedAt, and acceptedByUserId', () => {
+    it('allows null projectId, projectRoleId, acceptedAt, and acceptedByUserId', () => {
         const result = WorkspaceInviteResponseSchema.parse({
             ...row,
             projectId: null,
-            projectRole: null,
+            projectRoleId: null,
         });
 
         expect(result.projectId).toBeNull();
-        expect(result.projectRole).toBeNull();
+        expect(result.projectRoleId).toBeNull();
     });
 
     it('strips deletedAt, deletedBy, and an undeclared key such as the hashed token', () => {

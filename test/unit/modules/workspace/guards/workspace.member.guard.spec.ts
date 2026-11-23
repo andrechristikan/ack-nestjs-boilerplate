@@ -1,22 +1,19 @@
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import type {
-    Workspace,
-    WorkspaceMember,
-} from '@generated/prisma-client/client';
+import type { Workspace } from '@generated/prisma-client/client';
 import {
-    EnumRoleType,
     EnumUserGender,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
-    EnumWorkspaceMemberRole,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import { UserContextStoreKey } from '@modules/user/constants/user.constant';
 import { WorkspaceContextStoreKey } from '@modules/workspace/constants/workspace.constant';
@@ -51,7 +48,7 @@ describe('WorkspaceMemberGuard', () => {
         isPublic: false,
     };
 
-    const member: WorkspaceMember = {
+    const member: IWorkspaceMemberWithRole = {
         id: 'member-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -59,7 +56,14 @@ describe('WorkspaceMemberGuard', () => {
         updatedBy: null,
         workspaceId: 'workspace-1',
         userId: 'user-1',
-        role: EnumWorkspaceMemberRole.member,
+        roleId: 'role-workspace-member',
+        role: {
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'member',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
 
@@ -97,15 +101,10 @@ describe('WorkspaceMemberGuard', () => {
         deletedBy: null,
         role: {
             id: 'role-1',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
 

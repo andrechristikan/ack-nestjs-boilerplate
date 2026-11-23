@@ -26,6 +26,7 @@ import { WorkspaceTransferOwnershipUseCase } from '@modules/workspace/use-cases/
 import { WorkspaceTransferOwnershipByAdminUseCase } from '@modules/workspace/use-cases/workspace.transfer-ownership-by-admin.use-case';
 import { WorkspaceLeaveUseCase } from '@modules/workspace/use-cases/workspace.leave.use-case';
 import { WorkspaceGetMembersListUseCase } from '@modules/workspace/use-cases/workspace.get-members-list.use-case';
+import { WorkspaceGetPermissionsUseCase } from '@modules/workspace/use-cases/workspace.get-permissions.use-case';
 import { WorkspaceUpdateMemberRoleUseCase } from '@modules/workspace/use-cases/workspace.update-member-role.use-case';
 import { WorkspaceRemoveMemberUseCase } from '@modules/workspace/use-cases/workspace.remove-member.use-case';
 import { WorkspaceGetMembersListByAdminUseCase } from '@modules/workspace/use-cases/workspace.get-members-list-by-admin.use-case';
@@ -63,6 +64,7 @@ import { Module } from '@nestjs/common';
         WorkspaceLeaveUseCase,
         WorkspaceGetMembersListUseCase,
         WorkspaceUpdateMemberRoleUseCase,
+        WorkspaceGetPermissionsUseCase,
         WorkspaceRemoveMemberUseCase,
         WorkspaceGetMembersListByAdminUseCase,
         WorkspaceProcessExpireStaleInvitesUseCase,
@@ -95,6 +97,7 @@ import { Module } from '@nestjs/common';
         WorkspaceLeaveUseCase,
         WorkspaceGetMembersListUseCase,
         WorkspaceUpdateMemberRoleUseCase,
+        WorkspaceGetPermissionsUseCase,
         WorkspaceRemoveMemberUseCase,
         WorkspaceGetMembersListByAdminUseCase,
         WorkspaceProcessExpireStaleInvitesUseCase,

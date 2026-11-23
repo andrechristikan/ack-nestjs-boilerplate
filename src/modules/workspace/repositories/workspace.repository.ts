@@ -59,9 +59,12 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         });
     }
 
-    async findByIdByAdmin(workspaceId: string): Promise<Workspace | null> {
-        return this.databaseService.client.workspace.findUnique({
-            where: { id: workspaceId },
+    async findByIdByAdmin(
+        workspaceId: string,
+        additionalWhere: Prisma.WorkspaceWhereInput | null
+    ): Promise<Workspace | null> {
+        return this.databaseService.client.workspace.findFirst({
+            where: { AND: [additionalWhere ?? {}, { id: workspaceId }] },
         });
     }
 
@@ -98,15 +101,15 @@ export class WorkspaceRepository implements IWorkspaceRepository {
 
     async findWithPaginationOffsetByAdmin(
         { where, ...others }: IPaginationQueryOffsetParams,
-        isPublic: Record<string, IPaginationEqual> | null
+        isPublic: Record<string, IPaginationEqual> | null,
+        additionalWhere: Prisma.WorkspaceWhereInput | null
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.paginationService.offset(
             this.databaseService.client.workspace,
             {
                 ...others,
                 where: {
-                    ...where,
-                    ...isPublic,
+                    AND: [additionalWhere ?? {}, where ?? {}, isPublic ?? {}],
                 },
             }
         );

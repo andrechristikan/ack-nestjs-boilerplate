@@ -1,16 +1,26 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import { RoleService } from '@modules/role/services/role.service';
+import {
+    EnumPolicyAction,
+    EnumRoleScope,
+} from '@generated/prisma-client/client';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import { WorkspaceOwnerRoleNotAssignableException } from '@modules/workspace/exceptions/workspace.owner-role-not-assignable.exception';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
-    EnumProjectMemberRole,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumWorkspaceInviteStatus,
-    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type {
     Project,
@@ -22,6 +32,7 @@ import { ProjectService } from '@modules/project/services/project.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
+import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
 import { WorkspaceInviteRoleRequiredException } from '@modules/workspace/exceptions/workspace.invite-role-required.exception';
 import { WorkspaceInviteProjectMismatchException } from '@modules/workspace/exceptions/workspace.invite-project-mismatch.exception';
@@ -43,8 +54,14 @@ import {
 import { WorkspaceCreateInviteUseCase } from '@modules/workspace/use-cases/workspace.create-invite.use-case';
 
 describe('WorkspaceCreateInviteUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const roleService: MockProxy<RoleService> = mock<RoleService>();
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
+    const workspaceMemberService: MockProxy<WorkspaceMemberService> =
+        mock<WorkspaceMemberService>();
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
     const userService: MockProxy<UserService> = mock<UserService>();
     const workspace: Workspace = {
@@ -69,9 +86,9 @@ describe('WorkspaceCreateInviteUseCase', () => {
         workspaceId: 'workspace-1',
         email: 'invitee@example.com',
         token: 'hashed-token',
-        workspaceRole: EnumWorkspaceMemberRole.member,
+        workspaceRoleId: 'role-workspace-member',
         projectId: null,
-        projectRole: null,
+        projectRoleId: null,
         reference: 'WIN-abc123',
         expiredAt: new Date('2026-02-01T00:00:00.000Z'),
         status: EnumWorkspaceInviteStatus.pending,
@@ -136,6 +153,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
     };
     const notice: IWorkspaceInviteNotice = {
         workspaceName: 'Acme',
+        workspaceRoleName: 'Member',
         inviterName: 'Jane Doe',
         inviteeUserId: null,
     };
@@ -154,13 +172,29 @@ describe('WorkspaceCreateInviteUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        roleService.getRefByIdForScope.mockResolvedValue({
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'Member',
+            policyRevision: 0,
+        });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
+                { provide: RoleService, useValue: roleService },
                 WorkspaceCreateInviteUseCase,
                 {
                     provide: WorkspaceInviteService,
                     useValue: workspaceInviteService,
+                },
+                {
+                    provide: WorkspaceMemberService,
+                    useValue: workspaceMemberService,
                 },
                 { provide: ProjectService, useValue: projectService },
                 { provide: UserService, useValue: userService },
@@ -173,7 +207,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
     describe('execute', () => {
         const body: WorkspaceInviteCreateRequestDto = {
             email: 'invitee@example.com' as Lowercase<string>,
-            workspaceRole: EnumWorkspaceMemberRole.member,
+            workspaceRoleId: 'role-workspace-member',
         };
         beforeEach(() => {
             userService.getOneActiveByEmail.mockResolvedValue(null);
@@ -182,6 +216,116 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 invite,
                 tokenData,
             });
+        });
+
+        it('authorizes the prospective invite create on the workspace before any role or user lookup', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                policyContext,
+                body
+            );
+
+            expect(policyAbilityService.authorize).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.create,
+                expect.objectContaining({
+                    __caslSubjectType__: 'WorkspaceInvite',
+                    workspaceId: workspaceContext.workspace.id,
+                })
+            );
+            expect(policyAbilityService.authorize).toHaveBeenCalledBefore(
+                roleService.getRefByIdForScope
+            );
+        });
+
+        it('resolves the workspace role for the workspace scope', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                policyContext,
+                body
+            );
+
+            expect(roleService.getRefByIdForScope).toHaveBeenCalledWith(
+                'role-workspace-member',
+                EnumRoleScope.workspace
+            );
+        });
+
+        it('never hands out the owner role and writes nothing', async () => {
+            roleService.getRefByIdForScope.mockResolvedValue({
+                id: 'role-workspace-owner',
+                scope: EnumRoleScope.workspace,
+                key: 'owner',
+                name: 'Owner',
+                policyRevision: 0,
+            });
+
+            workspaceMemberService.assertRoleAssignable.mockImplementation(
+                () => {
+                    throw new WorkspaceOwnerRoleNotAssignableException();
+                }
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    policyContext,
+                    { ...body, workspaceRoleId: 'role-workspace-owner' }
+                )
+            ).rejects.toThrow(WorkspaceOwnerRoleNotAssignableException);
+            expect(
+                workspaceMemberService.assertRoleAssignable
+            ).toHaveBeenCalledWith(expect.objectContaining({ key: 'owner' }));
+            expect(workspaceInviteService.createInvite).not.toHaveBeenCalled();
+        });
+
+        it('checks the project role against the project scope when one is given', async () => {
+            projectService.getActiveByIdAndWorkspace.mockResolvedValue(project);
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                policyContext,
+                {
+                    ...body,
+                    projectId: project.id,
+                    projectRoleId: 'role-project-member',
+                }
+            );
+
+            expect(roleService.getRefByIdForScope).toHaveBeenCalledWith(
+                'role-project-member',
+                EnumRoleScope.project
+            );
+        });
+
+        it('stops when the ability denies the invite create', async () => {
+            policyAbilityService.authorize.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    policyContext,
+                    body
+                )
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(workspaceInviteService.createInvite).not.toHaveBeenCalled();
         });
 
         it('checks, reads the inviter, then writes with the notice and the context for an invitee with no account', async () => {
@@ -217,6 +361,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 body
             );
 
@@ -238,9 +383,9 @@ describe('WorkspaceCreateInviteUseCase', () => {
             expect(workspaceInviteService.assertCreatable).toHaveBeenCalledWith(
                 {
                     email: 'invitee@example.com',
-                    workspaceRole: EnumWorkspaceMemberRole.member,
+                    workspaceRoleId: 'role-workspace-member',
                     projectId: null,
-                    projectRole: null,
+                    projectRoleId: null,
                     expiryDuration: null,
                 },
                 null
@@ -255,9 +400,9 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 'workspace-1',
                 {
                     email: 'invitee@example.com',
-                    workspaceRole: EnumWorkspaceMemberRole.member,
+                    workspaceRoleId: 'role-workspace-member',
                     projectId: null,
-                    projectRole: null,
+                    projectRoleId: null,
                     expiryDuration: null,
                 },
                 notice
@@ -272,6 +417,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 body
             );
 
@@ -293,10 +439,11 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 {
                     ...body,
                     projectId: 'project-1',
-                    projectRole: EnumProjectMemberRole.member,
+                    projectRoleId: 'role-project-member',
                     expiryDuration: 14,
                 } as WorkspaceInviteCreateRequestDto
             );
@@ -307,7 +454,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
             expect(workspaceInviteService.assertCreatable).toHaveBeenCalledWith(
                 expect.objectContaining({
                     projectId: 'project-1',
-                    projectRole: EnumProjectMemberRole.member,
+                    projectRoleId: 'role-project-member',
                     expiryDuration: 14,
                 }),
                 project
@@ -338,10 +485,11 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 {
                     ...body,
                     projectId: 'project-1',
-                    projectRole: EnumProjectMemberRole.member,
+                    projectRoleId: 'role-project-member',
                 } as WorkspaceInviteCreateRequestDto
             );
 
@@ -362,6 +510,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     body
                 )
             ).rejects.toBeInstanceOf(WorkspaceInviteRoleRequiredException);
@@ -382,6 +531,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     body
                 )
             ).rejects.toBeInstanceOf(WorkspaceInviteProjectMismatchException);
@@ -396,6 +546,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 body
             );
 
@@ -419,6 +570,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     body
                 )
             ).rejects.toBeInstanceOf(WorkspaceMemberAlreadyExistsException);
@@ -435,6 +587,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     body
                 )
             ).rejects.toBe(failure);
@@ -452,6 +605,7 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     body
                 )
             ).rejects.toBeInstanceOf(WorkspaceInviteDuplicateException);

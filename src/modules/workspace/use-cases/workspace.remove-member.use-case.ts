@@ -1,3 +1,9 @@
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
@@ -26,6 +32,7 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
         IApiKeyContext,
         IAuthJwtAccessContext,
         IWorkspaceContext,
+        IPolicyContext,
         string,
     ],
     IResponseReturn<void>
@@ -38,7 +45,8 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
         private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly userService: UserService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
@@ -46,10 +54,16 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         workspaceContext: IWorkspaceContext,
+        policyContext: IPolicyContext,
         targetMemberId: string
     ): Promise<IResponseReturn<void>> {
         const workspaceId = workspaceContext.workspace.id;
         const actorMember = workspaceContext.workspaceMember;
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.delete,
+            EnumPolicySubject.WorkspaceMember
+        );
         try {
             await this.outboxService.withTransaction(async tx => {
                 const removed =
@@ -57,7 +71,8 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
                         tx,
                         workspaceId,
                         actorMember,
-                        targetMemberId
+                        targetMemberId,
+                        additionalWhere
                     );
                 await this.projectMemberService.removeByWorkspaceAndUserInTx(
                     tx,

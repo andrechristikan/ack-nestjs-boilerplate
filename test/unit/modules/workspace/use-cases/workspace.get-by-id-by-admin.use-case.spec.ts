@@ -1,3 +1,8 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -5,8 +10,13 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { Workspace } from '@generated/prisma-client/client';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceGetByIdByAdminUseCase } from '@modules/workspace/use-cases/workspace.get-by-id-by-admin.use-case';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('WorkspaceGetByIdByAdminUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'Workspace'> = { id: 'scoped-1' };
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
     const workspace: Workspace = {
@@ -26,9 +36,14 @@ describe('WorkspaceGetByIdByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 WorkspaceGetByIdByAdminUseCase,
                 { provide: WorkspaceService, useValue: workspaceService },
             ],
@@ -41,11 +56,12 @@ describe('WorkspaceGetByIdByAdminUseCase', () => {
         it('wraps the workspace resolved for admin', async () => {
             workspaceService.getByIdByAdmin.mockResolvedValue(workspace);
 
-            const result = await useCase.execute('workspace-1');
+            const result = await useCase.execute(policyContext, 'workspace-1');
 
             expect(result).toEqual({ data: workspace });
             expect(workspaceService.getByIdByAdmin).toHaveBeenCalledWith(
-                'workspace-1'
+                'workspace-1',
+                scoped
             );
         });
     });

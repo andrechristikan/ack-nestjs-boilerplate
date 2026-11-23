@@ -2,10 +2,6 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { RequestUuidSchema } from '@common/request/validations/request.uuid.validation';
 import { RequestEmailSchema } from '@common/request/validations/request.email.validation';
-import {
-    EnumProjectMemberRole,
-    EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 
 /** @public */
@@ -21,22 +17,20 @@ export const WorkspaceInviteCreateRequestSchema = z.strictObject({
             example: faker.internet.email(),
         })
         .transform(value => value as Lowercase<string>),
-    workspaceRole: z
-        .enum([EnumWorkspaceMemberRole.admin, EnumWorkspaceMemberRole.member])
-        .meta({
-            description:
-                'Workspace role granted once the invite is accepted; owner can never be invited',
-            example: EnumWorkspaceMemberRole.member,
-        }),
-    projectId: RequestUuidSchema.optional().meta({
+    workspaceRoleId: RequestUuidSchema.meta({
         description:
-            'Project to also join; must belong to the current workspace. Requires projectRole',
+            'Id of the workspace role granted once the invite is accepted, taken from the shared role list with scope workspace; the owner role is never assignable',
         example: faker.string.uuid(),
     }),
-    projectRole: z.enum(EnumProjectMemberRole).optional().meta({
+    projectId: RequestUuidSchema.optional().meta({
         description:
-            'Project role granted on accept; required when projectId is set, otherwise omitted',
-        example: EnumProjectMemberRole.member,
+            'Project to also join; must belong to the current workspace. Requires projectRoleId',
+        example: faker.string.uuid(),
+    }),
+    projectRoleId: RequestUuidSchema.optional().meta({
+        description:
+            'Id of the project role granted on accept, taken from the shared role list with scope project; required when projectId is set, otherwise omitted',
+        example: faker.string.uuid(),
     }),
     expiryDuration: z.enum(EnumWorkspaceInviteExpiry).optional().meta({
         description:

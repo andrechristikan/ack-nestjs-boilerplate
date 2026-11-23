@@ -1,3 +1,5 @@
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
@@ -21,15 +23,22 @@ export class WorkspaceMemberAnalyticRepository implements IWorkspaceMemberAnalyt
     async groupByRole(
         workspaceId: string | null
     ): Promise<IAnalyticRoleCount[]> {
-        const rows = await this.databaseService.client.workspaceMember.groupBy({
-            by: ['role'],
-            where: {
-                ...(workspaceId !== null && { workspaceId }),
-                workspace: { deletedAt: null },
-            },
-            _count: { _all: true },
-        });
-        return rows.map(r => ({ role: r.role, count: r._count._all }));
+        const keys = Object.values(EnumRoleWorkspaceKey);
+        const counts = await Promise.all(
+            keys.map(key =>
+                this.databaseService.client.workspaceMember.count({
+                    where: {
+                        ...(workspaceId !== null && { workspaceId }),
+                        workspace: { deletedAt: null },
+                        role: { scope: EnumRoleScope.workspace, key },
+                    },
+                })
+            )
+        );
+
+        return keys
+            .map((role, index) => ({ role, count: counts[index] ?? 0 }))
+            .filter(row => row.count > 0);
     }
 
     async countByWorkspace(workspaceId: string): Promise<number> {

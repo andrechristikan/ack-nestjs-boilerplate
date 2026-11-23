@@ -1,11 +1,16 @@
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import { EnumRoleScope } from '@generated/prisma-client/client';
 import { WorkspaceInvitePreviewResponseSchema } from '@modules/workspace/dtos/response/workspace.invite-preview.response.dto';
 
 describe('WorkspaceInvitePreviewResponseSchema', () => {
     const row = {
         workspaceName: 'Acme',
         inviterName: 'Jane Doe',
-        workspaceRole: EnumWorkspaceMemberRole.member,
+        workspaceRole: {
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'Member',
+        },
         expiredAt: new Date('2026-02-01T00:00:00.000Z'),
     };
 
@@ -20,6 +25,15 @@ describe('WorkspaceInvitePreviewResponseSchema', () => {
             ...row,
             id: 'invite-1',
             inviteToken: 'secret-token',
+        });
+
+        expect(result).toEqual(row);
+    });
+
+    it('strips the policy revision the role reference carries', () => {
+        const result = WorkspaceInvitePreviewResponseSchema.parse({
+            ...row,
+            workspaceRole: { ...row.workspaceRole, policyRevision: 3 },
         });
 
         expect(result).toEqual(row);

@@ -1,3 +1,9 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -12,10 +18,7 @@ import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumWorkspaceMemberRole,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
 import {
     WorkspaceMemberDefaultAvailableOrderBy,
     WorkspaceMemberDefaultRole,
@@ -30,8 +33,13 @@ import {
     buildWorkspaceMember,
     buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('WorkspaceGetMembersListUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'WorkspaceMember'> = { id: 'scoped-1' };
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
@@ -58,6 +66,7 @@ describe('WorkspaceGetMembersListUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
         paginationQueryUtil.cursor.mockReturnValue({
             params: cursorPagination,
             storePatch: {},
@@ -69,6 +78,10 @@ describe('WorkspaceGetMembersListUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 WorkspaceGetMembersListUseCase,
                 {
                     provide: WorkspaceMemberService,
@@ -93,8 +106,8 @@ describe('WorkspaceGetMembersListUseCase', () => {
         it('parses the cursor query, merges the role filter, and returns the page', async () => {
             const query: WorkspaceMemberListRequestDto = { role: 'admin' };
             const roleFilter = {
-                where: { role: { in: [EnumWorkspaceMemberRole.admin] } },
-                storeFilter: { role: [EnumWorkspaceMemberRole.admin] },
+                where: { key: { in: [EnumRoleWorkspaceKey.admin] } },
+                storeFilter: { key: [EnumRoleWorkspaceKey.admin] },
             };
             paginationFilterUtil.inEnum.mockReturnValue(roleFilter);
             const page: IResponsePaginationReturn<IWorkspaceMember> = {
@@ -105,25 +118,26 @@ describe('WorkspaceGetMembersListUseCase', () => {
             };
             workspaceMemberService.getMembersList.mockResolvedValue(page);
 
-            await useCase.execute(workspaceContext, query);
+            await useCase.execute(workspaceContext, policyContext, query);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: WorkspaceMemberUserListCursorScope,
                 availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
             });
             expect(paginationFilterUtil.inEnum).toHaveBeenCalledWith(
-                Prisma.WorkspaceMemberScalarFieldEnum.role,
+                Prisma.RoleScalarFieldEnum.key,
                 'admin',
                 WorkspaceMemberDefaultRole
             );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
-                { filters: { role: [EnumWorkspaceMemberRole.admin] } }
+                { filters: { key: [EnumRoleWorkspaceKey.admin] } }
             );
             expect(workspaceMemberService.getMembersList).toHaveBeenCalledWith(
                 'workspace-1',
                 cursorPagination,
-                roleFilter.where
+                { key: { in: [EnumRoleWorkspaceKey.admin] } },
+                scoped
             );
         });
 
@@ -137,7 +151,7 @@ describe('WorkspaceGetMembersListUseCase', () => {
             };
             workspaceMemberService.getMembersList.mockResolvedValue(page);
 
-            await useCase.execute(workspaceContext, {});
+            await useCase.execute(workspaceContext, policyContext, {});
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

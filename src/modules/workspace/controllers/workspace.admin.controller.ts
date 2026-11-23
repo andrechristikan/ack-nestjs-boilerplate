@@ -1,3 +1,4 @@
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
 import type { WorkspaceAdminMemberListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-member-list.request.dto';
 import { WorkspaceAdminMemberListRequestSchema } from '@modules/workspace/dtos/request/workspace.admin-member-list.request.dto';
 import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
@@ -22,7 +23,6 @@ import type {
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import {
@@ -35,8 +35,10 @@ import {
     AuthJwtAccessProtected,
 } from '@modules/auth/decorators/auth.jwt.decorator';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
+import {
+    PolicyContext,
+    PolicyProtected,
+} from '@modules/policy/decorators/policy.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { WorkspaceMemberResponseSchema } from '@modules/workspace/dtos/response/workspace.member.response.dto';
@@ -77,20 +79,23 @@ export class WorkspaceAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
     async list(
+        @PolicyContext() policyContext: IPolicyContext,
         @Query({ schema: WorkspaceAdminListRequestSchema })
         query: WorkspaceAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        return this.workspaceGetListOffsetByAdminUseCase.execute(query);
+        return this.workspaceGetListOffsetByAdminUseCase.execute(
+            policyContext,
+            query
+        );
     }
 
     @Doc({
@@ -102,20 +107,23 @@ export class WorkspaceAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/get/:workspaceId')
     async get(
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('workspaceId', { schema: RequestUuidSchema })
         workspaceId: string
     ): Promise<IResponseReturn<Workspace>> {
-        return this.workspaceGetByIdByAdminUseCase.execute(workspaceId);
+        return this.workspaceGetByIdByAdminUseCase.execute(
+            policyContext,
+            workspaceId
+        );
     }
 
     @Doc({ summary: 'admin list members of a workspace (read-only)' })
@@ -124,22 +132,23 @@ export class WorkspaceAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/member/:workspaceId/list')
     async memberList(
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('workspaceId', { schema: RequestUuidSchema })
         workspaceId: string,
         @Query({ schema: WorkspaceAdminMemberListRequestSchema })
         query: WorkspaceAdminMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         return this.workspaceGetMembersListByAdminUseCase.execute(
+            policyContext,
             workspaceId,
             query
         );
@@ -149,10 +158,9 @@ export class WorkspaceAdminController {
     @Response('workspace.admin.transferOwnership')
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.workspace,
+        subject: EnumPolicySubject.Workspace,
         action: [EnumPolicyAction.update],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()

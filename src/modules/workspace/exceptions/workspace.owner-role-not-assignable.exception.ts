@@ -3,13 +3,13 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 /** @public */
-export class WorkspaceRoleForbiddenException extends AppBaseException {
+export class WorkspaceOwnerRoleNotAssignableException extends AppBaseException {
     readonly module = 'workspace';
-    readonly statusCode = EnumWorkspaceStatusCodeError.roleForbidden;
+    readonly statusCode = EnumWorkspaceStatusCodeError.ownerRoleNotAssignable;
     readonly statusCodeKey = EnumWorkspaceStatusCodeError[this.statusCode];
-    readonly httpStatus = HttpStatus.FORBIDDEN;
+    readonly httpStatus = HttpStatus.BAD_REQUEST;
 
     constructor() {
-        super('workspace.error.roleForbidden');
+        super('workspace.error.ownerRoleNotAssignable');
     }
 }

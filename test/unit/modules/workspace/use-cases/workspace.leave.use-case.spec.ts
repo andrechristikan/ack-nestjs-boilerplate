@@ -1,3 +1,4 @@
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -9,9 +10,8 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     EnumActivityLogAction,
-    EnumWorkspaceMemberRole,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
-import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -46,7 +46,7 @@ describe('WorkspaceLeaveUseCase', () => {
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
-    const member: WorkspaceMember = {
+    const member: IWorkspaceMemberWithRole = {
         id: 'member-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -54,7 +54,14 @@ describe('WorkspaceLeaveUseCase', () => {
         updatedBy: null,
         workspaceId: 'workspace-1',
         userId: 'user-1',
-        role: EnumWorkspaceMemberRole.owner,
+        roleId: 'role-workspace-owner',
+        role: {
+            id: 'role-workspace-owner',
+            scope: EnumRoleScope.workspace,
+            key: 'owner',
+            name: 'owner',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
     const requestContext = buildRequestContext();

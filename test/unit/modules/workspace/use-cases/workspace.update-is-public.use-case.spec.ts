@@ -1,3 +1,10 @@
+import { EnumPolicyAction } from '@generated/prisma-client/client';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -19,6 +26,9 @@ import {
 describe('WorkspaceUpdateIsPublicUseCase', () => {
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
     const workspace: Workspace = {
         id: 'workspace-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -52,6 +62,10 @@ describe('WorkspaceUpdateIsPublicUseCase', () => {
             providers: [
                 WorkspaceUpdateIsPublicUseCase,
                 { provide: WorkspaceService, useValue: workspaceService },
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
             ],
         }).compile();
 
@@ -59,6 +73,53 @@ describe('WorkspaceUpdateIsPublicUseCase', () => {
     });
 
     describe('execute', () => {
+        it('authorizes the update on the context workspace before the write', async () => {
+            workspaceService.updateWorkspaceIsPublic.mockResolvedValue(
+                workspace
+            );
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                policyContext,
+                { isPublic: true }
+            );
+
+            expect(policyAbilityService.authorize).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.update,
+                expect.objectContaining({
+                    __caslSubjectType__: 'Workspace',
+                    id: 'workspace-1',
+                })
+            );
+            expect(policyAbilityService.authorize).toHaveBeenCalledBefore(
+                workspaceService.updateWorkspaceIsPublic
+            );
+        });
+
+        it('rejects with the forbidden error and writes nothing when the ability denies the update', async () => {
+            policyAbilityService.authorize.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    policyContext,
+                    { isPublic: true }
+                )
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(
+                workspaceService.updateWorkspaceIsPublic
+            ).not.toHaveBeenCalled();
+        });
+
         it('writes the visibility with the actor and the context and wraps the workspace', async () => {
             const body: WorkspaceUpdateIsPublicRequestDto = { isPublic: true };
             workspaceService.updateWorkspaceIsPublic.mockResolvedValue(
@@ -70,6 +131,7 @@ describe('WorkspaceUpdateIsPublicUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 body
             );
 

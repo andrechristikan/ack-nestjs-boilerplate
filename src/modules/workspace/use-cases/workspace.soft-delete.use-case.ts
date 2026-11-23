@@ -1,3 +1,10 @@
+import { subject } from '@casl/ability';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
@@ -22,7 +29,13 @@ import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.
 
 @Injectable()
 export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
-    [IRequestContext, IApiKeyContext, IAuthJwtAccessContext, IWorkspaceContext],
+    [
+        IRequestContext,
+        IApiKeyContext,
+        IAuthJwtAccessContext,
+        IWorkspaceContext,
+        IPolicyContext,
+    ],
     IResponseReturn<void>
 > {
     private readonly timeoutInMs: number;
@@ -36,7 +49,8 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {
         this.timeoutInMs = this.configService.get<number>(
             'workspace.delete.timeoutInMs'
@@ -47,8 +61,14 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
-        workspaceContext: IWorkspaceContext
+        workspaceContext: IWorkspaceContext,
+        policyContext: IPolicyContext
     ): Promise<IResponseReturn<void>> {
+        this.policyAbilityService.authorize(
+            policyContext,
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.Workspace, workspaceContext.workspace)
+        );
         const workspaceId = workspaceContext.workspace.id;
         const actorId = authContext.userId;
         const deletedAt = this.helperDateService.create();

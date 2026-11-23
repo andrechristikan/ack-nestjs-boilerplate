@@ -1,11 +1,10 @@
+import { RoleService } from '@modules/role/services/role.service';
+import { EnumRoleScope } from '@generated/prisma-client/client';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import {
-    EnumWorkspaceInviteStatus,
-    EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
+import { EnumWorkspaceInviteStatus } from '@generated/prisma-client/client';
 import type {
     Workspace,
     WorkspaceInvite,
@@ -16,6 +15,7 @@ import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/w
 import { WorkspacePreviewInviteUseCase } from '@modules/workspace/use-cases/workspace.preview-invite.use-case';
 
 describe('WorkspacePreviewInviteUseCase', () => {
+    const roleService: MockProxy<RoleService> = mock<RoleService>();
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -41,9 +41,9 @@ describe('WorkspacePreviewInviteUseCase', () => {
         workspaceId: 'workspace-1',
         email: 'invitee@example.com',
         token: 'hashed-token',
-        workspaceRole: EnumWorkspaceMemberRole.member,
+        workspaceRoleId: 'role-workspace-member',
         projectId: null,
-        projectRole: null,
+        projectRoleId: null,
         reference: 'WIN-abc123',
         expiredAt: new Date('2026-02-01T00:00:00.000Z'),
         status: EnumWorkspaceInviteStatus.pending,
@@ -56,9 +56,17 @@ describe('WorkspacePreviewInviteUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        roleService.getRefByIdForScope.mockResolvedValue({
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'Member',
+            policyRevision: 0,
+        });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                { provide: RoleService, useValue: roleService },
                 WorkspacePreviewInviteUseCase,
                 {
                     provide: WorkspaceInviteService,
@@ -77,7 +85,13 @@ describe('WorkspacePreviewInviteUseCase', () => {
             const preview = {
                 workspaceName: 'Acme',
                 inviterName: 'Jane Doe',
-                workspaceRole: EnumWorkspaceMemberRole.member,
+                workspaceRole: {
+                    id: 'role-workspace-member',
+                    scope: EnumRoleScope.workspace,
+                    key: 'member',
+                    name: 'Member',
+                    policyRevision: 0,
+                },
                 expiredAt: invite.expiredAt,
             };
             workspaceInviteService.validateInviteToken.mockResolvedValue(
@@ -103,7 +117,13 @@ describe('WorkspacePreviewInviteUseCase', () => {
             expect(userService.getNameById).toHaveBeenCalledWith('user-1');
             expect(
                 workspaceInviteService.mapInvitePreview
-            ).toHaveBeenCalledWith(workspace, invite, inviter);
+            ).toHaveBeenCalledWith(workspace, invite, inviter, {
+                id: 'role-workspace-member',
+                scope: EnumRoleScope.workspace,
+                key: 'member',
+                name: 'Member',
+                policyRevision: 0,
+            });
         });
 
         it('throws WorkspaceInviteInvalidException when the invite workspace is not active', async () => {

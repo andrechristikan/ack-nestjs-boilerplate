@@ -1,3 +1,8 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -28,8 +33,15 @@ import {
     buildWorkspaceMember,
     buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('WorkspaceGetJoinRequestsListUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'WorkspaceJoinRequest'> = {
+        id: 'scoped-1',
+    };
     const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
         mock<WorkspaceJoinRequestService>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
@@ -51,6 +63,7 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
         paginationQueryUtil.cursor.mockReturnValue({
             params: cursorPagination,
             storePatch: {},
@@ -58,6 +71,10 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 WorkspaceGetJoinRequestsListUseCase,
                 {
                     provide: WorkspaceJoinRequestService,
@@ -85,7 +102,7 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
             );
 
             await expect(
-                useCase.execute(workspaceContext, {})
+                useCase.execute(workspaceContext, policyContext, {})
             ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
             expect(paginationQueryUtil.cursor).not.toHaveBeenCalled();
             expect(
@@ -116,7 +133,7 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
                 page
             );
 
-            await useCase.execute(workspaceContext, query);
+            await useCase.execute(workspaceContext, policyContext, query);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: WorkspaceJoinRequestUserListCursorScope,
@@ -140,7 +157,8 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
             ).toHaveBeenCalledWith(
                 'workspace-1',
                 cursorPagination,
-                statusFilter.where
+                statusFilter.where,
+                scoped
             );
         });
 
@@ -156,7 +174,7 @@ describe('WorkspaceGetJoinRequestsListUseCase', () => {
                 page
             );
 
-            await useCase.execute(workspaceContext, {});
+            await useCase.execute(workspaceContext, policyContext, {});
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

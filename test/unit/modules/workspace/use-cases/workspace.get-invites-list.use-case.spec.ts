@@ -1,3 +1,8 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -29,8 +34,13 @@ import {
     buildWorkspaceMember,
     buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('WorkspaceGetInvitesListUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'WorkspaceInvite'> = { id: 'scoped-1' };
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
@@ -52,6 +62,7 @@ describe('WorkspaceGetInvitesListUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
         paginationQueryUtil.cursor.mockReturnValue({
             params: cursorPagination,
             storePatch: {},
@@ -59,6 +70,10 @@ describe('WorkspaceGetInvitesListUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 WorkspaceGetInvitesListUseCase,
                 {
                     provide: WorkspaceInviteService,
@@ -97,7 +112,7 @@ describe('WorkspaceGetInvitesListUseCase', () => {
             };
             workspaceInviteService.getInvitesList.mockResolvedValue(page);
 
-            await useCase.execute(workspaceContext, query);
+            await useCase.execute(workspaceContext, policyContext, query);
 
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
                 scope: WorkspaceInviteUserListCursorScope,
@@ -116,7 +131,8 @@ describe('WorkspaceGetInvitesListUseCase', () => {
             expect(workspaceInviteService.getInvitesList).toHaveBeenCalledWith(
                 'workspace-1',
                 cursorPagination,
-                statusFilter.where
+                statusFilter.where,
+                scoped
             );
         });
 
@@ -130,7 +146,7 @@ describe('WorkspaceGetInvitesListUseCase', () => {
             };
             workspaceInviteService.getInvitesList.mockResolvedValue(page);
 
-            await useCase.execute(workspaceContext, {});
+            await useCase.execute(workspaceContext, policyContext, {});
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,

@@ -71,7 +71,7 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
                     tx,
                     invite.workspaceId,
                     userId,
-                    invite.workspaceRole,
+                    invite.workspaceRoleId,
                     userId
                 );
                 await this.workspaceJoinRequestService.cancelPendingByUserInTx(
@@ -84,12 +84,12 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
                     userId,
                     invite.workspaceId
                 );
-                if (invite.projectId && invite.projectRole) {
+                if (invite.projectId && invite.projectRoleId) {
                     await this.projectMemberService.createInTx(
                         tx,
                         invite.projectId,
                         userId,
-                        invite.projectRole,
+                        invite.projectRoleId,
                         userId
                     );
                 }

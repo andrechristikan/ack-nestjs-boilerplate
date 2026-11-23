@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import { RoleRefResponseSchema } from '@modules/role/dtos/response/role.ref.response.dto';
 
 /** @public */
 export const WorkspaceInvitePreviewResponseSchema = z.object({
@@ -12,9 +12,8 @@ export const WorkspaceInvitePreviewResponseSchema = z.object({
         description: 'Display name of the person who sent the invite',
         example: faker.person.fullName(),
     }),
-    workspaceRole: z.enum(EnumWorkspaceMemberRole).meta({
+    workspaceRole: RoleRefResponseSchema.meta({
         description: 'Workspace role the invite grants',
-        example: EnumWorkspaceMemberRole.member,
     }),
     expiredAt: z.date().meta({
         description: 'When the invite expires',

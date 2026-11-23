@@ -1,3 +1,8 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -21,8 +26,13 @@ import {
 import type { WorkspaceAdminListRequestDto } from '@modules/workspace/dtos/request/workspace.admin-list.request.dto';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceGetListOffsetByAdminUseCase } from '@modules/workspace/use-cases/workspace.get-list-offset-by-admin.use-case';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('WorkspaceGetListOffsetByAdminUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'Workspace'> = { id: 'scoped-1' };
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
@@ -58,6 +68,7 @@ describe('WorkspaceGetListOffsetByAdminUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
         paginationQueryUtil.offset.mockReturnValue({
             params: offsetPagination,
             storePatch: {},
@@ -69,6 +80,10 @@ describe('WorkspaceGetListOffsetByAdminUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 WorkspaceGetListOffsetByAdminUseCase,
                 { provide: WorkspaceService, useValue: workspaceService },
                 {
@@ -106,7 +121,7 @@ describe('WorkspaceGetListOffsetByAdminUseCase', () => {
             };
             workspaceService.getListOffsetByAdmin.mockResolvedValue(page);
 
-            const result = await useCase.execute(query);
+            const result = await useCase.execute(policyContext, query);
 
             expect(result).toEqual(page);
             expect(paginationQueryUtil.offset).toHaveBeenCalledWith(query, {
@@ -123,7 +138,8 @@ describe('WorkspaceGetListOffsetByAdminUseCase', () => {
             );
             expect(workspaceService.getListOffsetByAdmin).toHaveBeenCalledWith(
                 offsetPagination,
-                { isPublic: { equals: true } }
+                { isPublic: { equals: true } },
+                scoped
             );
         });
 
@@ -142,7 +158,7 @@ describe('WorkspaceGetListOffsetByAdminUseCase', () => {
             };
             workspaceService.getListOffsetByAdmin.mockResolvedValue(page);
 
-            await useCase.execute(query);
+            await useCase.execute(policyContext, query);
 
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 PaginationStoreKey,
@@ -150,7 +166,8 @@ describe('WorkspaceGetListOffsetByAdminUseCase', () => {
             );
             expect(workspaceService.getListOffsetByAdmin).toHaveBeenCalledWith(
                 offsetPagination,
-                undefined
+                null,
+                scoped
             );
         });
     });

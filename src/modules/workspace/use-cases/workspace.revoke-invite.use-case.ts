@@ -1,3 +1,9 @@
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { UserService } from '@modules/user/services/user.service';
@@ -15,13 +21,15 @@ export class WorkspaceRevokeInviteUseCase implements IAppUseCase<
         IApiKeyContext,
         IAuthJwtAccessContext,
         IWorkspaceContext,
+        IPolicyContext,
         string,
     ],
     IResponseReturn<void>
 > {
     constructor(
         private readonly workspaceInviteService: WorkspaceInviteService,
-        private readonly userService: UserService
+        private readonly userService: UserService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
@@ -29,11 +37,18 @@ export class WorkspaceRevokeInviteUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         workspaceContext: IWorkspaceContext,
+        policyContext: IPolicyContext,
         workspaceInviteId: string
     ): Promise<IResponseReturn<void>> {
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.delete,
+            EnumPolicySubject.WorkspaceInvite
+        );
         const existing = await this.workspaceInviteService.getPendingById(
             workspaceInviteId,
-            workspaceContext.workspace.id
+            workspaceContext.workspace.id,
+            additionalWhere
         );
 
         const existingUser = await this.userService.getOneActiveByEmail(

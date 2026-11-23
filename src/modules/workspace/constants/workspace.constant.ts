@@ -1,11 +1,9 @@
+import { RoleRefSelect } from '@modules/role/constants/role.constant';
 import { Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-
-/** @public */
-export const WorkspaceRoleMetaKey = 'WorkspaceRoleMetaKey';
 
 /** @public */
 export const WorkspaceIdStoreKey = 'WorkspaceIdStoreKey';
@@ -80,30 +78,6 @@ export const WorkspaceMemberProtectedDocErrors: IDocResponseEntry[] = [
 ];
 
 /** @public */
-export const WorkspaceRoleProtectedDocErrors: IDocResponseEntry[] = [
-    {
-        httpStatus: HttpStatus.UNAUTHORIZED,
-        statusCode: EnumUserStatusCodeError.guardMissing,
-        messagePath: 'user.error.guardMissing',
-    },
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumWorkspaceStatusCodeError.guardMissing,
-        messagePath: 'workspace.error.guardMissing',
-    },
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
-        messagePath: 'workspace.error.memberGuardMissing',
-    },
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-        messagePath: 'workspace.error.memberForbidden',
-    },
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
-        messagePath: 'workspace.error.roleForbidden',
-    },
-];
+export const WorkspaceMemberRoleInclude = {
+    role: { select: RoleRefSelect },
+} satisfies Prisma.WorkspaceMemberInclude;

@@ -1,9 +1,18 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
-import type { WorkspaceMember } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
 import type { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -16,21 +25,22 @@ import {
     buildUserContext,
     buildAuthJwtAccessContext,
     buildWorkspaceContext,
+    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('WorkspaceUpdateMemberRoleUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
-    const member: WorkspaceMember = {
-        id: 'member-1',
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
+    const member: IWorkspaceMemberWithRole = buildWorkspaceMember(
+        'user-1',
+        EnumRoleWorkspaceKey.owner
+    );
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const where: IPolicyWhereInput<'WorkspaceMember'> = {
         workspaceId: 'workspace-1',
-        userId: 'user-1',
-        role: EnumWorkspaceMemberRole.owner,
-        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
@@ -44,6 +54,7 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(where);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -51,6 +62,10 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
                 {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
+                },
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
                 },
             ],
         }).compile();
@@ -61,7 +76,7 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
     describe('execute', () => {
         it('updates the role with the context', async () => {
             const body: WorkspaceMemberUpdateRoleRequestDto = {
-                role: EnumWorkspaceMemberRole.admin,
+                roleId: 'role-workspace-admin',
             };
 
             const result = await useCase.execute(
@@ -69,6 +84,7 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 'member-2',
                 body
             );
@@ -83,7 +99,13 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
                 'workspace-1',
                 member,
                 'member-2',
-                EnumWorkspaceMemberRole.admin
+                'role-workspace-admin',
+                where
+            );
+            expect(policyAbilityService.scope).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.update,
+                EnumPolicySubject.WorkspaceMember
             );
         });
 
@@ -98,9 +120,10 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     'member-2',
                     {
-                        role: EnumWorkspaceMemberRole.admin,
+                        roleId: 'role-workspace-admin',
                     }
                 )
             ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);

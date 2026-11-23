@@ -1,20 +1,23 @@
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { WorkspaceMemberUpdateRoleRequestSchema } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
 
 describe('WorkspaceMemberUpdateRoleRequestSchema', () => {
-    const payload = { role: EnumWorkspaceMemberRole.admin };
+    const payload = { roleId: '01920000-0000-7000-8000-6cd799439012' };
 
     it('parses a payload into exactly the declared fields', () => {
-        const result = WorkspaceMemberUpdateRoleRequestSchema.parse(payload);
-
-        expect(result).toEqual(payload);
+        expect(WorkspaceMemberUpdateRoleRequestSchema.parse(payload)).toEqual(
+            payload
+        );
     });
 
-    it('rejects a role of owner', () => {
+    it('rejects a roleId that is not a uuid', () => {
         expect(() =>
-            WorkspaceMemberUpdateRoleRequestSchema.parse({
-                role: EnumWorkspaceMemberRole.owner,
-            })
+            WorkspaceMemberUpdateRoleRequestSchema.parse({ roleId: 'admin' })
+        ).toThrow();
+    });
+
+    it('rejects a missing roleId', () => {
+        expect(() =>
+            WorkspaceMemberUpdateRoleRequestSchema.parse({})
         ).toThrow();
     });
 

@@ -1,3 +1,7 @@
+import { WorkspaceOwnerRoleNotAssignableException } from '@modules/workspace/exceptions/workspace.owner-role-not-assignable.exception';
+import { RoleService } from '@modules/role/services/role.service';
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
@@ -21,13 +25,9 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
-    EnumWorkspaceMemberRole,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
-import type {
-    User,
-    Workspace,
-    WorkspaceMember,
-} from '@generated/prisma-client/client';
+import type { User, Workspace } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -38,7 +38,6 @@ import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
 import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/exceptions/workspace.member-peer-forbidden.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
-import { WorkspaceRoleForbiddenException } from '@modules/workspace/exceptions/workspace.role-forbidden.exception';
 import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/workspace.self-transfer.exception';
 import { WorkspaceTransferTargetInactiveException } from '@modules/workspace/exceptions/workspace.transfer-target-inactive.exception';
 import { UserService } from '@modules/user/services/user.service';
@@ -55,6 +54,7 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceMemberService', () => {
+    const roleService: MockProxy<RoleService> = mock<RoleService>();
     const workspaceMemberRepository: MockProxy<WorkspaceMemberRepository> =
         mock<WorkspaceMemberRepository>();
     const workspaceRepository: MockProxy<WorkspaceRepository> =
@@ -79,7 +79,7 @@ describe('WorkspaceMemberService', () => {
     const targetUser = mock<User>({ id: 'user-2' });
     let service: WorkspaceMemberService;
 
-    const baseMember: WorkspaceMember = {
+    const baseMember: IWorkspaceMemberWithRole = {
         id: 'member-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -87,7 +87,14 @@ describe('WorkspaceMemberService', () => {
         updatedBy: null,
         workspaceId: 'workspace-1',
         userId: 'user-1',
-        role: EnumWorkspaceMemberRole.member,
+        roleId: 'role-workspace-member',
+        role: {
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'member',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
     const workspace: Workspace = {
@@ -106,6 +113,26 @@ describe('WorkspaceMemberService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        roleService.getRefByScopeAndKey.mockImplementation(
+            (scope: EnumRoleScope, key: string) =>
+                Promise.resolve({
+                    id: `role-${scope}-${key}`,
+                    scope,
+                    key,
+                    name: key,
+                    policyRevision: 0,
+                })
+        );
+        roleService.getRefByIdForScope.mockImplementation(
+            (id: string, scope: EnumRoleScope) =>
+                Promise.resolve({
+                    id,
+                    scope,
+                    key: id.replace(`role-${scope}-`, ''),
+                    name: id,
+                    policyRevision: 0,
+                })
+        );
         featureFlagService.getMetadataNumber.mockResolvedValue(5);
         userService.getOneActive.mockResolvedValue(targetUser);
         activityLogService.recordEffect
@@ -130,6 +157,7 @@ describe('WorkspaceMemberService', () => {
                 { provide: ActivityLogService, useValue: activityLogService },
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 { provide: UserService, useValue: userService },
+                { provide: RoleService, useValue: roleService },
             ],
         }).compile();
 
@@ -173,43 +201,6 @@ describe('WorkspaceMemberService', () => {
             ).toHaveBeenCalledWith('workspace-1', 'user-1');
         });
     });
-    describe('validateWorkspaceRoleGuard', () => {
-        it('returns the member when the role is allowed', () => {
-            const admin = {
-                ...baseMember,
-                role: EnumWorkspaceMemberRole.admin,
-            };
-
-            const result = service.validateWorkspaceRoleGuard(admin, [
-                EnumWorkspaceMemberRole.admin,
-            ]);
-
-            expect(result).toBe(admin);
-        });
-
-        it('throws WorkspaceRoleForbiddenException when the role is not allowed', () => {
-            let thrown: unknown;
-            try {
-                service.validateWorkspaceRoleGuard(baseMember, [
-                    EnumWorkspaceMemberRole.admin,
-                ]);
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject({
-                constructor: WorkspaceRoleForbiddenException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
-                statusCodeKey:
-                    EnumWorkspaceStatusCodeError[
-                        EnumWorkspaceStatusCodeError.roleForbidden
-                    ],
-                messagePath: 'workspace.error.roleForbidden',
-            });
-        });
-    });
-
     describe('getOneByWorkspaceAndUser', () => {
         it('delegates to the repository', async () => {
             const member = baseMember;
@@ -299,7 +290,7 @@ describe('WorkspaceMemberService', () => {
                 tx,
                 'workspace-1',
                 'user-1',
-                EnumWorkspaceMemberRole.member,
+                EnumRoleWorkspaceKey.member,
                 'actor-1'
             );
 
@@ -308,7 +299,7 @@ describe('WorkspaceMemberService', () => {
                 tx,
                 'workspace-1',
                 'user-1',
-                EnumWorkspaceMemberRole.member,
+                EnumRoleWorkspaceKey.member,
                 'actor-1'
             );
         });
@@ -539,10 +530,22 @@ describe('WorkspaceMemberService', () => {
             );
             expect(
                 workspaceMemberRepository.promoteToOwnerInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'member-1', 'member-2');
+            ).toHaveBeenCalledWith(
+                tx,
+                'workspace-1',
+                'member-1',
+                'member-2',
+                'role-workspace-owner'
+            );
             expect(
                 workspaceMemberRepository.demoteOwnerInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'member-1');
+            ).toHaveBeenCalledWith(
+                tx,
+                'workspace-1',
+                'member-1',
+                'role-workspace-owner',
+                'role-workspace-admin'
+            );
             expect(workspaceService.countOwnedInTx).toHaveBeenCalledBefore(
                 workspaceMemberRepository.promoteToOwnerInTx
             );
@@ -720,7 +723,14 @@ describe('WorkspaceMemberService', () => {
             ...baseMember,
             id: 'member-1',
             userId: 'user-1',
-            role: EnumWorkspaceMemberRole.owner,
+            roleId: 'role-workspace-owner',
+            role: {
+                id: 'role-workspace-owner',
+                scope: EnumRoleScope.workspace,
+                key: 'owner',
+                name: 'owner',
+                policyRevision: 0,
+            },
         };
         const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
         const thirdEntry = buildActivityLogCreateManyEffect('third-entry');
@@ -888,10 +898,22 @@ describe('WorkspaceMemberService', () => {
 
             expect(
                 workspaceMemberRepository.promoteToOwnerInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'member-1', 'member-2');
+            ).toHaveBeenCalledWith(
+                tx,
+                'workspace-1',
+                'member-1',
+                'member-2',
+                'role-workspace-owner'
+            );
             expect(
                 workspaceMemberRepository.demoteOwnerInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'member-1');
+            ).toHaveBeenCalledWith(
+                tx,
+                'workspace-1',
+                'member-1',
+                'role-workspace-owner',
+                'role-workspace-admin'
+            );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
@@ -970,7 +992,14 @@ describe('WorkspaceMemberService', () => {
         it('throws WorkspaceLastOwnerException for an owner', async () => {
             const owner = {
                 ...baseMember,
-                role: EnumWorkspaceMemberRole.owner,
+                roleId: 'role-workspace-owner',
+                role: {
+                    id: 'role-workspace-owner',
+                    scope: EnumRoleScope.workspace,
+                    key: 'owner',
+                    name: 'owner',
+                    policyRevision: 0,
+                },
             };
 
             await expect(
@@ -995,11 +1024,7 @@ describe('WorkspaceMemberService', () => {
 
             expect(
                 workspaceMemberRepository.removeMemberInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                'member-1',
-                EnumWorkspaceMemberRole.member
-            );
+            ).toHaveBeenCalledWith(tx, 'member-1', 'role-workspace-member');
         });
 
         it('throws WorkspaceMemberNotFoundException when the guarded removal misses', async () => {
@@ -1036,15 +1061,19 @@ describe('WorkspaceMemberService', () => {
             const result = await service.getMembersList(
                 'workspace-1',
                 pagination,
-                { role: { in: [EnumWorkspaceMemberRole.admin] } }
+                { key: { in: [EnumRoleWorkspaceKey.admin] } },
+                null
             );
 
             expect(result).toBe(page);
             expect(
                 workspaceMemberRepository.findWithPaginationCursor
-            ).toHaveBeenCalledWith('workspace-1', pagination, {
-                role: { in: [EnumWorkspaceMemberRole.admin] },
-            });
+            ).toHaveBeenCalledWith(
+                'workspace-1',
+                pagination,
+                { key: { in: [EnumRoleWorkspaceKey.admin] } },
+                null
+            );
         });
 
         it('passes a null role filter when none is given', async () => {
@@ -1065,13 +1094,15 @@ describe('WorkspaceMemberService', () => {
 
             const result = await service.getMembersList(
                 'workspace-1',
-                pagination
+                pagination,
+                null,
+                null
             );
 
             expect(result).toBe(page);
             expect(
                 workspaceMemberRepository.findWithPaginationCursor
-            ).toHaveBeenCalledWith('workspace-1', pagination, null);
+            ).toHaveBeenCalledWith('workspace-1', pagination, null, null);
         });
     });
 
@@ -1081,17 +1112,75 @@ describe('WorkspaceMemberService', () => {
             ...baseMember,
             id: 'member-1',
             userId: 'user-1',
-            role: EnumWorkspaceMemberRole.admin,
+            roleId: 'role-workspace-admin',
+            role: {
+                id: 'role-workspace-admin',
+                scope: EnumRoleScope.workspace,
+                key: 'admin',
+                name: 'admin',
+                policyRevision: 0,
+            },
         };
         const target = {
             ...baseMember,
             id: 'member-2',
             userId: 'user-2',
-            role: EnumWorkspaceMemberRole.member,
+            roleId: 'role-workspace-member',
+            role: {
+                id: 'role-workspace-member',
+                scope: EnumRoleScope.workspace,
+                key: 'member',
+                name: 'member',
+                policyRevision: 0,
+            },
         };
 
         beforeEach(() => {
             outboxService.withTransaction.mockImplementation(fn => fn(tx));
+        });
+
+        it('refuses the owner role before reading the target and writes nothing', async () => {
+            await expect(
+                service.updateMemberRole(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'workspace-1',
+                    actor,
+                    'member-2',
+                    'role-workspace-owner',
+                    null
+                )
+            ).rejects.toThrow(WorkspaceOwnerRoleNotAssignableException);
+            expect(
+                workspaceMemberRepository.findByIdAndWorkspace
+            ).not.toHaveBeenCalled();
+            expect(
+                workspaceMemberRepository.updateRoleInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('resolves the new role for the workspace scope', async () => {
+            workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue(
+                null
+            );
+
+            await expect(
+                service.updateMemberRole(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'workspace-1',
+                    actor,
+                    'member-2',
+                    'role-workspace-admin',
+                    null
+                )
+            ).rejects.toThrow(WorkspaceMemberNotFoundException);
+            expect(roleService.getRefByIdForScope).toHaveBeenCalledWith(
+                'role-workspace-admin',
+                EnumRoleScope.workspace
+            );
         });
 
         it('throws WorkspaceMemberNotFoundException when the target member does not exist', async () => {
@@ -1107,7 +1196,8 @@ describe('WorkspaceMemberService', () => {
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin
+                    'role-workspace-admin',
+                    null
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberNotFoundException,
@@ -1134,7 +1224,8 @@ describe('WorkspaceMemberService', () => {
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin
+                    'role-workspace-admin',
+                    null
                 )
             ).rejects.toMatchObject({
                 module: 'workspace',
@@ -1150,7 +1241,14 @@ describe('WorkspaceMemberService', () => {
         it('throws WorkspaceMemberPeerForbiddenException when an admin acts on an admin', async () => {
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue({
                 ...target,
-                role: EnumWorkspaceMemberRole.admin,
+                roleId: 'role-workspace-admin',
+                role: {
+                    id: 'role-workspace-admin',
+                    scope: EnumRoleScope.workspace,
+                    key: 'admin',
+                    name: 'admin',
+                    policyRevision: 0,
+                },
             });
 
             await expect(
@@ -1161,7 +1259,8 @@ describe('WorkspaceMemberService', () => {
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin
+                    'role-workspace-admin',
+                    null
                 )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
@@ -1186,19 +1285,20 @@ describe('WorkspaceMemberService', () => {
                 'workspace-1',
                 actor,
                 'member-2',
-                EnumWorkspaceMemberRole.admin
+                'role-workspace-admin',
+                null
             );
 
             expect(
                 workspaceMemberRepository.findByIdAndWorkspace
-            ).toHaveBeenCalledWith('member-2', 'workspace-1');
+            ).toHaveBeenCalledWith('member-2', 'workspace-1', null);
             expect(
                 workspaceMemberRepository.updateRoleInTx
             ).toHaveBeenCalledWith(
                 tx,
                 'member-2',
-                EnumWorkspaceMemberRole.member,
-                EnumWorkspaceMemberRole.admin
+                'role-workspace-member',
+                'role-workspace-admin'
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
@@ -1248,7 +1348,8 @@ describe('WorkspaceMemberService', () => {
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin
+                    'role-workspace-admin',
+                    null
                 )
             ).rejects.toMatchObject({
                 module: 'workspace',
@@ -1278,7 +1379,8 @@ describe('WorkspaceMemberService', () => {
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin
+                    'role-workspace-admin',
+                    null
                 )
             ).rejects.toMatchObject({
                 module: 'workspace',
@@ -1305,7 +1407,8 @@ describe('WorkspaceMemberService', () => {
                     'workspace-1',
                     actor,
                     'member-2',
-                    EnumWorkspaceMemberRole.admin
+                    'role-workspace-admin',
+                    null
                 )
             ).rejects.toBeInstanceOf(AppUnknownException);
         });
@@ -1317,13 +1420,27 @@ describe('WorkspaceMemberService', () => {
             ...baseMember,
             id: 'member-1',
             userId: 'user-1',
-            role: EnumWorkspaceMemberRole.admin,
+            roleId: 'role-workspace-admin',
+            role: {
+                id: 'role-workspace-admin',
+                scope: EnumRoleScope.workspace,
+                key: 'admin',
+                name: 'admin',
+                policyRevision: 0,
+            },
         };
         const target = {
             ...baseMember,
             id: 'member-2',
             userId: 'user-2',
-            role: EnumWorkspaceMemberRole.member,
+            roleId: 'role-workspace-member',
+            role: {
+                id: 'role-workspace-member',
+                scope: EnumRoleScope.workspace,
+                key: 'member',
+                name: 'member',
+                policyRevision: 0,
+            },
         };
 
         it('throws WorkspaceMemberNotFoundException when the target member does not exist', async () => {
@@ -1332,7 +1449,13 @@ describe('WorkspaceMemberService', () => {
             );
 
             await expect(
-                service.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
+                service.removeMemberInTx(
+                    tx,
+                    'workspace-1',
+                    actor,
+                    'member-2',
+                    null
+                )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberNotFoundException,
                 module: 'workspace',
@@ -1351,7 +1474,13 @@ describe('WorkspaceMemberService', () => {
             });
 
             await expect(
-                service.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
+                service.removeMemberInTx(
+                    tx,
+                    'workspace-1',
+                    actor,
+                    'member-2',
+                    null
+                )
             ).rejects.toMatchObject({
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
@@ -1366,11 +1495,24 @@ describe('WorkspaceMemberService', () => {
         it('throws WorkspaceMemberPeerForbiddenException when an admin acts on an admin', async () => {
             workspaceMemberRepository.findByIdAndWorkspace.mockResolvedValue({
                 ...target,
-                role: EnumWorkspaceMemberRole.admin,
+                roleId: 'role-workspace-admin',
+                role: {
+                    id: 'role-workspace-admin',
+                    scope: EnumRoleScope.workspace,
+                    key: 'admin',
+                    name: 'admin',
+                    policyRevision: 0,
+                },
             });
 
             await expect(
-                service.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
+                service.removeMemberInTx(
+                    tx,
+                    'workspace-1',
+                    actor,
+                    'member-2',
+                    null
+                )
             ).rejects.toMatchObject({
                 constructor: WorkspaceMemberPeerForbiddenException,
                 module: 'workspace',
@@ -1391,17 +1533,14 @@ describe('WorkspaceMemberService', () => {
                 tx,
                 'workspace-1',
                 actor,
-                'member-2'
+                'member-2',
+                null
             );
 
             expect(result).toBe(target);
             expect(
                 workspaceMemberRepository.removeMemberInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                'member-2',
-                EnumWorkspaceMemberRole.member
-            );
+            ).toHaveBeenCalledWith(tx, 'member-2', 'role-workspace-member');
         });
 
         it('throws WorkspaceMemberPeerForbiddenException when the target role changed since it was read', async () => {
@@ -1411,7 +1550,13 @@ describe('WorkspaceMemberService', () => {
             workspaceMemberRepository.removeMemberInTx.mockResolvedValue(false);
 
             await expect(
-                service.removeMemberInTx(tx, 'workspace-1', actor, 'member-2')
+                service.removeMemberInTx(
+                    tx,
+                    'workspace-1',
+                    actor,
+                    'member-2',
+                    null
+                )
             ).rejects.toMatchObject({
                 module: 'workspace',
                 statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
@@ -1444,7 +1589,7 @@ describe('WorkspaceMemberService', () => {
             );
 
             await expect(
-                service.getMembersListByAdmin('workspace-1', pagination)
+                service.getMembersListByAdmin('workspace-1', pagination, null)
             ).rejects.toMatchObject({
                 constructor: WorkspaceNotFoundException,
                 module: 'workspace',
@@ -1475,13 +1620,34 @@ describe('WorkspaceMemberService', () => {
 
             const result = await service.getMembersListByAdmin(
                 'workspace-1',
-                pagination
+                pagination,
+                null
             );
 
             expect(result).toBe(page);
             expect(
                 workspaceMemberRepository.findWithPaginationOffset
-            ).toHaveBeenCalledWith('workspace-1', pagination, null);
+            ).toHaveBeenCalledWith('workspace-1', pagination, null, null);
+        });
+    });
+
+    describe('assertRoleAssignable', () => {
+        const role = {
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'Member',
+            policyRevision: 0,
+        };
+
+        it('accepts a role other than owner', () => {
+            expect(() => service.assertRoleAssignable(role)).not.toThrow();
+        });
+
+        it('refuses the owner role', () => {
+            expect(() =>
+                service.assertRoleAssignable({ ...role, key: 'owner' })
+            ).toThrow(WorkspaceOwnerRoleNotAssignableException);
         });
     });
 
@@ -1489,8 +1655,8 @@ describe('WorkspaceMemberService', () => {
         it('returns false when the target is an owner', () => {
             expect(
                 service['isPeerActionAllowed'](
-                    EnumWorkspaceMemberRole.owner,
-                    EnumWorkspaceMemberRole.owner
+                    EnumRoleWorkspaceKey.owner,
+                    EnumRoleWorkspaceKey.owner
                 )
             ).toBe(false);
         });
@@ -1498,8 +1664,8 @@ describe('WorkspaceMemberService', () => {
         it('returns false when an admin acts on an admin', () => {
             expect(
                 service['isPeerActionAllowed'](
-                    EnumWorkspaceMemberRole.admin,
-                    EnumWorkspaceMemberRole.admin
+                    EnumRoleWorkspaceKey.admin,
+                    EnumRoleWorkspaceKey.admin
                 )
             ).toBe(false);
         });
@@ -1507,8 +1673,8 @@ describe('WorkspaceMemberService', () => {
         it('returns true when an admin acts on a member', () => {
             expect(
                 service['isPeerActionAllowed'](
-                    EnumWorkspaceMemberRole.admin,
-                    EnumWorkspaceMemberRole.member
+                    EnumRoleWorkspaceKey.admin,
+                    EnumRoleWorkspaceKey.member
                 )
             ).toBe(true);
         });
@@ -1516,36 +1682,10 @@ describe('WorkspaceMemberService', () => {
         it('returns true when an owner acts on an admin', () => {
             expect(
                 service['isPeerActionAllowed'](
-                    EnumWorkspaceMemberRole.owner,
-                    EnumWorkspaceMemberRole.admin
+                    EnumRoleWorkspaceKey.owner,
+                    EnumRoleWorkspaceKey.admin
                 )
             ).toBe(true);
-        });
-    });
-
-    describe('hasRole', () => {
-        it('returns true for an owner whatever the allowed roles', () => {
-            expect(
-                service['hasRole'](
-                    { ...baseMember, role: EnumWorkspaceMemberRole.owner },
-                    []
-                )
-            ).toBe(true);
-        });
-
-        it('returns true when the member role is allowed', () => {
-            expect(
-                service['hasRole'](
-                    { ...baseMember, role: EnumWorkspaceMemberRole.admin },
-                    [EnumWorkspaceMemberRole.admin]
-                )
-            ).toBe(true);
-        });
-
-        it('returns false when the member role is not allowed', () => {
-            expect(
-                service['hasRole'](baseMember, [EnumWorkspaceMemberRole.admin])
-            ).toBe(false);
         });
     });
 });

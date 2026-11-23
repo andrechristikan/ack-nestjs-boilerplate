@@ -9,14 +9,17 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumWorkspaceMemberRole,
-    Prisma,
-} from '@generated/prisma-client/client';
-import type { WorkspaceMember } from '@generated/prisma-client/client';
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
+import { RoleRefSelect } from '@modules/role/constants/role.constant';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
-import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceMember,
+    IWorkspaceMemberWithRole,
+} from '@modules/workspace/interfaces/workspace.interface';
 import type { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member-repository.interface';
+import { WorkspaceMemberRoleInclude } from '@modules/workspace/constants/workspace.constant';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -29,48 +32,62 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     private buildWorkspaceScopedWhere(
         workspaceId: string,
         where: Prisma.WorkspaceMemberWhereInput | null,
-        role: Record<string, IPaginationIn> | null
+        roleKey: Record<string, IPaginationIn> | null,
+        additionalWhere: Prisma.WorkspaceMemberWhereInput | null
     ): Prisma.WorkspaceMemberWhereInput {
         return {
-            ...where,
-            ...(role ?? {}),
-            workspaceId,
+            AND: [
+                additionalWhere ?? {},
+                where ?? {},
+                roleKey === null
+                    ? {}
+                    : { role: { scope: EnumRoleScope.workspace, ...roleKey } },
+                { workspaceId },
+            ],
         };
     }
 
     async findOneByWorkspaceAndUser(
         workspaceId: string,
         userId: string
-    ): Promise<WorkspaceMember | null> {
+    ): Promise<IWorkspaceMemberWithRole | null> {
         return this.databaseService.client.workspaceMember.findFirst({
             where: {
                 workspaceId,
                 userId,
             },
+            include: WorkspaceMemberRoleInclude,
         });
     }
 
     async findOneOwnerByWorkspace(
         workspaceId: string
-    ): Promise<WorkspaceMember | null> {
+    ): Promise<IWorkspaceMemberWithRole | null> {
         return this.databaseService.client.workspaceMember.findFirst({
             where: {
                 workspaceId,
-                role: EnumWorkspaceMemberRole.owner,
+                role: {
+                    scope: EnumRoleScope.workspace,
+                    key: EnumRoleWorkspaceKey.owner,
+                },
                 workspace: WorkspaceActiveFilter,
             },
+            include: WorkspaceMemberRoleInclude,
         });
     }
 
     async findByIdAndWorkspace(
         workspaceMemberId: string,
-        workspaceId: string
-    ): Promise<WorkspaceMember | null> {
+        workspaceId: string,
+        additionalWhere: Prisma.WorkspaceMemberWhereInput | null
+    ): Promise<IWorkspaceMemberWithRole | null> {
         return this.databaseService.client.workspaceMember.findFirst({
             where: {
+                AND: [additionalWhere ?? {}],
                 id: workspaceMemberId,
                 workspaceId,
             },
+            include: WorkspaceMemberRoleInclude,
         });
     }
 
@@ -82,10 +99,13 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                 where: {
                     workspaceId,
                     role: {
-                        in: [
-                            EnumWorkspaceMemberRole.owner,
-                            EnumWorkspaceMemberRole.admin,
-                        ],
+                        scope: EnumRoleScope.workspace,
+                        key: {
+                            in: [
+                                EnumRoleWorkspaceKey.owner,
+                                EnumRoleWorkspaceKey.admin,
+                            ],
+                        },
                     },
                 },
                 select: { userId: true },
@@ -96,11 +116,16 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
 
     async findWorkspaceIdsByUser(
         userId: string,
-        role: EnumWorkspaceMemberRole | null
+        role: EnumRoleWorkspaceKey | null
     ): Promise<string[]> {
         const members =
             await this.databaseService.client.workspaceMember.findMany({
-                where: { userId, ...(role !== null && { role }) },
+                where: {
+                    userId,
+                    ...(role !== null && {
+                        role: { scope: EnumRoleScope.workspace, key: role },
+                    }),
+                },
                 select: { workspaceId: true },
             });
 
@@ -110,10 +135,15 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     async findWorkspaceIdsByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        role: EnumWorkspaceMemberRole | null
+        role: EnumRoleWorkspaceKey | null
     ): Promise<string[]> {
         const members = await tx.workspaceMember.findMany({
-            where: { userId, ...(role !== null && { role }) },
+            where: {
+                userId,
+                ...(role !== null && {
+                    role: { scope: EnumRoleScope.workspace, key: role },
+                }),
+            },
             select: { workspaceId: true },
         });
 
@@ -123,12 +153,14 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     async findWithPaginationOffset(
         workspaceId: string,
         { where, ...others }: IPaginationQueryOffsetParams,
-        role: Record<string, IPaginationIn> | null
+        roleKey: Record<string, IPaginationIn> | null,
+        additionalWhere: Prisma.WorkspaceMemberWhereInput | null
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
             where ?? null,
-            role
+            roleKey,
+            additionalWhere
         );
 
         return this.paginationService.offset(
@@ -140,6 +172,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                     user: {
                         select: UserRefSelect,
                     },
+                    role: { select: RoleRefSelect },
                 },
             }
         );
@@ -148,12 +181,14 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     async findWithPaginationCursor(
         workspaceId: string,
         { where, ...others }: IPaginationQueryCursorParams,
-        role: Record<string, IPaginationIn> | null
+        roleKey: Record<string, IPaginationIn> | null,
+        additionalWhere: Prisma.WorkspaceMemberWhereInput | null
     ): Promise<IPaginationCursorReturn<IWorkspaceMember>> {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
             where ?? null,
-            role
+            roleKey,
+            additionalWhere
         );
 
         return this.paginationService.cursor(
@@ -165,6 +200,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                     user: {
                         select: UserRefSelect,
                     },
+                    role: { select: RoleRefSelect },
                 },
             }
         );
@@ -173,16 +209,18 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     async createOwnerInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        userId: string
-    ): Promise<WorkspaceMember> {
+        userId: string,
+        ownerRoleId: string
+    ): Promise<IWorkspaceMemberWithRole> {
         return tx.workspaceMember.create({
             data: {
                 workspaceId,
                 userId,
-                role: EnumWorkspaceMemberRole.owner,
+                roleId: ownerRoleId,
                 createdBy: userId,
                 updatedBy: userId,
             },
+            include: WorkspaceMemberRoleInclude,
         });
     }
 
@@ -190,30 +228,31 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         tx: IDatabaseTransactionClient,
         workspaceId: string,
         userId: string,
-        role: EnumWorkspaceMemberRole,
+        roleId: string,
         actorId: string
-    ): Promise<WorkspaceMember> {
+    ): Promise<IWorkspaceMemberWithRole> {
         return tx.workspaceMember.create({
             data: {
                 workspaceId,
                 userId,
-                role,
+                roleId,
                 createdBy: actorId,
                 updatedBy: actorId,
             },
+            include: WorkspaceMemberRoleInclude,
         });
     }
 
     async updateRoleInTx(
         tx: IDatabaseTransactionClient,
         targetMemberId: string,
-        expectedRole: EnumWorkspaceMemberRole,
-        newRole: EnumWorkspaceMemberRole
+        expectedRoleId: string,
+        newRoleId: string
     ): Promise<boolean> {
         const { count } = await tx.workspaceMember.updateMany({
-            where: { id: targetMemberId, role: expectedRole },
+            where: { id: targetMemberId, roleId: expectedRoleId },
             data: {
-                role: newRole,
+                roleId: newRoleId,
             },
         });
 
@@ -223,10 +262,10 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     async removeMemberInTx(
         tx: IDatabaseTransactionClient,
         targetMemberId: string,
-        expectedRole: EnumWorkspaceMemberRole
+        expectedRoleId: string
     ): Promise<boolean> {
         const { count } = await tx.workspaceMember.deleteMany({
-            where: { id: targetMemberId, role: expectedRole },
+            where: { id: targetMemberId, roleId: expectedRoleId },
         });
 
         return count > 0;
@@ -247,24 +286,28 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         tx: IDatabaseTransactionClient,
         workspaceId: string,
         fromMemberId: string,
-        toMemberId: string
+        toMemberId: string,
+        ownerRoleId: string
     ): Promise<boolean> {
         const { count } = await tx.workspaceMember.updateMany({
             where: {
                 id: toMemberId,
                 workspaceId,
-                role: { not: EnumWorkspaceMemberRole.owner },
+                role: {
+                    scope: EnumRoleScope.workspace,
+                    key: { not: EnumRoleWorkspaceKey.owner },
+                },
                 workspace: {
                     members: {
                         some: {
                             id: fromMemberId,
-                            role: EnumWorkspaceMemberRole.owner,
+                            roleId: ownerRoleId,
                         },
                     },
                 },
             },
             data: {
-                role: EnumWorkspaceMemberRole.owner,
+                roleId: ownerRoleId,
             },
         });
 
@@ -274,16 +317,18 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     async demoteOwnerInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        fromMemberId: string
+        fromMemberId: string,
+        ownerRoleId: string,
+        adminRoleId: string
     ): Promise<boolean> {
         const { count } = await tx.workspaceMember.updateMany({
             where: {
                 id: fromMemberId,
                 workspaceId,
-                role: EnumWorkspaceMemberRole.owner,
+                roleId: ownerRoleId,
             },
             data: {
-                role: EnumWorkspaceMemberRole.admin,
+                roleId: adminRoleId,
             },
         });
 

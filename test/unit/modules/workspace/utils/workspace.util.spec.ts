@@ -4,7 +4,6 @@ import {
     EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
-    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import { EnumUserSignUpWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IUserCreateWithWorkspaceInput } from '@modules/user/interfaces/user.interface';
@@ -45,9 +44,9 @@ describe('WorkspaceUtil', () => {
             workspaceId: 'workspace-1',
             workspaceInviteId: 'invite-1',
             invitedByUserId: 'user-1',
-            workspaceMemberRole: EnumWorkspaceMemberRole.member,
+            workspaceMemberRoleId: 'role-workspace-member',
             projectId: null,
-            projectMemberRole: null,
+            projectMemberRoleId: null,
         },
         createdBy: 'user-2',
     };

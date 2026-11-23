@@ -1,8 +1,4 @@
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
-import {
-    EnumProjectMemberRole,
-    EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
 import type {
     Prisma,
     Workspace,
@@ -11,18 +7,23 @@ import type {
 } from '@generated/prisma-client/client';
 import type { IRequestStorePatch } from '@common/request/interfaces/request.interface';
 import type { WorkspaceInviteUserListSelect } from '@modules/workspace/constants/workspace.constant';
+import type { IRoleRef } from '@modules/role/interfaces/role.interface';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 
 export interface IWorkspaceContext {
     workspaceId: string;
     workspace: Workspace;
-    workspaceMember: WorkspaceMember;
+    workspaceMember: IWorkspaceMemberWithRole;
 }
 
 export type IWorkspaceContextPatch = IRequestStorePatch<IWorkspaceContext>;
 
-export interface IWorkspaceMember extends WorkspaceMember {
+export interface IWorkspaceMemberWithRole extends WorkspaceMember {
+    role: IRoleRef;
+}
+
+export interface IWorkspaceMember extends IWorkspaceMemberWithRole {
     user: IUserRef;
 }
 
@@ -32,6 +33,7 @@ export type IWorkspaceInviteList = Prisma.WorkspaceInviteGetPayload<{
 
 export interface IWorkspaceInviteNotice {
     workspaceName: string;
+    workspaceRoleName: string;
     inviterName: string;
     inviteeUserId: string | null;
 }
@@ -70,9 +72,9 @@ export interface IWorkspaceUpdate {
 
 export interface IWorkspaceInviteCreate {
     email: Lowercase<string>;
-    workspaceRole: EnumWorkspaceMemberRole;
+    workspaceRoleId: string;
     projectId: string | null;
-    projectRole: EnumProjectMemberRole | null;
+    projectRoleId: string | null;
     expiryDuration: EnumWorkspaceInviteExpiry | null;
 }
 
@@ -80,9 +82,9 @@ export interface IWorkspaceInviteCreateData {
     workspaceInviteId: string;
     workspaceId: string;
     email: string;
-    workspaceRole: EnumWorkspaceMemberRole;
+    workspaceRoleId: string;
     projectId: string | null;
-    projectRole: EnumProjectMemberRole | null;
+    projectRoleId: string | null;
     hashedToken: string;
     reference: string;
     expiredAt: Date;
@@ -93,7 +95,7 @@ export interface IWorkspaceInviteCreateData {
 export interface IWorkspaceInvitePreviewSummary {
     workspaceName: string;
     inviterName: string;
-    workspaceRole: EnumWorkspaceMemberRole;
+    workspaceRole: IRoleRef;
     expiredAt: Date;
 }
 

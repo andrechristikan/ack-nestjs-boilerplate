@@ -1,3 +1,5 @@
+import type { IRoleRef } from '@modules/role/interfaces/role.interface';
+import type { Prisma } from '@generated/prisma-client/client';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
@@ -170,7 +172,12 @@ export class WorkspaceInviteService {
         invite: WorkspaceInvite,
         { claimLink, signUpLink }: IWorkspaceInviteTokenData,
         actorId: string,
-        { workspaceName, inviterName, inviteeUserId }: IWorkspaceInviteNotice
+        {
+            workspaceName,
+            workspaceRoleName,
+            inviterName,
+            inviteeUserId,
+        }: IWorkspaceInviteNotice
     ): IOutboxEffect {
         const expiredAt = this.helperDateService.formatToIso(invite.expiredAt);
         const fields = {
@@ -178,7 +185,7 @@ export class WorkspaceInviteService {
             workspaceName,
             inviterName,
             reference: invite.reference,
-            workspaceMemberRole: invite.workspaceRole,
+            workspaceMemberRole: workspaceRoleName,
             expiredAt,
         };
         if (inviteeUserId === null) {
@@ -254,14 +261,15 @@ export class WorkspaceInviteService {
     mapInvitePreview(
         workspace: Workspace,
         invite: WorkspaceInvite,
-        inviter: IUserName | null
+        inviter: IUserName | null,
+        workspaceRole: IRoleRef
     ): IWorkspaceInvitePreviewSummary {
         const inviterName = this.resolveInviterName(inviter, workspace);
 
         return {
             workspaceName: workspace.name,
             inviterName,
-            workspaceRole: invite.workspaceRole,
+            workspaceRole,
             expiredAt: invite.expiredAt,
         };
     }
@@ -380,7 +388,8 @@ export class WorkspaceInviteService {
     async getInvitesList(
         workspaceId: string,
         pagination: IPaginationQueryCursorParams,
-        status?: Record<string, IPaginationIn>
+        status: Record<string, IPaginationIn> | null,
+        additionalWhere: Prisma.WorkspaceInviteWhereInput | null
     ): Promise<IResponsePaginationReturn<IWorkspaceInviteList>> {
         // Sequential by design: gate before the work it guards
         await this.featureFlagService.validateFeatureFlagMetadata(
@@ -391,21 +400,22 @@ export class WorkspaceInviteService {
         return this.workspaceInviteRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
-            status ?? null
+            status,
+            additionalWhere
         );
     }
 
     /** Gates on `workspace.invitationAllowed`, then asserts the project id and role are both set or both null. */
     async assertProjectRolePaired({
         projectId,
-        projectRole,
+        projectRoleId,
     }: IWorkspaceInviteCreate): Promise<void> {
         await this.featureFlagService.validateFeatureFlagMetadata(
             EnumFeatureFlagKey.workspace,
             EnumFeatureFlagMetadataKey.invitationAllowed
         );
         const hasProjectId = projectId !== null;
-        const hasProjectRole = projectRole !== null;
+        const hasProjectRole = projectRoleId !== null;
         if (hasProjectId !== hasProjectRole) {
             throw new WorkspaceInviteRoleRequiredException();
         }
@@ -454,9 +464,9 @@ export class WorkspaceInviteService {
                                     workspaceInviteId,
                                     workspaceId,
                                     email: create.email,
-                                    workspaceRole: create.workspaceRole,
+                                    workspaceRoleId: create.workspaceRoleId,
                                     projectId: create.projectId,
-                                    projectRole: create.projectRole,
+                                    projectRoleId: create.projectRoleId,
                                     hashedToken: tokenData.hashedToken,
                                     reference: tokenData.reference,
                                     expiredAt: tokenData.expiredAt,
@@ -526,7 +536,8 @@ export class WorkspaceInviteService {
     /** Gates on `workspace.invitationAllowed`, then reads the invite of the workspace; a missing one throws not-found and a non-pending one already-processed. */
     async getPendingById(
         workspaceInviteId: string,
-        workspaceId: string
+        workspaceId: string,
+        additionalWhere: Prisma.WorkspaceInviteWhereInput | null
     ): Promise<WorkspaceInvite> {
         // Sequential by design: gate before the work it guards
         await this.featureFlagService.validateFeatureFlagMetadata(
@@ -536,7 +547,8 @@ export class WorkspaceInviteService {
         const existing =
             await this.workspaceInviteRepository.findByIdAndWorkspace(
                 workspaceInviteId,
-                workspaceId
+                workspaceId,
+                additionalWhere
             );
         if (!existing) {
             throw new WorkspaceInviteNotFoundException();
@@ -549,11 +561,13 @@ export class WorkspaceInviteService {
 
     async getResendableById(
         workspaceInviteId: string,
-        workspaceId: string
+        workspaceId: string,
+        additionalWhere: Prisma.WorkspaceInviteWhereInput | null
     ): Promise<WorkspaceInvite> {
         const existing = await this.getPendingById(
             workspaceInviteId,
-            workspaceId
+            workspaceId,
+            additionalWhere
         );
         const now = this.helperDateService.create();
         if (existing.expiredAt <= now) {
@@ -739,7 +753,7 @@ export class WorkspaceInviteService {
             tx,
             context.workspaceId,
             userId,
-            context.workspaceMemberRole,
+            context.workspaceMemberRoleId,
             userId
         );
     }

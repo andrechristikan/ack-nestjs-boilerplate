@@ -1,3 +1,4 @@
+import type { IRoleRef } from '@modules/role/interfaces/role.interface';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
@@ -12,9 +13,11 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
-    EnumWorkspaceMemberRole,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
-import type { WorkspaceMember } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
+import { RoleService } from '@modules/role/services/role.service';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -29,10 +32,13 @@ import { WorkspaceMemberForbiddenException } from '@modules/workspace/exceptions
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
 import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/exceptions/workspace.member-peer-forbidden.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
-import { WorkspaceRoleForbiddenException } from '@modules/workspace/exceptions/workspace.role-forbidden.exception';
+import { WorkspaceOwnerRoleNotAssignableException } from '@modules/workspace/exceptions/workspace.owner-role-not-assignable.exception';
 import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/workspace.self-transfer.exception';
 import { WorkspaceTransferTargetInactiveException } from '@modules/workspace/exceptions/workspace.transfer-target-inactive.exception';
-import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type {
+    IWorkspaceMember,
+    IWorkspaceMemberWithRole,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
@@ -51,40 +57,28 @@ export class WorkspaceMemberService {
         private readonly activityLogService: ActivityLogService,
         private readonly featureFlagService: FeatureFlagService,
         private readonly userService: UserService,
+        private readonly roleService: RoleService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
-    private isPeerActionAllowed(
-        actorRole: EnumWorkspaceMemberRole,
-        targetRole: EnumWorkspaceMemberRole
-    ): boolean {
-        if (targetRole === EnumWorkspaceMemberRole.owner) {
+    private isPeerActionAllowed(actorKey: string, targetKey: string): boolean {
+        if (targetKey === EnumRoleWorkspaceKey.owner) {
             return false;
         }
 
         return !(
-            actorRole === EnumWorkspaceMemberRole.admin &&
-            targetRole === EnumWorkspaceMemberRole.admin
-        );
-    }
-
-    private hasRole(
-        member: WorkspaceMember,
-        allowedRoles: EnumWorkspaceMemberRole[]
-    ): boolean {
-        return (
-            member.role === EnumWorkspaceMemberRole.owner ||
-            allowedRoles.includes(member.role)
+            actorKey === EnumRoleWorkspaceKey.admin &&
+            targetKey === EnumRoleWorkspaceKey.admin
         );
     }
 
     private assertPeerActionAllowed(
-        actorMember: WorkspaceMember,
-        targetMember: WorkspaceMember
+        actorMember: IWorkspaceMemberWithRole,
+        targetMember: IWorkspaceMemberWithRole
     ): void {
         const isAllowed = this.isPeerActionAllowed(
-            actorMember.role,
-            targetMember.role
+            actorMember.role.key,
+            targetMember.role.key
         );
         if (!isAllowed) {
             throw new WorkspaceMemberPeerForbiddenException();
@@ -93,10 +87,20 @@ export class WorkspaceMemberService {
 
     private async transferOwnershipGuarded(
         workspaceId: string,
-        ownerMember: WorkspaceMember,
-        targetMember: WorkspaceMember,
+        ownerMember: IWorkspaceMemberWithRole,
+        targetMember: IWorkspaceMemberWithRole,
         entries: IOutboxEffect[]
     ): Promise<void> {
+        const [ownerRole, adminRole] = await Promise.all([
+            this.roleService.getRefByScopeAndKey(
+                EnumRoleScope.workspace,
+                EnumRoleWorkspaceKey.owner
+            ),
+            this.roleService.getRefByScopeAndKey(
+                EnumRoleScope.workspace,
+                EnumRoleWorkspaceKey.admin
+            ),
+        ]);
         const maxWorkspacesPerUser =
             await this.featureFlagService.getMetadataNumber(
                 EnumFeatureFlagKey.workspace,
@@ -118,7 +122,8 @@ export class WorkspaceMemberService {
                         tx,
                         workspaceId,
                         ownerMember.id,
-                        targetMember.id
+                        targetMember.id,
+                        ownerRole.id
                     );
                 if (!promoted) {
                     throw new WorkspaceMemberPeerForbiddenException();
@@ -128,7 +133,9 @@ export class WorkspaceMemberService {
                     await this.workspaceMemberRepository.demoteOwnerInTx(
                         tx,
                         workspaceId,
-                        ownerMember.id
+                        ownerMember.id,
+                        ownerRole.id,
+                        adminRole.id
                     );
                 if (!demoted) {
                     throw new WorkspaceMemberPeerForbiddenException();
@@ -150,10 +157,16 @@ export class WorkspaceMemberService {
         }
     }
 
+    assertRoleAssignable(role: IRoleRef): void {
+        if (role.key === EnumRoleWorkspaceKey.owner) {
+            throw new WorkspaceOwnerRoleNotAssignableException();
+        }
+    }
+
     async validateWorkspaceMemberGuard(
         workspaceId: string,
         userId: string
-    ): Promise<WorkspaceMember> {
+    ): Promise<IWorkspaceMemberWithRole> {
         const member =
             await this.workspaceMemberRepository.findOneByWorkspaceAndUser(
                 workspaceId,
@@ -166,23 +179,10 @@ export class WorkspaceMemberService {
         return member;
     }
 
-    /** An `owner` passes without being in `allowedRoles`; any other role must be in it, otherwise throws `WorkspaceRoleForbiddenException`. */
-    validateWorkspaceRoleGuard(
-        member: WorkspaceMember,
-        allowedRoles: EnumWorkspaceMemberRole[]
-    ): WorkspaceMember {
-        const hasRole = this.hasRole(member, allowedRoles);
-        if (!hasRole) {
-            throw new WorkspaceRoleForbiddenException();
-        }
-
-        return member;
-    }
-
     async getOneByWorkspaceAndUser(
         workspaceId: string,
         userId: string
-    ): Promise<WorkspaceMember | null> {
+    ): Promise<IWorkspaceMemberWithRole | null> {
         return this.workspaceMemberRepository.findOneByWorkspaceAndUser(
             workspaceId,
             userId
@@ -215,14 +215,14 @@ export class WorkspaceMemberService {
         tx: IDatabaseTransactionClient,
         workspaceId: string,
         userId: string,
-        role: EnumWorkspaceMemberRole,
+        roleId: string,
         actorId: string
-    ): Promise<WorkspaceMember> {
+    ): Promise<IWorkspaceMemberWithRole> {
         return this.workspaceMemberRepository.createInTx(
             tx,
             workspaceId,
             userId,
-            role,
+            roleId,
             actorId
         );
     }
@@ -239,7 +239,7 @@ export class WorkspaceMemberService {
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         workspaceId: string,
-        actorMember: WorkspaceMember,
+        actorMember: IWorkspaceMemberWithRole,
         targetUserId: string
     ): Promise<void> {
         if (targetUserId === actorMember.userId) {
@@ -398,16 +398,16 @@ export class WorkspaceMemberService {
 
     async leaveWorkspaceInTx(
         tx: IDatabaseTransactionClient,
-        member: WorkspaceMember
+        member: IWorkspaceMemberWithRole
     ): Promise<void> {
-        if (member.role === EnumWorkspaceMemberRole.owner) {
+        if (member.role.key === EnumRoleWorkspaceKey.owner) {
             throw new WorkspaceLastOwnerException();
         }
 
         const removed = await this.workspaceMemberRepository.removeMemberInTx(
             tx,
             member.id,
-            member.role
+            member.roleId
         );
         if (!removed) {
             throw new WorkspaceMemberNotFoundException();
@@ -417,12 +417,14 @@ export class WorkspaceMemberService {
     async getMembersList(
         workspaceId: string,
         pagination: IPaginationQueryCursorParams,
-        role?: Record<string, IPaginationIn>
+        roleKey: Record<string, IPaginationIn> | null,
+        additionalWhere: Prisma.WorkspaceMemberWhereInput | null
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         return this.workspaceMemberRepository.findWithPaginationCursor(
             workspaceId,
             pagination,
-            role ?? null
+            roleKey,
+            additionalWhere
         );
     }
 
@@ -432,14 +434,22 @@ export class WorkspaceMemberService {
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         workspaceId: string,
-        actorMember: WorkspaceMember,
+        actorMember: IWorkspaceMemberWithRole,
         targetMemberId: string,
-        newRole: EnumWorkspaceMemberRole
+        newRoleId: string,
+        additionalWhere: Prisma.WorkspaceMemberWhereInput | null
     ): Promise<void> {
+        const newRole = await this.roleService.getRefByIdForScope(
+            newRoleId,
+            EnumRoleScope.workspace
+        );
+        this.assertRoleAssignable(newRole);
+
         const targetMember =
             await this.workspaceMemberRepository.findByIdAndWorkspace(
                 targetMemberId,
-                workspaceId
+                workspaceId,
+                additionalWhere
             );
         if (!targetMember) {
             throw new WorkspaceMemberNotFoundException();
@@ -457,8 +467,8 @@ export class WorkspaceMemberService {
                     await this.workspaceMemberRepository.updateRoleInTx(
                         tx,
                         targetMember.id,
-                        targetMember.role,
-                        newRole
+                        targetMember.roleId,
+                        newRole.id
                     );
                 if (!updated) {
                     throw new WorkspaceMemberPeerForbiddenException();
@@ -512,13 +522,15 @@ export class WorkspaceMemberService {
     async removeMemberInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        actorMember: WorkspaceMember,
-        targetMemberId: string
-    ): Promise<WorkspaceMember> {
+        actorMember: IWorkspaceMemberWithRole,
+        targetMemberId: string,
+        additionalWhere: Prisma.WorkspaceMemberWhereInput | null
+    ): Promise<IWorkspaceMemberWithRole> {
         const targetMember =
             await this.workspaceMemberRepository.findByIdAndWorkspace(
                 targetMemberId,
-                workspaceId
+                workspaceId,
+                additionalWhere
             );
         if (!targetMember) {
             throw new WorkspaceMemberNotFoundException();
@@ -533,7 +545,7 @@ export class WorkspaceMemberService {
         const removed = await this.workspaceMemberRepository.removeMemberInTx(
             tx,
             targetMember.id,
-            targetMember.role
+            targetMember.roleId
         );
         if (!removed) {
             throw new WorkspaceMemberPeerForbiddenException();
@@ -544,14 +556,16 @@ export class WorkspaceMemberService {
 
     async getMembersListByAdmin(
         workspaceId: string,
-        pagination: IPaginationQueryOffsetParams
+        pagination: IPaginationQueryOffsetParams,
+        additionalWhere: Prisma.WorkspaceMemberWhereInput | null
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
         const [workspace, paginated] = await Promise.all([
-            this.workspaceRepository.findByIdByAdmin(workspaceId),
+            this.workspaceRepository.findByIdByAdmin(workspaceId, null),
             this.workspaceMemberRepository.findWithPaginationOffset(
                 workspaceId,
                 pagination,
-                null
+                null,
+                additionalWhere
             ),
         ]);
         if (!workspace) {

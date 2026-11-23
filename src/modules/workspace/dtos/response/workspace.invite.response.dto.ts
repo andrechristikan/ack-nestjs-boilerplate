@@ -1,11 +1,7 @@
 import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import {
-    EnumProjectMemberRole,
-    EnumWorkspaceInviteStatus,
-    EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
+import { EnumWorkspaceInviteStatus } from '@generated/prisma-client/client';
 
 /** @public */
 export const WorkspaceInviteResponseSchema = DatabaseResponseSchema.omit({
@@ -20,17 +16,17 @@ export const WorkspaceInviteResponseSchema = DatabaseResponseSchema.omit({
         description: 'Email address the invite is sent to',
         example: faker.internet.email(),
     }),
-    workspaceRole: z.enum(EnumWorkspaceMemberRole).meta({
+    workspaceRoleId: z.string().meta({
         description: 'Workspace role granted when the invite is accepted',
-        example: EnumWorkspaceMemberRole.member,
+        example: faker.string.uuid(),
     }),
     projectId: z.string().nullable().meta({
         description: 'Identifier of the project the invite also grants, if any',
         example: faker.string.uuid(),
     }),
-    projectRole: z.enum(EnumProjectMemberRole).nullable().meta({
+    projectRoleId: z.string().nullable().meta({
         description: 'Project role granted when the invite is accepted, if any',
-        example: EnumProjectMemberRole.member,
+        example: faker.string.uuid(),
     }),
     reference: z.string().meta({
         description: 'Human-readable reference of the invite',

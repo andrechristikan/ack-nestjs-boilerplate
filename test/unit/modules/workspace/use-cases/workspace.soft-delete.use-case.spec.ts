@@ -1,3 +1,10 @@
+import { EnumPolicyAction } from '@generated/prisma-client/client';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
@@ -32,6 +39,9 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceSoftDeleteUseCase', () => {
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
     const workspaceService: MockProxy<WorkspaceService> =
         mock<WorkspaceService>();
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
@@ -76,6 +86,10 @@ describe('WorkspaceSoftDeleteUseCase', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceSoftDeleteUseCase,
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 { provide: WorkspaceService, useValue: workspaceService },
                 {
                     provide: WorkspaceInviteService,
@@ -101,6 +115,45 @@ describe('WorkspaceSoftDeleteUseCase', () => {
     });
 
     describe('execute', () => {
+        it('authorizes the delete on the context workspace before any write', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                policyContext
+            );
+
+            expect(policyAbilityService.authorize).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.delete,
+                expect.objectContaining({
+                    __caslSubjectType__: 'Workspace',
+                    id: workspaceContext.workspace.id,
+                })
+            );
+            expect(policyAbilityService.authorize).toHaveBeenCalledBefore(
+                outboxService.withTransaction
+            );
+        });
+
+        it('rejects with the forbidden error and writes nothing when the ability denies the delete', async () => {
+            policyAbilityService.authorize.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    policyContext
+                )
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(workspaceService.softDeleteInTx).not.toHaveBeenCalled();
+        });
+
         it('soft-deletes the workspace, its projects, its pending invites, and its pending join requests in order on one transaction and adds the deleted entry on it', async () => {
             const callOrder: string[] = [];
             workspaceService.softDeleteInTx.mockImplementation(async () => {
@@ -131,7 +184,8 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                workspaceContext
+                workspaceContext,
+                policyContext
             );
 
             expect(result).toEqual({});
@@ -183,7 +237,8 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    workspaceContext
+                    workspaceContext,
+                    policyContext
                 )
             ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
@@ -204,7 +259,8 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                workspaceContext
+                workspaceContext,
+                policyContext
             );
 
             expect(outboxService.withTransaction).toHaveBeenCalledWith(
@@ -225,7 +281,8 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    workspaceContext
+                    workspaceContext,
+                    policyContext
                 )
             ).rejects.toBeInstanceOf(WorkspaceNotFoundException);
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
@@ -243,7 +300,8 @@ describe('WorkspaceSoftDeleteUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    workspaceContext
+                    workspaceContext,
+                    policyContext
                 )
             ).rejects.toBeInstanceOf(AppUnknownException);
             expect(outboxService.addInTx).not.toHaveBeenCalled();

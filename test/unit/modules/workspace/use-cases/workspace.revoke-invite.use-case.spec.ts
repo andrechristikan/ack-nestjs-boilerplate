@@ -1,3 +1,13 @@
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -9,7 +19,6 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumWorkspaceInviteStatus,
-    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type { User, WorkspaceInvite } from '@generated/prisma-client/client';
 import { UserService } from '@modules/user/services/user.service';
@@ -26,8 +35,13 @@ import {
     buildAuthJwtAccessContext,
     buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('WorkspaceRevokeInviteUseCase', () => {
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const scoped: IPolicyWhereInput<'WorkspaceInvite'> = { id: 'scoped-1' };
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -40,9 +54,9 @@ describe('WorkspaceRevokeInviteUseCase', () => {
         workspaceId: 'workspace-1',
         email: 'invitee@example.com',
         token: 'hashed-token',
-        workspaceRole: EnumWorkspaceMemberRole.member,
+        workspaceRoleId: 'role-workspace-member',
         projectId: null,
-        projectRole: null,
+        projectRoleId: null,
         reference: 'WIN-abc123',
         expiredAt: new Date('2026-02-01T00:00:00.000Z'),
         status: EnumWorkspaceInviteStatus.pending,
@@ -98,10 +112,15 @@ describe('WorkspaceRevokeInviteUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceRevokeInviteUseCase,
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 {
                     provide: WorkspaceInviteService,
                     useValue: workspaceInviteService,
@@ -117,6 +136,51 @@ describe('WorkspaceRevokeInviteUseCase', () => {
         beforeEach(() => {
             workspaceInviteService.getPendingById.mockResolvedValue(invite);
             userService.getOneActiveByEmail.mockResolvedValue(null);
+        });
+
+        it('scopes the WorkspaceInvite delete read through the ability and forwards the predicate to the read', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                policyContext,
+                'invite-1'
+            );
+
+            expect(policyAbilityService.scope).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.delete,
+                EnumPolicySubject.WorkspaceInvite
+            );
+            expect(workspaceInviteService.getPendingById).toHaveBeenCalledWith(
+                'invite-1',
+                'workspace-1',
+                scoped
+            );
+            expect(policyAbilityService.scope).toHaveBeenCalledBefore(
+                workspaceInviteService.getPendingById
+            );
+        });
+
+        it('rejects with the forbidden error and reads nothing when the ability holds no rule', async () => {
+            policyAbilityService.scope.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    policyContext,
+                    'invite-1'
+                )
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(
+                workspaceInviteService.getPendingById
+            ).not.toHaveBeenCalled();
         });
 
         it('reads the pending invite and the invitee, then revokes with a null invitee and the context', async () => {
@@ -142,6 +206,7 @@ describe('WorkspaceRevokeInviteUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 'invite-1'
             );
 
@@ -149,7 +214,8 @@ describe('WorkspaceRevokeInviteUseCase', () => {
             expect(callOrder).toEqual(['pending', 'lookup', 'revoke']);
             expect(workspaceInviteService.getPendingById).toHaveBeenCalledWith(
                 'invite-1',
-                'workspace-1'
+                'workspace-1',
+                scoped
             );
             expect(userService.getOneActiveByEmail).toHaveBeenCalledWith(
                 'invitee@example.com'
@@ -172,6 +238,7 @@ describe('WorkspaceRevokeInviteUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 'invite-1'
             );
 
@@ -196,6 +263,7 @@ describe('WorkspaceRevokeInviteUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     'invite-1'
                 )
             ).rejects.toBeInstanceOf(WorkspaceInviteAlreadyProcessedException);
@@ -213,6 +281,7 @@ describe('WorkspaceRevokeInviteUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     'invite-1'
                 )
             ).rejects.toBeInstanceOf(WorkspaceInviteAlreadyProcessedException);

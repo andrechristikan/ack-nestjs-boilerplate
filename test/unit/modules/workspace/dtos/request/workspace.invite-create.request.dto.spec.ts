@@ -1,16 +1,13 @@
-import {
-    EnumProjectMemberRole,
-    EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
+import {} from '@generated/prisma-client/client';
 import { WorkspaceInviteCreateRequestSchema } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
 
 describe('WorkspaceInviteCreateRequestSchema', () => {
     const payload = {
         email: 'invitee@example.com',
-        workspaceRole: EnumWorkspaceMemberRole.member,
+        workspaceRoleId: '01920000-0000-7000-8000-6cd799439021',
         projectId: '01920000-0000-7000-8000-6cd799439011',
-        projectRole: EnumProjectMemberRole.member,
+        projectRoleId: '01920000-0000-7000-8000-6cd799439023',
         expiryDuration: EnumWorkspaceInviteExpiry.sevenDays,
     };
 
@@ -23,7 +20,7 @@ describe('WorkspaceInviteCreateRequestSchema', () => {
     it('trims and lowercases the email', () => {
         const result = WorkspaceInviteCreateRequestSchema.parse({
             email: '  Invitee@Example.com  ',
-            workspaceRole: EnumWorkspaceMemberRole.member,
+            workspaceRoleId: '01920000-0000-7000-8000-6cd799439021',
         });
 
         expect(result.email).toBe('invitee@example.com');
@@ -32,12 +29,12 @@ describe('WorkspaceInviteCreateRequestSchema', () => {
     it('parses with only the required fields', () => {
         const result = WorkspaceInviteCreateRequestSchema.parse({
             email: 'invitee@example.com',
-            workspaceRole: EnumWorkspaceMemberRole.admin,
+            workspaceRoleId: '01920000-0000-7000-8000-6cd799439022',
         });
 
         expect(result).toEqual({
             email: 'invitee@example.com',
-            workspaceRole: EnumWorkspaceMemberRole.admin,
+            workspaceRoleId: '01920000-0000-7000-8000-6cd799439022',
         });
     });
 

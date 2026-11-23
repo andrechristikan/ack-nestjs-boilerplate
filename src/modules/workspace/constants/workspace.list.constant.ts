@@ -1,7 +1,7 @@
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
 import {
     EnumWorkspaceInviteStatus,
     EnumWorkspaceJoinRequestStatus,
-    EnumWorkspaceMemberRole,
     Prisma,
 } from '@generated/prisma-client/client';
 
@@ -28,9 +28,7 @@ export const WorkspaceMemberDefaultAvailableOrderBy = [
 ] as const satisfies ReadonlyArray<Prisma.WorkspaceMemberScalarFieldEnum>;
 
 /** @public */
-export const WorkspaceMemberDefaultRole = Object.values(
-    EnumWorkspaceMemberRole
-);
+export const WorkspaceMemberDefaultRole = Object.values(EnumRoleWorkspaceKey);
 
 /** @public */
 export const WorkspaceInviteDefaultAvailableSearch = [

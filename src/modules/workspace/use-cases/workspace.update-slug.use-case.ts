@@ -1,3 +1,10 @@
+import { subject } from '@casl/ability';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { Workspace } from '@generated/prisma-client/client';
@@ -16,19 +23,29 @@ export class WorkspaceUpdateSlugUseCase implements IAppUseCase<
         IApiKeyContext,
         IAuthJwtAccessContext,
         IWorkspaceContext,
+        IPolicyContext,
         WorkspaceUpdateSlugRequestDto,
     ],
     IResponseReturn<Workspace>
 > {
-    constructor(private readonly workspaceService: WorkspaceService) {}
+    constructor(
+        private readonly workspaceService: WorkspaceService,
+        private readonly policyAbilityService: PolicyAbilityService
+    ) {}
 
     async execute(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         workspaceContext: IWorkspaceContext,
+        policyContext: IPolicyContext,
         { slug }: WorkspaceUpdateSlugRequestDto
     ): Promise<IResponseReturn<Workspace>> {
+        this.policyAbilityService.authorize(
+            policyContext,
+            EnumPolicyAction.update,
+            subject(EnumPolicySubject.Workspace, workspaceContext.workspace)
+        );
         const workspace = await this.workspaceService.updateWorkspaceSlug(
             requestContext,
             apiKeyContext,

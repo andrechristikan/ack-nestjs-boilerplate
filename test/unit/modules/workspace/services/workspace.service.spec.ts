@@ -1,3 +1,6 @@
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import { RoleService } from '@modules/role/services/role.service';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -17,7 +20,6 @@ import type {
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -53,6 +55,7 @@ import {
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 
 describe('WorkspaceService', () => {
+    const roleService: MockProxy<RoleService> = mock<RoleService>();
     const workspaceRepository: MockProxy<WorkspaceRepository> =
         mock<WorkspaceRepository>();
     const workspaceMemberRepository: MockProxy<WorkspaceMemberRepository> =
@@ -104,6 +107,13 @@ describe('WorkspaceService', () => {
         vi.resetAllMocks();
         configGet.mockImplementation((key: string) => configValues[key]);
         activityLogService.recordEffect.mockReturnValue(entry);
+        roleService.getRefByScopeAndKeyInTx.mockResolvedValue({
+            id: 'role-workspace-owner',
+            scope: EnumRoleScope.workspace,
+            key: 'owner',
+            name: 'Owner',
+            policyRevision: 0,
+        });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -118,6 +128,7 @@ describe('WorkspaceService', () => {
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: HelperStringService, useValue: helperStringService },
                 { provide: FeatureFlagService, useValue: featureFlagService },
+                { provide: RoleService, useValue: roleService },
                 { provide: ConfigService, useValue: configService },
             ],
         }).compile();
@@ -240,6 +251,11 @@ describe('WorkspaceService', () => {
             );
 
             expect(result).toBe(workspace);
+            expect(roleService.getRefByScopeAndKeyInTx).toHaveBeenCalledWith(
+                tx,
+                EnumRoleScope.workspace,
+                EnumRoleWorkspaceKey.owner
+            );
             expect(workspaceRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
@@ -249,29 +265,11 @@ describe('WorkspaceService', () => {
             );
             expect(
                 workspaceMemberRepository.createOwnerInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
-        });
-    });
-
-    describe('createPersonalInTx', () => {
-        it('creates the workspace with only a name', async () => {
-            const tx = {} as IDatabaseTransactionClient;
-            workspaceRepository.createInTx.mockResolvedValue(workspace);
-
-            await service.createPersonalInTx(
+            ).toHaveBeenCalledWith(
                 tx,
+                'workspace-1',
                 'user-1',
-                'Acme',
-                'acme-team',
-                'workspace-1'
-            );
-
-            expect(workspaceRepository.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-1',
-                { name: 'Acme', description: null, isPublic: null },
-                'acme-team',
-                'workspace-1'
+                'role-workspace-owner'
             );
         });
     });
@@ -305,6 +303,14 @@ describe('WorkspaceService', () => {
 
             await service.createOwnedForUsersInTx(tx, owned);
 
+            expect(roleService.getRefByScopeAndKeyInTx).toHaveBeenCalledTimes(
+                1
+            );
+            expect(roleService.getRefByScopeAndKeyInTx).toHaveBeenCalledWith(
+                tx,
+                EnumRoleScope.workspace,
+                EnumRoleWorkspaceKey.owner
+            );
             expect(workspaceRepository.createInTx).toHaveBeenNthCalledWith(
                 1,
                 tx,
@@ -424,7 +430,7 @@ describe('WorkspaceService', () => {
             });
             expect(
                 workspaceMemberRepository.findWorkspaceIdsByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
+            ).toHaveBeenCalledWith(tx, 'user-1', EnumRoleWorkspaceKey.owner);
             expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
                 tx,
                 ['owned-1']
@@ -451,7 +457,7 @@ describe('WorkspaceService', () => {
             expect(result).toBe(workspace);
             expect(
                 workspaceMemberRepository.findWorkspaceIdsByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
+            ).toHaveBeenCalledWith(tx, 'user-1', EnumRoleWorkspaceKey.owner);
             expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
                 tx,
                 ['owned-1']
@@ -465,7 +471,12 @@ describe('WorkspaceService', () => {
             );
             expect(
                 workspaceMemberRepository.createOwnerInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
+            ).toHaveBeenCalledWith(
+                tx,
+                'workspace-1',
+                'user-1',
+                'role-workspace-owner'
+            );
         });
 
         it('adds the creator entry on the tx of the create', async () => {
@@ -870,7 +881,7 @@ describe('WorkspaceService', () => {
 
             expect(
                 workspaceMemberRepository.findWorkspaceIdsByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
+            ).toHaveBeenCalledWith(tx, 'user-1', EnumRoleWorkspaceKey.owner);
             expect(
                 workspaceRepository.softDeleteOwnedByUserInTx
             ).toHaveBeenCalledWith(
@@ -926,7 +937,7 @@ describe('WorkspaceService', () => {
             });
             expect(
                 workspaceMemberRepository.findWorkspaceIdsByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
+            ).toHaveBeenCalledWith(tx, 'user-1', EnumRoleWorkspaceKey.owner);
             expect(
                 workspaceRepository.existsOwnedWithOtherMembersInTx
             ).toHaveBeenCalledWith(tx, ['workspace-1'], 'user-1');
@@ -956,7 +967,7 @@ describe('WorkspaceService', () => {
 
             expect(
                 workspaceMemberRepository.findWorkspaceIdsByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-1', EnumWorkspaceMemberRole.owner);
+            ).toHaveBeenCalledWith(tx, 'user-1', EnumRoleWorkspaceKey.owner);
             expect(workspaceRepository.countByOwnerInTx).toHaveBeenCalledWith(
                 tx,
                 ['workspace-1', 'workspace-2']
@@ -999,14 +1010,20 @@ describe('WorkspaceService', () => {
                 page
             );
 
-            const result = await service.getListOffsetByAdmin(pagination, {
-                isPublic: { equals: true },
-            });
+            const result = await service.getListOffsetByAdmin(
+                pagination,
+                { isPublic: { equals: true } },
+                null
+            );
 
             expect(result).toBe(page);
             expect(
                 workspaceRepository.findWithPaginationOffsetByAdmin
-            ).toHaveBeenCalledWith(pagination, { isPublic: { equals: true } });
+            ).toHaveBeenCalledWith(
+                pagination,
+                { isPublic: { equals: true } },
+                null
+            );
         });
 
         it('passes a null isPublic filter when none is given', async () => {
@@ -1029,12 +1046,16 @@ describe('WorkspaceService', () => {
                 page
             );
 
-            const result = await service.getListOffsetByAdmin(pagination);
+            const result = await service.getListOffsetByAdmin(
+                pagination,
+                null,
+                null
+            );
 
             expect(result).toBe(page);
             expect(
                 workspaceRepository.findWithPaginationOffsetByAdmin
-            ).toHaveBeenCalledWith(pagination, null);
+            ).toHaveBeenCalledWith(pagination, null, null);
         });
     });
 
@@ -1043,7 +1064,7 @@ describe('WorkspaceService', () => {
             workspaceRepository.findByIdByAdmin.mockResolvedValue(null);
 
             await expect(
-                service.getByIdByAdmin('workspace-1')
+                service.getByIdByAdmin('workspace-1', null)
             ).rejects.toMatchObject({
                 constructor: WorkspaceNotFoundException,
                 module: 'workspace',
@@ -1059,7 +1080,7 @@ describe('WorkspaceService', () => {
         it('returns the workspace resolved for admin', async () => {
             workspaceRepository.findByIdByAdmin.mockResolvedValue(workspace);
 
-            const result = await service.getByIdByAdmin('workspace-1');
+            const result = await service.getByIdByAdmin('workspace-1', null);
 
             expect(result).toBe(workspace);
         });

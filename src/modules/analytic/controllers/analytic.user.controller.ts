@@ -29,13 +29,21 @@ import {
 } from '@modules/workspace/decorators/workspace.decorator';
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import {
+    PolicyContext,
+    PolicyProtected,
+} from '@modules/policy/decorators/policy.decorator';
 import { AnalyticSummaryUseCase } from '@modules/analytic/use-cases/analytic.summary.use-case';
 import { AnalyticInviteFunnelUseCase } from '@modules/analytic/use-cases/analytic.invite-funnel.use-case';
 import { AnalyticJoinOutcomesUseCase } from '@modules/analytic/use-cases/analytic.join-outcomes.use-case';
 import { AnalyticMemberRolesUseCase } from '@modules/analytic/use-cases/analytic.member-roles.use-case';
 import { AnalyticActivityUseCase } from '@modules/analytic/use-cases/analytic.activity.use-case';
 import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
 
 @ApiTags('modules.user.analytic')
 @Controller({
@@ -56,7 +64,11 @@ export class AnalyticUserController {
         schema: AnalyticWorkspaceSummaryResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.WorkspaceAnalytic,
+        action: [EnumPolicyAction.read],
+    })
+    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -66,10 +78,15 @@ export class AnalyticUserController {
     @Get('/workspace/summary')
     async workspaceSummary(
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Query({ schema: AnalyticOptionalDateRangeRequestSchema })
         query: AnalyticOptionalDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticWorkspaceSummary>> {
-        return this.analyticSummaryUseCase.execute(workspaceContext, query);
+        return this.analyticSummaryUseCase.execute(
+            workspaceContext,
+            policyContext,
+            query
+        );
     }
 
     @Doc({ summary: 'get current workspace invite funnel by date range' })
@@ -77,7 +94,11 @@ export class AnalyticUserController {
         schema: AnalyticStatusCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.WorkspaceAnalytic,
+        action: [EnumPolicyAction.read],
+    })
+    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -87,11 +108,13 @@ export class AnalyticUserController {
     @Get('/workspace/invite-funnel')
     async inviteFunnel(
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
         return this.analyticInviteFunnelUseCase.execute(
             workspaceContext,
+            policyContext,
             query
         );
     }
@@ -103,7 +126,11 @@ export class AnalyticUserController {
         schema: AnalyticStatusCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.WorkspaceAnalytic,
+        action: [EnumPolicyAction.read],
+    })
+    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -113,11 +140,13 @@ export class AnalyticUserController {
     @Get('/workspace/join-outcomes')
     async joinOutcomes(
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticStatusCountList>> {
         return this.analyticJoinOutcomesUseCase.execute(
             workspaceContext,
+            policyContext,
             query
         );
     }
@@ -127,7 +156,11 @@ export class AnalyticUserController {
         schema: AnalyticRoleCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.WorkspaceAnalytic,
+        action: [EnumPolicyAction.read],
+    })
+    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -136,9 +169,13 @@ export class AnalyticUserController {
     @ApiKeyProtected()
     @Get('/workspace/member-roles')
     async memberRoles(
-        @WorkspaceContext() workspaceContext: IWorkspaceContext
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
+        @PolicyContext() policyContext: IPolicyContext
     ): Promise<IResponseReturn<IAnalyticRoleCountList>> {
-        return this.analyticMemberRolesUseCase.execute(workspaceContext);
+        return this.analyticMemberRolesUseCase.execute(
+            workspaceContext,
+            policyContext
+        );
     }
 
     @Doc({ summary: 'get current workspace activity count by date range' })
@@ -146,7 +183,11 @@ export class AnalyticUserController {
         schema: AnalyticMetricCountResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.WorkspaceAnalytic,
+        action: [EnumPolicyAction.read],
+    })
+    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -156,9 +197,14 @@ export class AnalyticUserController {
     @Get('/workspace/activity')
     async activity(
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Query({ schema: AnalyticDateRangeRequestSchema })
         query: AnalyticDateRangeRequestDto
     ): Promise<IResponseReturn<IAnalyticMetricCount>> {
-        return this.analyticActivityUseCase.execute(workspaceContext, query);
+        return this.analyticActivityUseCase.execute(
+            workspaceContext,
+            policyContext,
+            query
+        );
     }
 }

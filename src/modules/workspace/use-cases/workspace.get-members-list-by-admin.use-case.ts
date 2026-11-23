@@ -1,3 +1,9 @@
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -11,19 +17,26 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class WorkspaceGetMembersListByAdminUseCase implements IAppUseCase<
-    [string, WorkspaceAdminMemberListRequestDto],
+    [IPolicyContext, string, WorkspaceAdminMemberListRequestDto],
     IResponsePaginationReturn<IWorkspaceMember>
 > {
     constructor(
         private readonly workspaceMemberService: WorkspaceMemberService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
+        policyContext: IPolicyContext,
         workspaceId: string,
         query: WorkspaceAdminMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>> {
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.read,
+            EnumPolicySubject.WorkspaceMember
+        );
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
             availableOrderBy: WorkspaceMemberDefaultAvailableOrderBy,
         });
@@ -32,7 +45,8 @@ export class WorkspaceGetMembersListByAdminUseCase implements IAppUseCase<
         const { data, ...others } =
             await this.workspaceMemberService.getMembersListByAdmin(
                 workspaceId,
-                params
+                params,
+                additionalWhere
             );
 
         return {

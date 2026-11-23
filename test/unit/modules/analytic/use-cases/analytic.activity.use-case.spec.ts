@@ -1,3 +1,11 @@
+import { EnumPolicyAction } from '@generated/prisma-client/client';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -5,7 +13,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { AnalyticWorkspaceUserService } from '@modules/analytic/services/analytic.workspace-user.service';
 import { AnalyticDateService } from '@modules/analytic/services/analytic.date.service';
 import { AnalyticActivityUseCase } from '@modules/analytic/use-cases/analytic.activity.use-case';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import {
     buildWorkspace,
     buildWorkspaceMember,
@@ -15,8 +22,11 @@ import {
 describe('AnalyticActivityUseCase', () => {
     const workspaceContext = buildWorkspaceContext(
         buildWorkspace(),
-        buildWorkspaceMember('user-1', EnumWorkspaceMemberRole.admin)
+        buildWorkspaceMember('user-1', EnumRoleWorkspaceKey.admin)
     );
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
     const analyticWorkspaceUserService: MockProxy<AnalyticWorkspaceUserService> =
         mock<AnalyticWorkspaceUserService>();
 
@@ -34,6 +44,10 @@ describe('AnalyticActivityUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 AnalyticActivityUseCase,
                 {
                     provide: AnalyticWorkspaceUserService,
@@ -47,6 +61,47 @@ describe('AnalyticActivityUseCase', () => {
     });
 
     describe('execute', () => {
+        it('authorizes the read of the workspace analytic before any service call', async () => {
+            analyticDateService.requireRange.mockReturnValue({
+                startDate,
+                endDate,
+            });
+            analyticWorkspaceUserService.activity.mockResolvedValue({
+                count: 0,
+            });
+
+            await useCase.execute(workspaceContext, policyContext, {
+                startDate,
+                endDate,
+            });
+
+            expect(policyAbilityService.authorize).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.read,
+                expect.objectContaining({
+                    __caslSubjectType__: 'WorkspaceAnalytic',
+                    workspaceId: 'workspace-1',
+                })
+            );
+        });
+
+        it('rejects with the forbidden error and calls no service when the ability denies the read', async () => {
+            policyAbilityService.authorize.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                useCase.execute(workspaceContext, policyContext, {
+                    startDate,
+                    endDate,
+                })
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(analyticDateService.requireRange).not.toHaveBeenCalled();
+            expect(
+                analyticWorkspaceUserService.activity
+            ).not.toHaveBeenCalled();
+        });
+
         it('wraps the domain result in the response envelope', async () => {
             analyticDateService.requireRange.mockReturnValue({
                 startDate,
@@ -56,10 +111,14 @@ describe('AnalyticActivityUseCase', () => {
                 count: 12,
             });
 
-            const result = await useCase.execute(workspaceContext, {
-                startDate,
-                endDate,
-            });
+            const result = await useCase.execute(
+                workspaceContext,
+                policyContext,
+                {
+                    startDate,
+                    endDate,
+                }
+            );
 
             expect(result).toEqual({ data: { count: 12 } });
             expect(analyticWorkspaceUserService.activity).toHaveBeenCalledWith(
@@ -78,7 +137,10 @@ describe('AnalyticActivityUseCase', () => {
                 count: 0,
             });
 
-            await useCase.execute(workspaceContext, { startDate, endDate });
+            await useCase.execute(workspaceContext, policyContext, {
+                startDate,
+                endDate,
+            });
 
             expect(analyticDateService.requireRange).toHaveBeenCalledWith(
                 startDate,

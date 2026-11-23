@@ -1,3 +1,7 @@
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import { RoleService } from '@modules/role/services/role.service';
+import type { Prisma } from '@generated/prisma-client/client';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
@@ -11,10 +15,7 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -52,6 +53,7 @@ export class WorkspaceService {
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly featureFlagService: FeatureFlagService,
+        private readonly roleService: RoleService,
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService,
         private readonly databaseUtil: DatabaseUtil,
@@ -82,6 +84,31 @@ export class WorkspaceService {
         const isPatternValid = this.slugRegex.test(slug);
 
         return slug.length <= this.slugMaxLength && isPatternValid;
+    }
+
+    private async createWithOwnerRoleInTx(
+        tx: IDatabaseTransactionClient,
+        ownerRoleId: string,
+        ownerId: string,
+        create: IWorkspaceCreate,
+        slug: string,
+        workspaceId: string
+    ): Promise<Workspace> {
+        const workspace = await this.workspaceRepository.createInTx(
+            tx,
+            ownerId,
+            create,
+            slug,
+            workspaceId
+        );
+        await this.workspaceMemberRepository.createOwnerInTx(
+            tx,
+            workspace.id,
+            ownerId,
+            ownerRoleId
+        );
+
+        return workspace;
     }
 
     async validateWorkspaceGuard(
@@ -123,33 +150,17 @@ export class WorkspaceService {
         slug: string,
         workspaceId: string
     ): Promise<Workspace> {
-        const workspace = await this.workspaceRepository.createInTx(
+        const ownerRole = await this.roleService.getRefByScopeAndKeyInTx(
             tx,
+            EnumRoleScope.workspace,
+            EnumRoleWorkspaceKey.owner
+        );
+
+        return this.createWithOwnerRoleInTx(
+            tx,
+            ownerRole.id,
             ownerId,
             create,
-            slug,
-            workspaceId
-        );
-        await this.workspaceMemberRepository.createOwnerInTx(
-            tx,
-            workspace.id,
-            ownerId
-        );
-
-        return workspace;
-    }
-
-    async createPersonalInTx(
-        tx: IDatabaseTransactionClient,
-        ownerId: string,
-        name: string,
-        slug: string,
-        workspaceId: string
-    ): Promise<Workspace> {
-        return this.createInTx(
-            tx,
-            ownerId,
-            { name, description: null, isPublic: null },
             slug,
             workspaceId
         );
@@ -159,11 +170,18 @@ export class WorkspaceService {
         tx: IDatabaseTransactionClient,
         users: IWorkspaceOwnedUser[]
     ): Promise<void> {
+        const ownerRole = await this.roleService.getRefByScopeAndKeyInTx(
+            tx,
+            EnumRoleScope.workspace,
+            EnumRoleWorkspaceKey.owner
+        );
+
         for (const user of users) {
-            await this.createPersonalInTx(
+            await this.createWithOwnerRoleInTx(
                 tx,
+                ownerRole.id,
                 user.userId,
-                user.name,
+                { name: user.name, description: null, isPublic: null },
                 user.slug,
                 user.workspaceId
             );
@@ -378,7 +396,7 @@ export class WorkspaceService {
             await this.workspaceMemberRepository.findWorkspaceIdsByUserInTx(
                 tx,
                 userId,
-                EnumWorkspaceMemberRole.owner
+                EnumRoleWorkspaceKey.owner
             );
 
         return this.workspaceRepository.countByOwnerInTx(tx, workspaceIds);
@@ -392,7 +410,7 @@ export class WorkspaceService {
             await this.workspaceMemberRepository.findWorkspaceIdsByUserInTx(
                 tx,
                 userId,
-                EnumWorkspaceMemberRole.owner
+                EnumRoleWorkspaceKey.owner
             );
         const hasOtherMembers =
             await this.workspaceRepository.existsOwnedWithOtherMembersInTx(
@@ -414,7 +432,7 @@ export class WorkspaceService {
             await this.workspaceMemberRepository.findWorkspaceIdsByUserInTx(
                 tx,
                 userId,
-                EnumWorkspaceMemberRole.owner
+                EnumRoleWorkspaceKey.owner
             );
 
         return this.workspaceRepository.softDeleteOwnedByUserInTx(
@@ -427,17 +445,24 @@ export class WorkspaceService {
 
     async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams,
-        isPublic?: Record<string, IPaginationEqual>
+        isPublic: Record<string, IPaginationEqual> | null,
+        additionalWhere: Prisma.WorkspaceWhereInput | null
     ): Promise<IResponsePaginationReturn<Workspace>> {
         return this.workspaceRepository.findWithPaginationOffsetByAdmin(
             pagination,
-            isPublic ?? null
+            isPublic,
+            additionalWhere
         );
     }
 
-    async getByIdByAdmin(workspaceId: string): Promise<Workspace> {
-        const workspace =
-            await this.workspaceRepository.findByIdByAdmin(workspaceId);
+    async getByIdByAdmin(
+        workspaceId: string,
+        additionalWhere: Prisma.WorkspaceWhereInput | null
+    ): Promise<Workspace> {
+        const workspace = await this.workspaceRepository.findByIdByAdmin(
+            workspaceId,
+            additionalWhere
+        );
         if (!workspace) {
             throw new WorkspaceNotFoundException();
         }

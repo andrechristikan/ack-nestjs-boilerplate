@@ -48,7 +48,6 @@
     "error": {
         "notFound": "Sorry, we couldn't find the workspace.",
         "memberForbidden": "You are not a member of this workspace.",
-        "roleForbidden": "You do not have the required role in this workspace.",
         "inviteInvalid": "This workspace invite link is invalid or has expired.",
         "capReached": "You have reached the maximum number of workspaces you can own.",
         "slugAlreadyExists": "This workspace slug is already taken.",
@@ -72,6 +71,8 @@
         "memberGuardMissing": "Your workspace membership could not be verified for this request.",
         "memberAlreadyExists": "This user is already a member of this workspace.",
         "ownerTransferRequired": "You own a workspace with other members; transfer ownership before deleting your account.",
-        "transferTargetInactive": "Ownership can only be transferred to a member whose account is active."
-    }
+        "transferTargetInactive": "Ownership can only be transferred to a member whose account is active.",
+        "ownerRoleNotAssignable": "The owner role can only be passed on through an ownership transfer."
+    },
+    "permissions": "Workspace permissions retrieved successfully."
 }

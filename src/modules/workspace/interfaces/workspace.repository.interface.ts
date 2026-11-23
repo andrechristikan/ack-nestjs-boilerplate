@@ -1,3 +1,4 @@
+import type { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
     IPaginationCursorReturn,
@@ -15,7 +16,10 @@ import type {
 export interface IWorkspaceRepository {
     findActiveById(workspaceId: string): Promise<Workspace | null>;
     findActivePublicBySlug(slug: string): Promise<Workspace | null>;
-    findByIdByAdmin(workspaceId: string): Promise<Workspace | null>;
+    findByIdByAdmin(
+        workspaceId: string,
+        additionalWhere: Prisma.WorkspaceWhereInput | null
+    ): Promise<Workspace | null>;
     countByOwnerInTx(
         tx: IDatabaseTransactionClient,
         workspaceIds: string[]
@@ -26,7 +30,8 @@ export interface IWorkspaceRepository {
     ): Promise<IPaginationCursorReturn<Workspace>>;
     findWithPaginationOffsetByAdmin(
         { where, ...others }: IPaginationQueryOffsetParams,
-        isPublic: Record<string, IPaginationEqual> | null
+        isPublic: Record<string, IPaginationEqual> | null,
+        additionalWhere: Prisma.WorkspaceWhereInput | null
     ): Promise<IResponsePaginationReturn<Workspace>>;
     createInTx(
         tx: IDatabaseTransactionClient,

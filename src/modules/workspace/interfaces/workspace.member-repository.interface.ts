@@ -6,64 +6,71 @@ import type {
     IPaginationQueryOffsetParams,
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
-import type { WorkspaceMember } from '@generated/prisma-client/client';
-import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
+import type { Prisma } from '@generated/prisma-client/client';
+import type { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
+import type {
+    IWorkspaceMember,
+    IWorkspaceMemberWithRole,
+} from '@modules/workspace/interfaces/workspace.interface';
 
 export interface IWorkspaceMemberRepository {
     findOneByWorkspaceAndUser(
         workspaceId: string,
         userId: string
-    ): Promise<WorkspaceMember | null>;
+    ): Promise<IWorkspaceMemberWithRole | null>;
     findOneOwnerByWorkspace(
         workspaceId: string
-    ): Promise<WorkspaceMember | null>;
+    ): Promise<IWorkspaceMemberWithRole | null>;
     findByIdAndWorkspace(
         workspaceMemberId: string,
-        workspaceId: string
-    ): Promise<WorkspaceMember | null>;
+        workspaceId: string,
+        additionalWhere: Prisma.WorkspaceMemberWhereInput | null
+    ): Promise<IWorkspaceMemberWithRole | null>;
     findReviewerUserIdsByWorkspace(workspaceId: string): Promise<string[]>;
     findWorkspaceIdsByUser(
         userId: string,
-        role: EnumWorkspaceMemberRole | null
+        role: EnumRoleWorkspaceKey | null
     ): Promise<string[]>;
     findWorkspaceIdsByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        role: EnumWorkspaceMemberRole | null
+        role: EnumRoleWorkspaceKey | null
     ): Promise<string[]>;
     findWithPaginationOffset(
         workspaceId: string,
         { where, ...others }: IPaginationQueryOffsetParams,
-        role: Record<string, IPaginationIn> | null
+        roleKey: Record<string, IPaginationIn> | null,
+        additionalWhere: Prisma.WorkspaceMemberWhereInput | null
     ): Promise<IResponsePaginationReturn<IWorkspaceMember>>;
     findWithPaginationCursor(
         workspaceId: string,
         { where, ...others }: IPaginationQueryCursorParams,
-        role: Record<string, IPaginationIn> | null
+        roleKey: Record<string, IPaginationIn> | null,
+        additionalWhere: Prisma.WorkspaceMemberWhereInput | null
     ): Promise<IPaginationCursorReturn<IWorkspaceMember>>;
     createOwnerInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        userId: string
-    ): Promise<WorkspaceMember>;
+        userId: string,
+        ownerRoleId: string
+    ): Promise<IWorkspaceMemberWithRole>;
     createInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
         userId: string,
-        role: EnumWorkspaceMemberRole,
+        roleId: string,
         actorId: string
-    ): Promise<WorkspaceMember>;
+    ): Promise<IWorkspaceMemberWithRole>;
     updateRoleInTx(
         tx: IDatabaseTransactionClient,
         targetMemberId: string,
-        expectedRole: EnumWorkspaceMemberRole,
-        newRole: EnumWorkspaceMemberRole
+        expectedRoleId: string,
+        newRoleId: string
     ): Promise<boolean>;
     removeMemberInTx(
         tx: IDatabaseTransactionClient,
         targetMemberId: string,
-        expectedRole: EnumWorkspaceMemberRole
+        expectedRoleId: string
     ): Promise<boolean>;
     removeByUserInTx(
         tx: IDatabaseTransactionClient,
@@ -73,11 +80,14 @@ export interface IWorkspaceMemberRepository {
         tx: IDatabaseTransactionClient,
         workspaceId: string,
         fromMemberId: string,
-        toMemberId: string
+        toMemberId: string,
+        ownerRoleId: string
     ): Promise<boolean>;
     demoteOwnerInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
-        fromMemberId: string
+        fromMemberId: string,
+        ownerRoleId: string,
+        adminRoleId: string
     ): Promise<boolean>;
 }

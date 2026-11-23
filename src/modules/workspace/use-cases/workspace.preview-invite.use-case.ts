@@ -1,3 +1,5 @@
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import { RoleService } from '@modules/role/services/role.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInvitePreviewRequestDto } from '@modules/workspace/dtos/request/workspace.invite-preview.request.dto';
@@ -12,6 +14,7 @@ export class WorkspacePreviewInviteUseCase implements IAppUseCase<
     IResponseReturn<WorkspaceInvitePreviewResponseDto>
 > {
     constructor(
+        private readonly roleService: RoleService,
         private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly userService: UserService
     ) {}
@@ -23,15 +26,20 @@ export class WorkspacePreviewInviteUseCase implements IAppUseCase<
     > {
         const invite =
             await this.workspaceInviteService.validateInviteToken(inviteToken);
-        const [workspace, inviter] = await Promise.all([
+        const [workspace, inviter, workspaceRole] = await Promise.all([
             this.workspaceInviteService.getWorkspaceOfInvite(invite),
             this.userService.getNameById(invite.invitedByUserId),
+            this.roleService.getRefByIdForScope(
+                invite.workspaceRoleId,
+                EnumRoleScope.workspace
+            ),
         ]);
 
         const preview = this.workspaceInviteService.mapInvitePreview(
             workspace,
             invite,
-            inviter
+            inviter,
+            workspaceRole
         );
 
         return { data: preview };

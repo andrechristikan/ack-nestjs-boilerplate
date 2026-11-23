@@ -1,3 +1,4 @@
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -5,12 +6,9 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
-    EnumWorkspaceMemberRole,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
-import type {
-    Workspace,
-    WorkspaceMember,
-} from '@generated/prisma-client/client';
+import type { Workspace } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -53,7 +51,7 @@ describe('WorkspaceSwitchUseCase', () => {
         description: null,
         isPublic: false,
     };
-    const workspaceMember: WorkspaceMember = {
+    const workspaceMember: IWorkspaceMemberWithRole = {
         id: 'member-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -61,7 +59,14 @@ describe('WorkspaceSwitchUseCase', () => {
         updatedBy: null,
         workspaceId: 'workspace-1',
         userId: 'user-1',
-        role: EnumWorkspaceMemberRole.member,
+        roleId: 'role-workspace-member',
+        role: {
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'member',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
     const requestContext = buildRequestContext();

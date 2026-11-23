@@ -1,3 +1,9 @@
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -18,23 +24,30 @@ import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.
 
 @Injectable()
 export class WorkspaceGetJoinRequestsListUseCase implements IAppUseCase<
-    [IWorkspaceContext, WorkspaceJoinRequestListRequestDto],
+    [IWorkspaceContext, IPolicyContext, WorkspaceJoinRequestListRequestDto],
     IResponsePaginationReturn<WorkspaceJoinRequest>
 > {
     constructor(
         private readonly workspaceJoinRequestService: WorkspaceJoinRequestService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly paginationFilterUtil: PaginationFilterUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
         workspaceContext: IWorkspaceContext,
+        policyContext: IPolicyContext,
         query: WorkspaceJoinRequestListRequestDto
     ): Promise<IResponsePaginationReturn<WorkspaceJoinRequest>> {
         // Sequential by design: gate before the work it guards
         await this.workspaceJoinRequestService.assertJoinRequestAllowed();
 
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.read,
+            EnumPolicySubject.WorkspaceJoinRequest
+        );
         const { params, storePatch } = this.paginationQueryUtil.cursor(query, {
             scope: WorkspaceJoinRequestUserListCursorScope,
             availableOrderBy: WorkspaceJoinRequestDefaultAvailableOrderBy,
@@ -56,7 +69,8 @@ export class WorkspaceGetJoinRequestsListUseCase implements IAppUseCase<
             await this.workspaceJoinRequestService.getJoinRequestsList(
                 workspaceContext.workspace.id,
                 params,
-                status?.where
+                status?.where ?? null,
+                additionalWhere
             );
 
         return {

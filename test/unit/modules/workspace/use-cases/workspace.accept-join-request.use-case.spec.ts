@@ -1,3 +1,13 @@
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -21,8 +31,15 @@ import {
     buildAuthJwtAccessContext,
     buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('WorkspaceAcceptJoinRequestUseCase', () => {
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const scoped: IPolicyWhereInput<'WorkspaceJoinRequest'> = {
+        id: 'scoped-1',
+    };
     const workspaceJoinRequestService: MockProxy<WorkspaceJoinRequestService> =
         mock<WorkspaceJoinRequestService>();
     const workspace: Workspace = {
@@ -69,10 +86,15 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 WorkspaceAcceptJoinRequestUseCase,
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 {
                     provide: WorkspaceJoinRequestService,
                     useValue: workspaceJoinRequestService,
@@ -88,6 +110,49 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
             workspaceJoinRequestService.getPendingById.mockResolvedValue(
                 joinRequest
             );
+        });
+
+        it('scopes the WorkspaceJoinRequest update read through the ability and forwards the predicate to the read', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                policyContext,
+                'join-request-1'
+            );
+
+            expect(policyAbilityService.scope).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.update,
+                EnumPolicySubject.WorkspaceJoinRequest
+            );
+            expect(
+                workspaceJoinRequestService.getPendingById
+            ).toHaveBeenCalledWith('join-request-1', 'workspace-1', scoped);
+            expect(policyAbilityService.scope).toHaveBeenCalledBefore(
+                workspaceJoinRequestService.getPendingById
+            );
+        });
+
+        it('rejects with the forbidden error and reads nothing when the ability holds no rule', async () => {
+            policyAbilityService.scope.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    policyContext,
+                    'join-request-1'
+                )
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(
+                workspaceJoinRequestService.getPendingById
+            ).not.toHaveBeenCalled();
         });
 
         it('gates, reads the pending request, then accepts with the workspace name and the context', async () => {
@@ -115,6 +180,7 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 'join-request-1'
             );
 
@@ -125,7 +191,7 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
             ).toHaveBeenCalledTimes(1);
             expect(
                 workspaceJoinRequestService.getPendingById
-            ).toHaveBeenCalledWith('join-request-1', 'workspace-1');
+            ).toHaveBeenCalledWith('join-request-1', 'workspace-1', scoped);
             expect(
                 workspaceJoinRequestService.acceptJoinRequest
             ).toHaveBeenCalledWith(
@@ -148,6 +214,7 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     'join-request-1'
                 )
             ).rejects.toBeInstanceOf(FeatureFlagDisabledException);
@@ -167,6 +234,7 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     'join-request-1'
                 )
             ).rejects.toBeInstanceOf(WorkspaceJoinRequestNotFoundException);
@@ -186,6 +254,7 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     'join-request-1'
                 )
             ).rejects.toBeInstanceOf(

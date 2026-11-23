@@ -9,10 +9,7 @@ import {
     WorkspaceMemberProtected,
     WorkspaceProtected,
 } from '@modules/workspace/decorators/workspace.decorator';
-import {
-    WorkspaceContextStoreKey,
-    WorkspaceRoleMetaKey,
-} from '@modules/workspace/constants/workspace.constant';
+import { WorkspaceContextStoreKey } from '@modules/workspace/constants/workspace.constant';
 import {
     buildWorkspace,
     buildWorkspaceContext,
@@ -22,12 +19,10 @@ import {
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import { DocResponseEntryMetaKey } from '@common/doc/constants/doc.constant';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { WorkspaceGuard } from '@modules/workspace/guards/workspace.guard';
 import { WorkspaceMemberGuard } from '@modules/workspace/guards/workspace.member.guard';
-import { WorkspaceRoleGuard } from '@modules/workspace/guards/workspace.role.guard';
 
 describe('workspace.decorator', () => {
     describe('WorkspaceProtected', () => {
@@ -60,7 +55,7 @@ describe('workspace.decorator', () => {
     });
 
     describe('WorkspaceMemberProtected', () => {
-        it('mounts only WorkspaceMemberGuard when no role is given', () => {
+        it('mounts only WorkspaceMemberGuard', () => {
             const target = {} as Type<unknown>;
             const descriptor: PropertyDescriptor = { value: vi.fn() };
 
@@ -69,9 +64,6 @@ describe('workspace.decorator', () => {
             expect(
                 Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
             ).toEqual([WorkspaceMemberGuard]);
-            expect(
-                Reflect.getMetadata(WorkspaceRoleMetaKey, descriptor.value)
-            ).toBeUndefined();
             const stored = Reflect.getMetadata(
                 DocResponseEntryMetaKey,
                 descriptor.value
@@ -91,55 +83,6 @@ describe('workspace.decorator', () => {
                     httpStatus: HttpStatus.FORBIDDEN,
                     statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
                     messagePath: 'workspace.error.memberForbidden',
-                },
-            ]);
-        });
-
-        it('mounts WorkspaceMemberGuard, WorkspaceRoleGuard, the roles, and the role error kit', () => {
-            const target = {} as Type<unknown>;
-            const descriptor: PropertyDescriptor = { value: vi.fn() };
-
-            WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)(
-                target,
-                'method',
-                descriptor
-            );
-
-            expect(
-                Reflect.getMetadata(GUARDS_METADATA, descriptor.value)
-            ).toEqual([WorkspaceMemberGuard, WorkspaceRoleGuard]);
-            expect(
-                Reflect.getMetadata(WorkspaceRoleMetaKey, descriptor.value)
-            ).toEqual([EnumWorkspaceMemberRole.admin]);
-            const stored = Reflect.getMetadata(
-                DocResponseEntryMetaKey,
-                descriptor.value
-            ) as IDocResponseEntry[];
-            expect(stored).toEqual([
-                {
-                    httpStatus: HttpStatus.UNAUTHORIZED,
-                    statusCode: EnumUserStatusCodeError.guardMissing,
-                    messagePath: 'user.error.guardMissing',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumWorkspaceStatusCodeError.guardMissing,
-                    messagePath: 'workspace.error.guardMissing',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
-                    messagePath: 'workspace.error.memberGuardMissing',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumWorkspaceStatusCodeError.memberForbidden,
-                    messagePath: 'workspace.error.memberForbidden',
-                },
-                {
-                    httpStatus: HttpStatus.FORBIDDEN,
-                    statusCode: EnumWorkspaceStatusCodeError.roleForbidden,
-                    messagePath: 'workspace.error.roleForbidden',
                 },
             ]);
         });

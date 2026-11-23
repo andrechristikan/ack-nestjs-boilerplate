@@ -1,3 +1,15 @@
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { RoleService } from '@modules/role/services/role.service';
+import { EnumRoleScope } from '@generated/prisma-client/client';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -9,7 +21,6 @@ import {
     EnumUserSignUpWith,
     EnumUserStatus,
     EnumWorkspaceInviteStatus,
-    EnumWorkspaceMemberRole,
 } from '@generated/prisma-client/client';
 import type {
     User,
@@ -35,8 +46,14 @@ import {
     buildAuthJwtAccessContext,
     buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('WorkspaceResendInviteUseCase', () => {
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const scoped: IPolicyWhereInput<'WorkspaceInvite'> = { id: 'scoped-1' };
+    const roleService: MockProxy<RoleService> = mock<RoleService>();
     const workspaceInviteService: MockProxy<WorkspaceInviteService> =
         mock<WorkspaceInviteService>();
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -62,9 +79,9 @@ describe('WorkspaceResendInviteUseCase', () => {
         workspaceId: 'workspace-1',
         email: 'invitee@example.com',
         token: 'hashed-token',
-        workspaceRole: EnumWorkspaceMemberRole.member,
+        workspaceRoleId: 'role-workspace-member',
         projectId: null,
-        projectRole: null,
+        projectRoleId: null,
         reference: 'WIN-abc123',
         expiredAt: new Date('2026-02-01T00:00:00.000Z'),
         status: EnumWorkspaceInviteStatus.pending,
@@ -116,6 +133,7 @@ describe('WorkspaceResendInviteUseCase', () => {
     };
     const notice: IWorkspaceInviteNotice = {
         workspaceName: 'Acme',
+        workspaceRoleName: 'Member',
         inviterName: 'Jane Doe',
         inviteeUserId: null,
     };
@@ -134,10 +152,23 @@ describe('WorkspaceResendInviteUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
+        roleService.getRefByIdForScope.mockResolvedValue({
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'Member',
+            policyRevision: 0,
+        });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                { provide: RoleService, useValue: roleService },
                 WorkspaceResendInviteUseCase,
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 {
                     provide: WorkspaceInviteService,
                     useValue: workspaceInviteService,
@@ -162,6 +193,51 @@ describe('WorkspaceResendInviteUseCase', () => {
             });
         });
 
+        it('scopes the WorkspaceInvite update read through the ability and forwards the predicate to the read', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                policyContext,
+                'invite-1',
+                body
+            );
+
+            expect(policyAbilityService.scope).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.update,
+                EnumPolicySubject.WorkspaceInvite
+            );
+            expect(
+                workspaceInviteService.getResendableById
+            ).toHaveBeenCalledWith('invite-1', 'workspace-1', scoped);
+            expect(policyAbilityService.scope).toHaveBeenCalledBefore(
+                workspaceInviteService.getResendableById
+            );
+        });
+
+        it('rejects with the forbidden error and reads nothing when the ability holds no rule', async () => {
+            policyAbilityService.scope.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    policyContext,
+                    'invite-1',
+                    body
+                )
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(
+                workspaceInviteService.getResendableById
+            ).not.toHaveBeenCalled();
+        });
+
         it('reads the pending invite, then rotates with the notice and the context for an invitee with no account', async () => {
             const callOrder: string[] = [];
             workspaceInviteService.getResendableById.mockImplementation(
@@ -182,6 +258,7 @@ describe('WorkspaceResendInviteUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 'invite-1',
                 body
             );
@@ -190,7 +267,7 @@ describe('WorkspaceResendInviteUseCase', () => {
             expect(callOrder).toEqual(['pending', 'rotate']);
             expect(
                 workspaceInviteService.getResendableById
-            ).toHaveBeenCalledWith('invite-1', 'workspace-1');
+            ).toHaveBeenCalledWith('invite-1', 'workspace-1', scoped);
             expect(userService.getOneActiveByEmail).toHaveBeenCalledWith(
                 'invitee@example.com'
             );
@@ -210,6 +287,7 @@ describe('WorkspaceResendInviteUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 'invite-1',
                 {
                     expiryDuration: 14,
@@ -234,6 +312,7 @@ describe('WorkspaceResendInviteUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 'invite-1',
                 body
             );
@@ -259,6 +338,7 @@ describe('WorkspaceResendInviteUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     'invite-1',
                     body
                 )
@@ -276,6 +356,7 @@ describe('WorkspaceResendInviteUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     'invite-1',
                     body
                 )
@@ -294,6 +375,7 @@ describe('WorkspaceResendInviteUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     'invite-1',
                     body
                 )

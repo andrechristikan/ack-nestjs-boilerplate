@@ -1,3 +1,9 @@
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dtos/request/workspace.member-update-role.request.dto';
@@ -15,13 +21,15 @@ export class WorkspaceUpdateMemberRoleUseCase implements IAppUseCase<
         IApiKeyContext,
         IAuthJwtAccessContext,
         IWorkspaceContext,
+        IPolicyContext,
         string,
         WorkspaceMemberUpdateRoleRequestDto,
     ],
     IResponseReturn<void>
 > {
     constructor(
-        private readonly workspaceMemberService: WorkspaceMemberService
+        private readonly workspaceMemberService: WorkspaceMemberService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
@@ -29,9 +37,15 @@ export class WorkspaceUpdateMemberRoleUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         workspaceContext: IWorkspaceContext,
+        policyContext: IPolicyContext,
         targetMemberId: string,
-        { role }: WorkspaceMemberUpdateRoleRequestDto
+        { roleId }: WorkspaceMemberUpdateRoleRequestDto
     ): Promise<IResponseReturn<void>> {
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.update,
+            EnumPolicySubject.WorkspaceMember
+        );
         await this.workspaceMemberService.updateMemberRole(
             requestContext,
             apiKeyContext,
@@ -39,7 +53,8 @@ export class WorkspaceUpdateMemberRoleUseCase implements IAppUseCase<
             workspaceContext.workspace.id,
             workspaceContext.workspaceMember,
             targetMemberId,
-            role
+            roleId,
+            additionalWhere
         );
 
         return {};

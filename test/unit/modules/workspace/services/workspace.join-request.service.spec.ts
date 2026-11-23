@@ -1,3 +1,5 @@
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
+import { RoleService } from '@modules/role/services/role.service';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { ConfigService } from '@nestjs/config';
@@ -21,12 +23,11 @@ import {
     EnumActivityLogAction,
     EnumWorkspaceJoinRejectReason,
     EnumWorkspaceJoinRequestStatus,
-    EnumWorkspaceMemberRole,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
 import type {
     Workspace,
     WorkspaceJoinRequest,
-    WorkspaceMember,
 } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
@@ -72,6 +73,7 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceJoinRequestService', () => {
+    const roleService: MockProxy<RoleService> = mock<RoleService>();
     const workspaceJoinRequestRepository: MockProxy<WorkspaceJoinRequestRepository> =
         mock<WorkspaceJoinRequestRepository>();
     const workspaceMemberRepository: MockProxy<WorkspaceMemberRepository> =
@@ -144,7 +146,7 @@ describe('WorkspaceJoinRequestService', () => {
         nonce: pendingNonce,
     };
 
-    const workspaceMember: WorkspaceMember = {
+    const workspaceMember: IWorkspaceMemberWithRole = {
         id: 'member-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -152,7 +154,14 @@ describe('WorkspaceJoinRequestService', () => {
         updatedBy: null,
         workspaceId: 'workspace-1',
         userId: 'user-2',
-        role: EnumWorkspaceMemberRole.member,
+        roleId: 'role-workspace-member',
+        role: {
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'member',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
 
@@ -188,6 +197,13 @@ describe('WorkspaceJoinRequestService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        roleService.getRefByScopeAndKey.mockResolvedValue({
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'Member',
+            policyRevision: 0,
+        });
         featureFlagService.getMetadataNumber.mockResolvedValue(7);
         helperDateService.create.mockReturnValue(reviewedAt);
         helperStringService.fillPattern.mockReturnValue('workspace-1:user-2');
@@ -216,6 +232,7 @@ describe('WorkspaceJoinRequestService', () => {
                     useValue: workspaceMemberRepository,
                 },
                 { provide: WorkspaceRepository, useValue: workspaceRepository },
+                { provide: RoleService, useValue: roleService },
                 {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
@@ -622,13 +639,15 @@ describe('WorkspaceJoinRequestService', () => {
 
             const result = await service.getJoinRequestsList(
                 'workspace-1',
-                pagination
+                pagination,
+                null,
+                null
             );
 
             expect(result).toBe(page);
             expect(
                 workspaceJoinRequestRepository.findWithPaginationCursor
-            ).toHaveBeenCalledWith('workspace-1', pagination, null);
+            ).toHaveBeenCalledWith('workspace-1', pagination, null, null);
         });
 
         it('forwards the status filter to the repository', async () => {
@@ -640,13 +659,14 @@ describe('WorkspaceJoinRequestService', () => {
             const result = await service.getJoinRequestsList(
                 'workspace-1',
                 pagination,
-                status
+                status,
+                null
             );
 
             expect(result).toBe(page);
             expect(
                 workspaceJoinRequestRepository.findWithPaginationCursor
-            ).toHaveBeenCalledWith('workspace-1', pagination, status);
+            ).toHaveBeenCalledWith('workspace-1', pagination, status, null);
         });
     });
 
@@ -657,7 +677,7 @@ describe('WorkspaceJoinRequestService', () => {
             );
 
             await expect(
-                service.getPendingById('join-request-1', 'workspace-1')
+                service.getPendingById('join-request-1', 'workspace-1', null)
             ).rejects.toMatchObject({
                 constructor: WorkspaceJoinRequestNotFoundException,
                 module: 'workspace',
@@ -679,7 +699,7 @@ describe('WorkspaceJoinRequestService', () => {
             );
 
             await expect(
-                service.getPendingById('join-request-1', 'workspace-1')
+                service.getPendingById('join-request-1', 'workspace-1', null)
             ).rejects.toMatchObject({
                 constructor: WorkspaceJoinRequestAlreadyProcessedException,
                 module: 'workspace',
@@ -698,15 +718,22 @@ describe('WorkspaceJoinRequestService', () => {
                 baseJoinRequest
             );
 
+            const additionalWhere = { workspaceId: 'workspace-1' };
+
             const result = await service.getPendingById(
                 'join-request-1',
-                'workspace-1'
+                'workspace-1',
+                additionalWhere
             );
 
             expect(result).toBe(baseJoinRequest);
             expect(
                 workspaceJoinRequestRepository.findByIdAndWorkspace
-            ).toHaveBeenCalledWith('join-request-1', 'workspace-1');
+            ).toHaveBeenCalledWith(
+                'join-request-1',
+                'workspace-1',
+                additionalWhere
+            );
         });
     });
 
@@ -771,7 +798,7 @@ describe('WorkspaceJoinRequestService', () => {
                 tx,
                 'workspace-1',
                 'user-2',
-                EnumWorkspaceMemberRole.member,
+                'role-workspace-member',
                 'reviewer-1'
             );
             expect(userService.getEmailByIdInTx).toHaveBeenCalledWith(

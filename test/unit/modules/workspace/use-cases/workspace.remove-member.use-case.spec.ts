@@ -1,3 +1,9 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -9,9 +15,8 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     EnumActivityLogAction,
-    EnumWorkspaceMemberRole,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
-import type { WorkspaceMember } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -31,8 +36,13 @@ import {
     buildAuthJwtAccessContext,
     buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('WorkspaceRemoveMemberUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'WorkspaceMember'> = { id: 'scoped-1' };
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
     const activityLogService: MockProxy<ActivityLogService> =
@@ -49,7 +59,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
-    const member: WorkspaceMember = {
+    const member: IWorkspaceMemberWithRole = {
         id: 'member-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -57,7 +67,14 @@ describe('WorkspaceRemoveMemberUseCase', () => {
         updatedBy: null,
         workspaceId: 'workspace-1',
         userId: 'user-1',
-        role: EnumWorkspaceMemberRole.owner,
+        roleId: 'role-workspace-owner',
+        role: {
+            id: 'role-workspace-owner',
+            scope: EnumRoleScope.workspace,
+            key: 'owner',
+            name: 'owner',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
     const requestContext = buildRequestContext();
@@ -72,6 +89,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
         activityLogService.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
@@ -79,6 +97,10 @@ describe('WorkspaceRemoveMemberUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 WorkspaceRemoveMemberUseCase,
                 {
                     provide: WorkspaceMemberService,
@@ -107,11 +129,18 @@ describe('WorkspaceRemoveMemberUseCase', () => {
     });
 
     describe('execute', () => {
-        const target: WorkspaceMember = {
+        const target: IWorkspaceMemberWithRole = {
             ...member,
             id: 'member-2',
             userId: 'user-2',
-            role: EnumWorkspaceMemberRole.member,
+            roleId: 'role-workspace-member',
+            role: {
+                id: 'role-workspace-member',
+                scope: EnumRoleScope.workspace,
+                key: 'member',
+                name: 'member',
+                policyRevision: 0,
+            },
         };
 
         it('removes the member and cascades on one transaction for the returned target, then adds the actor entry and the target entry on the same tx', async () => {
@@ -156,6 +185,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 'member-2'
             );
 
@@ -163,7 +193,13 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             expect(outboxService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 workspaceMemberService.removeMemberInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', member, 'member-2');
+            ).toHaveBeenCalledWith(
+                tx,
+                'workspace-1',
+                member,
+                'member-2',
+                scoped
+            );
             expect(
                 projectMemberService.removeByWorkspaceAndUserInTx
             ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-2');
@@ -228,6 +264,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 'member-2'
             );
 
@@ -249,6 +286,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 'member-2'
             );
 
@@ -273,6 +311,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     'member-2'
                 )
             ).rejects.toBeInstanceOf(WorkspaceMemberNotFoundException);
@@ -303,6 +342,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     'member-2'
                 )
             ).rejects.toBeInstanceOf(WorkspaceMemberPeerForbiddenException);
@@ -322,6 +362,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     'member-2'
                 )
             ).rejects.toBeInstanceOf(AppUnknownException);

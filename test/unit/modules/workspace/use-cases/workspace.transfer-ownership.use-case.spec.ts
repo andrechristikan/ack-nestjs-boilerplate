@@ -1,9 +1,16 @@
+import { EnumPolicyAction } from '@generated/prisma-client/client';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
-import type { WorkspaceMember } from '@generated/prisma-client/client';
+import { EnumRoleScope } from '@generated/prisma-client/client';
 import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/workspace.self-transfer.exception';
 import type { WorkspaceTransferOwnershipRequestDto } from '@modules/workspace/dtos/request/workspace.transfer-ownership.request.dto';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -19,9 +26,12 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('WorkspaceTransferOwnershipUseCase', () => {
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
         mock<WorkspaceMemberService>();
-    const member: WorkspaceMember = {
+    const member: IWorkspaceMemberWithRole = {
         id: 'member-1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -29,7 +39,14 @@ describe('WorkspaceTransferOwnershipUseCase', () => {
         updatedBy: null,
         workspaceId: 'workspace-1',
         userId: 'user-1',
-        role: EnumWorkspaceMemberRole.owner,
+        roleId: 'role-workspace-owner',
+        role: {
+            id: 'role-workspace-owner',
+            scope: EnumRoleScope.workspace,
+            key: 'owner',
+            name: 'owner',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
     };
     const requestContext = buildRequestContext();
@@ -49,6 +66,10 @@ describe('WorkspaceTransferOwnershipUseCase', () => {
             providers: [
                 WorkspaceTransferOwnershipUseCase,
                 {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
+                {
                     provide: WorkspaceMemberService,
                     useValue: workspaceMemberService,
                 },
@@ -59,6 +80,49 @@ describe('WorkspaceTransferOwnershipUseCase', () => {
     });
 
     describe('execute', () => {
+        it('authorizes the manage on the context workspace before any write', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                policyContext,
+                { targetUserId: 'user-2' }
+            );
+
+            expect(policyAbilityService.authorize).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.manage,
+                expect.objectContaining({
+                    __caslSubjectType__: 'Workspace',
+                    id: workspaceContext.workspace.id,
+                })
+            );
+            expect(policyAbilityService.authorize).toHaveBeenCalledBefore(
+                workspaceMemberService.transferOwnership
+            );
+        });
+
+        it('rejects with the forbidden error and writes nothing when the ability denies the manage', async () => {
+            policyAbilityService.authorize.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    policyContext,
+                    { targetUserId: 'user-2' }
+                )
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(
+                workspaceMemberService.transferOwnership
+            ).not.toHaveBeenCalled();
+        });
+
         it('transfers with the context', async () => {
             const body: WorkspaceTransferOwnershipRequestDto = {
                 targetUserId: 'user-2',
@@ -69,6 +133,7 @@ describe('WorkspaceTransferOwnershipUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 body
             );
 
@@ -96,6 +161,7 @@ describe('WorkspaceTransferOwnershipUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     {
                         targetUserId: 'user-1',
                     }

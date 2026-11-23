@@ -1,3 +1,4 @@
+import type { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -193,7 +194,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
             },
             data: {
                 projectId: null,
-                projectRole: null,
+                projectRoleId: null,
             },
         });
     }
@@ -217,12 +218,15 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
 
     async findByIdAndWorkspace(
         workspaceInviteId: string,
-        workspaceId: string
+        workspaceId: string,
+        additionalWhere: Prisma.WorkspaceInviteWhereInput | null
     ): Promise<WorkspaceInvite | null> {
         return this.databaseService.client.workspaceInvite.findFirst({
             where: {
-                id: workspaceInviteId,
-                workspaceId,
+                AND: [
+                    additionalWhere ?? {},
+                    { id: workspaceInviteId, workspaceId },
+                ],
             },
         });
     }
@@ -230,16 +234,20 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
     async findWithPaginationCursor(
         workspaceId: string,
         { where, ...others }: IPaginationQueryCursorParams,
-        status: Record<string, IPaginationIn> | null
+        status: Record<string, IPaginationIn> | null,
+        additionalWhere: Prisma.WorkspaceInviteWhereInput | null
     ): Promise<IPaginationCursorReturn<IWorkspaceInviteList>> {
         return this.paginationService.cursor(
             this.databaseService.client.workspaceInvite,
             {
                 ...others,
                 where: {
-                    ...where,
-                    ...(status ?? {}),
-                    workspaceId,
+                    AND: [
+                        additionalWhere ?? {},
+                        where ?? {},
+                        status ?? {},
+                        { workspaceId },
+                    ],
                 },
                 select: WorkspaceInviteUserListSelect,
             }
@@ -252,9 +260,9 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
             workspaceInviteId,
             workspaceId,
             email,
-            workspaceRole,
+            workspaceRoleId,
             projectId,
-            projectRole,
+            projectRoleId,
             hashedToken,
             reference,
             expiredAt,
@@ -290,9 +298,9 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 id: workspaceInviteId,
                 workspaceId,
                 email,
-                workspaceRole,
+                workspaceRoleId,
                 projectId,
-                projectRole,
+                projectRoleId,
                 token: hashedToken,
                 reference,
                 expiredAt,
