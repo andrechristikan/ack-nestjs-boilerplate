@@ -1,3 +1,10 @@
+import { EnumPolicyAction } from '@generated/prisma-client/client';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
@@ -30,6 +37,10 @@ import {
 
 describe('ProjectSoftDeleteUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
+
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
 
     const activityLogService: MockProxy<ActivityLogService> =
         mock<ActivityLogService>();
@@ -91,6 +102,10 @@ describe('ProjectSoftDeleteUseCase', () => {
                 ProjectSoftDeleteUseCase,
                 { provide: ProjectService, useValue: projectService },
                 {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
+                {
                     provide: WorkspaceInviteService,
                     useValue: workspaceInviteService,
                 },
@@ -105,6 +120,48 @@ describe('ProjectSoftDeleteUseCase', () => {
     });
 
     describe('execute', () => {
+        it('authorizes the delete on the context project before the transaction opens', async () => {
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                projectContext,
+                policyContext
+            );
+
+            expect(policyAbilityService.authorize).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.delete,
+                expect.objectContaining({
+                    __caslSubjectType__: 'Project',
+                    id: project.id,
+                })
+            );
+            expect(policyAbilityService.authorize).toHaveBeenCalledBefore(
+                outboxService.withTransaction
+            );
+        });
+
+        it('rejects with the forbidden error and deletes nothing when the ability denies the delete', async () => {
+            policyAbilityService.authorize.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    workspaceContext,
+                    projectContext,
+                    policyContext
+                )
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(outboxService.withTransaction).not.toHaveBeenCalled();
+            expect(projectService.softDeleteProjectInTx).not.toHaveBeenCalled();
+        });
+
         it('soft-deletes the project and clears it from the pending invites in order on one transaction', async () => {
             const callOrder: string[] = [];
             projectService.softDeleteProjectInTx.mockImplementation(
@@ -123,7 +180,8 @@ describe('ProjectSoftDeleteUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
-                projectContext
+                projectContext,
+                policyContext
             );
 
             expect(result).toEqual({});
@@ -146,7 +204,8 @@ describe('ProjectSoftDeleteUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
-                projectContext
+                projectContext,
+                policyContext
             );
 
             expect(activityLogService.recordEffect).toHaveBeenCalledWith(
@@ -177,7 +236,8 @@ describe('ProjectSoftDeleteUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
-                    projectContext
+                    projectContext,
+                    policyContext
                 )
             ).rejects.toBe(failure);
             expect(
@@ -199,7 +259,8 @@ describe('ProjectSoftDeleteUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
-                    projectContext
+                    projectContext,
+                    policyContext
                 )
             ).rejects.toBeInstanceOf(ProjectNotFoundException);
             expect(databaseUtil.toException).toHaveBeenCalledWith(conflict);
@@ -218,7 +279,8 @@ describe('ProjectSoftDeleteUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
-                    projectContext
+                    projectContext,
+                    policyContext
                 )
             ).rejects.toBeInstanceOf(AppUnknownException);
             expect(outboxService.addInTx).not.toHaveBeenCalled();

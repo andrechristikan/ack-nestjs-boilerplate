@@ -1,9 +1,15 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import type { IProjectMemberActor } from '@modules/project/interfaces/project.interface';
 import { ProjectUtil } from '@modules/project/utils/project.util';
@@ -18,8 +24,13 @@ import {
     buildWorkspaceContext,
     buildProjectContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('ProjectRemoveMemberUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'ProjectMember'> = { id: 'scoped-1' };
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
 
@@ -27,11 +38,18 @@ describe('ProjectRemoveMemberUseCase', () => {
 
     let useCase: ProjectRemoveMemberUseCase;
 
-    const actorMember: WorkspaceMember = {
+    const actorMember: IWorkspaceMemberWithRole = {
         id: '507f1f77bcf86cd799439034',
         workspaceId: '507f1f77bcf86cd799439012',
         userId: '507f1f77bcf86cd799439033',
-        role: EnumWorkspaceMemberRole.admin,
+        roleId: 'role-workspace-admin',
+        role: {
+            id: 'role-workspace-admin',
+            scope: EnumRoleScope.workspace,
+            key: 'admin',
+            name: 'admin',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -72,10 +90,15 @@ describe('ProjectRemoveMemberUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
         projectUtil.mapMemberActor.mockReturnValue(actor);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 ProjectRemoveMemberUseCase,
                 {
                     provide: ProjectMemberService,
@@ -96,6 +119,7 @@ describe('ProjectRemoveMemberUseCase', () => {
                 authContext,
                 workspaceContext,
                 projectContext,
+                policyContext,
                 '507f1f77bcf86cd799439021'
             );
 
@@ -109,7 +133,8 @@ describe('ProjectRemoveMemberUseCase', () => {
                 authContext,
                 project,
                 actor,
-                '507f1f77bcf86cd799439021'
+                '507f1f77bcf86cd799439021',
+                scoped
             );
         });
 
@@ -125,6 +150,7 @@ describe('ProjectRemoveMemberUseCase', () => {
                     authContext,
                     workspaceContext,
                     projectContext,
+                    policyContext,
                     '507f1f77bcf86cd799439021'
                 )
             ).rejects.toThrow('boom');

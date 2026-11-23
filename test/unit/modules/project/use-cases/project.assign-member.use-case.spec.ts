@@ -1,18 +1,22 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import {
-    EnumProjectMemberRole,
-    EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
 import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import type {
     IProjectMember,
     IProjectMemberActor,
 } from '@modules/project/interfaces/project.interface';
+import { EnumPolicyAction } from '@generated/prisma-client/client';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { ProjectUtil } from '@modules/project/utils/project.util';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { ProjectAssignMemberUseCase } from '@modules/project/use-cases/project.assign-member.use-case';
@@ -28,6 +32,7 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectAssignMemberUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
 
@@ -35,14 +40,23 @@ describe('ProjectAssignMemberUseCase', () => {
         mock<WorkspaceMemberService>();
 
     const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
 
     let useCase: ProjectAssignMemberUseCase;
 
-    const actorMember: WorkspaceMember = {
+    const actorMember: IWorkspaceMemberWithRole = {
         id: '507f1f77bcf86cd799439034',
         workspaceId: '507f1f77bcf86cd799439012',
         userId: '507f1f77bcf86cd799439033',
-        role: EnumWorkspaceMemberRole.admin,
+        roleId: 'role-workspace-admin',
+        role: {
+            id: 'role-workspace-admin',
+            scope: EnumRoleScope.workspace,
+            key: 'admin',
+            name: 'admin',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -73,7 +87,14 @@ describe('ProjectAssignMemberUseCase', () => {
         id: '507f1f77bcf86cd799439021',
         projectId: project.id,
         userId: '507f1f77bcf86cd799439022',
-        role: EnumProjectMemberRole.member,
+        roleId: 'role-project-member',
+        role: {
+            id: 'role-project-member',
+            scope: EnumRoleScope.project,
+            key: 'member',
+            name: 'member',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -121,6 +142,10 @@ describe('ProjectAssignMemberUseCase', () => {
                     useValue: workspaceMemberService,
                 },
                 { provide: ProjectUtil, useValue: projectUtil },
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
             ],
         }).compile();
 
@@ -130,13 +155,20 @@ describe('ProjectAssignMemberUseCase', () => {
     describe('execute', () => {
         const body: ProjectMemberAssignRequestDto = {
             userId: '507f1f77bcf86cd799439022',
-            role: EnumProjectMemberRole.member,
+            roleId: 'role-project-member',
         };
-        const targetMember: WorkspaceMember = {
+        const targetMember: IWorkspaceMemberWithRole = {
             id: '507f1f77bcf86cd799439031',
             workspaceId: project.workspaceId,
             userId: body.userId,
-            role: EnumWorkspaceMemberRole.member,
+            roleId: 'role-workspace-member',
+            role: {
+                id: 'role-workspace-member',
+                scope: EnumRoleScope.workspace,
+                key: 'member',
+                name: 'member',
+                policyRevision: 0,
+            },
             joinedAt: new Date('2026-01-01T00:00:00.000Z'),
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             createdBy: null,
@@ -157,6 +189,7 @@ describe('ProjectAssignMemberUseCase', () => {
                 authContext,
                 workspaceContext,
                 projectContext,
+                policyContext,
                 body
             );
 
@@ -174,7 +207,38 @@ describe('ProjectAssignMemberUseCase', () => {
                 project,
                 actor,
                 targetMember,
-                body.role
+                body.roleId
+            );
+        });
+
+        it('authorizes the prospective project member create before any lookup', async () => {
+            workspaceMemberService.getOneByWorkspaceAndUser.mockResolvedValue(
+                targetMember
+            );
+            projectMemberService.assignMember.mockResolvedValue(
+                projectMemberRow
+            );
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                projectContext,
+                policyContext,
+                body
+            );
+
+            expect(policyAbilityService.authorize).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.create,
+                expect.objectContaining({
+                    __caslSubjectType__: 'ProjectMember',
+                    projectId: project.id,
+                })
+            );
+            expect(policyAbilityService.authorize).toHaveBeenCalledBefore(
+                workspaceMemberService.getOneByWorkspaceAndUser
             );
         });
 
@@ -192,6 +256,7 @@ describe('ProjectAssignMemberUseCase', () => {
                 authContext,
                 workspaceContext,
                 projectContext,
+                policyContext,
                 body
             );
 
@@ -202,7 +267,7 @@ describe('ProjectAssignMemberUseCase', () => {
                 project,
                 actor,
                 null,
-                body.role
+                body.roleId
             );
         });
 
@@ -221,6 +286,7 @@ describe('ProjectAssignMemberUseCase', () => {
                     authContext,
                     workspaceContext,
                     projectContext,
+                    policyContext,
                     body
                 )
             ).rejects.toThrow('boom');

@@ -1,29 +1,28 @@
-import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import { ProjectMemberUpdateRoleRequestSchema } from '@modules/project/dtos/request/project.member-update-role.request.dto';
 
 describe('ProjectMemberUpdateRoleRequestSchema', () => {
-    it('parses role', () => {
-        const result = ProjectMemberUpdateRoleRequestSchema.parse({
-            role: EnumProjectMemberRole.admin,
-        });
+    const payload = { roleId: '01920000-0000-7000-8000-6cd799439012' };
 
-        expect(result).toEqual({ role: EnumProjectMemberRole.admin });
+    it('parses roleId', () => {
+        expect(ProjectMemberUpdateRoleRequestSchema.parse(payload)).toEqual(
+            payload
+        );
     });
 
-    it('rejects a role outside EnumProjectMemberRole', () => {
+    it('rejects a roleId that is not a uuid', () => {
         expect(() =>
-            ProjectMemberUpdateRoleRequestSchema.parse({ role: 'owner' })
+            ProjectMemberUpdateRoleRequestSchema.parse({ roleId: 'owner' })
         ).toThrow();
     });
 
-    it('rejects a missing role', () => {
+    it('rejects a missing roleId', () => {
         expect(() => ProjectMemberUpdateRoleRequestSchema.parse({})).toThrow();
     });
 
     it('rejects an undeclared key', () => {
         expect(() =>
             ProjectMemberUpdateRoleRequestSchema.parse({
-                role: EnumProjectMemberRole.admin,
+                ...payload,
                 extra: true,
             })
         ).toThrow();

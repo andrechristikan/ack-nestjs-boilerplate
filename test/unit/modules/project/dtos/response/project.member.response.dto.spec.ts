@@ -1,5 +1,7 @@
-import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
-import { EnumProjectMemberRole } from '@generated/prisma-client/client';
+import {
+    EnumAwsS3Accessibility,
+    EnumRoleScope,
+} from '@generated/prisma-client/client';
 import { ProjectMemberResponseSchema } from '@modules/project/dtos/response/project.member.response.dto';
 
 describe('ProjectMemberResponseSchema', () => {
@@ -37,7 +39,12 @@ describe('ProjectMemberResponseSchema', () => {
         projectId: '507f1f77bcf86cd799439013',
         userId: user.id,
         user,
-        role: EnumProjectMemberRole.member,
+        role: {
+            id: 'role-project-member',
+            scope: EnumRoleScope.project,
+            key: 'member',
+            name: 'member',
+        },
         joinedAt,
     };
 
@@ -66,7 +73,7 @@ describe('ProjectMemberResponseSchema', () => {
         expect(result).toEqual(row);
     });
 
-    it('rejects a role outside EnumProjectMemberRole', () => {
+    it('rejects a role that is not a role reference', () => {
         expect(() =>
             ProjectMemberResponseSchema.parse({ ...row, role: 'owner' })
         ).toThrow();

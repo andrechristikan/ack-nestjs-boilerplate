@@ -1,3 +1,9 @@
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
 import { PaginationFilterUtil } from '@common/pagination/utils/pagination.filter.util';
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
@@ -16,19 +22,26 @@ import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
 export class ProjectGetListOffsetByAdminUseCase implements IAppUseCase<
-    [ProjectAdminListRequestDto],
+    [IPolicyContext, ProjectAdminListRequestDto],
     IResponsePaginationReturn<Project>
 > {
     constructor(
         private readonly projectService: ProjectService,
         private readonly paginationQueryUtil: PaginationQueryUtil,
         private readonly paginationFilterUtil: PaginationFilterUtil,
-        private readonly requestStoreService: RequestStoreService
+        private readonly requestStoreService: RequestStoreService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
+        policyContext: IPolicyContext,
         query: ProjectAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.read,
+            EnumPolicySubject.Project
+        );
         const { params, storePatch } = this.paginationQueryUtil.offset(query, {
             availableSearch: ProjectDefaultAvailableSearch,
             availableOrderBy: ProjectDefaultAvailableOrderBy,
@@ -48,7 +61,8 @@ export class ProjectGetListOffsetByAdminUseCase implements IAppUseCase<
         const { data, ...others } =
             await this.projectService.getListOffsetByAdmin(
                 params,
-                workspaceFilter?.where ?? null
+                workspaceFilter?.where ?? null,
+                additionalWhere
             );
 
         return {

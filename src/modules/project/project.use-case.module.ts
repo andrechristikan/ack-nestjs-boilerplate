@@ -1,6 +1,7 @@
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { ProjectModule } from '@modules/project/project.module';
 import { ProjectGetListCursorByMemberUseCase } from '@modules/project/use-cases/project.get-list-cursor-by-member.use-case';
+import { ProjectGetPermissionsUseCase } from '@modules/project/use-cases/project.get-permissions.use-case';
 import { ProjectCreateUseCase } from '@modules/project/use-cases/project.create.use-case';
 import { ProjectGetUseCase } from '@modules/project/use-cases/project.get.use-case';
 import { ProjectUpdateUseCase } from '@modules/project/use-cases/project.update.use-case';
@@ -21,6 +22,7 @@ import { Module } from '@nestjs/common';
     providers: [
         ProjectGetListCursorByMemberUseCase,
         ProjectCreateUseCase,
+        ProjectGetPermissionsUseCase,
         ProjectGetUseCase,
         ProjectUpdateUseCase,
         ProjectUpdateSlugUseCase,
@@ -36,6 +38,7 @@ import { Module } from '@nestjs/common';
     exports: [
         ProjectGetListCursorByMemberUseCase,
         ProjectCreateUseCase,
+        ProjectGetPermissionsUseCase,
         ProjectGetUseCase,
         ProjectUpdateUseCase,
         ProjectUpdateSlugUseCase,

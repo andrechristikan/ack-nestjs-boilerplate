@@ -1,3 +1,4 @@
+import type { Prisma } from '@generated/prisma-client/client';
 import { ProjectActiveFilter } from '@modules/project/constants/project.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -35,7 +36,8 @@ export class ProjectRepository implements IProjectRepository {
 
     async findActiveByIdAndWorkspace(
         projectId: string,
-        workspaceId: string
+        workspaceId: string,
+        additionalWhere: Prisma.ProjectWhereInput | null
     ): Promise<Project | null> {
         const isValidId = this.databaseUtil.checkIdIsValid(projectId);
         if (!isValidId) {
@@ -44,23 +46,31 @@ export class ProjectRepository implements IProjectRepository {
 
         return this.databaseService.client.project.findFirst({
             where: {
-                id: projectId,
-                workspaceId,
-                ...ProjectActiveFilter,
+                AND: [
+                    additionalWhere ?? {},
+                    {
+                        id: projectId,
+                        workspaceId,
+                        ...ProjectActiveFilter,
+                    },
+                ],
             },
         });
     }
 
-    async findByIdByAdmin(projectId: string): Promise<Project | null> {
-        return this.databaseService.client.project.findUnique({
-            where: { id: projectId },
+    async findByIdByAdmin(
+        projectId: string,
+        additionalWhere: Prisma.ProjectWhereInput | null
+    ): Promise<Project | null> {
+        return this.databaseService.client.project.findFirst({
+            where: { AND: [additionalWhere ?? {}, { id: projectId }] },
         });
     }
 
     async findWithPaginationCursorForWorkspace(
         workspaceId: string,
-        memberUserId: string | null,
-        { where, ...others }: IPaginationQueryCursorParams
+        { where, ...others }: IPaginationQueryCursorParams,
+        additionalWhere: Prisma.ProjectWhereInput | null
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.cursor(
             this.databaseService.client.project,
@@ -68,12 +78,10 @@ export class ProjectRepository implements IProjectRepository {
                 ...others,
                 where: {
                     AND: [
+                        additionalWhere ?? {},
                         where ?? {},
                         { workspaceId },
                         ProjectActiveFilter,
-                        ...(memberUserId
-                            ? [{ members: { some: { userId: memberUserId } } }]
-                            : []),
                     ],
                 },
             }
@@ -82,15 +90,19 @@ export class ProjectRepository implements IProjectRepository {
 
     async findWithPaginationOffsetByAdmin(
         { where, ...others }: IPaginationQueryOffsetParams,
-        workspaceFilter: Record<string, IPaginationEqual> | null
+        workspaceFilter: Record<string, IPaginationEqual> | null,
+        additionalWhere: Prisma.ProjectWhereInput | null
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.paginationService.offset(
             this.databaseService.client.project,
             {
                 ...others,
                 where: {
-                    ...where,
-                    ...workspaceFilter,
+                    AND: [
+                        additionalWhere ?? {},
+                        where ?? {},
+                        workspaceFilter ?? {},
+                    ],
                 },
             }
         );

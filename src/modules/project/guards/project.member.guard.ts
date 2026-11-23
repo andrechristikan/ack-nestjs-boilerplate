@@ -36,11 +36,10 @@ export class ProjectMemberGuard implements CanActivate {
             throw new ProjectGuardMissingException();
         }
 
-        const member =
-            await this.projectMemberService.validateProjectMemberGuard(
-                project.id,
-                user.id
-            );
+        const member = await this.projectMemberService.getMemberOrNull(
+            project.id,
+            user.id
+        );
 
         this.requestStoreService.merge<IProjectContext>(
             ProjectContextStoreKey,

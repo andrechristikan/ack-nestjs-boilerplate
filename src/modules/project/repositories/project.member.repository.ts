@@ -3,11 +3,17 @@ import { DatabaseService } from '@common/database/services/database.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumProjectMemberRole } from '@generated/prisma-client/client';
-import type { ProjectMember } from '@generated/prisma-client/client';
-import type { IProjectMember } from '@modules/project/interfaces/project.interface';
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
+import type {
+    IProjectMember,
+    IProjectMemberWithRole,
+} from '@modules/project/interfaces/project.interface';
+import { RoleRefSelect } from '@modules/role/constants/role.constant';
+import type { EnumRoleProjectKey } from '@modules/role/enums/role.enum';
 import { UserRefSelect } from '@modules/user/constants/user.constant';
 import type { IProjectMemberRepository } from '@modules/project/interfaces/project.member-repository.interface';
+import { ProjectMemberRoleInclude } from '@modules/project/constants/project.constant';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -20,43 +26,48 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
     async findOneByProjectAndUser(
         projectId: string,
         userId: string
-    ): Promise<ProjectMember | null> {
+    ): Promise<IProjectMemberWithRole | null> {
         return this.databaseService.client.projectMember.findFirst({
             where: {
                 projectId,
                 userId,
             },
+            include: ProjectMemberRoleInclude,
         });
     }
 
     async findByIdAndProject(
         projectMemberId: string,
-        projectId: string
-    ): Promise<ProjectMember | null> {
+        projectId: string,
+        additionalWhere: Prisma.ProjectMemberWhereInput | null
+    ): Promise<IProjectMemberWithRole | null> {
         return this.databaseService.client.projectMember.findFirst({
             where: {
+                AND: [additionalWhere ?? {}],
                 id: projectMemberId,
                 projectId,
             },
+            include: ProjectMemberRoleInclude,
         });
     }
 
     async findWithPaginationCursor(
         projectId: string,
-        { where, ...others }: IPaginationQueryCursorParams
+        { where, ...others }: IPaginationQueryCursorParams,
+        additionalWhere: Prisma.ProjectMemberWhereInput | null
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
         return this.paginationService.cursor(
             this.databaseService.client.projectMember,
             {
                 ...others,
                 where: {
-                    ...where,
-                    projectId,
+                    AND: [additionalWhere ?? {}, where ?? {}, { projectId }],
                 },
                 include: {
                     user: {
                         select: UserRefSelect,
                     },
+                    role: { select: RoleRefSelect },
                 },
             }
         );
@@ -66,20 +77,21 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
         tx: IDatabaseTransactionClient,
         projectId: string,
         userId: string,
-        role: EnumProjectMemberRole,
+        roleId: string,
         createdBy: string
     ): Promise<IProjectMember> {
         return tx.projectMember.create({
             data: {
                 projectId,
                 userId,
-                role,
+                roleId,
                 createdBy,
             },
             include: {
                 user: {
                     select: UserRefSelect,
                 },
+                role: { select: RoleRefSelect },
             },
         });
     }
@@ -87,13 +99,13 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
     async updateRoleInTx(
         tx: IDatabaseTransactionClient,
         targetMemberId: string,
-        expectedRole: EnumProjectMemberRole,
-        newRole: EnumProjectMemberRole
+        expectedRoleId: string,
+        newRoleId: string
     ): Promise<boolean> {
         const { count } = await tx.projectMember.updateMany({
-            where: { id: targetMemberId, role: expectedRole },
+            where: { id: targetMemberId, roleId: expectedRoleId },
             data: {
-                role: newRole,
+                roleId: newRoleId,
             },
         });
 
@@ -103,13 +115,25 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
     async removeMemberInTx(
         tx: IDatabaseTransactionClient,
         targetMemberId: string,
-        expectedRole: EnumProjectMemberRole
+        expectedRoleId: string
     ): Promise<boolean> {
         const { count } = await tx.projectMember.deleteMany({
-            where: { id: targetMemberId, role: expectedRole },
+            where: { id: targetMemberId, roleId: expectedRoleId },
         });
 
         return count > 0;
+    }
+
+    async countByProjectAndRoleKey(
+        projectId: string,
+        key: EnumRoleProjectKey
+    ): Promise<number> {
+        return this.databaseService.client.projectMember.count({
+            where: {
+                projectId,
+                role: { scope: EnumRoleScope.project, key },
+            },
+        });
     }
 
     async removeByIdInTx(

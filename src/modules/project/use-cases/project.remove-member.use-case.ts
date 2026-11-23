@@ -1,3 +1,9 @@
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -17,13 +23,15 @@ export class ProjectRemoveMemberUseCase implements IAppUseCase<
         IAuthJwtAccessContext,
         IWorkspaceContext,
         IProjectContext,
+        IPolicyContext,
         string,
     ],
     IResponseReturn<void>
 > {
     constructor(
         private readonly projectMemberService: ProjectMemberService,
-        private readonly projectUtil: ProjectUtil
+        private readonly projectUtil: ProjectUtil,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
@@ -32,8 +40,14 @@ export class ProjectRemoveMemberUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         workspaceContext: IWorkspaceContext,
         projectContext: IProjectContext,
+        policyContext: IPolicyContext,
         targetMemberId: string
     ): Promise<IResponseReturn<void>> {
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.delete,
+            EnumPolicySubject.ProjectMember
+        );
         const actor = this.projectUtil.mapMemberActor(
             workspaceContext.workspaceMember
         );
@@ -43,7 +57,8 @@ export class ProjectRemoveMemberUseCase implements IAppUseCase<
             authContext,
             projectContext.project,
             actor,
-            targetMemberId
+            targetMemberId,
+            additionalWhere
         );
 
         return {};

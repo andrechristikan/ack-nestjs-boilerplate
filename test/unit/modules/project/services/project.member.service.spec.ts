@@ -1,5 +1,7 @@
+import type { IProjectMemberWithRole } from '@modules/project/interfaces/project.interface';
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
+import { EnumRoleProjectKey } from '@modules/role/enums/role.enum';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
-import { HttpStatus } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -13,14 +15,9 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
-    EnumProjectMemberRole,
-    EnumWorkspaceMemberRole,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
-import type {
-    Project,
-    ProjectMember,
-    WorkspaceMember,
-} from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -30,7 +27,8 @@ import type {
     IProjectMemberActor,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberRepository } from '@modules/project/repositories/project.member.repository';
-import { ProjectUtil } from '@modules/project/utils/project.util';
+import { ProjectMemberLastAdminException } from '@modules/project/exceptions/project.member-last-admin.exception';
+import { RoleService } from '@modules/role/services/role.service';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import {
     buildUser,
@@ -43,7 +41,7 @@ import {
 describe('ProjectMemberService', () => {
     const projectMemberRepository: MockProxy<ProjectMemberRepository> =
         mock<ProjectMemberRepository>();
-    const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
+    const roleService: MockProxy<RoleService> = mock<RoleService>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
@@ -73,11 +71,18 @@ describe('ProjectMemberService', () => {
         deletedBy: null,
     };
 
-    const baseProjectMember: ProjectMember = {
+    const baseProjectMember: IProjectMemberWithRole = {
         id: '507f1f77bcf86cd799439021',
         projectId: '507f1f77bcf86cd799439011',
         userId: '507f1f77bcf86cd799439022',
-        role: EnumProjectMemberRole.member,
+        roleId: 'role-project-member',
+        role: {
+            id: 'role-project-member',
+            scope: EnumRoleScope.project,
+            key: 'member',
+            name: 'member',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -101,11 +106,18 @@ describe('ProjectMemberService', () => {
         },
     };
 
-    const baseWorkspaceMember: WorkspaceMember = {
+    const baseWorkspaceMember: IWorkspaceMemberWithRole = {
         id: '507f1f77bcf86cd799439031',
         workspaceId: '507f1f77bcf86cd799439012',
         userId: '507f1f77bcf86cd799439032',
-        role: EnumWorkspaceMemberRole.member,
+        roleId: 'role-workspace-member',
+        role: {
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'member',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -124,6 +136,16 @@ describe('ProjectMemberService', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        roleService.getRefByIdForScope.mockImplementation(
+            (id: string, scope: EnumRoleScope) =>
+                Promise.resolve({
+                    id,
+                    scope,
+                    key: id.replace(`role-${scope}-`, ''),
+                    name: id,
+                    policyRevision: 0,
+                })
+        );
         activityLogService.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
@@ -136,7 +158,7 @@ describe('ProjectMemberService', () => {
                     provide: ProjectMemberRepository,
                     useValue: projectMemberRepository,
                 },
-                { provide: ProjectUtil, useValue: projectUtil },
+                { provide: RoleService, useValue: roleService },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
@@ -145,35 +167,14 @@ describe('ProjectMemberService', () => {
         service = module.get(ProjectMemberService);
     });
 
-    describe('validateProjectMemberGuard', () => {
-        it('throws ProjectMemberForbiddenException when the caller has no member row', async () => {
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                null
-            );
-
-            await expect(
-                service.validateProjectMemberGuard(
-                    '507f1f77bcf86cd799439011',
-                    '507f1f77bcf86cd799439022'
-                )
-            ).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.memberForbidden,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberForbidden
-                    ],
-                messagePath: 'project.error.memberForbidden',
-            });
-        });
-
-        it('returns the resolved project member row', async () => {
+    describe('getMemberOrNull', () => {
+        it('returns the caller member row in the project', async () => {
             const member = baseProjectMember;
             projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
                 member
             );
 
-            const result = await service.validateProjectMemberGuard(
+            const result = await service.getMemberOrNull(
                 '507f1f77bcf86cd799439011',
                 '507f1f77bcf86cd799439022'
             );
@@ -186,93 +187,18 @@ describe('ProjectMemberService', () => {
                 '507f1f77bcf86cd799439022'
             );
         });
-    });
 
-    describe('validateProjectRoleGuard', () => {
-        it('resolves with null and no repository lookup when the caller is the workspace owner', async () => {
-            projectUtil.hasWorkspaceBypass.mockReturnValue(true);
-            const workspaceMember = baseWorkspaceMember;
-
-            const result = await service.validateProjectRoleGuard(
-                '507f1f77bcf86cd799439011',
-                workspaceMember,
-                []
-            );
-
-            expect(result).toBeNull();
-            expect(
-                projectMemberRepository.findOneByProjectAndUser
-            ).not.toHaveBeenCalled();
-        });
-
-        it('throws ProjectMemberForbiddenException when the caller holds no project member row', async () => {
-            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
+        it('returns null when the caller has no row, leaving the decision to the policies', async () => {
             projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
                 null
             );
-            const workspaceMember = baseWorkspaceMember;
 
-            const rejection = service.validateProjectRoleGuard(
-                '507f1f77bcf86cd799439011',
-                workspaceMember,
-                [EnumProjectMemberRole.admin]
-            );
-
-            await expect(rejection).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.memberForbidden,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.memberForbidden
-                    ],
-                httpStatus: HttpStatus.FORBIDDEN,
-                messagePath: 'project.error.memberForbidden',
-            });
-        });
-
-        it('throws ProjectRoleForbiddenException when the member role is not allowed', async () => {
-            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue({
-                ...baseProjectMember,
-                role: EnumProjectMemberRole.viewer,
-            });
-            const workspaceMember = baseWorkspaceMember;
-
-            const rejection = service.validateProjectRoleGuard(
-                '507f1f77bcf86cd799439011',
-                workspaceMember,
-                [EnumProjectMemberRole.admin]
-            );
-
-            await expect(rejection).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.roleForbidden,
-                statusCodeKey:
-                    EnumProjectStatusCodeError[
-                        EnumProjectStatusCodeError.roleForbidden
-                    ],
-                messagePath: 'project.error.roleForbidden',
-            });
-        });
-
-        it('resolves with the member row when the member role is allowed', async () => {
-            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
-            const member = {
-                ...baseProjectMember,
-                role: EnumProjectMemberRole.admin,
-            };
-            projectMemberRepository.findOneByProjectAndUser.mockResolvedValue(
-                member
-            );
-            const workspaceMember = baseWorkspaceMember;
-
-            const result = await service.validateProjectRoleGuard(
-                '507f1f77bcf86cd799439011',
-                workspaceMember,
-                [EnumProjectMemberRole.admin]
-            );
-
-            expect(result).toBe(member);
+            await expect(
+                service.getMemberOrNull(
+                    '507f1f77bcf86cd799439011',
+                    '507f1f77bcf86cd799439022'
+                )
+            ).resolves.toBeNull();
         });
     });
 
@@ -312,12 +238,16 @@ describe('ProjectMemberService', () => {
                 page
             );
 
-            const result = await service.getMembersList(project, pagination);
+            const result = await service.getMembersList(
+                project,
+                pagination,
+                null
+            );
 
             expect(result).toBe(page);
             expect(
                 projectMemberRepository.findWithPaginationCursor
-            ).toHaveBeenCalledWith(project.id, pagination);
+            ).toHaveBeenCalledWith(project.id, pagination, null);
         });
     });
 
@@ -332,7 +262,7 @@ describe('ProjectMemberService', () => {
                 tx,
                 '507f1f77bcf86cd799439011',
                 '507f1f77bcf86cd799439022',
-                EnumProjectMemberRole.member,
+                EnumRoleProjectKey.member,
                 '507f1f77bcf86cd799439033'
             );
 
@@ -341,7 +271,7 @@ describe('ProjectMemberService', () => {
                 tx,
                 '507f1f77bcf86cd799439011',
                 '507f1f77bcf86cd799439022',
-                EnumProjectMemberRole.member,
+                EnumRoleProjectKey.member,
                 '507f1f77bcf86cd799439033'
             );
         });
@@ -406,7 +336,7 @@ describe('ProjectMemberService', () => {
                     project,
                     plainActor,
                     targetMember,
-                    EnumProjectMemberRole.admin
+                    EnumRoleProjectKey.admin
                 )
             ).rejects.toMatchObject({
                 module: 'project',
@@ -431,7 +361,7 @@ describe('ProjectMemberService', () => {
                     project,
                     bypassActor,
                     null,
-                    EnumProjectMemberRole.member
+                    EnumRoleProjectKey.member
                 )
             ).rejects.toMatchObject({
                 module: 'workspace',
@@ -458,7 +388,7 @@ describe('ProjectMemberService', () => {
                 project,
                 bypassActor,
                 targetMember,
-                EnumProjectMemberRole.member
+                EnumRoleProjectKey.member
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -490,7 +420,7 @@ describe('ProjectMemberService', () => {
                     project,
                     bypassActor,
                     targetMember,
-                    EnumProjectMemberRole.member
+                    EnumRoleProjectKey.member
                 )
             ).rejects.toMatchObject({
                 module: 'project',
@@ -527,7 +457,7 @@ describe('ProjectMemberService', () => {
                     project,
                     bypassActor,
                     targetMember,
-                    EnumProjectMemberRole.member
+                    EnumRoleProjectKey.member
                 )
             ).rejects.toBe(appError);
             expect(databaseUtil.isUniqueCollision).not.toHaveBeenCalled();
@@ -551,7 +481,7 @@ describe('ProjectMemberService', () => {
                     project,
                     bypassActor,
                     targetMember,
-                    EnumProjectMemberRole.member
+                    EnumRoleProjectKey.member
                 )
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
@@ -579,7 +509,7 @@ describe('ProjectMemberService', () => {
                 project,
                 bypassActor,
                 targetMember,
-                EnumProjectMemberRole.member
+                EnumRoleProjectKey.member
             );
 
             expect(result).toBe(created);
@@ -587,7 +517,7 @@ describe('ProjectMemberService', () => {
                 tx,
                 project.id,
                 targetMember.userId,
-                EnumProjectMemberRole.member,
+                EnumRoleProjectKey.member,
                 bypassActor.userId
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
@@ -642,7 +572,7 @@ describe('ProjectMemberService', () => {
                 project,
                 bypassActor,
                 targetMember,
-                EnumProjectMemberRole.member
+                EnumRoleProjectKey.member
             );
 
             expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
@@ -664,7 +594,8 @@ describe('ProjectMemberService', () => {
                 project,
                 bypassActor,
                 '507f1f77bcf86cd799439021',
-                EnumProjectMemberRole.admin
+                'role-project-admin',
+                null
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -682,7 +613,14 @@ describe('ProjectMemberService', () => {
             const project = baseProject;
             const targetMember = {
                 ...baseProjectMember,
-                role: EnumProjectMemberRole.admin,
+                roleId: 'role-project-admin',
+                role: {
+                    id: 'role-project-admin',
+                    scope: EnumRoleScope.project,
+                    key: 'admin',
+                    name: 'admin',
+                    policyRevision: 0,
+                },
             };
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
@@ -695,7 +633,8 @@ describe('ProjectMemberService', () => {
                 project,
                 plainActor,
                 targetMember.id,
-                EnumProjectMemberRole.viewer
+                'role-project-viewer',
+                null
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -717,7 +656,14 @@ describe('ProjectMemberService', () => {
             const targetMember = {
                 ...baseProjectMember,
                 userId: '507f1f77bcf86cd799439044',
-                role: EnumProjectMemberRole.member,
+                roleId: 'role-project-member',
+                role: {
+                    id: 'role-project-member',
+                    scope: EnumRoleScope.project,
+                    key: 'member',
+                    name: 'member',
+                    policyRevision: 0,
+                },
             };
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
@@ -731,7 +677,8 @@ describe('ProjectMemberService', () => {
                 project,
                 plainActor,
                 targetMember.id,
-                EnumProjectMemberRole.viewer
+                'role-project-viewer',
+                null
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -750,7 +697,14 @@ describe('ProjectMemberService', () => {
             const targetMember = {
                 ...baseProjectMember,
                 userId: '507f1f77bcf86cd799439044',
-                role: EnumProjectMemberRole.member,
+                roleId: 'role-project-member',
+                role: {
+                    id: 'role-project-member',
+                    scope: EnumRoleScope.project,
+                    key: 'member',
+                    name: 'member',
+                    policyRevision: 0,
+                },
             };
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
@@ -764,14 +718,15 @@ describe('ProjectMemberService', () => {
                 project,
                 bypassActor,
                 targetMember.id,
-                EnumProjectMemberRole.admin
+                'role-project-admin',
+                null
             );
 
             expect(projectMemberRepository.updateRoleInTx).toHaveBeenCalledWith(
                 tx,
                 targetMember.id,
-                EnumProjectMemberRole.member,
-                EnumProjectMemberRole.admin
+                'role-project-member',
+                'role-project-admin'
             );
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
@@ -824,7 +779,8 @@ describe('ProjectMemberService', () => {
                 baseProject,
                 bypassActor,
                 targetMember.id,
-                EnumProjectMemberRole.admin
+                'role-project-admin',
+                null
             );
 
             expect(activityLogService.recordEffect).toHaveBeenCalledTimes(1);
@@ -855,7 +811,8 @@ describe('ProjectMemberService', () => {
                     baseProject,
                     bypassActor,
                     targetMember.id,
-                    EnumProjectMemberRole.admin
+                    'role-project-admin',
+                    null
                 )
             ).rejects.toMatchObject({
                 module: 'project',
@@ -885,9 +842,115 @@ describe('ProjectMemberService', () => {
                     baseProject,
                     bypassActor,
                     targetMember.id,
-                    EnumProjectMemberRole.admin
+                    'role-project-admin',
+                    null
                 )
             ).rejects.toBeInstanceOf(AppUnknownException);
+        });
+    });
+
+    describe('last project admin', () => {
+        const adminTarget = {
+            ...baseProjectMember,
+            roleId: 'role-project-admin',
+            role: {
+                id: 'role-project-admin',
+                scope: EnumRoleScope.project,
+                key: 'admin',
+                name: 'admin',
+                policyRevision: 0,
+            },
+        };
+
+        beforeEach(() => {
+            projectMemberRepository.findByIdAndProject.mockResolvedValue(
+                adminTarget
+            );
+        });
+
+        it('refuses to demote the only admin and writes nothing', async () => {
+            projectMemberRepository.countByProjectAndRoleKey.mockResolvedValue(
+                1
+            );
+
+            await expect(
+                service.updateMemberRole(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    baseProject,
+                    bypassActor,
+                    adminTarget.id,
+                    'role-project-viewer',
+                    null
+                )
+            ).rejects.toThrow(ProjectMemberLastAdminException);
+            expect(
+                projectMemberRepository.countByProjectAndRoleKey
+            ).toHaveBeenCalledWith(baseProject.id, 'admin');
+            expect(
+                projectMemberRepository.updateRoleInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('demotes an admin while another admin remains', async () => {
+            projectMemberRepository.countByProjectAndRoleKey.mockResolvedValue(
+                2
+            );
+            projectMemberRepository.updateRoleInTx.mockResolvedValue(true);
+
+            await service.updateMemberRole(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                baseProject,
+                bypassActor,
+                adminTarget.id,
+                'role-project-viewer',
+                null
+            );
+
+            expect(projectMemberRepository.updateRoleInTx).toHaveBeenCalled();
+        });
+
+        it('keeps an admin an admin without counting admins', async () => {
+            projectMemberRepository.updateRoleInTx.mockResolvedValue(true);
+
+            await service.updateMemberRole(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                baseProject,
+                bypassActor,
+                adminTarget.id,
+                'role-project-admin',
+                null
+            );
+
+            expect(
+                projectMemberRepository.countByProjectAndRoleKey
+            ).not.toHaveBeenCalled();
+        });
+
+        it('refuses to remove the only admin and writes nothing', async () => {
+            projectMemberRepository.countByProjectAndRoleKey.mockResolvedValue(
+                1
+            );
+
+            await expect(
+                service.removeMember(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    baseProject,
+                    bypassActor,
+                    adminTarget.id,
+                    null
+                )
+            ).rejects.toThrow(ProjectMemberLastAdminException);
+            expect(
+                projectMemberRepository.removeMemberInTx
+            ).not.toHaveBeenCalled();
         });
     });
 
@@ -902,7 +965,8 @@ describe('ProjectMemberService', () => {
                 authContext,
                 project,
                 bypassActor,
-                '507f1f77bcf86cd799439021'
+                '507f1f77bcf86cd799439021',
+                null
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -932,7 +996,8 @@ describe('ProjectMemberService', () => {
                 authContext,
                 project,
                 bypassActor,
-                targetMember.id
+                targetMember.id,
+                null
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -950,7 +1015,14 @@ describe('ProjectMemberService', () => {
             const project = baseProject;
             const targetMember = {
                 ...baseProjectMember,
-                role: EnumProjectMemberRole.admin,
+                roleId: 'role-project-admin',
+                role: {
+                    id: 'role-project-admin',
+                    scope: EnumRoleScope.project,
+                    key: 'admin',
+                    name: 'admin',
+                    policyRevision: 0,
+                },
             };
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
@@ -962,7 +1034,8 @@ describe('ProjectMemberService', () => {
                 authContext,
                 project,
                 plainActor,
-                targetMember.id
+                targetMember.id,
+                null
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -984,7 +1057,14 @@ describe('ProjectMemberService', () => {
             const targetMember = {
                 ...baseProjectMember,
                 userId: '507f1f77bcf86cd799439044',
-                role: EnumProjectMemberRole.member,
+                roleId: 'role-project-member',
+                role: {
+                    id: 'role-project-member',
+                    scope: EnumRoleScope.project,
+                    key: 'member',
+                    name: 'member',
+                    policyRevision: 0,
+                },
             };
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
@@ -997,7 +1077,8 @@ describe('ProjectMemberService', () => {
                 authContext,
                 project,
                 plainActor,
-                targetMember.id
+                targetMember.id,
+                null
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -1016,7 +1097,14 @@ describe('ProjectMemberService', () => {
             const targetMember = {
                 ...baseProjectMember,
                 userId: '507f1f77bcf86cd799439044',
-                role: EnumProjectMemberRole.member,
+                roleId: 'role-project-member',
+                role: {
+                    id: 'role-project-member',
+                    scope: EnumRoleScope.project,
+                    key: 'member',
+                    name: 'member',
+                    policyRevision: 0,
+                },
             };
             projectMemberRepository.findByIdAndProject.mockResolvedValue(
                 targetMember
@@ -1029,16 +1117,13 @@ describe('ProjectMemberService', () => {
                 authContext,
                 project,
                 bypassActor,
-                targetMember.id
+                targetMember.id,
+                null
             );
 
             expect(
                 projectMemberRepository.removeMemberInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                targetMember.id,
-                EnumProjectMemberRole.member
-            );
+            ).toHaveBeenCalledWith(tx, targetMember.id, 'role-project-member');
             expect(activityLogService.recordEffect).toHaveBeenNthCalledWith(
                 1,
                 requestContext,
@@ -1095,7 +1180,8 @@ describe('ProjectMemberService', () => {
                     authContext,
                     baseProject,
                     bypassActor,
-                    targetMember.id
+                    targetMember.id,
+                    null
                 )
             ).rejects.toMatchObject({
                 module: 'project',
@@ -1123,13 +1209,37 @@ describe('ProjectMemberService', () => {
                     authContext,
                     baseProject,
                     bypassActor,
-                    targetMember.id
+                    targetMember.id,
+                    null
                 )
             ).rejects.toBeInstanceOf(AppUnknownException);
         });
     });
 
     describe('leaveProject', () => {
+        it('refuses the only admin leaving and removes nothing', async () => {
+            projectMemberRepository.countByProjectAndRoleKey.mockResolvedValue(
+                1
+            );
+            const adminMember = {
+                ...baseProjectMember,
+                role: { ...baseProjectMember.role, key: 'admin' },
+            };
+
+            await expect(
+                service.leaveProject(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    baseProject,
+                    adminMember
+                )
+            ).rejects.toThrow(ProjectMemberLastAdminException);
+            expect(
+                projectMemberRepository.removeByIdInTx
+            ).not.toHaveBeenCalled();
+        });
+
         it('throws ProjectMemberNotFoundException and adds no entry when the row is gone', async () => {
             projectMemberRepository.removeByIdInTx.mockResolvedValue(false);
 
@@ -1230,10 +1340,7 @@ describe('ProjectMemberService', () => {
     describe('assertPeerAllowed', () => {
         it('does not throw when the actor has workspace bypass', () => {
             expect(() =>
-                service.assertPeerAllowed(
-                    bypassActor,
-                    EnumProjectMemberRole.admin
-                )
+                service.assertPeerAllowed(bypassActor, EnumRoleProjectKey.admin)
             ).not.toThrow();
         });
 
@@ -1241,8 +1348,8 @@ describe('ProjectMemberService', () => {
             expect(() =>
                 service.assertPeerAllowed(
                     plainActor,
-                    EnumProjectMemberRole.member,
-                    EnumProjectMemberRole.viewer
+                    EnumRoleProjectKey.member,
+                    EnumRoleProjectKey.viewer
                 )
             ).not.toThrow();
         });
@@ -1252,8 +1359,8 @@ describe('ProjectMemberService', () => {
             try {
                 service.assertPeerAllowed(
                     plainActor,
-                    EnumProjectMemberRole.member,
-                    EnumProjectMemberRole.admin
+                    EnumRoleProjectKey.member,
+                    EnumRoleProjectKey.admin
                 );
             } catch (error) {
                 captured = error;

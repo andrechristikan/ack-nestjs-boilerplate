@@ -1,15 +1,20 @@
 import type { Project, ProjectMember } from '@generated/prisma-client/client';
+import type { IRoleRef } from '@modules/role/interfaces/role.interface';
 import type { IRequestStorePatch } from '@common/request/interfaces/request.interface';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 
 export interface IProjectContext {
     project: Project;
-    projectMember: ProjectMember | null;
+    projectMember: IProjectMemberWithRole | null;
 }
 
 export type IProjectContextPatch = IRequestStorePatch<IProjectContext>;
 
-export interface IProjectMember extends ProjectMember {
+export interface IProjectMemberWithRole extends ProjectMember {
+    role: IRoleRef;
+}
+
+export interface IProjectMember extends IProjectMemberWithRole {
     user: IUserRef;
 }
 

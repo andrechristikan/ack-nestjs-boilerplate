@@ -18,14 +18,14 @@
     },
     "error": {
         "notFound": "Sorry, we couldn't find the project.",
-        "memberForbidden": "You are not a member of this project.",
-        "roleForbidden": "You do not have the required role in this project.",
         "memberPeerForbidden": "You are not allowed to perform this action on this member.",
         "memberNotFound": "Sorry, we couldn't find that project member.",
         "memberAlreadyAssigned": "This user is already assigned to the project.",
         "slugAlreadyExists": "This project slug is already taken in this workspace.",
         "slugInvalid": "This project slug is not allowed; use lower-case letters, digits and hyphens only, within the allowed length.",
         "guardMissing": "The project could not be verified for this request.",
-        "memberGuardMissing": "Your project membership could not be verified for this request."
-    }
+        "memberGuardMissing": "Your project membership could not be verified for this request.",
+        "memberLastAdmin": "A project must keep at least one admin."
+    },
+    "permissions": "Project permissions retrieved successfully."
 }

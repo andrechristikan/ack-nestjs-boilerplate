@@ -1,3 +1,4 @@
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
 import { ProjectMemberListRequestSchema } from '@modules/project/dtos/request/project.member-list.request.dto';
 import type { ProjectUserListRequestDto } from '@modules/project/dtos/request/project.user-list.request.dto';
@@ -18,10 +19,18 @@ import type {
     IResponseReturn,
 } from '@common/response/interfaces/response.interface';
 import {
-    EnumProjectMemberRole,
-    EnumWorkspaceMemberRole,
+    EnumPolicyAction,
+    EnumPolicySubject,
 } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
+import { ProjectGetPermissionsUseCase } from '@modules/project/use-cases/project.get-permissions.use-case';
+import { ProjectPermissionResponseSchema } from '@modules/project/dtos/response/project.permission.response.dto';
+import type { ProjectPermissionResponseDto } from '@modules/project/dtos/response/project.permission.response.dto';
+import {
+    PolicyAbilityProtected,
+    PolicyContext,
+    PolicyProtected,
+} from '@modules/policy/decorators/policy.decorator';
 import {
     ApiKeyContext,
     ApiKeyProtected,
@@ -98,6 +107,7 @@ export class ProjectUserController {
     constructor(
         private readonly projectGetListCursorByMemberUseCase: ProjectGetListCursorByMemberUseCase,
         private readonly projectCreateUseCase: ProjectCreateUseCase,
+        private readonly projectGetPermissionsUseCase: ProjectGetPermissionsUseCase,
         private readonly projectGetUseCase: ProjectGetUseCase,
         private readonly projectUpdateUseCase: ProjectUpdateUseCase,
         private readonly projectUpdateSlugUseCase: ProjectUpdateSlugUseCase,
@@ -117,6 +127,7 @@ export class ProjectUserController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
@@ -127,11 +138,13 @@ export class ProjectUserController {
     @Get('/list')
     async list(
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Query({ schema: ProjectUserListRequestSchema })
         query: ProjectUserListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.projectGetListCursorByMemberUseCase.execute(
             workspaceContext,
+            policyContext,
             query
         );
     }
@@ -139,7 +152,11 @@ export class ProjectUserController {
     @Doc({ summary: 'create a project in the current workspace' })
     @Response('project.create', { schema: ProjectResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.Project,
+        action: [EnumPolicyAction.create],
+    })
+    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -152,6 +169,7 @@ export class ProjectUserController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Body({ schema: ProjectCreateRequestSchema })
         body: ProjectCreateRequestDto
     ): Promise<IResponseReturn<Project>> {
@@ -160,6 +178,7 @@ export class ProjectUserController {
             apiKeyContext,
             authContext,
             workspaceContext,
+            policyContext,
             body
         );
     }
@@ -169,11 +188,11 @@ export class ProjectUserController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(
-        EnumProjectMemberRole.admin,
-        EnumProjectMemberRole.member,
-        EnumProjectMemberRole.viewer
-    )
+    @PolicyProtected({
+        subject: EnumPolicySubject.Project,
+        action: [EnumPolicyAction.read],
+    })
+    @ProjectMemberProtected()
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -184,9 +203,10 @@ export class ProjectUserController {
     @ApiKeyProtected()
     @Get('/get/:projectId')
     async get(
-        @ProjectContext() projectContext: IProjectContext
+        @ProjectContext() projectContext: IProjectContext,
+        @PolicyContext() policyContext: IPolicyContext
     ): Promise<IResponseReturn<Project>> {
-        return this.projectGetUseCase.execute(projectContext);
+        return this.projectGetUseCase.execute(projectContext, policyContext);
     }
 
     @Doc({
@@ -197,7 +217,11 @@ export class ProjectUserController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.Project,
+        action: [EnumPolicyAction.update],
+    })
+    @ProjectMemberProtected()
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -212,6 +236,7 @@ export class ProjectUserController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @ProjectContext() projectContext: IProjectContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Body({ schema: ProjectUpdateRequestSchema })
         body: ProjectUpdateRequestDto
     ): Promise<IResponseReturn<Project>> {
@@ -220,6 +245,7 @@ export class ProjectUserController {
             apiKeyContext,
             authContext,
             projectContext,
+            policyContext,
             body
         );
     }
@@ -232,7 +258,11 @@ export class ProjectUserController {
         schema: ProjectResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.Project,
+        action: [EnumPolicyAction.update],
+    })
+    @ProjectMemberProtected()
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -247,6 +277,7 @@ export class ProjectUserController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @ProjectContext() projectContext: IProjectContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Body({ schema: ProjectUpdateSlugRequestSchema })
         body: ProjectUpdateSlugRequestDto
     ): Promise<IResponseReturn<Project>> {
@@ -255,15 +286,21 @@ export class ProjectUserController {
             apiKeyContext,
             authContext,
             projectContext,
+            policyContext,
             body
         );
     }
 
-    @Doc({ summary: 'soft-delete a project; workspace owner/admin only' })
+    @Doc({ summary: 'soft-delete a project' })
     @Response('project.softDelete')
     @TermPolicyAcceptanceProtected()
+    @PolicyProtected({
+        subject: EnumPolicySubject.Project,
+        action: [EnumPolicyAction.delete],
+    })
+    @ProjectMemberProtected()
     @ProjectProtected()
-    @WorkspaceMemberProtected(EnumWorkspaceMemberRole.admin)
+    @WorkspaceMemberProtected()
     @WorkspaceProtected()
     @UserProtected()
     @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
@@ -276,14 +313,16 @@ export class ProjectUserController {
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
-        @ProjectContext() projectContext: IProjectContext
+        @ProjectContext() projectContext: IProjectContext,
+        @PolicyContext() policyContext: IPolicyContext
     ): Promise<IResponseReturn<void>> {
         return this.projectSoftDeleteUseCase.execute(
             requestContext,
             apiKeyContext,
             authContext,
             workspaceContext,
-            projectContext
+            projectContext,
+            policyContext
         );
     }
 
@@ -292,11 +331,11 @@ export class ProjectUserController {
         schema: ProjectMemberResponseSchema,
     })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(
-        EnumProjectMemberRole.admin,
-        EnumProjectMemberRole.member,
-        EnumProjectMemberRole.viewer
-    )
+    @PolicyProtected({
+        subject: EnumPolicySubject.ProjectMember,
+        action: [EnumPolicyAction.read],
+    })
+    @ProjectMemberProtected()
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -308,10 +347,15 @@ export class ProjectUserController {
     @Get('/member/:projectId/list')
     async memberList(
         @ProjectContext() projectContext: IProjectContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Query({ schema: ProjectMemberListRequestSchema })
         query: ProjectMemberListRequestDto
     ): Promise<IResponsePaginationReturn<IProjectMember>> {
-        return this.projectGetMembersListUseCase.execute(projectContext, query);
+        return this.projectGetMembersListUseCase.execute(
+            projectContext,
+            policyContext,
+            query
+        );
     }
 
     @Doc({
@@ -320,7 +364,11 @@ export class ProjectUserController {
     })
     @Response('project.member.assign', { schema: ProjectMemberResponseSchema })
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.ProjectMember,
+        action: [EnumPolicyAction.create],
+    })
+    @ProjectMemberProtected()
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -336,6 +384,7 @@ export class ProjectUserController {
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @ProjectContext() projectContext: IProjectContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Body({ schema: ProjectMemberAssignRequestSchema })
         body: ProjectMemberAssignRequestDto
     ): Promise<IResponseReturn<IProjectMember>> {
@@ -345,6 +394,7 @@ export class ProjectUserController {
             authContext,
             workspaceContext,
             projectContext,
+            policyContext,
             body
         );
     }
@@ -355,7 +405,11 @@ export class ProjectUserController {
     })
     @Response('project.member.updateRole')
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.ProjectMember,
+        action: [EnumPolicyAction.update],
+    })
+    @ProjectMemberProtected()
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -371,6 +425,7 @@ export class ProjectUserController {
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @ProjectContext() projectContext: IProjectContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('projectMemberId', { schema: RequestUuidSchema })
         projectMemberId: string,
         @Body({ schema: ProjectMemberUpdateRoleRequestSchema })
@@ -382,6 +437,7 @@ export class ProjectUserController {
             authContext,
             workspaceContext,
             projectContext,
+            policyContext,
             projectMemberId,
             body
         );
@@ -393,7 +449,11 @@ export class ProjectUserController {
     })
     @Response('project.member.remove')
     @TermPolicyAcceptanceProtected()
-    @ProjectMemberProtected(EnumProjectMemberRole.admin)
+    @PolicyProtected({
+        subject: EnumPolicySubject.ProjectMember,
+        action: [EnumPolicyAction.delete],
+    })
+    @ProjectMemberProtected()
     @ProjectProtected()
     @WorkspaceMemberProtected()
     @WorkspaceProtected()
@@ -409,6 +469,7 @@ export class ProjectUserController {
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @ProjectContext() projectContext: IProjectContext,
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('projectMemberId', { schema: RequestUuidSchema })
         projectMemberId: string
     ): Promise<IResponseReturn<void>> {
@@ -418,8 +479,31 @@ export class ProjectUserController {
             authContext,
             workspaceContext,
             projectContext,
+            policyContext,
             projectMemberId
         );
+    }
+
+    @Doc({ summary: 'get the permissions the caller holds on a project' })
+    @Response('project.permissions', {
+        schema: ProjectPermissionResponseSchema,
+    })
+    @TermPolicyAcceptanceProtected()
+    @PolicyAbilityProtected()
+    @ProjectMemberProtected()
+    @ProjectProtected()
+    @WorkspaceMemberProtected()
+    @WorkspaceProtected()
+    @UserProtected()
+    @FeatureFlagProtected(EnumFeatureFlagKey.workspace)
+    @RequestThrottle({ user: true })
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/permissions/:projectId')
+    async permissions(
+        @PolicyContext() policyContext: IPolicyContext
+    ): Promise<IResponseReturn<ProjectPermissionResponseDto>> {
+        return this.projectGetPermissionsUseCase.execute(policyContext);
     }
 
     @Doc({ summary: 'leave a project; any project role may leave' })

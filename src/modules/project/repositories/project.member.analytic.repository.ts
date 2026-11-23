@@ -1,3 +1,5 @@
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import { EnumRoleProjectKey } from '@modules/role/enums/role.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
@@ -61,11 +63,20 @@ export class ProjectMemberAnalyticRepository implements IProjectMemberAnalyticRe
     }
 
     async groupByRole(): Promise<IAnalyticRoleCount[]> {
-        const rows = await this.databaseService.client.projectMember.groupBy({
-            by: ['role'],
-            where: { project: { deletedAt: null } },
-            _count: { _all: true },
-        });
-        return rows.map(r => ({ role: r.role, count: r._count._all }));
+        const keys = Object.values(EnumRoleProjectKey);
+        const counts = await Promise.all(
+            keys.map(key =>
+                this.databaseService.client.projectMember.count({
+                    where: {
+                        project: { deletedAt: null },
+                        role: { scope: EnumRoleScope.project, key },
+                    },
+                })
+            )
+        );
+
+        return keys
+            .map((role, index) => ({ role, count: counts[index] ?? 0 }))
+            .filter(row => row.count > 0);
     }
 }

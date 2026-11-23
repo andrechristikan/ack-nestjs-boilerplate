@@ -1,3 +1,4 @@
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
 import type { ProjectAdminListRequestDto } from '@modules/project/dtos/request/project.admin-list.request.dto';
 import { ProjectAdminListRequestSchema } from '@modules/project/dtos/request/project.admin-list.request.dto';
 import { Doc } from '@common/doc/decorators/doc.decorator';
@@ -14,16 +15,17 @@ import type {
 import {
     EnumPolicyAction,
     EnumPolicySubject,
-    EnumRoleType,
 } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from '@modules/auth/decorators/auth.jwt.decorator';
-import { PolicyProtected } from '@modules/policy/decorators/policy.decorator';
+import {
+    PolicyContext,
+    PolicyProtected,
+} from '@modules/policy/decorators/policy.decorator';
 import { ProjectResponseSchema } from '@modules/project/dtos/response/project.response.dto';
 import { ProjectGetByIdByAdminUseCase } from '@modules/project/use-cases/project.get-by-id-by-admin.use-case';
 import { ProjectGetListOffsetByAdminUseCase } from '@modules/project/use-cases/project.get-list-offset-by-admin.use-case';
-import { RoleProtected } from '@modules/role/decorators/role.decorator';
 import { TermPolicyAcceptanceProtected } from '@modules/term-policy/decorators/term-policy.decorator';
 import { UserProtected } from '@modules/user/decorators/user.decorator';
 import { Controller, Get, Param, Query } from '@nestjs/common';
@@ -49,20 +51,23 @@ export class ProjectAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.project,
+        subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/list')
     async list(
+        @PolicyContext() policyContext: IPolicyContext,
         @Query({ schema: ProjectAdminListRequestSchema })
         query: ProjectAdminListRequestDto
     ): Promise<IResponsePaginationReturn<Project>> {
-        return this.projectGetListOffsetByAdminUseCase.execute(query);
+        return this.projectGetListOffsetByAdminUseCase.execute(
+            policyContext,
+            query
+        );
     }
 
     @Doc({
@@ -73,19 +78,22 @@ export class ProjectAdminController {
     })
     @TermPolicyAcceptanceProtected()
     @PolicyProtected({
-        subject: EnumPolicySubject.project,
+        subject: EnumPolicySubject.Project,
         action: [EnumPolicyAction.read],
     })
-    @RoleProtected(EnumRoleType.admin)
     @UserProtected()
     @RequestThrottle({ user: true })
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/get/:projectId')
     async get(
+        @PolicyContext() policyContext: IPolicyContext,
         @Param('projectId', { schema: RequestUuidSchema })
         projectId: string
     ): Promise<IResponseReturn<Project>> {
-        return this.projectGetByIdByAdminUseCase.execute(projectId);
+        return this.projectGetByIdByAdminUseCase.execute(
+            policyContext,
+            projectId
+        );
     }
 }

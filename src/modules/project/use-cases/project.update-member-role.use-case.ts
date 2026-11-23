@@ -1,3 +1,9 @@
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { ProjectMemberUpdateRoleRequestDto } from '@modules/project/dtos/request/project.member-update-role.request.dto';
@@ -18,6 +24,7 @@ export class ProjectUpdateMemberRoleUseCase implements IAppUseCase<
         IAuthJwtAccessContext,
         IWorkspaceContext,
         IProjectContext,
+        IPolicyContext,
         string,
         ProjectMemberUpdateRoleRequestDto,
     ],
@@ -25,7 +32,8 @@ export class ProjectUpdateMemberRoleUseCase implements IAppUseCase<
 > {
     constructor(
         private readonly projectMemberService: ProjectMemberService,
-        private readonly projectUtil: ProjectUtil
+        private readonly projectUtil: ProjectUtil,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
@@ -34,9 +42,15 @@ export class ProjectUpdateMemberRoleUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         workspaceContext: IWorkspaceContext,
         projectContext: IProjectContext,
+        policyContext: IPolicyContext,
         targetMemberId: string,
-        { role }: ProjectMemberUpdateRoleRequestDto
+        { roleId }: ProjectMemberUpdateRoleRequestDto
     ): Promise<IResponseReturn<void>> {
+        const additionalWhere = this.policyAbilityService.scope(
+            policyContext,
+            EnumPolicyAction.update,
+            EnumPolicySubject.ProjectMember
+        );
         const actor = this.projectUtil.mapMemberActor(
             workspaceContext.workspaceMember
         );
@@ -47,7 +61,8 @@ export class ProjectUpdateMemberRoleUseCase implements IAppUseCase<
             projectContext.project,
             actor,
             targetMemberId,
-            role
+            roleId,
+            additionalWhere
         );
 
         return {};

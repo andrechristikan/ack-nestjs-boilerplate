@@ -1,3 +1,10 @@
+import { subject } from '@casl/ability';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
@@ -26,6 +33,7 @@ export class ProjectSoftDeleteUseCase implements IAppUseCase<
         IAuthJwtAccessContext,
         IWorkspaceContext,
         IProjectContext,
+        IPolicyContext,
     ],
     IResponseReturn<void>
 > {
@@ -35,7 +43,8 @@ export class ProjectSoftDeleteUseCase implements IAppUseCase<
         private readonly activityLogService: ActivityLogService,
         private readonly outboxService: OutboxService,
         private readonly databaseUtil: DatabaseUtil,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
@@ -43,8 +52,14 @@ export class ProjectSoftDeleteUseCase implements IAppUseCase<
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         workspaceContext: IWorkspaceContext,
-        projectContext: IProjectContext
+        projectContext: IProjectContext,
+        policyContext: IPolicyContext
     ): Promise<IResponseReturn<void>> {
+        this.policyAbilityService.authorize(
+            policyContext,
+            EnumPolicyAction.delete,
+            subject(EnumPolicySubject.Project, projectContext.project)
+        );
         const project = projectContext.project;
         const actorId = authContext.userId;
         const deletedAt = this.helperDateService.create();

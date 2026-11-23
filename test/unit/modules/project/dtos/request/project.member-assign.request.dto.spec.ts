@@ -1,52 +1,44 @@
-import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import { ProjectMemberAssignRequestSchema } from '@modules/project/dtos/request/project.member-assign.request.dto';
 
 describe('ProjectMemberAssignRequestSchema', () => {
-    it('parses userId and role', () => {
-        const result = ProjectMemberAssignRequestSchema.parse({
-            userId: '01920000-0000-7000-8000-6cd799439011',
-            role: EnumProjectMemberRole.member,
-        });
+    const payload = {
+        userId: '01920000-0000-7000-8000-6cd799439011',
+        roleId: '01920000-0000-7000-8000-6cd799439012',
+    };
 
-        expect(result).toEqual({
-            userId: '01920000-0000-7000-8000-6cd799439011',
-            role: EnumProjectMemberRole.member,
-        });
+    it('parses userId and roleId', () => {
+        expect(ProjectMemberAssignRequestSchema.parse(payload)).toEqual(
+            payload
+        );
     });
 
-    it('rejects a userId that is not a MongoDB ObjectId', () => {
+    it('rejects a userId that is not a uuid', () => {
         expect(() =>
             ProjectMemberAssignRequestSchema.parse({
+                ...payload,
                 userId: 'not-an-id',
-                role: EnumProjectMemberRole.member,
             })
         ).toThrow();
     });
 
-    it('rejects a role outside EnumProjectMemberRole', () => {
+    it('rejects a roleId that is not a uuid', () => {
         expect(() =>
             ProjectMemberAssignRequestSchema.parse({
-                userId: '01920000-0000-7000-8000-6cd799439011',
-                role: 'owner',
+                ...payload,
+                roleId: 'admin',
             })
         ).toThrow();
     });
 
-    it('rejects a missing role', () => {
+    it('rejects a missing roleId', () => {
         expect(() =>
-            ProjectMemberAssignRequestSchema.parse({
-                userId: '01920000-0000-7000-8000-6cd799439011',
-            })
+            ProjectMemberAssignRequestSchema.parse({ userId: payload.userId })
         ).toThrow();
     });
 
     it('rejects an undeclared key', () => {
         expect(() =>
-            ProjectMemberAssignRequestSchema.parse({
-                userId: '01920000-0000-7000-8000-6cd799439011',
-                role: EnumProjectMemberRole.member,
-                extra: true,
-            })
+            ProjectMemberAssignRequestSchema.parse({ ...payload, extra: true })
         ).toThrow();
     });
 });

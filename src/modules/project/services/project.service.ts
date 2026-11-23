@@ -1,3 +1,4 @@
+import type { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
@@ -13,7 +14,7 @@ import type {
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
@@ -24,7 +25,6 @@ import type {
     IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
-import { ProjectUtil } from '@modules/project/utils/project.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -39,7 +39,6 @@ export class ProjectService {
 
     constructor(
         private readonly projectRepository: ProjectRepository,
-        private readonly projectUtil: ProjectUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly outboxService: OutboxService,
         private readonly activityLogService: ActivityLogService,
@@ -80,7 +79,25 @@ export class ProjectService {
 
         const project = await this.projectRepository.findActiveByIdAndWorkspace(
             projectId,
-            workspaceId
+            workspaceId,
+            null
+        );
+        if (!project) {
+            throw new ProjectNotFoundException();
+        }
+
+        return project;
+    }
+
+    async getScopedByIdAndWorkspace(
+        projectId: string,
+        workspaceId: string,
+        additionalWhere: Prisma.ProjectWhereInput | null
+    ): Promise<Project> {
+        const project = await this.projectRepository.findActiveByIdAndWorkspace(
+            projectId,
+            workspaceId,
+            additionalWhere
         );
         if (!project) {
             throw new ProjectNotFoundException();
@@ -95,24 +112,20 @@ export class ProjectService {
     ): Promise<Project | null> {
         return this.projectRepository.findActiveByIdAndWorkspace(
             projectId,
-            workspaceId
+            workspaceId,
+            null
         );
     }
 
-    /** Lists projects in the workspace: a workspace `owner` or `admin` sees every project, everyone else sees only the ones they hold a `ProjectMember` row for. */
     async getListCursorByMember(
         workspaceId: string,
-        workspaceMember: WorkspaceMember,
-        pagination: IPaginationQueryCursorParams
+        pagination: IPaginationQueryCursorParams,
+        additionalWhere: Prisma.ProjectWhereInput | null
     ): Promise<IResponsePaginationReturn<Project>> {
-        const hasWorkspaceBypass =
-            this.projectUtil.hasWorkspaceBypass(workspaceMember);
-        const memberUserId = hasWorkspaceBypass ? null : workspaceMember.userId;
-
         return this.projectRepository.findWithPaginationCursorForWorkspace(
             workspaceId,
-            memberUserId,
-            pagination
+            pagination,
+            additionalWhere
         );
     }
 
@@ -288,16 +301,24 @@ export class ProjectService {
 
     async getListOffsetByAdmin(
         pagination: IPaginationQueryOffsetParams,
-        workspaceFilter: Record<string, IPaginationEqual> | null
+        workspaceFilter: Record<string, IPaginationEqual> | null,
+        additionalWhere: Prisma.ProjectWhereInput | null
     ): Promise<IResponsePaginationReturn<Project>> {
         return this.projectRepository.findWithPaginationOffsetByAdmin(
             pagination,
-            workspaceFilter
+            workspaceFilter,
+            additionalWhere
         );
     }
 
-    async getByIdByAdmin(projectId: string): Promise<Project> {
-        const project = await this.projectRepository.findByIdByAdmin(projectId);
+    async getByIdByAdmin(
+        projectId: string,
+        additionalWhere: Prisma.ProjectWhereInput | null
+    ): Promise<Project> {
+        const project = await this.projectRepository.findByIdByAdmin(
+            projectId,
+            additionalWhere
+        );
         if (!project) {
             throw new ProjectNotFoundException();
         }

@@ -1,3 +1,10 @@
+import { subject } from '@casl/ability';
+import {
+    EnumPolicyAction,
+    EnumPolicySubject,
+} from '@generated/prisma-client/client';
+import type { IPolicyContext } from '@modules/policy/interfaces/policy.interface';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
@@ -22,6 +29,7 @@ export class ProjectAssignMemberUseCase implements IAppUseCase<
         IAuthJwtAccessContext,
         IWorkspaceContext,
         IProjectContext,
+        IPolicyContext,
         ProjectMemberAssignRequestDto,
     ],
     IResponseReturn<IProjectMember>
@@ -29,7 +37,8 @@ export class ProjectAssignMemberUseCase implements IAppUseCase<
     constructor(
         private readonly projectMemberService: ProjectMemberService,
         private readonly workspaceMemberService: WorkspaceMemberService,
-        private readonly projectUtil: ProjectUtil
+        private readonly projectUtil: ProjectUtil,
+        private readonly policyAbilityService: PolicyAbilityService
     ) {}
 
     async execute(
@@ -38,8 +47,16 @@ export class ProjectAssignMemberUseCase implements IAppUseCase<
         authContext: IAuthJwtAccessContext,
         workspaceContext: IWorkspaceContext,
         projectContext: IProjectContext,
-        { userId, role }: ProjectMemberAssignRequestDto
+        policyContext: IPolicyContext,
+        { userId, roleId }: ProjectMemberAssignRequestDto
     ): Promise<IResponseReturn<IProjectMember>> {
+        this.policyAbilityService.authorize(
+            policyContext,
+            EnumPolicyAction.create,
+            subject(EnumPolicySubject.ProjectMember, {
+                projectId: projectContext.project.id,
+            })
+        );
         const actor = this.projectUtil.mapMemberActor(
             workspaceContext.workspaceMember
         );
@@ -55,7 +72,7 @@ export class ProjectAssignMemberUseCase implements IAppUseCase<
             projectContext.project,
             actor,
             targetMember,
-            role
+            roleId
         );
 
         return { data: member };

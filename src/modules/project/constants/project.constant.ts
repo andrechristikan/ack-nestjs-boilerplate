@@ -1,4 +1,5 @@
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import { RoleRefSelect } from '@modules/role/constants/role.constant';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
 import type { Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
@@ -7,15 +8,12 @@ import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.en
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 /** @public */
-export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
-
-/** @public */
 export const ProjectContextStoreKey = 'ProjectContextStoreKey';
 
 /** @public */
-export const ProjectBypassRoles: EnumWorkspaceMemberRole[] = [
-    EnumWorkspaceMemberRole.owner,
-    EnumWorkspaceMemberRole.admin,
+export const ProjectBypassRoleKeys: string[] = [
+    EnumRoleWorkspaceKey.owner,
+    EnumRoleWorkspaceKey.admin,
 ];
 
 /** @public */
@@ -35,11 +33,6 @@ export const ProjectProtectedDocErrors: IDocResponseEntry[] = [
 /** @public */
 export const ProjectMemberProtectedDocErrors: IDocResponseEntry[] = [
     {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumProjectStatusCodeError.memberForbidden,
-        messagePath: 'project.error.memberForbidden',
-    },
-    {
         httpStatus: HttpStatus.UNAUTHORIZED,
         statusCode: EnumUserStatusCodeError.guardMissing,
         messagePath: 'user.error.guardMissing',
@@ -48,30 +41,6 @@ export const ProjectMemberProtectedDocErrors: IDocResponseEntry[] = [
         httpStatus: HttpStatus.FORBIDDEN,
         statusCode: EnumProjectStatusCodeError.guardMissing,
         messagePath: 'project.error.guardMissing',
-    },
-];
-
-/** @public */
-export const ProjectRoleProtectedDocErrors: IDocResponseEntry[] = [
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumProjectStatusCodeError.memberForbidden,
-        messagePath: 'project.error.memberForbidden',
-    },
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumProjectStatusCodeError.roleForbidden,
-        messagePath: 'project.error.roleForbidden',
-    },
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumProjectStatusCodeError.guardMissing,
-        messagePath: 'project.error.guardMissing',
-    },
-    {
-        httpStatus: HttpStatus.FORBIDDEN,
-        statusCode: EnumWorkspaceStatusCodeError.memberGuardMissing,
-        messagePath: 'workspace.error.memberGuardMissing',
     },
 ];
 
@@ -87,4 +56,9 @@ export const ProjectActiveFilter = {
  * The only workspace role that sees and manages every project without a `ProjectMember` row.
  * @public
  */
-export const ProjectWorkspaceBypassRole = EnumWorkspaceMemberRole.owner;
+export const ProjectWorkspaceBypassRole = EnumRoleWorkspaceKey.owner;
+
+/** @public */
+export const ProjectMemberRoleInclude = {
+    role: { select: RoleRefSelect },
+} satisfies Prisma.ProjectMemberInclude;

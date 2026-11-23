@@ -1,3 +1,10 @@
+import { EnumPolicyAction } from '@generated/prisma-client/client';
+import { PolicyForbiddenException } from '@modules/policy/exceptions/policy.forbidden.exception';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -17,6 +24,9 @@ import {
 
 describe('ProjectUpdateSlugUseCase', () => {
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
 
     let useCase: ProjectUpdateSlugUseCase;
 
@@ -49,6 +59,10 @@ describe('ProjectUpdateSlugUseCase', () => {
             providers: [
                 ProjectUpdateSlugUseCase,
                 { provide: ProjectService, useValue: projectService },
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
             ],
         }).compile();
 
@@ -56,6 +70,49 @@ describe('ProjectUpdateSlugUseCase', () => {
     });
 
     describe('execute', () => {
+        it('authorizes the update on the context project before the write', async () => {
+            projectService.updateProjectSlug.mockResolvedValue(project);
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                projectContext,
+                policyContext,
+                { slug: 'p-new-slug' }
+            );
+
+            expect(policyAbilityService.authorize).toHaveBeenCalledWith(
+                policyContext,
+                EnumPolicyAction.update,
+                expect.objectContaining({
+                    __caslSubjectType__: 'Project',
+                    id: project.id,
+                })
+            );
+            expect(policyAbilityService.authorize).toHaveBeenCalledBefore(
+                projectService.updateProjectSlug
+            );
+        });
+
+        it('rejects with the forbidden error and writes nothing when the ability denies the update', async () => {
+            policyAbilityService.authorize.mockImplementation(() => {
+                throw new PolicyForbiddenException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    projectContext,
+                    policyContext,
+                    { slug: 'p-new-slug' }
+                )
+            ).rejects.toThrow(PolicyForbiddenException);
+            expect(projectService.updateProjectSlug).not.toHaveBeenCalled();
+        });
+
         it('updates the slug with the actor and the context and wraps it in the response envelope', async () => {
             const body: ProjectUpdateSlugRequestDto = { slug: 'p-new-slug' };
             const updated = { ...project, slug: 'p-new-slug' };
@@ -66,6 +123,7 @@ describe('ProjectUpdateSlugUseCase', () => {
                 apiKeyContext,
                 authContext,
                 projectContext,
+                policyContext,
                 body
             );
 
@@ -90,6 +148,7 @@ describe('ProjectUpdateSlugUseCase', () => {
                     apiKeyContext,
                     authContext,
                     projectContext,
+                    policyContext,
                     { slug: 'p-new-slug' }
                 )
             ).rejects.toThrow('boom');

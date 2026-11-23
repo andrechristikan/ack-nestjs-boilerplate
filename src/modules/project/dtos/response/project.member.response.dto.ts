@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { faker } from '@faker-js/faker';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { DatabaseResponseSchema } from '@common/database/dtos/response/database.response.dto';
-import { EnumProjectMemberRole } from '@generated/prisma-client/client';
+import { RoleRefResponseSchema } from '@modules/role/dtos/response/role.ref.response.dto';
 import { UserRefResponseSchema } from '@modules/user/dtos/response/user.ref.response.dto';
 
 /** @public */
@@ -42,9 +42,8 @@ export const ProjectMemberResponseSchema = DatabaseResponseSchema.omit({
             },
         },
     }),
-    role: z.enum(EnumProjectMemberRole).meta({
+    role: RoleRefResponseSchema.meta({
         description: 'Project role of the member',
-        example: EnumProjectMemberRole.member,
     }),
     joinedAt: z.date().meta({
         description: 'When the user joined the project',

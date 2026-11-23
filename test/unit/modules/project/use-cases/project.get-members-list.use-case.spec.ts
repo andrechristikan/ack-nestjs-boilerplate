@@ -1,3 +1,8 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -7,7 +12,7 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumProjectMemberRole } from '@generated/prisma-client/client';
+import { EnumRoleScope } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import type { ProjectMemberListRequestDto } from '@modules/project/dtos/request/project.member-list.request.dto';
@@ -19,8 +24,13 @@ import {
 } from '@modules/project/constants/project.list.constant';
 import { ProjectGetMembersListUseCase } from '@modules/project/use-cases/project.get-members-list.use-case';
 import { buildProjectContext } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('ProjectGetMembersListUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'ProjectMember'> = { id: 'scoped-1' };
     const projectMemberService: MockProxy<ProjectMemberService> =
         mock<ProjectMemberService>();
 
@@ -57,7 +67,14 @@ describe('ProjectGetMembersListUseCase', () => {
         id: '507f1f77bcf86cd799439021',
         projectId: project.id,
         userId: '507f1f77bcf86cd799439022',
-        role: EnumProjectMemberRole.member,
+        roleId: 'role-project-member',
+        role: {
+            id: 'role-project-member',
+            scope: EnumRoleScope.project,
+            key: 'member',
+            name: 'member',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -81,9 +98,14 @@ describe('ProjectGetMembersListUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 ProjectGetMembersListUseCase,
                 {
                     provide: ProjectMemberService,
@@ -112,7 +134,11 @@ describe('ProjectGetMembersListUseCase', () => {
             };
             projectMemberService.getMembersList.mockResolvedValue(page);
 
-            const result = await useCase.execute(projectContext, query);
+            const result = await useCase.execute(
+                projectContext,
+                policyContext,
+                query
+            );
 
             expect(result).toEqual(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
@@ -125,7 +151,8 @@ describe('ProjectGetMembersListUseCase', () => {
             );
             expect(projectMemberService.getMembersList).toHaveBeenCalledWith(
                 project,
-                pagination
+                pagination,
+                scoped
             );
         });
     });

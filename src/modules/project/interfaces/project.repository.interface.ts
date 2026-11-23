@@ -1,3 +1,4 @@
+import type { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type {
     IPaginationEqual,
@@ -14,17 +15,22 @@ import type {
 export interface IProjectRepository {
     findActiveByIdAndWorkspace(
         projectId: string,
-        workspaceId: string
+        workspaceId: string,
+        additionalWhere: Prisma.ProjectWhereInput | null
     ): Promise<Project | null>;
-    findByIdByAdmin(projectId: string): Promise<Project | null>;
+    findByIdByAdmin(
+        projectId: string,
+        additionalWhere: Prisma.ProjectWhereInput | null
+    ): Promise<Project | null>;
     findWithPaginationCursorForWorkspace(
         workspaceId: string,
-        memberUserId: string | null,
-        { where, ...others }: IPaginationQueryCursorParams
+        { where, ...others }: IPaginationQueryCursorParams,
+        additionalWhere: Prisma.ProjectWhereInput | null
     ): Promise<IResponsePaginationReturn<Project>>;
     findWithPaginationOffsetByAdmin(
         { where, ...others }: IPaginationQueryOffsetParams,
-        workspaceFilter: Record<string, IPaginationEqual> | null
+        workspaceFilter: Record<string, IPaginationEqual> | null,
+        additionalWhere: Prisma.ProjectWhereInput | null
     ): Promise<IResponsePaginationReturn<Project>>;
     createInTx(
         tx: IDatabaseTransactionClient,

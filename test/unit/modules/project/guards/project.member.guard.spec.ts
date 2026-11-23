@@ -1,3 +1,4 @@
+import type { IProjectMemberWithRole } from '@modules/project/interfaces/project.interface';
 import { UserContextStoreKey } from '@modules/user/constants/user.constant';
 import { ProjectContextStoreKey } from '@modules/project/constants/project.constant';
 import { HttpStatus } from '@nestjs/common';
@@ -8,15 +9,14 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import {
-    EnumProjectMemberRole,
-    EnumRoleType,
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
+    EnumRoleScope,
 } from '@generated/prisma-client/client';
-import type { Project, ProjectMember } from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
@@ -60,15 +60,10 @@ describe('ProjectMemberGuard', () => {
         deletedBy: null,
         role: {
             id: 'role-1',
+            scope: EnumRoleScope.platform,
+            key: 'user',
             name: 'user',
-            description: null,
-            type: EnumRoleType.user,
-            isImmutable: false,
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            createdBy: null,
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            updatedBy: null,
-            policies: [],
+            policyRevision: 0,
         },
     };
 
@@ -99,11 +94,18 @@ describe('ProjectMemberGuard', () => {
     describe('canActivate', () => {
         const executionContext: MockProxy<ExecutionContext> =
             mock<ExecutionContext>();
-        const member: ProjectMember = {
+        const member: IProjectMemberWithRole = {
             id: '507f1f77bcf86cd799439011',
             projectId: '507f1f77bcf86cd799439012',
             userId: '507f1f77bcf86cd799439013',
-            role: EnumProjectMemberRole.member,
+            roleId: 'role-project-member',
+            role: {
+                id: 'role-project-member',
+                scope: EnumRoleScope.project,
+                key: 'member',
+                name: 'member',
+                policyRevision: 0,
+            },
             joinedAt: new Date('2026-01-01T00:00:00.000Z'),
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             createdBy: null,
@@ -132,22 +134,37 @@ describe('ProjectMemberGuard', () => {
             requestStoreService.get.mockImplementation(
                 key => store[key] ?? null
             );
-            projectMemberService.validateProjectMemberGuard.mockResolvedValue(
-                member
-            );
+            projectMemberService.getMemberOrNull.mockResolvedValue(member);
 
             await expect(guard.canActivate(executionContext)).resolves.toBe(
                 true
             );
-            expect(
-                projectMemberService.validateProjectMemberGuard
-            ).toHaveBeenCalledWith(
+            expect(projectMemberService.getMemberOrNull).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439012',
                 '507f1f77bcf86cd799439013'
             );
             expect(requestStoreService.merge).toHaveBeenCalledWith(
                 ProjectContextStoreKey,
                 { projectMember: member }
+            );
+        });
+
+        it('stores a null member when the caller has no row in the project', async () => {
+            const store: Record<string, unknown> = {
+                [UserContextStoreKey]: buildUserContext(user),
+                [ProjectContextStoreKey]: { project: { id: 'project-1' } },
+            };
+            requestStoreService.get.mockImplementation(
+                key => store[key] ?? null
+            );
+            projectMemberService.getMemberOrNull.mockResolvedValue(null);
+
+            await expect(guard.canActivate(executionContext)).resolves.toBe(
+                true
+            );
+            expect(requestStoreService.merge).toHaveBeenCalledWith(
+                ProjectContextStoreKey,
+                { projectMember: null }
             );
         });
 
@@ -166,9 +183,7 @@ describe('ProjectMemberGuard', () => {
                 messagePath: 'user.error.guardMissing',
                 httpStatus: HttpStatus.UNAUTHORIZED,
             });
-            expect(
-                projectMemberService.validateProjectMemberGuard
-            ).not.toHaveBeenCalled();
+            expect(projectMemberService.getMemberOrNull).not.toHaveBeenCalled();
         });
 
         it('throws ProjectGuardMissingException before the domain call when the store holds no project', async () => {
@@ -188,9 +203,7 @@ describe('ProjectMemberGuard', () => {
                 messagePath: 'project.error.guardMissing',
                 httpStatus: HttpStatus.FORBIDDEN,
             });
-            expect(
-                projectMemberService.validateProjectMemberGuard
-            ).not.toHaveBeenCalled();
+            expect(projectMemberService.getMemberOrNull).not.toHaveBeenCalled();
         });
     });
 });

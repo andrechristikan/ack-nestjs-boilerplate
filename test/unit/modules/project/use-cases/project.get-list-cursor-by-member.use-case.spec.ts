@@ -1,3 +1,9 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
+import type { IWorkspaceMemberWithRole } from '@modules/workspace/interfaces/workspace.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -7,8 +13,8 @@ import { PaginationStoreKey } from '@common/pagination/constants/pagination.cons
 import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
 import { RequestStoreService } from '@common/request/services/request.store.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import {
     ProjectCursorAvailableOrderBy,
@@ -22,8 +28,13 @@ import {
     buildWorkspace,
     buildWorkspaceContext,
 } from '@test/unit/helpers/test.unit.request.helper';
+import type { IPolicyWhereInput } from '@modules/policy/interfaces/policy.interface';
 
 describe('ProjectGetListCursorByMemberUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
+    const scoped: IPolicyWhereInput<'Project'> = { id: 'scoped-1' };
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
 
     const paginationQueryUtil: MockProxy<PaginationQueryUtil> =
@@ -55,11 +66,18 @@ describe('ProjectGetListCursorByMemberUseCase', () => {
         deletedBy: null,
     };
 
-    const workspaceMember: WorkspaceMember = {
+    const workspaceMember: IWorkspaceMemberWithRole = {
         id: '507f1f77bcf86cd799439013',
         workspaceId: '507f1f77bcf86cd799439012',
         userId: '507f1f77bcf86cd799439014',
-        role: EnumWorkspaceMemberRole.member,
+        roleId: 'role-workspace-member',
+        role: {
+            id: 'role-workspace-member',
+            scope: EnumRoleScope.workspace,
+            key: 'member',
+            name: 'member',
+            policyRevision: 0,
+        },
         joinedAt: new Date('2026-01-01T00:00:00.000Z'),
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         createdBy: null,
@@ -74,9 +92,14 @@ describe('ProjectGetListCursorByMemberUseCase', () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        policyAbilityService.scope.mockReturnValue(scoped);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 ProjectGetListCursorByMemberUseCase,
                 { provide: ProjectService, useValue: projectService },
                 { provide: PaginationQueryUtil, useValue: paginationQueryUtil },
@@ -102,7 +125,11 @@ describe('ProjectGetListCursorByMemberUseCase', () => {
             };
             projectService.getListCursorByMember.mockResolvedValue(page);
 
-            const result = await useCase.execute(workspaceContext, query);
+            const result = await useCase.execute(
+                workspaceContext,
+                policyContext,
+                query
+            );
 
             expect(result).toEqual(page);
             expect(paginationQueryUtil.cursor).toHaveBeenCalledWith(query, {
@@ -116,8 +143,8 @@ describe('ProjectGetListCursorByMemberUseCase', () => {
             );
             expect(projectService.getListCursorByMember).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439012',
-                workspaceMember,
-                paginationCursor
+                paginationCursor,
+                scoped
             );
         });
     });

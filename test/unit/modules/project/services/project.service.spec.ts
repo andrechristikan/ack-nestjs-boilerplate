@@ -16,11 +16,8 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import {
-    EnumActivityLogAction,
-    EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
-import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
 import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
@@ -31,7 +28,6 @@ import type {
     IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
-import { ProjectUtil } from '@modules/project/utils/project.util';
 import {
     buildUser,
     expectRequestContextMissingWithKey,
@@ -45,7 +41,6 @@ import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.sta
 describe('ProjectService', () => {
     const projectRepository: MockProxy<ProjectRepository> =
         mock<ProjectRepository>();
-    const projectUtil: MockProxy<ProjectUtil> = mock<ProjectUtil>();
     const databaseUtil: MockProxy<DatabaseUtil> = mock<DatabaseUtil>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogService: MockProxy<ActivityLogService> =
@@ -87,18 +82,6 @@ describe('ProjectService', () => {
         deletedBy: null,
     };
 
-    const baseWorkspaceMember: WorkspaceMember = {
-        id: '507f1f77bcf86cd799439013',
-        workspaceId: '507f1f77bcf86cd799439012',
-        userId: '507f1f77bcf86cd799439014',
-        role: EnumWorkspaceMemberRole.member,
-        joinedAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        createdBy: null,
-        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        updatedBy: null,
-    };
-
     beforeEach(async () => {
         vi.resetAllMocks();
         configGet.mockImplementation((key: string) => configValues[key]);
@@ -109,7 +92,6 @@ describe('ProjectService', () => {
             providers: [
                 ProjectService,
                 { provide: ProjectRepository, useValue: projectRepository },
-                { provide: ProjectUtil, useValue: projectUtil },
                 { provide: DatabaseUtil, useValue: databaseUtil },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogService, useValue: activityLogService },
@@ -175,8 +157,49 @@ describe('ProjectService', () => {
                 projectRepository.findActiveByIdAndWorkspace
             ).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439011',
-                '507f1f77bcf86cd799439012'
+                '507f1f77bcf86cd799439012',
+                null
             );
+        });
+    });
+
+    describe('getScopedByIdAndWorkspace', () => {
+        it('throws ProjectNotFoundException when the scope reaches no project', async () => {
+            projectRepository.findActiveByIdAndWorkspace.mockResolvedValue(
+                null
+            );
+
+            const rejection = service.getScopedByIdAndWorkspace(
+                '507f1f77bcf86cd799439011',
+                '507f1f77bcf86cd799439012',
+                { id: 'x' }
+            );
+
+            await expect(rejection).rejects.toMatchObject({
+                module: 'project',
+                statusCode: EnumProjectStatusCodeError.notFound,
+            });
+            expect(
+                projectRepository.findActiveByIdAndWorkspace
+            ).toHaveBeenCalledWith(
+                '507f1f77bcf86cd799439011',
+                '507f1f77bcf86cd799439012',
+                { id: 'x' }
+            );
+        });
+
+        it('returns the scoped project', async () => {
+            projectRepository.findActiveByIdAndWorkspace.mockResolvedValue(
+                baseProject
+            );
+
+            const result = await service.getScopedByIdAndWorkspace(
+                '507f1f77bcf86cd799439011',
+                '507f1f77bcf86cd799439012',
+                null
+            );
+
+            expect(result).toBe(baseProject);
         });
     });
 
@@ -197,39 +220,35 @@ describe('ProjectService', () => {
                 projectRepository.findActiveByIdAndWorkspace
             ).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439011',
-                '507f1f77bcf86cd799439012'
+                '507f1f77bcf86cd799439012',
+                null
             );
         });
     });
 
     describe('getListCursorByMember', () => {
-        const pagination: IPaginationQueryCursorParams = {
-            fingerprint: 'aaaaaaaaaaaaaaaa',
-            where: { OR: [] },
-            orderBy: [],
-            limit: 20,
-        };
-
-        it('passes a null memberUserId when the caller is the workspace owner', async () => {
+        it('lists the projects of the workspace inside the caller predicate', async () => {
+            const pagination: IPaginationQueryCursorParams = {
+                fingerprint: 'aaaaaaaaaaaaaaaa',
+                where: { OR: [] },
+                orderBy: [],
+                limit: 20,
+            };
             const page: IResponsePaginationReturn<Project> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
                 hasNext: false,
                 data: [baseProject],
             };
-            projectUtil.hasWorkspaceBypass.mockReturnValue(true);
+            const additionalWhere = { workspaceId: '507f1f77bcf86cd799439012' };
             projectRepository.findWithPaginationCursorForWorkspace.mockResolvedValue(
                 page
             );
-            const workspaceMember = {
-                ...baseWorkspaceMember,
-                role: EnumWorkspaceMemberRole.owner,
-            };
 
             const result = await service.getListCursorByMember(
                 '507f1f77bcf86cd799439012',
-                workspaceMember,
-                pagination
+                pagination,
+                additionalWhere
             );
 
             expect(result).toBe(page);
@@ -237,39 +256,8 @@ describe('ProjectService', () => {
                 projectRepository.findWithPaginationCursorForWorkspace
             ).toHaveBeenCalledWith(
                 '507f1f77bcf86cd799439012',
-                null,
-                pagination
-            );
-        });
-
-        it('passes the caller userId when the caller is not the workspace owner', async () => {
-            const page: IResponsePaginationReturn<Project> = {
-                type: EnumPaginationType.cursor,
-                perPage: 20,
-                hasNext: false,
-                data: [],
-            };
-            projectUtil.hasWorkspaceBypass.mockReturnValue(false);
-            projectRepository.findWithPaginationCursorForWorkspace.mockResolvedValue(
-                page
-            );
-            const workspaceMember = {
-                ...baseWorkspaceMember,
-                role: EnumWorkspaceMemberRole.member,
-            };
-
-            await service.getListCursorByMember(
-                '507f1f77bcf86cd799439012',
-                workspaceMember,
-                pagination
-            );
-
-            expect(
-                projectRepository.findWithPaginationCursorForWorkspace
-            ).toHaveBeenCalledWith(
-                '507f1f77bcf86cd799439012',
-                workspaceMember.userId,
-                pagination
+                pagination,
+                additionalWhere
             );
         });
     });
@@ -688,13 +676,14 @@ describe('ProjectService', () => {
 
             const result = await service.getListOffsetByAdmin(
                 pagination,
-                workspaceFilter
+                workspaceFilter,
+                null
             );
 
             expect(result).toBe(page);
             expect(
                 projectRepository.findWithPaginationOffsetByAdmin
-            ).toHaveBeenCalledWith(pagination, workspaceFilter);
+            ).toHaveBeenCalledWith(pagination, workspaceFilter, null);
         });
     });
 
@@ -703,7 +692,8 @@ describe('ProjectService', () => {
             projectRepository.findByIdByAdmin.mockResolvedValue(null);
 
             const rejection = service.getByIdByAdmin(
-                '507f1f77bcf86cd799439011'
+                '507f1f77bcf86cd799439011',
+                null
             );
 
             await expect(rejection).rejects.toMatchObject({
@@ -722,7 +712,8 @@ describe('ProjectService', () => {
             projectRepository.findByIdByAdmin.mockResolvedValue(project);
 
             const result = await service.getByIdByAdmin(
-                '507f1f77bcf86cd799439011'
+                '507f1f77bcf86cd799439011',
+                null
             );
 
             expect(result).toBe(project);

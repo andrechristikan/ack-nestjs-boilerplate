@@ -1,9 +1,10 @@
+import type { IProjectMemberWithRole } from '@modules/project/interfaces/project.interface';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumProjectMemberRole } from '@generated/prisma-client/client';
-import type { Project, ProjectMember } from '@generated/prisma-client/client';
+import { EnumRoleScope } from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
 import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
@@ -54,11 +55,18 @@ describe('ProjectLeaveUseCase', () => {
     });
 
     describe('execute', () => {
-        const member: ProjectMember = {
+        const member: IProjectMemberWithRole = {
             id: '507f1f77bcf86cd799439021',
             projectId: project.id,
             userId: '507f1f77bcf86cd799439022',
-            role: EnumProjectMemberRole.member,
+            roleId: 'role-project-member',
+            role: {
+                id: 'role-project-member',
+                scope: EnumRoleScope.project,
+                key: 'member',
+                name: 'member',
+                policyRevision: 0,
+            },
             joinedAt: new Date('2026-01-01T00:00:00.000Z'),
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             createdBy: null,

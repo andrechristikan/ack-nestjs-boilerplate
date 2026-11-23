@@ -1,3 +1,8 @@
+import {
+    buildPolicyAbility,
+    buildPolicyContext,
+} from '@test/unit/helpers/test.unit.policy.helper';
+import { PolicyAbilityService } from '@modules/policy/services/policy.ability.service';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -18,6 +23,9 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ProjectCreateUseCase', () => {
+    const policyContext = buildPolicyContext(buildPolicyAbility([]));
+    const policyAbilityService: MockProxy<PolicyAbilityService> =
+        mock<PolicyAbilityService>();
     const projectService: MockProxy<ProjectService> = mock<ProjectService>();
 
     let useCase: ProjectCreateUseCase;
@@ -52,6 +60,10 @@ describe('ProjectCreateUseCase', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
+                {
+                    provide: PolicyAbilityService,
+                    useValue: policyAbilityService,
+                },
                 ProjectCreateUseCase,
                 { provide: ProjectService, useValue: projectService },
             ],
@@ -73,6 +85,7 @@ describe('ProjectCreateUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 body
             );
 
@@ -99,6 +112,7 @@ describe('ProjectCreateUseCase', () => {
                     apiKeyContext,
                     authContext,
                     workspaceContext,
+                    policyContext,
                     body
                 )
             ).rejects.toThrow('boom');
@@ -113,6 +127,7 @@ describe('ProjectCreateUseCase', () => {
                 apiKeyContext,
                 authContext,
                 workspaceContext,
+                policyContext,
                 body
             );
 

@@ -3,13 +3,13 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 
 /** @public */
-export class ProjectRoleForbiddenException extends AppBaseException {
+export class ProjectMemberLastAdminException extends AppBaseException {
     readonly module = 'project';
-    readonly statusCode = EnumProjectStatusCodeError.roleForbidden;
+    readonly statusCode = EnumProjectStatusCodeError.memberLastAdmin;
     readonly statusCodeKey = EnumProjectStatusCodeError[this.statusCode];
-    readonly httpStatus = HttpStatus.FORBIDDEN;
+    readonly httpStatus = HttpStatus.CONFLICT;
 
     constructor() {
-        super('project.error.roleForbidden');
+        super('project.error.memberLastAdmin');
     }
 }
