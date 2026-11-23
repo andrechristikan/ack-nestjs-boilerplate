@@ -1,4 +1,5 @@
 import { QueueBase } from '@common/queue/bases/queue.base';
+import type { IQueueScheduler } from '@common/queue/interfaces/queue.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
 import {
@@ -8,12 +9,11 @@ import {
 import type { IAnalyticRefreshSnapshotPayload } from '@modules/analytic/interfaces/analytic.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
-import type { OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 
 @Injectable()
-export class AnalyticQueue extends QueueBase implements OnModuleInit {
+export class AnalyticQueue extends QueueBase {
     private readonly refreshIntervalInMs: number;
 
     constructor(
@@ -27,27 +27,19 @@ export class AnalyticQueue extends QueueBase implements OnModuleInit {
         )!;
     }
 
-    private async scheduleRefresh(
-        signal: EnumAnalyticSnapshotSignal
-    ): Promise<void> {
-        const data: IAnalyticRefreshSnapshotPayload = { signal };
+    protected override schedulers(): IQueueScheduler[] {
+        return Object.values(EnumAnalyticSnapshotSignal).map(signal => {
+            const data: IAnalyticRefreshSnapshotPayload = { signal };
 
-        await this.queue.upsertJobScheduler(
-            `${EnumAnalyticProcess.refreshSnapshot}:${signal}`,
-            { every: this.refreshIntervalInMs, immediately: true },
-            {
-                name: EnumAnalyticProcess.refreshSnapshot,
-                data,
-                opts: { priority: EnumQueuePriority.low },
-            }
-        );
-    }
-
-    async onModuleInit(): Promise<void> {
-        await Promise.all(
-            Object.values(EnumAnalyticSnapshotSignal).map(signal =>
-                this.scheduleRefresh(signal)
-            )
-        );
+            return {
+                id: `${EnumAnalyticProcess.refreshSnapshot}:${signal}`,
+                repeat: { every: this.refreshIntervalInMs, immediately: true },
+                template: {
+                    name: EnumAnalyticProcess.refreshSnapshot,
+                    data,
+                    opts: { priority: EnumQueuePriority.low },
+                },
+            };
+        });
     }
 }

@@ -7,10 +7,25 @@ import {
     EnumQueueJobState,
     EnumQueuePriority,
 } from '@common/queue/enums/queue.enum';
-import { buildOutboxRow } from '@test/unit/helpers/test.unit.queue.helper';
+import type { IQueueScheduler } from '@common/queue/interfaces/queue.interface';
+import {
+    buildHeldScheduler,
+    buildOutboxRow,
+    buildSchedulingQueue,
+} from '@test/unit/helpers/test.unit.queue.helper';
 
 describe('QueueBase', () => {
-    const queue: MockProxy<Queue> = mock<Queue>();
+    const queue: MockProxy<Queue> = mock<Queue>({ name: 'test-queue' });
+    const alpha: IQueueScheduler = {
+        id: 'alpha',
+        repeat: { pattern: '0 * * * *' },
+        template: { name: 'alphaJob', data: { a: 1 }, opts: { priority: 1 } },
+    };
+    const beta: IQueueScheduler = {
+        id: 'beta',
+        repeat: { every: 1000 },
+        template: { name: 'betaJob', data: {}, opts: {} },
+    };
     let errorListener: QueueListener['error'] | null = null;
     let subject: QueueBase;
 
@@ -49,6 +64,99 @@ describe('QueueBase', () => {
             expect(errorListener).not.toBeNull();
             expect(() => errorListener?.(error)).not.toThrow();
             expect(warn).toHaveBeenCalledWith(error, 'Queue error');
+        });
+    });
+
+    describe('onModuleInit', () => {
+        it('upserts each declared scheduler with its id, repeat, and template', async () => {
+            queue.getJobSchedulers.mockResolvedValue([]);
+
+            await buildSchedulingQueue(queue, [alpha, beta]).onModuleInit();
+
+            expect(queue.upsertJobScheduler).toHaveBeenCalledTimes(2);
+            expect(queue.upsertJobScheduler).toHaveBeenCalledWith(
+                'alpha',
+                alpha.repeat,
+                alpha.template
+            );
+            expect(queue.upsertJobScheduler).toHaveBeenCalledWith(
+                'beta',
+                beta.repeat,
+                beta.template
+            );
+        });
+
+        it('removes a scheduler the queue holds whose id is not declared, and keeps a declared one', async () => {
+            queue.getJobSchedulers.mockResolvedValue([
+                buildHeldScheduler('alpha'),
+                buildHeldScheduler('stale'),
+            ]);
+
+            await buildSchedulingQueue(queue, [alpha]).onModuleInit();
+
+            expect(queue.removeJobScheduler).toHaveBeenCalledTimes(1);
+            expect(queue.removeJobScheduler).toHaveBeenCalledWith('stale');
+        });
+
+        it('removes nothing when every held scheduler is declared', async () => {
+            queue.getJobSchedulers.mockResolvedValue([
+                buildHeldScheduler('alpha'),
+                buildHeldScheduler('beta'),
+            ]);
+
+            await buildSchedulingQueue(queue, [alpha, beta]).onModuleInit();
+
+            expect(queue.removeJobScheduler).not.toHaveBeenCalled();
+        });
+
+        it('upserts nothing and removes every held scheduler when none is declared', async () => {
+            queue.getJobSchedulers.mockResolvedValue([
+                buildHeldScheduler('alpha'),
+                buildHeldScheduler('stale'),
+            ]);
+
+            await subject.onModuleInit();
+
+            expect(queue.upsertJobScheduler).not.toHaveBeenCalled();
+            expect(queue.removeJobScheduler).toHaveBeenCalledTimes(2);
+            expect(queue.removeJobScheduler).toHaveBeenCalledWith('alpha');
+            expect(queue.removeJobScheduler).toHaveBeenCalledWith('stale');
+        });
+
+        it('logs one line per removed key, and none when nothing is removed', async () => {
+            const log = vi.spyOn(Logger.prototype, 'log');
+            queue.getJobSchedulers.mockResolvedValue([
+                buildHeldScheduler('alpha'),
+                buildHeldScheduler('stale'),
+            ]);
+
+            await buildSchedulingQueue(queue, [alpha]).onModuleInit();
+
+            expect(log).toHaveBeenCalledTimes(1);
+            expect(log).toHaveBeenCalledWith(
+                { queue: 'test-queue', scheduler: 'stale' },
+                'Stale job scheduler removed'
+            );
+
+            log.mockClear();
+            queue.getJobSchedulers.mockResolvedValue([
+                buildHeldScheduler('alpha'),
+            ]);
+
+            await buildSchedulingQueue(queue, [alpha]).onModuleInit();
+
+            expect(log).not.toHaveBeenCalled();
+        });
+
+        it('rejects with the upsert error and neither reads nor removes schedulers', async () => {
+            const error = new Error('Connection is closed.');
+            queue.upsertJobScheduler.mockRejectedValue(error);
+
+            await expect(
+                buildSchedulingQueue(queue, [alpha]).onModuleInit()
+            ).rejects.toBe(error);
+            expect(queue.getJobSchedulers).not.toHaveBeenCalled();
+            expect(queue.removeJobScheduler).not.toHaveBeenCalled();
         });
     });
 

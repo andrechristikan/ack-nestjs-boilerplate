@@ -52,6 +52,7 @@ describe('NotificationPushQueue', () => {
             ],
         }).compile();
         queue = module.get(NotificationPushQueue);
+        notificationPushQueue.getJobSchedulers.mockResolvedValue([]);
     });
 
     describe('onModuleInit', () => {
@@ -73,30 +74,12 @@ describe('NotificationPushQueue', () => {
                 }
             );
         });
-    });
-
-    describe('sendCleanupStaleTokens', () => {
-        it('creates or updates the recurring stale-token cleanup job scheduler', async () => {
-            await queue.sendCleanupStaleTokens();
-
-            expect(
-                notificationPushQueue.upsertJobScheduler
-            ).toHaveBeenCalledWith(
-                EnumNotificationPushProcess.cleanupStaleTokens,
-                { pattern: '0 3 * * *', tz: 'UTC' },
-                {
-                    name: EnumNotificationPushProcess.cleanupStaleTokens,
-                    data: {},
-                    opts: { priority: EnumQueuePriority.low },
-                }
-            );
-        });
 
         it('rejects when the scheduler upsert rejects', async () => {
             const error = new Error('redis down');
             notificationPushQueue.upsertJobScheduler.mockRejectedValue(error);
 
-            await expect(queue.sendCleanupStaleTokens()).rejects.toBe(error);
+            await expect(queue.onModuleInit()).rejects.toBe(error);
         });
     });
 

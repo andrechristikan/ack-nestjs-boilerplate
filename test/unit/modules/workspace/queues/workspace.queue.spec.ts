@@ -40,6 +40,7 @@ describe('WorkspaceQueue', () => {
         }).compile();
 
         queue = module.get(WorkspaceQueue);
+        workspaceQueue.getJobSchedulers.mockResolvedValue([]);
     });
 
     describe('onModuleInit', () => {
@@ -78,56 +79,12 @@ describe('WorkspaceQueue', () => {
                 }
             );
         });
-    });
-
-    describe('scheduleJoinRequestExpirySweep', () => {
-        it('schedules the join-request expiry-sweep job on the invite sweep cron', async () => {
-            await queue.scheduleJoinRequestExpirySweep();
-
-            expect(workspaceQueue.upsertJobScheduler).toHaveBeenCalledWith(
-                EnumWorkspaceProcess.expireStaleJoinRequests,
-                {
-                    pattern: '0 * * * *',
-                    tz: 'UTC',
-                    immediately: true,
-                },
-                {
-                    name: EnumWorkspaceProcess.expireStaleJoinRequests,
-                    data: {},
-                    opts: {
-                        priority: EnumQueuePriority.low,
-                    },
-                }
-            );
-        });
-    });
-
-    describe('scheduleInviteExpirySweep', () => {
-        it('schedules the hourly expiry-sweep job', async () => {
-            await queue.scheduleInviteExpirySweep();
-
-            expect(workspaceQueue.upsertJobScheduler).toHaveBeenCalledWith(
-                EnumWorkspaceProcess.expireStaleInvites,
-                {
-                    pattern: '0 * * * *',
-                    tz: 'UTC',
-                    immediately: true,
-                },
-                {
-                    name: EnumWorkspaceProcess.expireStaleInvites,
-                    data: {},
-                    opts: {
-                        priority: EnumQueuePriority.low,
-                    },
-                }
-            );
-        });
 
         it('rejects when the scheduler upsert rejects', async () => {
             const error = new Error('redis down');
             workspaceQueue.upsertJobScheduler.mockRejectedValue(error);
 
-            await expect(queue.scheduleInviteExpirySweep()).rejects.toBe(error);
+            await expect(queue.onModuleInit()).rejects.toBe(error);
         });
     });
 

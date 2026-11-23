@@ -277,6 +277,21 @@ const queueMethodRestriction = {
         'Only a queue class, a queue base, and the queue health indicator call a method of the BullMQ Queue: go through the queue class.',
 };
 
+/** The call of a BullMQ scheduler method, refused in a queues/ file and the queue health indicator: QueueBase alone schedules. */
+const queueSchedulerCallRestriction = {
+    selector:
+        'CallExpression[callee.property.name=/^(upsertJobScheduler|getJobSchedulers|removeJobScheduler)$/]',
+    message:
+        'A queue class does not call a job scheduler method: declare its recurring jobs in schedulers().',
+};
+
+/** The onModuleInit method, refused in a queues/ file: QueueBase alone declares it. */
+const queueOnModuleInitRestriction = {
+    selector: 'MethodDefinition[key.name="onModuleInit"]',
+    message:
+        'A queue class declares no onModuleInit: declare its recurring jobs in schedulers().',
+};
+
 /** The no-restricted-syntax block of each file scope, in override order. */
 const restrictedSyntaxScopes = [
     [
@@ -330,6 +345,8 @@ const restrictedSyntaxScopes = [
             transactionCallRestriction,
             injectQueueRestriction,
             withTransactionRestriction,
+            queueSchedulerCallRestriction,
+            queueOnModuleInitRestriction,
         ],
     ],
     [
@@ -339,6 +356,7 @@ const restrictedSyntaxScopes = [
             transactionCallRestriction,
             injectQueueRestriction,
             withTransactionRestriction,
+            queueSchedulerCallRestriction,
         ],
     ],
     [
@@ -357,7 +375,17 @@ const restrictedSyntaxScopes = [
     ],
     [
         'ts/syntax-kit-queue',
-        ['src/common/**/queues/**/*.ts', 'src/common/queue/bases/**/*.ts'],
+        ['src/common/**/queues/**/*.ts'],
+        [
+            databaseClientRestriction,
+            transactionCallRestriction,
+            queueSchedulerCallRestriction,
+            queueOnModuleInitRestriction,
+        ],
+    ],
+    [
+        'ts/syntax-kit-queue-base',
+        ['src/common/queue/bases/**/*.ts'],
         [databaseClientRestriction, transactionCallRestriction],
     ],
 ].map(([name, files, restrictions]) => ({

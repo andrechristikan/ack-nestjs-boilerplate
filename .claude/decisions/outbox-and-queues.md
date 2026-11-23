@@ -100,6 +100,14 @@ Rule: `effects.md`, Effects and Writing; `outbox.md`, Dispatch; `layering.md`, R
 - A kit function taking the queue name and returning `<name>QueueClass` as the queue class's token: a function assembling a string where the queue name is already a constant.
 - One token constant per queue: the outbox then needs a map from queue name to token, and the kit would know every feature.
 
+### Boot reconciles each queue's job schedulers against the list its queue class declares, in `QueueBase`
+
+Rule: `queue.md`, Enqueuing.
+
+- Removal in `AnalyticQueue` alone: the four other queue classes with recurring jobs keep a renamed or deleted scheduler firing.
+- A manual `redis-cli` cleanup per environment: every later rename needs it again, and the job fails on each tick until someone runs it.
+- A `schedule([...])` helper each queue class calls from its own `onModuleInit`: a queue whose last scheduler is deleted calls it no more and never reconciles.
+
 ### The outbox key is unique per queue and process
 
 Rule: `effects.md`, Effects.

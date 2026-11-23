@@ -9,7 +9,7 @@ paths:
 
 # Side effects
 
-A side effect is one of a closed list: a notification, an activity entry, a cache purge or invalidation (the session login cache, a read-through key), an S3 object delete. It is an `Outbox` row written in the transaction of the write that causes it, in a request or a job, and dispatched to its BullMQ queue after the commit; the one other row is a job a route hands its whole action to (`use-case.md`, Jobs). The job carries `{ outboxId }` only; the row keeps the payload, `status` (`EnumOutboxStatus`), `attempts`, and `lastError`, and is never deleted. BullMQ through the outbox is the one async mechanism: no `@nestjs/event-emitter`, no `@nestjs/cqrs`. A recurring job a queue class schedules is the one job with no row: a clock triggers it, not a write; a side effect of a write that job makes is an outbox row like any other. Dispatch and processing: `outbox.md`. Notifications: `notify.md`. Activity entries: `activity-entry.md`.
+A side effect is one of a closed list: a notification, an activity entry, a cache purge or invalidation (the session login cache, a read-through key), an S3 object delete. It is an `Outbox` row written in the transaction of the write that causes it, in a request or a job, and dispatched to its BullMQ queue after the commit; the one other row is a job a route hands its whole action to (`use-case.md`, Jobs). The job carries `{ outboxId }` only; the row keeps the payload, `status` (`EnumOutboxStatus`), `attempts`, and `lastError`, and is never deleted. BullMQ through the outbox is the one async mechanism: no `@nestjs/event-emitter`, no `@nestjs/cqrs`. A recurring job a queue class declares is the one job with no row: a clock triggers it, not a write; a side effect of a write that job makes is an outbox row like any other. Dispatch and processing: `outbox.md`. Notifications: `notify.md`. Activity entries: `activity-entry.md`.
 
 - An exception the request throws stays its answer.
 - A write to another module's rows is that module's service call in the flow, never an outbox row: no flow, request or job, leaves part of its writes to a queued job.
@@ -35,7 +35,7 @@ Whoever builds a payload (an `<action>Effect` method, `NotificationQueue.notify`
 
 - A field in a kind's `secrets` stays sealed in `Notification.metadata`, is opened at read, and is censored before a response carries it (`security.md`, Contact values).
 - BullMQ ignores a fixed-`jobId` enqueue while a job holding that id exists, until retention ages it out; a `jobId` never guards a race (`discipline.md`, Normal use).
-- No producer reads, retries, or removes a job; the outbox sweep reads one through `QueueBase.getJobState` alone; no caller branches on an `enqueue` result.
+- No producer reads, retries, or removes a job, two cases aside: the outbox sweep reads one through `QueueBase.getJobState`, and `QueueBase.onModuleInit` reads its queue's schedulers and removes a stale one, which drops that scheduler's next delayed job (`queue.md`, Enqueuing). No caller branches on an `enqueue` result.
 - A fan-out from one request is one `addManyInTx` or one bulk job, and the effects one method adds on its `tx` are one `addManyInTx`.
 
 ## Cache invalidation

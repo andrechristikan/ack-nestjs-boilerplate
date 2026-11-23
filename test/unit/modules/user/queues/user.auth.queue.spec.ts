@@ -33,6 +33,7 @@ describe('UserAuthQueue', () => {
             ],
         }).compile();
         queue = module.get(UserAuthQueue);
+        userAuthQueue.getJobSchedulers.mockResolvedValue([]);
     });
 
     describe('onModuleInit', () => {

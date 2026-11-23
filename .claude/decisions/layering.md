@@ -184,7 +184,7 @@ Rule: `analytic.md`.
 
 ## Lint and tests
 
-### Lint enforces the layer matrix and five boundary policies, reading the `@Global()` set from the module files
+### Lint enforces the layer matrix and six boundary policies, reading the `@Global()` set from the module files
 
 Rule: `eslint.md`, Boundaries; `layering.md`, Levels.
 

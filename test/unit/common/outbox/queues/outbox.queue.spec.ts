@@ -35,6 +35,7 @@ describe('OutboxQueue', () => {
         }).compile();
 
         queue = module.get(OutboxQueue);
+        outboxQueue.getJobSchedulers.mockResolvedValue([]);
     });
 
     describe('onModuleInit', () => {

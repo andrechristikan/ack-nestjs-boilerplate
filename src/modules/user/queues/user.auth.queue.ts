@@ -1,9 +1,9 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
-import type { OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { QueueBase } from '@common/queue/bases/queue.base';
+import type { IQueueScheduler } from '@common/queue/interfaces/queue.interface';
 import {
     EnumUserAuthProcess,
     EnumUserQueue,
@@ -13,7 +13,7 @@ import type { ISessionRef } from '@modules/session/interfaces/session.interface'
 import type { IUserPurgeLoginsEffect } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
-export class UserAuthQueue extends QueueBase implements OnModuleInit {
+export class UserAuthQueue extends QueueBase {
     private readonly timezone: string;
     private readonly purgeExpiredCron: string;
 
@@ -29,21 +29,21 @@ export class UserAuthQueue extends QueueBase implements OnModuleInit {
         )!;
     }
 
-    async onModuleInit(): Promise<void> {
-        await this.queue.upsertJobScheduler(
-            EnumUserAuthProcess.purgeExpired,
+    protected override schedulers(): IQueueScheduler[] {
+        return [
             {
-                pattern: this.purgeExpiredCron,
-                tz: this.timezone,
-            },
-            {
-                name: EnumUserAuthProcess.purgeExpired,
-                data: {},
-                opts: {
-                    priority: EnumQueuePriority.low,
+                id: EnumUserAuthProcess.purgeExpired,
+                repeat: {
+                    pattern: this.purgeExpiredCron,
+                    tz: this.timezone,
                 },
-            }
-        );
+                template: {
+                    name: EnumUserAuthProcess.purgeExpired,
+                    data: {},
+                    opts: { priority: EnumQueuePriority.low },
+                },
+            },
+        ];
     }
 
     purgeLoginsEffect(

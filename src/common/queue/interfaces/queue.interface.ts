@@ -1,4 +1,8 @@
-import type { WorkerOptions } from 'bullmq';
+import type {
+    JobSchedulerTemplateOptions,
+    RepeatOptions,
+    WorkerOptions,
+} from 'bullmq';
 import type { EnumQueueJobState } from '@common/queue/enums/queue.enum';
 
 export interface IQueueResponse {
@@ -12,3 +16,13 @@ export interface IQueueJobState {
 }
 
 export type IQueueProcessorOptions = Omit<WorkerOptions, 'name' | 'connection'>;
+
+export interface IQueueScheduler {
+    id: string;
+    repeat: Omit<RepeatOptions, 'key'>;
+    template: {
+        name: string;
+        data: object;
+        opts: JobSchedulerTemplateOptions;
+    };
+}

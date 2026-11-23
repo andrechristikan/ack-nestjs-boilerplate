@@ -9,7 +9,7 @@ paths:
 
 Effects, writing, and payloads: `effects.md`.
 
-`src/common/outbox/` is a kit module beside the queue kit; `OutboxRepository` is the kit's one repository, over an infrastructure model. `OutboxModule` registers its own queue, `EnumOutboxQueue.outbox`; its `OutboxQueue` schedules the sweep and takes no enum-value token, since no row targets the `outbox` queue. `OutboxProcessor` awaits `OutboxService.sweep()`.
+`src/common/outbox/` is a kit module beside the queue kit; `OutboxRepository` is the kit's one repository, over an infrastructure model. `OutboxModule` registers its own queue, `EnumOutboxQueue.outbox`; its `OutboxQueue` declares the sweep and takes no enum-value token, since no row targets the `outbox` queue. `OutboxProcessor` awaits `OutboxService.sweep()`.
 
 ## Dispatch
 

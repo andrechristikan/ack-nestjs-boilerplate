@@ -37,27 +37,26 @@ describe('AnalyticQueue', () => {
         }).compile();
 
         queue = module.get(AnalyticQueue);
+        analyticQueue.getJobSchedulers.mockResolvedValue([]);
     });
 
     describe('onModuleInit', () => {
-        it('schedules one refresh job per snapshot signal, running at once, at low priority', async () => {
-            await queue.onModuleInit();
+        it.each(Object.values(EnumAnalyticSnapshotSignal))(
+            'schedules the refresh of %s every refresh interval, running at once, at low priority',
+            async signal => {
+                await queue.onModuleInit();
 
-            expect(analyticQueue.upsertJobScheduler).toHaveBeenCalledTimes(
-                Object.values(EnumAnalyticSnapshotSignal).length
-            );
-            expect(analyticQueue.upsertJobScheduler).toHaveBeenCalledWith(
-                `${EnumAnalyticProcess.refreshSnapshot}:${EnumAnalyticSnapshotSignal.sharedFingerprint}`,
-                { every: refreshIntervalInMs, immediately: true },
-                {
-                    name: EnumAnalyticProcess.refreshSnapshot,
-                    data: {
-                        signal: EnumAnalyticSnapshotSignal.sharedFingerprint,
-                    },
-                    opts: { priority: EnumQueuePriority.low },
-                }
-            );
-        });
+                expect(analyticQueue.upsertJobScheduler).toHaveBeenCalledWith(
+                    `${EnumAnalyticProcess.refreshSnapshot}:${signal}`,
+                    { every: refreshIntervalInMs, immediately: true },
+                    {
+                        name: EnumAnalyticProcess.refreshSnapshot,
+                        data: { signal },
+                        opts: { priority: EnumQueuePriority.low },
+                    }
+                );
+            }
+        );
 
         it('schedules exactly the eight generated signals', async () => {
             await queue.onModuleInit();
@@ -78,6 +77,22 @@ describe('AnalyticQueue', () => {
                 `${EnumAnalyticProcess.refreshSnapshot}:${name}`,
                 expect.anything(),
                 expect.anything()
+            );
+        });
+
+        it('removes a held scheduler no signal declares', async () => {
+            analyticQueue.getJobSchedulers.mockResolvedValue([
+                {
+                    key: 'refreshSnapshot:devicesPerUser',
+                    name: EnumAnalyticProcess.refreshSnapshot,
+                },
+            ]);
+
+            await queue.onModuleInit();
+
+            expect(analyticQueue.removeJobScheduler).toHaveBeenCalledTimes(1);
+            expect(analyticQueue.removeJobScheduler).toHaveBeenCalledWith(
+                'refreshSnapshot:devicesPerUser'
             );
         });
 
