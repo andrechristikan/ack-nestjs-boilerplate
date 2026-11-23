@@ -22,6 +22,7 @@ import {
     EnumNotificationChannel,
     EnumNotificationType,
     EnumPasswordHistoryType,
+    EnumRoleScope,
     EnumTermPolicyStatus,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -83,8 +84,11 @@ export class MigrationUserSeed
         const [roles, countries, publishedTermPolicies, existingUsers] =
             await Promise.all([
                 this.databaseService.client.role.findMany({
-                    where: { name: { in: uniqueRoles } },
-                    select: { id: true, name: true },
+                    where: {
+                        scope: EnumRoleScope.platform,
+                        key: { in: uniqueRoles },
+                    },
+                    select: { id: true, key: true },
                 }),
                 this.databaseService.client.country.findMany({
                     where: { alpha2Code: { in: uniqueCountries } },
@@ -192,7 +196,7 @@ export class MigrationUserSeed
                     countryId: countries.find(
                         country => country.alpha2Code === user.country
                     )!.id,
-                    roleId: roles.find(role => role.name === user.role)!.id,
+                    roleId: roles.find(role => role.key === user.role)!.id,
                     password,
                     generatedPassword:
                         user.password === null ? plainPasswords[index]! : null,

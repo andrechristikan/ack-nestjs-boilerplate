@@ -11,10 +11,8 @@ import {
 } from '@migration/data/migration.user.data';
 import type { IMigrationUserData } from '@migration/interfaces/migration.interface';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
-import {
-    EnumWorkspaceMemberRole,
-    Prisma,
-} from '@generated/prisma-client/client';
+import { EnumRoleScope, Prisma } from '@generated/prisma-client/client';
+import { EnumRoleWorkspaceKey } from '@modules/role/enums/role.enum';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Command } from 'nest-commander';
@@ -77,6 +75,22 @@ export class MigrationWorkspaceSeed
         id: string;
         username: string;
     }): Promise<void> {
+        const ownerRole = await this.databaseService.client.role.findUnique({
+            where: {
+                scope_key: {
+                    scope: EnumRoleScope.workspace,
+                    key: EnumRoleWorkspaceKey.owner,
+                },
+            },
+            select: { id: true },
+        });
+        if (!ownerRole) {
+            this.logger.error(
+                'Workspace owner role not found, cannot seed workspaces.'
+            );
+            return;
+        }
+
         const slugCandidates = this.drawSlugCandidates();
 
         for (const slug of slugCandidates) {
@@ -96,7 +110,7 @@ export class MigrationWorkspaceSeed
                             data: {
                                 workspaceId: workspace.id,
                                 userId: user.id,
-                                role: EnumWorkspaceMemberRole.owner,
+                                roleId: ownerRole.id,
                                 createdBy: MigrationUserSuperAdminId,
                                 updatedBy: MigrationUserSuperAdminId,
                             },
@@ -158,7 +172,10 @@ export class MigrationWorkspaceSeed
                             {
                                 where: {
                                     userId: user.id,
-                                    role: EnumWorkspaceMemberRole.owner,
+                                    role: {
+                                        scope: EnumRoleScope.workspace,
+                                        key: EnumRoleWorkspaceKey.owner,
+                                    },
                                     workspace: {
                                         deletedAt: null,
                                     },
@@ -214,7 +231,10 @@ export class MigrationWorkspaceSeed
                                 members: {
                                     some: {
                                         userId: user.id,
-                                        role: EnumWorkspaceMemberRole.owner,
+                                        role: {
+                                            scope: EnumRoleScope.workspace,
+                                            key: EnumRoleWorkspaceKey.owner,
+                                        },
                                     },
                                 },
                             })

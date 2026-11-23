@@ -50,12 +50,16 @@ export class MigrationRoleSeed
                     for (const role of this.roles) {
                         await tx.role.upsert({
                             where: {
-                                name: role.name.toLowerCase(),
+                                scope_key: {
+                                    scope: role.scope,
+                                    key: role.key,
+                                },
                             },
                             create: {
-                                name: role.name.toLowerCase(),
+                                scope: role.scope,
+                                key: role.key,
+                                name: role.name,
                                 description: role.description,
-                                type: role.type,
                                 isImmutable: role.isImmutable,
                                 createdBy: MigrationUserSuperAdminId,
                                 updatedBy: MigrationUserSuperAdminId,
