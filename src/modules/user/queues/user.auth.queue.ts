@@ -19,7 +19,7 @@ export class UserAuthQueue extends QueueBase {
 
     constructor(
         @InjectQueue(EnumUserQueue.userAuth)
-        protected readonly queue: Queue,
+        protected override readonly queue: Queue,
         private readonly configService: ConfigService
     ) {
         super(queue);

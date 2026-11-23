@@ -19,7 +19,7 @@ import { Queue } from 'bullmq';
 export class NotificationSmsQueue extends QueueBase {
     constructor(
         @InjectQueue(EnumNotificationQueue.notificationSms)
-        protected readonly queue: Queue,
+        protected override readonly queue: Queue,
         private readonly notificationUtil: NotificationUtil
     ) {
         super(queue);

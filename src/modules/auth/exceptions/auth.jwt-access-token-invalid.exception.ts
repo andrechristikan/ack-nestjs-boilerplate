@@ -9,7 +9,7 @@ export class AuthJwtAccessTokenInvalidException extends AppBaseException {
     readonly statusCodeKey = EnumAuthStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNAUTHORIZED;
 
-    constructor(readonly rawError: unknown = null) {
+    constructor(override readonly rawError: unknown = null) {
         super('auth.error.accessTokenUnauthorized', { rawError });
     }
 }

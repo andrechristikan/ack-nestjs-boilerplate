@@ -37,7 +37,7 @@ import { Queue } from 'bullmq';
 export class ActivityLogQueue extends QueueBase {
     constructor(
         @InjectQueue(EnumActivityLogQueue.activityLog)
-        protected readonly queue: Queue,
+        protected override readonly queue: Queue,
         private readonly activityLogUtil: ActivityLogUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService

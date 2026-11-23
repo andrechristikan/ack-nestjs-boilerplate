@@ -22,7 +22,7 @@ export class MigrationTemplateEmailNotificationSeed
     );
 
     constructor(
-        protected readonly cacheService: CacheService,
+        protected override readonly cacheService: CacheService,
         private readonly notificationTemplateService: NotificationTemplateService,
         private readonly awsSesService: AwsSesService
     ) {

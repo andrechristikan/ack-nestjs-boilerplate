@@ -40,7 +40,7 @@ export class MigrationWorkspaceSeed
     private readonly users: IMigrationUserData[] = [];
 
     constructor(
-        protected readonly cacheService: CacheService,
+        protected override readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService,

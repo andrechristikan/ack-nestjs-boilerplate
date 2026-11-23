@@ -15,20 +15,20 @@ import { RequestUtil } from '@common/request/utils/request.util';
 export class RequestThrottleDefaultGuard extends ThrottlerGuard {
     constructor(
         @InjectThrottlerOptions()
-        protected readonly options: ThrottlerModuleOptions,
+        protected override readonly options: ThrottlerModuleOptions,
         @InjectThrottlerStorage()
-        protected readonly storageService: ThrottlerStorage,
-        protected readonly reflector: Reflector,
+        protected override readonly storageService: ThrottlerStorage,
+        protected override readonly reflector: Reflector,
         private readonly requestUtil: RequestUtil
     ) {
         super(options, storageService, reflector);
     }
 
-    protected async getTracker(req: IRequestApp): Promise<string> {
+    protected override async getTracker(req: IRequestApp): Promise<string> {
         return this.requestUtil.getClientIp(req);
     }
 
-    protected generateKey(
+    protected override generateKey(
         _context: ExecutionContext,
         suffix: string,
         _name: string

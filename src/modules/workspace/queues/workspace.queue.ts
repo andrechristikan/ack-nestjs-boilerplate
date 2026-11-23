@@ -17,7 +17,7 @@ export class WorkspaceQueue extends QueueBase {
 
     constructor(
         @InjectQueue(EnumWorkspaceQueue.workspace)
-        protected readonly queue: Queue,
+        protected override readonly queue: Queue,
         private readonly configService: ConfigService
     ) {
         super(queue);

@@ -38,7 +38,7 @@ export class RequestSchemaValidationPipe extends StandardSchemaValidationPipe {
         );
     }
 
-    async transform<T = unknown>(
+    override async transform<T = unknown>(
         value: T,
         metadata: ArgumentMetadata
     ): Promise<T> {

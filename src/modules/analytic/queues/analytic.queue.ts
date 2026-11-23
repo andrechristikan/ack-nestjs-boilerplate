@@ -18,7 +18,7 @@ export class AnalyticQueue extends QueueBase {
 
     constructor(
         @InjectQueue(EnumAnalyticQueue.analytic)
-        protected readonly queue: Queue,
+        protected override readonly queue: Queue,
         private readonly configService: ConfigService
     ) {
         super(queue);

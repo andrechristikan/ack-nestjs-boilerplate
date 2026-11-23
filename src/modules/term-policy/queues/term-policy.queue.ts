@@ -24,7 +24,7 @@ export class TermPolicyQueue extends QueueBase {
 
     constructor(
         @InjectQueue(EnumTermPolicyQueue.termPolicy)
-        protected readonly queue: Queue,
+        protected override readonly queue: Queue,
         private readonly configService: ConfigService,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperStringService: HelperStringService

@@ -31,7 +31,7 @@ export class NotificationEmailQueue extends QueueBase {
 
     constructor(
         @InjectQueue(EnumNotificationQueue.notificationEmail)
-        protected readonly queue: Queue,
+        protected override readonly queue: Queue,
         private readonly configService: ConfigService,
         private readonly helperStringService: HelperStringService,
         private readonly notificationUtil: NotificationUtil

@@ -13,7 +13,7 @@ import { Queue } from 'bullmq';
 export class CacheQueue extends QueueBase {
     constructor(
         @InjectQueue(EnumCacheQueue.cache)
-        protected readonly queue: Queue
+        protected override readonly queue: Queue
     ) {
         super(queue);
     }

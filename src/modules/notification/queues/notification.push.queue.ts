@@ -25,7 +25,7 @@ export class NotificationPushQueue extends QueueBase {
 
     constructor(
         @InjectQueue(EnumNotificationQueue.notificationPush)
-        protected readonly queue: Queue,
+        protected override readonly queue: Queue,
         private readonly configService: ConfigService,
         private readonly notificationUtil: NotificationUtil
     ) {

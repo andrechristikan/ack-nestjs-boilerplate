@@ -26,7 +26,7 @@ export class UserQueue extends QueueBase {
 
     constructor(
         @InjectQueue(EnumUserQueue.user)
-        protected readonly queue: Queue,
+        protected override readonly queue: Queue,
         private readonly configService: ConfigService,
         private readonly helperEncryptionService: HelperEncryptionService
     ) {

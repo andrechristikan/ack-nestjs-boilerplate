@@ -1,7 +1,7 @@
 /** @public */
 export class QueueException extends Error {
     constructor(
-        readonly message: string,
+        override readonly message: string,
         readonly isFatal: boolean = false,
         readonly rawError: unknown = null
     ) {

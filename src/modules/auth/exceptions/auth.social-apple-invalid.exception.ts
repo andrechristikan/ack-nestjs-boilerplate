@@ -9,7 +9,7 @@ export class AuthSocialAppleInvalidException extends AppBaseException {
     readonly statusCodeKey = EnumAuthStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.UNAUTHORIZED;
 
-    constructor(readonly rawError: unknown) {
+    constructor(override readonly rawError: unknown) {
         super('auth.error.socialAppleInvalid', { rawError });
     }
 }

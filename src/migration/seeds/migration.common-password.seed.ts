@@ -25,7 +25,7 @@ export class MigrationCommonPasswordSeed
     private readonly seedBatchSize: number;
 
     constructor(
-        protected readonly cacheService: CacheService,
+        protected override readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly helperArrayService: HelperArrayService,
         private readonly configService: ConfigService

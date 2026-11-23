@@ -15,7 +15,7 @@ Data file: `.claude/rules/seeding.md`, Anatomy (`src/migration/data/migration.co
 `src/migration/seeds/migration.<concern>.seed.ts`, from `MigrationCountrySeed` (`src/migration/seeds/migration.country.seed.ts`):
 
 - The class shape: `.claude/rules/seeding.md`, Anatomy (`src/migration/bases/migration.seed.base.ts`, `src/migration/interfaces/migration.seed.interface.ts`).
-- Constructor calls `super()`, reads `database.seedTransactionTimeoutInMs` from `ConfigService` (the `MigrationCountrySeed` constructor).
+- Constructor takes `protected override readonly cacheService: CacheService` first, calls `super(cacheService)`, and reads `database.seedTransactionTimeoutInMs` from `ConfigService` (the `MigrationCountrySeed` constructor).
 - `seed()` opens `this.databaseService.withTransaction(async tx => { … }, { timeout })` (`MigrationCountrySeed.seed`). Every write is idempotent (`.claude/rules/seeding.md`, Idempotency and reset).
 - Audit fields: `.claude/rules/seeding.md`, Anatomy (`MigrationUserSeed.seed`, `src/migration/seeds/migration.user.seed.ts`).
 - `remove()` resets the collections `seed()` owns with `deleteMany` (`MigrationCountrySeed.remove`).

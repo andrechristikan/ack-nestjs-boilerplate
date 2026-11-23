@@ -15,7 +15,8 @@ export class OutboxQueue extends QueueBase {
     private readonly sweepKeepCompleted: number;
 
     constructor(
-        @InjectQueue(EnumOutboxQueue.outbox) protected readonly queue: Queue,
+        @InjectQueue(EnumOutboxQueue.outbox)
+        protected override readonly queue: Queue,
         private readonly configService: ConfigService
     ) {
         super(queue);

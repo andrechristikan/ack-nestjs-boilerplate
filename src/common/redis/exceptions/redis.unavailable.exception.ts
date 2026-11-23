@@ -9,7 +9,7 @@ export class RedisUnavailableException extends AppBaseException {
     readonly statusCodeKey = EnumRedisStatusCodeError[this.statusCode];
     readonly httpStatus = HttpStatus.SERVICE_UNAVAILABLE;
 
-    constructor(readonly rawError: unknown = null) {
+    constructor(override readonly rawError: unknown = null) {
         super('redis.error.unavailable', { rawError });
     }
 }

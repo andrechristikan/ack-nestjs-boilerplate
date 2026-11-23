@@ -27,7 +27,7 @@ export class MigrationFeatureFlagSeed
     private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
-        protected readonly cacheService: CacheService,
+        protected override readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly configService: ConfigService
     ) {

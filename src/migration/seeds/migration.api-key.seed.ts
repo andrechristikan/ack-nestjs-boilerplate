@@ -28,7 +28,7 @@ export class MigrationApiKeySeed
     private readonly seedTransactionTimeoutInMs: number;
 
     constructor(
-        protected readonly cacheService: CacheService,
+        protected override readonly cacheService: CacheService,
         private readonly databaseService: DatabaseService,
         private readonly apiKeyCredentialUtil: ApiKeyCredentialUtil,
         private readonly configService: ConfigService

@@ -25,7 +25,7 @@ export class AuthJwtRefreshGuard extends AuthGuard(AuthJwtRefreshGuardKey) {
         super();
     }
 
-    handleRequest<T = IAuthJwtAccessContext>(
+    override handleRequest<T = IAuthJwtAccessContext>(
         err: Error | null,
         user: IAuthJwtRefreshTokenPayload | false,
         info: Error | string | undefined,

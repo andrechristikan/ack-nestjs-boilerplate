@@ -10,7 +10,7 @@ export class AppUnknownException extends AppBaseException {
     readonly httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
 
     constructor(
-        readonly rawError: unknown,
+        override readonly rawError: unknown,
         readonly description: string | null = null
     ) {
         super('http.serverError.internalServerError', { rawError });
