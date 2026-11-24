@@ -220,7 +220,6 @@ describe('UserUtil', () => {
         });
 
         it.each([
-            // cspell:disable-next-line
             'hassan',
             'cassandra',
             'classic_dave',

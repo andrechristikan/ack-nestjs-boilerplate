@@ -56,7 +56,7 @@ The sections under [Shared by every path](#shared-by-every-path) apply to all th
     - [Ports and access](#ports-and-access)
     - [Vault profile](#vault-profile)
 - [Path 3: CI/CD](#path-3-cicd)
-    - [Behaviour shared by the three release-with workflows](#behaviour-shared-by-the-three-release-with-workflows)
+    - [Behavior shared by the three release-with workflows](#behavior-shared-by-the-three-release-with-workflows)
     - [release-with-ssh.yml](#release-with-sshyml)
     - [release-with-aws-sdk-ec2.yml](#release-with-aws-sdk-ec2yml)
     - [release-with-aws-sdk-ecs.yml](#release-with-aws-sdk-ecsyml)
@@ -457,7 +457,7 @@ flowchart LR
     Deploy --> Clean["clean<br/>SSH and EC2 only"]
 ```
 
-### Behaviour shared by the three release-with workflows
+### Behavior shared by the three release-with workflows
 
 - They run only on `workflow_dispatch`. Their `push` triggers are commented out.
 - Each job has a matrix that pairs a branch with an environment (`production`, `development`, `staging`). Only the entry whose branch matches the branch the workflow was dispatched from builds and deploys.

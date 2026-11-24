@@ -109,7 +109,7 @@ Rule: `credential-policy.md`, Re-authentication.
 Rule: `credential-policy.md`, Re-authentication.
 
 - The session alone: a stolen or unlocked device could confirm its holder's authenticator on a passwordless account with a passkey.
-- A password required before enrolment: a social account would gain a phishable password and a forgot-password path.
+- A password required before enrollment: a social account would gain a phishable password and a forgot-password path.
 - A password or an email code alone when MFA is on: whoever holds the session and the password, or the inbox, could add a passkey that signs in alone.
 
 ## Verification
@@ -202,17 +202,17 @@ Rule: `mfa.md`.
 
 - Backup codes for TOTP only: a passkey-only user who loses the device has no recovery.
 
-### An admin MFA reset removes every factor without forced enrolment
+### An admin MFA reset removes every factor without forced enrollment
 
 Rule: `mfa.md`.
 
-- `requiredSetup` and enrolment at the next login: MFA is optional for everyone else, and a reset serves a user who lost the device.
+- `requiredSetup` and enrollment at the next login: MFA is optional for everyone else, and a reset serves a user who lost the device.
 
 ### The `mfa` flag switches enrolled factors off
 
 Rule: `feature-flag.md`, Gating.
 
-- A flag that closes enrolment only: a product that drops MFA would still challenge every enrolled user.
+- A flag that closes enrollment only: a product that drops MFA would still challenge every enrolled user.
 - A switched-off method refused while MFA stays required: a user holding only that method is locked out until an admin reset.
 - Two flag keys, one per method: no single switch turns MFA off.
 - One passkey flag for every passkey role: switching MFA off would leave the passkey a second factor.
@@ -285,7 +285,7 @@ Rule: `notify.md`.
 - Resolving after the revoke: the revoke destroys the live-session set, so the alert would reach nothing.
 - Reading the snapshot inside the transaction's callback: a read off `tx` then runs while the transaction is open, beside its writes.
 - Every registered device: a device with no live session is signed out of the account, and its stored token is a value no send reads.
-- Honouring opt-outs on a credential reset: a credential-reset alert is not optional.
+- Honoring opt-outs on a credential reset: a credential-reset alert is not optional.
 
 ### A session cache sits in front of the row, cleared through the purge row
 

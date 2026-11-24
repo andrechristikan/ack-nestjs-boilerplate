@@ -61,7 +61,7 @@ export class OutboxService implements OnApplicationBootstrap {
             return 0;
         }
 
-        const enqueuedAt = this.helperDateService.create();
+        const enqueuedAt = this.helperDateService.now();
         await this.outboxRepository.updateEnqueued(enqueuedIds, enqueuedAt);
 
         return enqueuedIds.length;
@@ -257,7 +257,7 @@ export class OutboxService implements OnApplicationBootstrap {
     }
 
     async complete(outboxId: string, attempts: number): Promise<void> {
-        const completedAt = this.helperDateService.create();
+        const completedAt = this.helperDateService.now();
         await this.outboxRepository.updateCompleted(
             outboxId,
             attempts,
@@ -270,7 +270,7 @@ export class OutboxService implements OnApplicationBootstrap {
         attempts: number,
         lastError: string
     ): Promise<void> {
-        const failedAt = this.helperDateService.create();
+        const failedAt = this.helperDateService.now();
         await this.outboxRepository.updateFailed(
             outboxId,
             attempts,
@@ -314,7 +314,7 @@ export class OutboxService implements OnApplicationBootstrap {
 
     /** Stamps the rows it reads as swept, then dispatches those pending longer than outbox.pendingAfterInMs and reconciles those enqueued longer than outbox.enqueuedAfterInMs with their job, at most outbox.sweepBatch of each, the rows swept longest ago first and never-swept ones before them; returns the count dispatched or stamped and never throws. */
     async sweep(): Promise<number> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const pendingAfter = this.helperDateService.createDuration({
             milliseconds: this.pendingAfterInMs,
         });

@@ -10,7 +10,7 @@ Each entry names a choice a rule in `.claude/rules/`, or a harness file, carries
 - [Deployment][ref-decisions-deployment]: release, compose and production
 - [Auth][ref-decisions-auth]: the ASVS reference, passwords, sign-up, social sign-in, re-authentication, verification, account deletion, MFA, attempts and locks, sessions, retention
 - [Authorization][ref-decisions-authorization]: roles and workspace ownership
-- [Harness][ref-decisions-harness]: decision records, review and agents, hooks and checks
+- [Harness][ref-decisions-harness]: decision records, review and agents, hooks and checks, authoring
 
 [ref-decisions-layering]: layering.md
 [ref-decisions-database-and-cache]: database-and-cache.md

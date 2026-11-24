@@ -181,7 +181,7 @@ export abstract class QueueProcessorBase extends WorkerHost {
     @OnWorkerEvent('failed')
     onFailed(job: Job<unknown, null, string> | undefined, error: Error): void {
         if (!job) {
-            this.sentryService.captureException(error);
+            this.sentryService.captureException(error, null);
 
             return;
         }

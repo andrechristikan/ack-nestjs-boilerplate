@@ -29,7 +29,7 @@ const globalModules = readdirSync(modulesRoot, { withFileTypes: true })
 
 /** Restricted globals, properties, and imports. */
 
-/** The global number functions, refused in favour of their Number forms. */
+/** The global number functions, refused in favor of their Number forms. */
 const numberGlobalRestrictions = [
     'parseInt',
     'parseFloat',
@@ -40,14 +40,14 @@ const numberGlobalRestrictions = [
     message: `The global ${name} is refused: call Number.${name}.`,
 }));
 
-/** The process.env read, refused in favour of ConfigService. */
+/** The process.env read, refused in favor of ConfigService. */
 const processEnvRestriction = {
     object: 'process',
     property: 'env',
     message: 'Read configuration through ConfigService.',
 };
 
-/** The import names refused by module path. */
+/** The module paths refused, whole or by import name. */
 const restrictedImportPaths = [
     {
         name: 'crypto',
@@ -61,7 +61,7 @@ const restrictedImportPaths = [
     },
 ];
 
-/** The import patterns refused in every file. */
+/** The import patterns refused in every src and test file. */
 const restrictedImportPatterns = [
     {
         regex: '^@generated/prisma-client/internal(/|$)',
@@ -70,14 +70,14 @@ const restrictedImportPatterns = [
     },
 ];
 
-/** The feature module import, refused in src/common and src/app. */
+/** The feature module import, refused in src/common and src/app, their root module files excepted. */
 const featureImportPattern = {
     regex: '^@modules/',
     message:
         'src/common and src/app import nothing from a feature module, a type included.',
 };
 
-/** The relative import, refused in favour of a tsconfig.json path alias. */
+/** The relative import, refused in favor of a tsconfig.json path alias. */
 const relativeImportPattern = {
     regex: '^\\.',
     message:
@@ -150,26 +150,26 @@ const undefinedSyntaxRestrictions = [
     },
 ];
 
-/** The forEach call, refused in favour of for...of. */
+/** The forEach call, refused in favor of for...of. */
 const forEachRestriction = {
     selector: 'CallExpression[callee.property.name="forEach"]',
     message: 'Use for...of, not .forEach.',
 };
 
-/** The Date constructor, refused in favour of HelperDateService. */
+/** The Date constructor, refused in favor of HelperDateService. */
 const newDateRestriction = {
     selector: 'NewExpression[callee.name="Date"]',
     message: 'Use HelperDateService.',
 };
 
-/** The throw of a bare Error, refused in favour of a typed exception. */
+/** The throw of a bare Error, refused in favor of a typed exception. */
 const throwNewErrorRestriction = {
     selector: 'ThrowStatement > NewExpression[callee.name="Error"]',
     message:
         'Throw a typed exception: AppUnknownException (or a subclass) outside an HTTP request, AppBaseException for one that answers a request.',
 };
 
-/** The regex source that matches the names of our own exceptions. */
+/** The regex source that matches the names of our own exceptions and BullMQ's UnrecoverableError. */
 const ownExceptionName = '/(Exception|^UnrecoverableError)$/';
 
 /** The selector of an instanceof test against our own exception at a path. */
@@ -190,7 +190,7 @@ const throwIdentifierRestriction = {
         'Rethrow a caught value only inside the if branch of an instanceof guard of our own exception (if (err instanceof AppBaseException) { throw err; }); otherwise throw new AppUnknownException(err).',
 };
 
-/** The module-level function, refused in favour of a method or a class. */
+/** The unexported module-level function, refused in favor of a method or a class. */
 const moduleFunctionRestriction = {
     selector:
         'Program > FunctionDeclaration:not([id.name="bootstrap"]), Program > VariableDeclaration > VariableDeclarator > :matches(ArrowFunctionExpression, FunctionExpression).init',
@@ -217,7 +217,7 @@ const parameterOrderRestrictions = [
     },
 ];
 
-/** The request.user read, refused in favour of the request store or context. */
+/** The request.user read, refused in favor of the request store or context. */
 const requestUserRestriction = {
     selector:
         'MemberExpression[property.name="user"]:matches([object.name=/^(request|req)$/], [object.callee.property.name="getRequest"])',
@@ -240,7 +240,7 @@ const codeStyleRestrictedSyntax = [
 
 /** Restricted syntax, layers: one no-restricted-syntax block per file scope, a later scope winning. */
 
-/** The databaseService.client read, refused outside a repository, a seed, and a health indicator. */
+/** The databaseService.client read, refused outside a repository, a seed, a health indicator, and src/common/database. */
 const databaseClientRestriction = {
     selector:
         "MemberExpression[property.name='client'][object.type='MemberExpression'][object.property.name='databaseService']",
@@ -248,14 +248,14 @@ const databaseClientRestriction = {
         'Only a repository, a seed, or a health indicator queries databaseService.client; a service or use case calls withTransaction and a repository.',
 };
 
-/** The $transaction call, refused in favour of DatabaseService.withTransaction. */
+/** The $transaction call, refused in favor of DatabaseService.withTransaction. */
 const transactionCallRestriction = {
     selector: "CallExpression[callee.property.name='$transaction']",
     message:
         'Open a transaction through DatabaseService.withTransaction, never $transaction.',
 };
 
-/** The @Inject of a queue enum, refused in favour of the queue class. */
+/** The @Inject of a queue enum, refused in favor of the queue class. */
 const injectQueueRestriction = {
     selector:
         "Decorator[expression.callee.name='Inject'][expression.arguments.0.type='MemberExpression'][expression.arguments.0.object.name=/^Enum[A-Za-z]+Queue$/]",
@@ -435,7 +435,7 @@ const globalModuleSet = globalModules.join('|');
 /** The match of every module but the importing one and the names given. */
 const otherModule = (...also) => `!(${[ownModule, ...also].join('|')})`;
 
-/** The layer matrix: what each element type refuses to import, one policy per importing type. */
+/** The layer matrix: what each element type, file category, or file path refuses to import. */
 const layerPolicies = [
     {
         from: { element: { type: 'use-case' } },
@@ -707,7 +707,7 @@ const typedLintRules = {
     '@typescript-eslint/switch-exhaustiveness-check': 'error',
 };
 
-/** The comment rules: work markers and JSDoc tags refused, no inline comment. */
+/** The comment rules: the note, xxx, and hack markers and the JSDoc tags refused, no inline comment. */
 const commentRules = {
     'no-warning-comments': [
         'error',

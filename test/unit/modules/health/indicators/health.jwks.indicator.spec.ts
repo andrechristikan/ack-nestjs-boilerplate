@@ -48,28 +48,6 @@ describe('HealthJwksIndicator', () => {
             );
             expect(httpClient.get).toHaveBeenCalledWith(accessUri);
         });
-
-        it('reports down when the access-token JWKS URI is not configured', async () => {
-            const configService = buildConfigService({});
-            const indicator = await createHealthJwksIndicator(
-                configService,
-                healthIndicatorService,
-                httpClient
-            );
-            session.down.mockReturnValue({
-                jwksAccessToken: { status: 'down' },
-            });
-
-            const result = await indicator.isHealthyAccessToken(
-                EnumHealthIndicatorKey.jwksAccessToken
-            );
-
-            expect(result).toEqual({ jwksAccessToken: { status: 'down' } });
-            expect(session.down).toHaveBeenCalledWith(
-                'JWKS URI is not configured'
-            );
-            expect(httpClient.get).not.toHaveBeenCalled();
-        });
     });
 
     describe('isHealthyRefreshToken', () => {
@@ -96,74 +74,10 @@ describe('HealthJwksIndicator', () => {
             );
             expect(httpClient.get).toHaveBeenCalledWith(refreshUri);
         });
-
-        it('reports down when the refresh-token JWKS URI is not a valid URL', async () => {
-            const configService = buildConfigService({
-                'auth.jwt.refreshToken.jwksUri': 'not-a-valid-url',
-            });
-            const indicator = await createHealthJwksIndicator(
-                configService,
-                healthIndicatorService,
-                httpClient
-            );
-            session.down.mockReturnValue({
-                jwksRefreshToken: { status: 'down' },
-            });
-
-            const result = await indicator.isHealthyRefreshToken(
-                EnumHealthIndicatorKey.jwksRefreshToken
-            );
-
-            expect(result).toEqual({ jwksRefreshToken: { status: 'down' } });
-            expect(session.down).toHaveBeenCalledWith(
-                'JWKS URI is not a valid URL'
-            );
-            expect(httpClient.get).not.toHaveBeenCalled();
-        });
     });
 
     describe('checkUri', () => {
         const configValues = {};
-
-        it('reports down when the URI is empty', async () => {
-            const configService = buildConfigService(configValues);
-            const indicator = await createHealthJwksIndicator(
-                configService,
-                healthIndicatorService,
-                httpClient
-            );
-            session.down.mockReturnValue({ jwks: { status: 'down' } });
-
-            const result = await indicator['checkUri'](
-                EnumHealthIndicatorKey.jwksAccessToken,
-                undefined
-            );
-
-            expect(result).toEqual({ jwks: { status: 'down' } });
-            expect(session.down).toHaveBeenCalledWith(
-                'JWKS URI is not configured'
-            );
-        });
-
-        it('reports down when the URI is not a valid URL', async () => {
-            const configService = buildConfigService(configValues);
-            const indicator = await createHealthJwksIndicator(
-                configService,
-                healthIndicatorService,
-                httpClient
-            );
-            session.down.mockReturnValue({ jwks: { status: 'down' } });
-
-            const result = await indicator['checkUri'](
-                EnumHealthIndicatorKey.jwksAccessToken,
-                'not-a-url'
-            );
-
-            expect(result).toEqual({ jwks: { status: 'down' } });
-            expect(session.down).toHaveBeenCalledWith(
-                'JWKS URI is not a valid URL'
-            );
-        });
 
         it('reports up when the endpoint answers with a key set', async () => {
             const configService = buildConfigService(configValues);

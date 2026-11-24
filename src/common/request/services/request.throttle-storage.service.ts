@@ -76,7 +76,6 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
             key
         );
 
-        // Every duration this script returns is in milliseconds.
         const script = `
             local redisKey = KEYS[1]
             local blockKey = KEYS[2]

@@ -270,9 +270,9 @@ describe('MfaRegisterPasskeyUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('rejects with the enrolment gate exception and calls no other collaborator', async () => {
+        it('rejects with the enrollment gate exception and calls no other collaborator', async () => {
             const failure = new FeatureFlagDisabledException();
-            mfaService.assertEnrolmentAllowed.mockRejectedValue(failure);
+            mfaService.assertEnrollmentAllowed.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -284,7 +284,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(mfaService.assertEnrolmentAllowed).toHaveBeenCalledWith(
+            expect(mfaService.assertEnrollmentAllowed).toHaveBeenCalledWith(
                 EnumMfaMethod.passkey
             );
             expect(
@@ -293,9 +293,9 @@ describe('MfaRegisterPasskeyUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('reads the registration and asserts the enrolment gate together', async () => {
+        it('reads the registration and asserts the enrollment gate together', async () => {
             const gate = buildDeferred<void>();
-            mfaService.assertEnrolmentAllowed.mockReturnValue(gate.promise);
+            mfaService.assertEnrollmentAllowed.mockReturnValue(gate.promise);
             mfaChallengeService.getWebAuthnChallengeForUser.mockImplementation(
                 async () => {
                     gate.resolve();

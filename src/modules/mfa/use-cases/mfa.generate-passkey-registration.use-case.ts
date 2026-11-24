@@ -30,7 +30,7 @@ export class MfaGeneratePasskeyRegistrationUseCase implements IAppUseCase<
                 authContext.userId,
                 user.username
             ),
-            this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.passkey),
+            this.mfaService.assertEnrollmentAllowed(EnumMfaMethod.passkey),
         ]);
 
         const { challengeToken, expiresInMs } =

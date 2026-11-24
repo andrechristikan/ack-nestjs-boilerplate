@@ -22,6 +22,7 @@ import { FileExceedMaxSizeExportException } from '@common/file/exceptions/file.e
 import { ResponseMetadataService } from '@common/response/services/response.metadata.service';
 import { ResponseFileDataInvalidException } from '@common/response/exceptions/response.file-data-invalid.exception';
 
+/** Takes config keys, not values: it runs at decoration time, before config resolves. */
 export function ResponseFileInterceptor(
     options?: IResponseFileInterceptorOptions
 ): Type<NestInterceptor> {
@@ -44,8 +45,6 @@ export function ResponseFileInterceptor(
             this.maxSizeExportInBytes = this.configService.get<number>(
                 'file.maxSizeExportInBytes'
             )!;
-            // Takes the config KEY, not the value: an interceptor factory runs at
-            // decoration time, before config is resolved.
             this.maxDataExport = this.configService.get<number>(
                 options?.maxDataExportConfigKey ?? 'file.maxDataExport'
             )!;
@@ -102,7 +101,7 @@ export function ResponseFileInterceptor(
         }
 
         private createTimestamp(): number {
-            const today = this.helperDateService.create();
+            const today = this.helperDateService.now();
             return this.helperDateService.getTimestamp(today);
         }
 

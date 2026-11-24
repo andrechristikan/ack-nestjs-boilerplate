@@ -55,11 +55,11 @@ export class AuthSocialService {
             : null;
     }
 
-    /** Stores the SHA-256 hash of a new nonce, deletes the expired rows in the same call, and returns the plain nonce once. */
+    /** Stores the SHA-256 hash of a freshly drawn nonce, deletes the expired rows in the same call, and returns the plain nonce once. */
     async createNonce(): Promise<IAuthSocialNonce> {
         const nonce = this.helperStringService.random(this.nonceLength);
         const nonceHash = this.helperHashService.sha256Hash(nonce);
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const duration = this.helperDateService.createDuration({
             milliseconds: this.expiresInMs,
         });
@@ -80,7 +80,7 @@ export class AuthSocialService {
         }
 
         const nonceHash = this.helperHashService.sha256Hash(nonce);
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const consumed = await this.authSocialNonceRepository.consume(
             nonceHash,
             now
@@ -123,6 +123,7 @@ export class AuthSocialService {
         return payload as TokenPayload;
     }
 
+    /** Accepts email_verified as a boolean or the string "true", the two forms Apple sends. */
     async verifyApple(token: string): Promise<VerifyAppleIdTokenResponse> {
         if (this.appleClientIds.length === 0) {
             throw new AuthSocialAppleNotConfiguredException();
@@ -138,7 +139,6 @@ export class AuthSocialService {
             );
         }
 
-        // Apple sends email_verified as a boolean or as the string "true"
         if (String(payload.email_verified) !== 'true') {
             throw new AuthSocialAppleInvalidException(
                 'Apple token payload does not contain verified email'

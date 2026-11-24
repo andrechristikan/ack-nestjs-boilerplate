@@ -38,7 +38,6 @@ export class FeatureFlagCache {
         return { key: leaseKey, ttlInMs: this.leaseTtlInMs };
     }
 
-    /** The entry key and its lease key. */
     buildFeatureFlagKeys(key: string): string[] {
         return [
             this.buildFeatureFlagKey(key),

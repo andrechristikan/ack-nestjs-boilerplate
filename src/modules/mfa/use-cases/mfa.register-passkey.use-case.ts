@@ -95,7 +95,7 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
                 challengeToken,
                 registrationResponse
             ),
-            this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.passkey),
+            this.mfaService.assertEnrollmentAllowed(EnumMfaMethod.passkey),
         ]);
         // Sequential by design: a credential proof, awaited alone
         const input = {

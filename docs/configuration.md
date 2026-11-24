@@ -103,7 +103,7 @@ The number of placeholders decides how the consumer fills it:
 
 **File**: `src/configs/app.config.ts` **Interface**: `IConfigApp`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`name`**: Application name used throughout the system
 
@@ -190,7 +190,7 @@ encryptionSecretKey: string; // From APP_ENCRYPTION_SECRET_KEY: 64 base64url cha
 
 **File**: `src/configs/auth.config.ts` **Interface**: `IConfigAuth`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`jwt`**: JWT authentication configuration
 
@@ -307,7 +307,7 @@ jwks: {
 
 **File**: `src/configs/database.config.ts` **Interface**: `IConfigDatabase`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`url`**: Database connection string
 
@@ -331,7 +331,7 @@ seedTransactionTimeoutInMs: number; // Timeout every seed passes to withTransact
 
 **File**: `src/configs/aws.config.ts` **Interface**: `IConfigAws`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`s3`**: S3 service configuration
 
@@ -409,7 +409,7 @@ ses: {
 
 **File**: `src/configs/logger.config.ts` **Interface**: `IConfigLogger`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`enable`**: Enable/disable logging
 
@@ -483,7 +483,7 @@ sentry: {
 
 **File**: `src/configs/request.config.ts` **Interface**: `IConfigRequest`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`body`**: Request body size limits
 
@@ -598,7 +598,7 @@ Route tiers (`EnumRequestThrottleRoute`), each with `ttlInMs` 60s and `blockDura
 
 **File**: `src/configs/redis.config.ts` **Interface**: `IConfigRedis`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`cache`**: Cache Redis configuration
 
@@ -623,7 +623,7 @@ queue: {
 
 **File**: `src/configs/user.config.ts` **Interface**: `IConfigUser`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`uploadPhotoProfilePath`**: User profile photo upload path template
 
@@ -701,7 +701,7 @@ jobId: {
 
 **File**: `src/configs/doc.config.ts` **Interface**: `IConfigDoc`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`name`**: Documentation title
 
@@ -731,7 +731,7 @@ jsonUrlPattern: string; // Relative path template ('{docPrefix}/json'), filled w
 
 **File**: `src/configs/message.config.ts` **Interface**: `IConfigMessage`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`availableLanguage`**: Supported languages
 
@@ -749,7 +749,7 @@ language: string; // Default application language
 
 **File**: `src/configs/email.config.ts` **Interface**: `IConfigEmail`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`noreply`**: No-reply email address
 
@@ -779,7 +779,7 @@ batchDelayInMs: number; // Per-job BullMQ delay: the term-policy email job at po
 
 **File**: `src/configs/verification.config.ts` **Interface**: `IConfigVerification`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`expiredInMinutes`**: Verification expiration time
 
@@ -824,7 +824,7 @@ reference: {
 
 **File**: `src/configs/forgot-password.config.ts` **Interface**: `IConfigForgotPassword`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`expiredInMinutes`**: Reset link expiration
 
@@ -863,7 +863,7 @@ reference: {
 
 **File**: `src/configs/home.config.ts` **Interface**: `IConfigHome`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`name`**: Organization/application name
 
@@ -881,7 +881,7 @@ url: string; // URL for organization/home page
 
 **File**: `src/configs/session.config.ts` **Interface**: `IConfigSession`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`keyPattern`**: Session key pattern
 
@@ -907,7 +907,7 @@ jobId: {
 
 **File**: `src/configs/term-policy.config.ts` **Interface**: `IConfigTermPolicy`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`uploadContentPath`**: Upload path pattern for policy content
 
@@ -942,7 +942,7 @@ jobId: {
 
 **File**: `src/configs/feature-flag.config.ts` **Interface**: `IConfigFeatureFlag`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`keyPattern`**: Cache key pattern for feature flags
 
@@ -978,7 +978,7 @@ The anonymous id arrives in the `x-anonymous-id` header, named by the constant `
 
 **File**: `src/configs/response.config.ts` **Interface**: `IConfigResponse`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`keyPattern`**: Cache key pattern for API responses
 
@@ -999,7 +999,7 @@ The `{timestamp}` and `{extension}` placeholders are replaced at runtime.
 **File**: `src/configs/firebase.config.ts`  
 **Interface**: `IConfigFirebase`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`projectId`**: Firebase project ID
 
@@ -1031,7 +1031,7 @@ privateKey: string | null; // Service account private key (PEM), verbatim from t
 
 **File**: `src/configs/queue.config.ts` **Interface**: `IConfigQueue`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`redis`**: Producer connection limits, applied by `QueueModule.forRoot()` to the producer connection
 
@@ -1067,7 +1067,7 @@ job: {
 
 **File**: `src/configs/health.config.ts` **Interface**: `IConfigHealth`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`memoryRssThresholdInBytes`**: RSS memory threshold
 
@@ -1109,7 +1109,7 @@ gracefulShutdownTimeoutInMs: number; // How long Terminus keeps serving after a 
 
 **File**: `src/configs/notification.config.ts` **Interface**: `IConfigNotification`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`push`**: Push cleanup settings
 
@@ -1143,7 +1143,7 @@ See [Queue](queue.md) for the job each pattern keys.
 
 **File**: `src/configs/file.config.ts` **Interface**: `IConfigFile`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`maxDataImport`**: CSV import row cap
 
@@ -1182,7 +1182,7 @@ A larger buffer raises `FileExceedMaxSizeExportException`.
 
 **File**: `src/configs/workspace.config.ts` **Interface**: `IConfigWorkspace`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 The workspace header and its request-store key are constants in `src/common/request/constants/request.constant.ts`: `RequestWorkspaceIdHeaderName` (`x-workspace-id`) and `RequestWorkspaceIdStoreKey`.
 
@@ -1260,7 +1260,7 @@ joinRequest: {
 
 **File**: `src/configs/project.config.ts` **Interface**: `IConfigProject`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`slugPrefix`**: Project slug prefix
 
@@ -1296,7 +1296,7 @@ Live metric cache TTLs and key patterns, plus anomaly and fraud detection thresh
 - Consumers: `AnalyticCache` and the analytic domains.
 - Flow: [Analytic](analytic.md).
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`cache`**: Redis key patterns and TTLs for dashboard, anomaly summary, fraud summary, and risk score entries
 
@@ -1338,7 +1338,7 @@ cache: {
 
 **File**: `src/configs/activity-log.config.ts` **Interface**: `IConfigActivityLog`
 
-#### Configuration Keys:
+#### Configuration Keys
 
 **`jobId`**: Job id patterns of the activity log queue
 

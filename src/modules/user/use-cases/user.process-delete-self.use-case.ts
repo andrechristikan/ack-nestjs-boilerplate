@@ -103,7 +103,7 @@ export class UserProcessDeleteSelfUseCase implements IAppUseCase<
         activityLog,
     }: IUserDeleteSelfPayload): Promise<IQueueResponse> {
         const message = this.messageService.setMessage('user.queue.deleteSelf');
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const user = await this.userService.getOneLive(userId);
         try {
             if (user !== null) {

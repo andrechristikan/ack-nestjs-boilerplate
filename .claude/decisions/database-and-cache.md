@@ -80,6 +80,13 @@ Rule: `analytic.md`.
 - One document per signal holding the item list: it is bounded by the document size, cut at a row cap, and sorted in memory.
 - Replacing rows inside one transaction: thousands of writes run against the transaction lifetime.
 
+### The current time comes from `HelperDateService.now()`; `create(date)` takes a given date
+
+Rule: `code-style.md`, Dates.
+
+- One `create(date: Date | null)` with `null` meaning now: every clock read passes `null`, and the name hides the clock read.
+- An optional `create(date?)`: `null-safety.md` refuses an optional service parameter.
+
 ## Concurrency
 
 ### Independent statements on one `tx` run in one `Promise.all`, reads apart from writes

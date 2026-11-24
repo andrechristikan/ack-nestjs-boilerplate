@@ -109,7 +109,7 @@ export class AnalyticAnomalyService {
     }
 
     private async loadAnomalyFailedLoginSpike(): Promise<IAnalyticAnomalyFailedLoginSpikeSummary> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const nearLockoutMinAttempt = await this.getNearLockoutMinAttempt();
         const count = await this.analyticAnomalyRepository.countNearLockout(
             nearLockoutMinAttempt,
@@ -254,7 +254,7 @@ export class AnalyticAnomalyService {
     async getAnomalyFailedLoginSpikeList(
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticNearLockout>> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const nearLockoutMinAttempt = await this.getNearLockoutMinAttempt();
 
         return this.analyticAnomalyRepository.findNearLockoutOffset(

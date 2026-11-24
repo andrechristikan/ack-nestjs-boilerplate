@@ -241,7 +241,7 @@ export class TermPolicyContentService {
             effects.push(deleteEffect);
         }
 
-        const timestamp = this.helperDateService.create();
+        const timestamp = this.helperDateService.now();
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(
             termPolicy,
             timestamp
@@ -323,7 +323,7 @@ export class TermPolicyContentService {
             throw new TermPolicyStatusInvalidException();
         }
 
-        const timestamp = this.helperDateService.create();
+        const timestamp = this.helperDateService.now();
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(
             termPolicy,
             timestamp
@@ -385,7 +385,7 @@ export class TermPolicyContentService {
             existingContent.key,
         ]);
 
-        const timestamp = this.helperDateService.create();
+        const timestamp = this.helperDateService.now();
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(
             termPolicy,
             timestamp

@@ -125,7 +125,7 @@ export class SessionRevokeUseCase implements IAppUseCase<
                 mfaCheck.isEnabled
             );
 
-        const revokedAt = this.helperDateService.create();
+        const revokedAt = this.helperDateService.now();
         try {
             await this.databaseService.withTransaction(async tx => {
                 await this.userAuthService.completeReauthenticationInTx(

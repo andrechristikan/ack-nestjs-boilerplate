@@ -150,7 +150,7 @@ Indexes:
 | --- | --- |
 | `EnumWorkspaceMemberRole` | `owner`, `admin`, `member` |
 | `EnumWorkspaceInviteStatus` | `pending`, `accepted`, `revoked`, `expired` |
-| `EnumWorkspaceJoinRequestStatus` | `pending`, `accepted`, `rejected`, `cancelled`, `expired` |
+| `EnumWorkspaceJoinRequestStatus` | `pending`, `accepted`, `rejected`, `canceled`, `expired` |
 | `EnumWorkspaceJoinRejectReason` | `notAFit`, `incompleteProfile`, `spam`, `unknownRequester`, `wrongWorkspace`, `memberLimitReached`, `other` |
 | `EnumWorkspaceInviteExpiry` | `threeDays` (3), `sevenDays` (7), `twoWeeks` (14), `oneMonth` (30) |
 
@@ -522,13 +522,13 @@ The `workspaceInviteAccepted` / `workspaceInviteAcceptedByInvitee` pair is prepa
 - Only a `pending` request may be accepted or rejected, otherwise `WorkspaceJoinRequestAlreadyProcessedException` (400, `51618`).
 - An id that does not belong to the resolved workspace is `WorkspaceJoinRequestNotFoundException` (404, `51617`).
 
-The `cancelled` status is written by these paths:
+The `canceled` status is written by these paths:
 
 - workspace soft-delete cancels every pending request to the workspace
 - leaving or being removed from the workspace cancels the member's pending request to it
 - account deletion cancels the user's pending requests
 
-A pending request already past `expiredAt` becomes `expired` instead of `cancelled` on those paths.
+A pending request already past `expiredAt` becomes `expired` instead of `canceled` on those paths.
 
 A requester has no endpoint to withdraw their own request.
 
@@ -548,7 +548,7 @@ A requester has no endpoint to withdraw their own request.
     3. opens a `withTransaction` that calls `createInTx` (`WorkspaceRepository.createInTx` plus `WorkspaceMemberRepository.createOwnerInTx`)
 - Around that loop:
     - The activity log is staged only after a commit.
-    - A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate.
+    - A unique collision on `slug`, recognized by `DatabaseUtil.isUniqueCollision`, moves to the next candidate.
     - An `AppBaseException` passes through, and any other error is wrapped in `AppUnknownException`.
     - Exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (409, `51800`).
 - The personal-workspace slug follows the same budget inside the onboarding transaction, ending in the same `DatabaseUniqueValueGenerationFailedException` (409, `51800`). See [Generated Unique Values][ref-doc-database-generated-unique-values].
@@ -560,7 +560,7 @@ A requester has no endpoint to withdraw their own request.
 1. `WorkspaceDomain.softDeleteInTx` sets `deletedAt` and stamps `deletedBy` and `updatedBy` from the caller.
 2. `ProjectDomain.softDeleteByWorkspaceInTx` soft-deletes every still-active project in it with the same `deletedAt` and `deletedBy` set to the caller.
 3. `WorkspaceInviteDomain.revokePendingByWorkspaceInTx` flips every `pending` invite to `revoked`, or to `expired` when it is already past `expiredAt`.
-4. `WorkspaceJoinRequestDomain.cancelPendingByWorkspaceInTx` flips every `pending` join request to `cancelled`, or to `expired` when it is already past `expiredAt`.
+4. `WorkspaceJoinRequestDomain.cancelPendingByWorkspaceInTx` flips every `pending` join request to `canceled`, or to `expired` when it is already past `expiredAt`.
 
 - A workspace that is already deleted, or a write conflict in the transaction, throws `WorkspaceNotFoundException` (404, `51600`).
 - After the commit, `workspaceDeleted` is staged and `ActivityLogInterceptor` writes it after the handler returns.
@@ -628,7 +628,7 @@ Two layers, and they are not the same check.
 - Turning the `workspace` flag off closes that whole surface.
 - Admin-scope routes are not flagged and stay reachable.
 
-**Metadata level.** Two sub-keys on the same flag are asserted inside the owning domain, at the point where they govern behaviour:
+**Metadata level.** Two sub-keys on the same flag are asserted inside the owning domain, at the point where they govern behavior:
 
 | Sub-key | Gates |
 | --- | --- |

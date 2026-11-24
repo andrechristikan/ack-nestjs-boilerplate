@@ -356,7 +356,7 @@ QUEUE_REDIS_URL=redis://localhost:6379/1
 - Background job queues (DB 1)
 - Rate limiting data
 
-**Unreachable:** a Redis call that must succeed, such as the session check of a JWT-protected request, answers `RedisUnavailableException` (`52400`, HTTP 503) when the Keyv client is not connected. A cache read elsewhere falls through as a miss. The per-call behaviour is in [Cache][ref-doc-cache].
+**Unreachable:** a Redis call that must succeed, such as the session check of a JWT-protected request, answers `RedisUnavailableException` (`52400`, HTTP 503) when the Keyv client is not connected. A cache read elsewhere falls through as a miss. The per-call behavior is in [Cache][ref-doc-cache].
 
 For cache implementation, see [Cache][ref-doc-cache].
 

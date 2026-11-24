@@ -169,7 +169,7 @@ A revoke reaches `SessionCache.deleteLogins` through the session queue:
 - `SessionQueue.purgeLogins` enqueues through `QueueBase.addSideEffect`, so a failed enqueue is logged and reported to Sentry and the committed revoke still answers success.
 - A revocation takes effect for cached logins when the job runs.
 - Each path then stages its activity rows.
-- Queue behaviour: [Queue][ref-doc-queue]. Flow narrative: [Authentication][ref-doc-authentication].
+- Queue behavior: [Queue][ref-doc-queue]. Flow narrative: [Authentication][ref-doc-authentication].
 
 A refresh rotates the entry with `updateLogin` after its database commit:
 

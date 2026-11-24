@@ -637,7 +637,7 @@ flowchart TD
 
 One seed covers term policies:
 
-```
+```text
 src/migration/seeds/migration.term-policy.seed.ts  # command: termPolicy
 ```
 

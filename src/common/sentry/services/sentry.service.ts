@@ -9,10 +9,14 @@ export class SentryService {
 
     captureException(
         exception: unknown,
-        captureContext?: CaptureContext
+        captureContext: CaptureContext | null
     ): void {
         try {
-            Sentry.captureException(exception, captureContext);
+            if (captureContext === null) {
+                Sentry.captureException(exception);
+            } else {
+                Sentry.captureException(exception, captureContext);
+            }
         } catch (error: unknown) {
             this.logger.error(error, 'Failed to send exception to Sentry');
         }
@@ -29,10 +33,14 @@ export class SentryService {
     log(
         level: EnumLoggerLevel,
         message: string,
-        attributes?: Log['attributes']
+        attributes: Log['attributes'] | null
     ): void {
         try {
-            Sentry.logger[level](message, attributes);
+            if (attributes === null) {
+                Sentry.logger[level](message);
+            } else {
+                Sentry.logger[level](message, attributes);
+            }
         } catch (error: unknown) {
             this.logger.error(error, 'Failed to send log to Sentry');
         }

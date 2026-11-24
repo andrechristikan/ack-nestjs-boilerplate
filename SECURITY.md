@@ -19,7 +19,7 @@ Report privately through GitHub Security Advisories:
 
 If you cannot use the advisory flow, email the maintainer directly:
 
-📧 **andrechristikan@gmail.com**
+📧 **<andrechristikan@gmail.com>**
 
 Please include:
 

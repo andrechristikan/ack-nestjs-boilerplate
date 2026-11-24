@@ -142,7 +142,7 @@ export class UserVerificationService {
         apiKeyContext: IApiKeyContext,
         verification: Verification
     ): Promise<void> {
-        const verifiedAt = this.helperDateService.create();
+        const verifiedAt = this.helperDateService.now();
         const isMarkedUsed = await this.userVerificationRepository.markUsedInTx(
             tx,
             verification.id,
@@ -218,7 +218,7 @@ export class UserVerificationService {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<User> {
-        const verifiedAt = this.helperDateService.create();
+        const verifiedAt = this.helperDateService.now();
 
         return this.userRepository.markVerifiedBySocialInTx(
             tx,
@@ -234,7 +234,7 @@ export class UserVerificationService {
         email: string
     ): Promise<void> {
         const verification = this.userVerificationUtil.createEmail();
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
 
         await this.userVerificationRepository.createReplacingActiveInTx(
             tx,
@@ -435,7 +435,7 @@ export class UserVerificationService {
         id: string,
         userId: string
     ): Promise<boolean> {
-        const verifiedAt = this.helperDateService.create();
+        const verifiedAt = this.helperDateService.now();
 
         return this.userVerificationRepository.markUsedInTx(
             tx,
@@ -477,7 +477,7 @@ export class UserVerificationService {
 
     /** Deletes the verifications that expired longer ago than verification.retentionInMs; returns the count. */
     async purgeExpired(): Promise<number> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const retention = this.helperDateService.createDuration({
             milliseconds: this.retentionInMs,
         });

@@ -88,7 +88,7 @@ export class SessionService {
         sessionId: string,
         key: string
     ): Promise<ISessionLogin | null> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const idleSince = this.helperDateService.backward(
             now,
             Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
@@ -172,7 +172,7 @@ export class SessionService {
         userId: string,
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const idleSince = this.helperDateService.backward(
             now,
             Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
@@ -185,7 +185,7 @@ export class SessionService {
         );
     }
 
-    /** True when the session row is live and holds the token's jti; a differing cached digest is invalidated and the row read once more; a Redis connection error throws. */
+    /** True when the login entry, read through from the live session row, holds the token's jti digest; a differing cached digest is invalidated and read through once more; a Redis connection error throws. */
     async isLoginActive(
         userId: string,
         sessionId: string,
@@ -218,9 +218,8 @@ export class SessionService {
         );
     }
 
-    /** Deletes the sessions that expired longer ago than session.retentionInMs; returns the count. */
     async purgeExpired(): Promise<number> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const retention = this.helperDateService.createDuration({
             milliseconds: this.retentionInMs,
         });
@@ -270,7 +269,7 @@ export class SessionService {
     /** Answers whether the session row is unrevoked, inside its expiry and idle bounds, and holds the digest of the jti. */
     async existsLiveByJti(sessionId: string, jti: string): Promise<boolean> {
         const jtiDigest = this.helperHashService.sha256Hash(jti);
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const idleSince = this.helperDateService.backward(
             now,
             Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
@@ -291,7 +290,7 @@ export class SessionService {
     ): Promise<boolean> {
         const oldJtiDigest = this.helperHashService.sha256Hash(oldJti);
         const newJtiDigest = this.helperHashService.sha256Hash(newJti);
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const idleSince = this.helperDateService.backward(
             now,
             Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
@@ -390,7 +389,7 @@ export class SessionService {
         );
     }
 
-    /** Revokes the live sessions of a device ownership on the caller's transaction and adds their cache purge row when any was revoked; returns the revoked refs. */
+    /** Revokes the unrevoked sessions of a device ownership on the caller's transaction and adds their cache purge row when any was revoked; returns the revoked refs. */
     async revokeByDeviceOwnershipInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -417,7 +416,7 @@ export class SessionService {
         return sessions;
     }
 
-    /** Revokes the live sessions of the device ownerships on the caller's transaction and adds, per affected user, the cache purge row and a userSessionRevokedByDeviceLogin entry; adds nothing when no session was live. */
+    /** Revokes the unrevoked sessions of the device ownerships on the caller's transaction and adds, per affected user, the cache purge row and a userSessionRevokedByDeviceLogin entry; adds nothing when none was revoked. */
     async revokeByDeviceOwnershipIdsInTx(
         tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,

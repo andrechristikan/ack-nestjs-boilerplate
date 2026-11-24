@@ -1197,7 +1197,7 @@ async checkAws(): Promise<IResponseReturn<HealthAwsResponseDto>> {
 
 **Header Format:**
 
-```
+```text
 x-api-key: ${key}:${secret}
 ```
 
@@ -1422,7 +1422,7 @@ Used to validate **access tokens**.
 
 **Redis Key Pattern:**
 
-```
+```text
 User:{userId}:Session:{sessionId}
 ```
 

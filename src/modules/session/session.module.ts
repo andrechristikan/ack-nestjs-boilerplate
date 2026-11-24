@@ -7,7 +7,7 @@ import { UserModule } from '@modules/user/user.module';
 import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 
-/** Shared module: SessionService for the JWT access strategy, the user module, and the user and device use cases; SessionUtil for the user use cases. */
+/** Shared module: SessionService for the JWT access strategy, the user module, and the user, mfa, and device use cases; SessionUtil for the user use cases. */
 @Global()
 @Module({})
 export class SessionModule {
@@ -21,7 +21,7 @@ export class SessionModule {
                 SessionCache,
                 SessionUtil,
             ],
-            exports: [SessionService, SessionCache, SessionUtil],
+            exports: [SessionService, SessionUtil],
             imports: [ActivityLogModule, UserModule],
         };
     }

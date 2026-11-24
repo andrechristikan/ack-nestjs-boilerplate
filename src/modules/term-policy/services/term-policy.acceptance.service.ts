@@ -105,7 +105,7 @@ export class TermPolicyAcceptanceService {
             return;
         }
 
-        const acceptedAt = this.helperDateService.create();
+        const acceptedAt = this.helperDateService.now();
         const types = [...new Set(entries.flatMap(entry => entry.types))];
         const refs =
             await this.termPolicyRepository.findLatestPublishedByTypesInTx(
@@ -138,7 +138,7 @@ export class TermPolicyAcceptanceService {
         termPolicy: ITermPolicyRef
     ): Promise<void> {
         const userId = authContext.userId;
-        const acceptedAt = this.helperDateService.create();
+        const acceptedAt = this.helperDateService.now();
         await this.termPolicyRepository.acceptInTx(
             tx,
             userId,

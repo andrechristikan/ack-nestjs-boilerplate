@@ -100,7 +100,8 @@ describe('AppHttpFilter', () => {
 
             expect(error).toHaveBeenCalledTimes(1);
             expect(sentryService.captureException).toHaveBeenCalledWith(
-                exception
+                exception,
+                null
             );
             expect(warn).not.toHaveBeenCalled();
         });
@@ -245,7 +246,8 @@ describe('AppHttpFilter', () => {
             filter['sendToSentry'](exception);
 
             expect(sentryService.captureException).toHaveBeenCalledWith(
-                exception
+                exception,
+                null
             );
         });
 

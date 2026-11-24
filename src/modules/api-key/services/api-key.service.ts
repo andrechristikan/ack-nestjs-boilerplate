@@ -150,7 +150,7 @@ export class ApiKeyService {
     }
 
     assertNotExpired(apiKey: IApiKey): void {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const isExpired = this.isExpired(apiKey.endAt, now);
         if (isExpired) {
             throw new ApiKeyExpiredException();
@@ -162,7 +162,7 @@ export class ApiKeyService {
             return;
         }
 
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         if (startAt <= now) {
             throw new ApiKeyStartAtNotFutureException();
         }
@@ -176,7 +176,7 @@ export class ApiKeyService {
         const endAtDay = this.helperDateService.create(endAt, {
             dayOf: EnumHelperDateDayOf.end,
         });
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         if (endAtDay <= now) {
             throw new ApiKeyEndAtNotFutureException();
         }
@@ -331,7 +331,7 @@ export class ApiKeyService {
         }
 
         const { key, secret } = header;
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
         const cacheKey = this.apiKeyCache.buildApiKeyKey(key);
         const lease = this.apiKeyCache.buildApiKeyLease(key);
         const apiKey = await this.cacheService.readThrough(

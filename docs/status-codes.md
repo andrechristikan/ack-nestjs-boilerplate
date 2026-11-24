@@ -228,7 +228,7 @@ Read `module` together with `statusCode` when branching on this one: `FileImport
 - `socialGoogleNotConfigured` and `socialAppleNotConfigured` are raised by `AuthSocialDomain` when no Google client ID or no Apple client ID is set.
 - `AuthDomain` passes them through unwrapped, so they never become `socialGoogleInvalid` or `socialAppleInvalid`.
 - `providerUnavailable` is raised by `AuthDomain` when the JWKS endpoint, Google's certificate fetch, or Apple's key fetch cannot be reached.
-    - `AuthUtil.toProviderUnavailableException` recognises the failure; a bad token never maps to it.
+    - `AuthUtil.toProviderUnavailableException` recognizes the failure; a bad token never maps to it.
     - It covers the JWT access and refresh guards and the Google and Apple sign-in verification.
 - `jwtGuardMissing` is raised by `UserGuard` and `@AuthJwtPayload()` when the request carries no JWT payload.
 

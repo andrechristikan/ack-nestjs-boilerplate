@@ -60,7 +60,7 @@ export class SessionRepository implements ISessionRepository {
         { where, ...others }: IPaginationQueryCursorParams,
         idleSince: Date
     ): Promise<IResponsePaginationReturn<ISessionList>> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
 
         return this.paginationService.cursor(
             this.databaseService.client.session,
@@ -83,7 +83,7 @@ export class SessionRepository implements ISessionRepository {
         sessionId: string,
         idleSince: Date
     ): Promise<ISessionLogin | null> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
 
         return this.databaseService.client.session.findFirst({
             where: {
@@ -108,7 +108,7 @@ export class SessionRepository implements ISessionRepository {
     ): Promise<Session> {
         const plainUserAgent = this.databaseUtil.toPlainObject(userAgent);
         const plainGeoLocation = this.databaseUtil.toPlainObject(geoLocation);
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
 
         return tx.session.create({
             data: {
@@ -132,7 +132,7 @@ export class SessionRepository implements ISessionRepository {
         jtiDigest: string,
         idleSince: Date
     ): Promise<boolean> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const session = await this.databaseService.client.session.findFirst({
             where: {
                 id: sessionId,
@@ -154,7 +154,7 @@ export class SessionRepository implements ISessionRepository {
         newJtiDigest: string,
         idleSince: Date
     ): Promise<boolean> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const { count } = await tx.session.updateMany({
             where: {
                 id: sessionId,

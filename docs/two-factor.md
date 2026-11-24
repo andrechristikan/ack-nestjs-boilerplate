@@ -114,7 +114,7 @@ Every verification attempt is counted before the code is checked, to block brute
 
 **Counter tracking:**
 
-```
+```text
 Attempt 1 (TOTP failed) → attempt = 1
 Attempt 2 (Backup code failed) → attempt = 2
 Attempt 3 (TOTP failed) → attempt = 3
@@ -169,7 +169,7 @@ Details: [Cache][ref-doc-cache].
 
 - `disable` accepts either method: the body carries `method` (`code` or `backupCodes`) with the matching `code` / `backupCode`.
 - `backup-code/regenerate` takes a `code` field only and pins the method to `code` on the server, so a backup code cannot be used to rotate the backup codes.
-- The credential being replaced never authorises its own replacement.
+- The credential being replaced never authorizes its own replacement.
 - Both routes run the same verification path as login, so both are subject to the attempt counter and the lockout.
 
 `setup` takes an optional `backupCode`:

@@ -62,7 +62,7 @@ export class TermPolicyUtil {
         return key.startsWith(prefix) && key.length > prefix.length;
     }
 
-    /** Builds the S3 key `{path}/{language}-{random}.{extension}` with the extension lowercased, dropping a leading slash. */
+    /** Builds the S3 key `{path}/{language}-{random}.{extension}` with the extension lowercased, dropping every leading slash. */
     getContentKey(
         type: EnumTermPolicyType,
         version: number,

@@ -8,7 +8,7 @@ export class AnalyticDateUtil {
     constructor(private readonly helperDateService: HelperDateService) {}
 
     windowRange(windowMs: number): IAnalyticDateRange {
-        const endDate = this.helperDateService.create();
+        const endDate = this.helperDateService.now();
         const startDate = this.helperDateService.backward(
             endDate,
             Duration.fromMillis(windowMs)

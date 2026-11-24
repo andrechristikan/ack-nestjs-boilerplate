@@ -465,7 +465,7 @@ export const AnalyticNearLockoutAvailableOrderBy = [
 ] as const satisfies ReadonlyArray<keyof IAnalyticNearLockout>;
 ```
 
-| Allow-list | Schema / OpenAPI | Parse behaviour |
+| Allow-list | Schema / OpenAPI | Parse behavior |
 | --- | --- | --- |
 | none | module `.omit`s `search` and declares no `orderBy` | no search predicate; order falls to `PaginationDefaultOrderBy` |
 | non-empty | module overrides the `search` `.meta` and declares `orderBy` over the allow-list | search → `contains` `OR`; an unlisted `orderBy` → 422 from zod |
@@ -497,7 +497,7 @@ A client plans around two consequences:
 
 Cursor routes also constrain what they will sort on:
 
-- Every field in a cursor route's `availableOrderBy` is immutable. A row whose sort key can change mid-scroll moves position, and no tiebreaker stabilises that.
+- Every field in a cursor route's `availableOrderBy` is immutable. A row whose sort key can change mid-scroll moves position, and no tiebreaker stabilizes that.
 - Where a module's offset route allows a mutable field that its cursor route cannot, the two carry separate constants, `<Module>DefaultAvailableOrderBy` and `<Module>CursorAvailableOrderBy`.
 - When every field is immutable, both routes share one constant.
 
@@ -697,7 +697,7 @@ this.paginationFilterUtil.dateBetween(
 
 **Query Parameters:**
 
-```
+```text
 ?orderBy=name:asc
 ```
 

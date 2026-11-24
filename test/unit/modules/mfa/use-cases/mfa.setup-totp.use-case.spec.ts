@@ -243,9 +243,9 @@ describe('MfaSetupTotpUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('rejects with the enrolment gate exception and calls no other collaborator', async () => {
+        it('rejects with the enrollment gate exception and calls no other collaborator', async () => {
             const failure = new FeatureFlagDisabledException();
-            mfaService.assertEnrolmentAllowed.mockRejectedValue(failure);
+            mfaService.assertEnrollmentAllowed.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -257,7 +257,7 @@ describe('MfaSetupTotpUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(mfaService.assertEnrolmentAllowed).toHaveBeenCalledWith(
+            expect(mfaService.assertEnrollmentAllowed).toHaveBeenCalledWith(
                 EnumMfaMethod.totp
             );
             expect(
@@ -384,9 +384,9 @@ describe('MfaSetupTotpUseCase', () => {
             expect(mfaTotpService.setupInTx).not.toHaveBeenCalled();
         });
 
-        it('asserts the enrolment gate and the setup together, before the re-authentication', async () => {
+        it('asserts the enrollment gate and the setup together, before the re-authentication', async () => {
             const gate = buildDeferred<void>();
-            mfaService.assertEnrolmentAllowed.mockReturnValue(gate.promise);
+            mfaService.assertEnrollmentAllowed.mockReturnValue(gate.promise);
             mfaTotpService.assertSetupAllowed.mockImplementation(async () => {
                 gate.resolve();
             });
@@ -405,7 +405,7 @@ describe('MfaSetupTotpUseCase', () => {
             expect(mfaTotpService.assertSetupAllowed).toHaveBeenCalledBefore(
                 userAuthService.checkReauthenticationPassword
             );
-            expect(mfaService.assertEnrolmentAllowed).toHaveBeenCalledBefore(
+            expect(mfaService.assertEnrollmentAllowed).toHaveBeenCalledBefore(
                 userAuthService.checkReauthenticationPassword
             );
         });

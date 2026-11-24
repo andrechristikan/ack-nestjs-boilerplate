@@ -125,7 +125,7 @@ export class MfaDeletePasskeyUseCase implements IAppUseCase<
                 mfaCheck.isEnabled
             );
 
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         try {
             await this.databaseService.withTransaction(async tx => {
                 await this.userAuthService.completeReauthenticationInTx(

@@ -9,6 +9,7 @@ import { FileExceedMaxDataImportException } from '@common/file/exceptions/file.e
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 import type { IFileCsvValidationOptions } from '@common/file/interfaces/file.interface';
 
+/** Takes config keys, not values: it runs at decoration time, before config resolves. */
 export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
     schema: TSchema,
     options?: IFileCsvValidationOptions
@@ -22,8 +23,6 @@ export function FileCsvValidationPipe<TSchema extends StandardSchemaV1>(
             private readonly configService: ConfigService,
             private readonly helperArrayService: HelperArrayService
         ) {
-            // Takes the config KEY, not the value: a pipe factory runs at
-            // decoration time, before config is resolved.
             this.maxDataImport = this.configService.get<number>(
                 options?.maxDataImportConfigKey ?? 'file.maxDataImport'
             )!;

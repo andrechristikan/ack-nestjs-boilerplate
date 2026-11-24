@@ -6,7 +6,7 @@ paths:
 
 # Testing
 
-A spec succeeds when it fails on a behaviour change. Load tests are not this suite.
+A spec succeeds when it fails on a behavior change. Load tests are not this suite.
 
 A unit spec's subject is one class (service, use case, util, cache class, guard, pipe, interceptor, filter, queue class, DTO); its doubles: `test-doubles.md`.
 
@@ -40,4 +40,4 @@ Under `test/`, a spec with a subject file is that file's name plus `.spec.ts`. E
 - `beforeAll` holds immutable setup (`vi.useFakeTimers()`); `afterAll` undoes `beforeAll`; no empty hook.
 - A partial argument match is `expect.objectContaining`; a built argument is captured through `mockImplementation`; a thrown `AppBaseException` through `rejects.toMatchObject` on `module` and `statusCode`. A private is called by index access and never stubbed. Cover every branch.
 - What each layer's spec asserts: `test-doubles.md`.
-- On the coverage path the spec follows `src/`: no production change beyond the compile-blocking typo `.claude/agents/tester.md` allows; pin the spec to current behaviour and record the defect with file and line. Never delete, `.skip`, or weaken a failing spec, lower the threshold, extend the exclude list, or add `/* v8 ignore */`. An elaborate mock is a design defect to report; `new Date()` is not.
+- On the coverage path the spec follows `src/`: no production change beyond the compile-blocking typo `.claude/agents/tester.md` allows; pin the spec to current behavior and record the defect with file and line. Never delete, `.skip`, or weaken a failing spec, lower the threshold, extend the exclude list, or add `/* v8 ignore */`. An elaborate mock is a design defect to report; `new Date()` is not.

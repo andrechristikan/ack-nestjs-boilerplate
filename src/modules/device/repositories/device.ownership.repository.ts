@@ -193,7 +193,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         isRevoked: Record<string, IPaginationEqual> | null,
         idleSince: Date
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
         const ownershipInclude = this.ownershipInclude(today, idleSince);
 
         return this.paginationService.offset(
@@ -216,7 +216,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         { where, ...others }: IPaginationQueryCursorParams,
         idleSince: Date
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
         const ownershipInclude = this.ownershipInclude(today, idleSince);
 
         return this.paginationService.cursor(
@@ -382,7 +382,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
     }
 
     async clearStaleTokens(thresholdInMs: number): Promise<number> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
         const thresholdDate = this.helperDateService.backward(
             today,
             Duration.fromMillis(thresholdInMs)

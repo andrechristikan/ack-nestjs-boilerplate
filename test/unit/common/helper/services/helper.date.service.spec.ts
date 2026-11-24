@@ -40,7 +40,7 @@ describe('HelperDateService', () => {
             vi.setSystemTime(new Date('2026-01-14T00:00:00.000Z'));
             const dateOfBirth = new Date('2000-01-15T00:00:00.000Z');
 
-            const result = service.calculateAge(dateOfBirth);
+            const result = service.calculateAge(dateOfBirth, null);
 
             expect(result).toBeInstanceOf(Duration);
             expect(result.as('years')).toBeCloseTo(26, 0);
@@ -165,18 +165,47 @@ describe('HelperDateService', () => {
         });
     });
 
-    describe('create', () => {
-        it('creates the current date when no date is given', () => {
-            const now = new Date('2026-01-01T12:00:00.000Z');
-            vi.setSystemTime(now);
+    describe('now', () => {
+        it('returns the current time in the configured zone', () => {
+            vi.setSystemTime(new Date('2026-01-01T12:00:00.000Z'));
 
-            const result = service.create();
+            const result = service.now();
 
             expect(result.getTime()).toBe(
                 DateTime.now().setZone('Asia/Jakarta').toJSDate().getTime()
             );
         });
 
+        it('snaps to the start of day', () => {
+            vi.setSystemTime(new Date('2026-01-01T12:34:56.000Z'));
+
+            const result = service.now({ dayOf: EnumHelperDateDayOf.start });
+
+            expect(result.getTime()).toBe(
+                DateTime.now()
+                    .setZone('Asia/Jakarta')
+                    .startOf('day')
+                    .toJSDate()
+                    .getTime()
+            );
+        });
+
+        it('snaps to the end of day', () => {
+            vi.setSystemTime(new Date('2026-01-01T12:34:56.000Z'));
+
+            const result = service.now({ dayOf: EnumHelperDateDayOf.end });
+
+            expect(result.getTime()).toBe(
+                DateTime.now()
+                    .setZone('Asia/Jakarta')
+                    .endOf('day')
+                    .toJSDate()
+                    .getTime()
+            );
+        });
+    });
+
+    describe('create', () => {
         it('creates from a given date with no snapping', () => {
             const date = new Date('2026-01-01T12:34:56.000Z');
 
@@ -220,26 +249,6 @@ describe('HelperDateService', () => {
                     .toJSDate()
                     .getTime()
             );
-        });
-    });
-
-    describe('createInstance', () => {
-        it('creates a DateTime instance from a given date', () => {
-            const date = new Date('2026-01-01T00:00:00.000Z');
-
-            const result = service.createInstance(date);
-
-            expect(result).toBeInstanceOf(DateTime);
-            expect(result.toJSDate().getTime()).toBe(date.getTime());
-        });
-
-        it('creates a DateTime instance for now when no date is given', () => {
-            const now = new Date('2026-01-01T00:00:00.000Z');
-            vi.setSystemTime(now);
-
-            const result = service.createInstance();
-
-            expect(result.toJSDate().getTime()).toBe(now.getTime());
         });
     });
 

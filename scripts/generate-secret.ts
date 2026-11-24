@@ -47,11 +47,6 @@ Examples:
   node scripts/generate-secret.ts mongo
 `;
 
-/**
- * Generates the secret targets — the JWT key pairs with their JWKS files, the
- * two encryption root secrets, and the MongoDB keyfile — one at a time, and optionally upserts only
- * that target's variables into the environment file.
- */
 class SecretGenerator {
     private readonly keyDir: string;
     private readonly accessJwksOutputPath: string;
@@ -99,10 +94,6 @@ class SecretGenerator {
         }
     }
 
-    /**
-     * Strips PEM armor and whitespace, leaving the raw base64 DER body suitable
-     * for environment variables and copy-paste.
-     */
     pemToBase64(pem: string): string {
         return pem
             .replace(/-----BEGIN (?:PRIVATE|PUBLIC) KEY-----/g, '')
@@ -147,9 +138,6 @@ class SecretGenerator {
         };
     }
 
-    /**
-     * Extracts the EC public-point coordinates and curve name from a PEM key.
-     */
     extractECParamsFromString(publicKeyString: string): {
         x: string;
         y: string;
@@ -176,9 +164,6 @@ class SecretGenerator {
         }
     }
 
-    /**
-     * Builds a signature-use JWK from EC parameters.
-     */
     createJwk(
         params: {
             x: string;
@@ -250,10 +235,6 @@ class SecretGenerator {
         return { accessKid, refreshKid };
     }
 
-    /**
-     * Draws one encryption root secret: 48 random bytes as 64 base64url
-     * characters.
-     */
     generateEncryptionSecret(): string {
         return crypto
             .randomBytes(EncryptionSecretLengthInBytes)
@@ -532,7 +513,6 @@ class SecretGenerator {
 
         fs.writeFileSync(envPath, envLines.join('\n'));
 
-        // The production container runs as the host owner of the file (DOCKER_APIS_UID), so 600 suffices.
         try {
             fs.chmodSync(envPath, 0o600);
         } catch {
@@ -569,7 +549,4 @@ function main(): void {
     }
 }
 
-/**
- * CLI entry point.
- */
 main();

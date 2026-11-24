@@ -63,7 +63,7 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<IMfaTotpSetup>> {
         const { user } = userContext;
         await Promise.all([
-            this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.totp),
+            this.mfaService.assertEnrollmentAllowed(EnumMfaMethod.totp),
             this.mfaTotpService.assertSetupAllowed(authContext.userId),
         ]);
         // Sequential by design: a credential proof, awaited alone

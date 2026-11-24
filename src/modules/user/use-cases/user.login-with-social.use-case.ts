@@ -441,7 +441,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             cookies,
             marketing,
         };
-        const loginAt = this.helperDateService.create();
+        const loginAt = this.helperDateService.now();
         // Sequential by design: a write after its checks
         const linkedUserId = await this.userSocialService.getUserIdBySubject(
             loginWith,

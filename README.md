@@ -8,7 +8,7 @@
 
 _[Request a feature][ref-ack-issues] or [report a bug][ref-ack-issues]._
 
-### Ideal For
+## Ideal For
 
 A good fit when you are building:
 
@@ -333,8 +333,6 @@ If this boilerplate helped you, buy me a coffee to keep this project alive.
 [ref-author-linkedin]: https://linkedin.com/in/andrechristikan
 [ref-author-email]: mailto:andrechristikan@gmail.com
 [ref-author-github]: https://github.com/andrechristikan
-[ref-author-paypal]: https://www.paypal.me/andrechristikan
-[ref-author-kofi]: https://ko-fi.com/andrechristikan
 
 <!-- CONTRIBUTORS -->
 
@@ -367,33 +365,14 @@ If this boilerplate helped you, buy me a coffee to keep this project alive.
 
 <!-- DOCS LINKS -->
 
-[ref-doc-activity-log]: docs/activity-log.md
-[ref-doc-authentication]: docs/authentication.md
 [ref-doc-authorization]: docs/authorization.md
-[ref-doc-cache]: docs/cache.md
-[ref-doc-configuration]: docs/configuration.md
 [ref-doc-database]: docs/database.md
-[ref-doc-environment]: docs/environment.md
-[ref-doc-feature-flag]: docs/feature-flag.md
-[ref-doc-file-upload]: docs/file-upload.md
-[ref-doc-handling-error]: docs/handling-error.md
 [ref-doc-installation]: docs/installation.md
 [ref-doc-release]: docs/release.md
-[ref-doc-logger]: docs/logger.md
-[ref-doc-message]: docs/language-message.md
 [ref-doc-notification]: docs/notification.md
-[ref-doc-pagination]: docs/pagination.md
-[ref-doc-project-structure]: docs/project-structure.md
-[ref-doc-queue]: docs/queue.md
-[ref-doc-request-validation]: docs/request-validation.md
-[ref-doc-response]: docs/response.md
-[ref-doc-security-and-middleware]: docs/security-and-middleware.md
-[ref-doc-third-party-integration]: docs/third-party-integration.md
-[ref-doc-term-policy]: docs/term-policy.md
 [ref-doc-two-factor]: docs/two-factor.md
 [ref-doc-vault]: docs/vault.md
 [ref-doc-contributing]: CONTRIBUTING.md
-[ref-doc-doc]: docs/doc.md
 [ref-doc-workspace]: docs/workspace.md
 [ref-doc-project]: docs/project.md
 [ref-doc-analytic]: docs/analytic.md

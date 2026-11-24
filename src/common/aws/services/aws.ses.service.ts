@@ -127,7 +127,7 @@ export class AwsSesService implements OnModuleInit {
     }
 
     async listTemplates(
-        nextToken?: string
+        nextToken: string | null
     ): Promise<ListTemplatesCommandOutput> {
         const isInitialized = this.isInitialized();
         if (!isInitialized) {
@@ -143,7 +143,7 @@ export class AwsSesService implements OnModuleInit {
 
         const command: ListTemplatesCommand = new ListTemplatesCommand({
             MaxItems: 20,
-            NextToken: nextToken,
+            ...(nextToken !== null && { NextToken: nextToken }),
         });
 
         const listTemplate: ListTemplatesCommandOutput =

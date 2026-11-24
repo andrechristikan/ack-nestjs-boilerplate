@@ -465,7 +465,7 @@ LOGGER_INTO_FILE=true
 
 ### File Structure
 
-```
+```text
 logs/
 └── api.log              # Current log file (rotates daily or at 10MB)
 ```
@@ -640,7 +640,7 @@ The logger supports two output modes: Pretty mode for development and JSON mode 
 
 Development-friendly colored output with structured formatting using `pino-pretty`:
 
-```
+```text
 INFO [2025-12-29 15:18:54.496 +0700]: [UserDomain] Creating new user
     requestId: "0192f3c4-7a1e-7b52-9c3d-5e6f7a8b9c0d"
     correlationId: "req-abc-123"

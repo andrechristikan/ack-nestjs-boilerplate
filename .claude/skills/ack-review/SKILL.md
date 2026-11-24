@@ -32,7 +32,7 @@ Spec: <the spec path>
 Plan: <the plan path>
 Changed paths: <git diff --name-only HEAD plus git ls-files --others --exclude-standard>
 Rules to read: <the output of bash .claude/hooks/rules.sh over the changed paths, pasted>
-Decisions to honour: <the plan's line>
+Decisions to honor: <the plan's line>
 Output: .scratch/<feature>/review.md
 ```
 
@@ -64,7 +64,7 @@ One `coder` row at a time, in number order:
 Agent: coder
 Pin: <the finding's files, cause at file:line, and exact change, copied from review.md>
 First failing spec: <the finding's line>
-Decisions to honour: <the plan's line>
+Decisions to honor: <the plan's line>
 ```
 
 - `DONE` with the spec quoted failing, then passing: set the row's `Status` to `done`.

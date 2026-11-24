@@ -145,7 +145,7 @@ All errors are formatted into `ResponseErrorDto`:
 
 All filters set these headers automatically:
 
-```
+```text
 x-custom-lang: en
 x-timestamp: 1660190937231
 x-timezone: Asia/Jakarta

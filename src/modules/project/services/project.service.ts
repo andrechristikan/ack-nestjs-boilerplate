@@ -76,7 +76,6 @@ export class ProjectService {
         );
     }
 
-    /** Lists projects in the workspace: a workspace `owner` or `admin` sees every project, everyone else sees only the ones they hold a `ProjectMember` row for. */
     async getListCursorByMember(
         workspaceId: string,
         workspaceMember: WorkspaceMember,

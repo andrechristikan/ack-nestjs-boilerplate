@@ -30,7 +30,7 @@ Open the owner's enum and find a member that already means the thing. Add a memb
 
 ## 4. Claim a block for a new module
 
-1. Scan (step 1); take the next free hundred that overlaps no neighbour.
+1. Scan (step 1); take the next free hundred that overlaps no neighbor.
 2. Create `src/modules/<module>/enums/<module>.status-code.enum.ts` with the first member at the block base (`EnumDeviceStatusCodeError`, `src/modules/device/enums/device.status-code.enum.ts`).
 3. Report the claim in the hand-back: module, base, next free hundred, members.
 

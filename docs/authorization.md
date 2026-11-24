@@ -7,7 +7,7 @@ Decorator locations:
 - **PolicyProtected**: `src/modules/policy/decorators`
 - **TermPolicyAcceptanceProtected**: `src/modules/term-policy/decorators`
 
-The workspace and project decorators (`WorkspaceProtected`, `WorkspaceMemberProtected`, `ProjectProtected`, `ProjectMemberProtected`) are summarised here and documented in full by [Workspace][ref-doc-workspace] and [Project][ref-doc-project].
+The workspace and project decorators (`WorkspaceProtected`, `WorkspaceMemberProtected`, `ProjectProtected`, `ProjectMemberProtected`) are summarized here and documented in full by [Workspace][ref-doc-workspace] and [Project][ref-doc-project].
 
 ## Overview
 

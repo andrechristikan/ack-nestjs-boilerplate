@@ -70,7 +70,6 @@ import { Module } from '@nestjs/common';
         },
     ],
     exports: [
-        AnalyticCache,
         AnalyticDateService,
         AnalyticAnomalyService,
         AnalyticFraudService,

@@ -110,7 +110,7 @@ export class PaginationQueryUtil {
 
     private validateAndParsePerPage(
         perPage: number | string | null,
-        defaultPerPage: number = PaginationDefaultPerPage
+        defaultPerPage: number
     ): number {
         let finalPerPage = perPage ?? defaultPerPage;
 
@@ -170,7 +170,7 @@ export class PaginationQueryUtil {
         const page = this.validateAndParsePage(dto.page ?? null);
         const perPage = this.validateAndParsePerPage(
             dto.perPage ?? null,
-            options.defaultPerPage
+            options.defaultPerPage ?? PaginationDefaultPerPage
         );
         const { where, search, name, orderBy } = this.resolveSearchAndOrder(
             dto.search ?? null,
@@ -212,7 +212,7 @@ export class PaginationQueryUtil {
         const availableSearch = options.availableSearch ?? [];
         const perPage = this.validateAndParsePerPage(
             dto.perPage ?? null,
-            options.defaultPerPage
+            options.defaultPerPage ?? PaginationDefaultPerPage
         );
         const cursor = this.validateAndSanitizeCursor(dto.cursor ?? null);
         const { where, search, name, orderBy } = this.resolveSearchAndOrder(

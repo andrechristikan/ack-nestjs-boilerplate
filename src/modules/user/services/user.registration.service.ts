@@ -62,7 +62,7 @@ export class UserRegistrationService {
             : EnumFeatureFlagKey.loginWithApple;
     }
 
-    /** False when a user already holds the normalized email or the provider flag's signUpAllowed sub-key is not set. */
+    /** False when an undeleted user holds the normalized email, or the provider flag is off or its signUpAllowed sub-key is not true. */
     async isSocialSignUpAllowed(
         email: string,
         loginWith: EnumUserLoginWith
@@ -149,7 +149,7 @@ export class UserRegistrationService {
     ): IUserCreateWithWorkspaceInput {
         const userId = this.databaseUtil.createId();
         const normalizedEmail = this.userUtil.normalizeEmail(email);
-        const verifiedAt = this.helperDateService.create();
+        const verifiedAt = this.helperDateService.now();
         const acceptedTermPolicyTypes = this.buildAcceptedTermPolicyTypes(
             cookies,
             marketing

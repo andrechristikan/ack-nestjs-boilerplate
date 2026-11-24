@@ -49,7 +49,7 @@ export class ProjectSoftDeleteUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         const project = projectContext.project;
         const actorId = authContext.userId;
-        const deletedAt = this.helperDateService.create();
+        const deletedAt = this.helperDateService.now();
         try {
             await this.databaseService.withTransaction(async tx => {
                 await this.projectService.softDeleteProjectInTx(

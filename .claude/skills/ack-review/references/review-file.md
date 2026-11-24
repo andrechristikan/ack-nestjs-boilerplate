@@ -36,9 +36,9 @@ New names in this example, not in the checkout: the `country-inactive` feature f
 
 - Coverage has one row per rule file the dispatch pasted, one per decision entry it named, one for the spec, and one per endpoint and job the change adds or changes. A flow row names the sibling flow it was read beside.
 - A row reads `pass` or the finding numbers. A rule file that was not read whole has no `pass`.
-- A finding is numbered and labelled Critical, Important, or Minor. Its five lines are all present.
+- A finding is numbered and labeled Critical, Important, or Minor. Its five lines are all present.
 - **Change** names files, classes, methods, and the shape of the result. Where two fixes would work, the reviewer picks one and says which; `coder` reads no option.
-- **First failing spec** names the spec file and the behaviour its first assertion states.
+- **First failing spec** names the spec file and the behavior its first assertion states.
 - No finding without a clause or a spec line under **Breaks**.
 
 ## What the session adds

@@ -161,7 +161,8 @@ describe('AuthJwtService', () => {
             const result = service.createRefreshToken(
                 'user-1',
                 'jti-value',
-                payload
+                payload,
+                null
             );
 
             expect(result).toBe('signed-refresh-token');

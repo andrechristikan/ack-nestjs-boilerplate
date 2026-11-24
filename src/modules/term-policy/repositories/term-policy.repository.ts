@@ -357,7 +357,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         termPolicyId: string,
         contents: ITermPolicyContent[]
     ): Promise<boolean> {
-        const publishedAt = this.helperDateService.create();
+        const publishedAt = this.helperDateService.now();
 
         const { count } = await tx.termPolicy.updateMany({
             where: {

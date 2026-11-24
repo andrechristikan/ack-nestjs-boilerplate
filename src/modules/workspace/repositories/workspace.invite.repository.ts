@@ -64,7 +64,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         filter: Prisma.WorkspaceInviteWhereInput,
         updatedBy: string
     ): Promise<void> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const pending = await tx.workspaceInvite.findMany({
             where: {
                 ...filter,
@@ -95,7 +95,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
     }
 
     async expireStalePending(): Promise<number> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
 
         let total = 0;
         let fetched: number;
@@ -135,7 +135,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         workspaceId: string,
         email: string
     ): Promise<void> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const pending = await tx.workspaceInvite.findFirst({
             where: {
                 workspaceId,
@@ -191,7 +191,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
     async findPendingByHashedToken(
         hashedToken: string
     ): Promise<IWorkspaceInvitePreview | null> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
 
         return this.databaseService.client.workspaceInvite.findFirst({
             where: {
@@ -252,7 +252,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
             nonce,
         }: IWorkspaceInviteCreateData
     ): Promise<WorkspaceInvite> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const stale = await tx.workspaceInvite.findFirst({
             where: {
                 nonce,

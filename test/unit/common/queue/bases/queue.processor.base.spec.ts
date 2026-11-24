@@ -296,7 +296,10 @@ describe('QueueProcessorBase', () => {
             processor.onFailed(undefined, error);
 
             expect(sentryService.captureException).toHaveBeenCalledTimes(1);
-            expect(sentryService.captureException).toHaveBeenCalledWith(error);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                error,
+                null
+            );
         });
 
         it('reports to Sentry with the job tag and context when the error is an UnrecoverableError instance', () => {

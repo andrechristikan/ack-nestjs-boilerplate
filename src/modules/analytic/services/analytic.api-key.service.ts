@@ -17,7 +17,7 @@ export class AnalyticApiKeyService {
     ) {}
 
     private async loadApiKeyActiveExpired(): Promise<IAnalyticApiKeyActiveExpired> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
 
         return this.analyticApiKeyRepository.findActiveExpired(now);
     }

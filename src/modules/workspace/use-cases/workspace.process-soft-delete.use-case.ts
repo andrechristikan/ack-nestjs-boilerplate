@@ -44,7 +44,7 @@ export class WorkspaceProcessSoftDeleteUseCase implements IAppUseCase<
         const message = this.messageService.setMessage(
             'workspace.queue.softDelete'
         );
-        const deletedAt = this.helperDateService.create();
+        const deletedAt = this.helperDateService.now();
         try {
             await this.databaseService.withTransaction(
                 async tx => {

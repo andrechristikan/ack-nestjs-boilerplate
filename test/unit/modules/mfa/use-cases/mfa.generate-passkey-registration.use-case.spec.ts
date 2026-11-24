@@ -57,23 +57,23 @@ describe('MfaGeneratePasskeyRegistrationUseCase', () => {
     });
 
     describe('execute', () => {
-        it('rejects with the enrolment gate exception and calls no other collaborator', async () => {
+        it('rejects with the enrollment gate exception and calls no other collaborator', async () => {
             const failure = new FeatureFlagDisabledException();
-            mfaService.assertEnrolmentAllowed.mockRejectedValue(failure);
+            mfaService.assertEnrollmentAllowed.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(authContext, userContext)
             ).rejects.toBe(failure);
 
-            expect(mfaService.assertEnrolmentAllowed).toHaveBeenCalledWith(
+            expect(mfaService.assertEnrollmentAllowed).toHaveBeenCalledWith(
                 EnumMfaMethod.passkey
             );
             expect(mfaChallengeService.create).not.toHaveBeenCalled();
         });
 
-        it('reads the options and asserts the enrolment gate together', async () => {
+        it('reads the options and asserts the enrollment gate together', async () => {
             const gate = buildDeferred<void>();
-            mfaService.assertEnrolmentAllowed.mockReturnValue(gate.promise);
+            mfaService.assertEnrollmentAllowed.mockReturnValue(gate.promise);
             mfaPasskeyService.getRegistrationOptions.mockImplementation(
                 async () => {
                     gate.resolve();

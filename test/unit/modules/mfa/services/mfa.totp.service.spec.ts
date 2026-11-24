@@ -26,7 +26,6 @@ describe('MfaTotpService', () => {
     let service: MfaTotpService;
 
     const tx = {} as IDatabaseTransactionClient;
-    // cspell:disable-next-line
     const base32Secret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
     const stepInSeconds = 30;
     const now = new Date('2026-03-01T00:00:00.000Z');
@@ -350,7 +349,8 @@ describe('MfaTotpService', () => {
                 expect.objectContaining({
                     module: 'helper',
                     statusCode: EnumHelperStatusCodeError.decryptFailed,
-                })
+                }),
+                null
             );
         });
 

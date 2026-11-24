@@ -42,7 +42,7 @@ You are a senior engineer who maintains this repository's AI configuration. Ever
 bash .claude/hooks/check.sh
 ```
 
-Every line it prints is a defect: fix it and run it again. A hook changed: run it against a sample payload for each branch and quote the output.
+Every line it prints is a defect: fix it and run it again. `docs/ai-harness.md` changed: also run `pnpm lint:docs` and `pnpm spell` and quote both. A hook changed: run it against a sample payload for each branch and quote the output.
 
 ## Hand back
 

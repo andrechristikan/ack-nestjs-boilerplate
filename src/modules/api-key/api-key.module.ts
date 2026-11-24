@@ -6,7 +6,7 @@ import { ApiKeyUtil } from '@modules/api-key/utils/api-key.util';
 import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 
-/** Shared module: ApiKeyService for the x-api-key guards, ApiKeyCredentialUtil and ApiKeyCache for the API key seed. */
+/** Shared module: ApiKeyService for the x-api-key guards and the API key admin use cases, ApiKeyUtil for those use cases, ApiKeyCredentialUtil for the API key seed. */
 @Global()
 @Module({})
 export class ApiKeyModule {
@@ -21,12 +21,7 @@ export class ApiKeyModule {
                 ApiKeyCache,
                 ApiKeyUtil,
             ],
-            exports: [
-                ApiKeyService,
-                ApiKeyCredentialUtil,
-                ApiKeyCache,
-                ApiKeyUtil,
-            ],
+            exports: [ApiKeyService, ApiKeyCredentialUtil, ApiKeyUtil],
             imports: [],
         };
     }

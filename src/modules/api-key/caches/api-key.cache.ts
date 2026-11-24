@@ -38,7 +38,6 @@ export class ApiKeyCache {
         return { key: leaseKey, ttlInMs: this.leaseTtlInMs };
     }
 
-    /** The entry key and its lease key. */
     buildApiKeyKeys(key: string): string[] {
         return [this.buildApiKeyKey(key), this.buildApiKeyLeaseKey(key)];
     }

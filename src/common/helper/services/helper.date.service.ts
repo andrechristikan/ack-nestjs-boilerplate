@@ -13,8 +13,25 @@ export class HelperDateService {
         this.timezone = this.configService.get<string>('app.timezone')!;
     }
 
-    calculateAge(dateOfBirth: Date, fromYear?: number): Duration {
-        let dateTime = DateTime.now()
+    private snapDayOf(
+        dateTime: DateTime,
+        options?: IHelperDateCreateOptions
+    ): Date {
+        let mDate = dateTime.setZone(this.timezone);
+
+        if (options?.dayOf === EnumHelperDateDayOf.start) {
+            mDate = mDate.startOf('day');
+        } else if (options?.dayOf === EnumHelperDateDayOf.end) {
+            mDate = mDate.endOf('day');
+        }
+
+        return mDate.toJSDate();
+    }
+
+    /** Counts the age to the current year when `fromYear` is `null`. */
+    calculateAge(dateOfBirth: Date, fromYear: number | null): Duration {
+        const now = this.now();
+        let dateTime = DateTime.fromJSDate(now)
             .setZone(this.timezone)
             .plus({
                 day: 1,
@@ -34,7 +51,7 @@ export class HelperDateService {
                 millisecond: 0,
             });
 
-        if (fromYear) {
+        if (fromYear !== null) {
             dateTime = dateTime.set({ year: fromYear });
         }
 
@@ -84,58 +101,23 @@ export class HelperDateService {
         return DateTime.fromJSDate(date).setZone(this.timezone).toISOTime()!;
     }
 
-    create(date?: Date, options?: IHelperDateCreateOptions): Date {
-        let mDate = (date ? DateTime.fromJSDate(date) : DateTime.now()).setZone(
-            this.timezone
-        );
-
-        if (options?.dayOf && options?.dayOf === EnumHelperDateDayOf.start) {
-            mDate = mDate.startOf('day');
-        } else if (
-            options?.dayOf &&
-            options?.dayOf === EnumHelperDateDayOf.end
-        ) {
-            mDate = mDate.endOf('day');
-        }
-
-        return mDate.toJSDate();
+    now(options?: IHelperDateCreateOptions): Date {
+        return this.snapDayOf(DateTime.now(), options);
     }
 
-    createInstance(date?: Date): DateTime {
-        return date ? DateTime.fromJSDate(date) : DateTime.now();
+    create(date: Date, options?: IHelperDateCreateOptions): Date {
+        return this.snapDayOf(DateTime.fromJSDate(date), options);
     }
 
     createFromIso(iso: string, options?: IHelperDateCreateOptions): Date {
-        let date = DateTime.fromISO(iso).setZone(this.timezone);
-
-        if (options?.dayOf && options?.dayOf === EnumHelperDateDayOf.start) {
-            date = date.startOf('day');
-        } else if (
-            options?.dayOf &&
-            options?.dayOf === EnumHelperDateDayOf.end
-        ) {
-            date = date.endOf('day');
-        }
-
-        return date.toJSDate();
+        return this.snapDayOf(DateTime.fromISO(iso), options);
     }
 
     createFromTimestamp(
         timestamp: number,
         options?: IHelperDateCreateOptions
     ): Date {
-        let date = DateTime.fromMillis(timestamp).setZone(this.timezone);
-
-        if (options?.dayOf && options?.dayOf === EnumHelperDateDayOf.start) {
-            date = date.startOf('day');
-        } else if (
-            options?.dayOf &&
-            options?.dayOf === EnumHelperDateDayOf.end
-        ) {
-            date = date.endOf('day');
-        }
-
-        return date.toJSDate();
+        return this.snapDayOf(DateTime.fromMillis(timestamp), options);
     }
 
     set(date: Date, units: DateObjectUnits): Date {

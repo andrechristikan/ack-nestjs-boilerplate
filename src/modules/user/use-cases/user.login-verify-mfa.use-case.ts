@@ -82,7 +82,7 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
 
             return this.mfaService.throwFailedAttempt(failure, isLocked);
         }
-        const loginAt = this.helperDateService.create();
+        const loginAt = this.helperDateService.now();
         try {
             const { tokens } = await this.databaseService.withTransaction(
                 async tx => {

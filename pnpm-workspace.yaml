@@ -7,6 +7,7 @@ allowBuilds:
     '@scarf/scarf': true
     '@sentry/node-cpu-profiler': true
     '@swc/core': true
+    '@vvago/vale': true
     msgpackr-extract: true
     prisma: true
     protobufjs: true

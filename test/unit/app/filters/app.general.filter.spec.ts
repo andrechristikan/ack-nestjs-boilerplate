@@ -123,7 +123,8 @@ describe('AppGeneralFilter', () => {
 
             expect(error).toHaveBeenCalledTimes(1);
             expect(sentryService.captureException).toHaveBeenCalledWith(
-                exception
+                exception,
+                null
             );
             expect(warn).not.toHaveBeenCalled();
         });
@@ -208,7 +209,10 @@ describe('AppGeneralFilter', () => {
                 'redis.error.unavailable',
                 { customLanguage: EnumMessageLanguage.en }
             );
-            expect(sentryService.captureException).toHaveBeenCalledWith(error);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                error,
+                null
+            );
         });
 
         it('logs and reports every RedisUnavailableException', async () => {
@@ -240,7 +244,8 @@ describe('AppGeneralFilter', () => {
             expect(error).toHaveBeenCalledTimes(2);
             expect(sentryService.captureException).toHaveBeenCalledTimes(2);
             expect(sentryService.captureException).toHaveBeenCalledWith(
-                rawError
+                rawError,
+                null
             );
         });
 
@@ -254,7 +259,8 @@ describe('AppGeneralFilter', () => {
             expect(error).toHaveBeenCalledTimes(2);
             expect(sentryService.captureException).toHaveBeenCalledTimes(2);
             expect(sentryService.captureException).toHaveBeenCalledWith(
-                exception
+                exception,
+                null
             );
             expect(response.status).toHaveBeenCalledWith(
                 HttpStatus.NOT_IMPLEMENTED
@@ -285,7 +291,8 @@ describe('AppGeneralFilter', () => {
             expect(error).toHaveBeenCalledTimes(2);
             expect(sentryService.captureException).toHaveBeenCalledTimes(2);
             expect(sentryService.captureException).toHaveBeenCalledWith(
-                rawError
+                rawError,
+                null
             );
         });
 
@@ -299,7 +306,10 @@ describe('AppGeneralFilter', () => {
             expect(response.status).toHaveBeenCalledWith(
                 HttpStatus.INTERNAL_SERVER_ERROR
             );
-            expect(sentryService.captureException).toHaveBeenCalledWith(error);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                error,
+                null
+            );
         });
 
         it('reports the error itself to Sentry', async () => {
@@ -308,7 +318,8 @@ describe('AppGeneralFilter', () => {
             await filter.catch(exception, argumentsHost);
 
             expect(sentryService.captureException).toHaveBeenCalledWith(
-                exception
+                exception,
+                null
             );
         });
 
@@ -316,7 +327,8 @@ describe('AppGeneralFilter', () => {
             await filter.catch('database is gone', argumentsHost);
 
             expect(sentryService.captureException).toHaveBeenCalledWith(
-                'database is gone'
+                'database is gone',
+                null
             );
             expect(response.status).toHaveBeenCalledWith(
                 HttpStatus.INTERNAL_SERVER_ERROR
@@ -474,7 +486,8 @@ describe('AppGeneralFilter', () => {
                 })
             );
             expect(sentryService.captureException).toHaveBeenCalledWith(
-                rawError
+                rawError,
+                null
             );
         });
 
@@ -517,7 +530,8 @@ describe('AppGeneralFilter', () => {
                 HttpStatus.INTERNAL_SERVER_ERROR
             );
             expect(sentryService.captureException).toHaveBeenCalledWith(
-                exception
+                exception,
+                null
             );
         });
 
@@ -531,7 +545,8 @@ describe('AppGeneralFilter', () => {
             await filter.catch(exception, argumentsHost);
 
             expect(sentryService.captureException).toHaveBeenCalledWith(
-                exception
+                exception,
+                null
             );
             expect(sentryService.captureException).not.toHaveBeenCalledWith(
                 rawError
@@ -560,7 +575,10 @@ describe('AppGeneralFilter', () => {
 
             filter['sendToSentry'](error, new AppUnknownException(error));
 
-            expect(sentryService.captureException).toHaveBeenCalledWith(error);
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                error,
+                null
+            );
         });
 
         it('reports the rawError when the exception is 500 or above', () => {
@@ -570,7 +588,8 @@ describe('AppGeneralFilter', () => {
             filter['sendToSentry'](exception, exception);
 
             expect(sentryService.captureException).toHaveBeenCalledWith(
-                rawError
+                rawError,
+                null
             );
         });
 
@@ -583,7 +602,8 @@ describe('AppGeneralFilter', () => {
             filter['sendToSentry'](exception, exception);
 
             expect(sentryService.captureException).toHaveBeenCalledWith(
-                exception
+                exception,
+                null
             );
         });
 
@@ -593,7 +613,8 @@ describe('AppGeneralFilter', () => {
             filter['sendToSentry'](exception, exception);
 
             expect(sentryService.captureException).toHaveBeenCalledWith(
-                exception
+                exception,
+                null
             );
         });
 

@@ -92,7 +92,6 @@ export class RequestBodyParserMiddleware implements NestMiddleware {
                 type: 'application/octet-stream',
             })(req, res, done);
         } else {
-            // unknown/empty/multipart content-type: skip parsing (Multer handles multipart)
             next();
         }
     }

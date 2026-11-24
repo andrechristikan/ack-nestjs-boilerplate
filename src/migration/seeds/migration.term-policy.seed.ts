@@ -186,7 +186,7 @@ export class MigrationTermPolicySeed
                     return { ...termPolicy, contents };
                 })
             );
-            const publishedAt = this.helperDateService.create();
+            const publishedAt = this.helperDateService.now();
 
             await this.databaseService.withTransaction(
                 async tx => {

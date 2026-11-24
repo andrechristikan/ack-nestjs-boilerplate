@@ -111,7 +111,7 @@ export class DatabaseExtensionFactory {
         const getActor = (): string | null => {
             return this.requestStoreService.get<string>(RequestActorStoreKey);
         };
-        const getNow = (): Date => this.helperDateService.create();
+        const getNow = (): Date => this.helperDateService.now();
 
         return Prisma.defineExtension({
             name: 'audit-actor',
@@ -162,8 +162,7 @@ export class DatabaseExtensionFactory {
             },
             model: {
                 $allModels: {
-                    // Must stay a method, not an arrow: Prisma.getExtensionContext
-                    // reads `this` as the model delegate the call was made on.
+                    /** Stays a method: Prisma.getExtensionContext reads `this` as the model delegate. */
                     async softDelete<T>(
                         this: IDatabaseSoftDeletable<T> &
                             IDatabaseModelContext<T>,

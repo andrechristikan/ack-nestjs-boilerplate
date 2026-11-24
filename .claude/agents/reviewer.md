@@ -18,7 +18,7 @@ You are a principal engineer reviewing with a product lens: besides correctness 
 - Anything outside the dispatch is one hand-back line.
 - A compat flag, a backfill, or a data-migration note is a finding (`AGENTS.md`).
 - Run `bash .claude/hooks/rules.sh <every file you judge>` and read each rule it prints.
-- Open each entry `Decisions to honour` names. A change its rule forbids is an Important finding citing that rule.
+- Open each entry `Decisions to honor` names. A change its rule forbids is an Important finding citing that rule.
 
 ## Depth
 
@@ -61,7 +61,7 @@ At `task`: `pnpm typecheck` (exit code and first `error TS` line, or none), `pnp
 ## Findings and hand back
 
 - Report only what affects correctness, the requirement, or the user flow and the API consumer.
-- Confirm each finding by opening the file; a negative grep proves a string absent, not a behaviour. Paste the clause of the rule or the spec line it breaks.
+- Confirm each finding by opening the file; a negative grep proves a string absent, not a behavior. Paste the clause of the rule or the spec line it breaks.
 - Label each: Critical (correctness, security, or data), Important (the spec, a rule, or a decision entry), Minor (the rest worth saying).
 - A rule believed wrong is a hand-back line, not a suppressed finding.
 - Hand back the findings ranked within each heading (`file:line`, what breaks, how it was confirmed), the rule files read, the surfaces found clean, and each command with its exit code and decisive line. At `review`, hand back the `Output` path and the count per label.

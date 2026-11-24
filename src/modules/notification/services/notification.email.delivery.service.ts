@@ -76,7 +76,7 @@ export class NotificationEmailDeliveryService {
         notificationId: string,
         proceedBy: string
     ): Promise<void> {
-        const processedAt = this.helperDateService.create();
+        const processedAt = this.helperDateService.now();
         await this.notificationRepository.updateDeliveryProcessedAt(
             notificationId,
             EnumNotificationChannel.email,
@@ -86,7 +86,7 @@ export class NotificationEmailDeliveryService {
     }
 
     async stampSent(notificationId: string, proceedBy: string): Promise<void> {
-        const sentAt = this.helperDateService.create();
+        const sentAt = this.helperDateService.now();
         await this.notificationRepository.updateDeliverySentAt(
             notificationId,
             EnumNotificationChannel.email,

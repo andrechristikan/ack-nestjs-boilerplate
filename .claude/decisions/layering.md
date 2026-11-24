@@ -98,6 +98,12 @@ Rule: `module-files.md`, `@Global()`.
 - A global module imported again by its use-case module or inside another `forRootAsync`: a global provider is already visible there.
 - `FirebaseModule` global: three importers name it, as `AwsModule`'s importers do.
 
+### A module exports its services, utils, and queue classes, never a cache
+
+Rule: `module-files.md`, Module files.
+
+- Caches exported beside services and utils: `cross-module.md` lets no other module reach a cache, so an exported cache is surface no importer may use.
+
 ### Only a repository queries the database client; the kit imports no module code or type
 
 Rule: `layering.md`, Roles and Levels.
@@ -166,7 +172,7 @@ Rule: `dto.md`; `naming.md`, Files.
 - A cache or pipeline schema in `<module>.constant.ts`: a constant file sits outside the coverage thresholds, so a schema there carries no DTO spec.
 - One sub-folder per schema kind (`dtos/cache/`): the kind already ends the file's noun (`-cache`, `-pipeline`), so the folder repeats it, and the sub-folders of `dtos/` name a transport direction.
 - One grouped file per kind: it rebuilds the constant file under another name, where a DTO file declares one schema and its type and its spec mirrors that one schema.
-- The `Dto` type replacing the `I*` interface: the schema is declared `satisfies z.ZodType<I*>`, so the interface is the contract it is checked against, and every service and repository signature would move onto a zod inference with no behaviour gained.
+- The `Dto` type replacing the `I*` interface: the schema is declared `satisfies z.ZodType<I*>`, so the interface is the contract it is checked against, and every service and repository signature would move onto a zod inference with no behavior gained.
 - A piece reused across cache, pipeline, or snapshot schemas as a validation file (`AnalyticPipelineObjectIdSchema` under `validations/`): `validations/` serves the fields of request and environment schemas, and the piece is a schema of its own, like the schemas that reuse it.
 
 ### An acronym is a word in every identifier

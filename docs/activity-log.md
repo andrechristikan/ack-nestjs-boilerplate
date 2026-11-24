@@ -375,7 +375,7 @@ Each flushed log contains:
 - **geoLocation**: from the request store `IRequestLog` (JSON, may be null)
 - **metadata**: prepared metadata (JSON, null when empty)
 - **workspaceId**: from the staged value, the current workspace store, or null when the contract is `workspace = none` (as with `userLoginFailed`)
-- **id**: drawn at flush with `DatabaseUtil.createId()`, so a retried job recognises a row it already wrote
+- **id**: drawn at flush with `DatabaseUtil.createId()`, so a retried job recognizes a row it already wrote
 - **createdAt**: one timestamp per flush, shared by its rows
 
 ### Metadata

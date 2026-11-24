@@ -66,7 +66,7 @@ export class RoleCreateByAdminUseCase implements IAppUseCase<
                         }
                     );
 
-                    const timestamp = this.helperDateService.create();
+                    const timestamp = this.helperDateService.now();
                     const metadata = this.roleUtil.mapActivityLogMetadata(
                         {
                             id: roleId,

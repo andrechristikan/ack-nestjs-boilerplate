@@ -105,7 +105,7 @@ export class MfaService {
     }
 
     private assertNotLocked(mfa: Mfa | null): void {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const lockedUntil = mfa?.lockedUntil ?? null;
         if (lockedUntil !== null && lockedUntil > now) {
             throw new MfaAttemptMaxException();
@@ -125,7 +125,7 @@ export class MfaService {
                 EnumFeatureFlagMetadataKey.mfaLockDurationInMinutes
             ),
         ]);
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const lockedUntil = this.helperDateService.forward(
             now,
             Duration.fromObject({ minutes: lockDurationInMinutes })
@@ -235,7 +235,7 @@ export class MfaService {
         return { check: checked, failure: null };
     }
 
-    async assertEnrolmentAllowed(
+    async assertEnrollmentAllowed(
         method: EnumMfaMethod.totp | EnumMfaMethod.passkey
     ): Promise<void> {
         const metadataKey = this.getMetadataKey(method);
@@ -361,7 +361,7 @@ export class MfaService {
         await this.mfaRepository.resetAttemptInTx(tx, userId, null);
     }
 
-    /** Throws MfaAttemptMaxException while the lock of the user's Mfa row ends later than now. */
+    /** Throws MfaAttemptMaxException while the lock of the user's Mfa row ends after the current time. */
     async assertAttemptAvailable(userId: string): Promise<void> {
         const mfa = await this.mfaRepository.findOneByUserId(userId);
         this.assertNotLocked(mfa);

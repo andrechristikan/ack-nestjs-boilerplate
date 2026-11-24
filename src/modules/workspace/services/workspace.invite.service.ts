@@ -210,7 +210,7 @@ export class WorkspaceInviteService {
             this.referenceRandomLength
         );
         const reference = `${this.referencePrefix}-${referenceRandom}`;
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const expiredAt = this.helperDateService.forward(
             now,
             Duration.fromObject({
@@ -411,7 +411,7 @@ export class WorkspaceInviteService {
         }
     }
 
-    /** Draws the invite id and nonce and resolves the lifetime before the transaction. */
+    /** Draws the invite id, hashes the workspace-and-email nonce, and resolves the lifetime; call it before the transaction. */
     async prepareInvite(
         workspaceId: string,
         create: IWorkspaceInviteCreate
@@ -505,7 +505,7 @@ export class WorkspaceInviteService {
             workspaceInviteId,
             workspaceId
         );
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         if (existing.expiredAt <= now) {
             throw new WorkspaceInviteInvalidException();
         }
@@ -523,7 +523,7 @@ export class WorkspaceInviteService {
         notice: IWorkspaceInviteNotice
     ): Promise<WorkspaceInvite> {
         const actorId = authContext.userId;
-        const resentAt = this.helperDateService.create();
+        const resentAt = this.helperDateService.now();
         const rotated =
             await this.workspaceInviteRepository.rotateForResendInTx(
                 tx,
@@ -605,7 +605,7 @@ export class WorkspaceInviteService {
         userId: string,
         context: IUserCreateWorkspaceInvite
     ): Promise<void> {
-        const acceptedAt = this.helperDateService.create();
+        const acceptedAt = this.helperDateService.now();
 
         await this.acceptPendingInTx(
             tx,

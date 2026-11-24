@@ -4,7 +4,7 @@ import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.
 import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 
-/** Shared module: FeatureFlagService for the feature-flag guard and the user, workspace, and mfa services' own-flag asserts and numeric reads. */
+/** Shared module: FeatureFlagService for the feature-flag guard, the user, workspace, and mfa services' own-flag asserts and numeric reads, and the analytic services' numeric reads. */
 @Global()
 @Module({})
 export class FeatureFlagModule {
@@ -17,7 +17,7 @@ export class FeatureFlagModule {
                 FeatureFlagService,
                 FeatureFlagCache,
             ],
-            exports: [FeatureFlagService, FeatureFlagCache],
+            exports: [FeatureFlagService],
             imports: [],
         };
     }

@@ -138,7 +138,7 @@ export class TermPolicyRecipientService {
         return pendingBatchIds.length;
     }
 
-    /** Draws a new batch id and a new notification id per user. */
+    /** Draws a fresh batch id and a fresh notification id per user. */
     buildBatch(users: ITermPolicyRecipientUser[]): ITermPolicyRecipientBatch {
         const batchId = this.databaseUtil.createId();
         const recipients: INotificationTermPolicyBatchRecipient[] = [];
@@ -166,7 +166,7 @@ export class TermPolicyRecipientService {
         );
     }
 
-    /** Claims the unsent, unclaimed recipients among the user ids under a new nonce and returns the ids it claimed. */
+    /** Claims the unsent, unclaimed recipients of the batch among the user ids under a freshly drawn nonce and returns that nonce with the ids it claimed. */
     async claim(
         termPolicyId: string,
         batchId: string,
@@ -174,7 +174,7 @@ export class TermPolicyRecipientService {
         proceedBy: string
     ): Promise<ITermPolicyRecipientClaim> {
         const claimNonce = this.databaseUtil.createId();
-        const claimedAt = this.helperDateService.create();
+        const claimedAt = this.helperDateService.now();
         const claimedUserIds = await this.termPolicyRecipientRepository.claim(
             termPolicyId,
             batchId,

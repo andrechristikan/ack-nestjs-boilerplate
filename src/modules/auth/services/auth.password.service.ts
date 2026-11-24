@@ -50,7 +50,7 @@ export class AuthPasswordService {
         password: string,
         options?: IAuthPasswordOptions
     ): Promise<IAuthPassword> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
         let passwordExpired: Date | null = null;
         if (options?.temporary) {
             const passwordExpiredDuration =

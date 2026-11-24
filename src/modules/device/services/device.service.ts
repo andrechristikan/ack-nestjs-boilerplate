@@ -88,7 +88,7 @@ export class DeviceService {
         pagination: IPaginationQueryOffsetParams,
         isRevoked?: Record<string, IPaginationEqual>
     ): Promise<IResponsePaginationReturn<IDeviceOwnership>> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const idleSince = this.helperDateService.backward(
             now,
             Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
@@ -107,7 +107,7 @@ export class DeviceService {
         sessionId: string,
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const idleSince = this.helperDateService.backward(
             now,
             Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
@@ -122,7 +122,7 @@ export class DeviceService {
     }
 
     async getNotificationTokens(userId: string): Promise<string[]> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const idleSince = this.helperDateService.backward(
             now,
             Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
@@ -296,7 +296,7 @@ export class DeviceService {
             data.platform,
             data.notificationToken
         );
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
 
         const deviceId = await this.deviceOwnershipRepository.refreshInTx(
             tx,

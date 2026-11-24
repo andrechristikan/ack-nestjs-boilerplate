@@ -175,7 +175,7 @@ Rule: `effects.md`, Payloads; `security.md`, Contact values.
 
 Rule: `notification.md`, Recipient.
 
-- A stored override of a default: the materialised rows are the design.
+- A stored override of a default: the materialized rows are the design.
 
 ### The push send clears the dead tokens in its transaction
 

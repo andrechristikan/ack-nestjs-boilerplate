@@ -68,7 +68,7 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
         const tokens = await this.deviceService.getNotificationTokens(userId);
         const snapshot = this.notificationUtil.sealSnapshot(target, tokens);
 
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         await this.databaseService.withTransaction(async tx => {
             await Promise.all([
                 this.mfaService.resetByAdminInTx(tx, userId),

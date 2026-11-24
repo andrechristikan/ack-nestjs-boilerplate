@@ -20,6 +20,7 @@ The session assigns one `writer` dispatch, then a reader test of what it added. 
 - The argument names the files, a `.scratch/<feature>/plan.md` whose build's changed modules are the scope, a `.scratch/requirements/doc-<slug>.md` naming its own scope, or `all` for every `docs/*.md`.
 - Every run also covers the root people files and `.github/**` except `copilot-instructions.md`.
 - `docs/ai-harness.md` belongs to `/ack-harness` and is never in scope.
+- Each `docs/*.md` page and root people file in scope takes a type (`.claude/rules/authoring.md`, Page types): an existing page the type it holds. A page being created, or one holding two types, is a question to the owner with `AskUserQuestion` before the dispatch.
 - A missing or ambiguous file list, or a diagram without a clear subject, is a question to the owner with `AskUserQuestion` before the dispatch.
 
 | File | Checkable claims |
@@ -27,7 +28,7 @@ The session assigns one `writer` dispatch, then a reader test of what it added. 
 | `README.md` | version table, prerequisites, Quick Start commands |
 | `SECURITY.md` | supported version line against `package.json` `version`, advisory URL, maintainer contact |
 | `CONTRIBUTING.md` | `engines` and `packageManager`, setup scripts against `package.json` `scripts`, CoC link |
-| `CODE_OF_CONDUCT.md` | maintainer contact aligned with `SECURITY.md`, covenant licence attribution |
+| `CODE_OF_CONDUCT.md` | maintainer contact aligned with `SECURITY.md`, covenant license attribution |
 | `.github/workflows/*.yml` | `pnpm` scripts, `engines`, `packageManager` against `package.json` |
 | `.github/pull_request_template.md` | `src/modules/*` names, commit types against `.commitlintrc` |
 | `.github/ISSUE_TEMPLATE/*` | advisory URL, contributing path, docs path |
@@ -38,6 +39,7 @@ The session assigns one `writer` dispatch, then a reader test of what it added. 
 ```
 Agent: writer
 Scope: <the files from step 1>
+Type: <file>: <tutorial | how-to | reference | explanation>, one line per page step 1 typed
 Context: <what changed recently, when the owner said>
 Diagram: <name and subject, when the owner asked for one | none>
 Acceptance: every claim classified and handled as .claude/agents/writer.md gives. Final state only.
@@ -52,7 +54,8 @@ When the report lists a page created or a section added, dispatch one fresh agen
 ```
 Agent: general-purpose
 Read: <the one markdown file> and nothing else: no code, no other doc, no search
-Questions: <the reader questions writer predicted for that file>
+Questions: <first, the check for the page's type from .claude/skills/documentation/SKILL.md, Step 4;
+  then the reader questions writer predicted for that file>
 Task: answer each question from the file alone, citing the line that answers it.
 Report: per question, the answer with its line, or "not answered"; every assumption you
   had to make; every passage that reads as ambiguous or contradictory, with its line.

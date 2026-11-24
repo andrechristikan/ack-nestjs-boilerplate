@@ -1,0 +1,33 @@
+{
+    "gitignore": true,
+    "config": {
+        "default": true,
+        "MD004": false,
+        "MD007": false,
+        "MD024": { "siblings_only": true },
+        "MD028": "warning",
+        "MD029": "warning",
+        "MD033": false,
+        "MD036": "warning",
+        "MD041": false,
+        "MD009": false,
+        "MD010": false,
+        "MD012": false,
+        "MD013": false,
+        "MD030": false,
+        "MD031": false,
+        "MD032": false,
+        "MD037": false,
+        "MD038": false,
+        "MD039": false,
+        "MD046": false,
+        "MD047": false,
+        "MD048": false,
+        "MD049": false,
+        "MD050": false,
+        "MD055": false,
+        "MD056": false,
+        "MD058": false,
+        "MD060": false
+    }
+}

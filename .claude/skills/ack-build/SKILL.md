@@ -37,14 +37,14 @@ Spec: <the spec path>
 Seam: <the ticket's Seam line>
 First failing spec: <the ticket's line>
 Procedure: <the ticket's add-<topic>.md, or none>
-Decisions to honour: <the plan's line>
+Decisions to honor: <the plan's line>
 ```
 
 `Position` counts the tickets `done` plus this one, over every ticket of the plan; a second dispatch on a ticket repeats its `Position`. Each time a ticket becomes `done`, tell the owner `<n>/<total>`.
 
 2. A `DONE <n>/<total>` hand-back that quotes each spec failing, then passing: record each deviation it names (step 3), tick the ticket's criteria, set its `**Status:**` to `done`, and fill the plan row's `Status` and `Evidence` with the command and its decisive line.
 3. `NEEDS_CONTEXT`, `NEEDS_DECISION`, `BLOCKED`, `DONE_WITH_CONCERNS`, or a line that is not green: route each open item, the first match only.
-    - The spec, its `## Owner decisions`, or an entry `Decisions to honour` names answers it: answer it.
+    - The spec, its `## Owner decisions`, or an entry `Decisions to honor` names answers it: answer it.
     - A choice of what the product does: ask the owner with `AskUserQuestion`. The answer joins the spec's `## Owner decisions`.
     - A choice of how to build it: dispatch `advisor` (below). Ask the owner each item it hands back `NEEDS_OWNER`, as above.
 
@@ -70,14 +70,14 @@ Open: <the coder's question, options, and recommendation>
 
 Stop before the last ticket only when:
 
-- The spec has a defect that changes behaviour and one owner answer does not settle.
+- The spec has a defect that changes behavior and one owner answer does not settle.
 - The work reaches a module or a dependency no ticket names.
 - A rule has to change first: a plan defect, since `## Harness changes` missed it. Add the line there and name `/ack-harness <the plan path>`.
 
 ## 2. Prove
 
 1. Run `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`, and `pnpm test <filter>` for each module the build touched. Read the output, not only the exit code (`.claude/rules/code-style.md`, Lint; `.claude/rules/testing.md`, Layout and runs).
-2. Run `pnpm test:cov <filter>` and read the row of each file the build changed. A row under 100 is behaviour without a spec: one more `coder` dispatch on that ticket.
+2. Run `pnpm test:cov <filter>` and read the row of each file the build changed. A row under 100 is behavior without a spec: one more `coder` dispatch on that ticket.
 3. Name the spec or the command that proves each acceptance criterion of each ticket. A criterion without proof goes back to step 1.
 4. When the build touched a module file, a router, a config, or a queue, boot the app as `.claude/skills/ack-build/references/boot.md` gives. A schema delta the owner has not applied holds the boot check: say so in the hand-back.
 

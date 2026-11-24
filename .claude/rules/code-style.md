@@ -50,7 +50,8 @@ Contexts run in the `http.md` order.
 ## Dates
 
 - A date stored or passed inside the system (a Prisma column, a Redis value, a job or outbox payload, `Notification.metadata`, a response body) is a `Date` or an ISO 8601 string (`HelperDateService.formatToIso`; a pipeline `$date`, a cursor token, and a cache key token use `toISOString`, UTC).
-- RFC 2822 (`HelperDateService.formatToRfc2822`) appears only in text rendered for a person: an email template's data, a push or in-app notification title or body, a generated document. Clock and persistence: `transaction.md`, Dates.
+- RFC 2822 (`HelperDateService.formatToRfc2822`) appears only in text rendered for a person: an email template's data, a push or in-app notification title or body, a generated document. Persistence: `transaction.md`, Dates.
+- `HelperDateService.now()` reads the clock; `create(date)` takes a given date and never falls back to the clock.
 
 ## Types and comments
 
@@ -60,14 +61,15 @@ No signature declares `asserts x is T` or `asserts x`. An assert that narrows a 
 
 Default zero comments; the one marker is `// Sequential by design: <case>` (`concurrency.md`). A comment states what the symbol is or does, present tense, no history. `TODO` and `FIXME` are work markers. Re-test every comment a change touched.
 
-JSDoc lives in seven places only; a name, a signature, and `docs/` explain everything else:
+JSDoc lives in eight places only; a name, a signature, and `docs/` explain everything else:
 
 1. A `@Global()` module class: the one line `Shared module: <what it exports, for whom>.` (`module-files.md`, `@Global()`).
 2. Every export of `*.dto.ts`, `*.decorator.ts`, `*.enum.ts` (on the enum), `*.exception.ts`, `*.constant.ts`, `*.contract.ts`, `*.validation.ts`, and `src/common/doc/interfaces/doc.interface.ts`: the bare `/** @public */` (a knip directive), `/** @alias */` on an intentional alias, no description line. No other export carries it.
 3. A public service, util, cache, or queue method whose signature hides its contract: what `null` or `false` means, a side effect the name omits (a counter, an enqueue, a cache eviction), or a precondition the caller owns. One line, present tense.
-4. Nothing else, places 5 to 7 aside: no class line, constant, field, property, enum member, interface field, constructor, private method, or controller, repository, guard, or service method.
+4. Nothing else, places 5 to 8 aside: no class line, constant, field, property, enum member, interface field, constructor, private method, or controller, repository, guard, or service method.
 5. A piece kept until a named later change: `/** Temporary: <what replaces it>. */` on the method, private included, deleted with the piece.
 6. A bulk seed list cut from a public list (`seeding.md`): one line on the export naming how many entries it keeps, the filter applied, and the source URL that holds the full list.
 7. `eslint.config.mjs`: each section opens with a one-line JSDoc naming the section and what it holds, and each top-level constant carries a one-line JSDoc saying what it holds.
+8. A symbol whose code hides a constraint (a framework reading `this`, a factory running before config resolves, a third-party value of two types): one line saying what breaks if it changes.
 
-A JSDoc states what the body on disk does now: no history, no "now" or "new", no plan reference, the Temporary line (place 5) excepted. A body change re-tests its JSDoc; one that no longer matches is a defect. `reviewer` reports a JSDoc outside the seven places or one that does not match its body.
+A JSDoc states what the body on disk does now: no history, no "now" or "new", no plan reference, the Temporary line (place 5) excepted. A body change re-tests its JSDoc; one that no longer matches is a defect. `reviewer` reports a JSDoc outside the eight places or one that does not match its body.

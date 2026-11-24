@@ -39,7 +39,7 @@ export class UserLogoutUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         const userId = authContext.userId;
         const { sessionId, deviceOwnershipId } = authContext;
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         try {
             await this.databaseService.withTransaction(async tx => {
                 await this.sessionService.revokeInTx(

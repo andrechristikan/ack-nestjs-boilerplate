@@ -16,7 +16,7 @@ export class HelloUseCase implements IAppUseCase<
     ) {}
 
     async execute(): Promise<IResponseReturn<HelloResponseDto>> {
-        const date = this.helperDateService.create();
+        const date = this.helperDateService.now();
         const dateIso = this.helperDateService.formatToIso(date);
 
         const app = this.helloService.getApp();

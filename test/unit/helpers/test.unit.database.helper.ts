@@ -44,9 +44,7 @@ export interface IExtension {
     };
 }
 
-// `Prisma.defineExtension` wraps an object definition into `(client) => client.$extends(ext)`
-// (see the generated Prisma runtime); passing a stub client whose `$extends` returns its
-// argument unwraps `ext` itself, so every query/model hook can be invoked directly.
+/** The stub client's $extends returns its argument, so the extension's hooks are reachable. */
 export function extractDatabaseExtension(
     factory: DatabaseExtensionFactory
 ): IExtension {

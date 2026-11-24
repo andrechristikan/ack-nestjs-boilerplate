@@ -136,7 +136,7 @@ Session vocabulary on this page:
 - One device-user pair can have **only one active session** at a time: a login revokes the pair's earlier unrevoked sessions.
 - One device has **one signed-in user** at a time: a login revokes the unrevoked sessions of every other user's non-revoked ownership of that device.
 
-```
+```text
 User
  └── DeviceOwnership (N per user, one per owned device)
        ├── Device (shared across multiple users via other ownerships)

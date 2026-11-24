@@ -255,13 +255,13 @@ The store readers: [Security and Middleware][ref-doc-security-and-middleware].
     - Choosing a slug is what `PATCH /user/project/update/:projectId/slug` is for, and only that path validates a client-sent slug.
 - `ProjectDomain.updateProjectSlug` validates a slug sent to `update/:projectId/slug`.
     - A slug over `project.slugMaxLength`, or failing `project.slugRegex` (`ProjectUtil.isSlugAllowed`), throws `ProjectSlugInvalidException` (400, `51707`).
-    - A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, throws `ProjectSlugAlreadyExistsException` (400, `51706`), with no retry.
+    - A unique collision on `slug`, recognized by `DatabaseUtil.isUniqueCollision`, throws `ProjectSlugAlreadyExistsException` (400, `51706`), with no retry.
     - Any other error is wrapped in `AppUnknownException`.
 - **Uniqueness is per workspace**, matching the `@@unique([workspaceId, slug])` index.
     - The unique index has no `deletedAt` component, so a soft-deleted project still holds its slug.
 - `ProjectHttpService.createProject` prepares `projectCreated`, then `ProjectDomain.createProject` calls `ProjectRepository.create(workspaceId, create, slugCandidates)`.
     - The repository runs one `client.project.create` per candidate with no transaction.
-    - A unique collision on `slug`, recognised by `DatabaseUtil.isUniqueCollision`, moves to the next candidate.
+    - A unique collision on `slug`, recognized by `DatabaseUtil.isUniqueCollision`, moves to the next candidate.
     - The activity log is staged once, after the create resolves, so a collision stages nothing.
     - Any other error is wrapped in `AppUnknownException`.
     - Exhausting the candidates throws `DatabaseUniqueValueGenerationFailedException` (409, `51800`).

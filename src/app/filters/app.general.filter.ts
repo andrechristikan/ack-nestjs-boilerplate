@@ -74,7 +74,7 @@ export class AppGeneralFilter implements ExceptionFilter {
         const reported = this.getReported(exception);
 
         this.logger.error(reported, 'An unhandled exception occurred');
-        this.sentryService.captureException(reported);
+        this.sentryService.captureException(reported, null);
     }
 
     async catch(exception: unknown, host: ArgumentsHost): Promise<void> {

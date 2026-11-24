@@ -110,7 +110,7 @@ export class MfaChallengeService {
     }: IMfaChallengeCreate): IMfaChallengePrepared {
         const challengeToken = this.helperStringService.random(48);
         const tokenHash = this.helperHashService.sha256Hash(challengeToken);
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const expiredAt = this.helperDateService.forward(
             now,
             Duration.fromObject({ milliseconds: this.challengeExpiresInMs })
@@ -133,7 +133,7 @@ export class MfaChallengeService {
         };
     }
 
-    /** Stores the challenge row under the SHA-256 hash of a new token and answers the raw token; the push token is stored encrypted. */
+    /** Stores the challenge row under the SHA-256 hash of a freshly drawn token and answers the raw token; the push token is stored encrypted. */
     async create(input: IMfaChallengeCreate): Promise<IMfaChallengeToken> {
         const { challengeToken, data } = this.prepareCreate(input);
         await this.mfaChallengeRepository.create(data);
@@ -141,7 +141,7 @@ export class MfaChallengeService {
         return { challengeToken, expiresInMs: this.challengeExpiresInMs };
     }
 
-    /** Stores the challenge row on the given tx under the SHA-256 hash of a new token and answers the raw token; the push token is stored encrypted. */
+    /** Stores the challenge row on the given tx under the SHA-256 hash of a freshly drawn token and answers the raw token; the push token is stored encrypted. */
     async createInTx(
         tx: IDatabaseTransactionClient,
         input: IMfaChallengeCreate
@@ -158,7 +158,7 @@ export class MfaChallengeService {
         purpose: EnumMfaChallengePurpose
     ): Promise<IMfaChallenge> {
         const tokenHash = this.helperHashService.sha256Hash(challengeToken);
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const row = await this.mfaChallengeRepository.findActiveByTokenHash(
             tokenHash,
             purpose,
@@ -221,7 +221,7 @@ export class MfaChallengeService {
         updatedBy: string
     ): Promise<void> {
         const tokenHash = this.helperHashService.sha256Hash(challengeToken);
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const isClaimed = await this.mfaChallengeRepository.consumeInTx(
             tx,
             tokenHash,
@@ -236,7 +236,7 @@ export class MfaChallengeService {
 
     /** Deletes the challenges that expired longer ago than mfa.challengeRetentionInMs; returns the count. */
     async purgeExpired(): Promise<number> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const retention = this.helperDateService.createDuration({
             milliseconds: this.retentionInMs,
         });

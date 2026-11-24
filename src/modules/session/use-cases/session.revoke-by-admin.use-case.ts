@@ -53,7 +53,7 @@ export class SessionRevokeByAdminUseCase implements IAppUseCase<
         );
         this.userService.assertUnblocked(target);
 
-        const revokedAt = this.helperDateService.create();
+        const revokedAt = this.helperDateService.now();
         try {
             await this.databaseService.withTransaction(async tx =>
                 this.sessionService.revokeByAdminInTx(

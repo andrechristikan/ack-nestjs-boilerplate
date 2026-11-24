@@ -201,7 +201,7 @@ Metadata on a single flag:
 
 **Metadata sub-key gating:**
 
-A metadata sub-key is asserted in the owning domain, not by the route decorator. The domain calls `FeatureFlagDomain.validateFeatureFlagMetadata(key, metadataKey)` at the point in the flow where the sub-key governs the behaviour:
+A metadata sub-key is asserted in the owning domain, not by the route decorator. The domain calls `FeatureFlagDomain.validateFeatureFlagMetadata(key, metadataKey)` at the point in the flow where the sub-key governs the behavior:
 
 ```typescript
 await this.featureFlagDomain.validateFeatureFlagMetadata(

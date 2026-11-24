@@ -36,6 +36,14 @@
             "computedHash": "b5887faf4e1ed402ec2a652822f045add0b3f86d41f86bd08a304ec701119162",
             "installMode": "copy"
         },
+        "documentation": {
+            "source": "mcollina/skills",
+            "commit": "c75d70dbfbe991d8cec42aeda0b64ff14fbb9ac7",
+            "sourceType": "github",
+            "skillPath": "skills/documentation/SKILL.md",
+            "computedHash": "094a77781b4f2fbd8c8ba82c7d67b80820657b5600a00c7dd5c90b462b226b3d",
+            "installMode": "copy"
+        },
         "grilling": {
             "source": "mattpocock/skills",
             "sourceType": "github",

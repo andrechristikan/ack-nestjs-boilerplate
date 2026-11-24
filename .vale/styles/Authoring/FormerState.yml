@@ -1,0 +1,9 @@
+extends: existence
+message: "'%s' is banned where it contrasts with an earlier state."
+level: warning
+ignorecase: true
+tokens:
+    - previously
+    - no longer
+    - instead of
+    - rather than

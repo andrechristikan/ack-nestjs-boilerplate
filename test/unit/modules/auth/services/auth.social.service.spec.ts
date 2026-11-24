@@ -297,7 +297,6 @@ describe('AuthSocialService', () => {
 
     describe('consumeNonce', () => {
         const now = new Date('2026-01-01T00:00:00.000Z');
-        // The module registry is reset per test, so the class is matched by contract and not by identity.
         const nonceInvalid = {
             module: 'auth',
             statusCode: EnumAuthStatusCodeError.socialNonceInvalid,

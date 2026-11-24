@@ -62,7 +62,7 @@ export class ApiKeyUpdateStatusByAdminUseCase implements IAppUseCase<
                             isActive
                         );
 
-                    const timestamp = this.helperDateService.create();
+                    const timestamp = this.helperDateService.now();
                     const metadata = this.apiKeyUtil.mapActivityLogMetadata(
                         apiKey,
                         timestamp

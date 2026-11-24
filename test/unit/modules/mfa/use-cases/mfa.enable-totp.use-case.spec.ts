@@ -282,9 +282,9 @@ describe('MfaEnableTotpUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('rejects with the enrolment gate exception and calls no other collaborator', async () => {
+        it('rejects with the enrollment gate exception and calls no other collaborator', async () => {
             const failure = new FeatureFlagDisabledException();
-            mfaService.assertEnrolmentAllowed.mockRejectedValue(failure);
+            mfaService.assertEnrollmentAllowed.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -296,7 +296,7 @@ describe('MfaEnableTotpUseCase', () => {
                 )
             ).rejects.toBe(failure);
 
-            expect(mfaService.assertEnrolmentAllowed).toHaveBeenCalledWith(
+            expect(mfaService.assertEnrollmentAllowed).toHaveBeenCalledWith(
                 EnumMfaMethod.totp
             );
             expect(

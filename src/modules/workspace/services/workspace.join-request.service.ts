@@ -155,7 +155,7 @@ export class WorkspaceJoinRequestService {
         return { workspace, reviewerIds: members.map(member => member.userId) };
     }
 
-    /** Draws the nonce and the expiry before the transaction. */
+    /** Hashes the workspace-and-user nonce and reads the expiry from the `workspace` flag; call it before the transaction. */
     async prepareJoinRequest(
         authContext: IAuthJwtAccessContext,
         { workspaceId }: IWorkspaceJoinRequestCreate
@@ -169,7 +169,7 @@ export class WorkspaceJoinRequestService {
             EnumFeatureFlagKey.workspace,
             EnumFeatureFlagMetadataKey.joinRequestExpiresInDays
         );
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const duration = this.helperDateService.createDuration({
             days: expiresInDays,
         });
@@ -275,7 +275,7 @@ export class WorkspaceJoinRequestService {
         workspaceName: string
     ): Promise<void> {
         const reviewerId = authContext.userId;
-        const reviewedAt = this.helperDateService.create();
+        const reviewedAt = this.helperDateService.now();
 
         // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
         const accepted = await this.workspaceJoinRequestRepository.acceptInTx(
@@ -332,7 +332,7 @@ export class WorkspaceJoinRequestService {
         rejectReasonCode: EnumWorkspaceJoinRejectReason
     ): Promise<void> {
         const reviewerId = authContext.userId;
-        const reviewedAt = this.helperDateService.create();
+        const reviewedAt = this.helperDateService.now();
         const rejectReasonLabel = this.messageService.setMessage(
             `notification.rejectReason.${rejectReasonCode}`
         );

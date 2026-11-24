@@ -409,9 +409,9 @@ describe('PaginationQueryUtil', () => {
 
     describe('validateAndParsePerPage', () => {
         it('defaults to the default perPage when omitted', () => {
-            expect(util['validateAndParsePerPage'](null)).toBe(
-                PaginationDefaultPerPage
-            );
+            expect(
+                util['validateAndParsePerPage'](null, PaginationDefaultPerPage)
+            ).toBe(PaginationDefaultPerPage);
         });
 
         it('defaults to a named default perPage when omitted', () => {
@@ -419,13 +419,15 @@ describe('PaginationQueryUtil', () => {
         });
 
         it('parses a numeric string', () => {
-            expect(util['validateAndParsePerPage']('30')).toBe(30);
+            expect(
+                util['validateAndParsePerPage']('30', PaginationDefaultPerPage)
+            ).toBe(30);
         });
 
         it('rejects a non-integer perPage', () => {
             let error: unknown;
             try {
-                util['validateAndParsePerPage'](1.5);
+                util['validateAndParsePerPage'](1.5, PaginationDefaultPerPage);
             } catch (caught) {
                 error = caught;
             }
@@ -442,7 +444,10 @@ describe('PaginationQueryUtil', () => {
         it('rejects a non-numeric perPage string', () => {
             let error: unknown;
             try {
-                util['validateAndParsePerPage']('abc');
+                util['validateAndParsePerPage'](
+                    'abc',
+                    PaginationDefaultPerPage
+                );
             } catch (caught) {
                 error = caught;
             }
@@ -460,7 +465,8 @@ describe('PaginationQueryUtil', () => {
             let error: unknown;
             try {
                 util['validateAndParsePerPage'](
-                    PaginationDefaultMaxPerPage + 1
+                    PaginationDefaultMaxPerPage + 1,
+                    PaginationDefaultPerPage
                 );
             } catch (caught) {
                 error = caught;
@@ -479,7 +485,7 @@ describe('PaginationQueryUtil', () => {
         it('rejects a perPage below one', () => {
             let error: unknown;
             try {
-                util['validateAndParsePerPage'](0);
+                util['validateAndParsePerPage'](0, PaginationDefaultPerPage);
             } catch (caught) {
                 error = caught;
             }

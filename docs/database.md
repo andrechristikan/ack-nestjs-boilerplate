@@ -209,7 +209,7 @@ The seed creates them in the `local` environment only, so `development`, `stagin
 
 All generated API keys automatically include an environment prefix to help identify which environment they belong to. The format is:
 
-```
+```text
 {environment}_{random_string}
 ```
 
@@ -254,9 +254,9 @@ The seeded users differ per environment. This is controlled by `MigrationUserDat
 
 | Email | Username | Name | Role | Password | Country | Environments |
 | --- | --- | --- | --- | --- | --- | --- |
-| superadmin@mail.com | superadmin | Super Admin | superadmin | `aaAA@123` | ID (Indonesia) | all |
-| admin@mail.com | admin | Admin | admin | `aaAA@123` | ID (Indonesia) | all |
-| user@mail.com | user | User | user | `aaAA@123` | ID (Indonesia) | `local` only |
+| <superadmin@mail.com> | superadmin | Super Admin | superadmin | `aaAA@123` | ID (Indonesia) | all |
+| <admin@mail.com> | admin | Admin | admin | `aaAA@123` | ID (Indonesia) | all |
+| <user@mail.com> | user | User | user | `aaAA@123` | ID (Indonesia) | `local` only |
 
 Row ids and actor:
 
@@ -822,7 +822,7 @@ The shape is the same for slugs:
     - The next candidate is then tried.
 3. When the list runs out, it throws `DatabaseUniqueValueGenerationFailedException` (`51800`, HTTP 409).
 
-The collision is recognised by `DatabaseUtil.isUniqueCollision(error, field)`: true for a `Prisma.PrismaClientKnownRequestError` with code `P2002` whose `meta.target` names `field`, case-insensitively.
+The collision is recognized by `DatabaseUtil.isUniqueCollision(error, field)`: true for a `Prisma.PrismaClientKnownRequestError` with code `P2002` whose `meta.target` names `field`, case-insensitively.
 
 | Candidate source | Retry owner | Retry unit |
 | --- | --- | --- |

@@ -332,7 +332,7 @@ ThrottlerModule.forRootAsync({
 
 **Redis keys** follow the configured patterns, with `{name}` one of the `EnumRequestThrottleName` values `default` / `user` / `route` and `{tracker}` the value described above:
 
-```
+```text
 Request:Throttle:{name}:{tracker}         # sliding window log (sorted set)
 Request:Throttle:Block:{name}:{tracker}   # active block
 Request:Throttle:Seq:{name}:{tracker}     # sequence counter, makes log members unique
@@ -517,7 +517,7 @@ Extracts API version from URLs.
 
 **URL Pattern:**
 
-```
+```text
 /{globalPrefix}/{versionPrefix}{version}/resource
 Example: /api/v1/shared/user/profile/get
 ```
@@ -588,7 +588,7 @@ Measures request duration using [response-time][ref-response-time].
 
 **Header Example:**
 
-```
+```text
 X-Response-Time: 123.456ms
 ```
 

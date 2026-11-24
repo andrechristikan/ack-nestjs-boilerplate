@@ -150,7 +150,7 @@ This project uses **TypeScript** with `strict`, `exactOptionalPropertyTypes`, an
 
 This project follows [Conventional Commits][ref-conventional-commits]:
 
-```
+```text
 <type>(<scope>): <short description>
 ```
 
@@ -175,7 +175,7 @@ The list above is the complete `type-enum` in `.commitlintrc`. Any other type is
 
 **Examples:**
 
-```
+```text
 feat(auth): add refresh token rotation
 fix(user): resolve pagination offset issue
 docs(readme): update docker setup instructions

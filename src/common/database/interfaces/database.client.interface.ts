@@ -48,8 +48,7 @@ export type IDatabaseClient =
         IDatabaseMergedArgs
     >;
 
-// Derived from IDatabaseClient: Prisma.TransactionClient does not carry this
-// client's extensions and will not match it.
+/** Derived from IDatabaseClient: Prisma.TransactionClient lacks this client's extensions. */
 export type IDatabaseTransactionClient = Parameters<
     Parameters<IDatabaseClient['$transaction']>[0]
 >[0];

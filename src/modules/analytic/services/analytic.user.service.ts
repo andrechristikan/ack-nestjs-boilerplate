@@ -60,7 +60,7 @@ export class AnalyticUserService {
     }
 
     private async loadUserActive(): Promise<IAnalyticActiveUsers> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const dailySince = this.helperDateService.backward(
             now,
             Duration.fromMillis(this.dailyInMs)

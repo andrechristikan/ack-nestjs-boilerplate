@@ -18,7 +18,6 @@ export class CacheQueue extends QueueBase {
         super(queue);
     }
 
-    /** The outbox effect that deletes the keys through the cache queue. */
     invalidateEffect(keys: string[]): ICacheInvalidateEffect {
         return {
             queue: EnumCacheQueue.cache,

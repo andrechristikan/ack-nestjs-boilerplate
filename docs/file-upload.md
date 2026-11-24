@@ -384,7 +384,7 @@ const [user, aws] = await Promise.all([
 - `options.access` is a required argument on every `AwsS3Service` method that reaches a bucket.
 - A profile photo is served by URL, so this call names `public`.
 
-`putItem` behaviour:
+`putItem` behavior:
 
 - returns `null` when S3 is not configured, and the domain answers `AwsS3NotConfiguredException` (404, `51406`) with no database write
 - raises `AwsS3ObjectExistException` (409, `51402`) when the generated key already holds an object, since this call leaves `forceUpdate` off
@@ -642,7 +642,7 @@ async presignGetItem(
     - When omitted it falls back to `aws.s3.presignExpiredInSeconds`.
     - `aws.config.ts` defines that value as `ms('30m') / 1000`, and the signer takes it as it stands.
 
-### Behaviour
+### Behavior
 
 - Returns `null` when S3 is not configured, and logs a warning. `TermPolicyContentDomain.getContentByAdmin` turns that `null` into `AwsS3NotConfiguredException` (404, `51406`).
 - Signs the URL without contacting S3.

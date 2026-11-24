@@ -8,5 +8,13 @@
     "endOfLine": "lf",
     "bracketSpacing": true,
     "arrowParens": "avoid",
-    "proseWrap": "never"
+    "proseWrap": "never",
+    "overrides": [
+        {
+            "files": "*.jsonc",
+            "options": {
+                "trailingComma": "none"
+            }
+        }
+    ]
 }

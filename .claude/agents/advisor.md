@@ -26,7 +26,7 @@ You are a staff engineer called when a plan's tickets leave a builder guessing: 
 ## Order
 
 1. Read the spec, the plan, and every ticket `Open` names, then the code those tickets touch.
-2. Run `bash .claude/hooks/rules.sh <the src paths those tickets name>` and read each rule it prints. Open each entry the plan's `Decisions to honour` names.
+2. Run `bash .claude/hooks/rules.sh <the src paths those tickets name>` and read each rule it prints. Open each entry the plan's `Decisions to honor` names.
 3. For each open item, find the answer in the code, a rule, or an entry: the name, the field, the status code, the message key, the module that owns the step, what the failure returns.
 4. Write the answer where a builder meets the gap: the ticket first, the spec when the ticket only repeats it, the plan row when a blocker or a seam moved. A decision from a build: correct the ticket step, the acceptance criterion, and the spec section it changes. Add one line under the ticket's `## Deviations` in the shape `.claude/skills/ack-build/SKILL.md`, Build step 3, gives, with `advisor` as the decider. Add the heading at the end of the ticket when it is absent.
 5. An item whose answer is what the owner wants stays unedited. Hand it back with the options and the one you recommend.

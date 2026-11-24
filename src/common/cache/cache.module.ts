@@ -6,7 +6,7 @@ import { CacheQueueFactory } from '@common/cache/factories/cache.queue.factory';
 import { CacheQueue } from '@common/cache/queues/cache.queue';
 import { CacheService } from '@common/cache/services/cache.service';
 
-/** Shared module: CacheService for every service and cache class reading through Redis and for the cache invalidation processor; CacheQueue for every service adding a cache invalidation. */
+/** Shared module: CacheService for every service reading through Redis, the cache invalidation processor, the seed base's flush, and the kit classes sorting a Redis connection error; CacheQueue for every service adding a cache invalidation. */
 @Global()
 @Module({})
 export class CacheModule {

@@ -1,7 +1,7 @@
 ---
 name: ack-spec
 description: >-
-    Creates or repairs unit specs for code that exists, to 100% coverage per file; the code on disk wins and src/ is not changed. Integration and e2e are held. Use for a coverage gap, a spec the code moved away from, or orphan specs. Not for new behaviour (ack-design), a red spec whose cause is unknown (ack-debug), or a src/ fix.
+    Creates or repairs unit specs for code that exists, to 100% coverage per file; the code on disk wins and src/ is not changed. Integration and e2e are held. Use for a coverage gap, a spec the code moved away from, or orphan specs. Not for new behavior (ack-design), a red spec whose cause is unknown (ack-debug), or a src/ fix.
 blurb: 'unit specs to 100% for existing code; the code wins'
 disable-model-invocation: true
 context: fork
@@ -33,9 +33,9 @@ Classify every failure and every gap before writing:
 | Class | Meaning | What you do |
 | --- | --- | --- |
 | spec wrong | the code moved and the spec stayed, or the spec asserts a wish | repair the spec to what `src/` does |
-| gap | behaviour in `src/` with no spec | write the spec |
+| gap | behavior in `src/` with no spec | write the spec |
 | orphan | a green spec whose subject moved | move it to mirror the subject, add no assertion |
-| defect | `src/` is wrong: a contract, a guard, a status code, a call order | keep the spec green against current behaviour; open a sweep row |
+| defect | `src/` is wrong: a contract, a guard, a status code, a call order | keep the spec green against current behavior; open a sweep row |
 | cause unknown | a red spec that is neither stale nor a known defect | hand back the symptom and name `/ack-debug` |
 
 ## 3. Cover

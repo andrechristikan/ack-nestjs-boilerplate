@@ -63,7 +63,7 @@ export class PasswordHistoryRepository implements IPasswordHistoryRepository {
     }
 
     async findActiveUser(userId: string): Promise<PasswordHistory[]> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
         return this.databaseService.client.passwordHistory.findMany({
             where: {
                 userId,

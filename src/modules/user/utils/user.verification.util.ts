@@ -58,7 +58,7 @@ export class UserVerificationUtil {
     }
 
     createExpiredAt(): Date {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
 
         return this.helperDateService.forward(
             now,
@@ -111,7 +111,7 @@ export class UserVerificationUtil {
         const reference = this.createReference();
         const hashedToken = this.helperHashService.sha256Hash(token);
         const expiredAt = this.createExpiredAt();
-        const verifiedAt = this.helperDateService.create();
+        const verifiedAt = this.helperDateService.now();
 
         return {
             reference,

@@ -51,7 +51,7 @@ export class ApiKeyDeleteByAdminUseCase implements IAppUseCase<
                         row
                     );
 
-                    const timestamp = this.helperDateService.create();
+                    const timestamp = this.helperDateService.now();
                     const metadata = this.apiKeyUtil.mapActivityLogMetadata(
                         apiKey,
                         timestamp

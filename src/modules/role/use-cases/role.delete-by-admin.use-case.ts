@@ -61,7 +61,7 @@ export class RoleDeleteByAdminUseCase implements IAppUseCase<
                     target
                 );
 
-                const timestamp = this.helperDateService.create();
+                const timestamp = this.helperDateService.now();
                 const metadata = this.roleUtil.mapActivityLogMetadata(
                     deleted,
                     timestamp

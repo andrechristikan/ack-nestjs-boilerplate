@@ -61,7 +61,7 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<MfaBackupCodesResponseDto>> {
         const { user } = userContext;
         // Sequential by design: a credential proof, awaited alone
-        await this.mfaService.assertEnrolmentAllowed(EnumMfaMethod.totp);
+        await this.mfaService.assertEnrollmentAllowed(EnumMfaMethod.totp);
         const input = {
             action: EnumUserReauthenticationAction.mfaTotpEnable,
             password: password ?? null,

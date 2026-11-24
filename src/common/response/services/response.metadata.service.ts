@@ -42,7 +42,7 @@ export class ResponseMetadataService {
     }
 
     create(): ResponseMetadataDto {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
 
         const storedLanguage = this.requestStoreService.get<string>(
             RequestLanguageStoreKey

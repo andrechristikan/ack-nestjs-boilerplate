@@ -1197,7 +1197,7 @@ enum EnumWorkspaceJoinRequestStatus {
   pending
   accepted
   rejected
-  cancelled
+  canceled
   expired
 }
 

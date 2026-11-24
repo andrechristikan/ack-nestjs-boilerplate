@@ -106,9 +106,8 @@ export class PasswordHistoryService {
         await this.passwordHistoryRepository.deleteManyByUserInTx(tx, userId);
     }
 
-    /** Deletes the histories past their reuse period, the rows whose expiredAt is before now; returns the count. */
     async purgeExpired(): Promise<number> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
 
         return this.passwordHistoryRepository.deleteExpiredBefore(now);
     }

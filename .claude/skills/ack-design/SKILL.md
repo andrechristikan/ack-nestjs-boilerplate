@@ -1,10 +1,10 @@
 ---
 name: ack-design
 description: >-
-    Settles a feature or a behaviour change with the owner through rounds of questions, agrees the test seams, and writes the spec to the feature folder under .scratch/. Use first for any feature or cross-module change. Not for a bug whose cause is unknown (ack-debug), tickets and a plan from an existing spec (ack-plan), or building (ack-build).
+    Settles a feature or a behavior change with the owner through rounds of questions, agrees the test seams, and writes the spec to the feature folder under .scratch/. Use first for any feature or cross-module change. Not for a bug whose cause is unknown (ack-debug), tickets and a plan from an existing spec (ack-plan), or building (ack-build).
 blurb: 'question rounds with the owner, seams, the spec'
 disable-model-invocation: true
-argument-hint: '<the feature or behaviour change, in one sentence>'
+argument-hint: '<the feature or behavior change, in one sentence>'
 ---
 
 # ack-design
@@ -40,12 +40,12 @@ The frontier covers what the owner has not named:
 
 ## 3. Seams
 
-Every behaviour is built test-first, so each one needs its seam before the spec is written.
+Every behavior is built test-first, so each one needs its seam before the spec is written.
 
 - A seam is the public boundary a unit spec asserts at: a use case's `execute`, a service method, a guard, a pipe, a zod schema, a queue class.
 - Propose the seams, each with one line on what it catches and what it misses, and confirm them with `AskUserQuestion`.
 - Specs are unit specs (`.claude/rules/testing.md`, `.claude/rules/test-doubles.md`).
-- The rounds are not done while a behaviour has no agreed seam.
+- The rounds are not done while a behavior has no agreed seam.
 
 ## 4. Spec
 
@@ -53,8 +53,8 @@ Follow `.claude/skills/to-spec/SKILL.md`, with these departures:
 
 - The tracker is local markdown (`.claude/CLAUDE.md`, Work artifacts). Write `.scratch/<feature>/spec.md`, the feature slug kebab-case from the request, with `Status: ready-for-agent` as its first line.
 - Its step 2 is step 3 of this file: the seams are already agreed.
-- Add `## Decisions to honour` (each binding decision entry, by title) and `## Owner decisions` (every owner answer, verbatim, one per line) before `## Implementation Decisions`.
-- `## Testing Decisions` lists each agreed seam and the behaviours asserted at it.
+- Add `## Decisions to honor` (each binding decision entry, by title) and `## Owner decisions` (every owner answer, verbatim, one per line) before `## Implementation Decisions`.
+- `## Testing Decisions` lists each agreed seam and the behaviors asserted at it.
 - Name every class, method, DTO field, status code, message key, and config key the change introduces.
 - `## Harness changes` lists each rule the design needs changed or added and each decision candidate (an architecture choice closed with a named alternative rejected), one per line, or `none`.
 - No compatibility, backfill, or migration section (`AGENTS.md`).

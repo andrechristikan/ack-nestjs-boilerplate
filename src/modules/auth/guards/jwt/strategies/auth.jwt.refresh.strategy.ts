@@ -20,7 +20,6 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
         protected readonly configService: ConfigService,
         private readonly authService: AuthService
     ) {
-        // jti is not validated here.
         super({
             jwtFromRequest:
                 ExtractJwt.fromAuthHeaderWithScheme(AuthBearerScheme),

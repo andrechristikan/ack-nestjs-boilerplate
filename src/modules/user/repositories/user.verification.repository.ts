@@ -26,7 +26,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
     async findOneActiveByVerificationEmailToken(
         token: string
     ): Promise<IUserVerificationWithUser | null> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
 
         return this.databaseService.client.verification.findFirst({
             where: {
@@ -84,7 +84,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         action: EnumUserReauthenticationAction,
         token: string
     ): Promise<Verification | null> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
 
         return this.databaseService.client.verification.findFirst({
             where: {
@@ -140,7 +140,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         mobileNumberId: string,
         token: string
     ): Promise<Verification | null> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
 
         return this.databaseService.client.verification.findFirst({
             where: {
@@ -159,7 +159,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
     async findOneActiveMobileById(
         verificationId: string
     ): Promise<Verification | null> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
 
         return this.databaseService.client.verification.findFirst({
             where: {

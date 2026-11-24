@@ -69,7 +69,7 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
         this.userService.assertUnblocked(target);
         this.userService.assertStatusChangeable(target, status);
 
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const revokesSessions = this.userService.revokesSessionsOn(status);
         const resetsMfaAttempt = this.userService.resetsMfaAttemptOn(status);
         const action = this.userService.resolveStatusActivityLogAction(status);

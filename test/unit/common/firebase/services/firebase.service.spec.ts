@@ -7,7 +7,6 @@ import type { App as FirebaseApp } from 'firebase-admin/app';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
 import { FirebaseMaxSendPushBatchSize } from '@common/firebase/constants/firebase.constant';
 import type { IFirebasePushPayload } from '@common/firebase/interfaces/firebase.interface';
-import { EnumFirebaseStatusCodeError } from '@common/firebase/enums/firebase.status-code.enum';
 import {
     createFirebaseService,
     createInitializedFirebaseService,
@@ -286,44 +285,6 @@ describe('FirebaseService', () => {
             expect(messaging.sendEachForMulticast).not.toHaveBeenCalled();
         });
 
-        it('throws when chunkSize is below one', async () => {
-            const messaging: MockProxy<Messaging> = mock<Messaging>();
-            const initialized = await createInitializedFirebaseService(
-                fullCredentials,
-                messaging
-            );
-
-            const rejection = initialized.sendMulticast(
-                ['token-1'],
-                payload,
-                0
-            );
-
-            await expect(rejection).rejects.toMatchObject({
-                module: 'firebase',
-                statusCode: EnumFirebaseStatusCodeError.chunkSizeInvalid,
-            });
-        });
-
-        it('throws when chunkSize exceeds the FCM batch limit', async () => {
-            const messaging: MockProxy<Messaging> = mock<Messaging>();
-            const initialized = await createInitializedFirebaseService(
-                fullCredentials,
-                messaging
-            );
-
-            const rejection = initialized.sendMulticast(
-                ['token-1'],
-                payload,
-                FirebaseMaxSendPushBatchSize + 1
-            );
-
-            await expect(rejection).rejects.toMatchObject({
-                module: 'firebase',
-                statusCode: EnumFirebaseStatusCodeError.chunkSizeInvalid,
-            });
-        });
-
         it('chunks the tokens, aggregates fulfilled results, and collects only invalid-token failures', async () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
@@ -373,7 +334,9 @@ describe('FirebaseService', () => {
                 fullCredentials,
                 messaging
             );
-            const chunkA = ['token-1', 'token-2'];
+            const chunkA = new Array<string>(FirebaseMaxSendPushBatchSize).fill(
+                'token-a'
+            );
             const chunkB = ['token-3'];
             messaging.sendEachForMulticast
                 .mockResolvedValueOnce({
@@ -388,8 +351,7 @@ describe('FirebaseService', () => {
 
             const result = await initialized.sendMulticast(
                 [...chunkA, ...chunkB],
-                payload,
-                2
+                payload
             );
 
             expect(result).toEqual({

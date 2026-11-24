@@ -23,6 +23,14 @@ New names in this example, not in the checkout: `Country.isActive`, `CountryInac
 
 `.claude/rules/authoring.md`, `.claude/rules/cross-module.md`, `.claude/rules/discipline.md`, `.claude/rules/layering.md`, `.claude/rules/naming.md`, `.claude/rules/null-safety.md`.
 
+## `pnpm lint:docs`
+
+Exit 0. No line names `docs/status-codes.md` or `docs/database.md`; Vale ends `✖ 0 errors, <n> warnings and 0 suggestions in <n> files.`
+
+## `pnpm spell`
+
+Exit 0. No output.
+
 ## CONFLICT evidence
 
 - Code side: `git log -S'ApiKeyProtected' --oneline -- src/modules/country/controllers/country.public.controller.ts` prints `<sha> <subject>`, the commit that put the guard on the route.

@@ -50,7 +50,7 @@ export class ApiKeyResetByAdminUseCase implements IAppUseCase<
                         row
                     );
 
-                    const timestamp = this.helperDateService.create();
+                    const timestamp = this.helperDateService.now();
                     const metadata = this.apiKeyUtil.mapActivityLogMetadata(
                         reset.apiKey,
                         timestamp

@@ -217,7 +217,7 @@ export class AnalyticAuthService {
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticBucketsResult> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const idleSince = this.idleSince(now);
         const rows = await this.analyticAuthRepository.groupSessionsGeo(
             startDate,
@@ -238,7 +238,7 @@ export class AnalyticAuthService {
         startDate: Date,
         endDate: Date
     ): Promise<IAnalyticBucketsResult> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const idleSince = this.idleSince(now);
         const rows = await this.analyticAuthRepository.groupSessionsUserAgent(
             startDate,
@@ -345,7 +345,7 @@ export class AnalyticAuthService {
     async computeConcurrentSessions(): Promise<
         IAnalyticSnapshotResult<IAnalyticCountBucket, null>
     > {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const idleSince = this.idleSince(now);
         const buckets =
             await this.analyticAuthRepository.findConcurrentSessions(

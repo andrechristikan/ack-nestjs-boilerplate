@@ -116,7 +116,7 @@ export class NotificationPushDeliveryService {
         process: EnumNotificationPushProcess,
         proceedBy: string
     ): Promise<void> {
-        const processedAt = this.helperDateService.create();
+        const processedAt = this.helperDateService.now();
         const stamped =
             await this.notificationRepository.updateDeliveryProcessedAt(
                 notificationId,
@@ -129,7 +129,7 @@ export class NotificationPushDeliveryService {
         }
     }
 
-    /** Sends to the pending tokens when any are recorded, else to every token; a rejected send returns the recorded tokens unchanged with the failure. */
+    /** Sends to the recorded pending tokens, or to every token when no pending list is recorded (null); a rejected send returns the recorded tokens unchanged with the failure. */
     async sendMulticast(
         userId: string,
         encryptedTokens: string[],
@@ -169,7 +169,7 @@ export class NotificationPushDeliveryService {
         process: EnumNotificationPushProcess,
         proceedBy: string
     ): Promise<void> {
-        const sentAt = this.helperDateService.create();
+        const sentAt = this.helperDateService.now();
         const stamped =
             await this.notificationRepository.updateDeliverySentAtInTx(
                 tx,

@@ -223,12 +223,12 @@ describe('MfaService', () => {
         helperHashService = module.get(HelperHashService);
     });
 
-    describe('assertEnrolmentAllowed', () => {
+    describe('assertEnrollmentAllowed', () => {
         it('asserts the mfa flag with totpAllowed for totp', async () => {
             featureFlagService.validateFeatureFlagMetadata.mockResolvedValue();
 
             await expect(
-                service.assertEnrolmentAllowed(EnumMfaMethod.totp)
+                service.assertEnrollmentAllowed(EnumMfaMethod.totp)
             ).resolves.toBeUndefined();
             expect(
                 featureFlagService.validateFeatureFlagMetadata
@@ -241,7 +241,7 @@ describe('MfaService', () => {
         it('asserts the mfa flag with passkeyAllowed for passkey', async () => {
             featureFlagService.validateFeatureFlagMetadata.mockResolvedValue();
 
-            await service.assertEnrolmentAllowed(EnumMfaMethod.passkey);
+            await service.assertEnrollmentAllowed(EnumMfaMethod.passkey);
 
             expect(
                 featureFlagService.validateFeatureFlagMetadata
@@ -257,7 +257,7 @@ describe('MfaService', () => {
             );
 
             await expect(
-                service.assertEnrolmentAllowed(EnumMfaMethod.totp)
+                service.assertEnrollmentAllowed(EnumMfaMethod.totp)
             ).rejects.toMatchObject({
                 module: 'featureFlag',
                 statusCode: EnumFeatureFlagStatusCodeError.disabled,

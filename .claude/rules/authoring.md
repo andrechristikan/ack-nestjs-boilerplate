@@ -32,7 +32,7 @@ A sentence that seems to belong in two files is two sentences. A rule may carry 
 
 ## Final state only
 
-`docs/*.md`, the root people files, `.github/**`, `AGENTS.md`, and `.claude/**` describe how the project works now. Not in any of them: an issue, a bug, a fix, a change, a decision and its reasoning, a rejected alternative, a migration note, a date, the version a change landed in, a changelog line, an owner quote or attribution. The list binds every tree but `.claude/decisions/`, which carries a rejected alternative and its reasoning, nothing else. Attribution has one home: the root `README.md` `## Contributors` section names each contributor with a link and the feature contributed. The test: would this sentence exist if the thing had always been this way? "previously", "no longer", "instead of", and "rather than" are banned where they contrast with an earlier state and fine where they contrast two options a reader is choosing between now. A negation that states a contract stays (`an admin route carries no workspace guard`); a negation that rebuts a former state goes (`the count is not stored on the model`). Rewrite it as what is (`activeSessionCount is computed per read`).
+`docs/*.md`, the root people files, `.github/**`, `AGENTS.md`, and `.claude/**` describe how the project works now. Not in any of them: an issue, a bug, a fix, a change, a decision and its reasoning, a rejected alternative, a migration note, a date, the version a change landed in, a changelog line, an owner quote or attribution. The list binds every tree but `.claude/decisions/`, which carries a rejected alternative and its reasoning, nothing else. Attribution has one home: the root `README.md` `## Contributors` section names each contributor with a link and the feature contributed. The test: would this sentence exist if the thing had always been this way? "previously", "no longer", "instead of", and "rather than" are banned where they contrast with an earlier state and fine where they contrast two options a reader is choosing between now; `pnpm lint:docs` warns on each. A negation that states a contract stays (`an admin route carries no workspace guard`); a negation that rebuts a former state goes (`the count is not stored on the model`). Rewrite it as what is (`activeSessionCount is computed per read`).
 
 ## Documentation prose
 
@@ -43,10 +43,23 @@ Binds `docs/*.md`, `.claude/decisions/*.md`, the root people files, `.github/` m
 - Bullets first; one paragraph, one idea. An entry stating several separate facts (the rules of a config, the steps of a procedure, the fields of a payload) is a list, one fact per item, numbered when order matters, related items under a sub-heading or nested bullets. No paragraph strings separate facts together with "and" or semicolons.
 - No working artifact (`.scratch/`, `generated/report-src-sweep.md`, `.claude/worktrees/`), no local-only git ref, absolute path, or branch-compare framing (`main`, `development`, `origin/*`, "against base"). `docs/ai-harness.md` describes the harness and may name `.scratch/`; other pages link to it. The released version, `generated/swagger.json`, and `generated/vault/` may appear. `CONTRIBUTING.md` names its branch flow (`development`, `main`) and the `upstream` remote.
 - A version is `major.minor.x+`, a pin included (Node `26.13.x+`, pnpm `12.5.x+`, Redis `6.2.x+`); the patch number is never written. The `SECURITY.md` supported-version line alone is `<major>.<minor>.x`, from `package.json` `version`.
-- No em-dash (write a period, comma, colon, or parentheses), filler, rhetorical question, synonym stacking.
+- No em-dash (write a period, comma, colon, or parentheses; `pnpm lint:docs` fails on one), filler, rhetorical question, synonym stacking.
 - A colon joins a label to its description, never `-` or a semicolon; a link list item is `[Title][ref]: description`.
 - A flow, a stack, or a hand-off is a mermaid diagram (`flowchart`, `sequenceDiagram`, `stateDiagram-v2`).
 - A designed diagram exists only where the owner asked for one: HTML source and SVG export together under `docs/assets/`, kebab-case names; the page embeds the SVG as a markdown image, alt text saying what it shows.
+
+## Page types
+
+Every `docs/*.md` page and root people file holds one [Diátaxis](https://diataxis.fr) type, and no folder groups `docs/` by type.
+
+| Type | Holds | Holds no |
+| --- | --- | --- |
+| tutorial | one guided path a newcomer follows end to end, each step with a visible result | a choice between options, a lookup table, background |
+| how-to | the steps of one task for a reader who knows the subject, its prerequisites, and the expected result | teaching, background, the full option list |
+| reference | the facts a reader looks up (routes, config keys, status codes, commands), one entry shape repeated | steps, background |
+| explanation | how a part works and why its pieces fit together | steps, a lookup table |
+
+A page links to its siblings of the other types on the same subject and repeats none of their content.
 
 ## Decisions
 
@@ -58,4 +71,4 @@ Binds `docs/*.md`, `.claude/decisions/*.md`, the root people files, `.github/` m
 
 ## Language
 
-Every artifact is English: code, comments, commit messages, `docs/*.md`, `.claude/**`, `.scratch/**`, PR and version text, trigger phrases and examples inside `.claude/**`. Reply language is `.claude/CLAUDE.md`.
+Every artifact is English, spelled American: code, comments, commit messages, `docs/*.md`, `.claude/**`, `.scratch/**`, PR and version text, trigger phrases and examples inside `.claude/**`. Reply language is `.claude/CLAUDE.md`.

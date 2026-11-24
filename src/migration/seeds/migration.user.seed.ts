@@ -134,7 +134,7 @@ export class MigrationUserSeed
         );
 
         try {
-            const today = this.helperDateService.create();
+            const today = this.helperDateService.now();
 
             const userAgent = this.requestUtil.parseUserAgent(
                 faker.internet.userAgent()

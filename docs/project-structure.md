@@ -27,7 +27,7 @@
 
 Below is an overview of the main project structure:
 
-```
+```text
 src
   ├── app
   ├── common
@@ -225,7 +225,7 @@ flowchart LR
 
 **Feature modules:**
 
-```
+```text
 modules
   ├── activity-log
   ├── analytic
@@ -257,7 +257,7 @@ modules
 
 Each feature has up to two Nest module files at the root of its folder. Only the files with something to provide exist:
 
-```
+```text
 modules/<feature>
   ├── <feature>.module.ts           # services, repositories, utils, caches, queue classes,
   │                                 #   factories
@@ -292,7 +292,7 @@ Each module includes only the folders its feature needs.
 
 The folders fall into three tiers:
 
-```
+```text
 module
   # Core (present in almost every module)
   ├── constants

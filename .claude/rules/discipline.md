@@ -20,14 +20,14 @@ They bind every flow and outrank the smaller diff. The rule named states each in
 - MongoDB is the source of truth and the cache a side resource: every entry has a TTL, and no cache error breaks the flow (`cache.md`).
 - A row a guard loaded is taken from its context, whole, and never read again: its guard read it on this request, so it is fresh (`guards.md`, Contexts).
 - A status-code block never holds a gap (`exception-class.md`).
-- Behaviour is built test-first (Checks).
+- Behavior is built test-first (Checks).
 - The code follows the rule (Boilerplate stance).
 
 ## The smallest complete change
 
 Follow `.claude/skills/ponytail/SKILL.md`. The level is `full` unless a skill or an agent file names another. Where it and a rule differ, the rule wins:
 
-- Behaviour changes test-first with a unit spec (Checks); its one-small-test clause does not replace that.
+- Behavior changes test-first with a unit spec (Checks); its one-small-test clause does not replace that.
 - A shape change changes every call site (`AGENTS.md`): those lines are in scope.
 - No error handling for a case the types and guards already exclude; the failures `null-safety.md` and `exceptions.md` name are not such a case.
 - Duplication beats the wrong abstraction (`code-style.md`).
@@ -58,7 +58,7 @@ Follow `.claude/skills/ponytail/SKILL.md`. The level is `full` unless a skill or
 
 ## Checks
 
-- Turn the request into a check before writing: a failing spec for new behaviour or a bug, specs green before and after a refactor.
+- Turn the request into a check before writing: a failing spec for new behavior or a bug, specs green before and after a refactor.
 - Done means the checks ran and their decisive output is quoted.
 - A generated file is no check: `generated/swagger.json` gets no count, diff, or acceptance line in a spec, a ticket, a dispatch, or a review.
 

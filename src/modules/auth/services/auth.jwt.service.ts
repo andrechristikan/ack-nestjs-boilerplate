@@ -177,7 +177,7 @@ export class AuthJwtService {
     }
 
     private remainingSeconds(exp: number): number {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
         const expiredAt = this.helperDateService.createFromTimestamp(
             exp * 1000
         );
@@ -218,12 +218,12 @@ export class AuthJwtService {
         } as JwtSignOptions);
     }
 
-    /** `expiresIn` is in seconds and replaces the configured refresh lifetime. */
+    /** `expiresIn` is in seconds and replaces the configured refresh lifetime; `null` takes the configured lifetime. */
     createRefreshToken(
         subject: string,
         jti: string,
         payload: IAuthJwtRefreshTokenPayload,
-        expiresIn?: number
+        expiresIn: number | null
     ): string {
         return this.jwtService.sign(payload, {
             privateKey: this.refreshTokenPrivateKey,
@@ -310,7 +310,8 @@ export class AuthJwtService {
         const refreshToken: string = this.createRefreshToken(
             user.id,
             jti,
-            payloadRefreshToken
+            payloadRefreshToken,
+            null
         );
 
         return this.toToken(

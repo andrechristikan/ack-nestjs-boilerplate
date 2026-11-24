@@ -197,7 +197,7 @@ export class TermPolicyService {
             contents
         );
 
-        const timestamp = this.helperDateService.create();
+        const timestamp = this.helperDateService.now();
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(
             { id: termPolicyId, type, version },
             timestamp
@@ -246,7 +246,7 @@ export class TermPolicyService {
             effects.push(deleteEffect);
         }
 
-        const timestamp = this.helperDateService.create();
+        const timestamp = this.helperDateService.now();
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(
             termPolicy,
             timestamp

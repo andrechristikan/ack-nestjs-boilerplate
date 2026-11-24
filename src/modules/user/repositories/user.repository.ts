@@ -66,7 +66,7 @@ export class UserRepository implements IUserRepository {
     private buildUserCreateData(
         input: IUserCreateWithWorkspaceInput
     ): Prisma.UserUncheckedCreateInput {
-        const lastWorkspaceChangedAt = this.helperDateService.create();
+        const lastWorkspaceChangedAt = this.helperDateService.now();
 
         return {
             id: input.userId,
@@ -383,7 +383,7 @@ export class UserRepository implements IUserRepository {
         userId: string,
         workspaceId: string
     ): Promise<void> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
 
         await tx.user.update({
             where: { id: userId },
@@ -399,7 +399,7 @@ export class UserRepository implements IUserRepository {
         userId: string,
         workspaceId: string
     ): Promise<void> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
 
         await tx.user.updateMany({
             where: { id: userId, lastWorkspaceId: workspaceId },

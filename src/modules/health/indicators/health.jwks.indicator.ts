@@ -26,17 +26,9 @@ export class HealthJwksIndicator {
 
     private async checkUri(
         key: EnumHealthIndicatorKey,
-        uri?: string
+        uri: string
     ): Promise<HealthIndicatorResult> {
         const indicator = this.healthIndicatorService.check(key);
-
-        if (!uri) {
-            return indicator.down('JWKS URI is not configured');
-        }
-
-        if (!URL.canParse(uri)) {
-            return indicator.down('JWKS URI is not a valid URL');
-        }
 
         try {
             const { data: body } = await this.httpClient.get(uri);

@@ -34,7 +34,6 @@ export class RoleCache {
         return { key: leaseKey, ttlInMs: this.leaseTtlInMs };
     }
 
-    /** The entry key and its lease key. */
     buildRoleKeys(roleId: string): string[] {
         return [this.buildRoleKey(roleId), this.buildRoleLeaseKey(roleId)];
     }

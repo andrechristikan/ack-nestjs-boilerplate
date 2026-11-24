@@ -90,7 +90,7 @@ export class UserLoginWithPasskeyUseCase implements IAppUseCase<
             );
 
         const deviceIdentity = this.deviceUtil.toIdentity(device);
-        const loginAt = this.helperDateService.create();
+        const loginAt = this.helperDateService.now();
         try {
             const { tokens } = await this.databaseService.withTransaction(
                 async tx => {

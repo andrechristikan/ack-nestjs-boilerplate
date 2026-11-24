@@ -15,10 +15,11 @@ The owner types every `/ack-*` skill: each carries `disable-model-invocation: tr
 
 ### Copied skills
 
-The other folders under `.claude/skills/` are third-party skills copied by the `skills` CLI and pinned in `skills-lock.json`. Their licence texts are in `.claude/skills/licenses/`. Editing and updating them: `.claude/rules/harness.md`.
+The other folders under `.claude/skills/` are third-party skills copied by the `skills` CLI and pinned in `skills-lock.json`. Their license texts are in `.claude/skills/licenses/`. Editing and updating them: `.claude/rules/harness.md`.
 
 - Where a copied skill and a rule, an `ack-*` skill, or an agent file differ, the copied skill loses.
 - `caveman` shapes agent hand-backs only: the session and every file stay in full sentences.
+- `documentation` shapes pages inside `writer`, and the `/ack-doc` reader test takes its Step 4 checks.
 
 ### Work artifacts
 

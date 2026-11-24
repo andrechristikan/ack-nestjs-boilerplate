@@ -58,7 +58,7 @@ Feature modules share one shape: `Controller → Use case → Service → Reposi
 Before an edit, read each rule `bash .claude/hooks/rules.sh <path>` prints. `.claude/rules/discipline.md` binds every change and outranks every other rule; read its Hard rules first.
 
 - Validation fails fast, before the transaction opens; the write keeps its guard; a failure is a typed exception with its own status code.
-- One statement per result; a guard-loaded row comes whole from its context; every relation scalar carries `@relation`; behaviour is test-first.
+- One statement per result; a guard-loaded row comes whole from its context; every relation scalar carries `@relation`; behavior is test-first.
 - A status-code block holds no gap; a notification snapshot is read before the transaction; the cache is a side resource whose failure never breaks a flow.
 
 ## Commands
@@ -66,7 +66,7 @@ Before an edit, read each rule `bash .claude/hooks/rules.sh <path>` prints. `.cl
 - `pnpm install` · `pnpm start:dev` · `pnpm build`
 - `pnpm generate`: `db:generate` (`prisma generate`) then `generate:package`. Run after a fresh checkout or a `package.json` version bump. `db:generate`, `db:format` and `prisma validate` touch files only.
 - `pnpm typecheck` · `pnpm test` (unit) · `pnpm test <path-filter>` · `pnpm test:cov` (unit coverage)
-- `pnpm lint` · `pnpm lint:fix` · `pnpm format` · `pnpm deadcode` (knip) · `pnpm spell`
+- `pnpm lint` · `pnpm lint:fix` · `pnpm format` · `pnpm deadcode` (knip) · `pnpm spell` · `pnpm lint:docs` (markdown)
 - `docker compose --env-file .env.docker --profile deps up -d`: the dependencies; adding `--profile apis` the app (with `migrate` in production). `-f ci/docker-compose.yml`: a deployed environment; `--profile vault` Vault. `package.json` holds no Docker script.
 
 ## Prisma schema
@@ -75,4 +75,4 @@ A release applies the schema through `migrate`. Owner-only: `pnpm db:migrate` (a
 
 ## Commit gates
 
-`.husky/pre-commit` runs `pnpm lint:staged` (format, lint, `stop-only`, related unit specs), then `pnpm typecheck`; `.husky/commit-msg` runs commitlint (`.commitlintrc`). `.github/workflows/ci.yml` runs lint, typecheck, deadcode, spell, build, a pull-request dependency review, then unit (`pnpm test:cov`) and integration workflows on pull requests and pushes to `main`, `staging`, `development`. Each blocks.
+`.husky/pre-commit` runs `pnpm lint:staged` (format, lint, `stop-only`, related unit specs, `lint:docs` checks on staged markdown), then `pnpm typecheck`; `.husky/commit-msg` runs commitlint (`.commitlintrc`). `.github/workflows/ci.yml` runs lint, typecheck, deadcode, spell, docs lint, build, a pull-request dependency review, then unit (`pnpm test:cov`) and integration workflows on pull requests and pushes to `main`, `staging`, `development`. Each blocks.

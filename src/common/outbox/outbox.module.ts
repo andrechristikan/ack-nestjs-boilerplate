@@ -7,7 +7,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 
-/** Shared module: OutboxService for every service and use case adding an outbox row, and for every processor forwarding it to QueueProcessorBase. */
+/** Shared module: OutboxService for every service and use case adding an outbox row or patching its data, and for QueueProcessorBase loading and stamping each job's row. */
 @Global()
 @Module({})
 export class OutboxModule {

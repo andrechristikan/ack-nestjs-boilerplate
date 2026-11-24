@@ -1,5 +1,0 @@
-{
-    "error": {
-        "chunkSizeInvalid": "The push notification batch size is out of range."
-    }
-}

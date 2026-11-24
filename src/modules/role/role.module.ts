@@ -5,7 +5,7 @@ import { RoleUtil } from '@modules/role/utils/role.util';
 import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 
-/** Shared module: RoleService for the role guard and the user, device, policy, and session use cases. */
+/** Shared module: RoleService for the role guard, the user module, and the user, device, mfa, policy, and session use cases. */
 @Global()
 @Module({})
 export class RoleModule {
@@ -14,7 +14,7 @@ export class RoleModule {
             module: RoleModule,
             controllers: [],
             providers: [RoleRepository, RoleService, RoleUtil, RoleCache],
-            exports: [RoleService, RoleUtil, RoleCache],
+            exports: [RoleService, RoleUtil],
             imports: [],
         };
     }

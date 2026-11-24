@@ -26,21 +26,21 @@ export class ActivityLogRepository implements IActivityLogRepository {
 
     private buildUserScopedWhere(
         userId: string,
-        where?: Prisma.ActivityLogWhereInput
+        where: Prisma.ActivityLogWhereInput | null
     ): Prisma.ActivityLogWhereInput {
         return {
-            AND: [...(where ? [where] : []), { userId }],
+            AND: [...(where !== null ? [where] : []), { userId }],
         };
     }
 
     private buildWorkspaceScopedWhere(
         workspaceId: string,
         userId: string | null,
-        where?: Prisma.ActivityLogWhereInput
+        where: Prisma.ActivityLogWhereInput | null
     ): Prisma.ActivityLogWhereInput {
         return {
             AND: [
-                ...(where ? [where] : []),
+                ...(where !== null ? [where] : []),
                 { workspaceId },
                 ...(userId !== null ? [{ userId }] : []),
             ],
@@ -91,7 +91,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
         userId: string,
         { where, ...params }: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
-        const scopedWhere = this.buildUserScopedWhere(userId, where);
+        const scopedWhere = this.buildUserScopedWhere(userId, where ?? null);
 
         return this.paginationService.offset(
             this.databaseService.client.activityLog,
@@ -111,7 +111,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
         userId: string,
         { where, ...params }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<IActivityLog>> {
-        const scopedWhere = this.buildUserScopedWhere(userId, where);
+        const scopedWhere = this.buildUserScopedWhere(userId, where ?? null);
 
         return this.paginationService.cursor(
             this.databaseService.client.activityLog,
@@ -135,7 +135,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
             userId,
-            where
+            where ?? null
         );
 
         return this.paginationService.offset(
@@ -160,7 +160,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
         const scopedWhere = this.buildWorkspaceScopedWhere(
             workspaceId,
             userId,
-            where
+            where ?? null
         );
 
         return this.paginationService.cursor(

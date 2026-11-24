@@ -8,7 +8,7 @@
 
 - A feature moves through `/ack-design`, `/ack-plan`, `/ack-harness`, `/ack-build`, `/ack-review`, and `/ack-doc`, then the owner's commit and `/ack-pr`. Each command but `/ack-pr`, the last, ends by naming the next and what it does.
 - The owner approves the spec, the plan, and the fix list of the review. Nothing is committed without the owner's word.
-- Every behaviour is built test-first, at a seam agreed during design.
+- Every behavior is built test-first, at a seam agreed during design.
 - A fact that has to hold every time is a hook or a `deny` entry in `.claude/settings.json`, not a sentence.
 - The harness reuses published skills where one exists. The `ack-*` skills adapt them to this repository and stay thin.
 
@@ -119,7 +119,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 | --- | --- | --- |
 | `/ack-debug <symptom>` | something is wrong and the cause is unknown | root cause first, then a fix with a spec; an owner answer that rejected a named alternative is a decision candidate for `/ack-harness` |
 | `/ack-spec <module or path>` | existing code lacks unit specs, or a spec went stale | the code wins; defects are logged, not fixed |
-| `/ack-doc <files, a plan path, or all>` | a doc is stale, missing, or needs a diagram | the code wins |
+| `/ack-doc <files, a plan path, or all>` | a doc is stale, missing, or needs a diagram | the code wins; each page holds one type |
 | `/ack-pr <mode>` | a branch is settled and needs a pull request or release notes | every claim traces to the diff |
 | `/ack-harness <change>` | the harness, a decision entry, or this page changes | the checkout wins |
 
@@ -142,7 +142,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 
 `.scratch/` is gitignored. It holds one folder per feature, and the `requirements/` and `pr/` folders:
 
-```
+```text
 .scratch/<feature>/
     spec.md                  the approved spec
     plan.md                  the index: approval, order, levels, status, evidence
@@ -221,9 +221,9 @@ A build that was interrupted resumes from the first ticket that is not done.
 
 ## Copied Skills
 
-Each skill below is copied unchanged from its repository by the [`skills` CLI][ref-skills-cli]. The licence texts are in `.claude/skills/licenses/`.
+Each skill below is copied unchanged from its repository by the [`skills` CLI][ref-skills-cli]. The license texts are in `.claude/skills/licenses/`.
 
-| Skill | Source | Licence | Used by |
+| Skill | Source | License | Used by |
 | --- | --- | --- | --- |
 | `grilling`, `to-spec` | [mattpocock/skills][ref-mattpocock-skills] | MIT | `/ack-design` |
 | `to-tickets` | [mattpocock/skills][ref-mattpocock-skills] | MIT | `/ack-plan` |
@@ -235,6 +235,7 @@ Each skill below is copied unchanged from its repository by the [`skills` CLI][r
 | `ponytail` | [DietrichGebert/ponytail][ref-ponytail] | MIT | the session, `coder`, `debugger`, `harness` |
 | `caveman` | [JuliusBrussee/caveman][ref-caveman] | Apache-2.0 | agent hand-backs |
 | `humanizer` | [blader/humanizer][ref-humanizer] | MIT | `writer` |
+| `documentation` | [mcollina/skills][ref-mcollina-skills] | MIT | `writer`, and the `/ack-doc` reader test |
 | `diagram-design` | [cathrynlavery/diagram-design][ref-diagram-design] | MIT | `writer`, for a designed diagram |
 
 - A copied skill is never edited. An `ack-*` skill or an agent follows it and states where this repository departs from it.
@@ -283,6 +284,7 @@ After a change to a skill or an agent, run its scenarios in a fresh session and 
 | `/ack-review` | a built feature | `review.md` has a coverage row per rule file and per changed flow, and each finding names its exact change |
 | `/ack-review` | a finding the owner drops | no `coder` runs for it, and `review.md` records the answer |
 | `/ack-review` | a fix `coder` cannot apply as written | the finding goes to the owner, and `coder` picks no other fix |
+| `/ack-doc` | a new how-to page | the dispatch carries `Type: how-to`, `writer` quotes `pnpm lint:docs` and `pnpm spell`, and the reader test asks the how-to check first |
 
 <!-- REFERENCES -->
 
@@ -295,4 +297,5 @@ After a change to a skill or an agent, run its scenarios in a fresh session and 
 [ref-ponytail]: https://github.com/DietrichGebert/ponytail
 [ref-caveman]: https://github.com/JuliusBrussee/caveman
 [ref-humanizer]: https://github.com/blader/humanizer
+[ref-mcollina-skills]: https://github.com/mcollina/skills
 [ref-diagram-design]: https://github.com/cathrynlavery/diagram-design

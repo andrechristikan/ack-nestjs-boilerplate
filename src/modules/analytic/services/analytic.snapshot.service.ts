@@ -74,7 +74,7 @@ export class AnalyticSnapshotService {
         }
     }
 
-    /** Writes the items of a new run, then swaps the signal's header to it and deletes the superseded items; a run that lost to a later one deletes its own items instead. */
+    /** Writes the run's items, then swaps the signal's header to the run and deletes the superseded items; a run that lost to a later one deletes its own items instead. */
     async replace<
         TData extends Prisma.InputJsonObject,
         TMetadata extends Prisma.InputJsonObject | null,
@@ -83,7 +83,7 @@ export class AnalyticSnapshotService {
         result: IAnalyticSnapshotResult<TData, TMetadata>
     ): Promise<void> {
         const runId = this.databaseUtil.createId();
-        const startedAt = this.helperDateService.create();
+        const startedAt = this.helperDateService.now();
         const batchSize = this.writeBatchSize;
 
         // Sequential by design: side effects whose order is part of the contract (the header after its items, the delete after the header write decides it); a fan-out over an unbounded collection: bounded chunks in turn, each concurrent
@@ -100,7 +100,7 @@ export class AnalyticSnapshotService {
             );
         }
 
-        const computedAt = this.helperDateService.create();
+        const computedAt = this.helperDateService.now();
         const won = await this.writeHeader(signal, {
             runId,
             startedAt,

@@ -116,7 +116,7 @@ export class MfaTotpService {
         } catch (err: unknown) {
             const exception = this.toDecryptException(err);
             if (exception !== null) {
-                this.sentryService.captureException(err);
+                this.sentryService.captureException(err, null);
             }
 
             throw exception ?? new AppUnknownException(err);
@@ -176,7 +176,7 @@ export class MfaTotpService {
         }
     }
 
-    /** Stores a new pending secret on the caller's transaction and answers it with its otpauth URL; the statement matches only a row with no confirmed secret, so a confirmed one collides on the user id. */
+    /** Stores a freshly drawn pending secret on the caller's transaction and answers it with its otpauth URL; the statement matches only a row with no confirmed secret, so a confirmed one collides on the user id. */
     async setupInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -237,7 +237,7 @@ export class MfaTotpService {
         userId: string,
         step: number
     ): Promise<void> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const isAccepted = await this.mfaTotpRepository.markUsedInTx(
             tx,
             userId,
@@ -250,14 +250,14 @@ export class MfaTotpService {
         }
     }
 
-    /** Moves the given pending secret into the confirmed one and stamps the step; a pending secret that no longer matches throws MfaTotpSetupRequiredException. */
+    /** Moves the given pending secret into the confirmed one and stamps the step; a pending secret the row does not hold throws MfaTotpSetupRequiredException. */
     async enableInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         pendingSecret: string,
         step: number
     ): Promise<void> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const isEnabled = await this.mfaTotpRepository.enableInTx(
             tx,
             userId,

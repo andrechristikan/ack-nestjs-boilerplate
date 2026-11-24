@@ -241,7 +241,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
         this.userAuthService.assertVerified(user);
         this.userAuthService.assertPasswordNotExpired(user);
 
-        const loginAt = this.helperDateService.create();
+        const loginAt = this.helperDateService.now();
         const outcome = await this.resolveLoginOutcome(
             requestContext,
             apiKeyContext,

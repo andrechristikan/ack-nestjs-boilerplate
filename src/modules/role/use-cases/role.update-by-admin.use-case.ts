@@ -69,7 +69,7 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
                         update
                     );
 
-                    const timestamp = this.helperDateService.create();
+                    const timestamp = this.helperDateService.now();
                     const metadata = this.roleUtil.mapActivityLogMetadata(
                         role,
                         timestamp

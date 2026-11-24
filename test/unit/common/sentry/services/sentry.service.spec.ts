@@ -32,12 +32,9 @@ describe('SentryService', () => {
         it('forwards the exception to Sentry', () => {
             const exception = new Error('boom');
 
-            service.captureException(exception);
+            service.captureException(exception, null);
 
-            expect(Sentry.captureException).toHaveBeenCalledWith(
-                exception,
-                undefined
-            );
+            expect(Sentry.captureException).toHaveBeenCalledWith(exception);
         });
 
         it('forwards the capture context to Sentry', () => {
@@ -58,7 +55,7 @@ describe('SentryService', () => {
             });
 
             expect(() =>
-                service.captureException(new Error('boom'))
+                service.captureException(new Error('boom'), null)
             ).not.toThrow();
         });
     });
@@ -88,13 +85,19 @@ describe('SentryService', () => {
             });
         });
 
+        it('forwards no attributes when they are null', () => {
+            service.log(EnumLoggerLevel.info, 'hello', null);
+
+            expect(Sentry.logger.info).toHaveBeenCalledWith('hello');
+        });
+
         it('swallows a failure from Sentry instead of throwing', () => {
             vi.mocked(Sentry.logger.error).mockImplementation(() => {
                 throw new Error('sentry unreachable');
             });
 
             expect(() =>
-                service.log(EnumLoggerLevel.error, 'hello')
+                service.log(EnumLoggerLevel.error, 'hello', null)
             ).not.toThrow();
         });
     });

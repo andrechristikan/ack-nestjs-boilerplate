@@ -122,7 +122,7 @@ export class UserPasswordService {
     }
 
     private createExpiredAt(): Date {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
 
         return this.helperDateService.forward(
             now,
@@ -162,7 +162,7 @@ export class UserPasswordService {
 
     /** Throws UserPasswordAttemptMaxException while the lock of the user ends later than now. */
     assertPasswordAttemptAvailable({ passwordLockedUntil }: IUser): void {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         if (passwordLockedUntil !== null && passwordLockedUntil > now) {
             throw new UserPasswordAttemptMaxException();
         }
@@ -204,7 +204,7 @@ export class UserPasswordService {
                 EnumFeatureFlagMetadataKey.passwordLockDurationInMinutes
             ),
         ]);
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const lockedUntil = this.helperDateService.forward(
             now,
             Duration.fromObject({ minutes: lockDurationInMinutes })
@@ -395,7 +395,7 @@ export class UserPasswordService {
 
     /** Deletes the reset rows that expired longer ago than forgotPassword.retentionInMs; returns the count. */
     async purgeExpired(): Promise<number> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const retention = this.helperDateService.createDuration({
             milliseconds: this.retentionInMs,
         });

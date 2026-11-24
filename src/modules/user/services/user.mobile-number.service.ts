@@ -146,7 +146,7 @@ export class UserMobileNumberService {
         userId: string,
         mobileNumberId: string
     ): Promise<void> {
-        const verifiedAt = this.helperDateService.create();
+        const verifiedAt = this.helperDateService.now();
         const isMarked = await this.userMobileNumberRepository.markVerifiedInTx(
             tx,
             userId,
@@ -162,7 +162,7 @@ export class UserMobileNumberService {
         return `+${phoneCode}${number}`;
     }
 
-    /** Updates the mobile number, touches the user, and adds the entry on the caller's transaction; a changed number or phone code clears the verification. */
+    /** Updates the mobile number, touches the user, and adds the entry on the caller's transaction; a changed number or phone code clears the verification and marks the number's unused codes used. */
     async updateMobileNumberInTx(
         tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
@@ -219,7 +219,7 @@ export class UserMobileNumberService {
         return mobileNumber;
     }
 
-    /** Deletes the mobile number, touches the user, and adds the entry on the caller's transaction; a guarded delete that matches no row throws UserMobileNumberNotFoundException. */
+    /** Deletes the mobile number, touches the user, marks the number's unused codes used, and adds the entry on the caller's transaction; a guarded delete that matches no row throws UserMobileNumberNotFoundException. */
     async deleteMobileNumberInTx(
         tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,

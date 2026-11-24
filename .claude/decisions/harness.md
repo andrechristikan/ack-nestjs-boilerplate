@@ -53,4 +53,31 @@ Rule: `discipline.md`; `.claude/settings.json`, `permissions.ask`; `.claude/hook
 
 Rule: `discipline.md`, Checks.
 
-- A Swagger operation count or `paths` diff as proof that a change is behaviour-neutral: the file is rewritten at every boot, so checking it proves nothing.
+- A Swagger operation count or `paths` diff as proof that a change is behavior-neutral: the file is rewritten at every boot, so checking it proves nothing.
+
+### Docs are linted by `markdownlint-cli2`, `remark-validate-links`, and Vale through one blocking `pnpm lint:docs`, and spell-checked by `cspell`
+
+Rule: `authoring.md`, Documentation prose; `.claude/agents/writer.md`, Finish and hand back.
+
+- `lychee` for the links: a Rust binary with no pnpm install, so the pre-commit hook cannot run it.
+- A model-only check: a model reading the pages misses a broken link, a broken anchor, or a banned word that a tool finds on every run.
+
+### Vale installs through the npm wrapper `@vvago/vale`
+
+Rule: `package.json`, `devDependencies`; `pnpm-workspace.yaml`, `allowBuilds`.
+
+- `brew install vale` with `errata-ai/vale-action` in CI: each developer installs it by hand, versions drift, and a commit hook cannot require it; a community wrapper whose download script needs `allowBuilds` costs less.
+
+## Authoring
+
+### Every tree is spelled American English
+
+Rule: `authoring.md`, Language.
+
+- British spelling: the owner chose the US form for every tree, a `src/` enum value included, so one `cspell` dictionary (`en`) reads code and prose alike.
+
+### Each page holds one Diátaxis type, through the copied `documentation` skill, with pages flat in `docs/*.md`
+
+Rule: `authoring.md`, Page types; `.claude/agents/writer.md`, `skills:`.
+
+- Folders per type and a documentation website: both are held with the monorepo feature.

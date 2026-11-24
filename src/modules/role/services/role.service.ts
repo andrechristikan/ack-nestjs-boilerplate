@@ -165,7 +165,6 @@ export class RoleService {
         return role;
     }
 
-    /** Reads the database directly, bypassing the role cache the guards use. */
     async getOneWithPolicies(roleId: string): Promise<IRoleWithPolicies> {
         const role = await this.roleRepository.findOneWithPoliciesById(roleId);
         if (!role) {
@@ -194,7 +193,7 @@ export class RoleService {
         return role;
     }
 
-    /** The outbox effect that drops the role's cache keys; a policy flow adds it on its own `tx`. */
+    /** The outbox effect that drops the role's cache keys; the caller adds it on the transaction of the write that changes the role or its policies. */
     invalidateEffect(roleId: string): IOutboxEffect {
         const keys = this.roleCache.buildRoleKeys(roleId);
 

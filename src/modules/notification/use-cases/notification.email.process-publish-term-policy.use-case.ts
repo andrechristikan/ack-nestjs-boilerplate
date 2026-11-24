@@ -44,7 +44,7 @@ export class NotificationEmailProcessPublishTermPolicyUseCase implements IAppUse
         const sentNotificationIds = recipients
             .filter(({ userId }) => sentUserIdSet.has(userId))
             .map(({ notificationId }) => notificationId);
-        const sentAt = this.helperDateService.create();
+        const sentAt = this.helperDateService.now();
 
         await this.databaseService.withTransaction(async tx => {
             await Promise.all([

@@ -104,7 +104,7 @@ A notification can target multiple channels simultaneously. `NotificationKindCon
 
 The notification module uses **three dedicated BullMQ queues**, each with its own processor:
 
-```
+```text
 NotificationQueue       → EnumQueue.notification       → NotificationProcessor
 NotificationEmailQueue  → EnumQueue.notificationEmail  → NotificationEmailProcessor
 NotificationPushQueue   → EnumQueue.notificationPush   → NotificationPushProcessor
@@ -910,8 +910,6 @@ The notification list is cursor-paginated:
 
 <!-- REFERENCES -->
 
-[ref-firebase]: https://firebase.google.com/docs/cloud-messaging
-[ref-bullmq]: https://bullmq.io
 [ref-doc-authentication]: authentication.md
 [ref-doc-device]: device.md
 [ref-doc-third-party]: third-party-integration.md

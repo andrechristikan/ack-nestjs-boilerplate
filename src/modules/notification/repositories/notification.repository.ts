@@ -139,7 +139,7 @@ export class NotificationRepository implements INotificationRepository {
             return;
         }
 
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
         const createData = this.buildCreateData(kind, payload, today);
         await tx.notification.create({ data: createData });
     }
@@ -148,7 +148,7 @@ export class NotificationRepository implements INotificationRepository {
         tx: IDatabaseTransactionClient,
         entries: INotificationCreateEntry[]
     ): Promise<void> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
 
         for (const { kind, payload } of entries) {
             const createData = this.buildCreateData(kind, payload, today);
@@ -173,7 +173,7 @@ export class NotificationRepository implements INotificationRepository {
     }
 
     async markAsRead(notificationId: string, userId: string): Promise<boolean> {
-        const readAt = this.helperDateService.create();
+        const readAt = this.helperDateService.now();
         const { count } =
             await this.databaseService.client.notification.updateMany({
                 where: {
@@ -194,7 +194,7 @@ export class NotificationRepository implements INotificationRepository {
         userId: string,
         excludedTypes: EnumNotificationType[]
     ): Promise<number> {
-        const readAt = this.helperDateService.create();
+        const readAt = this.helperDateService.now();
         const visibleWhere = this.buildVisibleWhere(userId, excludedTypes);
         const { count } =
             await this.databaseService.client.notification.updateMany({

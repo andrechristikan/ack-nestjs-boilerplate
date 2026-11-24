@@ -41,7 +41,7 @@ A class Nest injects is a value import, not `import type`. Rule: `.claude/rules/
 
 ## Tests
 
-Behaviour is built test-first; a spec mirrors its subject's `src/` path under `test/unit/`. Rule: `.claude/rules/testing.md`.
+Behavior is built test-first; a spec mirrors its subject's `src/` path under `test/unit/`. Rule: `.claude/rules/testing.md`.
 
 ## Errors
 

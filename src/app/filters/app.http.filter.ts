@@ -25,7 +25,7 @@ export class AppHttpFilter implements ExceptionFilter {
         }
 
         this.logger.error(exception, 'An unhandled exception occurred');
-        this.sentryService.captureException(exception);
+        this.sentryService.captureException(exception, null);
     }
 
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {

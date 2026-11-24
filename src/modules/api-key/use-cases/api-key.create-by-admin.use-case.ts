@@ -57,7 +57,7 @@ export class ApiKeyCreateByAdminUseCase implements IAppUseCase<
                     }
                 );
 
-                const timestamp = this.helperDateService.create();
+                const timestamp = this.helperDateService.now();
                 const metadata = this.apiKeyUtil.mapActivityLogMetadata(
                     { id: apiKeyId, name: body.name, type: body.type },
                     timestamp

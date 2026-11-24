@@ -158,7 +158,7 @@ describe('AwsSesService', () => {
         it('returns an empty result when not initialized', async () => {
             const service = await createAwsSesService(configValues, {});
 
-            await expect(service.listTemplates()).resolves.toEqual({
+            await expect(service.listTemplates(null)).resolves.toEqual({
                 TemplatesMetadata: [],
                 $metadata: {},
             });
@@ -178,6 +178,36 @@ describe('AwsSesService', () => {
                 TemplatesMetadata: [{ Name: 'welcome' }],
                 $metadata: {},
             });
+        });
+
+        it('sends the command without NextToken when the token is null', async () => {
+            const service = await createInitializedAwsSesService(
+                configValues,
+                {}
+            );
+            send.mockResolvedValueOnce({ $metadata: {} });
+
+            await service.listTemplates(null);
+
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({ input: { MaxItems: 20 } })
+            );
+        });
+
+        it('sends the command with NextToken when a token is given', async () => {
+            const service = await createInitializedAwsSesService(
+                configValues,
+                {}
+            );
+            send.mockResolvedValueOnce({ $metadata: {} });
+
+            await service.listTemplates('token');
+
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: { MaxItems: 20, NextToken: 'token' },
+                })
+            );
         });
     });
 

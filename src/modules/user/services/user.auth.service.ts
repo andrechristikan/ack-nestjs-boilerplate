@@ -360,7 +360,7 @@ export class UserAuthService {
                 seconds: this.authJwtService.refreshTokenExpiresInSeconds,
             })
         );
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const loginAction = this.resolveLoginActivityLogAction(loginWith);
         if (!device.isNewDevice) {
             await this.sessionService.revokeByDeviceOwnershipInTx(

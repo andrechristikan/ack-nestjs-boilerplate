@@ -247,7 +247,7 @@ export class ActivityLogQueue extends QueueBase {
             throw new ActivityLogContractInvalidException();
         }
 
-        const createdAt = this.helperDateService.create();
+        const createdAt = this.helperDateService.now();
         const row = this.buildCreate(
             input,
             payload.actorUserId,

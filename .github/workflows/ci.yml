@@ -56,6 +56,9 @@ jobs:
             - name: Spell
               run: pnpm spell
 
+            - name: Docs lint
+              run: pnpm lint:docs
+
     typecheck:
         runs-on: ubuntu-latest
         timeout-minutes: 20

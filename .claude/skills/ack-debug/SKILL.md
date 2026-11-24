@@ -1,7 +1,7 @@
 ---
 name: ack-debug
 description: >-
-    Finds the root cause of a symptom through the debugger agent, then has it fixed test-first when the fix stays inside one module: a wrong result, an error, a failing or flaky spec, a boot failure. Use when a symptom is in hand and its cause is not. Not for a feature or a change of behaviour (ack-design) or a coverage gap in code that works (ack-spec).
+    Finds the root cause of a symptom through the debugger agent, then has it fixed test-first when the fix stays inside one module: a wrong result, an error, a failing or flaky spec, a boot failure. Use when a symptom is in hand and its cause is not. Not for a feature or a change of behavior (ack-design) or a coverage gap in code that works (ack-spec).
 blurb: 'root cause first, then the fix, test-first'
 disable-model-invocation: true
 argument-hint: '<the symptom: input, observed result, expected result, where it surfaces>'
@@ -29,7 +29,7 @@ Agent: debugger
 Symptom: <input, observed result, expected result, where it surfaces>
 Scope: <the modules or paths the symptom names>
 Decision: <the owner's answer to a previous NEEDS_DECISION, or none>
-Decisions to honour: <the entries of .claude/decisions/ the scope touches (README.md there lists each file's scope), or none>
+Decisions to honor: <the entries of .claude/decisions/ the scope touches (README.md there lists each file's scope), or none>
 Rules to read: <the output of bash .claude/hooks/rules.sh over the scope, pasted>
 ```
 
@@ -51,8 +51,8 @@ Rules to read: <the output of bash .claude/hooks/rules.sh over the scope, pasted
 ```
 Agent: coder
 Pin: <files; cause at file:line; the change in one sentence>
-First failing spec: <the behaviour the root cause breaks>
-Decisions to honour: <as in step 2>
+First failing spec: <the behavior the root cause breaks>
+Decisions to honor: <as in step 2>
 ```
 
 3. A `DONE` hand-back quotes the spec failing because of the root cause, then passing.

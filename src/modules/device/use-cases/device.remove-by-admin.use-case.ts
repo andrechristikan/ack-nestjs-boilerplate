@@ -68,7 +68,7 @@ export class DeviceRemoveByAdminUseCase implements IAppUseCase<
             userId,
             removedBy
         );
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         try {
             await this.databaseService.withTransaction(async tx => {
                 const revokedSessions =

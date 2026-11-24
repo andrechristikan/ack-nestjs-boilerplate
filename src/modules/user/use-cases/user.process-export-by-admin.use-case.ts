@@ -118,7 +118,7 @@ export class UserProcessExportByAdminUseCase implements IAppUseCase<
             throw new QueueException(message, true);
         }
 
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const duration = this.helperDateService.createDuration({
             seconds: this.presignExpiresInSeconds,
         });

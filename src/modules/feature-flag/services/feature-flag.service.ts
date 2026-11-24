@@ -163,7 +163,7 @@ export class FeatureFlagService {
         this.assertRollout(featureFlag.rolloutPercent, key, anonymousId);
     }
 
-    /** Answers true only for an enabled flag whose sub-key holds true; ignores rollout and targeting. */
+    /** Answers true only for an enabled flag whose sub-key holds true, false otherwise; throws when no row exists; ignores rollout and targeting. */
     async isMetadataAllowed(
         key: EnumFeatureFlagKey,
         metadataKey: EnumFeatureFlagMetadataKey

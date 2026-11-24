@@ -231,7 +231,7 @@ export class MfaPasskeyService {
         return passkey;
     }
 
-    /** Answers the passkey id and new counter of an assertion the library verifies for a passkey of the user; null for a missing response or challenge, an unknown or foreign credential, a failed verification, or a counter that did not rise; a user without a passkey throws MfaMethodUnavailableException; counts nothing. */
+    /** Answers the passkey id and asserted counter of an assertion the library verifies for a passkey of the user; null for a missing response or challenge, an unknown or foreign credential, a failed verification, or a counter that did not rise (a stored and asserted 0 passes); a user without a passkey throws MfaMethodUnavailableException; counts nothing. */
     async checkAssertion(
         userId: string,
         passkeyResponse: AuthenticationResponseJSON | null,
@@ -267,14 +267,14 @@ export class MfaPasskeyService {
         return isCounterAdvanced ? { id: stored.id, counter } : null;
     }
 
-    /** Stamps the counter and last use of a passkey; a passkey that no longer exists throws MfaPasskeyInvalidException. */
+    /** Stamps the counter and last use of a passkey; a missing passkey throws MfaPasskeyInvalidException. */
     async markUsedInTx(
         tx: IDatabaseTransactionClient,
         passkeyId: string,
         counter: number,
         updatedBy: string
     ): Promise<void> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const isMarked = await this.mfaPasskeyRepository.markUsedInTx(
             tx,
             passkeyId,

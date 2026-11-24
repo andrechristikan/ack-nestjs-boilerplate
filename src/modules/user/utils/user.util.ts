@@ -75,7 +75,7 @@ export class UserUtil {
             return false;
         }
 
-        const today: Date = this.helperDateService.create();
+        const today: Date = this.helperDateService.now();
         return today > passwordExpired;
     }
 
@@ -83,7 +83,7 @@ export class UserUtil {
         lastCreatedAt: Date,
         resendInMinutes: number
     ): boolean {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const canResendAt = this.helperDateService.forward(
             lastCreatedAt,
             Duration.fromObject({ minutes: resendInMinutes })

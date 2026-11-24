@@ -49,7 +49,7 @@ export class UserRefreshUseCase implements IAppUseCase<
         authContext: IAuthJwtRefreshContext
     ): Promise<void> {
         const { sessionId, userId } = authContext;
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         try {
             await this.databaseService.withTransaction(async tx => {
                 const isRevoked = await this.sessionService.revokeReusedInTx(
@@ -110,7 +110,7 @@ export class UserRefreshUseCase implements IAppUseCase<
                     return null;
                 }
 
-                const now = this.helperDateService.create();
+                const now = this.helperDateService.now();
                 await Promise.all([
                     this.userService.updateLoginInTx(
                         tx,

@@ -22,7 +22,7 @@ export class UserForgotPasswordRepository implements IUserForgotPasswordReposito
     async findOneActiveByForgotPasswordToken(
         token: string
     ): Promise<IUserForgotPassword | null> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
 
         return this.databaseService.client.forgotPassword.findFirst({
             where: {

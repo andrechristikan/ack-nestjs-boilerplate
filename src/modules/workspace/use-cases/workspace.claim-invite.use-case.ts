@@ -66,7 +66,7 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
             userId
         );
 
-        const acceptedAt = this.helperDateService.create();
+        const acceptedAt = this.helperDateService.now();
         try {
             await this.databaseService.withTransaction(async tx => {
                 // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write

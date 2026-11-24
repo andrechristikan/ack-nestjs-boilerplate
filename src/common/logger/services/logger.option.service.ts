@@ -128,7 +128,7 @@ export class LoggerOptionService {
         return (obj: Record<string, unknown>) => {
             const pid = process.pid;
             const hostname = this.requestContextService.getHostname();
-            const today = this.helperDateService.create();
+            const today = this.helperDateService.now();
 
             const {
                 time: _time,

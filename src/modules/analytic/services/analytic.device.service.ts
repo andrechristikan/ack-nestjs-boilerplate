@@ -57,7 +57,7 @@ export class AnalyticDeviceService {
     }
 
     private async loadDeviceInactivity(): Promise<IAnalyticMetricCount> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const before = this.helperDateService.backward(
             now,
             Duration.fromMillis(this.inactivityInMs)

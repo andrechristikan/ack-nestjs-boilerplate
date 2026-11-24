@@ -65,7 +65,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         filter: Prisma.WorkspaceJoinRequestWhereInput,
         updatedBy: string
     ): Promise<void> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const pending = await tx.workspaceJoinRequest.findMany({
             where: {
                 ...filter,
@@ -86,7 +86,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                         status:
                             expiredAt <= now
                                 ? EnumWorkspaceJoinRequestStatus.expired
-                                : EnumWorkspaceJoinRequestStatus.cancelled,
+                                : EnumWorkspaceJoinRequestStatus.canceled,
                         nonce,
                         updatedBy,
                     },
@@ -96,7 +96,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
     }
 
     async expireStalePending(): Promise<number> {
-        const today = this.helperDateService.create();
+        const today = this.helperDateService.now();
 
         let total = 0;
         let fetched: number;
@@ -166,7 +166,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
             nonce,
         }: IWorkspaceJoinRequestCreateData
     ): Promise<WorkspaceJoinRequest> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const stale = await tx.workspaceJoinRequest.findFirst({
             where: {
                 nonce,
@@ -271,7 +271,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         workspaceId: string,
         userId: string
     ): Promise<number> {
-        const now = this.helperDateService.create();
+        const now = this.helperDateService.now();
         const pending = await tx.workspaceJoinRequest.findFirst({
             where: {
                 workspaceId,
@@ -294,7 +294,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 status:
                     pending.expiredAt <= now
                         ? EnumWorkspaceJoinRequestStatus.expired
-                        : EnumWorkspaceJoinRequestStatus.cancelled,
+                        : EnumWorkspaceJoinRequestStatus.canceled,
                 nonce,
             },
         });

@@ -7,7 +7,7 @@ import { RedisClientFactory } from '@common/redis/factories/redis.client.factory
 import { Global, Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 
-/** Shared module: RedisCacheClient, RedisQueueClient, and RedisQueueWorkerClient for CacheService, the queue kit, the throttle storage, the session and auth caches, and the Redis health indicator. */
+/** Shared module: RedisCacheClient, RedisQueueClient, and RedisQueueWorkerClient for CacheService, the queue kit, the throttle storage, and the Redis health indicator. */
 @Global()
 @Module({})
 export class RedisModule {
