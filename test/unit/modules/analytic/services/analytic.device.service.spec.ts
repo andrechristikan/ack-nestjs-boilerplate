@@ -10,14 +10,13 @@ import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.en
 import { AnalyticDeviceRepository } from '@modules/analytic/repositories/analytic.device.repository';
 import { AnalyticDeviceService } from '@modules/analytic/services/analytic.device.service';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
-import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
+import { AnalyticBucketsSnapshotMetaSchema } from '@modules/analytic/dtos/analytic.buckets-snapshot-meta.dto';
 import { AnalyticBucketsResultCacheSchema } from '@modules/analytic/dtos/analytic.buckets-result-cache.dto';
-import { AnalyticDevicePerUserSnapshotDataSchema } from '@modules/analytic/dtos/analytic.device-per-user-snapshot-data.dto';
 import { AnalyticMetricCountCacheSchema } from '@modules/analytic/dtos/analytic.metric-count-cache.dto';
 import { AnalyticMetricRateCacheSchema } from '@modules/analytic/dtos/analytic.metric-rate-cache.dto';
 
@@ -72,7 +71,6 @@ describe('AnalyticDeviceService', () => {
                 { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
                 ...TestUnitKitProviders,
-                AnalyticBucketUtil,
                 {
                     provide: AnalyticSnapshotService,
                     useValue: analyticSnapshotService,
@@ -140,25 +138,17 @@ describe('AnalyticDeviceService', () => {
     });
 
     describe('computeDevicePerUser', () => {
-        it('passes the repository buckets to the snapshot util with no bucketing', async () => {
-            const snapshot = {
-                items: [
-                    {
-                        key: 'a',
-                        value: 0,
-                        occurredAt: null,
-                        data: { key: 'a', count: 7 },
-                    },
-                ],
-                metadata: null,
-                windowStart: null,
-                windowEnd: null,
-            };
+        it('returns no items and the repository buckets as metadata', async () => {
             analyticDeviceRepository.groupPerUser.mockResolvedValue(buckets);
 
             const result = await service.computeDevicePerUser();
 
-            expect(result).toEqual(snapshot);
+            expect(result).toEqual({
+                items: [],
+                metadata: { buckets },
+                windowStart: null,
+                windowEnd: null,
+            });
             expect(analyticDeviceRepository.groupPerUser).toHaveBeenCalledTimes(
                 1
             );
@@ -166,18 +156,38 @@ describe('AnalyticDeviceService', () => {
     });
 
     describe('getDevicePerUser', () => {
-        it('reads the stored buckets through the snapshot service with no cache', async () => {
-            const stored = { buckets, computedAt: now };
-            analyticSnapshotService.getBuckets.mockResolvedValue(stored);
+        it('reads the header buckets through the snapshot service with no cache', async () => {
+            analyticSnapshotService.getSummary.mockResolvedValue({
+                count: 0,
+                metadata: { buckets },
+                windowStart: null,
+                windowEnd: null,
+                computedAt: now,
+            });
 
             const result = await service.getDevicePerUser();
 
-            expect(result).toBe(stored);
-            expect(analyticSnapshotService.getBuckets).toHaveBeenCalledWith(
+            expect(result).toEqual({ buckets, computedAt: now });
+            expect(analyticSnapshotService.getSummary).toHaveBeenCalledTimes(1);
+            expect(analyticSnapshotService.getSummary).toHaveBeenCalledWith(
                 EnumAnalyticSnapshotSignal.devicePerUser,
-                AnalyticDevicePerUserSnapshotDataSchema
+                AnalyticBucketsSnapshotMetaSchema
             );
             expect(cacheService.readThrough).not.toHaveBeenCalled();
+        });
+
+        it('answers no buckets and a null computedAt when the summary carries no metadata', async () => {
+            analyticSnapshotService.getSummary.mockResolvedValue({
+                count: 0,
+                metadata: null,
+                windowStart: null,
+                windowEnd: null,
+                computedAt: null,
+            });
+
+            const result = await service.getDevicePerUser();
+
+            expect(result).toEqual({ buckets: [], computedAt: null });
         });
     });
 

@@ -2,6 +2,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
 import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationCursorReturn,
     IPaginationEqual,
@@ -26,7 +27,6 @@ import type {
 } from '@modules/auth/interfaces/auth.interface';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
-import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { UserBlockedForbiddenException } from '@modules/user/exceptions/user.blocked-forbidden.exception';
 import { UserBlockedInvalidException } from '@modules/user/exceptions/user.blocked-invalid.exception';
 import { UserDeleteSelfForbiddenException } from '@modules/user/exceptions/user.delete-self-forbidden.exception';
@@ -54,7 +54,7 @@ import type {
     IUserProfile,
     IUserRecipient,
 } from '@modules/user/interfaces/user.interface';
-import { RoleService } from '@modules/role/services/role.service';
+import type { IUserCreateVerificationEntry } from '@modules/user/interfaces/user.create.interface';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
@@ -75,10 +75,10 @@ export class UserService {
         private readonly userUtil: UserUtil,
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly userCreateUtil: UserCreateUtil,
-        private readonly roleService: RoleService,
         private readonly awsSesService: AwsSesService,
         private readonly authPasswordService: AuthPasswordService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
         this.deleteSelfEmailPattern = this.configService.get<string>(
@@ -100,6 +100,14 @@ export class UserService {
         );
 
         return { email: deletedEmail, username: deletedUsername };
+    }
+
+    private buildVerificationEntries({
+        userId,
+        createdBy,
+        verification,
+    }: IUserCreateWithWorkspaceInput): IUserCreateVerificationEntry[] {
+        return verification ? [{ userId, createdBy, ...verification }] : [];
     }
 
     private isUsernamePatternInvalid(username: string): boolean {
@@ -128,7 +136,9 @@ export class UserService {
         authContext: IAuthJwtAccessContext,
         requiredVerified: boolean
     ): Promise<IUser> {
-        const user = await this.userRepository.findOneById(authContext.userId);
+        const user = await this.userRepository.findOneWithRoleById(
+            authContext.userId
+        );
         if (!user) {
             throw new UserAccountNotFoundException();
         } else if (user.status === EnumUserStatus.blocked) {
@@ -153,9 +163,7 @@ export class UserService {
             throw new UserEmailNotVerifiedException();
         }
 
-        const role = await this.roleService.getOne(user.roleId);
-
-        return { ...user, role };
+        return user;
     }
 
     async getListOffsetByAdmin(
@@ -183,23 +191,35 @@ export class UserService {
     async createManyInTx(
         tx: IDatabaseTransactionClient,
         inputs: IUserCreateWithWorkspaceInput[]
-    ): Promise<IUser[]> {
-        const users = await this.userRepository.createManyInTx(tx, inputs);
-        const writes = inputs.flatMap(input =>
-            input.verification
-                ? [
-                      this.userVerificationService.createInTx(
-                          tx,
-                          input.userId,
-                          input.verification,
-                          input.createdBy
-                      ),
-                  ]
-                : []
+    ): Promise<void> {
+        const verifications = inputs.flatMap(input =>
+            this.buildVerificationEntries(input)
         );
-        await Promise.all(writes);
+        // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
+        await this.userRepository.createManyInTx(tx, inputs);
+        if (verifications.length > 0) {
+            await this.userVerificationService.createManyInTx(
+                tx,
+                verifications
+            );
+        }
+    }
 
-        return users;
+    async createInTx(
+        tx: IDatabaseTransactionClient,
+        input: IUserCreateWithWorkspaceInput
+    ): Promise<IUser> {
+        const verifications = this.buildVerificationEntries(input);
+        // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
+        const user = await this.userRepository.createInTx(tx, input);
+        if (verifications.length > 0) {
+            await this.userVerificationService.createManyInTx(
+                tx,
+                verifications
+            );
+        }
+
+        return user;
     }
 
     async setLastWorkspaceInTx(
@@ -249,7 +269,8 @@ export class UserService {
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
         ipAddress: string | null,
-        loginAt: Date
+        loginAt: Date,
+        isPasswordAttemptReset: boolean
     ): Promise<User> {
         return this.userRepository.updateLoginInTx(
             tx,
@@ -257,15 +278,21 @@ export class UserService {
             loginFrom,
             loginWith,
             ipAddress,
-            loginAt
+            loginAt,
+            isPasswordAttemptReset
         );
     }
 
     async touchUpdatedByInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        userId: string,
+        isPasswordChecked: boolean
     ): Promise<void> {
-        await this.userRepository.touchUpdatedByInTx(tx, userId);
+        await this.userRepository.touchUpdatedByInTx(
+            tx,
+            userId,
+            isPasswordChecked
+        );
     }
 
     async getListActiveRecipientCursor(
@@ -314,6 +341,7 @@ export class UserService {
             this.userCreateUtil.buildPersonalWorkspaceContexts([username]);
         const workspaceContext = workspaceContexts[0]!;
         const verification = this.userVerificationUtil.createVerified(email);
+        const createdAt = this.helperDateService.now();
 
         return {
             input: {
@@ -327,14 +355,14 @@ export class UserService {
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified: true,
                 verifiedAt: verification.verifiedAt,
-                acceptedTermPolicyTypes: [
-                    ...UserTermPolicyContract.requiredTypes,
-                ],
+                acceptedTermPolicyTypes: [],
                 password,
                 passwordHistoryType:
                     UserCreateContract.admin.passwordHistoryType,
                 verification,
+                login: null,
                 workspaceContext,
+                createdAt,
                 createdBy,
             },
             password,
@@ -415,7 +443,7 @@ export class UserService {
         }
     }
 
-    /** Writes the status guarded on the target's current one; activating a user resets its password attempt counter and clears its lock. */
+    /** Writes the status guarded on the target's current one, a status changed first rejecting with UserStatusInvalidException; activating a user resets its password attempt counter and clears its lock. */
     async updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
         {
@@ -426,7 +454,7 @@ export class UserService {
         }: IUser,
         status: EnumUserStatus
     ): Promise<User> {
-        const row = await this.userRepository.updateStatusByAdminInTx(
+        return this.userRepository.updateStatusByAdminInTx(
             tx,
             id,
             currentStatus,
@@ -440,11 +468,6 @@ export class UserService {
                         : passwordLockedUntil,
             }
         );
-        if (!row) {
-            throw new UserStatusInvalidException();
-        }
-
-        return row;
     }
 
     async checkUsername(username: string): Promise<IUserCheckUsername> {

@@ -23,6 +23,7 @@ import { UserVerificationService } from '@modules/user/services/user.verificatio
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
+import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type { IUserMobileNumber } from '@modules/user/interfaces/user.interface';
 import { UserMobileNumberRepository } from '@modules/user/repositories/user.mobile-number.repository';
@@ -222,7 +223,8 @@ describe('UserMobileNumberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                input
+                input,
+                true
             );
 
             expect(result).toBe(mobileNumber);
@@ -233,7 +235,8 @@ describe('UserMobileNumberService', () => {
             );
             expect(userService.touchUpdatedByInTx).toHaveBeenCalledWith(
                 tx,
-                'user-marlin'
+                'user-marlin',
+                true
             );
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
@@ -292,7 +295,8 @@ describe('UserMobileNumberService', () => {
                 apiKeyContext,
                 authContext,
                 verified,
-                input
+                input,
+                true
             );
 
             expect(result).toBe(verified);
@@ -305,7 +309,8 @@ describe('UserMobileNumberService', () => {
             );
             expect(userService.touchUpdatedByInTx).toHaveBeenCalledWith(
                 tx,
-                'user-marlin'
+                'user-marlin',
+                true
             );
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
@@ -332,7 +337,8 @@ describe('UserMobileNumberService', () => {
                 apiKeyContext,
                 authContext,
                 { ...mobileNumber, isVerified: true },
-                { ...input, number: '5559999' }
+                { ...input, number: '5559999' },
+                false
             );
 
             expect(userMobileNumberRepository.updateInTx).toHaveBeenCalledWith(
@@ -360,7 +366,8 @@ describe('UserMobileNumberService', () => {
                 apiKeyContext,
                 authContext,
                 mobileNumber,
-                { ...input, number: '5559999' }
+                { ...input, number: '5559999' },
+                false
             );
             await setImmediate();
 
@@ -385,7 +392,8 @@ describe('UserMobileNumberService', () => {
                 apiKeyContext,
                 authContext,
                 mobileNumber,
-                { ...input, phoneCode: '+99' }
+                { ...input, phoneCode: '+99' },
+                false
             );
 
             expect(
@@ -393,8 +401,9 @@ describe('UserMobileNumberService', () => {
             ).toHaveBeenCalledWith(tx, mobileNumber.id);
         });
 
-        it('throws UserMobileNumberNotFoundException when the guarded update misses', async () => {
-            userMobileNumberRepository.updateInTx.mockResolvedValue(null);
+        it('passes the UserMobileNumberNotFoundException the guarded update rejected through untouched', async () => {
+            const rejected = new UserMobileNumberNotFoundException();
+            userMobileNumberRepository.updateInTx.mockRejectedValue(rejected);
 
             await expect(
                 service.updateMobileNumberInTx(
@@ -403,12 +412,10 @@ describe('UserMobileNumberService', () => {
                     apiKeyContext,
                     authContext,
                     mobileNumber,
-                    input
+                    input,
+                    false
                 )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
-            });
+            ).rejects.toBe(rejected);
             expect(userService.touchUpdatedByInTx).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(
@@ -428,7 +435,8 @@ describe('UserMobileNumberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                mobileNumber.id
+                mobileNumber.id,
+                true
             );
 
             expect(result).toBe(mobileNumber);
@@ -439,7 +447,8 @@ describe('UserMobileNumberService', () => {
             );
             expect(userService.touchUpdatedByInTx).toHaveBeenCalledWith(
                 tx,
-                'user-marlin'
+                'user-marlin',
+                true
             );
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
@@ -467,7 +476,8 @@ describe('UserMobileNumberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                mobileNumber.id
+                mobileNumber.id,
+                false
             );
             await setImmediate();
 
@@ -481,8 +491,9 @@ describe('UserMobileNumberService', () => {
             await expect(running).resolves.toBe(mobileNumber);
         });
 
-        it('throws UserMobileNumberNotFoundException when the guarded delete misses', async () => {
-            userMobileNumberRepository.deleteInTx.mockResolvedValue(null);
+        it('passes the UserMobileNumberNotFoundException the guarded delete rejected through untouched', async () => {
+            const rejected = new UserMobileNumberNotFoundException();
+            userMobileNumberRepository.deleteInTx.mockRejectedValue(rejected);
 
             await expect(
                 service.deleteMobileNumberInTx(
@@ -490,12 +501,10 @@ describe('UserMobileNumberService', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    mobileNumber.id
+                    mobileNumber.id,
+                    false
                 )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberNotFound,
-            });
+            ).rejects.toBe(rejected);
             expect(userService.touchUpdatedByInTx).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(

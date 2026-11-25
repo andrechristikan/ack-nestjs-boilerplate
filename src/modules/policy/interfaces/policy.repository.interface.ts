@@ -15,10 +15,10 @@ export interface IPolicyRepository {
         roleId: string,
         id: string,
         data: PolicyUpdateRequestDto
-    ): Promise<Policy | null>;
+    ): Promise<Policy>;
     deleteInTx(
         tx: IDatabaseTransactionClient,
         roleId: string,
         id: string
-    ): Promise<boolean>;
+    ): Promise<Policy>;
 }

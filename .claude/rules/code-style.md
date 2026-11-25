@@ -64,7 +64,7 @@ Default zero comments; the one marker is `// Sequential by design: <case>` (`con
 JSDoc lives in eight places only; a name, a signature, and `docs/` explain everything else:
 
 1. A `@Global()` module class: the one line `Shared module: <what it exports, for whom>.` (`module-files.md`, `@Global()`).
-2. Every export of `*.dto.ts`, `*.decorator.ts`, `*.enum.ts` (on the enum), `*.exception.ts`, `*.constant.ts`, `*.contract.ts`, `*.validation.ts`, and `src/common/doc/interfaces/doc.interface.ts`: the bare `/** @public */` (a knip directive), `/** @alias */` on an intentional alias, no description line. No other export carries it.
+2. Every export of `*.dto.ts`, `*.decorator.ts`, `*.enum.ts` (on the enum), `*.exception.ts`, `*.constant.ts`, `*.contract.ts`, `*.validation.ts`, and `src/common/doc/interfaces/doc.interface.ts`, and an unused `src/common/` util or service method of a used family (`layering.md`, Levels): the bare `/** @public */` (a knip directive), `/** @alias */` on an intentional alias, no description line. No other export carries it.
 3. A public service, util, cache, or queue method whose signature hides its contract: what `null` or `false` means, a side effect the name omits (a counter, an enqueue, a cache eviction), or a precondition the caller owns. One line, present tense.
 4. Nothing else, places 5 to 8 aside: no class line, constant, field, property, enum member, interface field, constructor, private method, or controller, repository, guard, or service method.
 5. A piece kept until a named later change: `/** Temporary: <what replaces it>. */` on the method, private included, deleted with the piece.

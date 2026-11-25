@@ -2,7 +2,6 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumActivityLogAction,
-    EnumTermPolicyType,
     EnumUserLoginWith,
     EnumUserSignUpWith,
     EnumVerificationType,
@@ -10,7 +9,6 @@ import {
 import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
-import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
@@ -18,13 +16,13 @@ import {
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import type {
     IUser,
+    IUserCreateLogin,
     IUserCreateWithWorkspaceInput,
     IUserLoginSocial,
     IUserRegistration,
     IUserRegistrationPrepared,
     IUserRegistrationResolved,
 } from '@modules/user/interfaces/user.interface';
-import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
@@ -33,7 +31,6 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class UserRegistrationService {
     constructor(
-        private readonly userAuthService: UserAuthService,
         private readonly featureFlagService: FeatureFlagService,
         private readonly userCreateUtil: UserCreateUtil,
         private readonly userUtil: UserUtil,
@@ -43,17 +40,6 @@ export class UserRegistrationService {
         private readonly helperDateService: HelperDateService
     ) {}
 
-    private buildAcceptedTermPolicyTypes(
-        cookies: boolean,
-        marketing: boolean
-    ): EnumTermPolicyType[] {
-        return [
-            ...UserTermPolicyContract.requiredTypes,
-            ...(cookies ? [EnumTermPolicyType.cookies] : []),
-            ...(marketing ? [EnumTermPolicyType.marketing] : []),
-        ];
-    }
-
     private resolveSocialFeatureFlagKey(
         loginWith: EnumUserLoginWith
     ): EnumFeatureFlagKey {
@@ -62,19 +48,16 @@ export class UserRegistrationService {
             : EnumFeatureFlagKey.loginWithApple;
     }
 
-    /** False when an undeleted user holds the normalized email, or the provider flag is off or its signUpAllowed sub-key is not true. */
+    /** False when the email already has a user row, or the provider flag is off or its signUpAllowed sub-key is not true. */
     async isSocialSignUpAllowed(
-        email: string,
+        existing: IUser | null,
         loginWith: EnumUserLoginWith
     ): Promise<boolean> {
         const featureFlagKey = this.resolveSocialFeatureFlagKey(loginWith);
-        const [signUpAllowed, existing] = await Promise.all([
-            this.featureFlagService.isMetadataAllowed(
-                featureFlagKey,
-                EnumFeatureFlagMetadataKey.signUpAllowed
-            ),
-            this.userAuthService.getOneByEmail(email),
-        ]);
+        const signUpAllowed = await this.featureFlagService.isMetadataAllowed(
+            featureFlagKey,
+            EnumFeatureFlagMetadataKey.signUpAllowed
+        );
 
         return existing === null && signUpAllowed;
     }
@@ -93,12 +76,14 @@ export class UserRegistrationService {
         { roleId, workspaceContext }: IUserRegistrationResolved
     ): Promise<IUserRegistrationPrepared> {
         const userId = this.databaseUtil.createId();
+        const createdAt = this.helperDateService.now();
         const password = await this.authPasswordService.create(passwordString);
         const emailVerification = this.userVerificationUtil.createEmail();
-        const acceptedTermPolicyTypes = this.buildAcceptedTermPolicyTypes(
-            cookies,
-            marketing
-        );
+        const acceptedTermPolicyTypes =
+            this.userCreateUtil.buildAcceptedTermPolicyTypes(
+                cookies,
+                marketing
+            );
 
         return {
             input: {
@@ -127,7 +112,9 @@ export class UserRegistrationService {
                     verifiedAt: null,
                     isUsed: false,
                 },
+                login: null,
                 workspaceContext,
+                createdAt,
                 createdBy: userId,
             },
             emailVerification,
@@ -145,15 +132,17 @@ export class UserRegistrationService {
             cookies,
             marketing,
         }: IUserLoginSocial,
-        { roleId, workspaceContext }: IUserRegistrationResolved
+        { roleId, workspaceContext }: IUserRegistrationResolved,
+        login: IUserCreateLogin
     ): IUserCreateWithWorkspaceInput {
         const userId = this.databaseUtil.createId();
         const normalizedEmail = this.userUtil.normalizeEmail(email);
-        const verifiedAt = this.helperDateService.now();
-        const acceptedTermPolicyTypes = this.buildAcceptedTermPolicyTypes(
-            cookies,
-            marketing
-        );
+        const createdAt = this.helperDateService.now();
+        const acceptedTermPolicyTypes =
+            this.userCreateUtil.buildAcceptedTermPolicyTypes(
+                cookies,
+                marketing
+            );
 
         return {
             userId,
@@ -168,33 +157,33 @@ export class UserRegistrationService {
                     ? EnumUserSignUpWith.socialApple
                     : EnumUserSignUpWith.socialGoogle,
             isVerified: true,
-            verifiedAt,
+            verifiedAt: createdAt,
             acceptedTermPolicyTypes,
             password: null,
             passwordHistoryType: UserCreateContract.social.passwordHistoryType,
             verification: null,
+            login,
             workspaceContext,
+            createdAt,
             createdBy: userId,
         };
     }
 
     buildCreateByAdminStages(
-        input: IUserCreateWithWorkspaceInput,
-        user: IUser
+        input: IUserCreateWithWorkspaceInput
     ): IActivityLogInput<EnumActivityLogAction>[] {
         const stages = this.userCreateUtil.buildStages(
             UserCreateContract.admin,
-            [input],
-            [user]
+            [input]
         );
 
         return [
             {
                 action: EnumActivityLogAction.adminUserCreated,
                 metadata: {
-                    targetUserId: user.id,
-                    targetUsername: user.username,
-                    timestamp: user.createdAt,
+                    targetUserId: input.userId,
+                    targetUsername: input.username,
+                    timestamp: input.createdAt,
                 },
             },
             ...stages,

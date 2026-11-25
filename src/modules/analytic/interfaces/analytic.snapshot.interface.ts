@@ -50,6 +50,14 @@ export interface IAnalyticSnapshotValueFilter {
     value: { gte: number };
 }
 
+export interface IAnalyticSnapshotListPipeline {
+    computedAt: Date;
+    page: {
+        data: { data: Prisma.JsonValue }[];
+        total: { n: number }[];
+    }[];
+}
+
 export interface IAnalyticRefreshSnapshotPayload {
     signal: EnumAnalyticSnapshotSignal;
 }

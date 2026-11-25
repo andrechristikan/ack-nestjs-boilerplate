@@ -97,7 +97,7 @@ describe('NotificationEmailProcessSendUseCase', () => {
             expect(
                 notificationEmailDeliveryService.send
             ).not.toHaveBeenCalled();
-            expect(outboxService.updateData).not.toHaveBeenCalled();
+            expect(outboxService.replaceData).not.toHaveBeenCalled();
             expect(
                 notificationEmailDeliveryService.stampSent
             ).not.toHaveBeenCalled();
@@ -117,7 +117,7 @@ describe('NotificationEmailProcessSendUseCase', () => {
                     return { $metadata: {}, MessageId: 'message-1' };
                 }
             );
-            outboxService.updateData.mockImplementation(async () => {
+            outboxService.replaceData.mockImplementation(async () => {
                 callOrder.push('recorded');
             });
             notificationEmailDeliveryService.stampSent.mockImplementation(
@@ -150,9 +150,13 @@ describe('NotificationEmailProcessSendUseCase', () => {
                     expiredAt: 'Mon, 08 Jan 2024 00:00:00 +0000',
                 }
             );
-            expect(outboxService.updateData).toHaveBeenCalledWith('outbox-id', {
-                completedSteps: [EnumNotificationStep.sendEmail],
-            });
+            expect(outboxService.replaceData).toHaveBeenCalledWith(
+                'outbox-id',
+                {
+                    ...data,
+                    completedSteps: [EnumNotificationStep.sendEmail],
+                }
+            );
             expect(
                 notificationEmailDeliveryService.stampSent
             ).toHaveBeenCalledWith('notification-id', 'actor-id');
@@ -173,7 +177,7 @@ describe('NotificationEmailProcessSendUseCase', () => {
             expect(
                 notificationEmailDeliveryService.stampSent
             ).not.toHaveBeenCalled();
-            expect(outboxService.updateData).not.toHaveBeenCalled();
+            expect(outboxService.replaceData).not.toHaveBeenCalled();
         });
 
         it('skips processed and the send on a retry that holds sendEmail, then stamps sent', async () => {
@@ -188,7 +192,7 @@ describe('NotificationEmailProcessSendUseCase', () => {
             expect(
                 notificationEmailDeliveryService.send
             ).not.toHaveBeenCalled();
-            expect(outboxService.updateData).not.toHaveBeenCalled();
+            expect(outboxService.replaceData).not.toHaveBeenCalled();
             expect(
                 notificationEmailDeliveryService.stampSent
             ).toHaveBeenCalledWith('notification-id', 'actor-id');

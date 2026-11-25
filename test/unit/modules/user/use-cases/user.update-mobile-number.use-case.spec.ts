@@ -11,8 +11,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumUserReauthenticationAction } from '@generated/prisma-client/client';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
@@ -24,7 +22,7 @@ import { UserMobileNumberInvalidException } from '@modules/user/exceptions/user.
 import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
-import type { IMfaReauthenticationResult } from '@modules/mfa/interfaces/mfa.interface';
+import { buildMfaFactorState } from '@test/unit/helpers/test.unit.mfa.helper';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
@@ -37,7 +35,6 @@ import {
     buildAuthJwtAccessContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { UserUpdateMobileNumberUseCase } from '@modules/user/use-cases/user.update-mobile-number.use-case';
-import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
@@ -45,7 +42,6 @@ import {
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 const passkeyResponse = {
     id: 'AbC_-123',
@@ -74,18 +70,8 @@ describe('UserUpdateMobileNumberUseCase', () => {
     const user = buildUser('user-swift', 'user-swift@example.com');
     const userContext = buildUserContext(user);
     const authContext = buildAuthJwtAccessContext(user.id);
+    const factorState = buildMfaFactorState('user-swift');
     const tx = {} as IDatabaseTransactionClient;
-    const withMfa: IMfaReauthenticationResult = {
-        isEnabled: true,
-        check: {
-            method: EnumMfaMethod.totp,
-            totpStep: 7,
-            backupCodeHash: null,
-            passkey: null,
-        },
-        failure: null,
-        passkeyChallengeToken: null,
-    };
     const mobileNumber: IUserMobileNumber = {
         id: 'mobile-swift',
         userId: 'user-swift',
@@ -132,6 +118,7 @@ describe('UserUpdateMobileNumberUseCase', () => {
         mfaService.checkReauthentication.mockResolvedValue(
             TestUnitReauthenticationMfaOff
         );
+        mfaService.getFactorState.mockResolvedValue(factorState);
         userAuthService.getReauthenticationVerificationId.mockResolvedValue(
             null
         );
@@ -301,7 +288,22 @@ describe('UserUpdateMobileNumberUseCase', () => {
             ).toHaveBeenCalledBefore(databaseService.withTransaction);
             expect(
                 userAuthService.completeReauthenticationInTx
-            ).toHaveBeenCalledWith(tx, authContext, true, null);
+            ).toHaveBeenCalledWith(tx, authContext, true, null, true);
+            expect(mfaService.getFactorState).toHaveBeenCalledTimes(1);
+            expect(mfaService.getFactorState).toHaveBeenCalledWith(
+                'user-swift'
+            );
+            expect(mfaService.checkReauthentication).toHaveBeenCalledWith(
+                'user-swift',
+                expect.objectContaining({
+                    action: EnumUserReauthenticationAction.mobileNumberUpdate,
+                }),
+                true,
+                factorState
+            );
+            expect(mfaService.getFactorState).toHaveBeenCalledBefore(
+                mfaService.checkReauthentication
+            );
             expect(
                 mfaService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
@@ -324,7 +326,8 @@ describe('UserUpdateMobileNumberUseCase', () => {
                 apiKeyContext,
                 authContext,
                 mobileNumber,
-                numberInput
+                numberInput,
+                true
             );
             expect(countryService.getOne).toHaveBeenCalledWith('country-swift');
             expect(
@@ -531,9 +534,9 @@ describe('UserUpdateMobileNumberUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('maps a number collision to UserMobileNumberExistException', async () => {
-            const collision = buildPrismaKnownRequestError('P2002', 'number');
-            databaseService.withTransaction.mockRejectedValue(collision);
+        it('passes the UserMobileNumberExistException the transaction rejected through untouched', async () => {
+            const rejected = new UserMobileNumberExistException();
+            databaseService.withTransaction.mockRejectedValue(rejected);
 
             await expect(
                 useCase.execute(
@@ -544,10 +547,7 @@ describe('UserUpdateMobileNumberUseCase', () => {
                     mobileNumber.id,
                     dto
                 )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.mobileNumberExist,
-            });
+            ).rejects.toBe(rejected);
         });
 
         it('rethrows an AppBaseException of the transaction as it is', async () => {
@@ -570,67 +570,6 @@ describe('UserUpdateMobileNumberUseCase', () => {
             expect(
                 userMobileNumberService.updateMobileNumberInTx
             ).not.toHaveBeenCalled();
-        });
-
-        it('answers MfaInvalidException on a write conflict when a MFA proof was checked', async () => {
-            mfaService.checkReauthentication.mockResolvedValue(withMfa);
-            databaseService.withTransaction.mockRejectedValue(
-                buildPrismaKnownRequestError('P2034')
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    mobileNumber.id,
-                    dto
-                )
-            ).rejects.toMatchObject({
-                statusCode: EnumMfaStatusCodeError.invalid,
-
-                module: 'mfa',
-            });
-        });
-
-        it('wraps a write conflict in AppUnknownException when no MFA proof was checked', async () => {
-            databaseService.withTransaction.mockRejectedValue(
-                buildPrismaKnownRequestError('P2034')
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    mobileNumber.id,
-                    dto
-                )
-            ).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-            });
-        });
-
-        it('wraps an unknown error of the transaction in AppUnknownException', async () => {
-            const cause = new Error('boom');
-            databaseService.withTransaction.mockRejectedValue(cause);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    mobileNumber.id,
-                    dto
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
         });
     });
 });

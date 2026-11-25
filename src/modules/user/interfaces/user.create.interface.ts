@@ -24,3 +24,8 @@ export interface IUserCreateVerification {
     verifiedAt: Date | null;
     isUsed: boolean;
 }
+
+export interface IUserCreateVerificationEntry extends IUserCreateVerification {
+    userId: string;
+    createdBy: string;
+}

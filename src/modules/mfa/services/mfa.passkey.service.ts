@@ -205,6 +205,10 @@ export class MfaPasskeyService {
         return this.mfaPasskeyRepository.findCredentialsByUserId(userId);
     }
 
+    async getManyForCheckByUser(userId: string): Promise<MfaPasskey[]> {
+        return this.mfaPasskeyRepository.findManyForCheckByUserId(userId);
+    }
+
     async getAssertionOptions(
         credentials: IMfaPasskeyCredential[]
     ): Promise<PublicKeyCredentialRequestOptionsJSON> {
@@ -231,26 +235,23 @@ export class MfaPasskeyService {
         return passkey;
     }
 
-    /** Answers the passkey id and asserted counter of an assertion the library verifies for a passkey of the user; null for a missing response or challenge, an unknown or foreign credential, a failed verification, or a counter that did not rise (a stored and asserted 0 passes); a user without a passkey throws MfaMethodUnavailableException; counts nothing. */
+    /** Answers the passkey id and asserted counter of an assertion the library verifies for the passkey of the list whose credential id the response names; null for a missing response or challenge, a credential id absent from the list, a failed verification, or a counter that did not rise (a stored and asserted 0 passes); an empty list throws MfaMethodUnavailableException; reads and counts nothing. */
     async checkAssertion(
-        userId: string,
+        passkeys: MfaPasskey[],
         passkeyResponse: AuthenticationResponseJSON | null,
         webAuthnChallenge: string | null
     ): Promise<IMfaPasskeyCheck | null> {
-        // Sequential by design: a credential proof, awaited alone
-        const hasPasskey =
-            await this.mfaPasskeyRepository.existsByUserId(userId);
-        if (!hasPasskey) {
+        if (passkeys.length === 0) {
             throw new MfaMethodUnavailableException();
         }
         if (passkeyResponse === null || webAuthnChallenge === null) {
             return null;
         }
 
-        const stored = await this.mfaPasskeyRepository.findOneByCredentialId(
-            passkeyResponse.id
+        const stored = passkeys.find(
+            ({ credentialId }) => credentialId === passkeyResponse.id
         );
-        if (stored === null || stored.userId !== userId) {
+        if (stored === undefined) {
             return null;
         }
 

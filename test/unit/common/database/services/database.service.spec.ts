@@ -184,6 +184,122 @@ describe('DatabaseService', () => {
         });
     });
 
+    describe('beforeCommit', () => {
+        it('awaits the callbacks registered on the tx in registration order after fn resolves and before $transaction resolves', async () => {
+            const tx: MockProxy<IDatabaseClient> = mock<IDatabaseClient>();
+            const order: string[] = [];
+            const firstDone = buildDeferred<void>();
+            client.$transaction.mockImplementationOnce(async (fn: unknown) => {
+                const result = await (
+                    fn as (tx: IDatabaseClient) => Promise<unknown>
+                )(tx);
+                order.push('transaction resolved');
+
+                return result;
+            });
+            const first = vi.fn().mockImplementation(async () => {
+                order.push('first');
+                await firstDone.promise;
+            });
+            const second = vi.fn().mockImplementation(async () => {
+                order.push('second');
+            });
+            const body = vi
+                .fn()
+                .mockImplementation(async (innerTx: IDatabaseClient) => {
+                    service.beforeCommit(innerTx, first);
+                    service.beforeCommit(innerTx, second);
+                    order.push('fn');
+
+                    return 'result';
+                });
+
+            const pending = service.withTransaction(body);
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(first).toHaveBeenCalledTimes(1);
+            expect(second).not.toHaveBeenCalled();
+
+            firstDone.resolve();
+            const result = await pending;
+
+            expect(order).toEqual([
+                'fn',
+                'first',
+                'second',
+                'transaction resolved',
+            ]);
+            expect(result).toBe('result');
+        });
+
+        it('runs every before-commit callback before every after-commit callback', async () => {
+            const tx: MockProxy<IDatabaseClient> = mock<IDatabaseClient>();
+            client.$transaction.mockImplementationOnce(async (fn: unknown) =>
+                (fn as (tx: IDatabaseClient) => Promise<unknown>)(tx)
+            );
+            const before = vi.fn().mockResolvedValue(undefined);
+            const after = vi.fn().mockResolvedValue(undefined);
+            const body = vi
+                .fn()
+                .mockImplementation(async (innerTx: IDatabaseClient) => {
+                    service.afterCommit(innerTx, after);
+                    service.beforeCommit(innerTx, before);
+                });
+
+            await service.withTransaction(body);
+
+            expect(before).toHaveBeenCalledTimes(1);
+            expect(after).toHaveBeenCalledTimes(1);
+            expect(before).toHaveBeenCalledBefore(after);
+        });
+
+        it('runs no callback of either list when fn rejects', async () => {
+            const error = new Error('fn failed');
+            client.$transaction.mockImplementationOnce(async (fn: unknown) =>
+                (fn as (tx: IDatabaseClient) => Promise<unknown>)(
+                    mock<IDatabaseClient>()
+                )
+            );
+            const before = vi.fn().mockResolvedValue(undefined);
+            const after = vi.fn().mockResolvedValue(undefined);
+            const body = vi
+                .fn()
+                .mockImplementation(async (tx: IDatabaseClient) => {
+                    service.beforeCommit(tx, before);
+                    service.afterCommit(tx, after);
+
+                    throw error;
+                });
+
+            await expect(service.withTransaction(body)).rejects.toBe(error);
+            expect(before).not.toHaveBeenCalled();
+            expect(after).not.toHaveBeenCalled();
+        });
+
+        it('rejects with the error of a rejecting callback, skips the later ones, and runs no after-commit callback', async () => {
+            const error = new Error('before-commit failed');
+            client.$transaction.mockImplementationOnce(async (fn: unknown) =>
+                (fn as (tx: IDatabaseClient) => Promise<unknown>)(
+                    mock<IDatabaseClient>()
+                )
+            );
+            const first = vi.fn().mockRejectedValue(error);
+            const second = vi.fn().mockResolvedValue(undefined);
+            const after = vi.fn().mockResolvedValue(undefined);
+            const body = vi
+                .fn()
+                .mockImplementation(async (tx: IDatabaseClient) => {
+                    service.beforeCommit(tx, first);
+                    service.beforeCommit(tx, second);
+                    service.afterCommit(tx, after);
+                });
+
+            await expect(service.withTransaction(body)).rejects.toBe(error);
+            expect(second).not.toHaveBeenCalled();
+            expect(after).not.toHaveBeenCalled();
+        });
+    });
+
     describe('afterCommit', () => {
         it('awaits the callbacks registered on the tx in registration order after $transaction resolves and returns the result after the last', async () => {
             const tx: MockProxy<IDatabaseClient> = mock<IDatabaseClient>();

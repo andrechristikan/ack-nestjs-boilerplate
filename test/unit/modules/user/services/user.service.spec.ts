@@ -32,7 +32,7 @@ import { UserService } from '@modules/user/services/user.service';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-import { RoleService } from '@modules/role/services/role.service';
+import { UserStatusInvalidException } from '@modules/user/exceptions/user.status-invalid.exception';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
@@ -62,7 +62,6 @@ describe('UserService', () => {
     const userRepository: MockProxy<UserRepository> = mock<UserRepository>();
     const userVerificationService: MockProxy<UserVerificationService> =
         mock<UserVerificationService>();
-    const roleService: MockProxy<RoleService> = mock<RoleService>();
     const awsSesService: MockProxy<AwsSesService> = mock<AwsSesService>();
     const authPasswordService: MockProxy<AuthPasswordService> =
         mock<AuthPasswordService>();
@@ -100,8 +99,6 @@ describe('UserService', () => {
         role,
     };
 
-    const { role: _role, ...userRow } = baseUser;
-
     beforeAll(() => {
         vi.useFakeTimers();
     });
@@ -124,7 +121,6 @@ describe('UserService', () => {
                     provide: UserVerificationService,
                     useValue: userVerificationService,
                 },
-                { provide: RoleService, useValue: roleService },
                 { provide: AwsSesService, useValue: awsSesService },
                 { provide: AuthPasswordService, useValue: authPasswordService },
                 DatabaseUtil,
@@ -161,7 +157,7 @@ describe('UserService', () => {
 
     describe('validateUserGuard', () => {
         it('throws UserAccountNotFoundException when the user row is gone', async () => {
-            userRepository.findOneById.mockResolvedValue(null);
+            userRepository.findOneWithRoleById.mockResolvedValue(null);
 
             const call = service.validateUserGuard(
                 {
@@ -178,8 +174,8 @@ describe('UserService', () => {
         });
 
         it('throws UserBlockedForbiddenException when the user is blocked', async () => {
-            userRepository.findOneById.mockResolvedValue({
-                ...userRow,
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
                 status: EnumUserStatus.blocked,
             });
 
@@ -198,8 +194,8 @@ describe('UserService', () => {
         });
 
         it('throws UserInactiveForbiddenException when the user is not active', async () => {
-            userRepository.findOneById.mockResolvedValue({
-                ...userRow,
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
                 status: EnumUserStatus.inactive,
             });
 
@@ -218,10 +214,9 @@ describe('UserService', () => {
         });
 
         it('skips the password expiry check for a social session', async () => {
-            userRepository.findOneById.mockResolvedValue(userRow);
-            roleService.getOne.mockResolvedValue(role);
-            userRepository.findOneById.mockResolvedValue({
-                ...userRow,
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
                 passwordExpired: new Date('2026-02-01T00:00:00.000Z'),
             });
 
@@ -240,8 +235,8 @@ describe('UserService', () => {
         });
 
         it('throws UserPasswordExpiredException for an expired credential session', async () => {
-            userRepository.findOneById.mockResolvedValue({
-                ...userRow,
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
                 passwordExpired: new Date('2026-02-01T00:00:00.000Z'),
             });
 
@@ -260,8 +255,8 @@ describe('UserService', () => {
         });
 
         it('throws UserEmailNotVerifiedException when verification is required and missing', async () => {
-            userRepository.findOneById.mockResolvedValue({
-                ...userRow,
+            userRepository.findOneWithRoleById.mockResolvedValue({
+                ...baseUser,
                 isVerified: false,
             });
 
@@ -280,8 +275,7 @@ describe('UserService', () => {
         });
 
         it('returns the user when every check passes', async () => {
-            userRepository.findOneById.mockResolvedValue(userRow);
-            roleService.getOne.mockResolvedValue(role);
+            userRepository.findOneWithRoleById.mockResolvedValue(baseUser);
 
             await expect(
                 service.validateUserGuard(
@@ -292,32 +286,10 @@ describe('UserService', () => {
                     true
                 )
             ).resolves.toEqual(baseUser);
-            expect(userRepository.findOneById).toHaveBeenCalledWith(
+            expect(userRepository.findOneWithRoleById).toHaveBeenCalledWith(
                 'user-cobalt'
             );
-            expect(roleService.getOne).toHaveBeenCalledWith(role.id);
-        });
-
-        it('does not read the role for a blocked user', async () => {
-            userRepository.findOneById.mockResolvedValue({
-                ...userRow,
-                status: EnumUserStatus.blocked,
-            });
-
-            await expect(
-                service.validateUserGuard(
-                    {
-                        ...buildAuthJwtAccessContext('user-cobalt'),
-                        loginWith: EnumUserLoginWith.credential,
-                    },
-                    false
-                )
-            ).rejects.toMatchObject({
-                module: 'user',
-
-                statusCode: EnumUserStatusCodeError.blockedForbidden,
-            });
-            expect(roleService.getOne).not.toHaveBeenCalled();
+            expect(userRepository.findOneWithRoleById).toHaveBeenCalledTimes(1);
         });
     });
 
@@ -423,7 +395,12 @@ describe('UserService', () => {
     describe('getManyActiveRecipientsByIds', () => {
         it('delegates to the repository with the creation bound', async () => {
             const rows = [
-                { id: 'user-a', email: 'a@example.com', username: 'a' },
+                {
+                    id: 'user-a',
+                    email: 'a@example.com',
+                    username: 'a',
+                    name: null,
+                },
             ];
             const createdBefore = new Date('2026-01-01T00:00:00.000Z');
             userRepository.findActiveRecipientsByIds.mockResolvedValue(rows);
@@ -475,12 +452,14 @@ describe('UserService', () => {
             password: null,
             passwordHistoryType: null,
             verification,
+            login: null,
             workspaceContext: {
                 type: EnumUserCreateWorkspaceContextType.personal,
                 workspaceId: 'workspace-cobalt',
                 slugCandidates: ['w-cobalt'],
                 name: "cobaltReyes's Workspace",
             },
+            createdAt: now,
             createdBy: 'user-cobalt',
         };
         const withoutVerification: IUserCreateWithWorkspaceInput = {
@@ -489,40 +468,134 @@ describe('UserService', () => {
             verification: null,
             createdBy: 'admin-cobalt',
         };
-        it('writes the users, then the verification row only for an input that carries one', async () => {
-            const marigold: IUser = {
-                ...baseUser,
-                id: 'user-marigold',
-            };
-            userRepository.createManyInTx.mockResolvedValue([
-                baseUser,
-                marigold,
-            ]);
+        const secondVerification: IUserCreateVerification = {
+            ...verification,
+            reference: 'ref-saffron',
+            to: 'saffron@example.com',
+        };
+        const saffron: IUserCreateWithWorkspaceInput = {
+            ...withVerification,
+            userId: 'user-saffron',
+            verification: secondVerification,
+            createdBy: 'user-saffron',
+        };
 
-            const result = await service.createManyInTx(tx, [
+        it('writes every user with one repository call and every verification with one verification call', async () => {
+            await service.createManyInTx(tx, [
                 withVerification,
                 withoutVerification,
+                saffron,
             ]);
 
+            expect(userRepository.createManyInTx).toHaveBeenCalledTimes(1);
             expect(userRepository.createManyInTx).toHaveBeenCalledWith(tx, [
                 withVerification,
                 withoutVerification,
+                saffron,
             ]);
-            expect(userVerificationService.createInTx).toHaveBeenCalledTimes(1);
-            expect(userVerificationService.createInTx).toHaveBeenCalledWith(
+            expect(
+                userVerificationService.createManyInTx
+            ).toHaveBeenCalledTimes(1);
+            expect(userVerificationService.createManyInTx).toHaveBeenCalledWith(
                 tx,
-                'user-cobalt',
-                verification,
-                'user-cobalt'
+                [
+                    {
+                        userId: 'user-cobalt',
+                        createdBy: 'user-cobalt',
+                        ...verification,
+                    },
+                    {
+                        userId: 'user-saffron',
+                        createdBy: 'user-saffron',
+                        ...secondVerification,
+                    },
+                ]
             );
-            expect(result).toEqual([baseUser, marigold]);
         });
 
-        it('issues no statement for an empty list', async () => {
-            userRepository.createManyInTx.mockResolvedValue([]);
+        it('writes no verification when no input carries one', async () => {
+            await service.createManyInTx(tx, [withoutVerification]);
 
-            await expect(service.createManyInTx(tx, [])).resolves.toEqual([]);
-            expect(userVerificationService.createInTx).not.toHaveBeenCalled();
+            expect(userRepository.createManyInTx).toHaveBeenCalledTimes(1);
+            expect(
+                userVerificationService.createManyInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('issues no verification statement for an empty list', async () => {
+            await service.createManyInTx(tx, []);
+
+            expect(
+                userVerificationService.createManyInTx
+            ).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('createInTx', () => {
+        const verification: IUserCreateVerification = {
+            reference: 'ref-cobalt',
+            token: 'hashed-token',
+            type: EnumVerificationType.email,
+            action: null,
+            mobileNumberId: null,
+            to: 'cobalt@example.com',
+            expiredAt: new Date('2026-02-01T00:00:00.000Z'),
+            verifiedAt: null,
+            isUsed: false,
+        };
+        const input: IUserCreateWithWorkspaceInput = {
+            userId: 'user-cobalt',
+            email: 'cobalt@example.com',
+            name: 'Cobalt Reyes',
+            username: 'cobaltReyes',
+            countryId: 'country-cobalt',
+            roleId: role.id,
+            signUpFrom: EnumUserSignUpFrom.website,
+            signUpWith: EnumUserSignUpWith.socialGoogle,
+            isVerified: true,
+            verifiedAt: now,
+            acceptedTermPolicyTypes: [],
+            password: null,
+            passwordHistoryType: null,
+            verification: null,
+            login: null,
+            workspaceContext: {
+                type: EnumUserCreateWorkspaceContextType.personal,
+                workspaceId: 'workspace-cobalt',
+                slugCandidates: ['w-cobalt'],
+                name: "cobaltReyes's Workspace",
+            },
+            createdAt: now,
+            createdBy: 'user-cobalt',
+        };
+
+        it('returns the created user and writes no verification for an input without one', async () => {
+            userRepository.createInTx.mockResolvedValue(baseUser);
+
+            const result = await service.createInTx(tx, input);
+
+            expect(userRepository.createInTx).toHaveBeenCalledWith(tx, input);
+            expect(
+                userVerificationService.createManyInTx
+            ).not.toHaveBeenCalled();
+            expect(result).toBe(baseUser);
+        });
+
+        it('writes the verification of an input that carries one', async () => {
+            userRepository.createInTx.mockResolvedValue(baseUser);
+
+            await service.createInTx(tx, { ...input, verification });
+
+            expect(userVerificationService.createManyInTx).toHaveBeenCalledWith(
+                tx,
+                [
+                    {
+                        userId: 'user-cobalt',
+                        createdBy: 'user-cobalt',
+                        ...verification,
+                    },
+                ]
+            );
         });
     });
 
@@ -601,7 +674,7 @@ describe('UserService', () => {
     });
 
     describe('updateLoginInTx', () => {
-        it('delegates to the repository', async () => {
+        it('forwards the caller reset flag when the caller proved the password', async () => {
             const user = baseUser;
             userRepository.updateLoginInTx.mockResolvedValue(user);
 
@@ -612,19 +685,56 @@ describe('UserService', () => {
                     EnumUserLoginFrom.website,
                     EnumUserLoginWith.credential,
                     '127.0.0.1',
-                    now
+                    now,
+                    true
                 )
             ).resolves.toBe(user);
+
+            expect(userRepository.updateLoginInTx).toHaveBeenCalledWith(
+                tx,
+                user.id,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                '127.0.0.1',
+                now,
+                true
+            );
+        });
+
+        it('forwards no reset for a credential session the caller did not re-prove', async () => {
+            const user = baseUser;
+            userRepository.updateLoginInTx.mockResolvedValue(user);
+
+            await service.updateLoginInTx(
+                tx,
+                user.id,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                null,
+                now,
+                false
+            );
+
+            expect(userRepository.updateLoginInTx).toHaveBeenCalledWith(
+                tx,
+                user.id,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.credential,
+                null,
+                now,
+                false
+            );
         });
     });
 
     describe('touchUpdatedByInTx', () => {
-        it('delegates to the repository', async () => {
-            await service.touchUpdatedByInTx(tx, 'user-cobalt');
+        it('forwards the password check flag to the repository', async () => {
+            await service.touchUpdatedByInTx(tx, 'user-cobalt', true);
 
             expect(userRepository.touchUpdatedByInTx).toHaveBeenCalledWith(
                 tx,
-                'user-cobalt'
+                'user-cobalt',
+                true
             );
         });
     });
@@ -636,11 +746,13 @@ describe('UserService', () => {
                     id: 'user-cobalt',
                     email: 'cobalt@example.com',
                     username: 'cobalt',
+                    name: null,
                 },
                 {
                     id: 'user-indigo',
                     email: 'indigo@example.com',
                     username: 'indigo',
+                    name: null,
                 },
             ];
             const createdBefore = new Date('2026-01-01T00:00:00.000Z');
@@ -765,6 +877,8 @@ describe('UserService', () => {
                 signUpWith: EnumUserSignUpWith.credential,
                 isVerified: true,
                 verifiedAt: now,
+                acceptedTermPolicyTypes: [],
+                createdAt: now,
                 createdBy: 'admin-cobalt',
             });
             expect(result.input.verification).toEqual(verified);
@@ -1097,8 +1211,9 @@ describe('UserService', () => {
             );
         });
 
-        it('throws UserStatusInvalidException when the current status no longer holds', async () => {
-            userRepository.updateStatusByAdminInTx.mockResolvedValue(null);
+        it('passes the UserStatusInvalidException the repository rejected through untouched', async () => {
+            const rejected = new UserStatusInvalidException();
+            userRepository.updateStatusByAdminInTx.mockRejectedValue(rejected);
 
             const call = service.updateStatusByAdminInTx(
                 tx,
@@ -1106,10 +1221,7 @@ describe('UserService', () => {
                 EnumUserStatus.inactive
             );
 
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.statusInvalid,
-            });
+            await expect(call).rejects.toBe(rejected);
         });
     });
 

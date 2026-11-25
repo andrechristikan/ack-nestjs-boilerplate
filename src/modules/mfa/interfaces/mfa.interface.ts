@@ -5,10 +5,26 @@ import type {
     EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserReauthenticationAction,
+    Mfa,
     MfaChallengeDevice,
+    MfaPasskey,
+    MfaTotp,
+    Prisma,
 } from '@generated/prisma-client/client';
+import type { MfaPasskeyRefSelect } from '@modules/mfa/constants/mfa.constant';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import type { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
+
+export interface IMfaCreate {
+    userId: string;
+    createdBy: string;
+}
+
+export interface IMfaFactorState {
+    mfa: Mfa | null;
+    totp: MfaTotp | null;
+    passkeys: MfaPasskey[];
+}
 
 export interface IMfaVerifyInput {
     method: EnumMfaMethod | null;
@@ -99,10 +115,9 @@ export interface IMfaPasskey {
     lastUsedAt: Date | null;
 }
 
-export interface IMfaPasskeyCredential {
-    credentialId: string;
-    transports: string[];
-}
+export type IMfaPasskeyCredential = Prisma.MfaPasskeyGetPayload<{
+    select: typeof MfaPasskeyRefSelect;
+}>;
 
 export interface IMfaPasskeyRegistration {
     credentialId: string;

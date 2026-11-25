@@ -26,7 +26,6 @@ import { AnalyticProjectRepository } from '@modules/analytic/repositories/analyt
 import { AnalyticProjectService } from '@modules/analytic/services/analytic.project.service';
 import { AnalyticNotificationRepository } from '@modules/analytic/repositories/analytic.notification.repository';
 import { AnalyticNotificationService } from '@modules/analytic/services/analytic.notification.service';
-import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { AnalyticDateUtil } from '@modules/analytic/utils/analytic.date.util';
 import { AnalyticFraudUtil } from '@modules/analytic/utils/analytic.fraud.util';
 import { BullModule } from '@nestjs/bullmq';
@@ -38,7 +37,6 @@ import { Module } from '@nestjs/common';
         AnalyticCache,
         AnalyticDateUtil,
         AnalyticFraudUtil,
-        AnalyticBucketUtil,
         AnalyticPipelineUtil,
         AnalyticDateService,
         AnalyticAnomalyService,

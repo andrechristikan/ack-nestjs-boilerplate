@@ -12,7 +12,10 @@ describe('UserProcessPurgeLoginsUseCase', () => {
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
     const payload: IUserPurgeLoginsPayload = {
         userId: 'user-1',
-        sessions: [{ id: 'session-1' }, { id: 'session-2' }],
+        sessions: [
+            { id: 'session-1', userId: 'user-1' },
+            { id: 'session-2', userId: 'user-1' },
+        ],
     };
     let useCase: UserProcessPurgeLoginsUseCase;
 
@@ -36,8 +39,8 @@ describe('UserProcessPurgeLoginsUseCase', () => {
 
             expect(sessionService.deleteLogins).toHaveBeenCalledTimes(1);
             expect(sessionService.deleteLogins).toHaveBeenCalledWith('user-1', [
-                { id: 'session-1' },
-                { id: 'session-2' },
+                { id: 'session-1', userId: 'user-1' },
+                { id: 'session-2', userId: 'user-1' },
             ]);
             expect(result).toEqual({
                 message: 'user.queue.auth.purgeLogins',

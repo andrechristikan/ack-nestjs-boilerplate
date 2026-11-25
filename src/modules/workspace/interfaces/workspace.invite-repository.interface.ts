@@ -13,9 +13,9 @@ import type {
 
 export interface IWorkspaceInviteRepository {
     expireStalePending(): Promise<number>;
-    revokePendingByWorkspaceInTx(
+    revokePendingByWorkspacesInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string,
+        workspaceIds: string[],
         updatedBy: string
     ): Promise<void>;
     revokePendingByEmailInTx(
@@ -59,7 +59,7 @@ export interface IWorkspaceInviteRepository {
             invitedByUserId,
             nonce,
         }: IWorkspaceInviteCreateData
-    ): Promise<WorkspaceInvite>;
+    ): Promise<IWorkspaceInviteList>;
     rotateForResendInTx(
         tx: IDatabaseTransactionClient,
         workspaceInviteId: string,
@@ -67,7 +67,7 @@ export interface IWorkspaceInviteRepository {
         reference: string,
         expiredAt: Date,
         resentAt: Date
-    ): Promise<WorkspaceInvite | null>;
+    ): Promise<IWorkspaceInviteList>;
     revokeInTx(
         tx: IDatabaseTransactionClient,
         workspaceInviteId: string
@@ -77,5 +77,5 @@ export interface IWorkspaceInviteRepository {
         workspaceInviteId: string,
         userId: string,
         acceptedAt: Date
-    ): Promise<boolean>;
+    ): Promise<WorkspaceInvite>;
 }

@@ -4,13 +4,11 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import {
     EnumActivityLogAction,
@@ -25,7 +23,6 @@ import { ProjectMemberService } from '@modules/project/services/project.member.s
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
-import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/exceptions/workspace.member-peer-forbidden.exception';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceRemoveMemberUseCase } from '@modules/workspace/use-cases/workspace.remove-member.use-case';
 import {
@@ -36,8 +33,6 @@ import {
     buildWorkspaceContext,
     buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 describe('WorkspaceRemoveMemberUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
@@ -104,11 +99,31 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             id: 'member-2',
             userId: 'user-2',
             role: EnumWorkspaceMemberRole.member,
-            user: { email: 'user-2@example.com' },
+            user: {
+                id: 'user-2',
+                email: 'user-2@example.com',
+                username: 'user-2',
+                name: null,
+            },
+        };
+
+        const removedRow: IWorkspaceMemberWithEmail = {
+            ...target,
+            workspaceId: 'written-workspace',
+            userId: 'written-user-2',
+            user: {
+                id: 'written-user-2',
+                email: 'written-user-2@example.com',
+                username: 'written-user-2',
+                name: null,
+            },
         };
 
         beforeEach(() => {
             workspaceMemberService.getPeerTarget.mockResolvedValue(target);
+            workspaceMemberService.removeMemberInTx.mockResolvedValue(
+                removedRow
+            );
         });
 
         it('reads the removable member before opening the transaction and throws its refusal with no transaction opened', async () => {
@@ -140,6 +155,8 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                     events.push('start:remove');
                     await Promise.resolve();
                     events.push('end:remove');
+
+                    return removedRow;
                 }
             );
             projectMemberService.removeByWorkspaceAndUserInTx.mockImplementation(
@@ -195,6 +212,8 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             workspaceMemberService.removeMemberInTx.mockImplementation(
                 async () => {
                     callOrder.push('remove');
+
+                    return removedRow;
                 }
             );
             projectMemberService.removeByWorkspaceAndUserInTx.mockImplementation(
@@ -228,11 +247,11 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             ).toHaveBeenCalledWith(tx, target);
             expect(
                 projectMemberService.removeByWorkspaceAndUserInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-2');
+            ).toHaveBeenCalledWith(tx, 'written-workspace', 'written-user-2');
             expect(userService.clearLastWorkspaceInTx).toHaveBeenCalledWith(
                 tx,
-                'user-2',
-                'workspace-1'
+                'written-user-2',
+                'written-workspace'
             );
             expect(callOrder).toEqual([
                 'remove',
@@ -250,8 +269,8 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                     action: EnumActivityLogAction.workspaceMemberRemoved,
                     userId: 'actor-1',
                     createdBy: 'actor-1',
-                    workspaceId: 'workspace-1',
-                    metadata: { targetUserId: 'user-2' },
+                    workspaceId: 'written-workspace',
+                    metadata: { targetUserId: 'written-user-2' },
                 }
             );
             expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
@@ -262,9 +281,9 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 workspaceContext,
                 {
                     action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
-                    userId: 'user-2',
+                    userId: 'written-user-2',
                     createdBy: 'actor-1',
-                    workspaceId: 'workspace-1',
+                    workspaceId: 'written-workspace',
                     metadata: { actorUserId: 'actor-1' },
                 }
             );
@@ -274,7 +293,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             ]);
         });
 
-        it("revokes the pending invite to the removed member's email on the same tx", async () => {
+        it("revokes the pending invite to the deleted row's email on the same tx", async () => {
             await useCase.execute(
                 requestContext,
                 apiKeyContext,
@@ -285,13 +304,16 @@ describe('WorkspaceRemoveMemberUseCase', () => {
 
             expect(
                 workspaceInviteService.revokePendingByEmailInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-2@example.com');
+            ).toHaveBeenCalledWith(
+                tx,
+                'written-workspace',
+                'written-user-2@example.com'
+            );
         });
 
-        it('runs no cascade and adds no entry when the guarded removal rejects', async () => {
-            workspaceMemberService.removeMemberInTx.mockRejectedValue(
-                new WorkspaceMemberPeerForbiddenException()
-            );
+        it('lets WorkspaceMemberNotFoundException of the guarded removal reach the caller untouched, running no cascade and adding no entry', async () => {
+            const notFound = new WorkspaceMemberNotFoundException();
+            workspaceMemberService.removeMemberInTx.mockRejectedValue(notFound);
 
             await expect(
                 useCase.execute(
@@ -301,10 +323,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                     workspaceContext,
                     'member-2'
                 )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-            });
+            ).rejects.toBe(notFound);
             expect(
                 projectMemberService.removeByWorkspaceAndUserInTx
             ).not.toHaveBeenCalled();
@@ -315,11 +334,9 @@ describe('WorkspaceRemoveMemberUseCase', () => {
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('maps a write conflict to WorkspaceMemberPeerForbiddenException', async () => {
-            const conflict = buildPrismaKnownRequestError(
-                DatabaseWriteConflictCode
-            );
-            workspaceMemberService.removeMemberInTx.mockRejectedValue(conflict);
+        it('lets any other transaction error reach the caller untouched', async () => {
+            const cause = new Error('boom');
+            workspaceMemberService.removeMemberInTx.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(
@@ -329,30 +346,7 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                     workspaceContext,
                     'member-2'
                 )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-            });
-            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-        });
-
-        it('wraps any other transaction error in AppUnknownException', async () => {
-            workspaceMemberService.removeMemberInTx.mockRejectedValue(
-                new Error('boom')
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    'member-2'
-                )
-            ).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

@@ -1,6 +1,10 @@
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
-import type { IMfaAttemptFailure } from '@modules/mfa/interfaces/mfa.interface';
+import type {
+    IMfaAttemptFailure,
+    IMfaFactorState,
+} from '@modules/mfa/interfaces/mfa.interface';
+import { buildMfaFactorState } from '@test/unit/helpers/test.unit.mfa.helper';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.exception';
 import { Test } from '@nestjs/testing';
@@ -13,14 +17,17 @@ import {
     EnumMfaChallengePurpose,
     EnumPasswordHistoryType,
 } from '@generated/prisma-client/client';
-import type { PasswordHistory, User } from '@generated/prisma-client/client';
+import type {
+    ForgotPassword,
+    PasswordHistory,
+    User,
+} from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import type { MockInstance } from 'vitest';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
     EnumActivityLogProcess,
@@ -57,7 +64,6 @@ import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type { UserForgotPasswordResetRequestDto } from '@modules/user/dtos/request/user.forgot-password-reset.request.dto';
 import type {
@@ -70,7 +76,6 @@ import {
     buildRequestContext,
     buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserResetPasswordUseCase', () => {
     const userPasswordService: MockProxy<UserPasswordService> =
@@ -141,9 +146,10 @@ describe('UserResetPasswordUseCase', () => {
         priority: EnumQueuePriority.medium,
         idempotencyKey: null,
     };
-    const revoked: ISessionRef[] = [{ id: 'session-one' }];
+    const revoked: ISessionRef[] = [{ id: 'session-one', userId: 'user-1' }];
     const tx = {} as IDatabaseTransactionClient;
     const passwordHistory = { id: 'history-linden' } as PasswordHistory;
+    const factorState = buildMfaFactorState('user-linden');
     const mfaChecked: IMfaCheck = {
         method: EnumMfaMethod.totp,
         totpStep: 58123456,
@@ -157,8 +163,27 @@ describe('UserResetPasswordUseCase', () => {
     const resetRow = {
         id: 'forgot-linden',
         userId: 'user-linden',
-        user,
+        user: {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            name: user.name,
+        },
     } as IUserForgotPassword;
+    const consumedReset: ForgotPassword = {
+        id: 'forgot-linden',
+        userId: 'user-linden',
+        to: 'linden@example.com',
+        token: 'hashed-token',
+        expiredAt: new Date('2026-01-01T00:15:00.000Z'),
+        resetAt: new Date('2026-01-01T00:00:00.000Z'),
+        isUsed: true,
+        reference: 'FGT-linden',
+        createdAt: new Date('2025-12-31T23:59:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: 'user-linden',
+    };
 
     beforeAll(() => {
         vi.useFakeTimers();
@@ -186,6 +211,7 @@ describe('UserResetPasswordUseCase', () => {
         );
         deviceService.getNotificationTokens.mockResolvedValue(['token-one']);
         notificationQueue.notify.mockReturnValue(notifyEffect);
+        mfaService.getFactorState.mockResolvedValue(factorState);
         mfaService.isEnabled.mockResolvedValue(false);
         vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
 
@@ -222,7 +248,6 @@ describe('UserResetPasswordUseCase', () => {
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
-                DatabaseUtil,
             ],
         }).compile();
         notificationUtil = module.get(NotificationUtil);
@@ -240,6 +265,9 @@ describe('UserResetPasswordUseCase', () => {
 
         beforeEach(() => {
             userPasswordService.getOneActiveReset.mockResolvedValue(resetRow);
+            userPasswordService.markResetUsedInTx.mockResolvedValue(
+                consumedReset
+            );
             authPasswordService.create.mockResolvedValue(password);
             userPasswordService.replaceInTx.mockResolvedValue(updatedRow);
             passwordHistoryService.createInTx.mockResolvedValue(
@@ -286,6 +314,8 @@ describe('UserResetPasswordUseCase', () => {
             userPasswordService.markResetUsedInTx.mockImplementation(
                 async () => {
                     calls.push('markResetUsed');
+
+                    return consumedReset;
                 }
             );
             deviceService.getNotificationTokens.mockImplementation(async () => {
@@ -320,7 +350,11 @@ describe('UserResetPasswordUseCase', () => {
             expect(passwordHistoryService.assertNew).toHaveBeenCalledBefore(
                 authPasswordService.create
             );
-            expect(mfaService.isEnabled).toHaveBeenCalledWith('user-linden');
+            expect(mfaService.getFactorState).toHaveBeenCalledTimes(1);
+            expect(mfaService.getFactorState).toHaveBeenCalledWith(
+                'user-linden'
+            );
+            expect(mfaService.isEnabled).toHaveBeenCalledWith(factorState);
             expect(mfaService.check).not.toHaveBeenCalled();
             expect(authPasswordService.create).toHaveBeenCalledWith(
                 'new-password'
@@ -340,7 +374,9 @@ describe('UserResetPasswordUseCase', () => {
             expect(deviceService.getNotificationTokens).toHaveBeenCalledWith(
                 'user-linden'
             );
-            expect(sealSnapshot).toHaveBeenCalledWith(user, ['token-one']);
+            expect(sealSnapshot).toHaveBeenCalledWith(resetRow.user, [
+                'token-one',
+            ]);
             expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.resetPassword,
                 {
@@ -394,7 +430,7 @@ describe('UserResetPasswordUseCase', () => {
         });
 
         it('marks the reset used alone, then starts the history and the session revoke while the password update is pending', async () => {
-            const marked = buildDeferred<void>();
+            const marked = buildDeferred<ForgotPassword>();
             const update = buildDeferred<User>();
             userPasswordService.markResetUsedInTx.mockReturnValue(
                 marked.promise
@@ -410,7 +446,7 @@ describe('UserResetPasswordUseCase', () => {
                 sessionService.revokeActiveByUserInTx
             ).not.toHaveBeenCalled();
 
-            marked.resolve();
+            marked.resolve(consumedReset);
             await vi.advanceTimersByTimeAsync(0);
 
             expect(passwordHistoryService.createInTx).toHaveBeenCalledWith(
@@ -489,7 +525,8 @@ describe('UserResetPasswordUseCase', () => {
                     backupCode: null,
                     passkeyResponse: null,
                 },
-                null
+                null,
+                factorState
             );
             expect(mfaService.completeInTx).toHaveBeenCalledWith(
                 tx,
@@ -575,7 +612,8 @@ describe('UserResetPasswordUseCase', () => {
                         backupCode: null,
                         passkeyResponse,
                     },
-                    'webauthn-challenge'
+                    'webauthn-challenge',
+                    factorState
                 );
                 expect(mfaService.completeChallengeInTx).toHaveBeenCalledWith(
                     tx,
@@ -671,7 +709,8 @@ describe('UserResetPasswordUseCase', () => {
                 expect(mfaService.check).toHaveBeenCalledWith(
                     'user-linden',
                     expect.objectContaining({ method: EnumMfaMethod.passkey }),
-                    null
+                    null,
+                    factorState
                 );
             });
 
@@ -699,7 +738,8 @@ describe('UserResetPasswordUseCase', () => {
                 expect(mfaService.check).toHaveBeenCalledWith(
                     'user-linden',
                     expect.objectContaining({ method: EnumMfaMethod.totp }),
-                    null
+                    null,
+                    factorState
                 );
             });
 
@@ -769,9 +809,9 @@ describe('UserResetPasswordUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('calls the history and allowed-password checks while the MFA lookup is still pending', async () => {
-            const mfaLookup = buildDeferred<boolean>();
-            mfaService.isEnabled.mockReturnValue(mfaLookup.promise);
+        it('calls the history and allowed-password checks while the factor state read is still pending', async () => {
+            const mfaLookup = buildDeferred<IMfaFactorState>();
+            mfaService.getFactorState.mockReturnValue(mfaLookup.promise);
 
             const running = useCase.execute(requestContext, apiKeyContext, dto);
             await vi.advanceTimersByTimeAsync(0);
@@ -785,7 +825,7 @@ describe('UserResetPasswordUseCase', () => {
                 ['ACK Boilerplate', 'linden', 'lindenFrost', 'Linden Frost']
             );
 
-            mfaLookup.resolve(false);
+            mfaLookup.resolve(factorState);
             await running;
         });
 
@@ -822,27 +862,45 @@ describe('UserResetPasswordUseCase', () => {
             ).rejects.toBe(failure);
         });
 
-        it('maps a write conflict to UserTokenInvalidException', async () => {
-            const conflict = buildPrismaKnownRequestError('P2034');
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                useCase.execute(requestContext, apiKeyContext, dto)
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.tokenInvalid,
+        it('writes the password, history, revoke, entry, and notification for the user id of the consumed reset row', async () => {
+            userPasswordService.markResetUsedInTx.mockResolvedValue({
+                ...consumedReset,
+                userId: 'user-consumed',
             });
-        });
 
-        it('wraps an unknown transaction failure in AppUnknownException', async () => {
-            const cause = new Error('database exploded');
-            databaseService.withTransaction.mockRejectedValue(cause);
+            await useCase.execute(requestContext, apiKeyContext, dto);
 
-            await expect(
-                useCase.execute(requestContext, apiKeyContext, dto)
-            ).rejects.toMatchObject({
-                rawError: cause,
-            });
+            expect(userPasswordService.replaceInTx).toHaveBeenCalledWith(
+                tx,
+                'user-consumed',
+                password,
+                'user-consumed'
+            );
+            expect(sessionService.revokeActiveByUserInTx).toHaveBeenCalledWith(
+                tx,
+                'user-consumed',
+                'user-consumed',
+                password.passwordCreated
+            );
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
+                {
+                    action: EnumActivityLogAction.userPasswordReset,
+                    userId: 'user-consumed',
+                    createdBy: 'user-consumed',
+                }
+            );
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.resetPassword,
+                {
+                    userId: 'user-consumed',
+                    proceedBy: 'user-consumed',
+                    snapshot,
+                }
+            );
         });
     });
 });

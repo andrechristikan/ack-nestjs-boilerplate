@@ -18,9 +18,6 @@ import {
     EnumActivityLogAction,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
-import { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -33,9 +30,9 @@ import {
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
-import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 import { MfaPasskeyNotFoundException } from '@modules/mfa/exceptions/mfa.passkey-not-found.exception';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
+import { buildMfaFactorState } from '@test/unit/helpers/test.unit.mfa.helper';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaDeletePasskeyUseCase } from '@modules/mfa/use-cases/mfa.delete-passkey.use-case';
 import { SessionService } from '@modules/session/services/session.service';
@@ -79,6 +76,7 @@ describe('MfaDeletePasskeyUseCase', () => {
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext(user.id);
+    const factorState = buildMfaFactorState('user-quartz');
     const userContext = buildUserContext(user);
     const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
@@ -107,6 +105,7 @@ describe('MfaDeletePasskeyUseCase', () => {
         mfaService.checkReauthentication.mockResolvedValue(
             TestUnitReauthenticationMfaOff
         );
+        mfaService.getFactorState.mockResolvedValue(factorState);
         userAuthService.getReauthenticationVerificationId.mockResolvedValue(
             null
         );
@@ -297,6 +296,21 @@ describe('MfaDeletePasskeyUseCase', () => {
                 'entry',
                 'commit',
             ]);
+            expect(mfaService.getFactorState).toHaveBeenCalledTimes(1);
+            expect(mfaService.getFactorState).toHaveBeenCalledWith(
+                'user-quartz'
+            );
+            expect(mfaService.checkReauthentication).toHaveBeenCalledWith(
+                'user-quartz',
+                expect.objectContaining({
+                    action: EnumUserReauthenticationAction.mfaPasskeyDelete,
+                }),
+                true,
+                factorState
+            );
+            expect(mfaService.getFactorState).toHaveBeenCalledBefore(
+                mfaService.checkReauthentication
+            );
             expect(
                 userAuthService.checkReauthenticationPassword
             ).toHaveBeenCalledWith(user, {
@@ -405,64 +419,7 @@ describe('MfaDeletePasskeyUseCase', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('answers MfaInvalidException on a write conflict after an MFA proof', async () => {
-            mfaService.checkReauthentication.mockResolvedValue({
-                isEnabled: true,
-                check: {
-                    method: EnumMfaMethod.totp,
-                    totpStep: 1,
-                    backupCodeHash: null,
-                    passkey: null,
-                },
-                failure: null,
-                passkeyChallengeToken: null,
-            });
-            databaseService.withTransaction.mockRejectedValue(
-                new Prisma.PrismaClientKnownRequestError('conflict', {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                })
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    'passkey-one',
-                    {}
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-                statusCode: EnumMfaStatusCodeError.invalid,
-            });
-        });
-
-        it('answers MfaPasskeyNotFoundException on a write conflict with no MFA proof', async () => {
-            databaseService.withTransaction.mockRejectedValue(
-                new Prisma.PrismaClientKnownRequestError('conflict', {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                })
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    'passkey-one',
-                    {}
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-                statusCode: EnumMfaStatusCodeError.passkeyNotFound,
-            });
-        });
-
-        it('wraps any other transaction failure in the unknown exception', async () => {
+        it('rethrows any other failure of the transaction untouched', async () => {
             const cause = new Error('boom');
             databaseService.withTransaction.mockRejectedValue(cause);
 
@@ -475,10 +432,7 @@ describe('MfaDeletePasskeyUseCase', () => {
                     'passkey-one',
                     {}
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

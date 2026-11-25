@@ -1,8 +1,6 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -23,7 +21,6 @@ import { PasswordHistoryService } from '@modules/password-history/services/passw
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
@@ -47,7 +44,7 @@ import type {
 import type { IUserAuthSignUp } from '@modules/user/interfaces/user.auth.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
+import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
@@ -98,7 +95,6 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         private readonly deviceUtil: DeviceUtil,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
@@ -117,18 +113,26 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         loginAt: Date,
         subject: string
     ): Promise<IUserAuthSignUp> {
-        const [invite, role, usernameCheck] = await Promise.all([
-            this.workspaceInviteService.getSignUpInvite(
-                loginSocial.inviteToken,
-                normalizedEmail
-            ),
-            this.roleService.getByName(this.defaultRole),
-            this.userService.checkUsername(loginSocial.username),
-            this.countryService.getOne(loginSocial.countryId),
-            this.termPolicyAcceptanceService.assertRequiredPublished(
-                UserTermPolicyContract.requiredTypes
-            ),
-        ]);
+        const acceptedTermPolicyTypes =
+            this.userCreateUtil.buildAcceptedTermPolicyTypes(
+                loginSocial.cookies,
+                loginSocial.marketing
+            );
+        const [invite, role, usernameCheck, termPolicyRefs] = await Promise.all(
+            [
+                this.workspaceInviteService.getSignUpInvite(
+                    loginSocial.inviteToken,
+                    normalizedEmail
+                ),
+                this.roleService.getByName(this.defaultRole),
+                this.userService.checkUsername(loginSocial.username),
+                this.termPolicyAcceptanceService.getPublishedForAcceptance(
+                    UserTermPolicyContract.requiredTypes,
+                    acceptedTermPolicyTypes
+                ),
+                this.countryService.getOne(loginSocial.countryId),
+            ]
+        );
         const workspaceContext =
             this.userCreateUtil.buildSignUpWorkspaceContext(
                 invite,
@@ -140,7 +144,13 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             normalizedEmail,
             loginWith,
             loginSocial,
-            { roleId: role.id, workspaceContext }
+            { roleId: role.id, workspaceContext },
+            {
+                loginAt,
+                ipAddress: requestContext.requestLog.ipAddress,
+                loginFrom: loginSocial.from,
+                loginWith,
+            }
         );
         const inputs = [input];
         const inputContext = input.workspaceContext;
@@ -155,18 +165,12 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             try {
                 return await this.databaseService.withTransaction(
                     async tx => {
-                        const created = await this.userService.createManyInTx(
+                        const user = await this.userService.createInTx(
                             tx,
-                            inputs
+                            input
                         );
                         await Promise.all([
-                            ...inputs.map(({ userId, createdBy }) =>
-                                this.mfaService.createInTx(
-                                    tx,
-                                    userId,
-                                    createdBy
-                                )
-                            ),
+                            this.mfaService.createManyInTx(tx, inputs),
                             this.passwordHistoryService.createManyInTx(
                                 tx,
                                 passwordHistories
@@ -199,10 +203,10 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
 
                         await this.termPolicyAcceptanceService.acceptPublishedManyInTx(
                             tx,
+                            termPolicyRefs,
                             termPolicyAcceptances
                         );
-                        let membership: Promise<IProjectMember | null> =
-                            Promise.resolve(null);
+                        let membership: Promise<void> = Promise.resolve();
                         if (
                             inputContext.type ===
                                 EnumUserCreateWorkspaceContextType.invite &&
@@ -234,8 +238,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                         );
                         const stages = this.userCreateUtil.buildStages(
                             UserCreateContract.social,
-                            inputs,
-                            created
+                            inputs
                         );
                         const entries = stages.map(stage =>
                             this.activityLogQueue.recordEffect(
@@ -251,7 +254,6 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                             ...entries,
                         ]);
 
-                        const user = created[0]!;
                         const upserted =
                             await this.deviceService.upsertForLoginInTx(
                                 tx,
@@ -268,7 +270,9 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                                 upserted,
                                 loginSocial.from,
                                 loginWith,
-                                loginAt
+                                loginAt,
+                                true,
+                                false
                             );
 
                         return { user, tokens };
@@ -276,29 +280,15 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                     { timeout: this.createTimeoutInMs }
                 );
             } catch (error: unknown) {
-                const isSlugCollision = this.databaseUtil.isUniqueCollision(
-                    error,
-                    'slug'
-                );
-                if (isSlugCollision) {
+                if (error instanceof WorkspaceSlugAlreadyExistsException) {
                     continue;
                 }
 
-                const mapped = this.userCreateUtil.mapCreateCollision(error);
-                if (mapped instanceof AppBaseException) {
-                    throw mapped;
+                if (error instanceof AppBaseException) {
+                    throw error;
                 }
 
-                const exception = this.databaseUtil.toException(error);
-                const isInviteConflict =
-                    inputContext.type ===
-                        EnumUserCreateWorkspaceContextType.invite &&
-                    exception instanceof DatabaseWriteConflictException;
-                if (isInviteConflict) {
-                    throw new WorkspaceInviteAlreadyProcessedException();
-                }
-
-                throw new AppUnknownException(mapped);
+                throw new AppUnknownException(error);
             }
         }
 
@@ -317,27 +307,23 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
     ): Promise<IUserAuthOutcome> {
         const { lastWorkspaceChangedAt } = user;
         // Sequential by design: a write after its checks
-        const [lastWorkspaceId, isMfaEnabled] = await Promise.all([
+        const [lastWorkspaceId, state] = await Promise.all([
             this.workspaceMemberService.resolveLastWorkspaceId(
                 user.id,
                 user.lastWorkspaceId
             ),
-            this.mfaService.isEnabled(user.id),
+            this.mfaService.getFactorState(user.id),
         ]);
+        const isMfaEnabled = await this.mfaService.isEnabled(state);
         const isUnverified = this.userUtil.isUnverified(user);
         let methods: EnumMfaMethod[] = [];
         let passkeyOptions: PublicKeyCredentialRequestOptionsJSON | null = null;
         if (isMfaEnabled) {
-            const credentials =
-                await this.mfaPasskeyService.getCredentialsByUser(user.id);
-            methods = await this.mfaService.getLoginMethods(
-                user.id,
-                credentials
-            );
+            methods = await this.mfaService.getLoginMethods(state);
             if (methods.includes(EnumMfaMethod.passkey)) {
                 passkeyOptions =
                     await this.mfaPasskeyService.getAssertionOptions(
-                        credentials
+                        state.passkeys
                     );
             }
         }
@@ -381,7 +367,9 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                             upserted,
                             loginFrom,
                             loginWith,
-                            loginAt
+                            loginAt,
+                            false,
+                            false
                         );
 
                     return {
@@ -467,9 +455,11 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
         }
 
         const normalizedEmail = this.userUtil.normalizeEmail(authContext.email);
+        const existing =
+            await this.userAuthService.getOneByEmail(normalizedEmail);
         const isSignUpAllowed =
             await this.userRegistrationService.isSocialSignUpAllowed(
-                normalizedEmail,
+                existing,
                 loginWith
             );
         if (isSignUpAllowed) {
@@ -482,25 +472,18 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                 loginAt,
                 authContext.subject
             );
-            const lastWorkspaceId =
-                await this.workspaceMemberService.resolveLastWorkspaceId(
-                    user.id,
-                    user.lastWorkspaceId
-                );
 
             return {
                 data: {
                     isMfaRequired: false,
-                    lastWorkspaceId,
+                    lastWorkspaceId: user.lastWorkspaceId,
                     lastWorkspaceChangedAt: user.lastWorkspaceChangedAt,
                     tokens,
                 },
             };
         }
 
-        const user = await this.userAuthService.getOneForSocialLogin(
-            authContext.email
-        );
+        const user = this.userAuthService.assertSocialLoginAllowed(existing);
         await this.userSocialService.assertLinkable(user.id, loginWith);
         const outcome = await this.resolveLoginOutcome(
             requestContext,

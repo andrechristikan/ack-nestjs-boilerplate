@@ -32,12 +32,6 @@ export const UserRefSelect = {
 } satisfies Prisma.UserSelect;
 
 /** @public */
-export const UserNameSelect = {
-    name: true,
-    username: true,
-} satisfies Prisma.UserSelect;
-
-/** @public */
 export const UserNotDeletedWhere = {
     deletedAt: null,
 } satisfies Prisma.UserWhereInput;
@@ -47,6 +41,16 @@ export const UserRecipientSelect = {
     id: true,
     email: true,
     username: true,
+    name: true,
+} satisfies Prisma.UserSelect;
+
+/** @public */
+export const UserStateSelect = {
+    id: true,
+    status: true,
+    isVerified: true,
+    deletedAt: true,
+    passwordAttempt: true,
 } satisfies Prisma.UserSelect;
 
 /** @public */
@@ -64,6 +68,28 @@ export const UserMobileNumberSummarySelect = {
 export const UserWithRoleInclude = {
     role: { include: RoleWithPoliciesInclude },
 } satisfies Prisma.UserInclude;
+
+/** @public */
+export const UserMobileNumberWithCountryInclude = {
+    country: true,
+} satisfies Prisma.UserMobileNumberInclude;
+
+/** @public */
+export const UserProfileInclude = {
+    ...UserWithRoleInclude,
+    country: true,
+    mobileNumbers: { include: UserMobileNumberWithCountryInclude },
+} satisfies Prisma.UserInclude;
+
+/** @public */
+export const UserForgotPasswordWithUserRecipientInclude = {
+    user: { select: UserRecipientSelect },
+} satisfies Prisma.ForgotPasswordInclude;
+
+/** @public */
+export const UserVerificationWithUserStateInclude = {
+    user: { select: UserStateSelect },
+} satisfies Prisma.VerificationInclude;
 
 /** @public */
 export const UserAdminListSelect = {

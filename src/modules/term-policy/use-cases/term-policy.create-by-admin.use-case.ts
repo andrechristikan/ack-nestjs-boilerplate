@@ -1,11 +1,8 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { TermPolicy } from '@generated/prisma-client/client';
-import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
@@ -37,37 +34,20 @@ export class TermPolicyCreateByAdminUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<TermPolicy>> {
         const termPolicyId = this.databaseUtil.createId();
 
-        try {
-            const { contents } =
-                await this.termPolicyService.prepareCreateByAdmin(body);
-            const created = await this.databaseService.withTransaction(
-                async tx =>
-                    this.termPolicyService.createByAdminInTx(
-                        tx,
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        termPolicyId,
-                        body,
-                        contents
-                    )
-            );
+        const { contents } =
+            await this.termPolicyService.prepareCreateByAdmin(body);
+        const created = await this.databaseService.withTransaction(async tx =>
+            this.termPolicyService.createByAdminInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                termPolicyId,
+                body,
+                contents
+            )
+        );
 
-            return { data: created };
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const isVersionCollision = this.databaseUtil.isUniqueCollision(
-                err,
-                'version'
-            );
-            if (isVersionCollision) {
-                throw new TermPolicyExistException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return { data: created };
     }
 }

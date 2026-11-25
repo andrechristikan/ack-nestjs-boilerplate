@@ -65,6 +65,7 @@ describe('NotificationUtil', () => {
             id: 'user-id',
             email: 'user@example.com',
             username: 'user',
+            name: null,
         };
 
         it('encrypts the email and each distinct token against the user id', () => {

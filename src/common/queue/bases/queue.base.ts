@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import type { OnModuleInit } from '@nestjs/common';
 import type { Queue } from 'bullmq';
-import type { Outbox } from '@generated/prisma-client/client';
+import type { IOutboxDispatchRow } from '@common/outbox/interfaces/outbox.interface';
 import { EnumQueueJobState } from '@common/queue/enums/queue.enum';
 import type {
     IQueueJobState,
@@ -54,7 +54,7 @@ export abstract class QueueBase implements OnModuleInit {
     }
 
     /** Adds one job per row in one addBulk, the row's idempotency key as jobId; a rejection reaches the caller. */
-    async enqueue(rows: Outbox[]): Promise<void> {
+    async enqueue(rows: IOutboxDispatchRow[]): Promise<void> {
         await this.queue.addBulk(
             rows.map(row => ({
                 name: row.name,

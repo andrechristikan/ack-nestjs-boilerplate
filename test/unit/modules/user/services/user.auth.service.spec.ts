@@ -337,48 +337,32 @@ describe('UserAuthService', () => {
         });
     });
 
-    describe('getOneForSocialLogin', () => {
-        it('returns the active user of the email', async () => {
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
-
-            await expect(
-                service.getOneForSocialLogin(baseUser.email)
-            ).resolves.toBe(baseUser);
+    describe('assertSocialLoginAllowed', () => {
+        it('returns the active user', () => {
+            expect(service.assertSocialLoginAllowed(baseUser)).toBe(baseUser);
         });
 
-        it('looks the email up trimmed and lowercased', async () => {
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(baseUser);
-
-            await service.getOneForSocialLogin('  Halcyon@Example.COM ');
-
-            expect(userRepository.findOneWithRoleByEmail).toHaveBeenCalledWith(
-                'halcyon@example.com'
+        it('throws UserNotFoundException on a null user', () => {
+            expect(() => service.assertSocialLoginAllowed(null)).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.notFound,
+                })
             );
         });
 
-        it('throws UserNotFoundException when the user does not exist', async () => {
-            userRepository.findOneWithRoleByEmail.mockResolvedValue(null);
-
-            await expect(
-                service.getOneForSocialLogin('missing@example.com')
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.notFound,
-            });
-        });
-
-        it('throws UserInactiveForbiddenException when the user is not active', async () => {
-            userRepository.findOneWithRoleByEmail.mockResolvedValue({
-                ...baseUser,
-                status: EnumUserStatus.inactive,
-            });
-
-            await expect(
-                service.getOneForSocialLogin('halcyon@example.com')
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.inactiveForbidden,
-            });
+        it('throws UserInactiveForbiddenException when the user is not active', () => {
+            expect(() =>
+                service.assertSocialLoginAllowed({
+                    ...baseUser,
+                    status: EnumUserStatus.inactive,
+                })
+            ).toThrow(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.inactiveForbidden,
+                })
+            );
         });
     });
 
@@ -573,7 +557,7 @@ describe('UserAuthService', () => {
             isNewDevice: true,
             otherOwnershipIds: [],
         };
-        const revokedRef = [{ id: 'session-earlier' }];
+        const revokedRef = [{ id: 'session-earlier', userId: 'user-1' }];
         const otherOwnershipIds = [
             'device-ownership-thistle',
             'device-ownership-clover',
@@ -629,7 +613,7 @@ describe('UserAuthService', () => {
             );
         });
 
-        it('creates the session on the upserted ownership and stamps the login on the given tx without opening one', async () => {
+        it('creates the session on the upserted ownership and stamps the login with the reset flag on the given tx without opening one', async () => {
             await service.createTokenAndSessionInTx(
                 tx,
                 requestContext,
@@ -638,7 +622,9 @@ describe('UserAuthService', () => {
                 upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                false,
+                true
             );
 
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
@@ -657,8 +643,27 @@ describe('UserAuthService', () => {
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 requestLog.ipAddress,
-                now
+                now,
+                true
             );
+        });
+
+        it('stamps no login when the caller stamped it in the create', async () => {
+            await service.createTokenAndSessionInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                baseUser,
+                upsert,
+                EnumUserLoginFrom.website,
+                EnumUserLoginWith.socialGoogle,
+                loginAt,
+                true,
+                false
+            );
+
+            expect(sessionService.createInTx).toHaveBeenCalledTimes(1);
+            expect(userService.updateLoginInTx).not.toHaveBeenCalled();
         });
 
         it('adds the newDeviceLogin effect on the transaction after the writes when the device is new', async () => {
@@ -670,7 +675,9 @@ describe('UserAuthService', () => {
                 upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                false,
+                false
             );
 
             expect(requestContextService.resolveDevice).toHaveBeenCalledWith(
@@ -728,7 +735,9 @@ describe('UserAuthService', () => {
                 upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                false,
+                false
             );
 
             expect(notificationQueue.notify).toHaveBeenCalledWith(
@@ -767,7 +776,9 @@ describe('UserAuthService', () => {
                 upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                false,
+                false
             );
 
             expect(notificationQueue.notify).toHaveBeenCalledWith(
@@ -789,7 +800,9 @@ describe('UserAuthService', () => {
                 { ...upsert, isNewDevice: false },
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                false,
+                false
             );
 
             expect(notificationQueue.notify).not.toHaveBeenCalled();
@@ -813,7 +826,9 @@ describe('UserAuthService', () => {
                 upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                false,
+                false
             );
 
             expect(
@@ -828,7 +843,9 @@ describe('UserAuthService', () => {
                 { ...upsert, isNewDevice: false },
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                false,
+                false
             );
 
             expect(
@@ -851,7 +868,9 @@ describe('UserAuthService', () => {
                 upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                false,
+                false
             );
 
             expect(
@@ -866,7 +885,9 @@ describe('UserAuthService', () => {
                 { ...upsert, otherOwnershipIds },
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                false,
+                false
             );
 
             expect(
@@ -892,7 +913,9 @@ describe('UserAuthService', () => {
                 upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                false,
+                false
             );
 
             expect(sessionService.createInTx).toHaveBeenCalledWith(
@@ -915,7 +938,9 @@ describe('UserAuthService', () => {
                 upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                false,
+                false
             );
 
             expect(authJwtService.createTokens).toHaveBeenCalledWith(
@@ -967,7 +992,9 @@ describe('UserAuthService', () => {
                     upsert,
                     EnumUserLoginFrom.website,
                     loginWith,
-                    loginAt
+                    loginAt,
+                    false,
+                    false
                 );
 
                 expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
@@ -993,7 +1020,9 @@ describe('UserAuthService', () => {
                 upsert,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                loginAt
+                loginAt,
+                false,
+                false
             );
 
             expect(outboxService.addManyInTx).toHaveBeenCalledBefore(
@@ -1015,7 +1044,9 @@ describe('UserAuthService', () => {
                     upsert,
                     EnumUserLoginFrom.website,
                     EnumUserLoginWith.credential,
-                    loginAt
+                    loginAt,
+                    false,
+                    false
                 )
             ).rejects.toBe(failure);
             expect(authJwtService.createTokens).not.toHaveBeenCalled();
@@ -1527,47 +1558,73 @@ describe('UserAuthService', () => {
                     tx,
                     authContext,
                     true,
-                    null
+                    null,
+                    false
                 )
             ).resolves.toBeUndefined();
 
             expect(
                 userPasswordService.resetPasswordAttemptInTx
             ).toHaveBeenCalledWith(tx, 'user-halcyon');
-            expect(userVerificationService.markUsedInTx).not.toHaveBeenCalled();
+            expect(
+                userVerificationService.markReauthenticationUsedInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('resets no counter for a password proof the caller carried in its own write', async () => {
+            await expect(
+                service.completeReauthenticationInTx(
+                    tx,
+                    authContext,
+                    true,
+                    null,
+                    true
+                )
+            ).resolves.toBeUndefined();
+
+            expect(
+                userPasswordService.resetPasswordAttemptInTx
+            ).not.toHaveBeenCalled();
+            expect(
+                userVerificationService.markReauthenticationUsedInTx
+            ).not.toHaveBeenCalled();
         });
 
         it('marks the email code used on the tx and resets no counter for an account with neither proof', async () => {
-            userVerificationService.markUsedInTx.mockResolvedValue(true);
+            userVerificationService.markReauthenticationUsedInTx.mockResolvedValue(
+                true
+            );
 
             await expect(
                 service.completeReauthenticationInTx(
                     tx,
                     authContext,
                     false,
-                    'verification-halcyon'
+                    'verification-halcyon',
+                    false
                 )
             ).resolves.toBeUndefined();
 
-            expect(userVerificationService.markUsedInTx).toHaveBeenCalledWith(
-                tx,
-                'verification-halcyon',
-                'user-halcyon'
-            );
+            expect(
+                userVerificationService.markReauthenticationUsedInTx
+            ).toHaveBeenCalledWith(tx, 'verification-halcyon', 'user-halcyon');
             expect(
                 userPasswordService.resetPasswordAttemptInTx
             ).not.toHaveBeenCalled();
         });
 
         it('throws UserReauthenticationOtpInvalidException when the email code was used first', async () => {
-            userVerificationService.markUsedInTx.mockResolvedValue(false);
+            userVerificationService.markReauthenticationUsedInTx.mockResolvedValue(
+                false
+            );
 
             await expect(
                 service.completeReauthenticationInTx(
                     tx,
                     authContext,
                     false,
-                    'verification-halcyon'
+                    'verification-halcyon',
+                    false
                 )
             ).rejects.toMatchObject({
                 module: 'user',
@@ -1580,13 +1637,16 @@ describe('UserAuthService', () => {
                 tx,
                 authContext,
                 false,
-                null
+                null,
+                false
             );
 
             expect(
                 userPasswordService.resetPasswordAttemptInTx
             ).not.toHaveBeenCalled();
-            expect(userVerificationService.markUsedInTx).not.toHaveBeenCalled();
+            expect(
+                userVerificationService.markReauthenticationUsedInTx
+            ).not.toHaveBeenCalled();
         });
     });
 });

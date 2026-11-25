@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import type { ForgotPassword } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -32,6 +33,7 @@ import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { stubPasswordMetadataNumbers } from '@test/unit/helpers/test.unit.feature-flag.helper';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type {
     IUser,
     IUserForgotPassword,
@@ -638,7 +640,12 @@ describe('UserPasswordService', () => {
         const reset = {
             id: 'forgot-hollow',
             userId: 'user-hollow',
-            user: baseUser,
+            user: {
+                id: baseUser.id,
+                email: baseUser.email,
+                username: baseUser.username,
+                name: baseUser.name,
+            },
         } as IUserForgotPassword;
 
         it('reads the active reset while the changePassword.forgotAllowed gate is still pending', async () => {
@@ -704,8 +711,25 @@ describe('UserPasswordService', () => {
     });
 
     describe('markResetUsedInTx', () => {
-        it('marks the request used on the given transaction', async () => {
-            userForgotPasswordRepository.markUsedInTx.mockResolvedValue(true);
+        const forgotPassword: ForgotPassword = {
+            id: 'forgot-hollow',
+            userId: 'user-hollow',
+            to: 'hollow@example.com',
+            token: 'hashed-token',
+            expiredAt: new Date('2026-03-01T00:15:00.000Z'),
+            resetAt: usedAt,
+            isUsed: true,
+            reference: 'FGT-hollow',
+            createdAt: new Date('2026-03-01T00:00:00.000Z'),
+            createdBy: null,
+            updatedAt: usedAt,
+            updatedBy: 'user-hollow',
+        };
+
+        it('marks the request used on the given transaction and returns its row', async () => {
+            userForgotPasswordRepository.markUsedInTx.mockResolvedValue(
+                forgotPassword
+            );
 
             await expect(
                 service.markResetUsedInTx(
@@ -714,15 +738,18 @@ describe('UserPasswordService', () => {
                     usedAt,
                     'user-hollow'
                 )
-            ).resolves.toBeUndefined();
+            ).resolves.toBe(forgotPassword);
 
             expect(
                 userForgotPasswordRepository.markUsedInTx
             ).toHaveBeenCalledWith(tx, 'forgot-hollow', usedAt, 'user-hollow');
         });
 
-        it('throws UserTokenInvalidException when the request was already used', async () => {
-            userForgotPasswordRepository.markUsedInTx.mockResolvedValue(false);
+        it('passes the UserTokenInvalidException the repository rejected through untouched', async () => {
+            const rejected = new UserTokenInvalidException();
+            userForgotPasswordRepository.markUsedInTx.mockRejectedValue(
+                rejected
+            );
 
             await expect(
                 service.markResetUsedInTx(
@@ -731,10 +758,7 @@ describe('UserPasswordService', () => {
                     usedAt,
                     'user-hollow'
                 )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.tokenInvalid,
-            });
+            ).rejects.toBe(rejected);
         });
     });
 

@@ -1,9 +1,7 @@
 import { ConfigService } from '@nestjs/config';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -15,7 +13,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import type { Project, WorkspaceMember } from '@generated/prisma-client/client';
 import type { ProjectMemberAssignRequestDto } from '@modules/project/dtos/request/project.member-assign.request.dto';
-import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import type {
     IProjectMember,
@@ -196,32 +193,11 @@ describe('ProjectAssignMemberUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('maps a unique collision on userId to ProjectMemberAlreadyAssignedException', async () => {
-            projectMemberService.assignMemberInTx.mockRejectedValue(
-                buildPrismaKnownRequestError('P2002', 'userId')
-            );
-
-            await expect(useCase.execute(...args)).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.memberAlreadyAssigned,
-            });
-        });
-
-        it('rethrows an AppBaseException from the transaction as is', async () => {
+        it('passes a rejected typed exception through untouched', async () => {
             const failure = new DatabaseWriteConflictException();
             projectMemberService.assignMemberInTx.mockRejectedValue(failure);
 
             await expect(useCase.execute(...args)).rejects.toBe(failure);
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
-            const otherError = new Error('unexpected');
-            projectMemberService.assignMemberInTx.mockRejectedValue(otherError);
-
-            await expect(useCase.execute(...args)).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: otherError,
-            });
         });
     });
 });

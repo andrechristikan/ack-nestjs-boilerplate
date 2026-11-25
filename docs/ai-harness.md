@@ -107,9 +107,9 @@ A build that was interrupted resumes from the first ticket that is not done.
 
 1. One `reviewer` checks three things: every acceptance criterion of the spec, every rule binding the changed files, and each changed endpoint and job traced end to end beside the nearest flow of the same kind.
 2. It writes `.scratch/<feature>/review.md`: a coverage table with a row per rule file, decision entry, and flow, and one section per finding with the exact change to make.
-3. The session puts each finding to the owner, one at a time. The owner keeps it, drops it, or changes it.
+3. The session puts each finding to the owner, one at a time, with a recommendation. The owner keeps it, drops it, or changes it.
 4. The session writes the fix list into `review.md` and the owner approves it.
-5. `coder` applies each kept finding as written. A finding about the spec goes to `/ack-design`, one about a rule to `/ack-harness`, and a defect outside the feature to the sweep log.
+5. `coder` applies each kept finding as written, a defect outside the feature that a pinned fix repairs included. A finding about the spec goes to `/ack-design`, one about a rule to `/ack-harness`, and a defect outside the feature that needs a design, an owner-only command, or held work to the sweep log.
 6. The gates run again and a second `reviewer` reads the fixed findings. A finding still open goes to the owner.
 7. The session names `/ack-doc`, which brings the docs in line with the code and ends by proposing the commit subject. An owner answer that rejected a named alternative is listed as a decision candidate for `/ack-harness`.
 
@@ -118,7 +118,7 @@ A build that was interrupted resumes from the first ticket that is not done.
 | Command | Use it when | Principle |
 | --- | --- | --- |
 | `/ack-debug <symptom>` | something is wrong and the cause is unknown | root cause first, then a fix with a spec; an owner answer that rejected a named alternative is a decision candidate for `/ack-harness` |
-| `/ack-spec <module or path>` | existing code lacks unit specs, or a spec went stale | the code wins; defects are logged, not fixed |
+| `/ack-spec <module or path>` | existing code lacks unit specs, or a spec went stale | the code wins; `tester` changes no behavior, so each defect goes to the sweep log |
 | `/ack-doc <files, a plan path, or all>` | a doc is stale, missing, or needs a diagram | the code wins; each page holds one type |
 | `/ack-pr <mode>` | a branch is settled and needs a pull request or release notes | every claim traces to the diff |
 | `/ack-harness <change>` | the harness, a decision entry, or this page changes | the checkout wins |

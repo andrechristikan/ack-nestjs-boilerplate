@@ -9,6 +9,7 @@ import {
     EnumDevicePlatform,
     EnumPasswordHistoryType,
     EnumTermPolicyType,
+    EnumUserLoginFrom,
     EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
@@ -23,10 +24,10 @@ import {
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
 import { FeatureFlagNotConfiguredException } from '@modules/feature-flag/exceptions/feature-flag.not-configured.exception';
-import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import type {
     IUser,
+    IUserCreateLogin,
     IUserCreateWithWorkspaceInput,
     IUserLoginSocial,
     IUserRegistrationResolved,
@@ -45,7 +46,6 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { buildUser } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('UserRegistrationService', () => {
-    const userAuthService: MockProxy<UserAuthService> = mock<UserAuthService>();
     const featureFlagService: MockProxy<FeatureFlagService> =
         mock<FeatureFlagService>();
     const authPasswordService: MockProxy<AuthPasswordService> =
@@ -77,12 +77,14 @@ describe('UserRegistrationService', () => {
             password,
             passwordHistoryType: EnumPasswordHistoryType.signUp,
             verification: null,
+            login: null,
             workspaceContext: {
                 type: EnumUserCreateWorkspaceContextType.personal,
                 workspaceId: 'workspace-1',
                 slugCandidates: ['user-ochre'],
                 name: 'user-ochre',
             },
+            createdAt: new Date('2026-03-02T00:00:00.000Z'),
             createdBy: 'user-ochre',
         },
     ];
@@ -90,7 +92,6 @@ describe('UserRegistrationService', () => {
         'user-ochre',
         'user-ochre@example.com'
     );
-    const email = 'ochre@example.com';
 
     const workspaceContext: IUserCreateWorkspacePersonal = {
         type: EnumUserCreateWorkspaceContextType.personal,
@@ -105,12 +106,10 @@ describe('UserRegistrationService', () => {
 
     beforeEach(async () => {
         featureFlagService.isMetadataAllowed.mockResolvedValue(true);
-        userAuthService.getOneByEmail.mockResolvedValue(null);
 
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 UserRegistrationService,
-                { provide: UserAuthService, useValue: userAuthService },
                 { provide: FeatureFlagService, useValue: featureFlagService },
                 UserCreateUtil,
                 UserUtil,
@@ -135,7 +134,7 @@ describe('UserRegistrationService', () => {
     describe('isSocialSignUpAllowed', () => {
         it('returns true when no user holds the email and the flag allows sign-up', async () => {
             const result = await service.isSocialSignUpAllowed(
-                email,
+                null,
                 EnumUserLoginWith.socialGoogle
             );
 
@@ -144,14 +143,11 @@ describe('UserRegistrationService', () => {
                 EnumFeatureFlagKey.loginWithGoogle,
                 EnumFeatureFlagMetadataKey.signUpAllowed
             );
-            expect(userAuthService.getOneByEmail).toHaveBeenCalledWith(email);
         });
 
         it('returns false when a user holds the email', async () => {
-            userAuthService.getOneByEmail.mockResolvedValue(createdUser);
-
             const result = await service.isSocialSignUpAllowed(
-                email,
+                createdUser,
                 EnumUserLoginWith.socialGoogle
             );
 
@@ -162,7 +158,7 @@ describe('UserRegistrationService', () => {
             featureFlagService.isMetadataAllowed.mockResolvedValue(false);
 
             const result = await service.isSocialSignUpAllowed(
-                email,
+                null,
                 EnumUserLoginWith.socialApple
             );
 
@@ -182,7 +178,7 @@ describe('UserRegistrationService', () => {
 
             await expect(
                 service.isSocialSignUpAllowed(
-                    email,
+                    null,
                     EnumUserLoginWith.socialGoogle
                 )
             ).rejects.toBeInstanceOf(FeatureFlagNotConfiguredException);
@@ -256,6 +252,7 @@ describe('UserRegistrationService', () => {
                 isVerified: false,
                 verifiedAt: null,
                 acceptedTermPolicyTypes,
+                createdAt: signUpNow,
                 createdBy: 'user-id-halcyon',
                 password,
                 verification: {
@@ -293,29 +290,29 @@ describe('UserRegistrationService', () => {
     describe('buildCreateByAdminStages', () => {
         it('leads with the adminUserCreated row naming the created user, then the admin contract rows', () => {
             const input = { ...inputs[0]!, createdBy: 'admin-ochre' };
-            const result = service.buildCreateByAdminStages(input, createdUser);
+            const result = service.buildCreateByAdminStages(input);
 
             expect(result).toEqual([
                 {
                     action: EnumActivityLogAction.adminUserCreated,
                     metadata: {
-                        targetUserId: createdUser.id,
-                        targetUsername: createdUser.username,
-                        timestamp: createdUser.createdAt,
+                        targetUserId: input.userId,
+                        targetUsername: input.username,
+                        timestamp: input.createdAt,
                     },
                 },
                 {
                     action: UserCreateContract.admin.createdAction,
-                    userId: createdUser.id,
+                    userId: input.userId,
                     createdBy: 'admin-ochre',
                     metadata: {
                         actorUserId: 'admin-ochre',
-                        timestamp: createdUser.createdAt,
+                        timestamp: input.createdAt,
                     },
                 },
                 {
                     action: EnumActivityLogAction.workspaceCreatedByAdmin,
-                    userId: createdUser.id,
+                    userId: input.userId,
                     createdBy: 'admin-ochre',
                     workspaceId: 'workspace-1',
                     metadata: { actorUserId: 'admin-ochre' },
@@ -342,6 +339,12 @@ describe('UserRegistrationService', () => {
         };
 
         const now = new Date('2026-03-01T00:00:00.000Z');
+        const login: IUserCreateLogin = {
+            loginAt: now,
+            ipAddress: '127.0.0.1',
+            loginFrom: EnumUserLoginFrom.mobile,
+            loginWith: EnumUserLoginWith.socialGoogle,
+        };
 
         beforeAll(() => {
             vi.useFakeTimers();
@@ -361,7 +364,8 @@ describe('UserRegistrationService', () => {
                 '  Ochre@Example.COM ',
                 EnumUserLoginWith.socialGoogle,
                 socialInput,
-                resolved
+                resolved,
+                login
             );
 
             expect(result.email).toBe('ochre@example.com');
@@ -372,7 +376,8 @@ describe('UserRegistrationService', () => {
                 'ochre@example.com',
                 EnumUserLoginWith.socialGoogle,
                 socialInput,
-                resolved
+                resolved,
+                login
             );
 
             expect(result).toMatchObject({
@@ -389,7 +394,9 @@ describe('UserRegistrationService', () => {
                 passwordHistoryType:
                     UserCreateContract.social.passwordHistoryType,
                 verification: null,
+                login,
                 workspaceContext,
+                createdAt: now,
                 createdBy: 'user-id-ochre',
                 acceptedTermPolicyTypes: expect.arrayContaining([
                     EnumTermPolicyType.cookies,
@@ -403,7 +410,8 @@ describe('UserRegistrationService', () => {
                 'ochre@example.com',
                 EnumUserLoginWith.socialApple,
                 { ...socialInput, cookies: false, marketing: false },
-                resolved
+                resolved,
+                login
             );
 
             expect(result).toMatchObject({
@@ -420,7 +428,8 @@ describe('UserRegistrationService', () => {
                 'ochre@example.com',
                 EnumUserLoginWith.socialGoogle,
                 { ...socialInput, name: null, marketing: true },
-                resolved
+                resolved,
+                login
             );
 
             expect(result).toMatchObject({
@@ -429,48 +438,6 @@ describe('UserRegistrationService', () => {
                     EnumTermPolicyType.marketing,
                 ]),
             });
-        });
-    });
-
-    describe('buildAcceptedTermPolicyTypes', () => {
-        it('returns the required types followed by cookies and marketing when both are accepted', () => {
-            expect(service['buildAcceptedTermPolicyTypes'](true, true)).toEqual(
-                [
-                    EnumTermPolicyType.termsOfService,
-                    EnumTermPolicyType.privacy,
-                    EnumTermPolicyType.cookies,
-                    EnumTermPolicyType.marketing,
-                ]
-            );
-        });
-
-        it('returns the required types alone when neither is accepted', () => {
-            expect(
-                service['buildAcceptedTermPolicyTypes'](false, false)
-            ).toEqual([
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
-            ]);
-        });
-
-        it('adds cookies alone when only cookies is accepted', () => {
-            expect(
-                service['buildAcceptedTermPolicyTypes'](true, false)
-            ).toEqual([
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
-                EnumTermPolicyType.cookies,
-            ]);
-        });
-
-        it('adds marketing alone when only marketing is accepted', () => {
-            expect(
-                service['buildAcceptedTermPolicyTypes'](false, true)
-            ).toEqual([
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
-                EnumTermPolicyType.marketing,
-            ]);
         });
     });
 

@@ -3,10 +3,8 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
@@ -21,7 +19,6 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { DeviceService } from '@modules/device/services/device.service';
@@ -34,7 +31,6 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 import { UserService } from '@modules/user/services/user.service';
 import { DeviceRemoveByAdminUseCase } from '@modules/device/use-cases/device.remove-by-admin.use-case';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 import {
     buildApiKeyContext,
@@ -162,7 +158,6 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
-                DatabaseUtil,
                 DeviceUtil,
                 HelperDateService,
                 {
@@ -183,7 +178,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 async () => {
                     callOrder.push('revokeByDeviceOwnershipInTx');
 
-                    return [{ id: 'session-1' }];
+                    return [{ id: 'session-1', userId: 'user-1' }];
                 }
             );
             deviceService.removeOwnershipInTx.mockImplementation(async () => {
@@ -325,29 +320,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
             ).rejects.toBe(notFound);
         });
 
-        it('answers DeviceNotFoundException on a write conflict', async () => {
-            userService.getOneWithRole.mockResolvedValue(targetUser);
-            databaseService.withTransaction.mockRejectedValue(
-                buildPrismaKnownRequestError('P2034')
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    'user-1',
-                    'device-ownership-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: DeviceNotFoundException,
-                module: 'device',
-                statusCode: EnumDeviceStatusCodeError.notFound,
-            });
-        });
-
-        it('wraps any other failure in the unknown exception', async () => {
+        it('rethrows any other failure of the transaction untouched', async () => {
             userService.getOneWithRole.mockResolvedValue(targetUser);
             const failure = new Error('database exploded');
             databaseService.withTransaction.mockRejectedValue(failure);
@@ -361,11 +334,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
                     'user-1',
                     'device-ownership-1'
                 )
-            ).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: failure,
-            });
+            ).rejects.toBe(failure);
         });
 
         it('opens no transaction when the actor does not outrank the target', async () => {

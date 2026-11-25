@@ -119,7 +119,7 @@ export class ProjectMemberService {
         userId: string,
         role: EnumProjectMemberRole,
         createdBy: string
-    ): Promise<IProjectMember> {
+    ): Promise<void> {
         return this.projectMemberRepository.createInTx(
             tx,
             projectId,
@@ -216,7 +216,7 @@ export class ProjectMemberService {
         targetMember: WorkspaceMember,
         role: EnumProjectMemberRole
     ): Promise<IProjectMember> {
-        const member = await this.projectMemberRepository.createInTx(
+        const member = await this.projectMemberRepository.createWithUserInTx(
             tx,
             project.id,
             targetMember.userId,
@@ -273,9 +273,6 @@ export class ProjectMemberService {
             targetMember.role,
             newRole
         );
-        if (!updated) {
-            throw new ProjectMemberPeerForbiddenException();
-        }
 
         const actorEntry = this.activityLogQueue.recordEffect(
             requestContext,
@@ -287,11 +284,11 @@ export class ProjectMemberService {
                 userId: authContext.userId,
                 createdBy: authContext.userId,
                 workspaceId: project.workspaceId,
-                metadata: { targetUserId: targetMember.userId },
+                metadata: { targetUserId: updated.userId },
             }
         );
         const entries = [actorEntry];
-        if (targetMember.userId !== authContext.userId) {
+        if (updated.userId !== authContext.userId) {
             const targetEntry = this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
@@ -299,7 +296,7 @@ export class ProjectMemberService {
                 null,
                 {
                     action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
-                    userId: targetMember.userId,
+                    userId: updated.userId,
                     createdBy: authContext.userId,
                     workspaceId: project.workspaceId,
                     metadata: { actorUserId: authContext.userId },
@@ -323,9 +320,6 @@ export class ProjectMemberService {
             targetMember.id,
             targetMember.role
         );
-        if (!removed) {
-            throw new ProjectMemberPeerForbiddenException();
-        }
 
         const actorEntry = this.activityLogQueue.recordEffect(
             requestContext,
@@ -337,7 +331,7 @@ export class ProjectMemberService {
                 userId: authContext.userId,
                 createdBy: authContext.userId,
                 workspaceId: project.workspaceId,
-                metadata: { targetUserId: targetMember.userId },
+                metadata: { targetUserId: removed.userId },
             }
         );
         const targetEntry = this.activityLogQueue.recordEffect(
@@ -347,7 +341,7 @@ export class ProjectMemberService {
             null,
             {
                 action: EnumActivityLogAction.projectMemberRemovedByAdmin,
-                userId: targetMember.userId,
+                userId: removed.userId,
                 createdBy: authContext.userId,
                 workspaceId: project.workspaceId,
                 metadata: { actorUserId: authContext.userId },
@@ -368,9 +362,6 @@ export class ProjectMemberService {
             tx,
             member.id
         );
-        if (!removed) {
-            throw new ProjectMemberNotFoundException();
-        }
 
         const entry = this.activityLogQueue.recordEffect(
             requestContext,
@@ -379,8 +370,8 @@ export class ProjectMemberService {
             null,
             {
                 action: EnumActivityLogAction.projectMemberLeft,
-                userId: member.userId,
-                createdBy: member.userId,
+                userId: removed.userId,
+                createdBy: removed.userId,
                 workspaceId: project.workspaceId,
             }
         );

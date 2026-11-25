@@ -12,7 +12,6 @@ import {
 import {
     EnumActivityLogAction,
     EnumRoleType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
@@ -31,14 +30,11 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { RoleImmutableException } from '@modules/role/exceptions/role.immutable.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import { RoleSelfForbiddenException } from '@modules/role/exceptions/role.self-forbidden.exception';
 import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -84,10 +80,11 @@ describe('RoleDeleteByAdminUseCase', () => {
         roleId: actorRole.id,
         roleType: EnumRoleType.superAdmin,
     };
+    const deleted: Role = { ...role, name: 'deleted' };
     const metadata = {
-        roleId: role.id,
-        roleName: role.name,
-        roleType: role.type,
+        roleId: deleted.id,
+        roleName: deleted.name,
+        roleType: deleted.type,
         timestamp: now,
     };
     const requestContext = buildRequestContext();
@@ -167,7 +164,7 @@ describe('RoleDeleteByAdminUseCase', () => {
         );
 
         it('deletes the role on the outbox transaction and returns an empty envelope', async () => {
-            roleService.deleteByAdminInTx.mockResolvedValue(role);
+            roleService.deleteByAdminInTx.mockResolvedValue(deleted);
 
             const result = await useCase.execute(
                 requestContext,
@@ -189,7 +186,7 @@ describe('RoleDeleteByAdminUseCase', () => {
         });
 
         it('adds the delete activity entry from the deleted role and the passed context on the same tx', async () => {
-            roleService.deleteByAdminInTx.mockResolvedValue(role);
+            roleService.deleteByAdminInTx.mockResolvedValue(deleted);
 
             await useCase.execute(
                 requestContext,
@@ -209,7 +206,7 @@ describe('RoleDeleteByAdminUseCase', () => {
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
 
-        it('rethrows a typed exception of the write', async () => {
+        it('passes a rejected exception of the write through untouched', async () => {
             const failure = new RoleUsedException();
             roleService.deleteByAdminInTx.mockRejectedValue(failure);
 
@@ -225,31 +222,7 @@ describe('RoleDeleteByAdminUseCase', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('maps a write conflict to RoleUsedException', async () => {
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                }
-            );
-            roleService.deleteByAdminInTx.mockRejectedValue(conflict);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    role.id
-                )
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.used,
-            });
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
+        it('passes any other rejection through untouched', async () => {
             const cause = new Error('boom');
             roleService.deleteByAdminInTx.mockRejectedValue(cause);
 
@@ -261,10 +234,7 @@ describe('RoleDeleteByAdminUseCase', () => {
                     userContext,
                     role.id
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

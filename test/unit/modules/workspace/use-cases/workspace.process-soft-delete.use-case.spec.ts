@@ -74,8 +74,8 @@ describe('WorkspaceProcessSoftDeleteUseCase', () => {
             async fn => fn(tx) as never
         );
         messageService.setMessage.mockImplementation((path: string) => path);
-        workspaceService.softDeleteInTx.mockResolvedValue(true);
-        projectService.softDeleteChunkByWorkspace.mockResolvedValue(0);
+        workspaceService.softDeleteManyInTx.mockResolvedValue(['workspace-1']);
+        projectService.softDeleteChunkByWorkspaces.mockResolvedValue(0);
         activityLogQueue.recordEffectFromPayload.mockReturnValue(entry);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -111,9 +111,9 @@ describe('WorkspaceProcessSoftDeleteUseCase', () => {
                 expect.any(Function),
                 { timeout: 10000 }
             );
-            expect(workspaceService.softDeleteInTx).toHaveBeenCalledWith(
+            expect(workspaceService.softDeleteManyInTx).toHaveBeenCalledWith(
                 tx,
-                'workspace-1',
+                ['workspace-1'],
                 deletedAt,
                 'user-1'
             );
@@ -130,7 +130,7 @@ describe('WorkspaceProcessSoftDeleteUseCase', () => {
         });
 
         it('adds no entry when the workspace was already deleted', async () => {
-            workspaceService.softDeleteInTx.mockResolvedValue(false);
+            workspaceService.softDeleteManyInTx.mockResolvedValue([]);
 
             const result = await useCase.execute(payload);
 
@@ -150,7 +150,7 @@ describe('WorkspaceProcessSoftDeleteUseCase', () => {
 
                 return undefined as never;
             });
-            projectService.softDeleteChunkByWorkspace
+            projectService.softDeleteChunkByWorkspaces
                 .mockImplementationOnce(async () => {
                     callOrder.push('chunk');
 
@@ -170,11 +170,11 @@ describe('WorkspaceProcessSoftDeleteUseCase', () => {
             await useCase.execute(payload);
 
             expect(
-                projectService.softDeleteChunkByWorkspace
+                projectService.softDeleteChunkByWorkspaces
             ).toHaveBeenCalledTimes(3);
             expect(
-                projectService.softDeleteChunkByWorkspace
-            ).toHaveBeenCalledWith('workspace-1', deletedAt, 'user-1');
+                projectService.softDeleteChunkByWorkspaces
+            ).toHaveBeenCalledWith(['workspace-1'], deletedAt, 'user-1');
             expect(callOrder).toEqual([
                 'transaction:start',
                 'transaction:commit',
@@ -185,31 +185,31 @@ describe('WorkspaceProcessSoftDeleteUseCase', () => {
         });
 
         it('still pages the projects when the workspace was already deleted', async () => {
-            workspaceService.softDeleteInTx.mockResolvedValue(false);
-            projectService.softDeleteChunkByWorkspace
+            workspaceService.softDeleteManyInTx.mockResolvedValue([]);
+            projectService.softDeleteChunkByWorkspaces
                 .mockResolvedValueOnce(25)
                 .mockResolvedValueOnce(0);
 
             await useCase.execute(payload);
 
             expect(
-                projectService.softDeleteChunkByWorkspace
+                projectService.softDeleteChunkByWorkspaces
             ).toHaveBeenCalledTimes(2);
         });
 
         it('rethrows an AppBaseException as it came and pages no project', async () => {
             const failure = new WorkspaceNotFoundException();
-            workspaceService.softDeleteInTx.mockRejectedValue(failure);
+            workspaceService.softDeleteManyInTx.mockRejectedValue(failure);
 
             await expect(useCase.execute(payload)).rejects.toBe(failure);
             expect(
-                projectService.softDeleteChunkByWorkspace
+                projectService.softDeleteChunkByWorkspaces
             ).not.toHaveBeenCalled();
         });
 
         it('rethrows a QueueException as it came', async () => {
             const failure = new QueueException('chunk failed', false);
-            projectService.softDeleteChunkByWorkspace.mockRejectedValue(
+            projectService.softDeleteChunkByWorkspaces.mockRejectedValue(
                 failure
             );
 
@@ -218,7 +218,7 @@ describe('WorkspaceProcessSoftDeleteUseCase', () => {
 
         it('wraps an unknown error in a fatal QueueException carrying the cause', async () => {
             const cause = new Error('boom');
-            workspaceService.softDeleteInTx.mockRejectedValue(cause);
+            workspaceService.softDeleteManyInTx.mockRejectedValue(cause);
 
             const rejection = useCase.execute(payload);
 
@@ -232,7 +232,7 @@ describe('WorkspaceProcessSoftDeleteUseCase', () => {
 
         it('wraps an unknown error a project chunk throws in a fatal QueueException', async () => {
             const cause = new Error('mongo down');
-            projectService.softDeleteChunkByWorkspace.mockRejectedValue(cause);
+            projectService.softDeleteChunkByWorkspaces.mockRejectedValue(cause);
 
             const rejection = useCase.execute(payload);
 

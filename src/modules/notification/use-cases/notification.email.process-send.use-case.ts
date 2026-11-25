@@ -25,7 +25,9 @@ export class NotificationEmailProcessSendUseCase implements IAppUseCase<
 
     async execute(
         outboxId: string,
-        {
+        payload: INotificationEmailSendPayload
+    ): Promise<INotificationEmailSendQueueResponse> {
+        const {
             kind,
             notificationId,
             userId,
@@ -33,8 +35,7 @@ export class NotificationEmailProcessSendUseCase implements IAppUseCase<
             encryptedEmail,
             context,
             completedSteps,
-        }: INotificationEmailSendPayload
-    ): Promise<INotificationEmailSendQueueResponse> {
+        } = payload;
         const isInitialized = this.awsSesService.isInitialized();
         if (!isInitialized) {
             const message = this.messageService.setMessage(
@@ -70,7 +71,8 @@ export class NotificationEmailProcessSendUseCase implements IAppUseCase<
                 email,
                 templateData
             );
-            await this.outboxService.updateData(outboxId, {
+            await this.outboxService.replaceData(outboxId, {
+                ...payload,
                 completedSteps: [EnumNotificationStep.sendEmail],
             });
         }

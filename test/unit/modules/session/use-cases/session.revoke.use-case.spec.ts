@@ -14,13 +14,9 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import {
     EnumActivityLogAction,
-    Prisma,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -33,10 +29,10 @@ import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queu
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
-import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionRevokeUseCase } from '@modules/session/use-cases/session.revoke.use-case';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
+import { buildMfaFactorState } from '@test/unit/helpers/test.unit.mfa.helper';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import {
@@ -72,6 +68,7 @@ describe('SessionRevokeUseCase', () => {
     const user = buildUser('user-1', 'actor@example.com');
     const userContext = buildUserContext(user);
     const authContext = buildAuthJwtAccessContext(user.id);
+    const factorState = buildMfaFactorState('user-1');
     const tx = {} as IDatabaseTransactionClient;
     const revokedAt = new Date('2026-03-05T00:00:00.000Z');
     const entryEffect: IActivityLogCreateManyEffect = {
@@ -104,6 +101,7 @@ describe('SessionRevokeUseCase', () => {
         mfaService.checkReauthentication.mockResolvedValue(
             TestUnitReauthenticationMfaOff
         );
+        mfaService.getFactorState.mockResolvedValue(factorState);
         userAuthService.getReauthenticationVerificationId.mockResolvedValue(
             null
         );
@@ -118,7 +116,6 @@ describe('SessionRevokeUseCase', () => {
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
-                DatabaseUtil,
                 HelperDateService,
                 {
                     provide: ConfigService,
@@ -285,7 +282,20 @@ describe('SessionRevokeUseCase', () => {
             });
             expect(
                 userAuthService.completeReauthenticationInTx
-            ).toHaveBeenCalledWith(tx, authContext, true, null);
+            ).toHaveBeenCalledWith(tx, authContext, true, null, false);
+            expect(mfaService.getFactorState).toHaveBeenCalledTimes(1);
+            expect(mfaService.getFactorState).toHaveBeenCalledWith('user-1');
+            expect(mfaService.checkReauthentication).toHaveBeenCalledWith(
+                'user-1',
+                expect.objectContaining({
+                    action: EnumUserReauthenticationAction.sessionRevoke,
+                }),
+                true,
+                factorState
+            );
+            expect(mfaService.getFactorState).toHaveBeenCalledBefore(
+                mfaService.checkReauthentication
+            );
             expect(
                 mfaService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
@@ -410,32 +420,7 @@ describe('SessionRevokeUseCase', () => {
             expect(sessionService.revokeInTx).not.toHaveBeenCalled();
         });
 
-        it('answers SessionNotFoundException on a write conflict', async () => {
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                }
-            );
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    'session-1',
-                    dto
-                )
-            ).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.notFound,
-            });
-        });
-
-        it('wraps an unknown error of the transaction in AppUnknownException', async () => {
+        it('rethrows any other failure of the transaction untouched', async () => {
             const cause = new Error('boom');
             databaseService.withTransaction.mockRejectedValue(cause);
 
@@ -448,10 +433,7 @@ describe('SessionRevokeUseCase', () => {
                     'session-1',
                     dto
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

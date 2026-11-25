@@ -35,7 +35,9 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
 
     async execute(
         outboxId: string,
-        {
+        payload: INotificationPushSendPayload
+    ): Promise<IQueueResponse> {
+        const {
             kind,
             notificationId,
             userId,
@@ -45,8 +47,7 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
             completedSteps,
             encryptedPendingTokens,
             encryptedFailureTokens,
-        }: INotificationPushSendPayload
-    ): Promise<IQueueResponse> {
+        } = payload;
         const process = EnumNotificationPushProcess.send;
         const isInitialized = this.firebaseService.isInitialized();
         if (!isInitialized) {
@@ -61,6 +62,7 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
         const done = [...completedSteps];
         let failureTokens = encryptedFailureTokens;
         let pendingTokens = encryptedPendingTokens;
+        let data = payload;
         if (!done.includes(EnumNotificationStep.updateProcessAt)) {
             // Sequential by design: side effects whose order is part of the contract (processedAt before the send, the step recorded after its success, sentAt last)
             await this.notificationPushDeliveryService.stampProcessed(
@@ -101,12 +103,14 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
                 );
             failureTokens = sent.encryptedFailureTokens;
             pendingTokens = sent.encryptedPendingTokens;
+            data = {
+                ...data,
+                completedSteps: done,
+                encryptedPendingTokens: pendingTokens,
+                encryptedFailureTokens: failureTokens,
+            };
             if (sent.failure !== null) {
-                await this.outboxService.updateData(outboxId, {
-                    completedSteps: done,
-                    encryptedPendingTokens: pendingTokens,
-                    encryptedFailureTokens: failureTokens,
-                });
+                await this.outboxService.replaceData(outboxId, data);
                 const summary =
                     this.notificationPushDeliveryService.toStepSummary([
                         sent.failure,
@@ -116,11 +120,7 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
             }
 
             done.push(EnumNotificationStep.sendMulticast);
-            await this.outboxService.updateData(outboxId, {
-                completedSteps: done,
-                encryptedPendingTokens: pendingTokens,
-                encryptedFailureTokens: failureTokens,
-            });
+            await this.outboxService.replaceData(outboxId, data);
         }
 
         if (!done.includes(EnumNotificationStep.updateSentAt)) {
@@ -130,6 +130,7 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
                 tokens
             );
             done.push(EnumNotificationStep.updateSentAt);
+            data = { ...data, completedSteps: done };
             await this.databaseService.withTransaction(async tx => {
                 await this.notificationPushDeliveryService.stampSentInTx(
                     tx,
@@ -139,11 +140,7 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
                     context.proceedBy
                 );
                 const writes = [
-                    this.outboxService.updateDataInTx(tx, outboxId, {
-                        completedSteps: done,
-                        encryptedPendingTokens: pendingTokens,
-                        encryptedFailureTokens: failureTokens,
-                    }),
+                    this.outboxService.replaceDataInTx(tx, outboxId, data),
                 ];
                 if (tokens.length > 0) {
                     const cleanup =

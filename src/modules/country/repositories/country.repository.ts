@@ -2,6 +2,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { CountryRefSelect } from '@modules/country/constants/country.constant';
 import type { ICountryRepository } from '@modules/country/interfaces/country.repository.interface';
 import { Injectable } from '@nestjs/common';
 import type { Country } from '@generated/prisma-client/client';
@@ -25,7 +26,7 @@ export class CountryRepository implements ICountryRepository {
     async findIdByAlpha2Code(alpha2Code: string): Promise<string | null> {
         const country = await this.databaseService.client.country.findUnique({
             where: { alpha2Code },
-            select: { id: true },
+            select: CountryRefSelect,
         });
 
         return country?.id ?? null;

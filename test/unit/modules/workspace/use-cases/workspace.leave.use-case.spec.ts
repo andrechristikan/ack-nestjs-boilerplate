@@ -4,13 +4,11 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
@@ -21,6 +19,7 @@ import { ProjectMemberService } from '@modules/project/services/project.member.s
 import { UserService } from '@modules/user/services/user.service';
 import { WorkspaceLastOwnerException } from '@modules/workspace/exceptions/workspace.last-owner.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
+import type { IWorkspaceMemberWithEmail } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceLeaveUseCase } from '@modules/workspace/use-cases/workspace.leave.use-case';
 import {
@@ -33,8 +32,6 @@ import {
     buildWorkspaceContext,
     buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 
 describe('WorkspaceLeaveUseCase', () => {
     const workspaceMemberService: MockProxy<WorkspaceMemberService> =
@@ -50,6 +47,17 @@ describe('WorkspaceLeaveUseCase', () => {
     const secondEntry = buildActivityLogCreateManyEffect('second-entry');
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     const member: WorkspaceMember = buildWorkspaceMember('user-1');
+    const left: IWorkspaceMemberWithEmail = {
+        ...member,
+        workspaceId: 'written-workspace',
+        userId: 'written-user',
+        user: {
+            id: 'written-user',
+            email: 'written-user@example.com',
+            username: 'written-user',
+            name: null,
+        },
+    };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(
@@ -65,6 +73,7 @@ describe('WorkspaceLeaveUseCase', () => {
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
         databaseService.withTransaction.mockImplementation(async fn => fn(tx));
+        workspaceMemberService.leaveWorkspaceInTx.mockResolvedValue(left);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -118,6 +127,8 @@ describe('WorkspaceLeaveUseCase', () => {
             workspaceMemberService.leaveWorkspaceInTx.mockImplementation(
                 async () => {
                     callOrder.push('leave');
+
+                    return left;
                 }
             );
             projectMemberService.removeByWorkspaceAndUserInTx.mockImplementation(
@@ -150,11 +161,11 @@ describe('WorkspaceLeaveUseCase', () => {
             ).toHaveBeenCalledWith(tx, member);
             expect(
                 projectMemberService.removeByWorkspaceAndUserInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
+            ).toHaveBeenCalledWith(tx, 'written-workspace', 'written-user');
             expect(userService.clearLastWorkspaceInTx).toHaveBeenCalledWith(
                 tx,
-                'user-1',
-                'workspace-1'
+                'written-user',
+                'written-workspace'
             );
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
@@ -163,9 +174,9 @@ describe('WorkspaceLeaveUseCase', () => {
                 workspaceContext,
                 {
                     action: EnumActivityLogAction.workspaceMemberLeft,
-                    userId: 'user-1',
-                    createdBy: 'user-1',
-                    workspaceId: 'workspace-1',
+                    userId: 'written-user',
+                    createdBy: 'written-user',
+                    workspaceId: 'written-workspace',
                 }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, firstEntry);
@@ -184,6 +195,8 @@ describe('WorkspaceLeaveUseCase', () => {
                     events.push('start:leave');
                     await Promise.resolve();
                     events.push('end:leave');
+
+                    return left;
                 }
             );
             projectMemberService.removeByWorkspaceAndUserInTx.mockImplementation(
@@ -224,9 +237,10 @@ describe('WorkspaceLeaveUseCase', () => {
             ]);
         });
 
-        it('runs no cascade and adds no entry when the guarded leave misses', async () => {
+        it('lets WorkspaceMemberNotFoundException of the guarded leave reach the caller untouched, running no cascade and adding no entry', async () => {
+            const notFound = new WorkspaceMemberNotFoundException();
             workspaceMemberService.leaveWorkspaceInTx.mockRejectedValue(
-                new WorkspaceMemberNotFoundException()
+                notFound
             );
 
             await expect(
@@ -236,10 +250,7 @@ describe('WorkspaceLeaveUseCase', () => {
                     authContext,
                     workspaceContext
                 )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-            });
+            ).rejects.toBe(notFound);
             expect(
                 projectMemberService.removeByWorkspaceAndUserInTx
             ).not.toHaveBeenCalled();
@@ -247,13 +258,9 @@ describe('WorkspaceLeaveUseCase', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('maps a write conflict to WorkspaceMemberNotFoundException', async () => {
-            const conflict = buildPrismaKnownRequestError(
-                DatabaseWriteConflictCode
-            );
-            workspaceMemberService.leaveWorkspaceInTx.mockRejectedValue(
-                conflict
-            );
+        it('lets any other transaction error reach the caller untouched', async () => {
+            const cause = new Error('boom');
+            workspaceMemberService.leaveWorkspaceInTx.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(
@@ -262,29 +269,7 @@ describe('WorkspaceLeaveUseCase', () => {
                     authContext,
                     workspaceContext
                 )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-            });
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('wraps any other transaction error in AppUnknownException', async () => {
-            workspaceMemberService.leaveWorkspaceInTx.mockRejectedValue(
-                new Error('boom')
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext
-                )
-            ).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

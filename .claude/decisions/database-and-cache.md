@@ -23,6 +23,22 @@ Rule: `transaction.md`, Transactions; `concurrency.md`, Together and alone.
 - The read alone, with no guard on the statement: a change between the read and the write passes unchecked.
 - Every gate first: the checks sit on one level, and the first to fail answers.
 
+### A one-row write returns its row through `update()` or `delete()`, a miss mapped from P2025
+
+Rule: `transaction.md`, Queries.
+
+- `updateMany`, then a re-read: a second call for a row the write already holds.
+- `updateMany`, with the row rebuilt from the fail-fast read or from values: the rebuilt row is a copy that drifts from what the write stored, its stamps and the fields the write set.
+- The Prisma error in place of the fail-fast read: P2025 cannot tell a missing row from a row in the wrong state, and the transaction opens before the request learns either.
+
+### A database error is mapped by the repository of the statement that raised it
+
+Rule: `exceptions.md`, Who throws; `transaction.md`, Queries.
+
+- Mapping in the use case per flow: every flow repeats the mapping, and database logic belongs in the repository.
+- An `update()` or `delete()` returning `null` for its P2025: the row write already throws on a miss, so a `null` adds a second answer channel.
+- A callback building the exception: every call site adds a function to defer an exception that costs nothing to build in the catch.
+
 ### Every `ObjectId` field carries a relation
 
 Rule: `repository.md`, Schema.
@@ -73,12 +89,31 @@ Rule: `repository.md`, Queries; `analytic.md`, One statement.
 - A `$facet` pipeline per offset list: the Prisma types are lost on every admin list, and the list needs its count either way.
 - `findRaw`, `$queryRaw`, or `$executeRaw`: the result leaves the generated types and the select constants, so no type checks it.
 
+### A cascade over several workspaces reads each model once by `workspaceId: { in }`, in a job as in a request
+
+Rule: `repository.md`, Queries.
+
+- One read per workspace because the flow runs in the background: a job pays the same call per workspace and model that a request does, and holds its transaction open while they run.
+
+### A model's responses share its default response shapes
+
+Rule: `repository.md`, Selects.
+
+- A select per response: the shapes multiply with the routes, and a field one response gains forks another near-copy.
+- Dropping a relation from one list to save payload: the include costs no extra call, and the list leaves the shape every other response of the model shares.
+
 ### A generated result is a row per item under a run id
 
 Rule: `analytic.md`.
 
 - One document per signal holding the item list: it is bounded by the document size, cut at a row cap, and sorted in memory.
 - Replacing rows inside one transaction: thousands of writes run against the transaction lifetime.
+
+### A generated snapshot list is one pipeline
+
+Rule: `pagination.md`; `analytic.md`.
+
+- A header read, then `PaginationService.offset` over the items: two calls per page, and a refresh between them can replace the run the header names.
 
 ### The current time comes from `HelperDateService.now()`; `create(date)` takes a given date
 
@@ -144,12 +179,12 @@ Rule: `cache.md`.
 - Keyv over `@keyv/redis`: a second client library beside BullMQ's ioredis, with its own errors, a value envelope, and an `overrides:` pin.
 - `cache-manager`: its `get` swallows every store error and returns `undefined`, so a read-through built on it never sees a connection error.
 
-### The guard caches the role, not the user
+### The user guard reads the user with its role in one include
 
-Rule: `role.md`.
+Rule: `guards.md`, Guards; `role.md`.
 
-- No cache: three models per request.
-- Cache the user too: every user write (status, role, password, profile, MFA) would need an invalidation, and a missed one delays a block.
+- Caching the role: every role and policy write carries an invalidation effect, and the guard runs a cache read beside the user read.
+- Caching the user: every user write (status, role, password, profile, MFA) would need an invalidation, and a missed one delays a block.
 
 ### `CacheService.readThrough` is the one cache loader
 

@@ -1,5 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationEqual,
     IPaginationIn,
@@ -8,6 +9,8 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeySelect } from '@modules/api-key/constants/api-key.constant';
+import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
+import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
 import type {
     IApiKey,
     IApiKeyCreate,
@@ -20,7 +23,8 @@ import type { ApiKey } from '@generated/prisma-client/client';
 export class ApiKeyRepository implements IApiKeyRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findWithPagination(
@@ -78,26 +82,24 @@ export class ApiKeyRepository implements IApiKeyRepository {
         id: string,
         expectedIsActive: boolean,
         isActive: boolean
-    ): Promise<IApiKey | null> {
-        const { count } = await tx.apiKey.updateMany({
-            where: {
-                id,
-                isActive: expectedIsActive,
-            },
-            data: {
-                isActive,
-            },
-        });
-        if (count === 0) {
-            return null;
+    ): Promise<IApiKey> {
+        try {
+            return await tx.apiKey.update({
+                where: {
+                    id,
+                    isActive: expectedIsActive,
+                },
+                data: {
+                    isActive,
+                },
+                select: ApiKeySelect,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new ApiKeyNotFoundException()
+            );
         }
-
-        return tx.apiKey.findUnique({
-            where: {
-                id,
-            },
-            select: ApiKeySelect,
-        });
     }
 
     async updateNameInTx(
@@ -121,66 +123,68 @@ export class ApiKeyRepository implements IApiKeyRepository {
         id: string,
         startAt: Date | null,
         endAt: Date | null
-    ): Promise<IApiKey | null> {
-        const { count } = await tx.apiKey.updateMany({
-            where: {
-                id,
-                isActive: true,
-            },
-            data: {
-                startAt,
-                endAt,
-            },
-        });
-        if (count === 0) {
-            return null;
+    ): Promise<IApiKey> {
+        try {
+            return await tx.apiKey.update({
+                where: {
+                    id,
+                    isActive: true,
+                },
+                data: {
+                    startAt,
+                    endAt,
+                },
+                select: ApiKeySelect,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new ApiKeyInactiveException()
+            );
         }
-
-        return tx.apiKey.findUnique({
-            where: {
-                id,
-            },
-            select: ApiKeySelect,
-        });
     }
 
     async updateHashInTx(
         tx: IDatabaseTransactionClient,
         id: string,
         hash: string
-    ): Promise<IApiKey | null> {
-        const { count } = await tx.apiKey.updateMany({
-            where: {
-                id,
-                isActive: true,
-            },
-            data: {
-                hash,
-            },
-        });
-        if (count === 0) {
-            return null;
+    ): Promise<IApiKey> {
+        try {
+            return await tx.apiKey.update({
+                where: {
+                    id,
+                    isActive: true,
+                },
+                data: {
+                    hash,
+                },
+                select: ApiKeySelect,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new ApiKeyInactiveException()
+            );
         }
-
-        return tx.apiKey.findUnique({
-            where: {
-                id,
-            },
-            select: ApiKeySelect,
-        });
     }
 
     async deleteInTx(
         tx: IDatabaseTransactionClient,
         id: string
-    ): Promise<boolean> {
-        const { count } = await tx.apiKey.deleteMany({
-            where: {
-                id,
-            },
-        });
-
-        return count > 0;
+    ): Promise<IApiKey> {
+        try {
+            return await tx.apiKey.delete({
+                where: {
+                    id,
+                },
+                select: ApiKeySelect,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new ApiKeyNotFoundException()
+            );
+        }
     }
 
     async findOneByKey(key: string): Promise<ApiKey | null> {

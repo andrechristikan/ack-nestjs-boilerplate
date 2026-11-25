@@ -10,10 +10,10 @@ import { DatabaseUniqueValueGenerationFailedException } from '@common/database/e
 import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import type { Project } from '@generated/prisma-client/client';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
+import { ProjectSlugAlreadyExistsException } from '@modules/project/exceptions/project.slug-already-exists.exception';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectCreateUseCase } from '@modules/project/use-cases/project.create.use-case';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -141,9 +141,7 @@ describe('ProjectCreateUseCase', () => {
 
         it('opens a second transaction with the next slug candidate after a slug collision and returns its project', async () => {
             projectService.createProjectInTx
-                .mockRejectedValueOnce(
-                    buildPrismaKnownRequestError('P2002', 'slug')
-                )
+                .mockRejectedValueOnce(new ProjectSlugAlreadyExistsException())
                 .mockResolvedValueOnce(project);
 
             const result = await useCase.execute(
@@ -173,7 +171,7 @@ describe('ProjectCreateUseCase', () => {
 
         it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
             projectService.createProjectInTx.mockRejectedValue(
-                buildPrismaKnownRequestError('P2002', 'slug')
+                new ProjectSlugAlreadyExistsException()
             );
 
             await expect(
@@ -193,7 +191,7 @@ describe('ProjectCreateUseCase', () => {
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });
 
-        it('rethrows an AppBaseException without retrying', async () => {
+        it('passes a rejected typed exception other than the slug collision through untouched without retrying', async () => {
             const typed = new DatabaseUniqueValueGenerationFailedException();
             projectService.createProjectInTx.mockRejectedValue(typed);
 

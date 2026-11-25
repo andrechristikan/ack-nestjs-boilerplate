@@ -1,18 +1,13 @@
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
-import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { Prisma } from '@generated/prisma-client/client';
-import type { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
-import { AnalyticCountRanges } from '@modules/analytic/constants/analytic.constant';
 import type {
-    IAnalyticCountBucket,
-    IAnalyticSnapshotBucketsResult,
+    EnumAnalyticSnapshotSignal,
+    Prisma,
+} from '@generated/prisma-client/client';
+import type {
     IAnalyticSnapshotHeaderInput,
-    IAnalyticSnapshotItem,
     IAnalyticSnapshotResult,
     IAnalyticSnapshotSummary,
     IAnalyticSnapshotValueFilter,
@@ -30,7 +25,6 @@ export class AnalyticSnapshotService {
         private readonly analyticSnapshotRepository: AnalyticSnapshotRepository,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
-        private readonly paginationOffsetUtil: PaginationOffsetUtil,
         private readonly configService: ConfigService
     ) {
         this.writeBatchSize = this.configService.get<number>(
@@ -51,27 +45,7 @@ export class AnalyticSnapshotService {
             return true;
         }
 
-        const existing =
-            await this.analyticSnapshotRepository.findHeader(signal);
-        if (existing !== null) {
-            return false;
-        }
-
-        try {
-            await this.analyticSnapshotRepository.createHeader(signal, header);
-
-            return true;
-        } catch (error: unknown) {
-            const isLostWrite = this.databaseUtil.isUniqueCollision(
-                error,
-                Prisma.AnalyticSnapshotScalarFieldEnum.signal
-            );
-            if (isLostWrite) {
-                return false;
-            }
-
-            throw new AppUnknownException(error);
-        }
+        return this.analyticSnapshotRepository.createHeader(signal, header);
     }
 
     /** Writes the run's items, then swaps the signal's header to the run and deletes the superseded items; a run that lost to a later one deletes its own items instead. */
@@ -123,6 +97,26 @@ export class AnalyticSnapshotService {
         await this.analyticSnapshotRepository.deleteItemsOfRun(signal, runId);
     }
 
+    /** Writes the header of a signal that carries its result in `metadata`: no item is written or deleted; a run that lost to a later one writes nothing. */
+    async replaceHeader<TMetadata extends Prisma.InputJsonObject | null>(
+        signal: EnumAnalyticSnapshotSignal,
+        result: IAnalyticSnapshotResult<never, TMetadata>
+    ): Promise<void> {
+        const runId = this.databaseUtil.createId();
+        const startedAt = this.helperDateService.now();
+        const computedAt = this.helperDateService.now();
+
+        await this.writeHeader(signal, {
+            runId,
+            startedAt,
+            count: 0,
+            metadata: result.metadata,
+            windowStart: result.windowStart,
+            windowEnd: result.windowEnd,
+            computedAt,
+        });
+    }
+
     async getSummary<TMetadata>(
         signal: EnumAnalyticSnapshotSignal,
         metadataSchema: z.ZodType<TMetadata>
@@ -156,72 +150,15 @@ export class AnalyticSnapshotService {
         where: IAnalyticSnapshotValueFilter | null,
         dataSchema: z.ZodType<TItem>
     ): Promise<IResponsePaginationReturn<TItem>> {
-        const header = await this.analyticSnapshotRepository.findHeader(signal);
-        if (header === null) {
-            return this.paginationOffsetUtil.page([], 0, {
-                skip: params.skip,
-                limit: params.limit,
-            });
-        }
-
-        const page =
-            await this.analyticSnapshotRepository.findWithPaginationOffset(
-                signal,
-                header.runId,
-                params,
-                where
-            );
+        const page = await this.analyticSnapshotRepository.findListOffset(
+            signal,
+            params,
+            where
+        );
 
         return {
             ...page,
-            data: page.data.map(item => dataSchema.parse(item.data)),
-            metadata: { computedAt: header.computedAt },
-        };
-    }
-
-    async getBuckets(
-        signal: EnumAnalyticSnapshotSignal,
-        dataSchema: z.ZodType<IAnalyticCountBucket>
-    ): Promise<IAnalyticSnapshotBucketsResult> {
-        const page = await this.getListOffset(
-            signal,
-            {
-                skip: 0,
-                limit: AnalyticCountRanges.length,
-                orderBy: [{ value: EnumPaginationOrderDirectionType.asc }],
-            },
-            null,
-            dataSchema
-        );
-
-        return {
-            buckets: page.data,
-            computedAt: page.metadata?.computedAt ?? null,
-        };
-    }
-
-    async getOneByKey<TItem>(
-        signal: EnumAnalyticSnapshotSignal,
-        key: string,
-        dataSchema: z.ZodType<TItem>
-    ): Promise<IAnalyticSnapshotItem<TItem>> {
-        const header = await this.analyticSnapshotRepository.findHeader(signal);
-        if (header === null) {
-            return { item: null, computedAt: null };
-        }
-
-        const item = await this.analyticSnapshotRepository.findItemByKey(
-            signal,
-            header.runId,
-            key
-        );
-        if (item === null) {
-            return { item: null, computedAt: header.computedAt };
-        }
-
-        return {
-            item: dataSchema.parse(item.data),
-            computedAt: header.computedAt,
+            data: page.data.map(item => dataSchema.parse(item)),
         };
     }
 }

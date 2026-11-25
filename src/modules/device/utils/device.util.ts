@@ -27,14 +27,15 @@ export class DeviceUtil {
     ): IActivityLogMetadata {
         return {
             deviceOwnershipId: deviceOwnership.id,
-            deviceId: deviceOwnership.device.id,
+            deviceId: deviceOwnership.deviceId,
             sessionCount,
         };
     }
 
     mapActivityLogActorMetadata(
         deviceOwnership: IDeviceOwnership,
-        sessionCount: number
+        sessionCount: number,
+        timestamp: Date
     ): IActivityLogMetadata {
         const metadata = this.mapActivityLogMetadata(
             deviceOwnership,
@@ -45,14 +46,15 @@ export class DeviceUtil {
             ...metadata,
             targetUserId: deviceOwnership.userId,
             targetUsername: deviceOwnership.user.username,
-            timestamp: deviceOwnership.updatedAt,
+            timestamp,
         };
     }
 
     mapActivityLogTargetMetadata(
         deviceOwnership: IDeviceOwnership,
         actorUserId: string,
-        sessionCount: number
+        sessionCount: number,
+        timestamp: Date
     ): IActivityLogMetadata {
         const metadata = this.mapActivityLogMetadata(
             deviceOwnership,
@@ -62,7 +64,7 @@ export class DeviceUtil {
         return {
             ...metadata,
             actorUserId,
-            timestamp: deviceOwnership.updatedAt,
+            timestamp,
         };
     }
 }

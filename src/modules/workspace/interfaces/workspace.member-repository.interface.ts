@@ -11,6 +11,7 @@ import type { WorkspaceMember } from '@generated/prisma-client/client';
 import type {
     IWorkspaceMember,
     IWorkspaceMemberWithEmail,
+    IWorkspaceOwnedUser,
     IWorkspaceTransferMember,
 } from '@modules/workspace/interfaces/workspace.interface';
 
@@ -31,10 +32,8 @@ export interface IWorkspaceMemberRepository {
         workspaceMemberId: string,
         workspaceId: string
     ): Promise<IWorkspaceMemberWithEmail | null>;
-    findWorkspaceIdsByUser(
-        userId: string,
-        role: EnumWorkspaceMemberRole | null
-    ): Promise<string[]>;
+    findWorkspaceIdsByUser(userId: string): Promise<string[]>;
+    findLiveOwnedWorkspaceIdsByUser(userId: string): Promise<string[]>;
     countOwnedActiveByUser(userId: string): Promise<number>;
     findWithPaginationOffset(
         workspaceId: string,
@@ -51,6 +50,10 @@ export interface IWorkspaceMemberRepository {
         workspaceId: string,
         userId: string
     ): Promise<WorkspaceMember>;
+    createOwnersInTx(
+        tx: IDatabaseTransactionClient,
+        users: IWorkspaceOwnedUser[]
+    ): Promise<void>;
     createInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
@@ -63,12 +66,12 @@ export interface IWorkspaceMemberRepository {
         targetMemberId: string,
         expectedRole: EnumWorkspaceMemberRole,
         newRole: EnumWorkspaceMemberRole
-    ): Promise<boolean>;
+    ): Promise<WorkspaceMember>;
     removeMemberInTx(
         tx: IDatabaseTransactionClient,
         targetMemberId: string,
         expectedRole: EnumWorkspaceMemberRole
-    ): Promise<boolean>;
+    ): Promise<IWorkspaceMemberWithEmail>;
     removeByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string
@@ -78,10 +81,10 @@ export interface IWorkspaceMemberRepository {
         workspaceId: string,
         fromMemberId: string,
         toMemberId: string
-    ): Promise<boolean>;
+    ): Promise<WorkspaceMember>;
     demoteOwnerInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
         fromMemberId: string
-    ): Promise<boolean>;
+    ): Promise<WorkspaceMember>;
 }

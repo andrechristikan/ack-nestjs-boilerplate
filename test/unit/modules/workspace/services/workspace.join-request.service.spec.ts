@@ -44,6 +44,7 @@ import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace
 import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
 import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
 import { WorkspaceJoinRequestNotFoundException } from '@modules/workspace/exceptions/workspace.join-request-not-found.exception';
+import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceNotPublicException } from '@modules/workspace/exceptions/workspace.not-public.exception';
 import type {
@@ -127,7 +128,30 @@ describe('WorkspaceJoinRequestService', () => {
 
     const joinRequestWithEmail: IWorkspaceJoinRequestWithEmail = {
         ...baseJoinRequest,
-        user: { email: 'user-2@example.com' },
+        user: {
+            id: 'user-2',
+            email: 'user-2@example.com',
+            username: 'user-2',
+            name: null,
+        },
+    };
+
+    const acceptedJoinRequest: IWorkspaceJoinRequestWithEmail = {
+        ...joinRequestWithEmail,
+        status: EnumWorkspaceJoinRequestStatus.accepted,
+        reviewedByUserId: 'reviewer-1',
+        reviewedAt,
+        user: {
+            ...joinRequestWithEmail.user,
+            email: 'accepted-2@example.com',
+        },
+    };
+
+    const rejectedJoinRequest: WorkspaceJoinRequest = {
+        ...baseJoinRequest,
+        status: EnumWorkspaceJoinRequestStatus.rejected,
+        reviewedByUserId: 'reviewer-1',
+        reviewedAt,
     };
 
     const workspaceMember: WorkspaceMember = buildWorkspaceMember('user-2');
@@ -633,7 +657,7 @@ describe('WorkspaceJoinRequestService', () => {
                 async () => {
                     calls.push('accept');
 
-                    return true;
+                    return acceptedJoinRequest;
                 }
             );
             workspaceMemberService.createInTx.mockImplementation(async () => {
@@ -688,7 +712,7 @@ describe('WorkspaceJoinRequestService', () => {
             ).not.toHaveBeenCalled();
             expect(
                 workspaceInviteService.revokePendingByEmailInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-2@example.com');
+            ).toHaveBeenCalledWith(tx, 'workspace-1', 'accepted-2@example.com');
             expect(notificationQueue.notify).toHaveBeenCalledWith(
                 EnumNotificationKind.workspaceJoinAccepted,
                 {
@@ -708,7 +732,9 @@ describe('WorkspaceJoinRequestService', () => {
         });
 
         it('adds the reviewer entry and the requester entry after the write on the review tx', async () => {
-            workspaceJoinRequestRepository.acceptInTx.mockResolvedValue(true);
+            workspaceJoinRequestRepository.acceptInTx.mockResolvedValue(
+                acceptedJoinRequest
+            );
             notificationQueue.notify.mockReturnValue(notifyEffect);
 
             await service.acceptJoinRequestInTx(
@@ -758,8 +784,11 @@ describe('WorkspaceJoinRequestService', () => {
             );
         });
 
-        it('adds only the reviewer entry when the reviewer is the requester', async () => {
-            workspaceJoinRequestRepository.acceptInTx.mockResolvedValue(true);
+        it('adds only the reviewer entry when the accepted row names the reviewer as the requester', async () => {
+            workspaceJoinRequestRepository.acceptInTx.mockResolvedValue({
+                ...acceptedJoinRequest,
+                userId: 'reviewer-1',
+            });
             notificationQueue.notify.mockReturnValue(notifyEffect);
 
             await service.acceptJoinRequestInTx(
@@ -767,7 +796,7 @@ describe('WorkspaceJoinRequestService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                { ...joinRequestWithEmail, userId: 'reviewer-1' },
+                joinRequestWithEmail,
                 'Acme'
             );
 
@@ -778,8 +807,12 @@ describe('WorkspaceJoinRequestService', () => {
             ]);
         });
 
-        it('throws WorkspaceJoinRequestAlreadyProcessedException before the member insert when the guarded accept matches no pending request', async () => {
-            workspaceJoinRequestRepository.acceptInTx.mockResolvedValue(false);
+        it('lets WorkspaceJoinRequestAlreadyProcessedException from the guarded accept reach the caller untouched before the member insert', async () => {
+            const processed =
+                new WorkspaceJoinRequestAlreadyProcessedException();
+            workspaceJoinRequestRepository.acceptInTx.mockRejectedValue(
+                processed
+            );
 
             await expect(
                 service.acceptJoinRequestInTx(
@@ -790,20 +823,17 @@ describe('WorkspaceJoinRequestService', () => {
                     joinRequestWithEmail,
                     'Acme'
                 )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceJoinRequestAlreadyProcessedException,
-                module: 'workspace',
-                statusCode:
-                    EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
-            });
+            ).rejects.toBe(processed);
             expect(workspaceMemberService.createInTx).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('lets a write failure of the member insert reach the caller and adds no effect', async () => {
-            workspaceJoinRequestRepository.acceptInTx.mockResolvedValue(true);
-            const collision = buildPrismaKnownRequestError('P2002', 'userId');
-            workspaceMemberService.createInTx.mockRejectedValue(collision);
+        it('lets WorkspaceMemberAlreadyExistsException of the member insert reach the caller untouched and adds no effect', async () => {
+            workspaceJoinRequestRepository.acceptInTx.mockResolvedValue(
+                acceptedJoinRequest
+            );
+            const exists = new WorkspaceMemberAlreadyExistsException();
+            workspaceMemberService.createInTx.mockRejectedValue(exists);
 
             await expect(
                 service.acceptJoinRequestInTx(
@@ -814,7 +844,7 @@ describe('WorkspaceJoinRequestService', () => {
                     joinRequestWithEmail,
                     'Acme'
                 )
-            ).rejects.toBe(collision);
+            ).rejects.toBe(exists);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
@@ -835,7 +865,7 @@ describe('WorkspaceJoinRequestService', () => {
                 async () => {
                     calls.push('reject');
 
-                    return true;
+                    return rejectedJoinRequest;
                 }
             );
             notificationQueue.notify.mockReturnValue(effect);
@@ -890,7 +920,9 @@ describe('WorkspaceJoinRequestService', () => {
         });
 
         it('adds the reviewer entry and the requester entry after the write on the review tx', async () => {
-            workspaceJoinRequestRepository.rejectInTx.mockResolvedValue(true);
+            workspaceJoinRequestRepository.rejectInTx.mockResolvedValue(
+                rejectedJoinRequest
+            );
             notificationQueue.notify.mockReturnValue(notifyEffect);
 
             await service.rejectJoinRequestInTx(
@@ -941,8 +973,11 @@ describe('WorkspaceJoinRequestService', () => {
             ).toHaveBeenCalledBefore(activityLogQueue.recordEffect);
         });
 
-        it('adds only the reviewer entry when the reviewer is the requester', async () => {
-            workspaceJoinRequestRepository.rejectInTx.mockResolvedValue(true);
+        it('adds only the reviewer entry when the rejected row names the reviewer as the requester', async () => {
+            workspaceJoinRequestRepository.rejectInTx.mockResolvedValue({
+                ...rejectedJoinRequest,
+                userId: 'reviewer-1',
+            });
             notificationQueue.notify.mockReturnValue(notifyEffect);
 
             await service.rejectJoinRequestInTx(
@@ -950,7 +985,7 @@ describe('WorkspaceJoinRequestService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                { ...baseJoinRequest, userId: 'reviewer-1' },
+                baseJoinRequest,
                 'Acme',
                 EnumWorkspaceJoinRejectReason.wrongWorkspace
             );
@@ -962,8 +997,12 @@ describe('WorkspaceJoinRequestService', () => {
             ]);
         });
 
-        it('throws WorkspaceJoinRequestAlreadyProcessedException and adds no effect when the guarded reject matches no pending request', async () => {
-            workspaceJoinRequestRepository.rejectInTx.mockResolvedValue(false);
+        it('lets WorkspaceJoinRequestAlreadyProcessedException from the guarded reject reach the caller untouched and adds no effect', async () => {
+            const processed =
+                new WorkspaceJoinRequestAlreadyProcessedException();
+            workspaceJoinRequestRepository.rejectInTx.mockRejectedValue(
+                processed
+            );
 
             await expect(
                 service.rejectJoinRequestInTx(
@@ -975,12 +1014,7 @@ describe('WorkspaceJoinRequestService', () => {
                     'Acme',
                     EnumWorkspaceJoinRejectReason.wrongWorkspace
                 )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceJoinRequestAlreadyProcessedException,
-                module: 'workspace',
-                statusCode:
-                    EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
-            });
+            ).rejects.toBe(processed);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
@@ -1000,17 +1034,24 @@ describe('WorkspaceJoinRequestService', () => {
         });
     });
 
-    describe('cancelPendingByWorkspaceInTx', () => {
-        it('cancels the pending requests of the workspace on the given transaction', async () => {
-            await service.cancelPendingByWorkspaceInTx(
+    describe('cancelPendingByWorkspacesInTx', () => {
+        it('cancels the pending requests of the workspaces on the given transaction with one repository call', async () => {
+            await service.cancelPendingByWorkspacesInTx(
                 tx,
-                'workspace-1',
+                ['workspace-1', 'workspace-2'],
                 'user-1'
             );
 
             expect(
-                workspaceJoinRequestRepository.cancelPendingByWorkspaceInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
+                workspaceJoinRequestRepository.cancelPendingByWorkspacesInTx
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                workspaceJoinRequestRepository.cancelPendingByWorkspacesInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                ['workspace-1', 'workspace-2'],
+                'user-1'
+            );
         });
     });
 

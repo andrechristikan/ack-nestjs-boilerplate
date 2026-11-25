@@ -180,6 +180,7 @@ describe('NotificationService', () => {
                 id: 'user-id',
                 email: 'user@example.com',
                 username: 'user',
+                name: null,
             };
 
             const result = service.toRecipientRecord(
@@ -216,6 +217,7 @@ describe('NotificationService', () => {
                 id: 'user-id',
                 email: 'user@example.com',
                 username: 'user',
+                name: null,
             };
 
             const result = service.toRecipientRecord(
@@ -326,7 +328,8 @@ describe('NotificationService', () => {
                     snapshot: null,
                     verificationId: null,
                 },
-                recipient
+                recipient,
+                true
             );
 
             expect(notificationRepository.createInTx).toHaveBeenCalledWith(
@@ -347,7 +350,8 @@ describe('NotificationService', () => {
                 'notification-id',
                 EnumNotificationKind.workspaceInvite,
                 sealedContext,
-                recipient
+                recipient,
+                true
             );
 
             expect(notificationRepository.createInTx).toHaveBeenCalledWith(
@@ -391,12 +395,41 @@ describe('NotificationService', () => {
                 'notification-id',
                 EnumNotificationKind.workspaceInvite,
                 sealedContext,
-                { ...recipient, encryptedTokens: [] }
+                { ...recipient, encryptedTokens: [] },
+                true
             );
 
             expect(notificationPushQueue.sendEffect).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 emailEffect,
+            ]);
+        });
+
+        it('creates the notification through the absent-guarded repository method when it is not fresh', async () => {
+            await service.createInTx(
+                tx,
+                'notification-id',
+                EnumNotificationKind.workspaceInvite,
+                sealedContext,
+                recipient,
+                false
+            );
+
+            expect(
+                notificationRepository.createIfAbsentInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                EnumNotificationKind.workspaceInvite,
+                expect.objectContaining({
+                    id: 'notification-id',
+                    userId: 'user-id',
+                    createdBy: 'actor-id',
+                })
+            );
+            expect(notificationRepository.createInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                emailEffect,
+                pushEffect,
             ]);
         });
 
@@ -406,7 +439,8 @@ describe('NotificationService', () => {
                 'notification-id',
                 EnumNotificationKind.workspaceInvite,
                 sealedContext,
-                { ...recipient, channels: [EnumNotificationChannel.inApp] }
+                { ...recipient, channels: [EnumNotificationChannel.inApp] },
+                true
             );
 
             expect(notificationRepository.createInTx).toHaveBeenCalled();
@@ -437,7 +471,8 @@ describe('NotificationService', () => {
                 'notification-id',
                 EnumNotificationKind.verificationMobileNumber,
                 smsContext,
-                smsRecipient
+                smsRecipient,
+                true
             );
 
             expect(notificationSmsQueue.sendEffect).toHaveBeenCalledWith(
@@ -464,7 +499,8 @@ describe('NotificationService', () => {
                         EnumNotificationChannel.sms,
                         EnumNotificationChannel.silent,
                     ],
-                }
+                },
+                true
             );
 
             expect(notificationRepository.createInTx).toHaveBeenCalled();
@@ -482,7 +518,8 @@ describe('NotificationService', () => {
                     ...recipient,
                     encryptedMobileNumber: 'encrypted-number',
                     channels: [EnumNotificationChannel.inApp],
-                }
+                },
+                true
             );
 
             expect(notificationSmsQueue.sendEffect).not.toHaveBeenCalled();
@@ -495,7 +532,8 @@ describe('NotificationService', () => {
                 'notification-id',
                 EnumNotificationKind.welcome,
                 sealedContext,
-                { ...recipient, encryptedTokens: [] }
+                { ...recipient, encryptedTokens: [] },
+                true
             );
 
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
@@ -685,6 +723,7 @@ describe('NotificationService', () => {
     describe('markAsRead', () => {
         it('reads the row first, then marks it with one guarded write', async () => {
             notificationRepository.findIsReadById.mockResolvedValue({
+                id: 'notification-1',
                 isRead: false,
             });
             notificationRepository.markAsRead.mockResolvedValue(true);
@@ -716,6 +755,7 @@ describe('NotificationService', () => {
 
         it('throws NotificationAlreadyReadException when the row is already read and never writes', async () => {
             notificationRepository.findIsReadById.mockResolvedValue({
+                id: 'notification-1',
                 isRead: true,
             });
 
@@ -731,6 +771,7 @@ describe('NotificationService', () => {
 
         it('throws NotificationAlreadyReadException when the guarded write misses after the read', async () => {
             notificationRepository.findIsReadById.mockResolvedValue({
+                id: 'notification-1',
                 isRead: false,
             });
             notificationRepository.markAsRead.mockResolvedValue(false);

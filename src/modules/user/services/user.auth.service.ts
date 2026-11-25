@@ -93,16 +93,6 @@ export class UserAuthService {
         }
     }
 
-    private assertSocialLoginAllowed(user: IUser | null): IUser {
-        if (!user) {
-            throw new UserNotFoundException();
-        } else if (user.status !== EnumUserStatus.active) {
-            throw new UserInactiveForbiddenException();
-        }
-
-        return user;
-    }
-
     private async checkPassword(
         credential: IUserCredential,
         plainPassword: string | null
@@ -246,14 +236,15 @@ export class UserAuthService {
         return verification.id;
     }
 
-    /** Completes the proofs checked by the user part on the caller's transaction: the password counter reset and the email code marked used, throwing when it was used first. */
+    /** Completes the proofs checked by the user part on the caller's transaction: the password counter reset, skipped when the caller's own User write carries it, and the email code marked used, throwing when it was used first. */
     async completeReauthenticationInTx(
         tx: IDatabaseTransactionClient,
         authContext: IAuthJwtAccessContext,
         isPasswordChecked: boolean,
-        verificationId: string | null
+        verificationId: string | null,
+        isPasswordResetCarried: boolean
     ): Promise<void> {
-        if (isPasswordChecked) {
+        if (isPasswordChecked && !isPasswordResetCarried) {
             await this.userPasswordService.resetPasswordAttemptInTx(
                 tx,
                 authContext.userId
@@ -261,7 +252,7 @@ export class UserAuthService {
         }
         if (verificationId !== null) {
             const isMarkedUsed =
-                await this.userVerificationService.markUsedInTx(
+                await this.userVerificationService.markReauthenticationUsedInTx(
                     tx,
                     verificationId,
                     authContext.userId
@@ -294,12 +285,14 @@ export class UserAuthService {
         return this.userRepository.findOneWithRoleByEmail(normalizedEmail);
     }
 
-    async getOneForSocialLogin(email: string): Promise<IUser> {
-        const normalizedEmail = this.userUtil.normalizeEmail(email);
-        const user =
-            await this.userRepository.findOneWithRoleByEmail(normalizedEmail);
+    assertSocialLoginAllowed(user: IUser | null): IUser {
+        if (!user) {
+            throw new UserNotFoundException();
+        } else if (user.status !== EnumUserStatus.active) {
+            throw new UserInactiveForbiddenException();
+        }
 
-        return this.assertSocialLoginAllowed(user);
+        return user;
     }
 
     async getOneForSocialLoginById(userId: string): Promise<IUser> {
@@ -341,7 +334,7 @@ export class UserAuthService {
         }
     }
 
-    /** Revokes the user's earlier sessions on the upserted device ownership unless the device is new, revokes every other user's live sessions on the device with their entries, creates the session, stamps the login, and adds the login entry on the caller's transaction; adds the newDeviceLogin effect when the device is new, and returns the tokens signed after the writes. */
+    /** Revokes the user's earlier sessions on the upserted device ownership unless the device is new, revokes every other user's live sessions on the device with their entries, creates the session, stamps the login unless the caller's create did, clearing the password attempt in that stamp when the caller proved the password, and adds the login entry on the caller's transaction; adds the newDeviceLogin effect when the device is new, and returns the tokens signed after the writes. */
     async createTokenAndSessionInTx(
         tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
@@ -350,7 +343,9 @@ export class UserAuthService {
         device: IDeviceLoginUpsert,
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
-        loginAt: Date
+        loginAt: Date,
+        isLoginStamped: boolean,
+        isPasswordAttemptReset: boolean
     ): Promise<IUserAuthSession> {
         const { requestLog } = requestContext;
         const { sessionId, jti } = this.authJwtService.createLoginIdentifiers();
@@ -390,14 +385,17 @@ export class UserAuthService {
             expiredAt,
             requestLog
         );
-        await this.userService.updateLoginInTx(
-            tx,
-            user.id,
-            loginFrom,
-            loginWith,
-            requestLog.ipAddress,
-            now
-        );
+        if (!isLoginStamped) {
+            await this.userService.updateLoginInTx(
+                tx,
+                user.id,
+                loginFrom,
+                loginWith,
+                requestLog.ipAddress,
+                now,
+                isPasswordAttemptReset
+            );
+        }
 
         const effects: IOutboxEffect[] = [
             this.activityLogQueue.recordEffect(

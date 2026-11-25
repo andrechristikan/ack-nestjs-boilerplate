@@ -7,7 +7,6 @@ import {
 } from '@generated/prisma-client/client';
 import type {
     Prisma,
-    User,
     Workspace,
     WorkspaceMember,
 } from '@generated/prisma-client/client';
@@ -15,6 +14,9 @@ import type { IRequestStorePatch } from '@common/request/interfaces/request.inte
 import type {
     WorkspaceInvitePreviewInclude,
     WorkspaceInviteUserListSelect,
+    WorkspaceJoinRequestWithUserRecipientInclude,
+    WorkspaceMemberWithUserRecipientInclude,
+    WorkspaceMemberWithUserStateInclude,
 } from '@modules/workspace/constants/workspace.constant';
 import type { IUserRef } from '@modules/user/interfaces/user.interface';
 import { EnumWorkspaceInviteExpiry } from '@modules/workspace/enums/workspace.enum';
@@ -48,26 +50,26 @@ export interface IWorkspaceJoinable {
     reviewerIds: string[];
 }
 
-export interface IWorkspaceTransferMember extends WorkspaceMember {
-    user: Pick<User, 'status' | 'deletedAt'>;
-}
+export type IWorkspaceTransferMember = Prisma.WorkspaceMemberGetPayload<{
+    include: typeof WorkspaceMemberWithUserStateInclude;
+}>;
 
 export interface IWorkspaceTransfer {
     ownerMember: WorkspaceMember;
     targetMember: WorkspaceMember;
 }
 
-export interface IWorkspaceWithTransferMembers extends Workspace {
+export type IWorkspaceWithTransferMembers = Workspace & {
     members: IWorkspaceTransferMember[];
-}
+};
 
 export type IWorkspaceMemberWithEmail = Prisma.WorkspaceMemberGetPayload<{
-    include: { user: { select: { email: true } } };
+    include: typeof WorkspaceMemberWithUserRecipientInclude;
 }>;
 
 export type IWorkspaceJoinRequestWithEmail =
     Prisma.WorkspaceJoinRequestGetPayload<{
-        include: { user: { select: { email: true } } };
+        include: typeof WorkspaceJoinRequestWithUserRecipientInclude;
     }>;
 
 export type IWorkspaceInviteList = Prisma.WorkspaceInviteGetPayload<{

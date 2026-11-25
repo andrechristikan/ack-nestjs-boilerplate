@@ -37,17 +37,17 @@ export interface IWorkspaceJoinRequestRepository {
         workspaceJoinRequestId: string,
         reviewerId: string,
         reviewedAt: Date
-    ): Promise<boolean>;
+    ): Promise<IWorkspaceJoinRequestWithEmail>;
     rejectInTx(
         tx: IDatabaseTransactionClient,
         workspaceJoinRequestId: string,
         reviewerId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason,
         reviewedAt: Date
-    ): Promise<boolean>;
-    cancelPendingByWorkspaceInTx(
+    ): Promise<WorkspaceJoinRequest>;
+    cancelPendingByWorkspacesInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string,
+        workspaceIds: string[],
         updatedBy: string
     ): Promise<void>;
     cancelPendingByRequesterInTx(

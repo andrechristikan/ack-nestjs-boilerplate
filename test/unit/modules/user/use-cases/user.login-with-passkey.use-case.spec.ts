@@ -13,9 +13,7 @@ import {
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
 import type { MfaPasskey } from '@generated/prisma-client/client';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
@@ -48,7 +46,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserLoginWithPasskeyUseCase', () => {
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
@@ -179,7 +176,6 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 { provide: DeviceService, useValue: deviceService },
                 { provide: DatabaseService, useValue: databaseService },
                 HelperDateService,
-                DatabaseUtil,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
@@ -253,7 +249,9 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 upserted,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.passkey,
-                now
+                now,
+                false,
+                false
             );
             expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
                 tx,
@@ -271,7 +269,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
             expect(mfaChallengeService.createInTx).not.toHaveBeenCalled();
         });
 
-        it('reads the passwordless challenge, the passkey, the user, and the lock, checks the assertion with the challenge WebAuthn value, then claims, completes, and issues the session on one tx', async () => {
+        it('reads the passwordless challenge, the passkey, and the user, checks the assertion with the challenge WebAuthn value, then claims, completes, and issues the session on one tx', async () => {
             const callOrder: string[] = [];
             mfaChallengeService.get.mockImplementation(async () => {
                 callOrder.push('get');
@@ -290,9 +288,6 @@ describe('UserLoginWithPasskeyUseCase', () => {
                     return baseUser;
                 }
             );
-            mfaService.assertAttemptAvailable.mockImplementation(async () => {
-                callOrder.push('assertAttemptAvailable');
-            });
             mfaService.checkPasskeyLogin.mockImplementation(async () => {
                 callOrder.push('check');
 
@@ -333,11 +328,10 @@ describe('UserLoginWithPasskeyUseCase', () => {
             expect(userAuthService.getOneForPasskeyLogin).toHaveBeenCalledWith(
                 'user-bramble'
             );
-            expect(mfaService.assertAttemptAvailable).toHaveBeenCalledWith(
-                'user-bramble'
-            );
+            expect(mfaService.assertAttemptAvailable).not.toHaveBeenCalled();
             expect(mfaService.checkPasskeyLogin).toHaveBeenCalledWith(
                 'user-bramble',
+                storedPasskey,
                 passkeyResponse,
                 'challenge-webauthn'
             );
@@ -356,7 +350,6 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 'get',
                 'getOneForLogin',
                 'getOneForPasskeyLogin',
-                'assertAttemptAvailable',
                 'check',
                 'resolveLastWorkspaceId',
                 'completeChallengeInTx',
@@ -417,23 +410,6 @@ describe('UserLoginWithPasskeyUseCase', () => {
             await running;
         });
 
-        it('checks the attempt lock while the user read is still pending', async () => {
-            const userRead = buildDeferred<typeof baseUser>();
-            userAuthService.getOneForPasskeyLogin.mockReturnValue(
-                userRead.promise
-            );
-
-            const running = useCase.execute(requestContext, apiKeyContext, dto);
-            await vi.advanceTimersByTimeAsync(0);
-
-            expect(mfaService.assertAttemptAvailable).toHaveBeenCalledWith(
-                storedPasskey.userId
-            );
-
-            userRead.resolve(baseUser);
-            await running;
-        });
-
         it('passes on the MfaPasskeyInvalidException of an unknown credential and counts nothing', async () => {
             mfaPasskeyService.getOneForLogin.mockRejectedValue(
                 new MfaPasskeyInvalidException()
@@ -468,8 +444,8 @@ describe('UserLoginWithPasskeyUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('throws MfaAttemptMaxException for a locked user and checks nothing', async () => {
-            mfaService.assertAttemptAvailable.mockRejectedValue(
+        it('throws the MfaAttemptMaxException the check answers for a locked user and counts nothing', async () => {
+            mfaService.checkPasskeyLogin.mockRejectedValue(
                 new MfaAttemptMaxException()
             );
 
@@ -479,7 +455,7 @@ describe('UserLoginWithPasskeyUseCase', () => {
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
-            expect(mfaService.checkPasskeyLogin).not.toHaveBeenCalled();
+            expect(mfaService.countFailedAttemptInTx).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
@@ -513,29 +489,13 @@ describe('UserLoginWithPasskeyUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('throws MfaChallengeInvalidException on a write conflict', async () => {
-            const conflict = buildPrismaKnownRequestError('P2034');
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                useCase.execute(requestContext, apiKeyContext, dto)
-            ).rejects.toMatchObject({
-                module: 'mfa',
-
-                statusCode: EnumMfaStatusCodeError.challengeInvalid,
-            });
-        });
-
-        it('wraps an unknown error of the transaction in AppUnknownException', async () => {
+        it('rethrows any other failure of the transaction untouched', async () => {
             const cause = new Error('boom');
             databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

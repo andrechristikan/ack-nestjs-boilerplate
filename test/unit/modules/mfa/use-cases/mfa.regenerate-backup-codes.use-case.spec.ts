@@ -18,9 +18,6 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
-import { Prisma } from '@generated/prisma-client/client';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
@@ -28,6 +25,7 @@ import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { MfaNotEnabledException } from '@modules/mfa/exceptions/mfa.not-enabled.exception';
 import type { IMfaReauthenticationResult } from '@modules/mfa/interfaces/mfa.interface';
+import { buildMfaFactorState } from '@test/unit/helpers/test.unit.mfa.helper';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
@@ -46,7 +44,6 @@ import {
     buildUser,
     buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 
 const passkeyResponse = {
     id: 'AbC_-123',
@@ -74,6 +71,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext(user.id);
+    const factorState = buildMfaFactorState('user-marten');
     const userContext = buildUserContext(user);
     const tx = {} as IDatabaseTransactionClient;
     const entryEffect: IActivityLogCreateManyEffect = {
@@ -103,6 +101,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
             TestUnitReauthenticationPasswordPassed
         );
         mfaService.checkReauthentication.mockResolvedValue(mfaVerified);
+        mfaService.getFactorState.mockResolvedValue(factorState);
         userAuthService.getReauthenticationVerificationId.mockResolvedValue(
             null
         );
@@ -249,8 +248,24 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                 data: { backupCodes: ['CODE000001', 'CODE000002'] },
             });
 
-            expect(mfaService.assertEnabled).toHaveBeenCalledWith(
+            expect(mfaService.assertEnabled).toHaveBeenCalledWith(factorState);
+            expect(mfaService.assertEnabled).toHaveBeenCalledBefore(
+                userAuthService.checkReauthenticationPassword
+            );
+            expect(mfaService.getFactorState).toHaveBeenCalledTimes(1);
+            expect(mfaService.getFactorState).toHaveBeenCalledWith(
                 'user-marten'
+            );
+            expect(mfaService.checkReauthentication).toHaveBeenCalledWith(
+                'user-marten',
+                expect.objectContaining({
+                    action: EnumUserReauthenticationAction.mfaBackupCodeRegenerate,
+                }),
+                true,
+                factorState
+            );
+            expect(mfaService.getFactorState).toHaveBeenCalledBefore(
+                mfaService.checkReauthentication
             );
             expect(
                 userAuthService.checkReauthenticationPassword
@@ -269,7 +284,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
             ).toHaveBeenCalledBefore(databaseService.withTransaction);
             expect(
                 userAuthService.completeReauthenticationInTx
-            ).toHaveBeenCalledWith(tx, authContext, true, null);
+            ).toHaveBeenCalledWith(tx, authContext, true, null, false);
             expect(
                 mfaService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
@@ -429,32 +444,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
             expect(mfaService.regenerateBackupCodesInTx).not.toHaveBeenCalled();
         });
 
-        it('answers MfaNotEnabledException on a write conflict', async () => {
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                }
-            );
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    dto
-                )
-            ).rejects.toMatchObject({
-                statusCode: EnumMfaStatusCodeError.notEnabled,
-
-                module: 'mfa',
-            });
-        });
-
-        it('wraps any other transaction failure in the unknown exception', async () => {
+        it('rethrows any other failure of the transaction untouched', async () => {
             const cause = new Error('boom');
             databaseService.withTransaction.mockRejectedValue(cause);
 
@@ -466,10 +456,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                     userContext,
                     dto
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

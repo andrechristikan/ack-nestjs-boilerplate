@@ -9,6 +9,7 @@ import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
+import { buildMfaFactorState } from '@test/unit/helpers/test.unit.mfa.helper';
 import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
@@ -31,9 +32,7 @@ describe('UserResetPasswordGenerateMfaUseCase', () => {
         id: 'forgot-linden',
         userId: 'user-linden',
     } as IUserForgotPassword;
-    const credentials = [
-        { credentialId: 'credential-linden', transports: ['internal'] },
-    ];
+    const factorState = buildMfaFactorState('user-linden');
     const passkeyOptions: PublicKeyCredentialRequestOptionsJSON = {
         challenge: 'challenge-linden',
         rpId: 'example.test',
@@ -43,7 +42,7 @@ describe('UserResetPasswordGenerateMfaUseCase', () => {
 
     beforeEach(async () => {
         userPasswordService.getOneActiveReset.mockResolvedValue(resetRow);
-        mfaPasskeyService.getCredentialsByUser.mockResolvedValue(credentials);
+        mfaService.getFactorState.mockResolvedValue(factorState);
         mfaPasskeyService.getAssertionOptions.mockResolvedValue(passkeyOptions);
         mfaChallengeService.create.mockResolvedValue({
             challengeToken: 'token-linden',
@@ -86,18 +85,15 @@ describe('UserResetPasswordGenerateMfaUseCase', () => {
             expect(userPasswordService.getOneActiveReset).toHaveBeenCalledWith(
                 'raw-token'
             );
-            expect(
-                mfaPasskeyService.getCredentialsByUser
-            ).toHaveBeenCalledTimes(1);
-            expect(mfaPasskeyService.getCredentialsByUser).toHaveBeenCalledWith(
+            expect(mfaService.getFactorState).toHaveBeenCalledTimes(1);
+            expect(mfaService.getFactorState).toHaveBeenCalledWith(
                 'user-linden'
             );
             expect(mfaService.getLoginMethods).toHaveBeenCalledWith(
-                'user-linden',
-                credentials
+                factorState
             );
             expect(mfaPasskeyService.getAssertionOptions).toHaveBeenCalledWith(
-                credentials
+                factorState.passkeys
             );
             expect(mfaChallengeService.create).toHaveBeenCalledWith({
                 purpose: EnumMfaChallengePurpose.resetPassword,

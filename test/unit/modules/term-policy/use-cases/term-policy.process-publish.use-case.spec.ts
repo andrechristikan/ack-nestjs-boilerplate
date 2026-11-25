@@ -82,10 +82,30 @@ describe('TermPolicyProcessPublishUseCase', () => {
             resendNonce: null,
         };
         const cutoff = new Date('2024-01-01T00:00:00.000Z');
-        const u1 = { id: 'u1', email: 'u1@example.com', username: 'u1' };
-        const u2 = { id: 'u2', email: 'u2@example.com', username: 'u2' };
-        const u3 = { id: 'u3', email: 'u3@example.com', username: 'u3' };
-        const u4 = { id: 'u4', email: 'u4@example.com', username: 'u4' };
+        const u1 = {
+            id: 'u1',
+            email: 'u1@example.com',
+            username: 'u1',
+            name: null,
+        };
+        const u2 = {
+            id: 'u2',
+            email: 'u2@example.com',
+            username: 'u2',
+            name: null,
+        };
+        const u3 = {
+            id: 'u3',
+            email: 'u3@example.com',
+            username: 'u3',
+            name: null,
+        };
+        const u4 = {
+            id: 'u4',
+            email: 'u4@example.com',
+            username: 'u4',
+            name: null,
+        };
         const payload: ITermPolicyBulkQueuePayload<typeof data> = {
             proceedBy: 'admin-id',
             data,

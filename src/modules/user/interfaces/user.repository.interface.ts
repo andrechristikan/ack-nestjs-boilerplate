@@ -48,14 +48,16 @@ export interface IUserRepository {
     findOneWithRoleByEmail(email: string): Promise<IUser | null>;
     findOneProfileById(id: string): Promise<IUserProfile | null>;
     findOneWithRoleById(id: string): Promise<IUser | null>;
-    findByEmails(emails: string[]): Promise<IUser[]>;
-    findByUsernames(usernames: string[]): Promise<IUser[]>;
+    findByEmailsOrUsernames(
+        emails: string[],
+        usernames: string[]
+    ): Promise<IUserRecipient[]>;
     findExport(
         status: EnumUserStatus[],
         roleId: string | null,
         countryId: string | null,
         take: number
-    ): Promise<IUser[]>;
+    ): Promise<IUserList[]>;
     countExport(
         status: EnumUserStatus[],
         roleId: string | null,
@@ -71,13 +73,13 @@ export interface IUserRepository {
     createManyInTx(
         tx: IDatabaseTransactionClient,
         inputs: IUserCreateWithWorkspaceInput[]
-    ): Promise<IUser[]>;
+    ): Promise<void>;
     updateStatusByAdminInTx(
         tx: IDatabaseTransactionClient,
         id: string,
         currentStatus: EnumUserStatus,
         { status, passwordAttempt, passwordLockedUntil }: IUserUpdateStatus
-    ): Promise<User | null>;
+    ): Promise<User>;
     updateProfileInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -141,10 +143,12 @@ export interface IUserRepository {
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
         ipAddress: string | null,
-        loginAt: Date
+        loginAt: Date,
+        isPasswordAttemptReset: boolean
     ): Promise<User>;
     touchUpdatedByInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        userId: string,
+        isPasswordChecked: boolean
     ): Promise<void>;
 }

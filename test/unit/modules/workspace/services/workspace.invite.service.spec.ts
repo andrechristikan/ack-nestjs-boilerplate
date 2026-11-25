@@ -11,7 +11,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
 import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
@@ -63,6 +62,7 @@ import type {
     IWorkspaceInviteCreate,
     IWorkspaceInviteNotice,
     IWorkspaceInvitePrepared,
+    IWorkspaceInviteList,
     IWorkspaceInvitePreview,
     IWorkspaceInviteTokenData,
 } from '@modules/workspace/interfaces/workspace.interface';
@@ -146,10 +146,40 @@ describe('WorkspaceInviteService', () => {
         nonce: pendingNonce,
     };
 
+    const listInvite: IWorkspaceInviteList = {
+        id: baseInvite.id,
+        createdAt: baseInvite.createdAt,
+        createdBy: baseInvite.createdBy,
+        updatedAt: baseInvite.updatedAt,
+        updatedBy: baseInvite.updatedBy,
+        workspaceId: baseInvite.workspaceId,
+        email: baseInvite.email,
+        workspaceRole: baseInvite.workspaceRole,
+        projectId: baseInvite.projectId,
+        projectRole: baseInvite.projectRole,
+        reference: baseInvite.reference,
+        expiredAt: baseInvite.expiredAt,
+        status: baseInvite.status,
+        invitedByUserId: baseInvite.invitedByUserId,
+        acceptedAt: baseInvite.acceptedAt,
+        acceptedByUserId: baseInvite.acceptedByUserId,
+    };
+
     const previewInvite: IWorkspaceInvitePreview = {
         ...baseInvite,
         workspace,
-        invitedBy: { name: 'Bramble', username: 'bramble', deletedAt: null },
+        invitedBy: {
+            id: 'user-1',
+            name: 'Bramble',
+            username: 'bramble',
+            photo: null,
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdBy: null,
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+            updatedBy: null,
+            deletedAt: null,
+            deletedBy: null,
+        },
     };
 
     const baseProject: Project = {
@@ -551,19 +581,26 @@ describe('WorkspaceInviteService', () => {
         });
     });
 
-    describe('revokePendingByWorkspaceInTx', () => {
-        it('revokes the pending invites of the workspace on the given transaction', async () => {
+    describe('revokePendingByWorkspacesInTx', () => {
+        it('revokes the pending invites of the workspaces on the given transaction with one repository call', async () => {
             const tx = {} as IDatabaseTransactionClient;
 
-            await service.revokePendingByWorkspaceInTx(
+            await service.revokePendingByWorkspacesInTx(
                 tx,
-                'workspace-1',
+                ['workspace-1', 'workspace-2'],
                 'user-1'
             );
 
             expect(
-                workspaceInviteRepository.revokePendingByWorkspaceInTx
-            ).toHaveBeenCalledWith(tx, 'workspace-1', 'user-1');
+                workspaceInviteRepository.revokePendingByWorkspacesInTx
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                workspaceInviteRepository.revokePendingByWorkspacesInTx
+            ).toHaveBeenCalledWith(
+                tx,
+                ['workspace-1', 'workspace-2'],
+                'user-1'
+            );
         });
     });
 
@@ -907,7 +944,7 @@ describe('WorkspaceInviteService', () => {
 
         it('creates the pending invite on the tx given with the prepared id and nonce and the drawn token data', async () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
-                baseInvite
+                listInvite
             );
 
             const result = await service.createInviteInTx(
@@ -926,7 +963,7 @@ describe('WorkspaceInviteService', () => {
                 unregisteredNotice
             );
 
-            expect(result).toBe(baseInvite);
+            expect(result).toBe(listInvite);
             expect(
                 workspaceInviteRepository.createPendingInTx
             ).toHaveBeenCalledWith(tx, {
@@ -946,7 +983,7 @@ describe('WorkspaceInviteService', () => {
 
         it('adds the notify effect for an invitee with an account on the invite tx', async () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
-                baseInvite
+                listInvite
             );
             notificationQueue.notify.mockReturnValue(notifyEffect);
 
@@ -989,7 +1026,7 @@ describe('WorkspaceInviteService', () => {
 
         it('adds the unregistered invite effect with the sign-up link for an invitee with no account', async () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
-                baseInvite
+                listInvite
             );
             notificationEmailQueue.notifyUnregisteredInvite.mockReturnValue(
                 unregisteredEffect
@@ -1028,7 +1065,7 @@ describe('WorkspaceInviteService', () => {
 
         it('adds the creator entry and the invitee entry after the write on the invite tx for an invitee with an account', async () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
-                baseInvite
+                listInvite
             );
             notificationQueue.notify.mockReturnValue(notifyEffect);
 
@@ -1087,7 +1124,7 @@ describe('WorkspaceInviteService', () => {
 
         it('adds only the creator entry on the invite tx for an invitee with no account', async () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
-                baseInvite
+                listInvite
             );
             notificationEmailQueue.notifyUnregisteredInvite.mockReturnValue(
                 unregisteredEffect
@@ -1127,7 +1164,7 @@ describe('WorkspaceInviteService', () => {
 
         it('adds only the creator entry when the invitee is the creator', async () => {
             workspaceInviteRepository.createPendingInTx.mockResolvedValue(
-                baseInvite
+                listInvite
             );
             notificationQueue.notify.mockReturnValue(notifyEffect);
 
@@ -1472,9 +1509,10 @@ describe('WorkspaceInviteService', () => {
             ]);
         });
 
-        it('throws WorkspaceInviteAlreadyProcessedException and adds no effect when the guarded rotation misses', async () => {
-            workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
-                null
+        it('lets the exception the guarded rotation throws reach the caller untouched and adds no effect', async () => {
+            const processed = new WorkspaceInviteAlreadyProcessedException();
+            workspaceInviteRepository.rotateForResendInTx.mockRejectedValue(
+                processed
             );
 
             await expect(
@@ -1487,32 +1525,50 @@ describe('WorkspaceInviteService', () => {
                     rotatedTokenData,
                     unregisteredNotice
                 )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteAlreadyProcessedException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-            });
+            ).rejects.toBe(processed);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('lets a write failure reach the caller', async () => {
-            const collision = buildPrismaKnownRequestError('P2002', 'token');
-            workspaceInviteRepository.rotateForResendInTx.mockRejectedValue(
-                collision
+        it('builds the effect and the entries from the row the rotation returned', async () => {
+            const rotated = {
+                ...baseInvite,
+                workspaceId: 'workspace-9',
+                reference: 'WIN-zzz999',
+            };
+            workspaceInviteRepository.rotateForResendInTx.mockResolvedValue(
+                rotated
+            );
+            notificationEmailQueue.notifyUnregisteredInvite.mockReturnValue(
+                unregisteredEffect
             );
 
-            await expect(
-                service.resendInviteInTx(
-                    tx,
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'invite-1',
-                    rotatedTokenData,
-                    unregisteredNotice
-                )
-            ).rejects.toBe(collision);
+            await service.resendInviteInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'invite-1',
+                rotatedTokenData,
+                unregisteredNotice
+            );
+
+            expect(
+                notificationEmailQueue.notifyUnregisteredInvite
+            ).toHaveBeenCalledWith(
+                rotated.email,
+                expect.objectContaining({
+                    workspaceId: 'workspace-9',
+                    reference: 'WIN-zzz999',
+                })
+            );
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                expect.objectContaining({ workspaceId: 'workspace-9' })
+            );
         });
     });
 
@@ -1632,16 +1688,21 @@ describe('WorkspaceInviteService', () => {
         const tx = {} as IDatabaseTransactionClient;
         const acceptedAt = new Date('2026-01-01T00:00:00.000Z');
 
-        it('accepts the invite on the given transaction', async () => {
-            workspaceInviteRepository.acceptInTx.mockResolvedValue(true);
+        it('accepts the invite on the given transaction and returns the accepted row', async () => {
+            const accepted: WorkspaceInvite = {
+                ...baseInvite,
+                status: EnumWorkspaceInviteStatus.accepted,
+            };
+            workspaceInviteRepository.acceptInTx.mockResolvedValue(accepted);
 
-            await service.acceptPendingInTx(
+            const result = await service.acceptPendingInTx(
                 tx,
                 'invite-1',
                 'user-2',
                 acceptedAt
             );
 
+            expect(result).toBe(accepted);
             expect(workspaceInviteRepository.acceptInTx).toHaveBeenCalledWith(
                 tx,
                 'invite-1',
@@ -1650,28 +1711,13 @@ describe('WorkspaceInviteService', () => {
             );
         });
 
-        it('throws WorkspaceInviteAlreadyProcessedException when the guarded accept matches no pending invite', async () => {
-            workspaceInviteRepository.acceptInTx.mockResolvedValue(false);
+        it('lets the exception the guarded accept throws reach the caller untouched', async () => {
+            const processed = new WorkspaceInviteAlreadyProcessedException();
+            workspaceInviteRepository.acceptInTx.mockRejectedValue(processed);
 
             await expect(
                 service.acceptPendingInTx(tx, 'invite-1', 'user-2', acceptedAt)
-            ).rejects.toMatchObject({
-                module: 'workspace',
-
-                constructor: WorkspaceInviteAlreadyProcessedException,
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-            });
-        });
-
-        it('rejects with the raw write conflict the accept rejects with', async () => {
-            const conflict = buildPrismaKnownRequestError(
-                DatabaseWriteConflictCode
-            );
-            workspaceInviteRepository.acceptInTx.mockRejectedValue(conflict);
-
-            await expect(
-                service.acceptPendingInTx(tx, 'invite-1', 'user-2', acceptedAt)
-            ).rejects.toBe(conflict);
+            ).rejects.toBe(processed);
         });
     });
 
@@ -1688,31 +1734,38 @@ describe('WorkspaceInviteService', () => {
         };
 
         beforeEach(() => {
-            workspaceInviteRepository.acceptInTx.mockResolvedValue(true);
+            workspaceInviteRepository.acceptInTx.mockResolvedValue({
+                ...baseInvite,
+                status: EnumWorkspaceInviteStatus.accepted,
+            });
             vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
         });
 
-        it('throws WorkspaceInviteAlreadyProcessedException when the guarded accept matches no pending invite', async () => {
-            workspaceInviteRepository.acceptInTx.mockResolvedValue(false);
+        it('lets the exception the guarded accept throws reach the caller and creates no membership', async () => {
+            const processed = new WorkspaceInviteAlreadyProcessedException();
+            workspaceInviteRepository.acceptInTx.mockRejectedValue(processed);
 
             await expect(
                 service.acceptOnSignUpInTx(tx, 'user-2', inviteContext)
-            ).rejects.toMatchObject({
-                module: 'workspace',
-
-                constructor: WorkspaceInviteAlreadyProcessedException,
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-            });
+            ).rejects.toBe(processed);
+            expect(workspaceMemberService.createInTx).not.toHaveBeenCalled();
         });
 
-        it('accepts the invite, then creates the workspace membership on the same transaction', async () => {
+        it('accepts the invite, then creates the workspace membership from the accepted row on the same transaction', async () => {
+            workspaceInviteRepository.acceptInTx.mockResolvedValue({
+                ...baseInvite,
+                workspaceId: 'workspace-9',
+                workspaceRole: EnumWorkspaceMemberRole.admin,
+                status: EnumWorkspaceInviteStatus.accepted,
+            });
+
             await service.acceptOnSignUpInTx(tx, 'user-2', inviteContext);
 
             expect(workspaceMemberService.createInTx).toHaveBeenCalledWith(
                 tx,
-                'workspace-1',
+                'workspace-9',
                 'user-2',
-                EnumWorkspaceMemberRole.member,
+                EnumWorkspaceMemberRole.admin,
                 'user-2'
             );
             expect(workspaceInviteRepository.acceptInTx).toHaveBeenCalledWith(

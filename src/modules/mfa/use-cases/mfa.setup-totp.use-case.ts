@@ -1,7 +1,3 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -11,8 +7,6 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
-import { MfaTotpAlreadyEnabledException } from '@modules/mfa/exceptions/mfa.totp-already-enabled.exception';
 import type { IMfaTotpSetup } from '@modules/mfa/interfaces/mfa.interface';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaService } from '@modules/mfa/services/mfa.service';
@@ -42,8 +36,7 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
         private readonly userAuthService: UserAuthService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
-        private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly outboxService: OutboxService
     ) {}
 
     async execute(
@@ -62,10 +55,11 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
         }: MfaTotpSetupRequestDto
     ): Promise<IResponseReturn<IMfaTotpSetup>> {
         const { user } = userContext;
-        await Promise.all([
+        const [state] = await Promise.all([
+            this.mfaService.getFactorState(authContext.userId),
             this.mfaService.assertEnrollmentAllowed(EnumMfaMethod.totp),
-            this.mfaTotpService.assertSetupAllowed(authContext.userId),
         ]);
+        this.mfaTotpService.assertSetupAllowed(state.totp);
         // Sequential by design: a credential proof, awaited alone
         const input = {
             action: EnumUserReauthenticationAction.mfaTotpSetup,
@@ -101,7 +95,8 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
         const mfaCheck = await this.mfaService.checkReauthentication(
             user.id,
             input,
-            passwordCheck.isPasswordChecked
+            passwordCheck.isPasswordChecked,
+            state
         );
         if (mfaCheck.failure !== null) {
             const failure = mfaCheck.failure;
@@ -127,67 +122,42 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
                 mfaCheck.isEnabled
             );
 
-        try {
-            const setup = await this.databaseService.withTransaction(
-                async tx => {
-                    await this.userAuthService.completeReauthenticationInTx(
-                        tx,
-                        authContext,
-                        passwordCheck.isPasswordChecked,
-                        verificationId
-                    );
-                    await this.mfaService.completeReauthenticationInTx(
-                        tx,
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        mfaCheck
-                    );
-                    const totpSetup = await this.mfaTotpService.setupInTx(
-                        tx,
-                        authContext.userId,
-                        user.email
-                    );
-                    const entry = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.userMfaTotpSetUp,
-                            userId: authContext.userId,
-                            createdBy: authContext.userId,
-                        }
-                    );
-                    await this.outboxService.addInTx(tx, entry);
-
-                    return totpSetup;
+        const setup = await this.databaseService.withTransaction(async tx => {
+            await this.userAuthService.completeReauthenticationInTx(
+                tx,
+                authContext,
+                passwordCheck.isPasswordChecked,
+                verificationId,
+                false
+            );
+            await this.mfaService.completeReauthenticationInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                mfaCheck
+            );
+            const totpSetup = await this.mfaTotpService.setupInTx(
+                tx,
+                authContext.userId,
+                user.email
+            );
+            const entry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.userMfaTotpSetUp,
+                    userId: authContext.userId,
+                    createdBy: authContext.userId,
                 }
             );
+            await this.outboxService.addInTx(tx, entry);
 
-            return { data: setup };
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
+            return totpSetup;
+        });
 
-            const isUserCollision = this.databaseUtil.isUniqueCollision(
-                err,
-                'userId'
-            );
-            if (isUserCollision) {
-                throw new MfaTotpAlreadyEnabledException();
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (
-                mfaCheck.check !== null &&
-                mapped instanceof DatabaseWriteConflictException
-            ) {
-                throw new MfaInvalidException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return { data: setup };
     }
 }

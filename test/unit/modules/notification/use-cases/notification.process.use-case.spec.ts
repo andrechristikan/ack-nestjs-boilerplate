@@ -186,16 +186,21 @@ describe('NotificationProcessUseCase', () => {
             expect(
                 userVerificationService.getOneActiveMobileRecipient
             ).not.toHaveBeenCalled();
-            expect(outboxService.updateData).toHaveBeenCalledWith('outbox-id', {
-                recipient,
-                notificationId: 'notification-id',
-            });
+            expect(outboxService.replaceData).toHaveBeenCalledWith(
+                'outbox-id',
+                {
+                    ...data,
+                    recipient,
+                    notificationId: 'notification-id',
+                }
+            );
             expect(notificationService.createInTx).toHaveBeenCalledWith(
                 tx,
                 'notification-id',
                 EnumNotificationKind.workspaceInvite,
                 data.context,
-                recipient
+                recipient,
+                true
             );
             expect(result).toEqual({
                 message: 'notification.queue.notify',
@@ -252,9 +257,10 @@ describe('NotificationProcessUseCase', () => {
                 expect(
                     notificationService.toRecipientRecord
                 ).toHaveBeenCalledWith(user, [], '+6281234567890', smsChannels);
-                expect(outboxService.updateData).toHaveBeenCalledWith(
+                expect(outboxService.replaceData).toHaveBeenCalledWith(
                     'outbox-id',
                     {
+                        ...smsData,
                         recipient: smsRecipient,
                         notificationId: 'notification-id',
                     }
@@ -264,7 +270,8 @@ describe('NotificationProcessUseCase', () => {
                     'notification-id',
                     EnumNotificationKind.verificationMobileNumber,
                     smsData.context,
-                    smsRecipient
+                    smsRecipient,
+                    true
                 );
             });
 
@@ -345,16 +352,21 @@ describe('NotificationProcessUseCase', () => {
             expect(
                 notificationService.getListUserSetting
             ).not.toHaveBeenCalled();
-            expect(outboxService.updateData).toHaveBeenCalledWith('outbox-id', {
-                recipient,
-                notificationId: 'notification-id',
-            });
+            expect(outboxService.replaceData).toHaveBeenCalledWith(
+                'outbox-id',
+                {
+                    ...snapshotData,
+                    recipient,
+                    notificationId: 'notification-id',
+                }
+            );
             expect(notificationService.createInTx).toHaveBeenCalledWith(
                 tx,
                 'notification-id',
                 EnumNotificationKind.resetPassword,
                 snapshotData.context,
-                recipient
+                recipient,
+                true
             );
             expect(result).toEqual({
                 message: 'notification.queue.notify',
@@ -372,13 +384,43 @@ describe('NotificationProcessUseCase', () => {
             expect(userService.getOneActive).not.toHaveBeenCalled();
             expect(deviceService.getNotificationTokens).not.toHaveBeenCalled();
             expect(createId).not.toHaveBeenCalled();
-            expect(outboxService.updateData).not.toHaveBeenCalled();
+            expect(outboxService.replaceData).not.toHaveBeenCalled();
             expect(notificationService.createInTx).toHaveBeenCalledWith(
                 tx,
                 'notification-id',
                 EnumNotificationKind.workspaceInvite,
                 data.context,
-                recipient
+                recipient,
+                false
+            );
+        });
+
+        it('passes a fresh notification when the recipient is recorded and no notification id is', async () => {
+            vi.spyOn(databaseUtil, 'createId').mockReturnValue(
+                'notification-id'
+            );
+
+            await useCase.execute('outbox-id', {
+                ...data,
+                recipient,
+                notificationId: null,
+            });
+
+            expect(outboxService.replaceData).toHaveBeenCalledWith(
+                'outbox-id',
+                {
+                    ...data,
+                    recipient,
+                    notificationId: 'notification-id',
+                }
+            );
+            expect(notificationService.createInTx).toHaveBeenCalledWith(
+                tx,
+                'notification-id',
+                EnumNotificationKind.workspaceInvite,
+                data.context,
+                recipient,
+                true
             );
         });
 
@@ -404,13 +446,14 @@ describe('NotificationProcessUseCase', () => {
             expect(
                 notificationService.toSnapshotRecipientRecord
             ).not.toHaveBeenCalled();
-            expect(outboxService.updateData).not.toHaveBeenCalled();
+            expect(outboxService.replaceData).not.toHaveBeenCalled();
             expect(notificationService.createInTx).toHaveBeenCalledWith(
                 tx,
                 'notification-id',
                 EnumNotificationKind.resetPassword,
                 snapshotData.context,
-                recipient
+                recipient,
+                false
             );
         });
 
@@ -421,7 +464,7 @@ describe('NotificationProcessUseCase', () => {
 
             const result = await useCase.execute('outbox-id', data);
 
-            expect(outboxService.updateData).not.toHaveBeenCalled();
+            expect(outboxService.replaceData).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'notification.queue.error.noRecipient',
@@ -454,7 +497,7 @@ describe('NotificationProcessUseCase', () => {
             expect(
                 notificationService.toRecipientRecord
             ).not.toHaveBeenCalled();
-            expect(outboxService.updateData).not.toHaveBeenCalled();
+            expect(outboxService.replaceData).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'notification.queue.error.noChannel',

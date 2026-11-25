@@ -1,7 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -13,6 +12,7 @@ import type { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     TermPolicyAcceptanceInclude,
     TermPolicyRefSelect,
+    TermPolicyUserAcceptanceRefSelect,
 } from '@modules/term-policy/constants/term-policy.constant';
 import type {
     ITermPolicyAcceptanceRow,
@@ -22,6 +22,10 @@ import type {
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import type { ITermPolicyRepository } from '@modules/term-policy/interfaces/term-policy.repository.interface';
+import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
+import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
+import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { Injectable } from '@nestjs/common';
 import {
     EnumTermPolicyStatus,
@@ -35,7 +39,6 @@ export class TermPolicyRepository implements ITermPolicyRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly helperDateService: HelperDateService,
         private readonly databaseUtil: DatabaseUtil
     ) {}
 
@@ -48,6 +51,25 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         }
 
         return [...latest.values()];
+    }
+
+    private refWithAcceptanceSelect(
+        userId: string
+    ): typeof TermPolicyRefSelect & {
+        userAcceptances: {
+            where: Prisma.TermPolicyUserAcceptanceWhereInput;
+            select: typeof TermPolicyUserAcceptanceRefSelect;
+            take: 1;
+        };
+    } {
+        return {
+            ...TermPolicyRefSelect,
+            userAcceptances: {
+                where: { userId },
+                select: TermPolicyUserAcceptanceRefSelect,
+                take: 1,
+            },
+        };
     }
 
     async find(
@@ -110,35 +132,18 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         });
     }
 
-    async findOneByIdInTx(
-        tx: IDatabaseTransactionClient,
-        termPolicyId: string
-    ): Promise<TermPolicy | null> {
-        return tx.termPolicy.findUnique({
-            where: {
-                id: termPolicyId,
-            },
-        });
-    }
-
     async findLatestPublishedWithAcceptanceByUser(
         types: EnumTermPolicyType[],
         userId: string
     ): Promise<ITermPolicyRefAcceptance[]> {
+        const select = this.refWithAcceptanceSelect(userId);
         const rows = await this.databaseService.client.termPolicy.findMany({
             where: {
                 type: { in: types },
                 status: EnumTermPolicyStatus.published,
             },
             orderBy: { version: Prisma.SortOrder.desc },
-            select: {
-                ...TermPolicyRefSelect,
-                userAcceptances: {
-                    where: { userId },
-                    select: { id: true },
-                    take: 1,
-                },
-            },
+            select,
         });
 
         return this.pickLatestPerType(rows);
@@ -148,22 +153,6 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         types: EnumTermPolicyType[]
     ): Promise<ITermPolicyRef[]> {
         const rows = await this.databaseService.client.termPolicy.findMany({
-            where: {
-                type: { in: types },
-                status: EnumTermPolicyStatus.published,
-            },
-            orderBy: { version: Prisma.SortOrder.desc },
-            select: TermPolicyRefSelect,
-        });
-
-        return this.pickLatestPerType(rows);
-    }
-
-    async findLatestPublishedByTypesInTx(
-        tx: IDatabaseTransactionClient,
-        types: EnumTermPolicyType[]
-    ): Promise<ITermPolicyRef[]> {
-        const rows = await tx.termPolicy.findMany({
             where: {
                 type: { in: types },
                 status: EnumTermPolicyStatus.published,
@@ -199,9 +188,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                     version,
                     type,
                 },
-                select: {
-                    status: true,
-                },
+                select: TermPolicyRefSelect,
             });
 
         return termPolicy?.status ?? null;
@@ -213,16 +200,29 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         termPolicyId: string,
         createdBy: string,
         acceptedAt: Date
-    ): Promise<ITermPolicyUserAcceptance> {
-        return tx.termPolicyUserAcceptance.create({
-            data: {
-                acceptedAt,
-                userId,
-                termPolicyId,
-                createdBy,
-            },
-            include: TermPolicyAcceptanceInclude,
-        });
+    ): Promise<void> {
+        try {
+            await tx.termPolicyUserAcceptance.create({
+                data: {
+                    acceptedAt,
+                    userId,
+                    termPolicyId,
+                    createdBy,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: Prisma.TermPolicyUserAcceptanceScalarFieldEnum
+                            .termPolicyId,
+                        exception: new TermPolicyAlreadyAcceptedException(),
+                    },
+                ],
+                new AppUnknownException(error)
+            );
+        }
     }
 
     async acceptManyInTx(
@@ -242,29 +242,47 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         const plainContents: Prisma.TermPolicyContentCreateInput[] =
             this.databaseUtil.toPlainArray(contents);
 
-        return tx.termPolicy.create({
-            data: {
-                id: termPolicyId,
-                type,
-                version,
-                status: EnumTermPolicyStatus.draft,
-                contents: plainContents,
-            },
-        });
+        try {
+            return await tx.termPolicy.create({
+                data: {
+                    id: termPolicyId,
+                    type,
+                    version,
+                    status: EnumTermPolicyStatus.draft,
+                    contents: plainContents,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: Prisma.TermPolicyScalarFieldEnum.version,
+                        exception: new TermPolicyExistException(),
+                    },
+                ],
+                new AppUnknownException(error)
+            );
+        }
     }
 
     async deleteDraftInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string
-    ): Promise<boolean> {
-        const { count } = await tx.termPolicy.deleteMany({
-            where: {
-                id: termPolicyId,
-                status: EnumTermPolicyStatus.draft,
-            },
-        });
-
-        return count > 0;
+    ): Promise<TermPolicy> {
+        try {
+            return await tx.termPolicy.delete({
+                where: {
+                    id: termPolicyId,
+                    status: EnumTermPolicyStatus.draft,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new TermPolicyStatusInvalidException()
+            );
+        }
     }
 
     async updateContentInTx(
@@ -273,7 +291,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         contents: ITermPolicyContent[],
         content: ITermPolicyContent,
         expectedUpdatedAt: Date
-    ): Promise<boolean> {
+    ): Promise<TermPolicy> {
         const contentIndex = contents.findIndex(
             c => c.language === content.language
         );
@@ -284,43 +302,53 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         const plainContents: Prisma.TermPolicyContentCreateInput[] =
             this.databaseUtil.toPlainArray(contents);
 
-        const { count } = await tx.termPolicy.updateMany({
-            where: {
-                id: termPolicyId,
-                status: EnumTermPolicyStatus.draft,
-                updatedAt: expectedUpdatedAt,
-            },
-            data: {
-                contents: plainContents,
-            },
-        });
-
-        return count > 0;
+        try {
+            return await tx.termPolicy.update({
+                where: {
+                    id: termPolicyId,
+                    status: EnumTermPolicyStatus.draft,
+                    updatedAt: expectedUpdatedAt,
+                },
+                data: {
+                    contents: plainContents,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new TermPolicyStatusInvalidException()
+            );
+        }
     }
 
     async addContentInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
         newContent: ITermPolicyContent
-    ): Promise<boolean> {
+    ): Promise<TermPolicy> {
         const plainContent = this.databaseUtil.toPlainObject<
             ITermPolicyContent,
             Prisma.TermPolicyContentCreateInput
         >(newContent);
 
-        const { count } = await tx.termPolicy.updateMany({
-            where: {
-                id: termPolicyId,
-                status: EnumTermPolicyStatus.draft,
-            },
-            data: {
-                contents: {
-                    push: plainContent,
+        try {
+            return await tx.termPolicy.update({
+                where: {
+                    id: termPolicyId,
+                    status: EnumTermPolicyStatus.draft,
                 },
-            },
-        });
-
-        return count > 0;
+                data: {
+                    contents: {
+                        push: plainContent,
+                    },
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new TermPolicyStatusInvalidException()
+            );
+        }
     }
 
     async removeContentInTx(
@@ -329,7 +357,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         contents: ITermPolicyContent[],
         language: EnumMessageLanguage,
         expectedUpdatedAt: Date
-    ): Promise<boolean> {
+    ): Promise<TermPolicy> {
         const contentIndex = contents.findIndex(c => c.language === language);
         if (contentIndex !== -1) {
             contents.splice(contentIndex, 1);
@@ -338,40 +366,49 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         const plainContents: Prisma.TermPolicyContentCreateInput[] =
             this.databaseUtil.toPlainArray(contents);
 
-        const { count } = await tx.termPolicy.updateMany({
-            where: {
-                id: termPolicyId,
-                status: EnumTermPolicyStatus.draft,
-                updatedAt: expectedUpdatedAt,
-            },
-            data: {
-                contents: plainContents,
-            },
-        });
-
-        return count > 0;
+        try {
+            return await tx.termPolicy.update({
+                where: {
+                    id: termPolicyId,
+                    status: EnumTermPolicyStatus.draft,
+                    updatedAt: expectedUpdatedAt,
+                },
+                data: {
+                    contents: plainContents,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new TermPolicyStatusInvalidException()
+            );
+        }
     }
 
     async publishInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
-        contents: ITermPolicyContent[]
-    ): Promise<boolean> {
-        const publishedAt = this.helperDateService.now();
-
-        const { count } = await tx.termPolicy.updateMany({
-            where: {
-                id: termPolicyId,
-                status: EnumTermPolicyStatus.draft,
-            },
-            data: {
-                status: EnumTermPolicyStatus.published,
-                publishedAt,
-                contents,
-            },
-        });
-
-        return count > 0;
+        contents: ITermPolicyContent[],
+        publishedAt: Date
+    ): Promise<TermPolicy> {
+        try {
+            return await tx.termPolicy.update({
+                where: {
+                    id: termPolicyId,
+                    status: EnumTermPolicyStatus.draft,
+                },
+                data: {
+                    status: EnumTermPolicyStatus.published,
+                    publishedAt,
+                    contents,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new TermPolicyStatusInvalidException()
+            );
+        }
     }
 
     async archivePublishedByTypeInTx(

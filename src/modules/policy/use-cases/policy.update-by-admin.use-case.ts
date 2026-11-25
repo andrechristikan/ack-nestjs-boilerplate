@@ -1,7 +1,3 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -10,7 +6,6 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { PolicyDto } from '@modules/policy/dtos/policy.dto';
 import type { PolicyUpdateRequestDto } from '@modules/policy/dtos/request/policy.update.request.dto';
-import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyUtil } from '@modules/policy/utils/policy.util';
 import { RoleService } from '@modules/role/services/role.service';
@@ -39,8 +34,7 @@ export class PolicyUpdateByAdminUseCase implements IAppUseCase<
         private readonly policyUtil: PolicyUtil,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
-        private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly outboxService: OutboxService
     ) {}
 
     async execute(
@@ -58,49 +52,30 @@ export class PolicyUpdateByAdminUseCase implements IAppUseCase<
         });
         this.policyService.assertRoleTypeAllowed(role.type);
 
-        try {
-            const updated = await this.databaseService.withTransaction(
-                async tx => {
-                    const policy = await this.policyService.updateByAdminInTx(
-                        tx,
-                        roleId,
-                        id,
-                        body
-                    );
-
-                    const metadata =
-                        this.policyUtil.mapActivityLogMetadata(policy);
-                    const effect = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.adminPolicyUpdated,
-                            metadata,
-                        }
-                    );
-                    await this.outboxService.addManyInTx(tx, [
-                        effect,
-                        this.roleService.invalidateEffect(roleId),
-                    ]);
-
-                    return policy;
-                }
+        const updated = await this.databaseService.withTransaction(async tx => {
+            const policy = await this.policyService.updateByAdminInTx(
+                tx,
+                roleId,
+                id,
+                body
             );
 
-            return { data: updated };
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
+            const metadata = this.policyUtil.mapActivityLogMetadata(policy);
+            const effect = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.adminPolicyUpdated,
+                    metadata,
+                }
+            );
+            await this.outboxService.addInTx(tx, effect);
 
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new PolicyNotFoundException();
-            }
+            return policy;
+        });
 
-            throw new AppUnknownException(err);
-        }
+        return { data: updated };
     }
 }

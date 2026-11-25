@@ -3,12 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -235,7 +232,7 @@ describe('WorkspaceRevokeInviteUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('rethrows an AppBaseException from the guarded revoke as is', async () => {
+        it('lets the exception the guarded revoke throws reach the caller untouched', async () => {
             const failure = new WorkspaceInviteAlreadyProcessedException();
             workspaceInviteService.revokeInviteInTx.mockRejectedValue(failure);
 
@@ -248,44 +245,6 @@ describe('WorkspaceRevokeInviteUseCase', () => {
                     'invite-1'
                 )
             ).rejects.toBe(failure);
-        });
-
-        it('maps a write conflict to WorkspaceInviteAlreadyProcessedException', async () => {
-            workspaceInviteService.revokeInviteInTx.mockRejectedValue(
-                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    'invite-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteAlreadyProcessedException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-            });
-        });
-
-        it('wraps any other transaction error in AppUnknownException', async () => {
-            const cause = new Error('boom');
-            workspaceInviteService.revokeInviteInTx.mockRejectedValue(cause);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    'invite-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
         });
     });
 });

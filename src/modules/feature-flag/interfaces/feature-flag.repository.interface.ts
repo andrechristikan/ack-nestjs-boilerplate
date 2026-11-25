@@ -23,7 +23,7 @@ export interface IFeatureFlagRepository {
         tx: IDatabaseTransactionClient,
         id: string,
         { isEnable, rolloutPercent, targetUserIds }: IFeatureFlagUpdateStatus
-    ): Promise<IFeatureFlag | null>;
+    ): Promise<IFeatureFlag>;
     updateMetadataInTx(
         tx: IDatabaseTransactionClient,
         id: string,

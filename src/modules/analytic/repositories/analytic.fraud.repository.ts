@@ -6,6 +6,7 @@ import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     EnumActivityLogAction,
+    EnumAnalyticSnapshotSignal,
     EnumPasswordHistoryType,
 } from '@generated/prisma-client/client';
 import type { Prisma } from '@generated/prisma-client/client';
@@ -29,6 +30,7 @@ import type {
     IAnalyticRiskScoreOptions,
     IAnalyticSessionAfterAdmin,
     IAnalyticSharedFingerprint,
+    IAnalyticSnapshotItem,
     IAnalyticSnapshotItemInput,
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticPipelineUtil } from '@modules/analytic/utils/analytic.pipeline.util';
@@ -41,6 +43,7 @@ import { AnalyticForgotPasswordAbusePipelineSchema } from '@modules/analytic/dto
 import { AnalyticFraudCountPipelineSchema } from '@modules/analytic/dtos/analytic.fraud-count-pipeline.dto';
 import { AnalyticKeyCountPipelineSchema } from '@modules/analytic/dtos/analytic.key-count-pipeline.dto';
 import { AnalyticRiskScorePipelineSchema } from '@modules/analytic/dtos/analytic.risk-score-pipeline.dto';
+import { AnalyticRiskScoreUserPipelineSchema } from '@modules/analytic/dtos/analytic.risk-score-user-pipeline.dto';
 import { AnalyticSessionAfterAdminPipelineSchema } from '@modules/analytic/dtos/analytic.session-after-admin-pipeline.dto';
 import { AnalyticSharedFingerprintPipelineSchema } from '@modules/analytic/dtos/analytic.shared-fingerprint-pipeline.dto';
 
@@ -646,12 +649,74 @@ export class AnalyticFraudRepository implements IAnalyticFraudRepository {
         );
     }
 
-    async existsUserById(id: string): Promise<boolean> {
-        const count = await this.databaseService.client.user.count({
-            where: { id, deletedAt: null },
+    async findRiskScoreByUser(
+        userId: string
+    ): Promise<IAnalyticSnapshotItem<IAnalyticFraudRiskScore> | null> {
+        const signal = EnumAnalyticSnapshotSignal.riskScore;
+        const id = this.analyticPipelineUtil.toObjectId(userId);
+        const result = await this.databaseService.client.user.aggregateRaw({
+            pipeline: [
+                {
+                    $match: {
+                        _id: id,
+                        deletedAt: null,
+                    },
+                },
+                {
+                    $lookup: {
+                        from: 'AnalyticSnapshots',
+                        pipeline: [
+                            { $match: { signal } },
+                            { $project: { _id: 0, runId: 1, computedAt: 1 } },
+                        ],
+                        as: 'header',
+                    },
+                },
+                {
+                    $lookup: {
+                        from: 'AnalyticSnapshotItems',
+                        let: { runId: { $first: '$header.runId' } },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: {
+                                        $and: [
+                                            { $eq: ['$signal', signal] },
+                                            { $eq: ['$runId', '$$runId'] },
+                                            { $eq: ['$key', userId] },
+                                        ],
+                                    },
+                                },
+                            },
+                            { $limit: 1 },
+                        ],
+                        as: 'item',
+                    },
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        computedAt: {
+                            $dateToString: {
+                                date: { $first: '$header.computedAt' },
+                            },
+                        },
+                        data: { $ifNull: [{ $first: '$item.data' }, null] },
+                    },
+                },
+            ],
         });
+        const parsed = AnalyticRiskScoreUserPipelineSchema.safeParse(result);
+        if (!parsed.success) {
+            throw new AppUnknownException(parsed.error);
+        }
 
-        return count > 0;
+        const [row] = parsed.data;
+        if (row === undefined) {
+            return null;
+        }
+
+        return { item: row.data, computedAt: row.computedAt };
     }
 
     async findRiskScoreCandidates(

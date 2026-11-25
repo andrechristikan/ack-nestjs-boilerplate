@@ -1,13 +1,11 @@
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
 import type { IUserImportByAdminQueueResponse } from '@modules/user/interfaces/user.interface';
-import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { CountryService } from '@modules/country/services/country.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -19,18 +17,17 @@ import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { RoleService } from '@modules/role/services/role.service';
-import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserImportEncryptionPurpose } from '@modules/user/constants/user.constant';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type {
-    IUser,
     IUserCreateWithWorkspaceInput,
     IUserImportByAdminEncryptedPayload,
 } from '@modules/user/interfaces/user.interface';
 import { UserImportService } from '@modules/user/services/user.import.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
+import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
@@ -58,11 +55,9 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly notificationQueue: NotificationQueue,
         private readonly userCreateUtil: UserCreateUtil,
-        private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly messageService: MessageService,
@@ -81,34 +76,24 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
     }
 
     private async createAdminUsers(
-        activityLog: IActivityLogActorPayload,
+        payload: IUserImportByAdminEncryptedPayload,
         inputs: IUserCreateWithWorkspaceInput[],
         welcomes: IOutboxEffect[],
         outboxId: string
-    ): Promise<IUser[] | UserUsernameExistException | UserEmailExistException> {
+    ): Promise<UserUsernameExistException | UserEmailExistException | null> {
+        const { activityLog } = payload;
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
-        const termPolicyAcceptances =
-            this.userCreateUtil.buildTermPolicyAcceptanceEntries(inputs);
         const passwordHistories =
             this.userCreateUtil.buildPasswordHistoryEntries(inputs);
         const userIds = inputs.map(({ userId }) => userId);
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
-                return await this.databaseService.withTransaction(
+                await this.databaseService.withTransaction(
                     async tx => {
-                        const users = await this.userService.createManyInTx(
-                            tx,
-                            inputs
-                        );
+                        await this.userService.createManyInTx(tx, inputs);
                         await Promise.all([
-                            ...inputs.map(({ userId, createdBy }) =>
-                                this.mfaService.createInTx(
-                                    tx,
-                                    userId,
-                                    createdBy
-                                )
-                            ),
+                            this.mfaService.createManyInTx(tx, inputs),
                             this.passwordHistoryService.createManyInTx(
                                 tx,
                                 passwordHistories
@@ -128,14 +113,9 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
                             tx,
                             ownedUsers
                         );
-                        await this.termPolicyAcceptanceService.acceptPublishedManyInTx(
-                            tx,
-                            termPolicyAcceptances
-                        );
                         const stages =
                             this.userImportService.buildImportByAdminStages(
-                                inputs,
-                                users
+                                inputs
                             );
                         const entries = stages.map(stage =>
                             this.activityLogQueue.recordEffectFromPayload(
@@ -149,7 +129,7 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
                                 userId: activityLog.actorUserId,
                                 proceedBy: activityLog.actorUserId,
                                 reference: outboxId,
-                                created: users.length,
+                                created: inputs.length,
                                 failed: 0,
                                 reasons: [],
                             }
@@ -160,41 +140,37 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
                                 ...welcomes,
                                 result,
                             ]),
-                            this.outboxService.updateDataInTx(tx, outboxId, {
-                                created: users.length,
+                            this.outboxService.replaceDataInTx(tx, outboxId, {
+                                ...payload,
+                                created: inputs.length,
                             }),
                         ]);
-
-                        return users;
                     },
                     { timeout: this.createBulkTimeoutInMs }
                 );
+
+                return null;
             } catch (error: unknown) {
-                const isSlugCollision = this.databaseUtil.isUniqueCollision(
-                    error,
-                    'slug'
-                );
-                if (isSlugCollision) {
+                if (error instanceof WorkspaceSlugAlreadyExistsException) {
                     continue;
                 }
 
-                const mapped = this.userCreateUtil.mapCreateCollision(error);
                 if (
-                    mapped instanceof UserUsernameExistException ||
-                    mapped instanceof UserEmailExistException
+                    error instanceof UserUsernameExistException ||
+                    error instanceof UserEmailExistException
                 ) {
-                    return mapped;
+                    return error;
                 }
 
-                if (mapped instanceof AppBaseException) {
-                    throw mapped;
+                if (error instanceof AppBaseException) {
+                    throw error;
                 }
 
                 const message = this.messageService.setMessage(
                     'user.queue.error.importFailed'
                 );
 
-                throw new QueueException(message, true, mapped);
+                throw new QueueException(message, true, error);
             }
         }
 
@@ -203,12 +179,9 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
 
     async execute(
         outboxId: string,
-        {
-            rows,
-            activityLog,
-            created: recorded,
-        }: IUserImportByAdminEncryptedPayload
+        payload: IUserImportByAdminEncryptedPayload
     ): Promise<IUserImportByAdminQueueResponse> {
+        const { rows, activityLog, created: recorded } = payload;
         if (recorded !== null) {
             const message = this.messageService.setMessage(
                 'user.queue.importByAdmin'
@@ -261,7 +234,7 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         });
 
         const created = await this.createAdminUsers(
-            activityLog,
+            payload,
             inputs,
             welcomes,
             outboxId
@@ -269,8 +242,8 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         const message = this.messageService.setMessage(
             'user.queue.importByAdmin'
         );
-        if (Array.isArray(created)) {
-            return { message, created: created.length, failed: 0 };
+        if (created === null) {
+            return { message, created: inputs.length, failed: 0 };
         }
 
         const reason = this.messageService.setMessage(created.messagePath);

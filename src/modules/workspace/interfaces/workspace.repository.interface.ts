@@ -9,6 +9,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { Workspace } from '@generated/prisma-client/client';
 import type {
     IWorkspaceCreate,
+    IWorkspaceOwnedUser,
     IWorkspaceUpdate,
     IWorkspaceWithJoinMembers,
     IWorkspaceWithMembers,
@@ -45,6 +46,10 @@ export interface IWorkspaceRepository {
         slug: string,
         workspaceId: string
     ): Promise<Workspace>;
+    createManyInTx(
+        tx: IDatabaseTransactionClient,
+        users: IWorkspaceOwnedUser[]
+    ): Promise<void>;
     updateDetailsInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
@@ -65,7 +70,7 @@ export interface IWorkspaceRepository {
         workspaceId: string,
         deletedAt: Date,
         deletedBy: string
-    ): Promise<boolean>;
+    ): Promise<string | null>;
     existsOwnedWithOtherMembers(
         workspaceIds: string[],
         userId: string

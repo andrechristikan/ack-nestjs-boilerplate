@@ -8,7 +8,6 @@ import {
     EnumPolicyAction,
     EnumPolicySubject,
     EnumRoleType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -25,8 +24,6 @@ import {
     buildUser,
     buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
@@ -34,16 +31,10 @@ import {
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
 import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
-import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IActivityLogMetadata } from '@modules/activity-log/interfaces/activity-log.interface';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyUtil } from '@modules/policy/utils/policy.util';
-import {
-    EnumCacheProcess,
-    EnumCacheQueue,
-} from '@common/cache/enums/cache.enum';
-import type { ICacheInvalidateEffect } from '@common/cache/interfaces/cache.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { RoleService } from '@modules/role/services/role.service';
@@ -73,11 +64,16 @@ describe('PolicyDeleteByAdminUseCase', () => {
         action: [EnumPolicyAction.manage],
     };
 
+    const deletedPolicy: Policy = {
+        ...policy,
+        subject: EnumPolicySubject.role,
+    };
+
     const baseUser: IUser = buildUser('user-1', 'andre@example.com');
 
     const policyMetadata: IActivityLogMetadata = {
         roleId: 'role-1',
-        subject: EnumPolicySubject.user,
+        subject: EnumPolicySubject.role,
         action: EnumPolicyAction.manage,
     };
     const actor: IUser = {
@@ -98,14 +94,6 @@ describe('PolicyDeleteByAdminUseCase', () => {
         idempotencyKey: null,
     };
 
-    const roleInvalidateEffect: ICacheInvalidateEffect = {
-        queue: EnumCacheQueue.cache,
-        name: EnumCacheProcess.invalidate,
-        data: { keys: ['Role:role-1', 'Role:Lease:role-1'] },
-        priority: EnumQueuePriority.high,
-        idempotencyKey: null,
-    };
-
     const targetRole: IRole = {
         id: 'role-1',
         type: EnumRoleType.admin,
@@ -117,7 +105,6 @@ describe('PolicyDeleteByAdminUseCase', () => {
 
     beforeEach(async () => {
         activityLogQueue.recordEffect.mockReturnValue(effect);
-        roleService.invalidateEffect.mockReturnValue(roleInvalidateEffect);
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -168,7 +155,7 @@ describe('PolicyDeleteByAdminUseCase', () => {
             const gate = buildDeferred<IRole>();
             roleService.getWritableByActor.mockReturnValue(gate.promise);
             policyService.getOneByRoleAndId.mockResolvedValue(policy);
-            policyService.deleteByAdminInTx.mockResolvedValue(policy);
+            policyService.deleteByAdminInTx.mockResolvedValue(deletedPolicy);
 
             const promise = useCase.execute(
                 requestContext,
@@ -215,7 +202,7 @@ describe('PolicyDeleteByAdminUseCase', () => {
         it('deletes the policy on the outbox transaction after the role gate and wraps the response', async () => {
             roleService.getWritableByActor.mockResolvedValue(targetRole);
             policyService.getOneByRoleAndId.mockResolvedValue(policy);
-            policyService.deleteByAdminInTx.mockResolvedValue(policy);
+            policyService.deleteByAdminInTx.mockResolvedValue(deletedPolicy);
 
             const result = await useCase.execute(
                 requestContext,
@@ -229,14 +216,15 @@ describe('PolicyDeleteByAdminUseCase', () => {
             expect(result).toEqual({});
             expect(policyService.deleteByAdminInTx).toHaveBeenCalledWith(
                 tx,
-                policy
+                'role-1',
+                'policy-1'
             );
         });
 
-        it('adds the delete activity entry and the role invalidation in one addManyInTx call on the same tx', async () => {
+        it('adds the delete activity entry from the deleted row alone in one addInTx call on the same tx', async () => {
             roleService.getWritableByActor.mockResolvedValue(targetRole);
             policyService.getOneByRoleAndId.mockResolvedValue(policy);
-            policyService.deleteByAdminInTx.mockResolvedValue(policy);
+            policyService.deleteByAdminInTx.mockResolvedValue(deletedPolicy);
 
             await useCase.execute(
                 requestContext,
@@ -257,16 +245,12 @@ describe('PolicyDeleteByAdminUseCase', () => {
                     metadata: policyMetadata,
                 }
             );
-            expect(roleService.invalidateEffect).toHaveBeenCalledWith('role-1');
-            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
-            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                effect,
-                roleInvalidateEffect,
-            ]);
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('rethrows a typed exception of the write and adds no entry', async () => {
+        it('passes a rejected exception of the write through untouched and adds no entry', async () => {
             const failure = new PolicyNotFoundException();
             roleService.getWritableByActor.mockResolvedValue(targetRole);
             policyService.getOneByRoleAndId.mockResolvedValue(policy);
@@ -285,34 +269,7 @@ describe('PolicyDeleteByAdminUseCase', () => {
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('maps a write conflict to PolicyNotFoundException', async () => {
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                }
-            );
-            roleService.getWritableByActor.mockResolvedValue(targetRole);
-            policyService.getOneByRoleAndId.mockResolvedValue(policy);
-            policyService.deleteByAdminInTx.mockRejectedValue(conflict);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    'role-1',
-                    'policy-1'
-                )
-            ).rejects.toMatchObject({
-                module: 'policy',
-                statusCode: EnumPolicyStatusCodeError.notFound,
-            });
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
+        it('passes any other rejection through untouched', async () => {
             const cause = new Error('boom');
             roleService.getWritableByActor.mockResolvedValue(targetRole);
             policyService.getOneByRoleAndId.mockResolvedValue(policy);
@@ -327,10 +284,7 @@ describe('PolicyDeleteByAdminUseCase', () => {
                     'role-1',
                     'policy-1'
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

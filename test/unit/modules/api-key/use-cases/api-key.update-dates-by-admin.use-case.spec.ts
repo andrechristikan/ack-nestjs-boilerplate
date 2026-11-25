@@ -3,9 +3,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
@@ -13,7 +11,7 @@ import {
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { EnumActivityLogAction, Prisma } from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
 import {
     EnumActivityLogProcess,
@@ -21,7 +19,6 @@ import {
 } from '@modules/activity-log/enums/activity-log.enum';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
-import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
 import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
 import { ApiKeyEndAtNotFutureException } from '@modules/api-key/exceptions/api-key.end-at-not-future.exception';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
@@ -234,46 +231,6 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
                 )
             ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('maps a write conflict to ApiKeyInactiveException', async () => {
-            apiKeyService.updateDatesByAdminInTx.mockRejectedValue(
-                new Prisma.PrismaClientKnownRequestError('conflict', {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                })
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    apiKey.id,
-                    { startAt, endAt }
-                )
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.inactive,
-            });
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
-            const cause = new Error('boom');
-            apiKeyService.updateDatesByAdminInTx.mockRejectedValue(cause);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    apiKey.id,
-                    { startAt, endAt }
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
         });
     });
 });

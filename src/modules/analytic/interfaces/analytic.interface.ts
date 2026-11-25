@@ -39,6 +39,7 @@ export type {
     IAnalyticUsedGroupCount,
     IAnalyticVerificationGroupCount,
     IAnalyticMfaAdoptionCount,
+    IAnalyticBucketsSnapshotMeta,
 } from '@modules/analytic/interfaces/analytic.metric.interface';
 
 export type {
@@ -79,6 +80,7 @@ export type {
     IAnalyticSnapshotSummary,
     IAnalyticSnapshotItem,
     IAnalyticSnapshotValueFilter,
+    IAnalyticSnapshotListPipeline,
     IAnalyticRefreshSnapshotPayload,
     IAnalyticRefreshSnapshotQueueResponse,
 } from '@modules/analytic/interfaces/analytic.snapshot.interface';

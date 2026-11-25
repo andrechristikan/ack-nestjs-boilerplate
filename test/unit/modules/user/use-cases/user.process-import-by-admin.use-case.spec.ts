@@ -22,7 +22,6 @@ import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
     EnumRoleType,
-    EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumVerificationType,
@@ -44,10 +43,8 @@ import { RoleService } from '@modules/role/services/role.service';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type { IRole } from '@modules/role/interfaces/role.interface';
-import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type {
-    IUser,
     IUserCreateWithWorkspaceInput,
     IUserImport,
     IUserImportByAdminEncryptedPayload,
@@ -60,6 +57,9 @@ import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.process-import-by-admin.use-case';
+import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
+import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
+import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
@@ -69,12 +69,8 @@ import {
 } from '@test/unit/helpers/test.unit.user.helper';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import {
-    buildRequestLog,
-    buildUser,
-} from '@test/unit/helpers/test.unit.request.helper';
+import { buildRequestLog } from '@test/unit/helpers/test.unit.request.helper';
 import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 
 describe('UserProcessImportByAdminUseCase', () => {
@@ -97,8 +93,6 @@ describe('UserProcessImportByAdminUseCase', () => {
         mock<PasswordHistoryService>();
     const notificationService: MockProxy<NotificationService> =
         mock<NotificationService>();
-    const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
-        mock<TermPolicyAcceptanceService>();
     const tx = {} as IDatabaseTransactionClient;
     let useCase: UserProcessImportByAdminUseCase;
 
@@ -189,7 +183,7 @@ describe('UserProcessImportByAdminUseCase', () => {
         signUpWith: EnumUserSignUpWith.credential,
         isVerified: true,
         verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
-        acceptedTermPolicyTypes: [EnumTermPolicyType.termsOfService],
+        acceptedTermPolicyTypes: [],
         password,
         passwordHistoryType: EnumPasswordHistoryType.signUp,
         verification: {
@@ -203,23 +197,16 @@ describe('UserProcessImportByAdminUseCase', () => {
             verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
             isUsed: true,
         },
+        login: null,
         workspaceContext: personalContext,
+        createdAt: new Date('2026-03-01T00:00:00.000Z'),
         createdBy: 'admin-bramble',
     };
-    const committedUser: IUser = buildUser(
-        'user-bramble',
-        'bramble@example.com'
-    );
     const stageInput = {
         action: EnumActivityLogAction.userSignedUp,
         userId: 'user-bramble',
         createdBy: 'admin-bramble',
         metadata: {},
-    };
-    const acceptanceEntry = {
-        userId: 'user-bramble',
-        types: [EnumTermPolicyType.termsOfService],
-        createdBy: 'admin-bramble',
     };
     const owned = {
         userId: 'user-bramble',
@@ -249,7 +236,6 @@ describe('UserProcessImportByAdminUseCase', () => {
         userImportService.buildImportByAdminStages.mockReturnValue([
             stageInput,
         ]);
-        userService.createManyInTx.mockResolvedValue([committedUser]);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -269,10 +255,6 @@ describe('UserProcessImportByAdminUseCase', () => {
                 {
                     provide: NotificationService,
                     useValue: notificationService,
-                },
-                {
-                    provide: TermPolicyAcceptanceService,
-                    useValue: termPolicyAcceptanceService,
                 },
                 { provide: RoleService, useValue: roleService },
                 { provide: CountryService, useValue: countryService },
@@ -321,11 +303,8 @@ describe('UserProcessImportByAdminUseCase', () => {
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenCalledWith(tx, [owned]);
             expect(
-                termPolicyAcceptanceService.acceptPublishedManyInTx
-            ).toHaveBeenCalledWith(tx, [acceptanceEntry]);
-            expect(
                 userImportService.buildImportByAdminStages
-            ).toHaveBeenCalledWith([input], [committedUser]);
+            ).toHaveBeenCalledWith([input]);
             expect(
                 activityLogQueue.recordEffectFromPayload
             ).toHaveBeenCalledWith(activityLog, stageInput);
@@ -336,19 +315,16 @@ describe('UserProcessImportByAdminUseCase', () => {
                 resultEffect,
             ]);
             expect(
-                termPolicyAcceptanceService.acceptPublishedManyInTx
+                workspaceService.createOwnedForUsersInTx
             ).toHaveBeenCalledBefore(outboxService.addManyInTx);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it("writes each user's Mfa row, password history, and notification defaults on tx right after the users", async () => {
+        it('writes the Mfa rows, password history, and notification defaults on tx right after the users', async () => {
             await useCase.execute('outbox-bramble', payload);
 
-            expect(mfaService.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'admin-bramble'
-            );
+            expect(mfaService.createManyInTx).toHaveBeenCalledTimes(1);
+            expect(mfaService.createManyInTx).toHaveBeenCalledWith(tx, [input]);
             expect(passwordHistoryService.createManyInTx).toHaveBeenCalledWith(
                 tx,
                 [
@@ -366,7 +342,7 @@ describe('UserProcessImportByAdminUseCase', () => {
                 notificationService.createDefaultsManyInTx
             ).toHaveBeenCalledWith(tx, ['user-bramble'], 'admin-bramble');
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
-                mfaService.createInTx
+                mfaService.createManyInTx
             );
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 passwordHistoryService.createManyInTx
@@ -374,7 +350,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 notificationService.createDefaultsManyInTx
             );
-            expect(mfaService.createInTx).toHaveBeenCalledBefore(
+            expect(mfaService.createManyInTx).toHaveBeenCalledBefore(
                 workspaceService.createOwnedForUsersInTx
             );
         });
@@ -382,14 +358,14 @@ describe('UserProcessImportByAdminUseCase', () => {
         it('records the created count on the outbox row inside the transaction that creates the users', async () => {
             await useCase.execute('outbox-bramble', payload);
 
-            expect(outboxService.updateDataInTx).toHaveBeenCalledTimes(1);
-            expect(outboxService.updateDataInTx).toHaveBeenCalledWith(
+            expect(outboxService.replaceDataInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.replaceDataInTx).toHaveBeenCalledWith(
                 tx,
                 'outbox-bramble',
-                { created: 1 }
+                { ...payload, created: 1 }
             );
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
-                outboxService.updateDataInTx
+                outboxService.replaceDataInTx
             );
         });
 
@@ -401,19 +377,19 @@ describe('UserProcessImportByAdminUseCase', () => {
             await setImmediate();
 
             expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
-            expect(outboxService.updateDataInTx).toHaveBeenCalledWith(
+            expect(outboxService.replaceDataInTx).toHaveBeenCalledWith(
                 tx,
                 'outbox-bramble',
-                { created: 1 }
+                { ...payload, created: 1 }
             );
 
             added.resolve(['outbox-id']);
 
             await expect(running).resolves.toMatchObject({ created: 1 });
-            expect(outboxService.updateDataInTx).toHaveBeenCalledWith(
+            expect(outboxService.replaceDataInTx).toHaveBeenCalledWith(
                 tx,
                 'outbox-bramble',
-                { created: 1 }
+                { ...payload, created: 1 }
             );
         });
 
@@ -434,7 +410,7 @@ describe('UserProcessImportByAdminUseCase', () => {
                 userImportService.prepareImportByAdmin
             ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(outboxService.updateDataInTx).not.toHaveBeenCalled();
+            expect(outboxService.replaceDataInTx).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
             expect(notificationQueue.notify).not.toHaveBeenCalled();
@@ -520,7 +496,7 @@ describe('UserProcessImportByAdminUseCase', () => {
 
         it('adds the result effect alone with one username reason and resolves when a username collides', async () => {
             databaseService.withTransaction.mockRejectedValueOnce(
-                buildPrismaKnownRequestError('P2002', 'username')
+                new UserUsernameExistException()
             );
 
             await expect(
@@ -556,7 +532,7 @@ describe('UserProcessImportByAdminUseCase', () => {
 
         it('adds the result effect alone with one email reason and resolves when an email collides', async () => {
             databaseService.withTransaction.mockRejectedValueOnce(
-                buildPrismaKnownRequestError('P2002', 'email')
+                new UserEmailExistException()
             );
 
             await expect(
@@ -583,7 +559,7 @@ describe('UserProcessImportByAdminUseCase', () => {
         });
 
         it('retries with the next slug attempt after a slug collision', async () => {
-            const collision = buildPrismaKnownRequestError('P2002', 'slug');
+            const collision = new WorkspaceSlugAlreadyExistsException();
             databaseService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(async fn => fn(tx));
@@ -601,7 +577,7 @@ describe('UserProcessImportByAdminUseCase', () => {
 
         it('throws DatabaseUniqueValueGenerationFailedException after the last slug attempt and adds no result', async () => {
             databaseService.withTransaction.mockRejectedValue(
-                buildPrismaKnownRequestError('P2002', 'slug')
+                new WorkspaceSlugAlreadyExistsException()
             );
 
             await expect(
@@ -615,7 +591,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('throws a QueueException wrapping an unmapped error and adds no result', async () => {
+        it('throws a QueueException wrapping an untyped error and adds no result', async () => {
             const unexpected = new Error('unexpected');
             databaseService.withTransaction.mockRejectedValue(unexpected);
 
@@ -630,7 +606,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('rethrows a mapped exception that is not a collision and adds no result', async () => {
+        it('rethrows a typed exception that is neither collision and adds no result', async () => {
             const notCollision = new WorkspaceNotFoundException();
             databaseService.withTransaction.mockRejectedValue(notCollision);
 

@@ -17,11 +17,11 @@ paths:
     - any other error (an entry failing `JSON.parse` or its schema, a Lua or type error) logs one `warn` each time.
 - While Redis does not answer, the throttle storage counts in `@nestjs/throttler`'s in-memory `ThrottlerStorageService`, per instance, with one `warn` each time, and returns to Redis when it answers. No request answers 503 because the cache Redis is down; a failed enqueue leaves its outbox row `pending` (`outbox.md`, Dispatch).
 - `readThrough(key, schema, ttlInMs, loader, options?)`: every value is plain JSON written with `PX`; a value passing `JSON.parse` and `schema.safeParse` is the hit; a missing entry, a schema failure (the key is deleted), or any Redis error runs `loader()` and sets its result, a set error logged as above. A `null` result is not stored. The schema revives what JSON drops (`z.coerce.date()`).
-- `options.lease`, for a shared hot key (`ApiKeyCache`, `FeatureFlagCache`, `RoleCache`), holds no stale entry past a delete: the invalidate job removes the entry and its lease.
+- `options.lease`, for a shared hot key (`ApiKeyCache`, `FeatureFlagCache`), holds no stale entry past a delete: the invalidate job removes the entry and its lease.
 - A write that changes or deletes a cached row invalidates through an effect: `effects.md`, Cache invalidation.
 - `CacheService.flush` runs `flushdb` on the cache client; `MigrationSeedBase` is its one caller.
 - `CacheModule.forRoot()` registers the `cache` queue with `CacheQueueFactory` (`queue.job.cacheBackoffDelayInMs`) and provides and exports its queue class, `CacheQueue` (`src/common/cache/queues/cache.queue.ts`), also under `EnumCacheQueue.cache`; `CacheProcessor` (`src/common/cache/processors/`), awaits `CacheService.invalidate(data.keys)`, and a connection error retries the job; its messages are `cache.queue.*` in `src/languages/<lang>/cache.json`.
-- The session login entry and its purge: `session.md`, Session invalidation. `RoleCache`: `role.md`.
+- The session login entry and its purge: `session.md`, Session invalidation.
 
 ## Class shape
 

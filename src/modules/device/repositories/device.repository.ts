@@ -1,5 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { Device } from '@generated/prisma-client/client';
+import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
     IDeviceIdentity,
     IDeviceRefresh,
@@ -9,6 +11,8 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DeviceRepository implements IDeviceRepository {
+    constructor(private readonly databaseUtil: DatabaseUtil) {}
+
     async upsertByFingerprintInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -39,14 +43,21 @@ export class DeviceRepository implements IDeviceRepository {
         { name, platform }: IDeviceRefresh,
         now: Date
     ): Promise<void> {
-        await tx.device.update({
-            where: { id: deviceId },
-            data: {
-                name,
-                platform,
-                lastActiveAt: now,
-            },
-        });
+        try {
+            await tx.device.update({
+                where: { id: deviceId },
+                data: {
+                    name,
+                    platform,
+                    lastActiveAt: now,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new DeviceNotFoundException()
+            );
+        }
     }
 
     async touchInTx(

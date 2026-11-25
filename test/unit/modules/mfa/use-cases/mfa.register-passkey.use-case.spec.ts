@@ -22,12 +22,6 @@ import {
     EnumMfaPasskeyDeviceType,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import {
-    DatabaseUniqueConstraintCode,
-    DatabaseWriteConflictCode,
-} from '@common/database/constants/database.constant';
-import { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -42,12 +36,12 @@ import type { MfaPasskeyRegisterRequestDto } from '@modules/mfa/dtos/request/mfa
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { MfaPasskeyAlreadyRegisteredException } from '@modules/mfa/exceptions/mfa.passkey-already-registered.exception';
-import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 import { MfaPasskeyInvalidException } from '@modules/mfa/exceptions/mfa.passkey-invalid.exception';
 import { MfaPasskeyLimitException } from '@modules/mfa/exceptions/mfa.passkey-limit.exception';
 import type { IMfaPasskeyRegistration } from '@modules/mfa/interfaces/mfa.interface';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
+import { buildMfaFactorState } from '@test/unit/helpers/test.unit.mfa.helper';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaRegisterPasskeyUseCase } from '@modules/mfa/use-cases/mfa.register-passkey.use-case';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
@@ -90,6 +84,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext(user.id);
+    const factorState = buildMfaFactorState('user-quartz');
     const userContext = buildUserContext(user);
     const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
@@ -140,6 +135,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
         mfaService.checkReauthentication.mockResolvedValue(
             TestUnitReauthenticationMfaOff
         );
+        mfaService.getFactorState.mockResolvedValue(factorState);
         userAuthService.getReauthenticationVerificationId.mockResolvedValue(
             null
         );
@@ -429,7 +425,22 @@ describe('MfaRegisterPasskeyUseCase', () => {
             ]);
             expect(
                 userAuthService.completeReauthenticationInTx
-            ).toHaveBeenCalledWith(tx, authContext, true, null);
+            ).toHaveBeenCalledWith(tx, authContext, true, null, false);
+            expect(mfaService.getFactorState).toHaveBeenCalledTimes(1);
+            expect(mfaService.getFactorState).toHaveBeenCalledWith(
+                'user-quartz'
+            );
+            expect(mfaService.checkReauthentication).toHaveBeenCalledWith(
+                'user-quartz',
+                expect.objectContaining({
+                    action: EnumUserReauthenticationAction.mfaPasskeyRegister,
+                }),
+                true,
+                factorState
+            );
+            expect(mfaService.getFactorState).toHaveBeenCalledBefore(
+                mfaService.checkReauthentication
+            );
             expect(
                 mfaService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
@@ -531,29 +542,6 @@ describe('MfaRegisterPasskeyUseCase', () => {
             }
         );
 
-        it('answers MfaPasskeyAlreadyRegisteredException on a unique collision of the credential id', async () => {
-            databaseService.withTransaction.mockRejectedValue(
-                new Prisma.PrismaClientKnownRequestError('unique', {
-                    code: DatabaseUniqueConstraintCode,
-                    clientVersion: 'test',
-                    meta: { target: ['credentialId'] },
-                })
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    dto
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-                statusCode: EnumMfaStatusCodeError.passkeyAlreadyRegistered,
-            });
-        });
-
         it('passes on the challenge exception of the service, writing nothing', async () => {
             const failure = new MfaChallengeInvalidException();
             mfaChallengeService.getWebAuthnChallengeForUser.mockRejectedValue(
@@ -593,62 +581,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('answers MfaInvalidException on a write conflict after an MFA proof', async () => {
-            mfaService.checkReauthentication.mockResolvedValue({
-                isEnabled: true,
-                check: {
-                    method: EnumMfaMethod.totp,
-                    totpStep: 1,
-                    backupCodeHash: null,
-                    passkey: null,
-                },
-                failure: null,
-                passkeyChallengeToken: null,
-            });
-            databaseService.withTransaction.mockRejectedValue(
-                new Prisma.PrismaClientKnownRequestError('conflict', {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                })
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    dto
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-                statusCode: EnumMfaStatusCodeError.invalid,
-            });
-        });
-
-        it('answers MfaChallengeInvalidException on a write conflict with no MFA proof', async () => {
-            databaseService.withTransaction.mockRejectedValue(
-                new Prisma.PrismaClientKnownRequestError('conflict', {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                })
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    dto
-                )
-            ).rejects.toMatchObject({
-                module: 'mfa',
-                statusCode: EnumMfaStatusCodeError.challengeInvalid,
-            });
-        });
-
-        it('wraps any other transaction failure in the unknown exception', async () => {
+        it('rethrows any other failure of the transaction untouched', async () => {
             const cause = new Error('boom');
             databaseService.withTransaction.mockRejectedValue(cause);
 
@@ -660,10 +593,7 @@ describe('MfaRegisterPasskeyUseCase', () => {
                     userContext,
                     dto
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

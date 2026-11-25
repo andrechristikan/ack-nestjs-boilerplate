@@ -30,12 +30,14 @@ describe('WorkspaceUtil', () => {
         password: null,
         passwordHistoryType: null,
         verification: null,
+        login: null,
         workspaceContext: {
             type: EnumUserCreateWorkspaceContextType.personal,
             workspaceId: 'workspace-1',
             slugCandidates: ['slug-a', 'slug-b'],
             name: 'User One',
         },
+        createdAt: new Date('2026-03-01T00:00:00.000Z'),
         createdBy: 'user-1',
     };
 

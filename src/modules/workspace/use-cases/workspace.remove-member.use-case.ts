@@ -1,7 +1,3 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -10,7 +6,6 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
-import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/exceptions/workspace.member-peer-forbidden.exception';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { Injectable } from '@nestjs/common';
@@ -37,8 +32,7 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
         private readonly workspaceInviteService: WorkspaceInviteService,
         private readonly userService: UserService,
         private readonly databaseService: DatabaseService,
-        private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly outboxService: OutboxService
     ) {}
 
     async execute(
@@ -50,77 +44,64 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         const workspaceId = workspaceContext.workspace.id;
         const actorMember = workspaceContext.workspaceMember;
-        const removed = await this.workspaceMemberService.getPeerTarget(
+        const target = await this.workspaceMemberService.getPeerTarget(
             authContext,
             workspaceId,
             actorMember,
             targetMemberId
         );
 
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
-                await this.workspaceMemberService.removeMemberInTx(tx, removed);
-                await Promise.all([
-                    this.projectMemberService.removeByWorkspaceAndUserInTx(
-                        tx,
-                        workspaceId,
-                        removed.userId
-                    ),
-                    this.workspaceInviteService.revokePendingByEmailInTx(
-                        tx,
-                        workspaceId,
-                        removed.user.email
-                    ),
-                    this.userService.clearLastWorkspaceInTx(
-                        tx,
-                        removed.userId,
-                        workspaceId
-                    ),
-                ]);
-                const actorEntry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    {
-                        action: EnumActivityLogAction.workspaceMemberRemoved,
-                        userId: authContext.userId,
-                        createdBy: authContext.userId,
-                        workspaceId,
-                        metadata: { targetUserId: removed.userId },
-                    }
-                );
-                const targetEntry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    {
-                        action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
-                        userId: removed.userId,
-                        createdBy: authContext.userId,
-                        workspaceId,
-                        metadata: { actorUserId: authContext.userId },
-                    }
-                );
-                await this.outboxService.addManyInTx(tx, [
-                    actorEntry,
-                    targetEntry,
-                ]);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new WorkspaceMemberPeerForbiddenException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        await this.databaseService.withTransaction(async tx => {
+            // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
+            const removed = await this.workspaceMemberService.removeMemberInTx(
+                tx,
+                target
+            );
+            await Promise.all([
+                this.projectMemberService.removeByWorkspaceAndUserInTx(
+                    tx,
+                    removed.workspaceId,
+                    removed.userId
+                ),
+                this.workspaceInviteService.revokePendingByEmailInTx(
+                    tx,
+                    removed.workspaceId,
+                    removed.user.email
+                ),
+                this.userService.clearLastWorkspaceInTx(
+                    tx,
+                    removed.userId,
+                    removed.workspaceId
+                ),
+            ]);
+            const actorEntry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                {
+                    action: EnumActivityLogAction.workspaceMemberRemoved,
+                    userId: authContext.userId,
+                    createdBy: authContext.userId,
+                    workspaceId: removed.workspaceId,
+                    metadata: { targetUserId: removed.userId },
+                }
+            );
+            const targetEntry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                {
+                    action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
+                    userId: removed.userId,
+                    createdBy: authContext.userId,
+                    workspaceId: removed.workspaceId,
+                    metadata: { actorUserId: authContext.userId },
+                }
+            );
+            await this.outboxService.addManyInTx(tx, [actorEntry, targetEntry]);
+        });
 
         return {};
     }

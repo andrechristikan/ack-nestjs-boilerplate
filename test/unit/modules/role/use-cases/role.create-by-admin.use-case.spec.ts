@@ -13,7 +13,6 @@ import {
 import {
     EnumActivityLogAction,
     EnumRoleType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import type { RoleCreateRequestDto } from '@modules/role/dtos/request/role.create.request.dto';
@@ -33,10 +32,7 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { DatabaseUniqueConstraintCode } from '@common/database/constants/database.constant';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
@@ -167,31 +163,7 @@ describe('RoleCreateByAdminUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('maps a unique collision on name to RoleExistException', async () => {
-            vi.spyOn(databaseUtil, 'createId').mockReturnValue(role.id);
-            roleService.createByAdminInTx.mockRejectedValue(
-                new Prisma.PrismaClientKnownRequestError('collision', {
-                    code: DatabaseUniqueConstraintCode,
-                    clientVersion: 'test',
-                    meta: { target: ['name'] },
-                })
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    body
-                )
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.exist,
-            });
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
+        it('passes any other rejection through untouched', async () => {
             const cause = new Error('boom');
             vi.spyOn(databaseUtil, 'createId').mockReturnValue(role.id);
             roleService.createByAdminInTx.mockRejectedValue(cause);
@@ -204,10 +176,7 @@ describe('RoleCreateByAdminUseCase', () => {
                     userContext,
                     body
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
 
         it('creates the role on the outbox transaction and wraps the result', async () => {
@@ -256,7 +225,7 @@ describe('RoleCreateByAdminUseCase', () => {
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
         });
 
-        it('rethrows a typed exception of the write and adds no entry', async () => {
+        it('passes a rejected exception of the write through untouched and adds no entry', async () => {
             const failure = new RoleExistException();
             vi.spyOn(databaseUtil, 'createId').mockReturnValue(role.id);
             roleService.createByAdminInTx.mockRejectedValue(failure);

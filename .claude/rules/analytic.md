@@ -14,7 +14,7 @@ A metric carries one name in its route, enum member, i18n key, service read, and
 - One computation is one statement: a builder statement when it computes the whole result, otherwise one `aggregateRaw` pipeline. Never ids then details, a query per row or chunk, a cursor loop to the end, or rows grouped, sorted, or scored in the process.
 - The kit's offset pair (`count` plus `findMany`) is paging. A pipeline list pages in `$facet { data: [$sort, $skip, $limit], total: [$count] }` and returns `PaginationOffsetUtil.page`.
 - A pipeline's stages sit in the repository method that runs it. Stages two pipelines of one repository share sit in a private method returning `Prisma.InputJsonValue[]`; stages two repositories share sit in `AnalyticPipelineUtil`.
-- A `Date` enters a pipeline through `DatabaseUtil.toDate`, an id through `DatabaseUtil.toObjectId`, a list's `$sort` through `AnalyticPipelineUtil.sortStage`.
+- A `Date` enters a pipeline through `AnalyticPipelineUtil.toDate`, an id through `AnalyticPipelineUtil.toObjectId`, a list's `$sort` through `AnalyticPipelineUtil.sortStage`.
 - The repository method parses the result with `Analytic<Computation>PipelineSchema` (`dtos/analytic.<computation>-pipeline.dto.ts`) into its `I*` return shape; a parse failure throws `AppUnknownException`.
 - Its service reads every window, threshold, weight, band, and `app.timezone` in its constructor and passes them as arguments. The service, not the use case, owns a configured window.
 - A repository and its pipelines are no unit subject (`testing.md`): a boot calls every analytic route against seeded data.

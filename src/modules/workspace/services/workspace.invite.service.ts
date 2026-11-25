@@ -97,7 +97,7 @@ export class WorkspaceInviteService {
     }
 
     private inviteEffect(
-        invite: WorkspaceInvite,
+        invite: IWorkspaceInviteList,
         { claimLink, signUpLink }: IWorkspaceInviteTokenData,
         actorId: string,
         { workspaceName, inviterName, inviteeUserId }: IWorkspaceInviteNotice
@@ -323,14 +323,14 @@ export class WorkspaceInviteService {
         return this.workspaceInviteRepository.expireStalePending();
     }
 
-    async revokePendingByWorkspaceInTx(
+    async revokePendingByWorkspacesInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string,
+        workspaceIds: string[],
         updatedBy: string
     ): Promise<void> {
-        await this.workspaceInviteRepository.revokePendingByWorkspaceInTx(
+        await this.workspaceInviteRepository.revokePendingByWorkspacesInTx(
             tx,
-            workspaceId,
+            workspaceIds,
             updatedBy
         );
     }
@@ -439,7 +439,7 @@ export class WorkspaceInviteService {
         { workspaceInviteId, nonce }: IWorkspaceInvitePrepared,
         tokenData: IWorkspaceInviteTokenData,
         notice: IWorkspaceInviteNotice
-    ): Promise<WorkspaceInvite> {
+    ): Promise<IWorkspaceInviteList> {
         const actorId = authContext.userId;
         const created = await this.workspaceInviteRepository.createPendingInTx(
             tx,
@@ -521,7 +521,7 @@ export class WorkspaceInviteService {
         workspaceInviteId: string,
         tokenData: IWorkspaceInviteTokenData,
         notice: IWorkspaceInviteNotice
-    ): Promise<WorkspaceInvite> {
+    ): Promise<IWorkspaceInviteList> {
         const actorId = authContext.userId;
         const resentAt = this.helperDateService.now();
         const rotated =
@@ -533,9 +533,6 @@ export class WorkspaceInviteService {
                 tokenData.expiredAt,
                 resentAt
             );
-        if (!rotated) {
-            throw new WorkspaceInviteAlreadyProcessedException();
-        }
 
         const effect = this.inviteEffect(rotated, tokenData, actorId, notice);
         const entries = this.inviteActivityEffects(
@@ -588,16 +585,13 @@ export class WorkspaceInviteService {
         workspaceInviteId: string,
         userId: string,
         acceptedAt: Date
-    ): Promise<void> {
-        const accepted = await this.workspaceInviteRepository.acceptInTx(
+    ): Promise<WorkspaceInvite> {
+        return this.workspaceInviteRepository.acceptInTx(
             tx,
             workspaceInviteId,
             userId,
             acceptedAt
         );
-        if (!accepted) {
-            throw new WorkspaceInviteAlreadyProcessedException();
-        }
     }
 
     async acceptOnSignUpInTx(
@@ -607,7 +601,7 @@ export class WorkspaceInviteService {
     ): Promise<void> {
         const acceptedAt = this.helperDateService.now();
 
-        await this.acceptPendingInTx(
+        const accepted = await this.acceptPendingInTx(
             tx,
             context.workspaceInviteId,
             userId,
@@ -615,9 +609,9 @@ export class WorkspaceInviteService {
         );
         await this.workspaceMemberService.createInTx(
             tx,
-            context.workspaceId,
+            accepted.workspaceId,
             userId,
-            context.workspaceMemberRole,
+            accepted.workspaceRole,
             userId
         );
     }

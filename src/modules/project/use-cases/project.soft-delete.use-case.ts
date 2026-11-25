@@ -1,7 +1,3 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -9,7 +5,6 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectService } from '@modules/project/services/project.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { Injectable } from '@nestjs/common';
@@ -36,7 +31,6 @@ export class ProjectSoftDeleteUseCase implements IAppUseCase<
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -50,44 +44,28 @@ export class ProjectSoftDeleteUseCase implements IAppUseCase<
         const project = projectContext.project;
         const actorId = authContext.userId;
         const deletedAt = this.helperDateService.now();
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                await this.projectService.softDeleteProjectInTx(
-                    tx,
-                    project,
-                    deletedAt,
-                    actorId
-                );
-                await this.workspaceInviteService.clearProjectInTx(
-                    tx,
-                    project.id
-                );
-                const entry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    {
-                        action: EnumActivityLogAction.projectDeleted,
-                        userId: actorId,
-                        createdBy: actorId,
-                        workspaceId: project.workspaceId,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new ProjectNotFoundException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        await this.databaseService.withTransaction(async tx => {
+            const softDeleted = await this.projectService.softDeleteProjectInTx(
+                tx,
+                project,
+                deletedAt,
+                actorId
+            );
+            await this.workspaceInviteService.clearProjectInTx(tx, project.id);
+            const entry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                workspaceContext,
+                {
+                    action: EnumActivityLogAction.projectDeleted,
+                    userId: actorId,
+                    createdBy: actorId,
+                    workspaceId: softDeleted.workspaceId,
+                }
+            );
+            await this.outboxService.addInTx(tx, entry);
+        });
 
         return {};
     }

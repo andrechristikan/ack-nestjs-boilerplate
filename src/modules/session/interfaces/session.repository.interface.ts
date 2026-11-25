@@ -7,11 +7,8 @@ import type {
 import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
-    ISession,
     ISessionList,
-    ISessionLogin,
     ISessionRef,
-    ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
 import type { Session } from '@generated/prisma-client/client';
 
@@ -30,7 +27,7 @@ export interface ISessionRepository {
         userId: string,
         sessionId: string,
         idleSince: Date
-    ): Promise<ISessionLogin | null>;
+    ): Promise<Session | null>;
     createInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -73,7 +70,7 @@ export interface ISessionRepository {
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
-    ): Promise<ISession | null>;
+    ): Promise<ISessionList>;
     revokeActiveByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -93,6 +90,6 @@ export interface ISessionRepository {
         deviceOwnershipIds: string[],
         revokedBy: string,
         revokedAt: Date
-    ): Promise<ISessionUserRef[]>;
+    ): Promise<ISessionRef[]>;
     deleteExpiredBefore(threshold: Date): Promise<number>;
 }

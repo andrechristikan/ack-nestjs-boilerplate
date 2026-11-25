@@ -33,8 +33,10 @@ import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/worksp
 import { WorkspaceRoleForbiddenException } from '@modules/workspace/exceptions/workspace.role-forbidden.exception';
 import { WorkspaceSelfTransferException } from '@modules/workspace/exceptions/workspace.self-transfer.exception';
 import { WorkspaceTransferTargetInactiveException } from '@modules/workspace/exceptions/workspace.transfer-target-inactive.exception';
-import type { IWorkspaceMember } from '@modules/workspace/interfaces/workspace.interface';
-import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/workspace.join-request.repository';
+import type {
+    IWorkspaceMember,
+    IWorkspaceMemberWithEmail,
+} from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import {
@@ -57,8 +59,6 @@ describe('WorkspaceMemberService', () => {
         mock<WorkspaceMemberRepository>();
     const workspaceRepository: MockProxy<WorkspaceRepository> =
         mock<WorkspaceRepository>();
-    const workspaceJoinRequestRepository: MockProxy<WorkspaceJoinRequestRepository> =
-        mock<WorkspaceJoinRequestRepository>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const activityLogQueue: MockProxy<ActivityLogQueue> =
         mock<ActivityLogQueue>();
@@ -77,15 +77,52 @@ describe('WorkspaceMemberService', () => {
         role: EnumWorkspaceMemberRole.member,
     };
     const workspace: Workspace = buildWorkspace();
+    const writtenUpdated: WorkspaceMember = {
+        ...baseMember,
+        id: 'member-2',
+        userId: 'written-user-2',
+        role: EnumWorkspaceMemberRole.admin,
+    };
+    const writtenPromoted: WorkspaceMember = {
+        ...baseMember,
+        id: 'member-2',
+        userId: 'written-user-2',
+        role: EnumWorkspaceMemberRole.owner,
+    };
+    const writtenDemoted: WorkspaceMember = {
+        ...baseMember,
+        id: 'member-1',
+        userId: 'written-user-1',
+        role: EnumWorkspaceMemberRole.admin,
+    };
+    const writtenRemoved: IWorkspaceMemberWithEmail = {
+        ...baseMember,
+        id: 'member-2',
+        userId: 'written-user-2',
+        user: {
+            id: 'written-user-2',
+            email: 'written-user-2@example.com',
+            username: 'written-user-2',
+            name: null,
+        },
+    };
 
     beforeEach(async () => {
         activityLogQueue.recordEffect
             .mockReturnValueOnce(firstEntry)
             .mockReturnValueOnce(secondEntry);
-        workspaceMemberRepository.updateRoleInTx.mockResolvedValue(true);
-        workspaceMemberRepository.removeMemberInTx.mockResolvedValue(true);
-        workspaceMemberRepository.promoteToOwnerInTx.mockResolvedValue(true);
-        workspaceMemberRepository.demoteOwnerInTx.mockResolvedValue(true);
+        workspaceMemberRepository.updateRoleInTx.mockResolvedValue(
+            writtenUpdated
+        );
+        workspaceMemberRepository.removeMemberInTx.mockResolvedValue(
+            writtenRemoved
+        );
+        workspaceMemberRepository.promoteToOwnerInTx.mockResolvedValue(
+            writtenPromoted
+        );
+        workspaceMemberRepository.demoteOwnerInTx.mockResolvedValue(
+            writtenDemoted
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -95,10 +132,6 @@ describe('WorkspaceMemberService', () => {
                     useValue: workspaceMemberRepository,
                 },
                 { provide: WorkspaceRepository, useValue: workspaceRepository },
-                {
-                    provide: WorkspaceJoinRequestRepository,
-                    useValue: workspaceJoinRequestRepository,
-                },
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
@@ -307,7 +340,13 @@ describe('WorkspaceMemberService', () => {
         const target = { ...baseMember, id: 'member-2', userId: 'user-2' };
         const activeTarget = {
             ...target,
-            user: { status: EnumUserStatus.active, deletedAt: null },
+            user: {
+                id: 'user-2',
+                status: EnumUserStatus.active,
+                isVerified: true,
+                passwordAttempt: 0,
+                deletedAt: null,
+            },
         };
 
         it('throws WorkspaceSelfTransferException when the target is the actor', async () => {
@@ -340,12 +379,21 @@ describe('WorkspaceMemberService', () => {
         it.each([
             {
                 label: 'is not active',
-                user: { status: EnumUserStatus.inactive, deletedAt: null },
+                user: {
+                    id: 'user-2',
+                    status: EnumUserStatus.inactive,
+                    isVerified: true,
+                    passwordAttempt: 0,
+                    deletedAt: null,
+                },
             },
             {
                 label: 'is deleted',
                 user: {
+                    id: 'user-2',
                     status: EnumUserStatus.active,
+                    isVerified: true,
+                    passwordAttempt: 0,
                     deletedAt: new Date('2026-01-02T00:00:00.000Z'),
                 },
             },
@@ -386,7 +434,13 @@ describe('WorkspaceMemberService', () => {
     });
 
     describe('getTransferByAdmin', () => {
-        const activeUser = { status: EnumUserStatus.active, deletedAt: null };
+        const activeUser = {
+            id: 'user-2',
+            status: EnumUserStatus.active,
+            isVerified: true,
+            passwordAttempt: 0,
+            deletedAt: null,
+        };
         const owner = {
             ...baseMember,
             id: 'member-1',
@@ -468,12 +522,21 @@ describe('WorkspaceMemberService', () => {
         it.each([
             {
                 label: 'is not active',
-                user: { status: EnumUserStatus.blocked, deletedAt: null },
+                user: {
+                    id: 'user-2',
+                    status: EnumUserStatus.blocked,
+                    isVerified: true,
+                    passwordAttempt: 0,
+                    deletedAt: null,
+                },
             },
             {
                 label: 'is deleted',
                 user: {
+                    id: 'user-2',
                     status: EnumUserStatus.active,
+                    isVerified: true,
+                    passwordAttempt: 0,
                     deletedAt: new Date('2026-01-02T00:00:00.000Z'),
                 },
             },
@@ -555,7 +618,7 @@ describe('WorkspaceMemberService', () => {
                     userId: 'actor-1',
                     createdBy: 'actor-1',
                     workspaceId: 'workspace-1',
-                    metadata: { targetUserId: 'user-2' },
+                    metadata: { targetUserId: 'written-user-2' },
                 }
             );
             expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
@@ -566,7 +629,7 @@ describe('WorkspaceMemberService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
-                    userId: 'user-2',
+                    userId: 'written-user-2',
                     createdBy: 'actor-1',
                     workspaceId: 'workspace-1',
                     metadata: { actorUserId: 'actor-1' },
@@ -581,9 +644,10 @@ describe('WorkspaceMemberService', () => {
             ).toHaveBeenCalledBefore(activityLogQueue.recordEffect);
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException and demotes nothing when the promote misses', async () => {
-            workspaceMemberRepository.promoteToOwnerInTx.mockResolvedValue(
-                false
+        it('lets WorkspaceMemberPeerForbiddenException of the promote reach the caller untouched and demotes nothing', async () => {
+            const forbidden = new WorkspaceMemberPeerForbiddenException();
+            workspaceMemberRepository.promoteToOwnerInTx.mockRejectedValue(
+                forbidden
             );
 
             await expect(
@@ -596,19 +660,18 @@ describe('WorkspaceMemberService', () => {
                     actor,
                     target
                 )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceMemberPeerForbiddenException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-            });
+            ).rejects.toBe(forbidden);
             expect(
                 workspaceMemberRepository.demoteOwnerInTx
             ).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException and adds no entry when the demote misses', async () => {
-            workspaceMemberRepository.demoteOwnerInTx.mockResolvedValue(false);
+        it('lets WorkspaceMemberPeerForbiddenException of the demote reach the caller untouched and adds no entry', async () => {
+            const forbidden = new WorkspaceMemberPeerForbiddenException();
+            workspaceMemberRepository.demoteOwnerInTx.mockRejectedValue(
+                forbidden
+            );
 
             await expect(
                 service.transferOwnershipInTx(
@@ -620,11 +683,7 @@ describe('WorkspaceMemberService', () => {
                     actor,
                     target
                 )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceMemberPeerForbiddenException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-            });
+            ).rejects.toBe(forbidden);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
@@ -678,8 +737,8 @@ describe('WorkspaceMemberService', () => {
                     workspaceId: 'workspace-1',
                     metadata: {
                         workspaceId: 'workspace-1',
-                        previousOwnerUserId: 'user-1',
-                        targetUserId: 'user-2',
+                        previousOwnerUserId: 'written-user-1',
+                        targetUserId: 'written-user-2',
                     },
                 }
             );
@@ -691,12 +750,12 @@ describe('WorkspaceMemberService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.workspaceOwnershipRemovedByAdmin,
-                    userId: 'user-1',
+                    userId: 'written-user-1',
                     createdBy: 'admin-1',
                     workspaceId: 'workspace-1',
                     metadata: {
                         actorUserId: 'admin-1',
-                        targetUserId: 'user-2',
+                        targetUserId: 'written-user-2',
                     },
                 }
             );
@@ -708,7 +767,7 @@ describe('WorkspaceMemberService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.workspaceOwnershipTransferredByAdmin,
-                    userId: 'user-2',
+                    userId: 'written-user-2',
                     createdBy: 'admin-1',
                     workspaceId: 'workspace-1',
                     metadata: { actorUserId: 'admin-1' },
@@ -724,9 +783,10 @@ describe('WorkspaceMemberService', () => {
             ).toHaveBeenCalledBefore(activityLogQueue.recordEffect);
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException when the promote misses', async () => {
-            workspaceMemberRepository.promoteToOwnerInTx.mockResolvedValue(
-                false
+        it('lets WorkspaceMemberPeerForbiddenException of the promote reach the caller untouched', async () => {
+            const forbidden = new WorkspaceMemberPeerForbiddenException();
+            workspaceMemberRepository.promoteToOwnerInTx.mockRejectedValue(
+                forbidden
             );
 
             await expect(
@@ -738,18 +798,18 @@ describe('WorkspaceMemberService', () => {
                     'workspace-1',
                     { ownerMember: owner, targetMember: target }
                 )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceMemberPeerForbiddenException,
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-            });
+            ).rejects.toBe(forbidden);
             expect(
                 workspaceMemberRepository.demoteOwnerInTx
             ).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException when the demote misses', async () => {
-            workspaceMemberRepository.demoteOwnerInTx.mockResolvedValue(false);
+        it('lets WorkspaceMemberPeerForbiddenException of the demote reach the caller untouched', async () => {
+            const forbidden = new WorkspaceMemberPeerForbiddenException();
+            workspaceMemberRepository.demoteOwnerInTx.mockRejectedValue(
+                forbidden
+            );
 
             await expect(
                 service.transferOwnershipByAdminInTx(
@@ -760,10 +820,7 @@ describe('WorkspaceMemberService', () => {
                     'workspace-1',
                     { ownerMember: owner, targetMember: target }
                 )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceMemberPeerForbiddenException,
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-            });
+            ).rejects.toBe(forbidden);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
@@ -810,9 +867,10 @@ describe('WorkspaceMemberService', () => {
     describe('leaveWorkspaceInTx', () => {
         const tx = {} as IDatabaseTransactionClient;
 
-        it('removes the member on the given transaction guarded by its role', async () => {
-            await service.leaveWorkspaceInTx(tx, baseMember);
+        it('removes the member on the given transaction guarded by its role and returns the deleted row', async () => {
+            const left = await service.leaveWorkspaceInTx(tx, baseMember);
 
+            expect(left).toBe(writtenRemoved);
             expect(
                 workspaceMemberRepository.removeMemberInTx
             ).toHaveBeenCalledWith(
@@ -822,31 +880,15 @@ describe('WorkspaceMemberService', () => {
             );
         });
 
-        it('cancels the pending join request of the member user on the same transaction after the removal', async () => {
-            await service.leaveWorkspaceInTx(tx, baseMember);
-
-            expect(
-                workspaceJoinRequestRepository.cancelPendingByUserInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                baseMember.workspaceId,
-                baseMember.userId
+        it('lets WorkspaceMemberNotFoundException of the guarded removal reach the caller untouched', async () => {
+            const notFound = new WorkspaceMemberNotFoundException();
+            workspaceMemberRepository.removeMemberInTx.mockRejectedValue(
+                notFound
             );
-        });
-
-        it('throws WorkspaceMemberNotFoundException and cancels nothing when the guarded removal misses', async () => {
-            workspaceMemberRepository.removeMemberInTx.mockResolvedValue(false);
 
             await expect(
                 service.leaveWorkspaceInTx(tx, baseMember)
-            ).rejects.toMatchObject({
-                constructor: WorkspaceMemberNotFoundException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberNotFound,
-            });
-            expect(
-                workspaceJoinRequestRepository.cancelPendingByUserInTx
-            ).not.toHaveBeenCalled();
+            ).rejects.toBe(notFound);
         });
     });
 
@@ -921,7 +963,12 @@ describe('WorkspaceMemberService', () => {
             id: 'member-2',
             userId: 'user-2',
             role: EnumWorkspaceMemberRole.member,
-            user: { email: 'user-2@example.com' },
+            user: {
+                id: 'user-2',
+                email: 'user-2@example.com',
+                username: 'user-2',
+                name: null,
+            },
         };
 
         it('throws WorkspaceMemberNotFoundException when the target member does not exist', async () => {
@@ -1042,7 +1089,7 @@ describe('WorkspaceMemberService', () => {
                     userId: 'actor-1',
                     createdBy: 'actor-1',
                     workspaceId: 'workspace-1',
-                    metadata: { targetUserId: 'user-2' },
+                    metadata: { targetUserId: 'written-user-2' },
                 }
             );
             expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
@@ -1053,7 +1100,7 @@ describe('WorkspaceMemberService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
-                    userId: 'user-2',
+                    userId: 'written-user-2',
                     createdBy: 'actor-1',
                     workspaceId: 'workspace-1',
                     metadata: { actorUserId: 'actor-1' },
@@ -1068,8 +1115,11 @@ describe('WorkspaceMemberService', () => {
             ).toHaveBeenCalledBefore(activityLogQueue.recordEffect);
         });
 
-        it('throws WorkspaceMemberPeerForbiddenException and adds no entry when the target role changed since it was read', async () => {
-            workspaceMemberRepository.updateRoleInTx.mockResolvedValue(false);
+        it('lets WorkspaceMemberPeerForbiddenException of the guarded update reach the caller untouched and adds no entry', async () => {
+            const forbidden = new WorkspaceMemberPeerForbiddenException();
+            workspaceMemberRepository.updateRoleInTx.mockRejectedValue(
+                forbidden
+            );
 
             await expect(
                 service.updateMemberRoleInTx(
@@ -1081,11 +1131,7 @@ describe('WorkspaceMemberService', () => {
                     target,
                     EnumWorkspaceMemberRole.admin
                 )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-                constructor: WorkspaceMemberPeerForbiddenException,
-            });
+            ).rejects.toBe(forbidden);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
@@ -1097,12 +1143,18 @@ describe('WorkspaceMemberService', () => {
             id: 'member-2',
             userId: 'user-2',
             role: EnumWorkspaceMemberRole.member,
-            user: { email: 'user-2@example.com' },
+            user: {
+                id: 'user-2',
+                email: 'user-2@example.com',
+                username: 'user-2',
+                name: null,
+            },
         };
 
-        it('removes the member row given on the tx guarded by its role and reads nothing', async () => {
-            await service.removeMemberInTx(tx, target);
+        it('removes the member row given on the tx guarded by its role, returns the deleted row, and reads nothing', async () => {
+            const removed = await service.removeMemberInTx(tx, target);
 
+            expect(removed).toBe(writtenRemoved);
             expect(
                 workspaceMemberRepository.removeMemberInTx
             ).toHaveBeenCalledWith(
@@ -1115,27 +1167,15 @@ describe('WorkspaceMemberService', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('cancels the pending join request of the target user on the same transaction after the removal', async () => {
-            await service.removeMemberInTx(tx, target);
+        it('lets WorkspaceMemberNotFoundException of the guarded removal reach the caller untouched', async () => {
+            const notFound = new WorkspaceMemberNotFoundException();
+            workspaceMemberRepository.removeMemberInTx.mockRejectedValue(
+                notFound
+            );
 
-            expect(
-                workspaceJoinRequestRepository.cancelPendingByUserInTx
-            ).toHaveBeenCalledWith(tx, target.workspaceId, 'user-2');
-        });
-
-        it('throws WorkspaceMemberPeerForbiddenException and cancels nothing when the target role changed since it was read', async () => {
-            workspaceMemberRepository.removeMemberInTx.mockResolvedValue(false);
-
-            await expect(
-                service.removeMemberInTx(tx, target)
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-                constructor: WorkspaceMemberPeerForbiddenException,
-            });
-            expect(
-                workspaceJoinRequestRepository.cancelPendingByUserInTx
-            ).not.toHaveBeenCalled();
+            await expect(service.removeMemberInTx(tx, target)).rejects.toBe(
+                notFound
+            );
         });
     });
 

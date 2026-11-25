@@ -1,16 +1,17 @@
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import { EnumActivityLogAction } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumTermPolicyType,
+} from '@generated/prisma-client/client';
 import type { WorkspaceInvite } from '@generated/prisma-client/client';
 import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IPasswordHistoryCreate } from '@modules/password-history/interfaces/password-history.interface';
 import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
+import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
-import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
-import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type { IUserCreateActivity } from '@modules/user/interfaces/user.create.interface';
 import type {
-    IUser,
     IUserCreateContract,
     IUserCreateWithWorkspaceInput,
     IUserCreateWorkspaceContext,
@@ -52,8 +53,12 @@ export class UserCreateUtil {
             personalWorkspaceAction,
             logsActingAdmin,
         }: IUserCreateContract,
-        { userId, createdBy, workspaceContext }: IUserCreateWithWorkspaceInput,
-        user: IUser
+        {
+            userId,
+            createdAt,
+            createdBy,
+            workspaceContext,
+        }: IUserCreateWithWorkspaceInput
     ): IUserCreateActivity[] {
         const activities: IUserCreateActivity[] = [
             {
@@ -62,7 +67,7 @@ export class UserCreateUtil {
                 workspaceId: null,
                 createdBy,
                 metadata: logsActingAdmin
-                    ? { actorUserId: createdBy, timestamp: user.createdAt }
+                    ? { actorUserId: createdBy, timestamp: createdAt }
                     : {},
             },
         ];
@@ -160,20 +165,14 @@ export class UserCreateUtil {
         };
     }
 
-    /** Lists each user's activity stage inputs under the contract; `users[i]` must be the created user of `inputs[i]`. */
     buildStages(
         contract: IUserCreateContract,
-        inputs: IUserCreateWithWorkspaceInput[],
-        users: IUser[]
+        inputs: IUserCreateWithWorkspaceInput[]
     ): IActivityLogInput<EnumActivityLogAction>[] {
         const stages: IActivityLogInput<EnumActivityLogAction>[] = [];
 
-        for (const [index, input] of inputs.entries()) {
-            const activities = this.buildActivities(
-                contract,
-                input,
-                users[index]!
-            );
+        for (const input of inputs) {
+            const activities = this.buildActivities(contract, input);
 
             for (const activity of activities) {
                 stages.push({
@@ -189,6 +188,17 @@ export class UserCreateUtil {
         }
 
         return stages;
+    }
+
+    buildAcceptedTermPolicyTypes(
+        cookies: boolean,
+        marketing: boolean
+    ): EnumTermPolicyType[] {
+        return [
+            ...UserTermPolicyContract.requiredTypes,
+            ...(cookies ? [EnumTermPolicyType.cookies] : []),
+            ...(marketing ? [EnumTermPolicyType.marketing] : []),
+        ];
     }
 
     buildTermPolicyAcceptanceEntries(
@@ -225,26 +235,5 @@ export class UserCreateUtil {
         }
 
         return entries;
-    }
-
-    /** Maps a username or email unique collision to its user exception and returns any other error untouched. */
-    mapCreateCollision(error: unknown): unknown {
-        const isUsernameCollision = this.databaseUtil.isUniqueCollision(
-            error,
-            'username'
-        );
-        if (isUsernameCollision) {
-            return new UserUsernameExistException();
-        }
-
-        const isEmailCollision = this.databaseUtil.isUniqueCollision(
-            error,
-            'email'
-        );
-        if (isEmailCollision) {
-            return new UserEmailExistException();
-        }
-
-        return error;
     }
 }

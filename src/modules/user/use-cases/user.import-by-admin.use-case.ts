@@ -47,11 +47,11 @@ export class UserImportByAdminUseCase implements IAppUseCase<
         }));
         const emails = rows.map(item => item.email);
         const usernames = rows.map(item => item.username);
-        // Sequential by design: a write after its checks
-        const [existingEmails, usernameChecks] = await Promise.all([
-            this.userImportService.getExistingEmails(emails),
-            this.userImportService.getUsernameChecks(usernames),
-        ]);
+        const { existingEmails, usernameChecks } =
+            await this.userImportService.getImportByAdminChecks(
+                emails,
+                usernames
+            );
         this.userImportService.assertEmailsAvailable(existingEmails);
         this.userImportService.assertImportByAdminRows(rows, usernameChecks);
 

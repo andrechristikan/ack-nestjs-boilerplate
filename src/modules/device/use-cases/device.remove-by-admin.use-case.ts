@@ -1,8 +1,4 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -10,7 +6,6 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { RoleService } from '@modules/role/services/role.service';
@@ -43,7 +38,6 @@ export class DeviceRemoveByAdminUseCase implements IAppUseCase<
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -69,78 +63,66 @@ export class DeviceRemoveByAdminUseCase implements IAppUseCase<
             removedBy
         );
         const now = this.helperDateService.now();
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                const revokedSessions =
-                    await this.sessionService.revokeByDeviceOwnershipInTx(
-                        tx,
-                        userId,
-                        deviceOwnershipId,
-                        removedBy,
-                        now
-                    );
-                const deviceOwnership =
-                    await this.deviceService.removeOwnershipInTx(
-                        tx,
-                        userId,
-                        deviceOwnershipId,
-                        removedBy,
-                        now
-                    );
+        await this.databaseService.withTransaction(async tx => {
+            const revokedSessions =
+                await this.sessionService.revokeByDeviceOwnershipInTx(
+                    tx,
+                    userId,
+                    deviceOwnershipId,
+                    removedBy,
+                    now
+                );
+            const deviceOwnership =
+                await this.deviceService.removeOwnershipInTx(
+                    tx,
+                    userId,
+                    deviceOwnershipId,
+                    removedBy,
+                    now
+                );
 
-                const actorMetadata =
-                    this.deviceUtil.mapActivityLogActorMetadata(
+            const actorMetadata = this.deviceUtil.mapActivityLogActorMetadata(
+                deviceOwnership,
+                revokedSessions.length,
+                now
+            );
+            const entries: IOutboxEffect[] = [
+                this.activityLogQueue.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.adminDeviceRemoved,
+                        metadata: actorMetadata,
+                    }
+                ),
+            ];
+
+            if (isOwnedByOther) {
+                const targetMetadata =
+                    this.deviceUtil.mapActivityLogTargetMetadata(
                         deviceOwnership,
-                        revokedSessions.length
+                        removedBy,
+                        revokedSessions.length,
+                        now
                     );
-                const entries: IOutboxEffect[] = [
-                    this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.adminDeviceRemoved,
-                            metadata: actorMetadata,
-                        }
-                    ),
-                ];
-
-                if (isOwnedByOther) {
-                    const targetMetadata =
-                        this.deviceUtil.mapActivityLogTargetMetadata(
-                            deviceOwnership,
-                            removedBy,
-                            revokedSessions.length
-                        );
-                    const targetEntry = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.userDeviceRemovedByAdmin,
-                            userId,
-                            createdBy: removedBy,
-                            metadata: targetMetadata,
-                        }
-                    );
-                    entries.push(targetEntry);
-                }
-                await this.outboxService.addManyInTx(tx, entries);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
+                const targetEntry = this.activityLogQueue.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.userDeviceRemovedByAdmin,
+                        userId,
+                        createdBy: removedBy,
+                        metadata: targetMetadata,
+                    }
+                );
+                entries.push(targetEntry);
             }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new DeviceNotFoundException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+            await this.outboxService.addManyInTx(tx, entries);
+        });
 
         return {};
     }

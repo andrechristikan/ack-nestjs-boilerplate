@@ -23,7 +23,7 @@ export interface IUserForgotPasswordRepository {
         forgotPasswordId: string,
         resetAt: Date,
         updatedBy: string
-    ): Promise<boolean>;
+    ): Promise<ForgotPassword>;
     markUnusedUsedByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

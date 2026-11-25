@@ -8,6 +8,7 @@ import type {
 
 export interface IMfaPasskeyRepository {
     findManyByUserId(userId: string): Promise<IMfaPasskey[]>;
+    findManyForCheckByUserId(userId: string): Promise<MfaPasskey[]>;
     findCredentialsByUserId(userId: string): Promise<IMfaPasskeyCredential[]>;
     findOneByCredentialId(credentialId: string): Promise<MfaPasskey | null>;
     existsByUserId(userId: string): Promise<boolean>;

@@ -21,6 +21,8 @@ import type {
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
+import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
+import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import type {
     IProjectMember,
@@ -343,8 +345,7 @@ describe('ProjectMemberService', () => {
         it('delegates to the repository with the given transaction', async () => {
             const tx: MockProxy<IDatabaseTransactionClient> =
                 mock<IDatabaseTransactionClient>();
-            const created = baseProjectMemberRow;
-            projectMemberRepository.createInTx.mockResolvedValue(created);
+            projectMemberRepository.createInTx.mockResolvedValue();
 
             const result = await service.createInTx(
                 tx,
@@ -354,7 +355,8 @@ describe('ProjectMemberService', () => {
                 '507f1f77bcf86cd799439033'
             );
 
-            expect(result).toBe(created);
+            expect(result).toBeUndefined();
+            expect(projectMemberRepository.createInTx).toHaveBeenCalledTimes(1);
             expect(projectMemberRepository.createInTx).toHaveBeenCalledWith(
                 tx,
                 '507f1f77bcf86cd799439011',
@@ -678,7 +680,9 @@ describe('ProjectMemberService', () => {
                 ...baseProjectMemberRow,
                 userId: targetMember.userId,
             };
-            projectMemberRepository.createInTx.mockResolvedValue(created);
+            projectMemberRepository.createWithUserInTx.mockResolvedValue(
+                created
+            );
 
             const result = await service.assignMemberInTx(
                 tx,
@@ -691,7 +695,10 @@ describe('ProjectMemberService', () => {
             );
 
             expect(result).toBe(created);
-            expect(projectMemberRepository.createInTx).toHaveBeenCalledWith(
+            expect(projectMemberRepository.createInTx).not.toHaveBeenCalled();
+            expect(
+                projectMemberRepository.createWithUserInTx
+            ).toHaveBeenCalledWith(
                 tx,
                 project.id,
                 targetMember.userId,
@@ -739,7 +746,7 @@ describe('ProjectMemberService', () => {
                 workspaceId: project.workspaceId,
                 userId: authContext.userId,
             };
-            projectMemberRepository.createInTx.mockResolvedValue(
+            projectMemberRepository.createWithUserInTx.mockResolvedValue(
                 baseProjectMemberRow
             );
 
@@ -761,13 +768,14 @@ describe('ProjectMemberService', () => {
     });
 
     describe('updateMemberRoleInTx', () => {
-        it('throws ProjectMemberPeerForbiddenException and adds no entry when the guarded write misses', async () => {
+        it('passes the exception the guarded write rejected with through untouched and adds no entry', async () => {
             const targetMember = {
                 ...baseProjectMember,
                 userId: '507f1f77bcf86cd799439044',
                 role: EnumProjectMemberRole.member,
             };
-            projectMemberRepository.updateRoleInTx.mockResolvedValue(false);
+            const failure = new ProjectMemberPeerForbiddenException();
+            projectMemberRepository.updateRoleInTx.mockRejectedValue(failure);
 
             const rejection = service.updateMemberRoleInTx(
                 tx,
@@ -779,10 +787,7 @@ describe('ProjectMemberService', () => {
                 EnumProjectMemberRole.viewer
             );
 
-            await expect(rejection).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
-            });
+            await expect(rejection).rejects.toBe(failure);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
@@ -793,7 +798,12 @@ describe('ProjectMemberService', () => {
                 userId: '507f1f77bcf86cd799439044',
                 role: EnumProjectMemberRole.member,
             };
-            projectMemberRepository.updateRoleInTx.mockResolvedValue(true);
+            const written = {
+                ...targetMember,
+                userId: '507f1f77bcf86cd799439055',
+                role: EnumProjectMemberRole.admin,
+            };
+            projectMemberRepository.updateRoleInTx.mockResolvedValue(written);
 
             await service.updateMemberRoleInTx(
                 tx,
@@ -822,7 +832,7 @@ describe('ProjectMemberService', () => {
                     userId: authContext.userId,
                     createdBy: authContext.userId,
                     workspaceId: project.workspaceId,
-                    metadata: { targetUserId: targetMember.userId },
+                    metadata: { targetUserId: written.userId },
                 }
             );
             expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
@@ -833,7 +843,7 @@ describe('ProjectMemberService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
-                    userId: targetMember.userId,
+                    userId: written.userId,
                     createdBy: authContext.userId,
                     workspaceId: project.workspaceId,
                     metadata: { actorUserId: authContext.userId },
@@ -850,7 +860,10 @@ describe('ProjectMemberService', () => {
                 ...baseProjectMember,
                 userId: authContext.userId,
             };
-            projectMemberRepository.updateRoleInTx.mockResolvedValue(true);
+            projectMemberRepository.updateRoleInTx.mockResolvedValue({
+                ...targetMember,
+                role: EnumProjectMemberRole.admin,
+            });
 
             await service.updateMemberRoleInTx(
                 tx,
@@ -870,13 +883,14 @@ describe('ProjectMemberService', () => {
     });
 
     describe('removeMemberInTx', () => {
-        it('throws ProjectMemberPeerForbiddenException and adds no entry when the guarded write misses', async () => {
+        it('passes the exception the guarded write rejected with through untouched and adds no entry', async () => {
             const targetMember = {
                 ...baseProjectMember,
                 userId: '507f1f77bcf86cd799439044',
                 role: EnumProjectMemberRole.member,
             };
-            projectMemberRepository.removeMemberInTx.mockResolvedValue(false);
+            const failure = new ProjectMemberPeerForbiddenException();
+            projectMemberRepository.removeMemberInTx.mockRejectedValue(failure);
 
             const rejection = service.removeMemberInTx(
                 tx,
@@ -887,10 +901,7 @@ describe('ProjectMemberService', () => {
                 targetMember
             );
 
-            await expect(rejection).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
-            });
+            await expect(rejection).rejects.toBe(failure);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
@@ -901,7 +912,11 @@ describe('ProjectMemberService', () => {
                 userId: '507f1f77bcf86cd799439044',
                 role: EnumProjectMemberRole.member,
             };
-            projectMemberRepository.removeMemberInTx.mockResolvedValue(true);
+            const written = {
+                ...targetMember,
+                userId: '507f1f77bcf86cd799439055',
+            };
+            projectMemberRepository.removeMemberInTx.mockResolvedValue(written);
 
             await service.removeMemberInTx(
                 tx,
@@ -930,7 +945,7 @@ describe('ProjectMemberService', () => {
                     userId: authContext.userId,
                     createdBy: authContext.userId,
                     workspaceId: project.workspaceId,
-                    metadata: { targetUserId: targetMember.userId },
+                    metadata: { targetUserId: written.userId },
                 }
             );
             expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
@@ -941,7 +956,7 @@ describe('ProjectMemberService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.projectMemberRemovedByAdmin,
-                    userId: targetMember.userId,
+                    userId: written.userId,
                     createdBy: authContext.userId,
                     workspaceId: project.workspaceId,
                     metadata: { actorUserId: authContext.userId },
@@ -955,8 +970,9 @@ describe('ProjectMemberService', () => {
     });
 
     describe('leaveProjectInTx', () => {
-        it('throws ProjectMemberNotFoundException and adds no entry when the row is gone', async () => {
-            projectMemberRepository.removeByIdInTx.mockResolvedValue(false);
+        it('passes the exception the delete rejected with through untouched and adds no entry', async () => {
+            const failure = new ProjectMemberNotFoundException();
+            projectMemberRepository.removeByIdInTx.mockRejectedValue(failure);
 
             const rejection = service.leaveProjectInTx(
                 tx,
@@ -967,16 +983,17 @@ describe('ProjectMemberService', () => {
                 baseProjectMember
             );
 
-            await expect(rejection).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.memberNotFound,
-            });
+            await expect(rejection).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('removes the member by id whatever its role and adds the left entry on the given tx', async () => {
             const member = baseProjectMember;
-            projectMemberRepository.removeByIdInTx.mockResolvedValue(true);
+            const written = {
+                ...member,
+                userId: '507f1f77bcf86cd799439055',
+            };
+            projectMemberRepository.removeByIdInTx.mockResolvedValue(written);
 
             await service.leaveProjectInTx(
                 tx,
@@ -1001,8 +1018,8 @@ describe('ProjectMemberService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.projectMemberLeft,
-                    userId: member.userId,
-                    createdBy: member.userId,
+                    userId: written.userId,
+                    createdBy: written.userId,
                     workspaceId: baseProject.workspaceId,
                 }
             );

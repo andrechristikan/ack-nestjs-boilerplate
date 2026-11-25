@@ -40,12 +40,13 @@ describe('RoleGetOneUseCase', () => {
 
     describe('execute', () => {
         it('wraps the domain role in the response envelope', async () => {
-            roleService.getOne.mockResolvedValue(roleWithPolicies);
+            roleService.getOneWithPolicies.mockResolvedValue(roleWithPolicies);
 
             const result = await useCase.execute(roleWithPolicies.id);
 
             expect(result).toEqual({ data: roleWithPolicies });
-            expect(roleService.getOne).toHaveBeenCalledWith(
+            expect(roleService.getOneWithPolicies).toHaveBeenCalledTimes(1);
+            expect(roleService.getOneWithPolicies).toHaveBeenCalledWith(
                 roleWithPolicies.id
             );
         });

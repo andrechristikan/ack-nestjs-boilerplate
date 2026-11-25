@@ -19,11 +19,8 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
-import { Prisma } from '@generated/prisma-client/client';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { SessionService } from '@modules/session/services/session.service';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import {
@@ -36,6 +33,7 @@ import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { MfaTotpNotEnabledException } from '@modules/mfa/exceptions/mfa.totp-not-enabled.exception';
 import type { IMfaReauthenticationResult } from '@modules/mfa/interfaces/mfa.interface';
+import { buildMfaFactorState } from '@test/unit/helpers/test.unit.mfa.helper';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
@@ -79,6 +77,7 @@ describe('MfaDisableTotpUseCase', () => {
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext(user.id);
+    const factorState = buildMfaFactorState('user-marten');
     const userContext = buildUserContext(user);
     const entryEffect: IActivityLogCreateManyEffect = {
         queue: EnumActivityLogQueue.activityLog,
@@ -87,7 +86,7 @@ describe('MfaDisableTotpUseCase', () => {
         priority: EnumQueuePriority.low,
         idempotencyKey: null,
     };
-    const revoked: ISessionRef[] = [{ id: 'session-one' }];
+    const revoked: ISessionRef[] = [{ id: 'session-one', userId: 'user-1' }];
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-05T00:00:00.000Z');
     const mfaVerified: IMfaReauthenticationResult = {
@@ -116,11 +115,11 @@ describe('MfaDisableTotpUseCase', () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
-        mfaTotpService.assertConfirmed.mockResolvedValue();
         userAuthService.checkReauthenticationPassword.mockResolvedValue(
             TestUnitReauthenticationPasswordPassed
         );
         mfaService.checkReauthentication.mockResolvedValue(mfaVerified);
+        mfaService.getFactorState.mockResolvedValue(factorState);
         userAuthService.getReauthenticationVerificationId.mockResolvedValue(
             null
         );
@@ -304,7 +303,10 @@ describe('MfaDisableTotpUseCase', () => {
             ).resolves.toEqual({});
 
             expect(mfaTotpService.assertConfirmed).toHaveBeenCalledWith(
-                'user-marten'
+                factorState.totp
+            );
+            expect(mfaTotpService.assertConfirmed).toHaveBeenCalledBefore(
+                userAuthService.checkReauthenticationPassword
             );
             expect(mfaService.isEnabled).not.toHaveBeenCalled();
             expect(mfaService.assertEnabled).not.toHaveBeenCalled();
@@ -322,7 +324,22 @@ describe('MfaDisableTotpUseCase', () => {
             });
             expect(
                 userAuthService.completeReauthenticationInTx
-            ).toHaveBeenCalledWith(tx, authContext, true, null);
+            ).toHaveBeenCalledWith(tx, authContext, true, null, false);
+            expect(mfaService.getFactorState).toHaveBeenCalledTimes(1);
+            expect(mfaService.getFactorState).toHaveBeenCalledWith(
+                'user-marten'
+            );
+            expect(mfaService.checkReauthentication).toHaveBeenCalledWith(
+                'user-marten',
+                expect.objectContaining({
+                    action: EnumUserReauthenticationAction.mfaTotpDisable,
+                }),
+                true,
+                factorState
+            );
+            expect(mfaService.getFactorState).toHaveBeenCalledBefore(
+                mfaService.checkReauthentication
+            );
             expect(
                 mfaService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
@@ -445,9 +462,9 @@ describe('MfaDisableTotpUseCase', () => {
         });
 
         it('asserts nothing and writes nothing when the user has no confirmed TOTP', async () => {
-            mfaTotpService.assertConfirmed.mockRejectedValue(
-                new MfaTotpNotEnabledException()
-            );
+            mfaTotpService.assertConfirmed.mockImplementation(() => {
+                throw new MfaTotpNotEnabledException();
+            });
 
             await expect(
                 useCase.execute(
@@ -489,31 +506,6 @@ describe('MfaDisableTotpUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('answers MfaNotEnabledException on a write conflict', async () => {
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                }
-            );
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    dto
-                )
-            ).rejects.toMatchObject({
-                statusCode: EnumMfaStatusCodeError.notEnabled,
-
-                module: 'mfa',
-            });
-        });
-
         it('rethrows an app exception of the transaction unchanged, adding no entry', async () => {
             const failure = new MfaInvalidException();
             userAuthService.completeReauthenticationInTx.mockRejectedValue(
@@ -534,7 +526,7 @@ describe('MfaDisableTotpUseCase', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('wraps any other transaction failure in the unknown exception', async () => {
+        it('rethrows any other failure of the transaction untouched', async () => {
             const cause = new Error('boom');
             databaseService.withTransaction.mockRejectedValue(cause);
 
@@ -546,10 +538,7 @@ describe('MfaDisableTotpUseCase', () => {
                     userContext,
                     dto
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

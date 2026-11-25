@@ -11,6 +11,7 @@ import type {
     IAnalyticRiskScoreOptions,
     IAnalyticSessionAfterAdmin,
     IAnalyticSharedFingerprint,
+    IAnalyticSnapshotItem,
     IAnalyticSnapshotItemInput,
 } from '@modules/analytic/interfaces/analytic.interface';
 
@@ -72,7 +73,9 @@ export interface IAnalyticFraudRepository {
         minUnusedTokens: number,
         params: IPaginationQueryOffsetParams
     ): Promise<IResponsePaginationReturn<IAnalyticForgotPasswordAbuse>>;
-    existsUserById(id: string): Promise<boolean>;
+    findRiskScoreByUser(
+        userId: string
+    ): Promise<IAnalyticSnapshotItem<IAnalyticFraudRiskScore> | null>;
     findRiskScoreCandidates(
         options: IAnalyticRiskScoreOptions
     ): Promise<IAnalyticSnapshotItemInput<IAnalyticFraudRiskScore>[]>;

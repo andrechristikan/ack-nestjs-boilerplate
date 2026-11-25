@@ -1,3 +1,4 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -17,7 +18,9 @@ import {
     UserActiveRecipientCursorScope,
     UserAdminListSelect,
     UserNotDeletedWhere,
+    UserProfileInclude,
     UserRecipientSelect,
+    UserStateSelect,
     UserWithRoleInclude,
 } from '@modules/user/constants/user.constant';
 import type {
@@ -30,6 +33,11 @@ import type {
     IUserUpdateProfile,
     IUserUpdateStatus,
 } from '@modules/user/interfaces/user.interface';
+import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
+import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
+import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
+import { UserStatusInvalidException } from '@modules/user/exceptions/user.status-invalid.exception';
+import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type { IUserRepository } from '@modules/user/interfaces/user.repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
@@ -65,7 +73,7 @@ export class UserRepository implements IUserRepository {
 
     private buildUserCreateData(
         input: IUserCreateWithWorkspaceInput
-    ): Prisma.UserUncheckedCreateInput {
+    ): Prisma.UserCreateManyInput {
         const lastWorkspaceChangedAt = this.helperDateService.now();
 
         return {
@@ -82,6 +90,11 @@ export class UserRepository implements IUserRepository {
             status: EnumUserStatus.active,
             lastWorkspaceId: input.workspaceContext.workspaceId,
             lastWorkspaceChangedAt,
+            lastLoginAt: input.login?.loginAt ?? null,
+            lastIpAddress: input.login?.ipAddress ?? null,
+            lastLoginFrom: input.login?.loginFrom ?? null,
+            lastLoginWith: input.login?.loginWith ?? null,
+            createdAt: input.createdAt,
             createdBy: input.createdBy,
             deletedAt: null,
             ...(input.password
@@ -176,15 +189,7 @@ export class UserRepository implements IUserRepository {
     async findOneProfileById(id: string): Promise<IUserProfile | null> {
         return this.databaseService.client.user.findUnique({
             where: { id, deletedAt: null },
-            include: {
-                ...UserWithRoleInclude,
-                country: true,
-                mobileNumbers: {
-                    include: {
-                        country: true,
-                    },
-                },
-            },
+            include: UserProfileInclude,
         });
     }
 
@@ -195,21 +200,18 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async findByEmails(emails: string[]): Promise<IUser[]> {
+    async findByEmailsOrUsernames(
+        emails: string[],
+        usernames: string[]
+    ): Promise<IUserRecipient[]> {
         return this.databaseService.client.user.findMany({
             where: {
-                email: { in: emails },
+                OR: [
+                    { email: { in: emails } },
+                    { username: { in: usernames } },
+                ],
             },
-            include: UserWithRoleInclude,
-        });
-    }
-
-    async findByUsernames(usernames: string[]): Promise<IUser[]> {
-        return this.databaseService.client.user.findMany({
-            where: {
-                username: { in: usernames },
-            },
-            include: UserWithRoleInclude,
+            select: UserRecipientSelect,
         });
     }
 
@@ -218,12 +220,12 @@ export class UserRepository implements IUserRepository {
         roleId: string | null,
         countryId: string | null,
         take: number
-    ): Promise<IUser[]> {
+    ): Promise<IUserList[]> {
         const where = this.buildExportWhere(status, roleId, countryId);
 
         return this.databaseService.client.user.findMany({
             where,
-            include: UserWithRoleInclude,
+            select: UserAdminListSelect,
             take,
         });
     }
@@ -265,26 +267,54 @@ export class UserRepository implements IUserRepository {
         input: IUserCreateWithWorkspaceInput
     ): Promise<IUser> {
         const createData = this.buildUserCreateData(input);
-        const user = await tx.user.create({
-            data: createData,
-            include: UserWithRoleInclude,
-        });
 
-        return user;
+        try {
+            return await tx.user.create({
+                data: createData,
+                include: UserWithRoleInclude,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'username',
+                        exception: new UserUsernameExistException(),
+                    },
+                    {
+                        field: 'email',
+                        exception: new UserEmailExistException(),
+                    },
+                ],
+                new AppUnknownException(error)
+            );
+        }
     }
 
     async createManyInTx(
         tx: IDatabaseTransactionClient,
         inputs: IUserCreateWithWorkspaceInput[]
-    ): Promise<IUser[]> {
-        const users: IUser[] = [];
+    ): Promise<void> {
+        const data = inputs.map(input => this.buildUserCreateData(input));
 
-        for (const input of inputs) {
-            const user = await this.createInTx(tx, input);
-            users.push(user);
+        try {
+            await tx.user.createMany({ data });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'username',
+                        exception: new UserUsernameExistException(),
+                    },
+                    {
+                        field: 'email',
+                        exception: new UserEmailExistException(),
+                    },
+                ],
+                new AppUnknownException(error)
+            );
         }
-
-        return users;
     }
 
     async updateStatusByAdminInTx(
@@ -292,20 +322,22 @@ export class UserRepository implements IUserRepository {
         id: string,
         currentStatus: EnumUserStatus,
         { status, passwordAttempt, passwordLockedUntil }: IUserUpdateStatus
-    ): Promise<User | null> {
-        const { count } = await tx.user.updateMany({
-            where: { id, status: currentStatus, deletedAt: null },
-            data: {
-                status,
-                passwordAttempt,
-                passwordLockedUntil,
-            },
-        });
-        if (count === 0) {
-            return null;
+    ): Promise<User> {
+        try {
+            return await tx.user.update({
+                where: { id, status: currentStatus, deletedAt: null },
+                data: {
+                    status,
+                    passwordAttempt,
+                    passwordLockedUntil,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new UserStatusInvalidException()
+            );
         }
-
-        return tx.user.findUnique({ where: { id } });
     }
 
     async updateProfileInTx(
@@ -370,12 +402,25 @@ export class UserRepository implements IUserRepository {
         userId: string,
         { username }: UserClaimUsernameRequestDto
     ): Promise<User> {
-        return tx.user.update({
-            where: { id: userId, deletedAt: null },
-            data: {
-                username,
-            },
-        });
+        try {
+            return await tx.user.update({
+                where: { id: userId, deletedAt: null },
+                data: {
+                    username,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'username',
+                        exception: new UserUsernameExistException(),
+                    },
+                ],
+                new UserNotFoundException()
+            );
+        }
     }
 
     async setLastWorkspaceInTx(
@@ -416,17 +461,24 @@ export class UserRepository implements IUserRepository {
         { passwordCreated, passwordExpired, passwordHash }: IAuthPassword,
         updatedBy: string
     ): Promise<User> {
-        return tx.user.update({
-            where: { id: userId, deletedAt: null },
-            data: {
-                password: passwordHash,
-                passwordCreated,
-                passwordExpired,
-                passwordAttempt: 0,
-                passwordLockedUntil: null,
-                updatedBy,
-            },
-        });
+        try {
+            return await tx.user.update({
+                where: { id: userId, deletedAt: null },
+                data: {
+                    password: passwordHash,
+                    passwordCreated,
+                    passwordExpired,
+                    passwordAttempt: 0,
+                    passwordLockedUntil: null,
+                    updatedBy,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new UserNotFoundException()
+            );
+        }
     }
 
     async incrementPasswordAttemptInTx(
@@ -438,7 +490,7 @@ export class UserRepository implements IUserRepository {
         const { passwordAttempt } = await tx.user.update({
             where: { id: userId, deletedAt: null },
             data: { passwordAttempt: { increment: 1 } },
-            select: { passwordAttempt: true },
+            select: UserStateSelect,
         });
         if (passwordAttempt < maxAttempt) {
             return false;
@@ -456,10 +508,17 @@ export class UserRepository implements IUserRepository {
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<User> {
-        return tx.user.update({
-            where: { id: userId, deletedAt: null },
-            data: { passwordAttempt: 0, passwordLockedUntil: null },
-        });
+        try {
+            return await tx.user.update({
+                where: { id: userId, deletedAt: null },
+                data: { passwordAttempt: 0, passwordLockedUntil: null },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new UserNotFoundException()
+            );
+        }
     }
 
     async markVerifiedBySocialInTx(
@@ -486,14 +545,21 @@ export class UserRepository implements IUserRepository {
         userId: string,
         verifiedAt: Date
     ): Promise<User> {
-        return tx.user.update({
-            where: { id: userId, deletedAt: null },
-            data: {
-                isVerified: true,
-                verifiedAt,
-                updatedBy: userId,
-            },
-        });
+        try {
+            return await tx.user.update({
+                where: { id: userId, deletedAt: null, isVerified: false },
+                data: {
+                    isVerified: true,
+                    verifiedAt,
+                    updatedBy: userId,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new UserEmailAlreadyVerifiedException()
+            );
+        }
     }
 
     async updateLoginInTx(
@@ -502,7 +568,8 @@ export class UserRepository implements IUserRepository {
         loginFrom: EnumUserLoginFrom,
         loginWith: EnumUserLoginWith,
         ipAddress: string | null,
-        loginAt: Date
+        loginAt: Date,
+        isPasswordAttemptReset: boolean
     ): Promise<User> {
         return tx.user.update({
             where: { id: userId, deletedAt: null },
@@ -512,18 +579,27 @@ export class UserRepository implements IUserRepository {
                 lastLoginFrom: loginFrom,
                 lastLoginWith: loginWith,
                 updatedBy: userId,
+                ...(isPasswordAttemptReset && {
+                    passwordAttempt: 0,
+                    passwordLockedUntil: null,
+                }),
             },
         });
     }
 
     async touchUpdatedByInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        userId: string,
+        isPasswordChecked: boolean
     ): Promise<void> {
         await tx.user.update({
             where: { id: userId, deletedAt: null },
             data: {
                 updatedBy: userId,
+                ...(isPasswordChecked && {
+                    passwordAttempt: 0,
+                    passwordLockedUntil: null,
+                }),
             },
         });
     }

@@ -6,7 +6,7 @@ import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticBucketsResult,
-    IAnalyticCountBucket,
+    IAnalyticBucketsSnapshotMeta,
     IAnalyticMetricCount,
     IAnalyticMetricRate,
     IAnalyticSnapshotBucketsResult,
@@ -14,12 +14,11 @@ import type {
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticDeviceRepository } from '@modules/analytic/repositories/analytic.device.repository';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
-import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
 import { AnalyticBucketsResultCacheSchema } from '@modules/analytic/dtos/analytic.buckets-result-cache.dto';
-import { AnalyticDevicePerUserSnapshotDataSchema } from '@modules/analytic/dtos/analytic.device-per-user-snapshot-data.dto';
+import { AnalyticBucketsSnapshotMetaSchema } from '@modules/analytic/dtos/analytic.buckets-snapshot-meta.dto';
 import { AnalyticMetricCountCacheSchema } from '@modules/analytic/dtos/analytic.metric-count-cache.dto';
 import { AnalyticMetricRateCacheSchema } from '@modules/analytic/dtos/analytic.metric-rate-cache.dto';
 
@@ -31,7 +30,6 @@ export class AnalyticDeviceService {
         private readonly configService: ConfigService,
         private readonly analyticCache: AnalyticCache,
         private readonly cacheService: CacheService,
-        private readonly analyticBucketUtil: AnalyticBucketUtil,
         private readonly analyticSnapshotService: AnalyticSnapshotService,
         private readonly helperDateService: HelperDateService,
         private readonly helperNumberService: HelperNumberService,
@@ -98,18 +96,26 @@ export class AnalyticDeviceService {
     }
 
     async computeDevicePerUser(): Promise<
-        IAnalyticSnapshotResult<IAnalyticCountBucket, null>
+        IAnalyticSnapshotResult<never, IAnalyticBucketsSnapshotMeta>
     > {
         const buckets = await this.analyticDeviceRepository.groupPerUser();
 
-        return this.analyticBucketUtil.toBucketSnapshot(buckets);
+        return {
+            items: [],
+            metadata: { buckets },
+            windowStart: null,
+            windowEnd: null,
+        };
     }
 
     async getDevicePerUser(): Promise<IAnalyticSnapshotBucketsResult> {
-        return this.analyticSnapshotService.getBuckets(
-            EnumAnalyticSnapshotSignal.devicePerUser,
-            AnalyticDevicePerUserSnapshotDataSchema
-        );
+        const { metadata, computedAt } =
+            await this.analyticSnapshotService.getSummary(
+                EnumAnalyticSnapshotSignal.devicePerUser,
+                AnalyticBucketsSnapshotMetaSchema
+            );
+
+        return { buckets: metadata?.buckets ?? [], computedAt };
     }
 
     async getDeviceInactivity(): Promise<IAnalyticMetricCount> {

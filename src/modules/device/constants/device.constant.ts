@@ -4,32 +4,10 @@ import type { Prisma } from '@generated/prisma-client/client';
 export const DeviceFingerprintRegex = /^[A-Za-z0-9._:-]+$/;
 
 /** @public */
-export const DeviceOwnershipNotificationTokenSelect = {
-    notificationToken: true,
-} satisfies Prisma.DeviceOwnershipSelect;
-
-/** @public */
-export const DeviceOwnershipRevokedSelect = {
-    isRevoked: true,
-} satisfies Prisma.DeviceOwnershipSelect;
-
-/** @public */
-export const DeviceOwnershipDeviceIdSelect = {
-    deviceId: true,
-} satisfies Prisma.DeviceOwnershipSelect;
-
-/** @public */
-export const DeviceOwnershipSessionIdSelect = {
+export const DeviceOwnershipRefSelect = {
     id: true,
-} satisfies Prisma.SessionSelect;
-
-/** @public */
-export const DeviceOwnershipAnalyticFingerprintSelect = {
     userId: true,
-    device: { select: { fingerprint: true } },
-} satisfies Prisma.DeviceOwnershipSelect;
-
-/** @public */
-export const DeviceOwnershipAnalyticIdSelect = {
-    id: true,
+    deviceId: true,
+    isRevoked: true,
+    notificationToken: true,
 } satisfies Prisma.DeviceOwnershipSelect;

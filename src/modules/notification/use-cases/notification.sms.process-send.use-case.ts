@@ -22,7 +22,9 @@ export class NotificationSmsProcessSendUseCase implements IAppUseCase<
 
     async execute(
         outboxId: string,
-        {
+        payload: INotificationSmsSendPayload
+    ): Promise<IQueueResponse> {
+        const {
             kind,
             notificationId,
             userId,
@@ -30,8 +32,7 @@ export class NotificationSmsProcessSendUseCase implements IAppUseCase<
             encryptedMobileNumber,
             context,
             completedSteps,
-        }: INotificationSmsSendPayload
-    ): Promise<IQueueResponse> {
+        } = payload;
         if (!completedSteps.includes(EnumNotificationStep.sendSms)) {
             // Sequential by design: side effects whose order is part of the contract (processedAt before the send, the step recorded after its success, sentAt last)
             await this.notificationSmsDeliveryService.stampProcessed(
@@ -61,7 +62,8 @@ export class NotificationSmsProcessSendUseCase implements IAppUseCase<
                 mobileNumber,
                 body
             );
-            await this.outboxService.updateData(outboxId, {
+            await this.outboxService.replaceData(outboxId, {
+                ...payload,
                 completedSteps: [EnumNotificationStep.sendSms],
             });
         }

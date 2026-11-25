@@ -87,8 +87,6 @@ Stop before the last ticket only when:
 - Each deviation from the spec, with its reason.
 - Each decision and assumption made during the build.
 - Each owner answer that rejected a named alternative, as a decision candidate (the choice, the rejected option, the owner's reason): name `/ack-harness`.
-- The plan's `## Owner commands`.
-- The `docs/` pages the change makes stale, as a list for `/ack-doc`.
 - A new command, path pattern, or convention the harness does not describe: name `/ack-harness`.
 
 ## Next

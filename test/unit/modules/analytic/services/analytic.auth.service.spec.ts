@@ -18,15 +18,14 @@ import {
 import { AnalyticAuthRepository } from '@modules/analytic/repositories/analytic.auth.repository';
 import { AnalyticAuthService } from '@modules/analytic/services/analytic.auth.service';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
-import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
+import { AnalyticBucketsSnapshotMetaSchema } from '@modules/analytic/dtos/analytic.buckets-snapshot-meta.dto';
 import { AnalyticBucketsResultCacheSchema } from '@modules/analytic/dtos/analytic.buckets-result-cache.dto';
-import { AnalyticConcurrentSessionsSnapshotDataSchema } from '@modules/analytic/dtos/analytic.concurrent-sessions-snapshot-data.dto';
 import { AnalyticForgotPasswordConversionCacheSchema } from '@modules/analytic/dtos/analytic.forgot-password-conversion-cache.dto';
 import { AnalyticLockoutMetricsCacheSchema } from '@modules/analytic/dtos/analytic.lockout-metrics-cache.dto';
 import { AnalyticMetricCountCacheSchema } from '@modules/analytic/dtos/analytic.metric-count-cache.dto';
@@ -88,7 +87,6 @@ describe('AnalyticAuthService', () => {
                 { provide: CacheService, useValue: cacheService },
                 { provide: ConfigService, useValue: configService },
                 ...TestUnitKitProviders,
-                AnalyticBucketUtil,
                 {
                     provide: AnalyticSnapshotService,
                     useValue: analyticSnapshotService,
@@ -307,70 +305,62 @@ describe('AnalyticAuthService', () => {
     });
 
     describe('getAuthConcurrentSessions', () => {
-        it('reads the stored buckets through the snapshot service with no cache', async () => {
-            const stored = {
-                buckets: [{ key: '1', count: 2 }],
+        it('reads the header buckets through the snapshot service with no cache', async () => {
+            const buckets = [{ key: '1', count: 2 }];
+            analyticSnapshotService.getSummary.mockResolvedValue({
+                count: 0,
+                metadata: { buckets },
+                windowStart: null,
+                windowEnd: null,
                 computedAt: now,
-            };
-            analyticSnapshotService.getBuckets.mockResolvedValue(stored);
+            });
 
             const result = await service.getAuthConcurrentSessions();
 
-            expect(result).toBe(stored);
-            expect(analyticSnapshotService.getBuckets).toHaveBeenCalledWith(
+            expect(result).toEqual({ buckets, computedAt: now });
+            expect(analyticSnapshotService.getSummary).toHaveBeenCalledTimes(1);
+            expect(analyticSnapshotService.getSummary).toHaveBeenCalledWith(
                 EnumAnalyticSnapshotSignal.concurrentSessions,
-                AnalyticConcurrentSessionsSnapshotDataSchema
+                AnalyticBucketsSnapshotMetaSchema
             );
             expect(cacheService.readThrough).not.toHaveBeenCalled();
+        });
+
+        it('answers no buckets and a null computedAt when the summary carries no metadata', async () => {
+            analyticSnapshotService.getSummary.mockResolvedValue({
+                count: 0,
+                metadata: null,
+                windowStart: null,
+                windowEnd: null,
+                computedAt: null,
+            });
+
+            const result = await service.getAuthConcurrentSessions();
+
+            expect(result).toEqual({ buckets: [], computedAt: null });
         });
     });
 
     describe('computeConcurrentSessions', () => {
-        it('turns the four repository buckets into a snapshot result without bucketing', async () => {
+        it('returns no items and the repository buckets as metadata', async () => {
             const buckets = [
                 { key: '1', count: 2 },
                 { key: '2', count: 0 },
                 { key: '3-5', count: 1 },
                 { key: '6+', count: 0 },
             ];
-            const snapshot = {
-                items: [
-                    {
-                        key: '1',
-                        value: 0,
-                        occurredAt: null,
-                        data: { key: '1', count: 2 },
-                    },
-                    {
-                        key: '2',
-                        value: 1,
-                        occurredAt: null,
-                        data: { key: '2', count: 0 },
-                    },
-                    {
-                        key: '3-5',
-                        value: 2,
-                        occurredAt: null,
-                        data: { key: '3-5', count: 1 },
-                    },
-                    {
-                        key: '6+',
-                        value: 3,
-                        occurredAt: null,
-                        data: { key: '6+', count: 0 },
-                    },
-                ],
-                metadata: null,
-                windowStart: null,
-                windowEnd: null,
-            };
             analyticAuthRepository.findConcurrentSessions.mockResolvedValue(
                 buckets
             );
 
             const result = await service.computeConcurrentSessions();
 
-            expect(result).toEqual(snapshot);
+            expect(result).toEqual({
+                items: [],
+                metadata: { buckets },
+                windowStart: null,
+                windowEnd: null,
+            });
             expect(
                 analyticAuthRepository.findConcurrentSessions
             ).toHaveBeenCalledTimes(1);

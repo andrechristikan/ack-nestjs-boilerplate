@@ -1,5 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type {
     IPaginationEqual,
@@ -10,12 +11,9 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { Prisma } from '@generated/prisma-client/client';
 import type { EnumDeviceNotificationProvider } from '@generated/prisma-client/client';
-import {
-    DeviceOwnershipDeviceIdSelect,
-    DeviceOwnershipNotificationTokenSelect,
-    DeviceOwnershipRevokedSelect,
-    DeviceOwnershipSessionIdSelect,
-} from '@modules/device/constants/device.constant';
+import { DeviceOwnershipRefSelect } from '@modules/device/constants/device.constant';
+import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
+import { SessionRefSelect } from '@modules/session/constants/session.constant';
 import type {
     IDeviceOwnership,
     IDeviceOwnershipLoginUpsert,
@@ -32,7 +30,8 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     private ownershipInclude(
@@ -63,6 +62,23 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         };
     }
 
+    private ownershipWithSessionInclude(
+        today: Date,
+        idleSince: Date,
+        sessionId: string
+    ): Prisma.DeviceOwnershipInclude {
+        const ownershipInclude = this.ownershipInclude(today, idleSince);
+
+        return {
+            ...ownershipInclude,
+            sessions: {
+                where: { id: sessionId },
+                take: 1,
+                select: SessionRefSelect,
+            },
+        };
+    }
+
     async upsertActiveInTx(
         tx: IDatabaseTransactionClient,
         deviceId: string,
@@ -74,7 +90,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         const where = { deviceId_userId: { deviceId, userId } };
         const existing = await tx.deviceOwnership.findUnique({
             where,
-            select: DeviceOwnershipRevokedSelect,
+            select: DeviceOwnershipRefSelect,
         });
         const isNewOwnership = existing === null || existing.isRevoked;
 
@@ -138,31 +154,31 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         removedBy: string,
         now: Date,
         idleSince: Date
-    ): Promise<IDeviceOwnership | null> {
-        const { count } = await tx.deviceOwnership.updateMany({
-            where: {
-                id: deviceOwnershipId,
-                userId,
-                isRevoked: false,
-            },
-            data: {
-                isRevoked: true,
-                revokedAt: now,
-                revokedById: removedBy,
-                notificationToken: null,
-                notificationProvider: null,
-            },
-        });
-        if (count === 0) {
-            return null;
+    ): Promise<IDeviceOwnership> {
+        const include = this.ownershipInclude(now, idleSince);
+
+        try {
+            return await tx.deviceOwnership.update({
+                where: {
+                    id: deviceOwnershipId,
+                    userId,
+                    isRevoked: false,
+                },
+                data: {
+                    isRevoked: true,
+                    revokedAt: now,
+                    revokedById: removedBy,
+                    notificationToken: null,
+                    notificationProvider: null,
+                },
+                include,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new DeviceNotFoundException()
+            );
         }
-
-        const ownershipInclude = this.ownershipInclude(now, idleSince);
-
-        return tx.deviceOwnership.findUnique({
-            where: { id: deviceOwnershipId },
-            include: ownershipInclude,
-        });
     }
 
     async revokeAllByUserInTx(
@@ -217,7 +233,11 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         idleSince: Date
     ): Promise<IResponsePaginationReturn<IDeviceOwnershipWithSession>> {
         const today = this.helperDateService.now();
-        const ownershipInclude = this.ownershipInclude(today, idleSince);
+        const include = this.ownershipWithSessionInclude(
+            today,
+            idleSince,
+            sessionId
+        );
 
         return this.paginationService.cursor(
             this.databaseService.client.deviceOwnership,
@@ -228,16 +248,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
                     userId,
                     isRevoked: false,
                 },
-                include: {
-                    ...ownershipInclude,
-                    sessions: {
-                        where: {
-                            id: sessionId,
-                        },
-                        take: 1,
-                        select: DeviceOwnershipSessionIdSelect,
-                    },
-                },
+                include,
             }
         );
     }
@@ -261,7 +272,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
                         },
                     },
                 },
-                select: DeviceOwnershipNotificationTokenSelect,
+                select: DeviceOwnershipRefSelect,
             }
         );
 
@@ -277,29 +288,29 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         { notificationToken }: IDeviceRefresh,
         notificationProvider: EnumDeviceNotificationProvider | null,
         now: Date
-    ): Promise<string | null> {
-        const { count } = await tx.deviceOwnership.updateMany({
-            where: {
-                id: deviceOwnershipId,
-                userId,
-                isRevoked: false,
-            },
-            data: {
-                lastActiveAt: now,
-                notificationToken,
-                notificationProvider,
-            },
-        });
-        if (count === 0) {
-            return null;
+    ): Promise<string> {
+        try {
+            const ownership = await tx.deviceOwnership.update({
+                where: {
+                    id: deviceOwnershipId,
+                    userId,
+                    isRevoked: false,
+                },
+                data: {
+                    lastActiveAt: now,
+                    notificationToken,
+                    notificationProvider,
+                },
+                select: DeviceOwnershipRefSelect,
+            });
+
+            return ownership.deviceId;
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new DeviceNotFoundException()
+            );
         }
-
-        const ownership = await tx.deviceOwnership.findUnique({
-            where: { id: deviceOwnershipId },
-            select: DeviceOwnershipDeviceIdSelect,
-        });
-
-        return ownership?.deviceId ?? null;
     }
 
     async touchInTx(
@@ -308,24 +319,29 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         deviceOwnershipId: string,
         now: Date
     ): Promise<string | null> {
-        const { count } = await tx.deviceOwnership.updateMany({
-            where: {
-                id: deviceOwnershipId,
-                userId,
-                isRevoked: false,
-            },
-            data: { lastActiveAt: now },
-        });
-        if (count === 0) {
-            return null;
+        try {
+            const ownership = await tx.deviceOwnership.update({
+                where: {
+                    id: deviceOwnershipId,
+                    userId,
+                    isRevoked: false,
+                },
+                data: { lastActiveAt: now },
+                select: DeviceOwnershipRefSelect,
+            });
+
+            return ownership.deviceId;
+        } catch (error: unknown) {
+            const isNotFound = this.databaseUtil.isRecordNotFound(error);
+            if (isNotFound) {
+                return null;
+            }
+
+            throw this.databaseUtil.toWriteException(
+                error,
+                new DeviceNotFoundException()
+            );
         }
-
-        const ownership = await tx.deviceOwnership.findUnique({
-            where: { id: deviceOwnershipId },
-            select: DeviceOwnershipDeviceIdSelect,
-        });
-
-        return ownership?.deviceId ?? null;
     }
 
     async clearTokenFromOtherUsersInTx(
@@ -357,7 +373,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
                 userId: { not: userId },
                 isRevoked: false,
             },
-            select: { id: true },
+            select: DeviceOwnershipRefSelect,
         });
 
         return ownerships.map(ownership => ownership.id);

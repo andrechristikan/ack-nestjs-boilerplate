@@ -46,13 +46,14 @@ export class UserSendReauthenticationOtpUseCase implements IAppUseCase<
         this.userService.assertEmailDeliverable();
 
         // Sequential by design: a write after its checks
-        const [isMfaEnabled] = await Promise.all([
-            this.mfaService.isEnabled(user.id),
+        const [state] = await Promise.all([
+            this.mfaService.getFactorState(user.id),
             this.userVerificationService.assertReauthenticationResendable(
                 user.id,
                 action
             ),
         ]);
+        const isMfaEnabled = await this.mfaService.isEnabled(state);
         this.userAuthService.assertReauthenticationOtpAllowed(
             user,
             isMfaEnabled

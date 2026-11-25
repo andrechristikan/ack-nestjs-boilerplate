@@ -1,3 +1,4 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -10,9 +11,17 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
-import type { Workspace } from '@generated/prisma-client/client';
+import type { Prisma, Workspace } from '@generated/prisma-client/client';
+import {
+    WorkspaceMemberRefSelect,
+    WorkspaceMemberWithUserStateInclude,
+    WorkspaceRefSelect,
+} from '@modules/workspace/constants/workspace.constant';
+import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
+import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import type {
     IWorkspaceCreate,
+    IWorkspaceOwnedUser,
     IWorkspaceUpdate,
     IWorkspaceWithJoinMembers,
     IWorkspaceWithMembers,
@@ -37,6 +46,59 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         )!;
     }
 
+    private memberInclude(userId: string): {
+        members: { where: Prisma.WorkspaceMemberWhereInput; take: 1 };
+    } {
+        return {
+            members: { where: { userId }, take: 1 },
+        };
+    }
+
+    private joinMembersInclude(userId: string): {
+        members: {
+            where: Prisma.WorkspaceMemberWhereInput;
+            select: typeof WorkspaceMemberRefSelect;
+        };
+    } {
+        return {
+            members: {
+                where: {
+                    OR: [
+                        { userId },
+                        {
+                            role: {
+                                in: [
+                                    EnumWorkspaceMemberRole.owner,
+                                    EnumWorkspaceMemberRole.admin,
+                                ],
+                            },
+                        },
+                    ],
+                },
+                select: WorkspaceMemberRefSelect,
+            },
+        };
+    }
+
+    private transferMembersInclude(targetUserId: string): {
+        members: {
+            where: Prisma.WorkspaceMemberWhereInput;
+            include: typeof WorkspaceMemberWithUserStateInclude;
+        };
+    } {
+        return {
+            members: {
+                where: {
+                    OR: [
+                        { role: EnumWorkspaceMemberRole.owner },
+                        { userId: targetUserId },
+                    ],
+                },
+                include: WorkspaceMemberWithUserStateInclude,
+            },
+        };
+    }
+
     async findActiveByIdWithMember(
         workspaceId: string,
         userId: string
@@ -46,12 +108,14 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             return null;
         }
 
+        const include = this.memberInclude(userId);
+
         return this.databaseService.client.workspace.findFirst({
             where: {
                 id: workspaceId,
                 deletedAt: null,
             },
-            include: { members: { where: { userId }, take: 1 } },
+            include,
         });
     }
 
@@ -64,29 +128,14 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             return null;
         }
 
+        const include = this.joinMembersInclude(userId);
+
         return this.databaseService.client.workspace.findFirst({
             where: {
                 id: workspaceId,
                 deletedAt: null,
             },
-            include: {
-                members: {
-                    where: {
-                        OR: [
-                            { userId },
-                            {
-                                role: {
-                                    in: [
-                                        EnumWorkspaceMemberRole.owner,
-                                        EnumWorkspaceMemberRole.admin,
-                                    ],
-                                },
-                            },
-                        ],
-                    },
-                    select: { userId: true, role: true },
-                },
-            },
+            include,
         });
     }
 
@@ -99,24 +148,14 @@ export class WorkspaceRepository implements IWorkspaceRepository {
             return null;
         }
 
+        const include = this.transferMembersInclude(targetUserId);
+
         return this.databaseService.client.workspace.findFirst({
             where: {
                 id: workspaceId,
                 deletedAt: null,
             },
-            include: {
-                members: {
-                    where: {
-                        OR: [
-                            { role: EnumWorkspaceMemberRole.owner },
-                            { userId: targetUserId },
-                        ],
-                    },
-                    include: {
-                        user: { select: { status: true, deletedAt: true } },
-                    },
-                },
-            },
+            include,
         });
     }
 
@@ -178,17 +217,60 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         slug: string,
         workspaceId: string
     ): Promise<Workspace> {
-        return tx.workspace.create({
-            data: {
-                id: workspaceId,
-                name,
-                slug,
-                description,
-                isPublic: isPublic ?? false,
-                createdBy: ownerId,
-                deletedAt: null,
-            },
-        });
+        try {
+            return await tx.workspace.create({
+                data: {
+                    id: workspaceId,
+                    name,
+                    slug,
+                    description,
+                    isPublic: isPublic ?? false,
+                    createdBy: ownerId,
+                    deletedAt: null,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'slug',
+                        exception: new WorkspaceSlugAlreadyExistsException(),
+                    },
+                ],
+                new AppUnknownException(error)
+            );
+        }
+    }
+
+    async createManyInTx(
+        tx: IDatabaseTransactionClient,
+        users: IWorkspaceOwnedUser[]
+    ): Promise<void> {
+        try {
+            await tx.workspace.createMany({
+                data: users.map(({ userId, workspaceId, name, slug }) => ({
+                    id: workspaceId,
+                    name,
+                    slug,
+                    description: null,
+                    isPublic: false,
+                    createdBy: userId,
+                    deletedAt: null,
+                })),
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'slug',
+                        exception: new WorkspaceSlugAlreadyExistsException(),
+                    },
+                ],
+                new AppUnknownException(error)
+            );
+        }
     }
 
     async updateDetailsInTx(
@@ -220,12 +302,25 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         workspaceId: string,
         slug: string
     ): Promise<Workspace> {
-        return tx.workspace.update({
-            where: { id: workspaceId },
-            data: {
-                slug,
-            },
-        });
+        try {
+            return await tx.workspace.update({
+                where: { id: workspaceId },
+                data: {
+                    slug,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'slug',
+                        exception: new WorkspaceSlugAlreadyExistsException(),
+                    },
+                ],
+                new WorkspaceNotFoundException()
+            );
+        }
     }
 
     async softDeleteInTx(
@@ -233,22 +328,35 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         workspaceId: string,
         deletedAt: Date,
         deletedBy: string
-    ): Promise<boolean> {
+    ): Promise<string | null> {
         const deletedSlugPattern = this.deletedSlugPattern;
-        const { count } = await tx.workspace.updateMany({
-            where: {
-                id: workspaceId,
-                deletedAt: null,
-            },
-            data: {
-                slug: deletedSlugPattern.replace('{id}', () => workspaceId),
-                deletedAt,
-                deletedBy,
-                updatedBy: deletedBy,
-            },
-        });
+        try {
+            const workspace = await tx.workspace.update({
+                where: {
+                    id: workspaceId,
+                    deletedAt: null,
+                },
+                data: {
+                    slug: deletedSlugPattern.replace('{id}', () => workspaceId),
+                    deletedAt,
+                    deletedBy,
+                    updatedBy: deletedBy,
+                },
+                select: WorkspaceRefSelect,
+            });
 
-        return count > 0;
+            return workspace.id;
+        } catch (error: unknown) {
+            const isRecordNotFound = this.databaseUtil.isRecordNotFound(error);
+            if (isRecordNotFound) {
+                return null;
+            }
+
+            throw this.databaseUtil.toWriteException(
+                error,
+                new WorkspaceNotFoundException()
+            );
+        }
     }
 
     async existsOwnedWithOtherMembers(
@@ -262,7 +370,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
                     deletedAt: null,
                     members: { some: { userId: { not: userId } } },
                 },
-                select: { id: true },
+                select: WorkspaceRefSelect,
             }
         );
 

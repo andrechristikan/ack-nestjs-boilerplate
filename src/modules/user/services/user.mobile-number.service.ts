@@ -74,13 +74,14 @@ export class UserMobileNumberService {
         }
     }
 
-    /** Adds the mobile number, touches the user, and adds the entry on the caller's transaction. */
+    /** Adds the mobile number, touches the user (clearing the password attempt when its password was checked), and adds the entry on the caller's transaction. */
     async addMobileNumberInTx(
         tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
-        { number, countryId, phoneCode }: IUserMobileNumberInput
+        { number, countryId, phoneCode }: IUserMobileNumberInput,
+        isPasswordChecked: boolean
     ): Promise<IUserMobileNumber> {
         const userId = authContext.userId;
         const mobileNumber = await this.userMobileNumberRepository.addInTx(
@@ -92,7 +93,11 @@ export class UserMobileNumberService {
                 phoneCode,
             }
         );
-        await this.userService.touchUpdatedByInTx(tx, userId);
+        await this.userService.touchUpdatedByInTx(
+            tx,
+            userId,
+            isPasswordChecked
+        );
 
         const entry = this.activityLogQueue.recordEffect(
             requestContext,
@@ -162,14 +167,15 @@ export class UserMobileNumberService {
         return `+${phoneCode}${number}`;
     }
 
-    /** Updates the mobile number, touches the user, and adds the entry on the caller's transaction; a changed number or phone code clears the verification and marks the number's unused codes used. */
+    /** Updates the mobile number, touches the user (clearing the password attempt when its password was checked), and adds the entry on the caller's transaction; a changed number or phone code clears the verification and marks the number's unused codes used. */
     async updateMobileNumberInTx(
         tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         current: IUserMobileNumberSummary,
-        { number, countryId, phoneCode }: IUserMobileNumberInput
+        { number, countryId, phoneCode }: IUserMobileNumberInput,
+        isPasswordChecked: boolean
     ): Promise<IUserMobileNumber> {
         const userId = authContext.userId;
         const isChanged =
@@ -188,9 +194,6 @@ export class UserMobileNumberService {
             },
             isVerified
         );
-        if (!mobileNumber) {
-            throw new UserMobileNumberNotFoundException();
-        }
 
         let expiring = Promise.resolve();
         if (isChanged) {
@@ -201,7 +204,7 @@ export class UserMobileNumberService {
                 );
         }
         await Promise.all([
-            this.userService.touchUpdatedByInTx(tx, userId),
+            this.userService.touchUpdatedByInTx(tx, userId, isPasswordChecked),
             expiring,
         ]);
 
@@ -219,13 +222,14 @@ export class UserMobileNumberService {
         return mobileNumber;
     }
 
-    /** Deletes the mobile number, touches the user, marks the number's unused codes used, and adds the entry on the caller's transaction; a guarded delete that matches no row throws UserMobileNumberNotFoundException. */
+    /** Deletes the mobile number, touches the user (clearing the password attempt when its password was checked), marks the number's unused codes used, and adds the entry on the caller's transaction; a delete that matches no row rejects with UserMobileNumberNotFoundException. */
     async deleteMobileNumberInTx(
         tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
-        mobileNumberId: string
+        mobileNumberId: string,
+        isPasswordChecked: boolean
     ): Promise<IUserMobileNumber> {
         const userId = authContext.userId;
         // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
@@ -234,12 +238,9 @@ export class UserMobileNumberService {
             userId,
             mobileNumberId
         );
-        if (!mobileNumber) {
-            throw new UserMobileNumberNotFoundException();
-        }
 
         await Promise.all([
-            this.userService.touchUpdatedByInTx(tx, userId),
+            this.userService.touchUpdatedByInTx(tx, userId, isPasswordChecked),
             this.userVerificationService.expireActiveByMobileNumberInTx(
                 tx,
                 mobileNumberId

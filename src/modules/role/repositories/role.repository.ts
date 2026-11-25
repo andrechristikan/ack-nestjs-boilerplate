@@ -1,5 +1,7 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -12,6 +14,9 @@ import {
     RoleWithPoliciesInclude,
     RoleWithPolicyCountInclude,
 } from '@modules/role/constants/role.constant';
+import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import type {
     IRole,
     IRoleCreate,
@@ -21,13 +26,14 @@ import type {
 } from '@modules/role/interfaces/role.interface';
 import type { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { EnumRoleType } from '@generated/prisma-client/client';
+import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 
 @Injectable()
 export class RoleRepository implements IRoleRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findWithPaginationOffsetByAdmin(
@@ -95,13 +101,26 @@ export class RoleRepository implements IRoleRepository {
         roleId: string,
         data: IRoleCreate
     ): Promise<IRoleWithPolicies> {
-        return tx.role.create({
-            data: {
-                ...data,
-                id: roleId,
-            },
-            include: RoleWithPoliciesInclude,
-        });
+        try {
+            return await tx.role.create({
+                data: {
+                    ...data,
+                    id: roleId,
+                },
+                include: RoleWithPoliciesInclude,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: Prisma.RoleScalarFieldEnum.name,
+                        exception: new RoleExistException(),
+                    },
+                ],
+                new AppUnknownException(error)
+            );
+        }
     }
 
     async updateInTx(
@@ -109,29 +128,35 @@ export class RoleRepository implements IRoleRepository {
         id: string,
         expectedType: EnumRoleType,
         { description, type }: IRoleUpdate
-    ): Promise<IRoleWithPolicies | null> {
-        const { count } = await tx.role.updateMany({
-            where: { id, type: expectedType },
-            data: { description, type },
-        });
-        if (count === 0) {
-            return null;
+    ): Promise<IRoleWithPolicies> {
+        try {
+            return await tx.role.update({
+                where: { id, type: expectedType },
+                data: { description, type },
+                include: RoleWithPoliciesInclude,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new RoleNotFoundException()
+            );
         }
-
-        return tx.role.findUnique({
-            where: { id },
-            include: RoleWithPoliciesInclude,
-        });
     }
 
     async deleteUnusedInTx(
         tx: IDatabaseTransactionClient,
         id: string
-    ): Promise<boolean> {
-        const { count } = await tx.role.deleteMany({
-            where: { id, isImmutable: false, users: { none: {} } },
-        });
-
-        return count > 0;
+    ): Promise<IRole> {
+        try {
+            return await tx.role.delete({
+                where: { id, isImmutable: false, users: { none: {} } },
+                select: RoleSelect,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new RoleUsedException()
+            );
+        }
     }
 }

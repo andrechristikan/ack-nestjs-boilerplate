@@ -16,6 +16,8 @@ import { UserReauthenticationOtpResendLimitException } from '@modules/user/excep
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
+import type { IMfaFactorState } from '@modules/mfa/interfaces/mfa.interface';
+import { buildMfaFactorState } from '@test/unit/helpers/test.unit.mfa.helper';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserService } from '@modules/user/services/user.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
@@ -51,12 +53,14 @@ describe('UserSendReauthenticationOtpUseCase', () => {
     const tx = {} as IDatabaseTransactionClient;
     const entry = buildActivityLogCreateManyEffect('activityLog');
     const dto = { action: EnumUserReauthenticationAction.mobileNumberDelete };
+    const factorState = buildMfaFactorState('user-swift');
 
     beforeEach(async () => {
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
         activityLogQueue.recordEffect.mockReturnValue(entry);
+        mfaService.getFactorState.mockResolvedValue(factorState);
         mfaService.isEnabled.mockResolvedValue(false);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -129,16 +133,20 @@ describe('UserSendReauthenticationOtpUseCase', () => {
             expect(
                 userAuthService.assertReauthenticationOtpAllowed
             ).toHaveBeenCalledWith(user, true);
-            expect(mfaService.isEnabled).toHaveBeenCalledWith('user-swift');
+            expect(mfaService.getFactorState).toHaveBeenCalledTimes(1);
+            expect(mfaService.getFactorState).toHaveBeenCalledWith(
+                'user-swift'
+            );
+            expect(mfaService.isEnabled).toHaveBeenCalledWith(factorState);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(
                 userVerificationService.sendReauthenticationInTx
             ).not.toHaveBeenCalled();
         });
 
-        it('checks the resend limit while the MFA read is still pending', async () => {
-            const gate = buildDeferred<boolean>();
-            mfaService.isEnabled.mockReturnValue(gate.promise);
+        it('checks the resend limit while the factor state read is still pending', async () => {
+            const gate = buildDeferred<IMfaFactorState>();
+            mfaService.getFactorState.mockReturnValue(gate.promise);
 
             const running = useCase.execute(
                 requestContext,
@@ -152,7 +160,7 @@ describe('UserSendReauthenticationOtpUseCase', () => {
                 userVerificationService.assertReauthenticationResendable
             ).toHaveBeenCalledWith('user-swift', dto.action);
 
-            gate.resolve(false);
+            gate.resolve(factorState);
             await running;
 
             expect(

@@ -193,6 +193,24 @@ describe('UserImportService', () => {
             ]);
         });
 
+        it('stamps every input with one creation time and records no term policy acceptance', async () => {
+            const result = await service.prepareImportByAdmin(
+                rows,
+                'admin-thistle',
+                role,
+                'country-thistle'
+            );
+
+            expect(result.inputs[0]).toMatchObject({
+                createdAt: now,
+                acceptedTermPolicyTypes: [],
+            });
+            expect(result.inputs[1]).toMatchObject({
+                createdAt: now,
+                acceptedTermPolicyTypes: [],
+            });
+        });
+
         it('creates every imported user verified at the verification time with a used verification row', async () => {
             const result = await service.prepareImportByAdmin(
                 rows,
@@ -391,22 +409,42 @@ describe('UserImportService', () => {
         });
     });
 
-    describe('getExistingEmails', () => {
-        it('answers the listed emails that already exist', async () => {
-            userRepository.findByEmails.mockResolvedValue([
-                { ...baseUser, email: 'thistle@example.com' },
+    describe('getImportByAdminChecks', () => {
+        it('reads once and splits the rows into the existing emails and the username checks', async () => {
+            userRepository.findByEmailsOrUsernames.mockResolvedValue([
+                {
+                    id: 'user-thistle',
+                    email: 'thistle@example.com',
+                    username: 'sageFinch',
+                    name: null,
+                },
+                {
+                    id: 'user-marigold',
+                    email: 'other@example.com',
+                    username: 'thistleRowe',
+                    name: null,
+                },
             ]);
 
-            await expect(
-                service.getExistingEmails([
-                    'thistle@example.com',
-                    'marigold@example.com',
-                ])
-            ).resolves.toEqual(['thistle@example.com']);
-            expect(userRepository.findByEmails).toHaveBeenCalledWith([
-                'thistle@example.com',
-                'marigold@example.com',
-            ]);
+            const result = await service.getImportByAdminChecks(
+                ['thistle@example.com', 'marigold@example.com'],
+                ['thistleRowe', 'damn']
+            );
+
+            expect(
+                userRepository.findByEmailsOrUsernames
+            ).toHaveBeenCalledTimes(1);
+            expect(userRepository.findByEmailsOrUsernames).toHaveBeenCalledWith(
+                ['thistle@example.com', 'marigold@example.com'],
+                ['thistleRowe', 'damn']
+            );
+            expect(result).toEqual({
+                existingEmails: ['thistle@example.com'],
+                usernameChecks: {
+                    existing: ['thistleRowe'],
+                    badWords: [false, true],
+                },
+            });
         });
     });
 
@@ -430,24 +468,6 @@ describe('UserImportService', () => {
                     },
                 })
             );
-        });
-    });
-
-    describe('getUsernameChecks', () => {
-        it('reads the existing usernames and the bad-word check of every username', async () => {
-            userRepository.findByUsernames.mockResolvedValue([
-                { ...baseUser, username: 'thistleRowe' },
-            ]);
-            await expect(
-                service.getUsernameChecks(['thistleRowe', 'damn'])
-            ).resolves.toEqual({
-                existing: ['thistleRowe'],
-                badWords: [false, true],
-            });
-            expect(userRepository.findByUsernames).toHaveBeenCalledWith([
-                'thistleRowe',
-                'damn',
-            ]);
         });
     });
 
@@ -588,23 +608,24 @@ describe('UserImportService', () => {
                 password,
                 passwordHistoryType: null,
                 verification: null,
+                login: null,
                 workspaceContext: {
                     type: EnumUserCreateWorkspaceContextType.personal,
                     workspaceId: 'workspace-thistle',
                     slugCandidates: ['w-thistle'],
                     name: "thistleRowe's Workspace",
                 },
+                createdAt: now,
                 createdBy: 'admin-thistle',
             };
-            const second: IUser = { ...baseUser, id: 'user-second' };
             const secondInput: IUserCreateWithWorkspaceInput = {
                 ...input,
-                userId: second.id,
+                userId: 'user-second',
             };
-            const result = service.buildImportByAdminStages(
-                [input, secondInput],
-                [baseUser, second]
-            );
+            const result = service.buildImportByAdminStages([
+                input,
+                secondInput,
+            ]);
 
             expect(result).toEqual([
                 {
@@ -617,7 +638,7 @@ describe('UserImportService', () => {
                     createdBy: 'admin-thistle',
                     metadata: {
                         actorUserId: 'admin-thistle',
-                        timestamp: baseUser.createdAt,
+                        timestamp: now,
                     },
                 },
                 {
@@ -629,16 +650,16 @@ describe('UserImportService', () => {
                 },
                 {
                     action: UserCreateContract.admin.createdAction,
-                    userId: second.id,
+                    userId: 'user-second',
                     createdBy: 'admin-thistle',
                     metadata: {
                         actorUserId: 'admin-thistle',
-                        timestamp: baseUser.createdAt,
+                        timestamp: now,
                     },
                 },
                 {
                     action: EnumActivityLogAction.workspaceCreatedByAdmin,
-                    userId: second.id,
+                    userId: 'user-second',
                     createdBy: 'admin-thistle',
                     workspaceId: 'workspace-thistle',
                     metadata: { actorUserId: 'admin-thistle' },

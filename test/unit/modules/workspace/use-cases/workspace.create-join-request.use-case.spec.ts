@@ -6,11 +6,8 @@ import {
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
 import { ConfigService } from '@nestjs/config';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -299,47 +296,8 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('maps a unique collision on nonce to WorkspaceJoinRequestDuplicateException', async () => {
-            workspaceJoinRequestService.createJoinRequestInTx.mockRejectedValue(
-                buildPrismaKnownRequestError('P2002', 'nonce')
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    body
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceJoinRequestDuplicateException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.joinRequestDuplicate,
-            });
-        });
-
-        it('maps a write conflict to WorkspaceJoinRequestDuplicateException', async () => {
-            workspaceJoinRequestService.createJoinRequestInTx.mockRejectedValue(
-                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    body
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceJoinRequestDuplicateException,
-                statusCode: EnumWorkspaceStatusCodeError.joinRequestDuplicate,
-            });
-        });
-
-        it('rethrows an AppBaseException from the write as is', async () => {
-            const failure = new WorkspaceNotPublicException();
+        it('lets WorkspaceJoinRequestDuplicateException from the write reach the caller untouched', async () => {
+            const failure = new WorkspaceJoinRequestDuplicateException();
             workspaceJoinRequestService.createJoinRequestInTx.mockRejectedValue(
                 failure
             );
@@ -355,7 +313,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
             ).rejects.toBe(failure);
         });
 
-        it('wraps any other transaction error in AppUnknownException', async () => {
+        it('lets any other transaction error reach the caller untouched', async () => {
             const cause = new Error('db-down');
             workspaceJoinRequestService.createJoinRequestInTx.mockRejectedValue(
                 cause
@@ -369,10 +327,7 @@ describe('WorkspaceCreateJoinRequestUseCase', () => {
                     userContext,
                     body
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

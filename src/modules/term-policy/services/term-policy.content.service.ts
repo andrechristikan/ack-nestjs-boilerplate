@@ -229,9 +229,6 @@ export class TermPolicyContentService {
             mappedContent,
             termPolicy.updatedAt
         );
-        if (!updated) {
-            throw new TermPolicyStatusInvalidException();
-        }
 
         const effects: IOutboxEffect[] = [];
         if (existingContent.key !== mappedContent.key) {
@@ -243,7 +240,7 @@ export class TermPolicyContentService {
 
         const timestamp = this.helperDateService.now();
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(
-            termPolicy,
+            updated,
             timestamp
         );
         const entry = this.activityLogQueue.recordEffect(
@@ -319,13 +316,10 @@ export class TermPolicyContentService {
             termPolicy.id,
             mappedContent
         );
-        if (!added) {
-            throw new TermPolicyStatusInvalidException();
-        }
 
         const timestamp = this.helperDateService.now();
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(
-            termPolicy,
+            added,
             timestamp
         );
         const entry = this.activityLogQueue.recordEffect(
@@ -377,9 +371,6 @@ export class TermPolicyContentService {
             existingContent.language,
             termPolicy.updatedAt
         );
-        if (!removed) {
-            throw new TermPolicyStatusInvalidException();
-        }
 
         const deleteEffect = this.termPolicyQueue.deleteContentEffect([
             existingContent.key,
@@ -387,7 +378,7 @@ export class TermPolicyContentService {
 
         const timestamp = this.helperDateService.now();
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(
-            termPolicy,
+            removed,
             timestamp
         );
         const entry = this.activityLogQueue.recordEffect(

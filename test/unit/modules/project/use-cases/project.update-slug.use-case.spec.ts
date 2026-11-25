@@ -5,7 +5,6 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { Project } from '@generated/prisma-client/client';
 import type { ProjectUpdateSlugRequestDto } from '@modules/project/dtos/request/project.update-slug.request.dto';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
@@ -13,7 +12,6 @@ import { ProjectSlugInvalidException } from '@modules/project/exceptions/project
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectUpdateSlugUseCase } from '@modules/project/use-cases/project.update-slug.use-case';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -126,26 +124,7 @@ describe('ProjectUpdateSlugUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('maps a unique collision on slug to ProjectSlugAlreadyExistsException', async () => {
-            projectService.updateProjectSlugInTx.mockRejectedValue(
-                buildPrismaKnownRequestError('P2002', 'slug')
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    projectContext,
-                    body
-                )
-            ).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.slugAlreadyExists,
-            });
-        });
-
-        it('rethrows an AppBaseException as is', async () => {
+        it('passes a rejected typed exception through untouched', async () => {
             const typed = new ProjectSlugInvalidException();
             projectService.updateProjectSlugInTx.mockRejectedValue(typed);
 
@@ -158,24 +137,6 @@ describe('ProjectUpdateSlugUseCase', () => {
                     body
                 )
             ).rejects.toBe(typed);
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
-            const otherError = new Error('unexpected');
-            projectService.updateProjectSlugInTx.mockRejectedValue(otherError);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    projectContext,
-                    body
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: otherError,
-            });
         });
     });
 });

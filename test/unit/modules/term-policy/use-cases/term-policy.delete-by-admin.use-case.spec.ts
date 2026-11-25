@@ -3,19 +3,15 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
-import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
 import { TermPolicyService } from '@modules/term-policy/services/term-policy.service';
 import { TermPolicyDeleteByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.delete-by-admin.use-case';
@@ -52,6 +48,7 @@ describe('TermPolicyDeleteByAdminUseCase', () => {
         updatedAt: timestamp,
         updatedBy: null,
     };
+    const deleted: TermPolicy = { ...termPolicy, updatedAt: new Date(0) };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext('admin-1');
@@ -101,7 +98,7 @@ describe('TermPolicyDeleteByAdminUseCase', () => {
         });
 
         it('reads the draft, deletes it on the transaction, and returns it', async () => {
-            termPolicyService.deleteByAdminInTx.mockResolvedValue(undefined);
+            termPolicyService.deleteByAdminInTx.mockResolvedValue(deleted);
 
             const result = await useCase.execute(
                 requestContext,
@@ -110,7 +107,7 @@ describe('TermPolicyDeleteByAdminUseCase', () => {
                 'term-policy-1'
             );
 
-            expect(result).toEqual({ data: termPolicy });
+            expect(result).toEqual({ data: deleted });
             expect(termPolicyContentService.getDraftById).toHaveBeenCalledWith(
                 'term-policy-1'
             );
@@ -123,7 +120,7 @@ describe('TermPolicyDeleteByAdminUseCase', () => {
             );
         });
 
-        it('rethrows a typed exception of the write', async () => {
+        it('passes a rejected exception of the write through untouched', async () => {
             const failure = new TermPolicyStatusInvalidException();
             termPolicyService.deleteByAdminInTx.mockRejectedValue(failure);
 
@@ -135,44 +132,6 @@ describe('TermPolicyDeleteByAdminUseCase', () => {
                     'term-policy-1'
                 )
             ).rejects.toBe(failure);
-        });
-
-        it('maps a write conflict to TermPolicyStatusInvalidException', async () => {
-            termPolicyService.deleteByAdminInTx.mockRejectedValue(
-                new Prisma.PrismaClientKnownRequestError('conflict', {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                })
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
-            ).rejects.toMatchObject({
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-            });
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
-            const cause = new Error('boom');
-            termPolicyService.deleteByAdminInTx.mockRejectedValue(cause);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
         });
     });
 });

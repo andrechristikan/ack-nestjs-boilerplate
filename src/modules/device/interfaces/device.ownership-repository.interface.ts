@@ -36,7 +36,7 @@ export interface IDeviceOwnershipRepository {
         removedBy: string,
         now: Date,
         idleSince: Date
-    ): Promise<IDeviceOwnership | null>;
+    ): Promise<IDeviceOwnership>;
     revokeAllByUserInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
@@ -67,7 +67,7 @@ export interface IDeviceOwnershipRepository {
         { notificationToken }: IDeviceRefresh,
         notificationProvider: EnumDeviceNotificationProvider | null,
         now: Date
-    ): Promise<string | null>;
+    ): Promise<string>;
     touchInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

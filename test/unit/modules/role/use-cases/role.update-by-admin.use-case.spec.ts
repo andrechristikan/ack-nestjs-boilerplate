@@ -12,7 +12,6 @@ import {
 import {
     EnumActivityLogAction,
     EnumRoleType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
 import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
@@ -32,14 +31,11 @@ import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
 } from '@modules/activity-log/enums/activity-log.enum';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { RoleHasPoliciesException } from '@modules/role/exceptions/role.has-policies.exception';
 import { RoleImmutableException } from '@modules/role/exceptions/role.immutable.exception';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import { RoleSelfForbiddenException } from '@modules/role/exceptions/role.self-forbidden.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
-import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -250,7 +246,7 @@ describe('RoleUpdateByAdminUseCase', () => {
             );
         });
 
-        it('rethrows a typed exception of the write', async () => {
+        it('passes a rejected exception of the write through untouched', async () => {
             const failure = new RoleNotFoundException();
             roleService.updateByAdminInTx.mockRejectedValue(failure);
 
@@ -267,32 +263,7 @@ describe('RoleUpdateByAdminUseCase', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('maps a write conflict to RoleNotFoundException', async () => {
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                }
-            );
-            roleService.updateByAdminInTx.mockRejectedValue(conflict);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    roleWithPolicies.id,
-                    body
-                )
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.notFound,
-            });
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
+        it('passes any other rejection through untouched', async () => {
             const cause = new Error('boom');
             roleService.updateByAdminInTx.mockRejectedValue(cause);
 
@@ -305,10 +276,7 @@ describe('RoleUpdateByAdminUseCase', () => {
                     roleWithPolicies.id,
                     body
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

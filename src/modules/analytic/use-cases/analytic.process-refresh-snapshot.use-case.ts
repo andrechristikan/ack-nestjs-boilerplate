@@ -76,14 +76,20 @@ export class AnalyticProcessRefreshSnapshotUseCase implements IAppUseCase<
             case EnumAnalyticSnapshotSignal.concurrentSessions: {
                 const result =
                     await this.analyticAuthService.computeConcurrentSessions();
-                await this.analyticSnapshotService.replace(signal, result);
+                await this.analyticSnapshotService.replaceHeader(
+                    signal,
+                    result
+                );
 
                 return this.toResponse(signal, result.items.length);
             }
             case EnumAnalyticSnapshotSignal.devicePerUser: {
                 const result =
                     await this.analyticDeviceService.computeDevicePerUser();
-                await this.analyticSnapshotService.replace(signal, result);
+                await this.analyticSnapshotService.replaceHeader(
+                    signal,
+                    result
+                );
 
                 return this.toResponse(signal, result.items.length);
             }
@@ -97,7 +103,10 @@ export class AnalyticProcessRefreshSnapshotUseCase implements IAppUseCase<
             case EnumAnalyticSnapshotSignal.mfaAdoption: {
                 const result =
                     await this.analyticAuthService.computeMfaAdoption();
-                await this.analyticSnapshotService.replace(signal, result);
+                await this.analyticSnapshotService.replaceHeader(
+                    signal,
+                    result
+                );
 
                 return this.toResponse(signal, result.items.length);
             }

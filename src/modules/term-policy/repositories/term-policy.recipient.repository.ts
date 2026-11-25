@@ -2,7 +2,6 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
-    TermPolicyRecipientSendSelect,
     TermPolicyRecipientSendWhere,
     TermPolicyRecipientStateSelect,
 } from '@modules/term-policy/constants/term-policy.constant';
@@ -85,7 +84,7 @@ export class TermPolicyRecipientRepository implements ITermPolicyRecipientReposi
         const rows =
             await this.databaseService.client.termPolicyRecipient.findMany({
                 where: { termPolicyId, batchId, claimNonce },
-                select: TermPolicyRecipientSendSelect,
+                select: TermPolicyRecipientStateSelect,
             });
 
         return rows.map(({ userId }) => userId);

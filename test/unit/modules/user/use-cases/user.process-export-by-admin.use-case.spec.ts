@@ -224,10 +224,10 @@ describe('UserProcessExportByAdminUseCase', () => {
                 notifyEffect,
                 activityEffect,
             ]);
-            expect(outboxService.updateDataInTx).toHaveBeenCalledWith(
+            expect(outboxService.replaceDataInTx).toHaveBeenCalledWith(
                 tx,
                 'outbox-quill',
-                { exported: 1 }
+                { ...payload, exported: 1 }
             );
         });
 

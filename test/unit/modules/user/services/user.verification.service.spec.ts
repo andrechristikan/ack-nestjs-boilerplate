@@ -35,12 +35,14 @@ import type {
     INotificationVerificationMobileNumberContext,
 } from '@modules/notification/interfaces/notification.interface';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
+import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type {
     IUser,
     IUserVerificationEmailCreate,
     IUserVerificationWithUser,
 } from '@modules/user/interfaces/user.interface';
-import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
+import type { IUserCreateVerificationEntry } from '@modules/user/interfaces/user.create.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
@@ -97,6 +99,14 @@ describe('UserVerificationService', () => {
         updatedBy: null,
     };
 
+    const consumed: Verification = {
+        ...verification,
+        userId: 'user-consumed',
+        reference: 'VRF-consumed',
+        isUsed: true,
+        verifiedAt: now,
+    };
+
     const notifyEffect: INotificationNotifyEffect = {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
@@ -128,7 +138,7 @@ describe('UserVerificationService', () => {
         notificationQueue.notify.mockReturnValue(notifyEffect);
         userRepository.findOneById.mockResolvedValue(baseUser);
         userRepository.markVerifiedInTx.mockResolvedValue(baseUser);
-        userVerificationRepository.markUsedInTx.mockResolvedValue(true);
+        userVerificationRepository.markUsedInTx.mockResolvedValue(consumed);
 
         vi.setSystemTime(now);
 
@@ -217,7 +227,7 @@ describe('UserVerificationService', () => {
     });
 
     describe('verifyEmailInTx', () => {
-        it('marks the verification and the user verified and adds the verifiedEmail effect and the entry on the given tx', async () => {
+        it('reads userId and reference from the row markUsedInTx returned, then adds the verifiedEmail effect and the entry on the given tx', async () => {
             await service.verifyEmailInTx(
                 tx,
                 requestContext,
@@ -225,32 +235,6 @@ describe('UserVerificationService', () => {
                 verification
             );
 
-            expect(notificationQueue.notify).toHaveBeenCalledWith(
-                EnumNotificationKind.verifiedEmail,
-                {
-                    userId: 'user-flint',
-                    proceedBy: 'user-flint',
-                    reference: 'VRF-flint',
-                }
-            );
-            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
-                requestContext,
-                apiKeyContext,
-                null,
-                null,
-                {
-                    action: EnumActivityLogAction.userEmailVerified,
-                    userId: 'user-flint',
-                    createdBy: 'user-flint',
-                }
-            );
-            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                entry,
-                notifyEffect,
-            ]);
-            expect(userRepository.markVerifiedInTx).toHaveBeenCalledBefore(
-                outboxService.addManyInTx
-            );
             expect(
                 userVerificationRepository.markUsedInTx
             ).toHaveBeenCalledWith(
@@ -261,13 +245,40 @@ describe('UserVerificationService', () => {
             );
             expect(userRepository.markVerifiedInTx).toHaveBeenCalledWith(
                 tx,
-                verification.userId,
+                'user-consumed',
                 now
+            );
+            expect(notificationQueue.notify).toHaveBeenCalledWith(
+                EnumNotificationKind.verifiedEmail,
+                {
+                    userId: 'user-consumed',
+                    proceedBy: 'user-consumed',
+                    reference: 'VRF-consumed',
+                }
+            );
+            expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
+                requestContext,
+                apiKeyContext,
+                null,
+                null,
+                {
+                    action: EnumActivityLogAction.userEmailVerified,
+                    userId: 'user-consumed',
+                    createdBy: 'user-consumed',
+                }
+            );
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                entry,
+                notifyEffect,
+            ]);
+            expect(userRepository.markVerifiedInTx).toHaveBeenCalledBefore(
+                outboxService.addManyInTx
             );
         });
 
-        it('throws UserTokenInvalidException when the token was already used', async () => {
-            userVerificationRepository.markUsedInTx.mockResolvedValue(false);
+        it('passes the UserTokenInvalidException the verification consume rejected through untouched', async () => {
+            const rejected = new UserTokenInvalidException();
+            userVerificationRepository.markUsedInTx.mockRejectedValue(rejected);
 
             const call = service.verifyEmailInTx(
                 tx,
@@ -276,11 +287,23 @@ describe('UserVerificationService', () => {
                 verification
             );
 
-            await expect(call).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.tokenInvalid,
-            });
+            await expect(call).rejects.toBe(rejected);
             expect(userRepository.markVerifiedInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+        });
+
+        it('passes the UserEmailAlreadyVerifiedException the user write rejected through and adds no effect', async () => {
+            const rejected = new UserEmailAlreadyVerifiedException();
+            userRepository.markVerifiedInTx.mockRejectedValue(rejected);
+
+            const call = service.verifyEmailInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                verification
+            );
+
+            await expect(call).rejects.toBe(rejected);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
@@ -855,37 +878,44 @@ describe('UserVerificationService', () => {
         });
     });
 
-    describe('markUsedInTx', () => {
+    describe('markReauthenticationUsedInTx', () => {
         it('marks the verification used at now and returns whether the guard held', async () => {
-            userVerificationRepository.markUsedInTx.mockResolvedValue(false);
+            userVerificationRepository.markReauthenticationUsedInTx.mockResolvedValue(
+                false
+            );
 
             await expect(
-                service.markUsedInTx(tx, 'verification-flint', 'user-flint')
+                service.markReauthenticationUsedInTx(
+                    tx,
+                    'verification-flint',
+                    'user-flint'
+                )
             ).resolves.toBe(false);
 
             expect(
-                userVerificationRepository.markUsedInTx
+                userVerificationRepository.markReauthenticationUsedInTx
             ).toHaveBeenCalledWith(tx, 'verification-flint', now, 'user-flint');
         });
     });
 
     describe('markMobileUsedInTx', () => {
-        it('marks the verification used at now', async () => {
-            userVerificationRepository.markUsedInTx.mockResolvedValue(true);
-
-            await service.markMobileUsedInTx(
-                tx,
-                'verification-flint',
-                'user-flint'
-            );
+        it('marks the verification used at now and returns the row the repository returned', async () => {
+            await expect(
+                service.markMobileUsedInTx(
+                    tx,
+                    'verification-flint',
+                    'user-flint'
+                )
+            ).resolves.toBe(consumed);
 
             expect(
                 userVerificationRepository.markUsedInTx
             ).toHaveBeenCalledWith(tx, 'verification-flint', now, 'user-flint');
         });
 
-        it('throws UserTokenInvalidException when the verification was used or expired first', async () => {
-            userVerificationRepository.markUsedInTx.mockResolvedValue(false);
+        it('passes the UserTokenInvalidException the repository rejected through untouched', async () => {
+            const rejected = new UserTokenInvalidException();
+            userVerificationRepository.markUsedInTx.mockRejectedValue(rejected);
 
             await expect(
                 service.markMobileUsedInTx(
@@ -893,45 +923,36 @@ describe('UserVerificationService', () => {
                     'verification-flint',
                     'user-flint'
                 )
-            ).rejects.toMatchObject({
-                module: 'user',
-
-                statusCode: EnumUserStatusCodeError.tokenInvalid,
-            });
+            ).rejects.toBe(rejected);
         });
     });
 
-    describe('createInTx', () => {
-        it('delegates to the repository', async () => {
-            const createVerification: IUserCreateVerification = {
-                reference: 'VRF-create',
-                token: 'hashed-token',
-                type: EnumVerificationType.email,
-                action: null,
-                mobileNumberId: null,
-                to: 'flint@example.com',
-                expiredAt: new Date('2026-03-05T00:00:00.000Z'),
-                verifiedAt: null,
-                isUsed: false,
-            };
-            userVerificationRepository.createInTx.mockResolvedValue(
-                verification
-            );
+    describe('createManyInTx', () => {
+        it('delegates the entries to the repository in one call', async () => {
+            const entries: IUserCreateVerificationEntry[] = [
+                {
+                    userId: 'user-flint',
+                    createdBy: 'admin-flint',
+                    reference: 'VRF-create',
+                    token: 'hashed-token',
+                    type: EnumVerificationType.email,
+                    action: null,
+                    mobileNumberId: null,
+                    to: 'flint@example.com',
+                    expiredAt: new Date('2026-03-05T00:00:00.000Z'),
+                    verifiedAt: null,
+                    isUsed: false,
+                },
+            ];
 
-            await expect(
-                service.createInTx(
-                    tx,
-                    'user-flint',
-                    createVerification,
-                    'admin-flint'
-                )
-            ).resolves.toBe(verification);
-            expect(userVerificationRepository.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-flint',
-                createVerification,
-                'admin-flint'
-            );
+            await service.createManyInTx(tx, entries);
+
+            expect(
+                userVerificationRepository.createManyInTx
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                userVerificationRepository.createManyInTx
+            ).toHaveBeenCalledWith(tx, entries);
         });
     });
 });

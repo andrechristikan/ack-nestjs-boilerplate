@@ -1,7 +1,3 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -12,7 +8,6 @@ import {
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
-import { MfaTotpSetupRequiredException } from '@modules/mfa/exceptions/mfa.totp-setup-required.exception';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { MfaTotpService } from '@modules/mfa/services/mfa.totp.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
@@ -41,8 +36,7 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
         private readonly userAuthService: UserAuthService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
-        private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly outboxService: OutboxService
     ) {}
 
     async execute(
@@ -60,8 +54,11 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
         }: MfaTotpEnableRequestDto
     ): Promise<IResponseReturn<MfaBackupCodesResponseDto>> {
         const { user } = userContext;
+        const [state] = await Promise.all([
+            this.mfaService.getFactorState(authContext.userId),
+            this.mfaService.assertEnrollmentAllowed(EnumMfaMethod.totp),
+        ]);
         // Sequential by design: a credential proof, awaited alone
-        await this.mfaService.assertEnrollmentAllowed(EnumMfaMethod.totp);
         const input = {
             action: EnumUserReauthenticationAction.mfaTotpEnable,
             password: password ?? null,
@@ -96,7 +93,8 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
         const mfaCheck = await this.mfaService.checkReauthentication(
             user.id,
             input,
-            passwordCheck.isPasswordChecked
+            passwordCheck.isPasswordChecked,
+            state
         );
         if (mfaCheck.failure !== null) {
             const failure = mfaCheck.failure;
@@ -144,65 +142,50 @@ export class MfaEnableTotpUseCase implements IAppUseCase<
             );
         }
 
-        try {
-            const backupCodes = await this.databaseService.withTransaction(
-                async tx => {
-                    await this.userAuthService.completeReauthenticationInTx(
-                        tx,
-                        authContext,
-                        passwordCheck.isPasswordChecked,
-                        verificationId
-                    );
-                    await this.mfaService.completeReauthenticationInTx(
-                        tx,
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        mfaCheck
-                    );
-                    await this.mfaTotpService.enableInTx(
-                        tx,
-                        authContext.userId,
-                        pendingSecret,
-                        totpStep
-                    );
-                    await this.mfaService.resetAttemptInTx(
-                        tx,
-                        authContext.userId
-                    );
-                    const codes = await this.mfaService.createBackupCodesInTx(
-                        tx,
-                        authContext.userId
-                    );
-                    const entry = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.userMfaTotpEnabled,
-                            userId: authContext.userId,
-                            createdBy: authContext.userId,
-                        }
-                    );
-                    await this.outboxService.addInTx(tx, entry);
+        const backupCodes = await this.databaseService.withTransaction(
+            async tx => {
+                await this.userAuthService.completeReauthenticationInTx(
+                    tx,
+                    authContext,
+                    passwordCheck.isPasswordChecked,
+                    verificationId,
+                    false
+                );
+                await this.mfaService.completeReauthenticationInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    mfaCheck
+                );
+                await this.mfaTotpService.enableInTx(
+                    tx,
+                    authContext.userId,
+                    pendingSecret,
+                    totpStep
+                );
+                await this.mfaService.resetAttemptInTx(tx, authContext.userId);
+                const codes = await this.mfaService.createBackupCodesInTx(
+                    tx,
+                    authContext.userId
+                );
+                const entry = this.activityLogQueue.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    {
+                        action: EnumActivityLogAction.userMfaTotpEnabled,
+                        userId: authContext.userId,
+                        createdBy: authContext.userId,
+                    }
+                );
+                await this.outboxService.addInTx(tx, entry);
 
-                    return codes;
-                }
-            );
-
-            return { data: { backupCodes } };
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
+                return codes;
             }
+        );
 
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new MfaTotpSetupRequiredException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return { data: { backupCodes } };
     }
 }

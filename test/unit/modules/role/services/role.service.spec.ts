@@ -2,18 +2,6 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { CacheQueue } from '@common/cache/queues/cache.queue';
-import { CacheService } from '@common/cache/services/cache.service';
-import {
-    EnumCacheProcess,
-    EnumCacheQueue,
-} from '@common/cache/enums/cache.enum';
-import type {
-    ICacheInvalidateEffect,
-    ICacheLease,
-} from '@common/cache/interfaces/cache.interface';
-import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseUniqueConstraintCode } from '@common/database/constants/database.constant';
@@ -32,9 +20,10 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
 import type { Role } from '@generated/prisma-client/client';
-import { RoleCache } from '@modules/role/caches/role.cache';
 import { RoleService } from '@modules/role/services/role.service';
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
+import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
+import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import type {
     IRoleActor,
     IRoleCreate,
@@ -43,30 +32,15 @@ import type {
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
 import { RoleRepository } from '@modules/role/repositories/role.repository';
+import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { buildUser } from '@test/unit/helpers/test.unit.request.helper';
-import { RoleCacheSchema } from '@modules/role/dtos/role.cache.dto';
 
 describe('RoleService', () => {
     const roleRepository: MockProxy<RoleRepository> = mock<RoleRepository>();
-    const roleCache: MockProxy<RoleCache> = mock<RoleCache>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
-    const cacheQueue: MockProxy<CacheQueue> = mock<CacheQueue>();
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const tx: MockProxy<IDatabaseTransactionClient> =
         mock<IDatabaseTransactionClient>();
-    const roleKeys = ['Role:role-1', 'Role:Lease:role-1'];
-    const roleLease: ICacheLease = {
-        key: 'Role:Lease:role-1',
-        ttlInMs: 10000,
-    };
-    const cacheEffect: ICacheInvalidateEffect = {
-        queue: EnumCacheQueue.cache,
-        name: EnumCacheProcess.invalidate,
-        data: { keys: roleKeys },
-        priority: EnumQueuePriority.high,
-        idempotencyKey: null,
-    };
 
     const now = new Date('2026-01-15T00:00:00.000Z');
     const roleWithPolicies: IRoleWithPolicies = {
@@ -112,23 +86,16 @@ describe('RoleService', () => {
     let service: RoleService;
 
     beforeEach(async () => {
-        roleCache.buildRoleKey.mockReturnValue('Role:role-1');
-        roleCache.buildRoleLease.mockReturnValue(roleLease);
-        roleCache.buildRoleKeys.mockReturnValue(roleKeys);
-        cacheQueue.invalidateEffect.mockReturnValue(cacheEffect);
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RoleService,
                 { provide: RoleRepository, useValue: roleRepository },
+                { provide: OutboxService, useValue: outboxService },
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
                 },
-                { provide: RoleCache, useValue: roleCache },
-                { provide: CacheService, useValue: cacheService },
-                { provide: CacheQueue, useValue: cacheQueue },
-                { provide: OutboxService, useValue: outboxService },
             ],
         }).compile();
 
@@ -304,7 +271,6 @@ describe('RoleService', () => {
             expect(roleRepository.findOneWithPoliciesById).toHaveBeenCalledWith(
                 role.id
             );
-            expect(cacheService.readThrough).not.toHaveBeenCalled();
         });
 
         it('throws RoleNotFoundException when the repository answers null', async () => {
@@ -316,64 +282,6 @@ describe('RoleService', () => {
                 module: 'role',
                 statusCode: EnumRoleStatusCodeError.notFound,
             });
-        });
-    });
-
-    describe('getOne', () => {
-        beforeEach(() => {
-            Object.assign(roleCache, { cacheTtlInMs: 900000 });
-        });
-
-        it('reads through with the role key, RoleCacheSchema, the TTL, a loader, and the lease', async () => {
-            cacheService.readThrough.mockResolvedValue(roleWithPolicies);
-
-            const result = await service.getOne(role.id);
-
-            expect(result).toBe(roleWithPolicies);
-            expect(roleCache.buildRoleKey).toHaveBeenCalledWith(role.id);
-            expect(roleCache.buildRoleLease).toHaveBeenCalledWith(role.id);
-            expect(cacheService.readThrough).toHaveBeenCalledWith(
-                'Role:role-1',
-                RoleCacheSchema,
-                900000,
-                expect.any(Function),
-                { lease: roleLease }
-            );
-        });
-
-        it('passes a loader that reads the role with its policies', async () => {
-            cacheService.readThrough.mockImplementation(
-                async (_key, _schema, _ttlInMs, loader) => loader()
-            );
-            roleRepository.findOneWithPoliciesById.mockResolvedValue(
-                roleWithPolicies
-            );
-
-            const result = await service.getOne(role.id);
-
-            expect(result).toBe(roleWithPolicies);
-            expect(roleRepository.findOneWithPoliciesById).toHaveBeenCalledWith(
-                role.id
-            );
-        });
-
-        it('throws RoleNotFoundException when the read-through answers null', async () => {
-            cacheService.readThrough.mockResolvedValue(null);
-
-            await expect(service.getOne('missing')).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.notFound,
-            });
-        });
-    });
-
-    describe('invalidateEffect', () => {
-        it('builds the invalidate effect over the entry and lease keys', () => {
-            const result = service.invalidateEffect(role.id);
-
-            expect(result).toBe(cacheEffect);
-            expect(roleCache.buildRoleKeys).toHaveBeenCalledWith(role.id);
-            expect(cacheQueue.invalidateEffect).toHaveBeenCalledWith(roleKeys);
         });
     });
 
@@ -621,7 +529,7 @@ describe('RoleService', () => {
         };
         const target = { ...role, _count: { policies: 0 } };
 
-        it('updates the role the read returned and adds the invalidation effect', async () => {
+        it('updates the role the read returned', async () => {
             roleRepository.updateInTx.mockResolvedValue(roleWithPolicies);
 
             const result = await service.updateByAdminInTx(tx, target, update);
@@ -633,9 +541,8 @@ describe('RoleService', () => {
                 role.type,
                 update
             );
-            expect(roleCache.buildRoleKeys).toHaveBeenCalledWith(role.id);
-            expect(cacheQueue.invalidateEffect).toHaveBeenCalledWith(roleKeys);
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it("passes the read's type to the guarded write", async () => {
@@ -659,16 +566,13 @@ describe('RoleService', () => {
             );
         });
 
-        it('throws RoleNotFoundException when the guarded write misses', async () => {
-            roleRepository.updateInTx.mockResolvedValue(null);
+        it('passes the exception the guarded write rejects with', async () => {
+            const failure = new RoleNotFoundException();
+            roleRepository.updateInTx.mockRejectedValue(failure);
 
             await expect(
                 service.updateByAdminInTx(tx, target, update)
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.notFound,
-            });
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            ).rejects.toBe(failure);
         });
     });
 
@@ -734,31 +638,28 @@ describe('RoleService', () => {
     });
 
     describe('deleteByAdminInTx', () => {
-        it('deletes the unused role in one guarded statement and returns the role it was given', async () => {
-            roleRepository.deleteUnusedInTx.mockResolvedValue(true);
+        it('deletes the unused role in one guarded statement and returns the deleted row', async () => {
+            const deleted = { ...role, name: 'deleted' };
+            roleRepository.deleteUnusedInTx.mockResolvedValue(deleted);
 
             const result = await service.deleteByAdminInTx(tx, role);
 
-            expect(result).toBe(role);
+            expect(result).toBe(deleted);
             expect(roleRepository.deleteUnusedInTx).toHaveBeenCalledWith(
                 tx,
                 role.id
             );
-            expect(roleCache.buildRoleKeys).toHaveBeenCalledWith(role.id);
-            expect(cacheQueue.invalidateEffect).toHaveBeenCalledWith(roleKeys);
-            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('throws RoleUsedException when the guarded delete matches no unused role', async () => {
-            roleRepository.deleteUnusedInTx.mockResolvedValue(false);
+        it('passes the exception the guarded delete rejects with', async () => {
+            const failure = new RoleUsedException();
+            roleRepository.deleteUnusedInTx.mockRejectedValue(failure);
 
-            await expect(
-                service.deleteByAdminInTx(tx, role)
-            ).rejects.toMatchObject({
-                module: 'role',
-                statusCode: EnumRoleStatusCodeError.used,
-            });
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            await expect(service.deleteByAdminInTx(tx, role)).rejects.toBe(
+                failure
+            );
         });
     });
 

@@ -12,17 +12,13 @@ import type { IRequestLog } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import {
     SessionListSelect,
-    SessionLoginSelect,
-    SessionUserRefSelect,
+    SessionRefSelect,
 } from '@modules/session/constants/session.constant';
+import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type {
-    ISession,
     ISessionList,
-    ISessionLogin,
     ISessionRef,
-    ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
-import { UserRefSelect } from '@modules/user/constants/user.constant';
 import type { ISessionRepository } from '@modules/session/interfaces/session.repository.interface';
 import { Injectable } from '@nestjs/common';
 import type { Session } from '@generated/prisma-client/client';
@@ -82,7 +78,7 @@ export class SessionRepository implements ISessionRepository {
         userId: string,
         sessionId: string,
         idleSince: Date
-    ): Promise<ISessionLogin | null> {
+    ): Promise<Session | null> {
         const now = this.helperDateService.now();
 
         return this.databaseService.client.session.findFirst({
@@ -93,7 +89,6 @@ export class SessionRepository implements ISessionRepository {
                 expiredAt: { gte: now },
                 lastActiveAt: { gte: idleSince },
             },
-            select: SessionLoginSelect,
         });
     }
 
@@ -141,7 +136,7 @@ export class SessionRepository implements ISessionRepository {
                 expiredAt: { gte: now },
                 lastActiveAt: { gte: idleSince },
             },
-            select: { id: true },
+            select: SessionRefSelect,
         });
 
         return session !== null;
@@ -155,20 +150,27 @@ export class SessionRepository implements ISessionRepository {
         idleSince: Date
     ): Promise<boolean> {
         const now = this.helperDateService.now();
-        const { count } = await tx.session.updateMany({
-            where: {
-                id: sessionId,
-                jtiDigest: oldJtiDigest,
-                isRevoked: false,
-                expiredAt: {
-                    gte: now,
+        try {
+            const { count } = await tx.session.updateMany({
+                where: {
+                    id: sessionId,
+                    jtiDigest: oldJtiDigest,
+                    isRevoked: false,
+                    expiredAt: {
+                        gte: now,
+                    },
+                    lastActiveAt: { gte: idleSince },
                 },
-                lastActiveAt: { gte: idleSince },
-            },
-            data: { jtiDigest: newJtiDigest, lastActiveAt: now },
-        });
+                data: { jtiDigest: newJtiDigest, lastActiveAt: now },
+            });
 
-        return count > 0;
+            return count > 0;
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new SessionNotFoundException()
+            );
+        }
     }
 
     async revokeInTx(
@@ -178,20 +180,27 @@ export class SessionRepository implements ISessionRepository {
         revokedBy: string,
         revokedAt: Date
     ): Promise<boolean> {
-        const { count } = await tx.session.updateMany({
-            where: {
-                id: sessionId,
-                userId,
-                isRevoked: false,
-            },
-            data: {
-                isRevoked: true,
-                revokedAt,
-                revokedById: revokedBy,
-            },
-        });
+        try {
+            const { count } = await tx.session.updateMany({
+                where: {
+                    id: sessionId,
+                    userId,
+                    isRevoked: false,
+                },
+                data: {
+                    isRevoked: true,
+                    revokedAt,
+                    revokedById: revokedBy,
+                },
+            });
 
-        return count > 0;
+            return count > 0;
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new SessionNotFoundException()
+            );
+        }
     }
 
     async revokeLiveInTx(
@@ -202,22 +211,29 @@ export class SessionRepository implements ISessionRepository {
         revokedAt: Date,
         idleSince: Date
     ): Promise<boolean> {
-        const { count } = await tx.session.updateMany({
-            where: {
-                id: sessionId,
-                userId,
-                isRevoked: false,
-                expiredAt: { gte: revokedAt },
-                lastActiveAt: { gte: idleSince },
-            },
-            data: {
-                isRevoked: true,
-                revokedAt,
-                revokedById: revokedBy,
-            },
-        });
+        try {
+            const { count } = await tx.session.updateMany({
+                where: {
+                    id: sessionId,
+                    userId,
+                    isRevoked: false,
+                    expiredAt: { gte: revokedAt },
+                    lastActiveAt: { gte: idleSince },
+                },
+                data: {
+                    isRevoked: true,
+                    revokedAt,
+                    revokedById: revokedBy,
+                },
+            });
 
-        return count > 0;
+            return count > 0;
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new SessionNotFoundException()
+            );
+        }
     }
 
     async revokeByAdminInTx(
@@ -226,34 +242,27 @@ export class SessionRepository implements ISessionRepository {
         sessionId: string,
         revokedBy: string,
         revokedAt: Date
-    ): Promise<ISession | null> {
-        const { count } = await tx.session.updateMany({
-            where: {
-                id: sessionId,
-                userId,
-                isRevoked: false,
-            },
-            data: {
-                isRevoked: true,
-                revokedAt,
-                revokedById: revokedBy,
-            },
-        });
-        if (count === 0) {
-            return null;
+    ): Promise<ISessionList> {
+        try {
+            return await tx.session.update({
+                where: {
+                    id: sessionId,
+                    userId,
+                    isRevoked: false,
+                },
+                data: {
+                    isRevoked: true,
+                    revokedAt,
+                    revokedById: revokedBy,
+                },
+                select: SessionListSelect,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new SessionNotFoundException()
+            );
         }
-
-        return tx.session.findFirst({
-            where: { id: sessionId, userId },
-            include: {
-                user: {
-                    select: UserRefSelect,
-                },
-                revokedBy: {
-                    select: UserRefSelect,
-                },
-            },
-        });
     }
 
     async revokeActiveByUserInTx(
@@ -271,8 +280,12 @@ export class SessionRepository implements ISessionRepository {
                     id: { not: exceptSessionId },
                 }),
             },
-            select: { id: true },
+            select: SessionRefSelect,
         });
+        if (sessions.length === 0) {
+            return [];
+        }
+
         await tx.session.updateMany({
             where: {
                 id: { in: sessions.map(session => session.id) },
@@ -303,8 +316,12 @@ export class SessionRepository implements ISessionRepository {
                 deviceOwnershipId,
                 isRevoked: false,
             },
-            select: { id: true },
+            select: SessionRefSelect,
         });
+        if (sessions.length === 0) {
+            return [];
+        }
+
         await tx.session.updateMany({
             where: {
                 id: { in: sessions.map(session => session.id) },
@@ -327,14 +344,18 @@ export class SessionRepository implements ISessionRepository {
         deviceOwnershipIds: string[],
         revokedBy: string,
         revokedAt: Date
-    ): Promise<ISessionUserRef[]> {
+    ): Promise<ISessionRef[]> {
         const sessions = await tx.session.findMany({
             where: {
                 deviceOwnershipId: { in: deviceOwnershipIds },
                 isRevoked: false,
             },
-            select: SessionUserRefSelect,
+            select: SessionRefSelect,
         });
+        if (sessions.length === 0) {
+            return [];
+        }
+
         await tx.session.updateMany({
             where: {
                 id: { in: sessions.map(session => session.id) },

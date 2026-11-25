@@ -2,7 +2,7 @@
 
 ## The sweep log
 
-`generated/report-src-sweep.md` records a `src/` defect that is not repaired in the run that found it: a flow change, a decision the owner has not made, a line no input can reach. It is gitignored and holds open defects only.
+`generated/report-src-sweep.md` records a `src/` defect the run that found it cannot fix within its boundaries: one that needs a design, an owner-only command, or held work, and that no plan or spec covers. In `/ack-spec`, whose `tester` changes no behavior, that is every defect it finds and a line no input can reach without changing `src/`. It is gitignored and holds open defects only.
 
 Create the file with this header and these two headings when it is missing:
 

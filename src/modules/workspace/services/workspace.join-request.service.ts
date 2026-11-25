@@ -284,31 +284,27 @@ export class WorkspaceJoinRequestService {
             reviewerId,
             reviewedAt
         );
-        if (!accepted) {
-            throw new WorkspaceJoinRequestAlreadyProcessedException();
-        }
-
         await this.workspaceMemberService.createInTx(
             tx,
-            joinRequest.workspaceId,
-            joinRequest.userId,
+            accepted.workspaceId,
+            accepted.userId,
             EnumWorkspaceMemberRole.member,
             reviewerId
         );
         await this.workspaceInviteService.revokePendingByEmailInTx(
             tx,
-            joinRequest.workspaceId,
-            joinRequest.user.email
+            accepted.workspaceId,
+            accepted.user.email
         );
 
         const effect = this.notificationQueue.notify(
             EnumNotificationKind.workspaceJoinAccepted,
             {
-                userId: joinRequest.userId,
+                userId: accepted.userId,
                 proceedBy: reviewerId,
-                workspaceId: joinRequest.workspaceId,
+                workspaceId: accepted.workspaceId,
                 workspaceName,
-                joinRequestId: joinRequest.id,
+                joinRequestId: accepted.id,
             }
         );
         const entries = this.reviewActivityEffects(
@@ -317,7 +313,7 @@ export class WorkspaceJoinRequestService {
             authContext,
             EnumActivityLogAction.workspaceJoinAccepted,
             EnumActivityLogAction.workspaceJoinAcceptedByAdmin,
-            joinRequest
+            accepted
         );
         await this.outboxService.addManyInTx(tx, [effect, ...entries]);
     }
@@ -344,18 +340,15 @@ export class WorkspaceJoinRequestService {
             rejectReasonCode,
             reviewedAt
         );
-        if (!rejected) {
-            throw new WorkspaceJoinRequestAlreadyProcessedException();
-        }
 
         const effect = this.notificationQueue.notify(
             EnumNotificationKind.workspaceJoinRejected,
             {
-                userId: joinRequest.userId,
+                userId: rejected.userId,
                 proceedBy: reviewerId,
-                workspaceId: joinRequest.workspaceId,
+                workspaceId: rejected.workspaceId,
                 workspaceName,
-                joinRequestId: joinRequest.id,
+                joinRequestId: rejected.id,
                 rejectReasonCode,
                 rejectReasonLabel,
             }
@@ -366,7 +359,7 @@ export class WorkspaceJoinRequestService {
             authContext,
             EnumActivityLogAction.workspaceJoinRejected,
             EnumActivityLogAction.workspaceJoinRejectedByAdmin,
-            joinRequest
+            rejected
         );
         await this.outboxService.addManyInTx(tx, [effect, ...entries]);
     }
@@ -375,14 +368,14 @@ export class WorkspaceJoinRequestService {
         return this.workspaceJoinRequestRepository.expireStalePending();
     }
 
-    async cancelPendingByWorkspaceInTx(
+    async cancelPendingByWorkspacesInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string,
+        workspaceIds: string[],
         updatedBy: string
     ): Promise<void> {
-        await this.workspaceJoinRequestRepository.cancelPendingByWorkspaceInTx(
+        await this.workspaceJoinRequestRepository.cancelPendingByWorkspacesInTx(
             tx,
-            workspaceId,
+            workspaceIds,
             updatedBy
         );
     }

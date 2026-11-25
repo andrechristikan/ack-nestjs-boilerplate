@@ -21,8 +21,10 @@ import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queu
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
+import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import type {
     IProjectCreate,
+    IProjectRef,
     IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
@@ -342,19 +344,25 @@ describe('ProjectService', () => {
     });
 
     describe('softDeleteProjectInTx', () => {
-        it('soft-deletes the project on the given transaction', async () => {
-            const tx: MockProxy<IDatabaseTransactionClient> =
-                mock<IDatabaseTransactionClient>();
-            const deletedAt = new Date('2026-02-01T00:00:00.000Z');
-            projectRepository.softDeleteInTx.mockResolvedValue(true);
+        const tx: MockProxy<IDatabaseTransactionClient> =
+            mock<IDatabaseTransactionClient>();
+        const deletedAt = new Date('2026-02-01T00:00:00.000Z');
 
-            await service.softDeleteProjectInTx(
+        it('soft-deletes the project on the given transaction and returns the written row', async () => {
+            const row: IProjectRef = {
+                id: baseProject.id,
+                workspaceId: baseProject.workspaceId,
+            };
+            projectRepository.softDeleteInTx.mockResolvedValue(row);
+
+            const result = await service.softDeleteProjectInTx(
                 tx,
                 baseProject,
                 deletedAt,
                 '507f1f77bcf86cd799439015'
             );
 
+            expect(result).toBe(row);
             expect(projectRepository.softDeleteInTx).toHaveBeenCalledWith(
                 tx,
                 baseProject.id,
@@ -363,11 +371,9 @@ describe('ProjectService', () => {
             );
         });
 
-        it('throws ProjectNotFoundException when the guarded write misses', async () => {
-            const tx: MockProxy<IDatabaseTransactionClient> =
-                mock<IDatabaseTransactionClient>();
-            const deletedAt = new Date('2026-02-01T00:00:00.000Z');
-            projectRepository.softDeleteInTx.mockResolvedValue(false);
+        it('passes the exception the repository rejected with through untouched', async () => {
+            const failure = new ProjectNotFoundException();
+            projectRepository.softDeleteInTx.mockRejectedValue(failure);
 
             await expect(
                 service.softDeleteProjectInTx(
@@ -376,29 +382,26 @@ describe('ProjectService', () => {
                     deletedAt,
                     '507f1f77bcf86cd799439015'
                 )
-            ).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.notFound,
-            });
+            ).rejects.toBe(failure);
         });
     });
 
-    describe('softDeleteChunkByWorkspace', () => {
-        it('passes the delete chunk size to the repository and returns the count it read', async () => {
+    describe('softDeleteChunkByWorkspaces', () => {
+        it('passes the workspace ids and the delete chunk size to the repository and returns the count it read', async () => {
             const deletedAt = new Date('2026-02-01T00:00:00.000Z');
-            projectRepository.softDeleteChunkByWorkspace.mockResolvedValue(7);
+            projectRepository.softDeleteChunkByWorkspaces.mockResolvedValue(7);
 
-            const result = await service.softDeleteChunkByWorkspace(
-                '507f1f77bcf86cd799439012',
+            const result = await service.softDeleteChunkByWorkspaces(
+                ['507f1f77bcf86cd799439012', '507f1f77bcf86cd799439013'],
                 deletedAt,
                 '507f1f77bcf86cd799439015'
             );
 
             expect(result).toBe(7);
             expect(
-                projectRepository.softDeleteChunkByWorkspace
+                projectRepository.softDeleteChunkByWorkspaces
             ).toHaveBeenCalledWith(
-                '507f1f77bcf86cd799439012',
+                ['507f1f77bcf86cd799439012', '507f1f77bcf86cd799439013'],
                 deletedAt,
                 '507f1f77bcf86cd799439015',
                 50

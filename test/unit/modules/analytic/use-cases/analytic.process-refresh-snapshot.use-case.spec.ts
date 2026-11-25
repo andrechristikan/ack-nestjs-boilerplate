@@ -117,6 +117,9 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
             expect(
                 analyticFraudService.computeSharedFingerprint
             ).toHaveBeenCalledTimes(1);
+            expect(
+                analyticSnapshotService.replaceHeader
+            ).not.toHaveBeenCalled();
             expect(analyticSnapshotService.replace).toHaveBeenCalledTimes(1);
             expect(analyticSnapshotService.replace).toHaveBeenCalledWith(
                 EnumAnalyticSnapshotSignal.sharedFingerprint,
@@ -172,6 +175,9 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
                 EnumAnalyticSnapshotSignal.impossibleTravel,
                 snapshot
             );
+            expect(
+                analyticSnapshotService.replaceHeader
+            ).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'analytic.queue.refreshSnapshot',
                 signal: EnumAnalyticSnapshotSignal.impossibleTravel,
@@ -234,6 +240,9 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
                 EnumAnalyticSnapshotSignal.workspaceMembership,
                 snapshot
             );
+            expect(
+                analyticSnapshotService.replaceHeader
+            ).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'analytic.queue.refreshSnapshot',
                 signal: EnumAnalyticSnapshotSignal.workspaceMembership,
@@ -241,7 +250,7 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
             });
         });
 
-        it('computes the mfa adoption header through the auth service, replaces the snapshot with it, and returns count 0', async () => {
+        it('computes the mfa adoption header through the auth service, writes the header alone, and returns count 0', async () => {
             const snapshot = {
                 items: [],
                 metadata: { enabled: 40, total: 200 },
@@ -257,10 +266,11 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
             expect(
                 analyticAuthService.computeMfaAdoption
             ).toHaveBeenCalledTimes(1);
-            expect(analyticSnapshotService.replace).toHaveBeenCalledWith(
+            expect(analyticSnapshotService.replaceHeader).toHaveBeenCalledWith(
                 EnumAnalyticSnapshotSignal.mfaAdoption,
                 snapshot
             );
+            expect(analyticSnapshotService.replace).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'analytic.queue.refreshSnapshot',
                 signal: EnumAnalyticSnapshotSignal.mfaAdoption,
@@ -297,6 +307,9 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
                 EnumAnalyticSnapshotSignal.deviceProliferation,
                 snapshot
             );
+            expect(
+                analyticSnapshotService.replaceHeader
+            ).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'analytic.queue.refreshSnapshot',
                 signal: EnumAnalyticSnapshotSignal.deviceProliferation,
@@ -338,6 +351,9 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
                 EnumAnalyticSnapshotSignal.riskScore,
                 snapshot
             );
+            expect(
+                analyticSnapshotService.replaceHeader
+            ).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'analytic.queue.refreshSnapshot',
                 signal: EnumAnalyticSnapshotSignal.riskScore,
@@ -345,23 +361,10 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
             });
         });
 
-        it('computes the concurrentSessions bucket rows, replaces the snapshot with them, and returns the row count', async () => {
+        it('computes the concurrentSessions buckets, writes the header alone, and returns count 0', async () => {
             const snapshot = {
-                items: [
-                    {
-                        key: '1',
-                        value: 0,
-                        occurredAt: null,
-                        data: { key: '1', count: 2 },
-                    },
-                    {
-                        key: '2',
-                        value: 1,
-                        occurredAt: null,
-                        data: { key: '2', count: 0 },
-                    },
-                ],
-                metadata: null,
+                items: [],
+                metadata: { buckets: [{ key: '1', count: 2 }] },
                 windowStart: null,
                 windowEnd: null,
             };
@@ -376,34 +379,22 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
             expect(
                 analyticAuthService.computeConcurrentSessions
             ).toHaveBeenCalledTimes(1);
-            expect(analyticSnapshotService.replace).toHaveBeenCalledWith(
+            expect(analyticSnapshotService.replaceHeader).toHaveBeenCalledWith(
                 EnumAnalyticSnapshotSignal.concurrentSessions,
                 snapshot
             );
+            expect(analyticSnapshotService.replace).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'analytic.queue.refreshSnapshot',
                 signal: EnumAnalyticSnapshotSignal.concurrentSessions,
-                count: 2,
+                count: 0,
             });
         });
 
-        it('computes the devicePerUser bucket rows, replaces the snapshot with them, and returns the row count', async () => {
+        it('computes the devicePerUser buckets, writes the header alone, and returns count 0', async () => {
             const snapshot = {
-                items: [
-                    {
-                        key: '1',
-                        value: 0,
-                        occurredAt: null,
-                        data: { key: '1', count: 2 },
-                    },
-                    {
-                        key: '2',
-                        value: 1,
-                        occurredAt: null,
-                        data: { key: '2', count: 0 },
-                    },
-                ],
-                metadata: null,
+                items: [],
+                metadata: { buckets: [{ key: '1', count: 2 }] },
                 windowStart: null,
                 windowEnd: null,
             };
@@ -418,14 +409,15 @@ describe('AnalyticProcessRefreshSnapshotUseCase', () => {
             expect(
                 analyticDeviceService.computeDevicePerUser
             ).toHaveBeenCalledTimes(1);
-            expect(analyticSnapshotService.replace).toHaveBeenCalledWith(
+            expect(analyticSnapshotService.replaceHeader).toHaveBeenCalledWith(
                 EnumAnalyticSnapshotSignal.devicePerUser,
                 snapshot
             );
+            expect(analyticSnapshotService.replace).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'analytic.queue.refreshSnapshot',
                 signal: EnumAnalyticSnapshotSignal.devicePerUser,
-                count: 2,
+                count: 0,
             });
         });
 

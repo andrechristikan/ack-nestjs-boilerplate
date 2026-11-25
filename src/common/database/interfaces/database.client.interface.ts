@@ -57,6 +57,11 @@ export type IDatabaseTransactionOptions = NonNullable<
     Prisma.PrismaClientOptions['transactionOptions']
 >;
 
+export interface IDatabaseTransactionCallbacks {
+    beforeCommit: Array<() => Promise<void>>;
+    afterCommit: Array<() => Promise<void>>;
+}
+
 export interface IDatabaseQueryLog {
     model: string | null;
     action: string | null;

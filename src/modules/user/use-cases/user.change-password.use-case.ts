@@ -1,7 +1,3 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -12,7 +8,6 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { AuthPasswordUtil } from '@modules/auth/utils/auth.password.util';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
@@ -55,7 +50,6 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
     ) {
         this.appName = this.configService.get<string>('app.name')!;
@@ -78,6 +72,7 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         }: UserChangePasswordRequestDto
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
+        const state = await this.mfaService.getFactorState(user.id);
         // Sequential by design: a credential proof, awaited alone; a statement whose failure is the answer, awaited before an unrelated write
         const input = {
             action: EnumUserReauthenticationAction.changePassword,
@@ -113,7 +108,8 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         const mfaCheck = await this.mfaService.checkReauthentication(
             user.id,
             input,
-            passwordCheck.isPasswordChecked
+            passwordCheck.isPasswordChecked,
+            state
         );
         if (mfaCheck.failure !== null) {
             const failure = mfaCheck.failure;
@@ -158,78 +154,63 @@ export class UserChangePasswordUseCase implements IAppUseCase<
         await Promise.all(checks);
         const password = await this.authPasswordService.create(newPassword);
 
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                await this.userAuthService.completeReauthenticationInTx(
+        await this.databaseService.withTransaction(async tx => {
+            await this.userAuthService.completeReauthenticationInTx(
+                tx,
+                authContext,
+                passwordCheck.isPasswordChecked,
+                verificationId,
+                true
+            );
+            await this.mfaService.completeReauthenticationInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                mfaCheck
+            );
+            await Promise.all([
+                this.userPasswordService.replaceInTx(
                     tx,
-                    authContext,
-                    passwordCheck.isPasswordChecked,
-                    verificationId
-                );
-                await this.mfaService.completeReauthenticationInTx(
+                    authContext.userId,
+                    password,
+                    authContext.userId
+                ),
+                this.passwordHistoryService.createInTx(
                     tx,
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    mfaCheck
-                );
-                await Promise.all([
-                    this.userPasswordService.replaceInTx(
-                        tx,
-                        authContext.userId,
-                        password,
-                        authContext.userId
-                    ),
-                    this.passwordHistoryService.createInTx(
-                        tx,
-                        authContext.userId,
-                        password.passwordHash,
-                        EnumPasswordHistoryType.profile,
-                        password.passwordPeriodExpired,
-                        password.passwordCreated,
-                        authContext.userId
-                    ),
-                    this.sessionService.revokeActiveByUserExceptInTx(
-                        tx,
-                        authContext.userId,
-                        authContext.sessionId,
-                        authContext.userId,
-                        password.passwordCreated
-                    ),
-                ]);
-                const entry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userPasswordChanged,
-                    }
-                );
-                const effect = this.notificationQueue.notify(
-                    EnumNotificationKind.changePassword,
-                    {
-                        userId: authContext.userId,
-                        proceedBy: authContext.userId,
-                    }
-                );
-                await this.outboxService.addManyInTx(tx, [entry, effect]);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (
-                mfaCheck.check !== null &&
-                mapped instanceof DatabaseWriteConflictException
-            ) {
-                throw new MfaInvalidException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+                    authContext.userId,
+                    password.passwordHash,
+                    EnumPasswordHistoryType.profile,
+                    password.passwordPeriodExpired,
+                    password.passwordCreated,
+                    authContext.userId
+                ),
+                this.sessionService.revokeActiveByUserExceptInTx(
+                    tx,
+                    authContext.userId,
+                    authContext.sessionId,
+                    authContext.userId,
+                    password.passwordCreated
+                ),
+            ]);
+            const entry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.userPasswordChanged,
+                }
+            );
+            const effect = this.notificationQueue.notify(
+                EnumNotificationKind.changePassword,
+                {
+                    userId: authContext.userId,
+                    proceedBy: authContext.userId,
+                }
+            );
+            await this.outboxService.addManyInTx(tx, [entry, effect]);
+        });
 
         return {};
     }

@@ -2,6 +2,7 @@ import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-c
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { FileExceedMaxDataExportException } from '@common/file/exceptions/file.exceed-max-data-export.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationIn } from '@common/pagination/interfaces/pagination.interface';
 import {
     EnumActivityLogAction,
@@ -13,17 +14,17 @@ import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
 import type { IActivityLogInput } from '@modules/activity-log/interfaces/activity-log.interface';
 import { AuthPasswordService } from '@modules/auth/services/auth.password.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
-import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
 import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
 import { UserImportUsernameExistException } from '@modules/user/exceptions/user.import-username-exist.exception';
 import { UserUsernameContainBadWordException } from '@modules/user/exceptions/user.username-contain-bad-word.exception';
 import type {
-    IUser,
     IUserCreateRole,
     IUserCreateWithWorkspaceInput,
     IUserImport,
+    IUserImportChecks,
     IUserImportPrepared,
     IUserImportUsernameChecks,
+    IUserList,
 } from '@modules/user/interfaces/user.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserService } from '@modules/user/services/user.service';
@@ -44,6 +45,7 @@ export class UserImportService {
         private readonly userVerificationUtil: UserVerificationUtil,
         private readonly authPasswordService: AuthPasswordService,
         private readonly databaseUtil: DatabaseUtil,
+        private readonly helperDateService: HelperDateService,
         private readonly awsS3Service: AwsS3Service,
         private readonly userService: UserService,
         private readonly configService: ConfigService
@@ -52,30 +54,36 @@ export class UserImportService {
             this.configService.get<number>('user.maxDataExport')!;
     }
 
-    async getExistingEmails(emails: string[]): Promise<string[]> {
-        const existingUsers = await this.userRepository.findByEmails(emails);
-
-        return existingUsers.map(user => user.email);
-    }
-
     assertEmailsAvailable(existingEmails: string[]): void {
         if (existingEmails.length > 0) {
             throw new UserImportEmailExistException(existingEmails.join(', '));
         }
     }
 
-    async getUsernameChecks(
+    async getImportByAdminChecks(
+        emails: string[],
         usernames: string[]
-    ): Promise<IUserImportUsernameChecks> {
+    ): Promise<IUserImportChecks> {
+        const emailSet = new Set(emails);
+        const usernameSet = new Set(usernames);
         const badWords = usernames.map(username =>
             this.userUtil.hasBadWord(username)
         );
-        const existingUsers =
-            await this.userRepository.findByUsernames(usernames);
+        const existingUsers = await this.userRepository.findByEmailsOrUsernames(
+            emails,
+            usernames
+        );
 
         return {
-            existing: existingUsers.map(user => user.username),
-            badWords,
+            existingEmails: existingUsers
+                .filter(user => emailSet.has(user.email))
+                .map(user => user.email),
+            usernameChecks: {
+                existing: existingUsers
+                    .filter(user => usernameSet.has(user.username))
+                    .map(user => user.username),
+                badWords,
+            },
         };
     }
 
@@ -140,6 +148,7 @@ export class UserImportService {
         );
         const workspaceContexts =
             this.userCreateUtil.buildPersonalWorkspaceContexts(usernames);
+        const createdAt = this.helperDateService.now();
         const verifications = emails.map(email =>
             this.userVerificationUtil.createVerified(email)
         );
@@ -158,14 +167,14 @@ export class UserImportService {
                     signUpWith: EnumUserSignUpWith.credential,
                     isVerified: true,
                     verifiedAt: verification.verifiedAt,
-                    acceptedTermPolicyTypes: [
-                        ...UserTermPolicyContract.requiredTypes,
-                    ],
+                    acceptedTermPolicyTypes: [],
                     password: passwordHasheds[index]!,
                     passwordHistoryType:
                         UserCreateContract.admin.passwordHistoryType,
                     verification,
+                    login: null,
                     workspaceContext: workspaceContexts[index]!,
+                    createdAt,
                     createdBy,
                 };
             }
@@ -178,7 +187,7 @@ export class UserImportService {
         status: EnumUserStatus[],
         roleId: string | null,
         countryId: string | null
-    ): Promise<IUser[]> {
+    ): Promise<IUserList[]> {
         return this.userRepository.findExport(
             status,
             roleId,
@@ -227,19 +236,17 @@ export class UserImportService {
     }
 
     buildImportByAdminStages(
-        inputs: IUserCreateWithWorkspaceInput[],
-        users: IUser[]
+        inputs: IUserCreateWithWorkspaceInput[]
     ): IActivityLogInput<EnumActivityLogAction>[] {
         const stages = this.userCreateUtil.buildStages(
             UserCreateContract.admin,
-            inputs,
-            users
+            inputs
         );
 
         return [
             {
                 action: EnumActivityLogAction.adminUserImported,
-                metadata: { userCount: users.length },
+                metadata: { userCount: inputs.length },
             },
             ...stages,
         ];

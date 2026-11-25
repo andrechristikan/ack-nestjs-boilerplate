@@ -21,11 +21,8 @@ import type {
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type {
-    ISession,
     ISessionList,
-    ISessionLogin,
     ISessionRef,
-    ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
@@ -41,6 +38,7 @@ import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import { SessionLoginCacheSchema } from '@modules/session/dtos/session.login-cache.dto';
+import type { SessionLoginCacheDto } from '@modules/session/dtos/session.login-cache.dto';
 
 @Injectable()
 export class SessionService {
@@ -68,13 +66,13 @@ export class SessionService {
     }
 
     private groupRefsByUser(
-        sessions: ISessionUserRef[]
+        sessions: ISessionRef[]
     ): IUserPurgeLoginsPayload[] {
         const grouped = new Map<string, ISessionRef[]>();
-        for (const { id, userId } of sessions) {
-            const refs = grouped.get(userId) ?? [];
-            refs.push({ id });
-            grouped.set(userId, refs);
+        for (const session of sessions) {
+            const refs = grouped.get(session.userId) ?? [];
+            refs.push(session);
+            grouped.set(session.userId, refs);
         }
 
         return Array.from(grouped, ([userId, refs]) => ({
@@ -87,7 +85,7 @@ export class SessionService {
         userId: string,
         sessionId: string,
         key: string
-    ): Promise<ISessionLogin | null> {
+    ): Promise<SessionLoginCacheDto | null> {
         const now = this.helperDateService.now();
         const idleSince = this.helperDateService.backward(
             now,
@@ -98,17 +96,22 @@ export class SessionService {
             key,
             SessionLoginCacheSchema,
             this.sessionCache.loginCacheTtlInMs,
-            () =>
-                this.sessionRepository.findLoginById(
+            async () => {
+                const session = await this.sessionRepository.findLoginById(
                     userId,
                     sessionId,
                     idleSince
-                )
+                );
+
+                return session === null
+                    ? null
+                    : { jtiDigest: session.jtiDigest };
+            }
         );
     }
 
     private mapActivityLogActorMetadata(
-        session: ISession,
+        session: ISessionList,
         timestamp: Date
     ): IActivityLogMetadata {
         return {
@@ -120,7 +123,7 @@ export class SessionService {
     }
 
     private mapActivityLogTargetMetadata(
-        session: ISession,
+        session: ISessionList,
         actorUserId: string,
         timestamp: Date
     ): IActivityLogMetadata {
@@ -330,7 +333,7 @@ export class SessionService {
         }
 
         const effect = this.userAuthQueue.purgeLoginsEffect(userId, [
-            { id: sessionId },
+            { id: sessionId, userId },
         ]);
         await this.outboxService.addInTx(tx, effect);
 
@@ -357,7 +360,7 @@ export class SessionService {
         }
 
         const effect = this.userAuthQueue.purgeLoginsEffect(userId, [
-            { id: sessionId },
+            { id: sessionId, userId },
         ]);
         await this.outboxService.addInTx(tx, effect);
     }
@@ -473,7 +476,7 @@ export class SessionService {
         userId: string,
         sessionId: string,
         revokedAt: Date
-    ): Promise<ISession> {
+    ): Promise<ISessionList> {
         const revokedBy = authContext.userId;
         const session = await this.sessionRepository.revokeByAdminInTx(
             tx,
@@ -482,16 +485,15 @@ export class SessionService {
             revokedBy,
             revokedAt
         );
-        if (session === null) {
-            throw new SessionNotFoundException();
-        }
 
         const actorMetadata = this.mapActivityLogActorMetadata(
             session,
             revokedAt
         );
         const effects: IOutboxEffect[] = [
-            this.userAuthQueue.purgeLoginsEffect(userId, [{ id: sessionId }]),
+            this.userAuthQueue.purgeLoginsEffect(userId, [
+                { id: sessionId, userId },
+            ]),
             this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,

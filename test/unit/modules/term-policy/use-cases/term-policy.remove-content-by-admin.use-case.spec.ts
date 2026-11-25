@@ -3,8 +3,6 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
@@ -12,12 +10,10 @@ import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
-import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import type {
     ITermPolicyContent,
     ITermPolicyContentPrepared,
@@ -150,7 +146,7 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
             );
         });
 
-        it('rethrows a typed exception of the write', async () => {
+        it('passes a rejected exception of the write through untouched', async () => {
             const failure = new TermPolicyStatusInvalidException();
             termPolicyContentService.removeContentByAdminInTx.mockRejectedValue(
                 failure
@@ -167,29 +163,7 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
             ).rejects.toBe(failure);
         });
 
-        it('maps a write conflict to TermPolicyStatusInvalidException', async () => {
-            termPolicyContentService.removeContentByAdminInTx.mockRejectedValue(
-                new Prisma.PrismaClientKnownRequestError('conflict', {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                })
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'term-policy-1',
-                    EnumMessageLanguage.en
-                )
-            ).rejects.toMatchObject({
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-            });
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
+        it('passes any other rejection through untouched', async () => {
             const cause = new Error('boom');
             termPolicyContentService.removeContentByAdminInTx.mockRejectedValue(
                 cause
@@ -203,10 +177,7 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
                     'term-policy-1',
                     EnumMessageLanguage.en
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

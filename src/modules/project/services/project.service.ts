@@ -16,6 +16,7 @@ import { ProjectNotFoundException } from '@modules/project/exceptions/project.no
 import { ProjectSlugInvalidException } from '@modules/project/exceptions/project.slug-invalid.exception';
 import type {
     IProjectCreate,
+    IProjectRef,
     IProjectUpdate,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectRepository } from '@modules/project/repositories/project.repository';
@@ -197,25 +198,22 @@ export class ProjectService {
         project: Project,
         deletedAt: Date,
         deletedBy: string
-    ): Promise<void> {
-        const softDeleted = await this.projectRepository.softDeleteInTx(
+    ): Promise<IProjectRef> {
+        return this.projectRepository.softDeleteInTx(
             tx,
             project.id,
             deletedAt,
             deletedBy
         );
-        if (!softDeleted) {
-            throw new ProjectNotFoundException();
-        }
     }
 
-    async softDeleteChunkByWorkspace(
-        workspaceId: string,
+    async softDeleteChunkByWorkspaces(
+        workspaceIds: string[],
         deletedAt: Date,
         deletedBy: string
     ): Promise<number> {
-        return this.projectRepository.softDeleteChunkByWorkspace(
-            workspaceId,
+        return this.projectRepository.softDeleteChunkByWorkspaces(
+            workspaceIds,
             deletedAt,
             deletedBy,
             this.chunkSize

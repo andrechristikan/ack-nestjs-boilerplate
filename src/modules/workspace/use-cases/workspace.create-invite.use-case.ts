@@ -1,21 +1,20 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
-import type { Project, WorkspaceInvite } from '@generated/prisma-client/client';
+import type { Project } from '@generated/prisma-client/client';
 import { ProjectService } from '@modules/project/services/project.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteCreateRequestDto } from '@modules/workspace/dtos/request/workspace.invite-create.request.dto';
-import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
+import { WorkspaceInviteReferenceExistException } from '@modules/workspace/exceptions/workspace.invite-reference-exist.exception';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import type {
     IWorkspaceContext,
     IWorkspaceInviteCreate,
+    IWorkspaceInviteList,
 } from '@modules/workspace/interfaces/workspace.interface';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
@@ -35,7 +34,7 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
         IWorkspaceContext,
         WorkspaceInviteCreateRequestDto,
     ],
-    IResponseReturn<WorkspaceInvite>
+    IResponseReturn<IWorkspaceInviteList>
 > {
     private readonly referenceMaxAttempts: number;
 
@@ -45,7 +44,6 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
         private readonly userService: UserService,
         private readonly userUtil: UserUtil,
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly configService: ConfigService
     ) {
@@ -67,7 +65,7 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
             projectRole,
             expiryDuration,
         }: WorkspaceInviteCreateRequestDto
-    ): Promise<IResponseReturn<WorkspaceInvite>> {
+    ): Promise<IResponseReturn<IWorkspaceInviteList>> {
         this.workspaceInviteService.assertEmailDeliverable();
 
         const create: IWorkspaceInviteCreate = {
@@ -134,31 +132,12 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
 
                 return { data: censored };
             } catch (err: unknown) {
-                const isDuplicate = this.databaseUtil.isUniqueCollision(
-                    err,
-                    'nonce'
-                );
-                if (isDuplicate) {
-                    throw new WorkspaceInviteDuplicateException();
-                }
-
-                const isTokenCollision = this.databaseUtil.isUniqueCollision(
-                    err,
-                    'token'
-                );
-                const isReferenceCollision =
-                    this.databaseUtil.isUniqueCollision(err, 'reference');
-                if (isTokenCollision || isReferenceCollision) {
+                if (err instanceof WorkspaceInviteReferenceExistException) {
                     continue;
                 }
 
                 if (err instanceof AppBaseException) {
                     throw err;
-                }
-
-                const mapped = this.databaseUtil.toException(err);
-                if (mapped instanceof DatabaseWriteConflictException) {
-                    throw new WorkspaceInviteDuplicateException();
                 }
 
                 throw new AppUnknownException(err);

@@ -1,8 +1,4 @@
-import { CacheQueue } from '@common/cache/queues/cache.queue';
-import { CacheService } from '@common/cache/services/cache.service';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
-import { OutboxService } from '@common/outbox/services/outbox.service';
 import type {
     IPaginationIn,
     IPaginationQueryCursorParams,
@@ -11,7 +7,6 @@ import type {
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumRoleType } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
-import { RoleCache } from '@modules/role/caches/role.cache';
 import { RoleRank } from '@modules/role/constants/role.constant';
 import { RoleForbiddenException } from '@modules/role/exceptions/role.forbidden.exception';
 import { RoleHasPoliciesException } from '@modules/role/exceptions/role.has-policies.exception';
@@ -19,7 +14,6 @@ import { RoleImmutableException } from '@modules/role/exceptions/role.immutable.
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
 import { RoleSelfForbiddenException } from '@modules/role/exceptions/role.self-forbidden.exception';
-import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import type {
     IRole,
     IRoleActor,
@@ -31,17 +25,10 @@ import type {
 import { RoleRepository } from '@modules/role/repositories/role.repository';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import { Injectable } from '@nestjs/common';
-import { RoleCacheSchema } from '@modules/role/dtos/role.cache.dto';
 
 @Injectable()
 export class RoleService {
-    constructor(
-        private readonly roleRepository: RoleRepository,
-        private readonly roleCache: RoleCache,
-        private readonly cacheService: CacheService,
-        private readonly cacheQueue: CacheQueue,
-        private readonly outboxService: OutboxService
-    ) {}
+    constructor(private readonly roleRepository: RoleRepository) {}
 
     private outranks(
         actorRoleType: EnumRoleType,
@@ -174,32 +161,6 @@ export class RoleService {
         return role;
     }
 
-    /** Read-through over the role row with its policies. */
-    async getOne(id: string): Promise<IRoleWithPolicies> {
-        const cacheKey = this.roleCache.buildRoleKey(id);
-        const lease = this.roleCache.buildRoleLease(id);
-
-        const role = await this.cacheService.readThrough(
-            cacheKey,
-            RoleCacheSchema,
-            this.roleCache.cacheTtlInMs,
-            () => this.roleRepository.findOneWithPoliciesById(id),
-            { lease }
-        );
-        if (!role) {
-            throw new RoleNotFoundException();
-        }
-
-        return role;
-    }
-
-    /** The outbox effect that drops the role's cache keys; the caller adds it on the transaction of the write that changes the role or its policies. */
-    invalidateEffect(roleId: string): IOutboxEffect {
-        const keys = this.roleCache.buildRoleKeys(roleId);
-
-        return this.cacheQueue.invalidateEffect(keys);
-    }
-
     assertActorOutranks(
         actorRoleType: EnumRoleType,
         targetRoleType: EnumRoleType
@@ -229,35 +190,14 @@ export class RoleService {
         role: IRoleWithPolicyCount,
         data: IRoleUpdate
     ): Promise<IRoleWithPolicies> {
-        const updated = await this.roleRepository.updateInTx(
-            tx,
-            role.id,
-            role.type,
-            data
-        );
-        if (!updated) {
-            throw new RoleNotFoundException();
-        }
-
-        const effect = this.invalidateEffect(role.id);
-        await this.outboxService.addInTx(tx, effect);
-
-        return updated;
+        return this.roleRepository.updateInTx(tx, role.id, role.type, data);
     }
 
     async deleteByAdminInTx(
         tx: IDatabaseTransactionClient,
         role: IRole
     ): Promise<IRole> {
-        const deleted = await this.roleRepository.deleteUnusedInTx(tx, role.id);
-        if (!deleted) {
-            throw new RoleUsedException();
-        }
-
-        const effect = this.invalidateEffect(role.id);
-        await this.outboxService.addInTx(tx, effect);
-
-        return role;
+        return this.roleRepository.deleteUnusedInTx(tx, role.id);
     }
 
     async validateRoleGuard(

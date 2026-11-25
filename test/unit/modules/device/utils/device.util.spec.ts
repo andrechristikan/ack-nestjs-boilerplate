@@ -100,25 +100,28 @@ describe('DeviceUtil', () => {
     });
 
     describe('mapActivityLogMetadata', () => {
-        it('projects the ownership id, device id, and session count', () => {
+        it('projects the ownership id, the device id the row carries, and the session count', () => {
             const result = util.mapActivityLogMetadata(
-                deviceOwnershipDetail,
+                { ...deviceOwnershipDetail, deviceId: 'device-9' },
                 3
             );
 
             expect(result).toEqual({
                 deviceOwnershipId: 'device-ownership-1',
-                deviceId: 'device-1',
+                deviceId: 'device-9',
                 sessionCount: 3,
             });
         });
     });
 
     describe('mapActivityLogActorMetadata', () => {
-        it('extends the base metadata with the target user and timestamp', () => {
+        it('extends the base metadata with the target user and the passed timestamp', () => {
+            const timestamp = new Date('2026-01-05T00:00:00.000Z');
+
             const result = util.mapActivityLogActorMetadata(
                 deviceOwnershipDetail,
-                3
+                3,
+                timestamp
             );
 
             expect(result).toEqual({
@@ -127,17 +130,20 @@ describe('DeviceUtil', () => {
                 sessionCount: 3,
                 targetUserId: 'user-1',
                 targetUsername: 'jane',
-                timestamp: now,
+                timestamp,
             });
         });
     });
 
     describe('mapActivityLogTargetMetadata', () => {
-        it('extends the base metadata with the actor user and timestamp', () => {
+        it('extends the base metadata with the actor user and the passed timestamp', () => {
+            const timestamp = new Date('2026-01-05T00:00:00.000Z');
+
             const result = util.mapActivityLogTargetMetadata(
                 deviceOwnershipDetail,
                 'admin-1',
-                3
+                3,
+                timestamp
             );
 
             expect(result).toEqual({
@@ -145,7 +151,7 @@ describe('DeviceUtil', () => {
                 deviceId: 'device-1',
                 sessionCount: 3,
                 actorUserId: 'admin-1',
-                timestamp: now,
+                timestamp,
             });
         });
     });

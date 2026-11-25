@@ -1,8 +1,4 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -14,7 +10,6 @@ import {
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceUtil } from '@modules/device/utils/device.util';
-import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
@@ -38,8 +33,7 @@ export class UserLoginWithPasskeyUseCase implements IAppUseCase<
         private readonly deviceService: DeviceService,
         private readonly deviceUtil: DeviceUtil,
         private readonly databaseService: DatabaseService,
-        private readonly helperDateService: HelperDateService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async execute(
@@ -59,13 +53,13 @@ export class UserLoginWithPasskeyUseCase implements IAppUseCase<
             ),
             this.mfaPasskeyService.getOneForLogin(passkeyResponse.id),
         ]);
-        const [user] = await Promise.all([
-            this.userAuthService.getOneForPasskeyLogin(passkey.userId),
-            this.mfaService.assertAttemptAvailable(passkey.userId),
-        ]);
+        const user = await this.userAuthService.getOneForPasskeyLogin(
+            passkey.userId
+        );
         // Sequential by design: a credential proof, awaited alone
         const { check, failure } = await this.mfaService.checkPasskeyLogin(
             user.id,
+            passkey,
             passkeyResponse,
             webAuthnChallenge
         );
@@ -91,56 +85,44 @@ export class UserLoginWithPasskeyUseCase implements IAppUseCase<
 
         const deviceIdentity = this.deviceUtil.toIdentity(device);
         const loginAt = this.helperDateService.now();
-        try {
-            const { tokens } = await this.databaseService.withTransaction(
-                async tx => {
-                    await this.mfaService.completeChallengeInTx(
-                        tx,
-                        user.id,
-                        challengeToken,
-                        EnumMfaChallengePurpose.passwordless,
-                        check
-                    );
-                    const upserted =
-                        await this.deviceService.upsertForLoginInTx(
-                            tx,
-                            user.id,
-                            deviceIdentity,
-                            loginAt
-                        );
+        const { tokens } = await this.databaseService.withTransaction(
+            async tx => {
+                await this.mfaService.completeChallengeInTx(
+                    tx,
+                    user.id,
+                    challengeToken,
+                    EnumMfaChallengePurpose.passwordless,
+                    check
+                );
+                const upserted = await this.deviceService.upsertForLoginInTx(
+                    tx,
+                    user.id,
+                    deviceIdentity,
+                    loginAt
+                );
 
-                    return this.userAuthService.createTokenAndSessionInTx(
-                        tx,
-                        requestContext,
-                        apiKeyContext,
-                        user,
-                        upserted,
-                        from,
-                        EnumUserLoginWith.passkey,
-                        loginAt
-                    );
-                }
-            );
-
-            return {
-                data: {
-                    isMfaRequired: false,
-                    tokens,
-                    lastWorkspaceId,
-                    lastWorkspaceChangedAt: user.lastWorkspaceChangedAt,
-                },
-            };
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
+                return this.userAuthService.createTokenAndSessionInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    user,
+                    upserted,
+                    from,
+                    EnumUserLoginWith.passkey,
+                    loginAt,
+                    false,
+                    false
+                );
             }
+        );
 
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new MfaChallengeInvalidException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return {
+            data: {
+                isMfaRequired: false,
+                tokens,
+                lastWorkspaceId,
+                lastWorkspaceChangedAt: user.lastWorkspaceChangedAt,
+            },
+        };
     }
 }

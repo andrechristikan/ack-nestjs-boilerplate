@@ -65,20 +65,17 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
     ): Promise<IUserAuthOutcome> {
         const { lastWorkspaceChangedAt } = user;
         // Sequential by design: a write after its checks
-        const [lastWorkspaceId, isMfaEnabled] = await Promise.all([
+        const [lastWorkspaceId, state] = await Promise.all([
             this.workspaceMemberService.resolveLastWorkspaceId(
                 user.id,
                 user.lastWorkspaceId
             ),
-            this.mfaService.isEnabled(user.id),
+            this.mfaService.getFactorState(user.id),
         ]);
+        const isMfaEnabled = await this.mfaService.isEnabled(state);
         if (!isMfaEnabled) {
             const { tokens } = await this.databaseService.withTransaction(
                 async tx => {
-                    await this.userPasswordService.resetPasswordAttemptInTx(
-                        tx,
-                        user.id
-                    );
                     const upserted =
                         await this.deviceService.upsertForLoginInTx(
                             tx,
@@ -95,7 +92,9 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
                         upserted,
                         loginFrom,
                         loginWith,
-                        loginAt
+                        loginAt,
+                        false,
+                        true
                     );
                 }
             );
@@ -108,17 +107,12 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
             };
         }
 
-        const credentials = await this.mfaPasskeyService.getCredentialsByUser(
-            user.id
-        );
-        const methods = await this.mfaService.getLoginMethods(
-            user.id,
-            credentials
-        );
+        const methods = await this.mfaService.getLoginMethods(state);
         let passkeyOptions: PublicKeyCredentialRequestOptionsJSON | null = null;
         if (methods.includes(EnumMfaMethod.passkey)) {
-            passkeyOptions =
-                await this.mfaPasskeyService.getAssertionOptions(credentials);
+            passkeyOptions = await this.mfaPasskeyService.getAssertionOptions(
+                state.passkeys
+            );
         }
 
         const mfa = await this.databaseService.withTransaction(async tx => {

@@ -1,7 +1,14 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { UserMobileNumberSummarySelect } from '@modules/user/constants/user.constant';
+import { DatabaseUtil } from '@common/database/utils/database.util';
+import {
+    UserMobileNumberSummarySelect,
+    UserMobileNumberWithCountryInclude,
+} from '@modules/user/constants/user.constant';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
+import { UserMobileNumberAlreadyVerifiedException } from '@modules/user/exceptions/user.mobile-number-already-verified.exception';
+import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
+import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
 import type {
     IUserMobileNumber,
     IUserMobileNumberSummary,
@@ -11,7 +18,10 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UserMobileNumberRepository implements IUserMobileNumberRepository {
-    constructor(private readonly databaseService: DatabaseService) {}
+    constructor(
+        private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil
+    ) {}
 
     async findOneMobileNumber(
         userId: string,
@@ -29,7 +39,7 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
     async findManyByUser(userId: string): Promise<IUserMobileNumber[]> {
         return this.databaseService.client.userMobileNumber.findMany({
             where: { userId },
-            include: { country: true },
+            include: UserMobileNumberWithCountryInclude,
         });
     }
 
@@ -56,17 +66,28 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
     ): Promise<IUserMobileNumber> {
-        return tx.userMobileNumber.create({
-            data: {
-                userId,
-                countryId,
-                number,
-                phoneCode,
-            },
-            include: {
-                country: true,
-            },
-        });
+        try {
+            return await tx.userMobileNumber.create({
+                data: {
+                    userId,
+                    countryId,
+                    number,
+                    phoneCode,
+                },
+                include: UserMobileNumberWithCountryInclude,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'number',
+                        exception: new UserMobileNumberExistException(),
+                    },
+                ],
+                new UserMobileNumberExistException()
+            );
+        }
     }
 
     async updateInTx(
@@ -75,26 +96,30 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
         mobileNumberId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto,
         isVerified: boolean
-    ): Promise<IUserMobileNumber | null> {
-        const { count } = await tx.userMobileNumber.updateMany({
-            where: { id: mobileNumberId, userId },
-            data: {
-                countryId,
-                number,
-                phoneCode,
-                isVerified,
-            },
-        });
-        if (count === 0) {
-            return null;
+    ): Promise<IUserMobileNumber> {
+        try {
+            return await tx.userMobileNumber.update({
+                where: { id: mobileNumberId, userId },
+                data: {
+                    countryId,
+                    number,
+                    phoneCode,
+                    isVerified,
+                },
+                include: UserMobileNumberWithCountryInclude,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'number',
+                        exception: new UserMobileNumberExistException(),
+                    },
+                ],
+                new UserMobileNumberNotFoundException()
+            );
         }
-
-        return tx.userMobileNumber.findFirst({
-            where: { id: mobileNumberId, userId },
-            include: {
-                country: true,
-            },
-        });
     }
 
     async markVerifiedInTx(
@@ -103,34 +128,37 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
         mobileNumberId: string,
         verifiedAt: Date
     ): Promise<boolean> {
-        const { count } = await tx.userMobileNumber.updateMany({
-            where: { id: mobileNumberId, userId, isVerified: false },
-            data: { isVerified: true, verifiedAt },
-        });
+        try {
+            const { count } = await tx.userMobileNumber.updateMany({
+                where: { id: mobileNumberId, userId, isVerified: false },
+                data: { isVerified: true, verifiedAt },
+            });
 
-        return count > 0;
+            return count > 0;
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new UserMobileNumberAlreadyVerifiedException()
+            );
+        }
     }
 
     async deleteInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
         mobileNumberId: string
-    ): Promise<IUserMobileNumber | null> {
-        const row = await tx.userMobileNumber.findFirst({
-            where: { id: mobileNumberId, userId },
-            include: {
-                country: true,
-            },
-        });
-        if (!row) {
-            return null;
+    ): Promise<IUserMobileNumber> {
+        try {
+            return await tx.userMobileNumber.delete({
+                where: { id: mobileNumberId, userId },
+                include: UserMobileNumberWithCountryInclude,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new UserMobileNumberNotFoundException()
+            );
         }
-
-        const { count } = await tx.userMobileNumber.deleteMany({
-            where: { id: mobileNumberId, userId },
-        });
-
-        return count > 0 ? row : null;
     }
 
     async deleteByUserInTx(

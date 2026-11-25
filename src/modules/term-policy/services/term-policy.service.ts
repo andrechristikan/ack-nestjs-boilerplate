@@ -229,17 +229,14 @@ export class TermPolicyService {
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         termPolicy: TermPolicy
-    ): Promise<void> {
-        const isDeleted = await this.termPolicyRepository.deleteDraftInTx(
+    ): Promise<TermPolicy> {
+        const deleted = await this.termPolicyRepository.deleteDraftInTx(
             tx,
             termPolicy.id
         );
-        if (!isDeleted) {
-            throw new TermPolicyStatusInvalidException();
-        }
 
         const effects: IOutboxEffect[] = [];
-        const contentKeys = termPolicy.contents.map(content => content.key);
+        const contentKeys = deleted.contents.map(content => content.key);
         if (contentKeys.length > 0) {
             const deleteEffect =
                 this.termPolicyQueue.deleteContentEffect(contentKeys);
@@ -248,7 +245,7 @@ export class TermPolicyService {
 
         const timestamp = this.helperDateService.now();
         const metadata = this.termPolicyUtil.mapActivityLogMetadata(
-            termPolicy,
+            deleted,
             timestamp
         );
         const entry = this.activityLogQueue.recordEffect(
@@ -263,6 +260,8 @@ export class TermPolicyService {
         );
         effects.push(entry);
         await this.outboxService.addManyInTx(tx, effects);
+
+        return deleted;
     }
 
     async preparePublishByAdmin(
@@ -324,22 +323,13 @@ export class TermPolicyService {
         authContext: IAuthJwtAccessContext,
         { termPolicy, publicContents }: ITermPolicyPublishPrepared
     ): Promise<TermPolicy> {
-        const isPublished = await this.termPolicyRepository.publishInTx(
+        const publishedAt = this.helperDateService.now();
+        const row = await this.termPolicyRepository.publishInTx(
             tx,
             termPolicy.id,
-            publicContents
+            publicContents,
+            publishedAt
         );
-        if (!isPublished) {
-            throw new TermPolicyStatusInvalidException();
-        }
-
-        const row = await this.termPolicyRepository.findOneByIdInTx(
-            tx,
-            termPolicy.id
-        );
-        if (!row) {
-            throw new TermPolicyNotFoundException();
-        }
 
         await this.termPolicyRepository.archivePublishedByTypeInTx(
             tx,

@@ -78,9 +78,9 @@ Rule: `outbox.md`.
 - Importing `OutboxModule` in every module that needs it: the processor router and every module writing an effect would carry the same import.
 - A `@nestjs/schedule` cron sweep: it runs on every replica and adds a dependency, where a BullMQ job scheduler runs each tick once.
 
-### A statement and its outbox row share the use case's transaction, and an `afterCommit` callback dispatches
+### A statement and its outbox rows share the use case's transaction, a before-commit callback inserts them once, and an `afterCommit` callback dispatches them from memory
 
-Rule: `effects.md`, Writing; `database.md`.
+Rule: `effects.md`, Writing; `database.md`; `outbox.md`, Dispatch.
 
 - A non-transactional add after the statement: a crash or a MongoDB failure between the two loses the effect the outbox exists to keep.
 - A transaction wrapper on the outbox service that opens the transaction and dispatches after it, with insert-and-dispatch methods on the outbox service for an effect with no business write: the outbox, a kit module, would open a transaction, where the kit opens none.
@@ -90,6 +90,9 @@ Rule: `effects.md`, Writing; `database.md`.
 - A Prisma client extension in two layers: a second wrapper on every query and a client type derived twice.
 - A Prisma client extension handing the callback a `Proxy` of `tx`: every access to `tx` passes a trap, and the method is typed by hand.
 - The sweep alone: a one-time code, an email, and a session cache purge wait for the next sweep.
+- One `createMany` per add: a transaction whose services add effects apart runs one insert per add, and two parallel adds of one key both insert, the second aborting the transaction on the unique index.
+- A service `*InTx` returning its effects to the caller: every `*InTx` then carries effects up through every layer, and a dropped return loses the effect.
+- Dropping only the post-commit re-read: the rows still cost one insert per add.
 
 ### The queue class is a module's side-effect entry, and enqueues after the commit
 

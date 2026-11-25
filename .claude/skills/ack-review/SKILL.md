@@ -42,16 +42,16 @@ Read `review.md` against `references/review-file.md`. A rule file from `Rules to
 
 A short form of `/ack-design` and `/ack-plan` over `review.md`.
 
-1. Put each finding to the owner with `AskUserQuestion`, one finding per question, in number order: the point in plain words, the code now and the code after, then the options keep, drop, or change, each explained.
+1. Put each finding to the owner with `AskUserQuestion`, one finding per question, in number order: the point in plain words, the code now and the code after, then the options keep, drop, or change, each explained, the recommended one first.
 2. Write the answer into the finding in the shape `references/review-file.md`, What the session adds, gives. A changed finding is rewritten so its exact change matches the answer.
 3. Write `## Fixes` in `review.md`, one row per kept finding, in that shape.
 
 | The finding | Route |
 | --- | --- |
-| the code departs from the spec or a rule | `coder`, one dispatch with the finding as its pin |
+| the code departs from the spec or a rule, or a `src/` defect outside the feature that a pin fixes | `coder`, one dispatch with the finding as its pin |
 | the spec or the plan is wrong | stop; name `/ack-design` |
 | a rule is missing or wrong | a `- [ ]` line under the plan's `## Harness changes`; name `/ack-harness <the plan path>`, then this skill resumes |
-| a `src/` defect outside the feature | one row in `generated/report-src-sweep.md` (`.claude/skills/ack-spec/references/sweep-log.md`) |
+| a `src/` defect outside the feature that needs a design, an owner-only command, or held work, and that no plan or spec covers | one row in `generated/report-src-sweep.md` (`.claude/skills/ack-spec/references/sweep-log.md`) |
 
 4. `Coder` is the effort of a `coder` row: run `bash .claude/hooks/jev.sh level` on the finding as `/ack-plan`, Level per ticket, gives, its table included.
 5. Ask the owner to approve `## Fixes` with `AskUserQuestion`. No dispatch runs before the yes.
@@ -82,7 +82,6 @@ Decisions to honor: <the plan's line>
 - Each finding: the owner's answer, its route, its state.
 - Each owner answer that rejected a named alternative, as a decision candidate (the choice, the rejected option, the owner's reason): name `/ack-harness`.
 - The gate output after the fixes.
-- The `docs/` pages the change makes stale, as a list for `/ack-doc`.
 
 ## Next
 

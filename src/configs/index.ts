@@ -26,7 +26,6 @@ import WorkspaceConfig from '@configs/workspace.config';
 import ProjectConfig from '@configs/project.config';
 import AnalyticConfig from '@configs/analytic.config';
 import OutboxConfig from '@configs/outbox.config';
-import RoleConfig from '@configs/role.config';
 import HelperConfig from '@configs/helper.config';
 import MfaConfig from '@configs/mfa.config';
 
@@ -59,7 +58,6 @@ export default [
     ProjectConfig,
     AnalyticConfig,
     OutboxConfig,
-    RoleConfig,
     HelperConfig,
     MfaConfig,
 ];

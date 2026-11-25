@@ -20,7 +20,13 @@ export const TermPolicyRefSelect = {
     id: true,
     type: true,
     version: true,
-} as const;
+    status: true,
+} satisfies Prisma.TermPolicySelect;
+
+/** @public */
+export const TermPolicyUserAcceptanceRefSelect = {
+    id: true,
+} satisfies Prisma.TermPolicyUserAcceptanceSelect;
 
 /** @public */
 export const TermPolicyAcceptanceInclude = {
@@ -55,9 +61,4 @@ export const TermPolicyRecipientStateSelect = {
     batchId: true,
     sentAt: true,
     claimedAt: true,
-} satisfies Prisma.TermPolicyRecipientSelect;
-
-/** @public */
-export const TermPolicyRecipientSendSelect = {
-    userId: true,
 } satisfies Prisma.TermPolicyRecipientSelect;

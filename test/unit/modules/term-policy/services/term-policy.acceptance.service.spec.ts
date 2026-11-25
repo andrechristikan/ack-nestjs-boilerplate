@@ -260,50 +260,74 @@ describe('TermPolicyAcceptanceService', () => {
         });
     });
 
-    describe('assertRequiredPublished', () => {
-        it('returns the latest published policy of every required type read on the client', async () => {
-            const refs: ITermPolicyRef[] = [
-                {
-                    id: 'terms-1',
-                    type: EnumTermPolicyType.termsOfService,
-                    version: 1,
-                },
-                {
-                    id: 'privacy-1',
-                    type: EnumTermPolicyType.privacy,
-                    version: 1,
-                },
-            ];
+    describe('getPublishedForAcceptance', () => {
+        const termsRef: ITermPolicyRef = {
+            id: 'terms-1',
+            type: EnumTermPolicyType.termsOfService,
+            version: 1,
+        };
+        const privacyRef: ITermPolicyRef = {
+            id: 'privacy-1',
+            type: EnumTermPolicyType.privacy,
+            version: 1,
+        };
+        const cookiesRef: ITermPolicyRef = {
+            id: 'cookies-1',
+            type: EnumTermPolicyType.cookies,
+            version: 1,
+        };
+        const required = [
+            EnumTermPolicyType.termsOfService,
+            EnumTermPolicyType.privacy,
+        ];
+
+        it('reads the required and accepted types once and returns the refs', async () => {
+            const refs = [termsRef, privacyRef, cookiesRef];
             termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue(
                 refs
             );
 
-            const result = await service.assertRequiredPublished([
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
+            const result = await service.getPublishedForAcceptance(required, [
+                ...required,
+                EnumTermPolicyType.cookies,
             ]);
 
             expect(result).toBe(refs);
             expect(
                 termPolicyRepository.findLatestPublishedByTypes
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                termPolicyRepository.findLatestPublishedByTypes
             ).toHaveBeenCalledWith([
                 EnumTermPolicyType.termsOfService,
                 EnumTermPolicyType.privacy,
+                EnumTermPolicyType.cookies,
             ]);
+        });
+
+        it('drops an accepted optional type with nothing published', async () => {
+            const refs = [termsRef, privacyRef];
+            termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue(
+                refs
+            );
+
+            const result = await service.getPublishedForAcceptance(required, [
+                ...required,
+                EnumTermPolicyType.marketing,
+            ]);
+
+            expect(result).toEqual([termsRef, privacyRef]);
         });
 
         it('throws TermPolicyRequiredNotPublishedException when privacy has no published row', async () => {
             termPolicyRepository.findLatestPublishedByTypes.mockResolvedValue([
-                {
-                    id: 'terms-1',
-                    type: EnumTermPolicyType.termsOfService,
-                    version: 1,
-                },
+                termsRef,
+                cookiesRef,
             ]);
 
-            const promise = service.assertRequiredPublished([
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
+            const promise = service.getPublishedForAcceptance(required, [
+                ...required,
+                EnumTermPolicyType.cookies,
             ]);
 
             await expect(promise).rejects.toMatchObject({
@@ -388,36 +412,27 @@ describe('TermPolicyAcceptanceService', () => {
             version: 1,
         };
 
-        it('writes the acceptance rows of every entry in one repository statement', async () => {
-            termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
-                [privacyRef, marketingRef]
+        it('writes the rows of every entry built from the refs passed, in one repository statement and with no read', async () => {
+            await service.acceptPublishedManyInTx(
+                tx,
+                [privacyRef, marketingRef],
+                [
+                    {
+                        userId: 'user-one',
+                        types: [
+                            EnumTermPolicyType.privacy,
+                            EnumTermPolicyType.marketing,
+                        ],
+                        createdBy: 'user-one',
+                    },
+                    {
+                        userId: 'user-two',
+                        types: [EnumTermPolicyType.privacy],
+                        createdBy: 'admin-id',
+                    },
+                ]
             );
 
-            await service.acceptPublishedManyInTx(tx, [
-                {
-                    userId: 'user-one',
-                    types: [
-                        EnumTermPolicyType.privacy,
-                        EnumTermPolicyType.marketing,
-                    ],
-                    createdBy: 'user-one',
-                },
-                {
-                    userId: 'user-two',
-                    types: [EnumTermPolicyType.privacy],
-                    createdBy: 'admin-id',
-                },
-            ]);
-
-            expect(
-                termPolicyRepository.findLatestPublishedByTypesInTx
-            ).toHaveBeenCalledTimes(1);
-            expect(
-                termPolicyRepository.findLatestPublishedByTypesInTx
-            ).toHaveBeenCalledWith(tx, [
-                EnumTermPolicyType.privacy,
-                EnumTermPolicyType.marketing,
-            ]);
             expect(termPolicyRepository.acceptManyInTx).toHaveBeenCalledTimes(
                 1
             );
@@ -444,23 +459,26 @@ describe('TermPolicyAcceptanceService', () => {
                     },
                 ]
             );
+            expect(
+                termPolicyRepository.findLatestPublishedByTypes
+            ).not.toHaveBeenCalled();
         });
 
-        it('skips a type with no published policy', async () => {
-            termPolicyRepository.findLatestPublishedByTypesInTx.mockResolvedValue(
-                [privacyRef]
+        it('skips a type with no ref passed', async () => {
+            await service.acceptPublishedManyInTx(
+                tx,
+                [privacyRef],
+                [
+                    {
+                        userId: 'user-one',
+                        types: [
+                            EnumTermPolicyType.privacy,
+                            EnumTermPolicyType.marketing,
+                        ],
+                        createdBy: 'user-one',
+                    },
+                ]
             );
-
-            await service.acceptPublishedManyInTx(tx, [
-                {
-                    userId: 'user-one',
-                    types: [
-                        EnumTermPolicyType.privacy,
-                        EnumTermPolicyType.marketing,
-                    ],
-                    createdBy: 'user-one',
-                },
-            ]);
 
             expect(termPolicyRepository.acceptManyInTx).toHaveBeenCalledWith(
                 tx,
@@ -476,11 +494,8 @@ describe('TermPolicyAcceptanceService', () => {
         });
 
         it('issues no statement for an empty list', async () => {
-            await service.acceptPublishedManyInTx(tx, []);
+            await service.acceptPublishedManyInTx(tx, [privacyRef], []);
 
-            expect(
-                termPolicyRepository.findLatestPublishedByTypesInTx
-            ).not.toHaveBeenCalled();
             expect(termPolicyRepository.acceptManyInTx).not.toHaveBeenCalled();
         });
     });

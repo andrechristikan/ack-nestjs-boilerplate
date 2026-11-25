@@ -1,6 +1,5 @@
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
-import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
@@ -61,36 +60,20 @@ export class UserProcessDeleteSelfUseCase implements IAppUseCase<
         )!;
     }
 
-    private async softDeleteOwnedInTx(
-        tx: IDatabaseTransactionClient,
-        workspaceIds: string[],
-        userId: string,
-        now: Date
-    ): Promise<string[]> {
-        const isDeleted = await Promise.all(
-            workspaceIds.map(workspaceId =>
-                this.workspaceService.softDeleteInTx(
-                    tx,
-                    workspaceId,
-                    now,
-                    userId
-                )
-            )
-        );
-
-        return workspaceIds.filter((_, index) => isDeleted[index] === true);
-    }
-
     private async softDeleteProjects(
-        workspaceId: string,
+        workspaceIds: string[],
         now: Date,
         userId: string
     ): Promise<void> {
+        if (workspaceIds.length === 0) {
+            return;
+        }
+
         let chunk: number;
         // Sequential by design: a fan-out over an unbounded collection: bounded chunks in turn, each concurrent
         do {
-            chunk = await this.projectService.softDeleteChunkByWorkspace(
-                workspaceId,
+            chunk = await this.projectService.softDeleteChunkByWorkspaces(
+                workspaceIds,
                 now,
                 userId
             );
@@ -110,11 +93,11 @@ export class UserProcessDeleteSelfUseCase implements IAppUseCase<
                 await this.databaseService.withTransaction(
                     async tx => {
                         const [ownedIds] = await Promise.all([
-                            this.softDeleteOwnedInTx(
+                            this.workspaceService.softDeleteManyInTx(
                                 tx,
                                 ownedWorkspaceIds,
-                                userId,
-                                now
+                                now,
+                                userId
                             ),
                             this.workspaceJoinRequestService.cancelPendingByRequesterInTx(
                                 tx,
@@ -201,11 +184,7 @@ export class UserProcessDeleteSelfUseCase implements IAppUseCase<
                 );
             }
 
-            await Promise.all(
-                ownedWorkspaceIds.map(workspaceId =>
-                    this.softDeleteProjects(workspaceId, now, userId)
-                )
-            );
+            await this.softDeleteProjects(ownedWorkspaceIds, now, userId);
         } catch (error: unknown) {
             if (
                 error instanceof AppBaseException ||

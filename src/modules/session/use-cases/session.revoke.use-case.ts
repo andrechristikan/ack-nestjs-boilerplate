@@ -1,7 +1,3 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -13,7 +9,6 @@ import {
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { SessionRevokeRequestDto } from '@modules/session/dtos/request/session.revoke.request.dto';
-import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionService } from '@modules/session/services/session.service';
 import type { IUserContext } from '@modules/user/interfaces/user.interface';
 import { MfaService } from '@modules/mfa/services/mfa.service';
@@ -42,7 +37,6 @@ export class SessionRevokeUseCase implements IAppUseCase<
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -64,6 +58,7 @@ export class SessionRevokeUseCase implements IAppUseCase<
     ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
         const userId = authContext.userId;
+        const state = await this.mfaService.getFactorState(user.id);
         // Sequential by design: a credential proof, awaited alone
         const input = {
             action: EnumUserReauthenticationAction.sessionRevoke,
@@ -99,7 +94,8 @@ export class SessionRevokeUseCase implements IAppUseCase<
         const mfaCheck = await this.mfaService.checkReauthentication(
             user.id,
             input,
-            passwordCheck.isPasswordChecked
+            passwordCheck.isPasswordChecked,
+            state
         );
         if (mfaCheck.failure !== null) {
             const failure = mfaCheck.failure;
@@ -126,52 +122,40 @@ export class SessionRevokeUseCase implements IAppUseCase<
             );
 
         const revokedAt = this.helperDateService.now();
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                await this.userAuthService.completeReauthenticationInTx(
-                    tx,
-                    authContext,
-                    passwordCheck.isPasswordChecked,
-                    verificationId
-                );
-                await this.mfaService.completeReauthenticationInTx(
-                    tx,
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    mfaCheck
-                );
-                await this.sessionService.revokeInTx(
-                    tx,
-                    userId,
-                    sessionId,
-                    userId,
-                    revokedAt
-                );
+        await this.databaseService.withTransaction(async tx => {
+            await this.userAuthService.completeReauthenticationInTx(
+                tx,
+                authContext,
+                passwordCheck.isPasswordChecked,
+                verificationId,
+                false
+            );
+            await this.mfaService.completeReauthenticationInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                mfaCheck
+            );
+            await this.sessionService.revokeInTx(
+                tx,
+                userId,
+                sessionId,
+                userId,
+                revokedAt
+            );
 
-                const entry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    {
-                        action: EnumActivityLogAction.userSessionRevoked,
-                    }
-                );
-                await this.outboxService.addInTx(tx, entry);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new SessionNotFoundException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+            const entry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.userSessionRevoked,
+                }
+            );
+            await this.outboxService.addInTx(tx, entry);
+        });
 
         return {};
     }

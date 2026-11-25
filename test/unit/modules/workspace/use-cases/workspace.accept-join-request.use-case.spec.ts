@@ -3,15 +3,12 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumWorkspaceJoinRequestStatus } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
-import { WorkspaceJoinRequestAlreadyMemberException } from '@modules/workspace/exceptions/workspace.join-request-already-member.exception';
+import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
 import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
 import { WorkspaceJoinRequestNotFoundException } from '@modules/workspace/exceptions/workspace.join-request-not-found.exception';
 import type { IWorkspaceJoinRequestWithEmail } from '@modules/workspace/interfaces/workspace.interface';
@@ -19,7 +16,6 @@ import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspa
 import { WorkspaceAcceptJoinRequestUseCase } from '@modules/workspace/use-cases/workspace.accept-join-request.use-case';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -57,7 +53,12 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
         reviewedAt: null,
         expiredAt: new Date('2026-01-09T00:00:00.000Z'),
         nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-        user: { email: 'user-2@example.com' },
+        user: {
+            id: 'user-2',
+            email: 'user-2@example.com',
+            username: 'user-2',
+            name: null,
+        },
     };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
@@ -214,8 +215,8 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
             }
         );
 
-        it('rethrows an AppBaseException from the accept as is', async () => {
-            const failure = new WorkspaceJoinRequestAlreadyProcessedException();
+        it('lets WorkspaceMemberAlreadyExistsException from the accept reach the caller untouched', async () => {
+            const failure = new WorkspaceMemberAlreadyExistsException();
             workspaceJoinRequestService.acceptJoinRequestInTx.mockRejectedValue(
                 failure
             );
@@ -231,49 +232,7 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
             ).rejects.toBe(failure);
         });
 
-        it('maps a unique collision on userId to WorkspaceJoinRequestAlreadyMemberException', async () => {
-            workspaceJoinRequestService.acceptJoinRequestInTx.mockRejectedValue(
-                buildPrismaKnownRequestError('P2002', 'userId')
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    'join-request-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceJoinRequestAlreadyMemberException,
-                module: 'workspace',
-                statusCode:
-                    EnumWorkspaceStatusCodeError.joinRequestAlreadyMember,
-            });
-        });
-
-        it('maps a write conflict to WorkspaceJoinRequestAlreadyProcessedException', async () => {
-            workspaceJoinRequestService.acceptJoinRequestInTx.mockRejectedValue(
-                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    'join-request-1'
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceJoinRequestAlreadyProcessedException,
-                module: 'workspace',
-                statusCode:
-                    EnumWorkspaceStatusCodeError.joinRequestAlreadyProcessed,
-            });
-        });
-
-        it('wraps any other transaction error in AppUnknownException', async () => {
+        it('lets any other transaction error reach the caller untouched', async () => {
             const cause = new Error('boom');
             workspaceJoinRequestService.acceptJoinRequestInTx.mockRejectedValue(
                 cause
@@ -287,10 +246,7 @@ describe('WorkspaceAcceptJoinRequestUseCase', () => {
                     workspaceContext,
                     'join-request-1'
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

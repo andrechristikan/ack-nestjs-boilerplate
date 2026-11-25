@@ -68,6 +68,7 @@
         "guardMissing": "The workspace could not be verified for this request.",
         "memberAlreadyExists": "This user is already a member of this workspace.",
         "ownerTransferRequired": "You own a workspace with other members; transfer ownership before deleting your account.",
-        "transferTargetInactive": "Ownership can only be transferred to a member whose account is active."
+        "transferTargetInactive": "Ownership can only be transferred to a member whose account is active.",
+        "inviteReferenceExist": "This invite reference is already in use."
     }
 }

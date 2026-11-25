@@ -48,14 +48,14 @@ export class WorkspaceProcessSoftDeleteUseCase implements IAppUseCase<
         try {
             await this.databaseService.withTransaction(
                 async tx => {
-                    const isDeleted =
-                        await this.workspaceService.softDeleteInTx(
+                    const deletedIds =
+                        await this.workspaceService.softDeleteManyInTx(
                             tx,
-                            workspaceId,
+                            [workspaceId],
                             deletedAt,
                             deletedBy
                         );
-                    if (isDeleted) {
+                    if (deletedIds.length > 0) {
                         const entry =
                             this.activityLogQueue.recordEffectFromPayload(
                                 activityLog,
@@ -75,8 +75,8 @@ export class WorkspaceProcessSoftDeleteUseCase implements IAppUseCase<
             let chunk: number;
             // Sequential by design: a fan-out over an unbounded collection: bounded chunks in turn, each concurrent
             do {
-                chunk = await this.projectService.softDeleteChunkByWorkspace(
-                    workspaceId,
+                chunk = await this.projectService.softDeleteChunkByWorkspaces(
+                    [workspaceId],
                     deletedAt,
                     deletedBy
                 );

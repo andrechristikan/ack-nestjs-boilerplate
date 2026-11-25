@@ -23,7 +23,11 @@ describe('MfaGeneratePasskeyReauthenticationUseCase', () => {
 
     const authContext = buildAuthJwtAccessContext('user-quartz');
     const credentials = [
-        { credentialId: 'credential-quartz', transports: ['internal'] },
+        {
+            id: 'passkey-quartz',
+            credentialId: 'credential-quartz',
+            transports: ['internal'],
+        },
     ];
     const passkeyOptions = {
         challenge: 'challenge-quartz',

@@ -18,9 +18,6 @@ import {
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
 import type { PasswordHistory, User } from '@generated/prisma-client/client';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
@@ -49,10 +46,11 @@ import { PasswordHistoryService } from '@modules/password-history/services/passw
 import { SessionService } from '@modules/session/services/session.service';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserPasswordService } from '@modules/user/services/user.password.service';
-import type { IMfaReauthenticationResult } from '@modules/mfa/interfaces/mfa.interface';
+import { buildMfaFactorState } from '@test/unit/helpers/test.unit.mfa.helper';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { PasswordHistoryMustNewException } from '@modules/password-history/exceptions/password-history.must-new.exception';
+import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
 import type { UserChangePasswordRequestDto } from '@modules/user/dtos/request/user.change-password.request.dto';
 import { UserChangePasswordUseCase } from '@modules/user/use-cases/user.change-password.use-case';
@@ -63,8 +61,6 @@ import {
     buildUser,
     buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 const passkeyResponse = {
     id: 'AbC_-123',
@@ -101,6 +97,7 @@ describe('UserChangePasswordUseCase', () => {
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext(user.id);
+    const factorState = buildMfaFactorState('user-linden');
     const userContext = buildUserContext(user);
     const password: IAuthPassword = {
         passwordHash: 'hashed',
@@ -132,24 +129,13 @@ describe('UserChangePasswordUseCase', () => {
         priority: EnumQueuePriority.medium,
         idempotencyKey: null,
     };
-    const revoked: ISessionRef[] = [{ id: 'session-one' }];
+    const revoked: ISessionRef[] = [{ id: 'session-one', userId: 'user-1' }];
     const tx = {} as IDatabaseTransactionClient;
     const passwordHistory = { id: 'history-linden' } as PasswordHistory;
     const updatedRow = {
         id: 'user-linden',
         updatedAt: new Date('2026-03-01T00:00:00.000Z'),
     } as User;
-    const withMfa: IMfaReauthenticationResult = {
-        isEnabled: true,
-        check: {
-            method: EnumMfaMethod.totp,
-            totpStep: 58123456,
-            backupCodeHash: null,
-            passkey: null,
-        },
-        failure: null,
-        passkeyChallengeToken: null,
-    };
 
     beforeAll(() => {
         vi.useFakeTimers();
@@ -191,7 +177,6 @@ describe('UserChangePasswordUseCase', () => {
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
-                DatabaseUtil,
             ],
         }).compile();
         useCase = module.get(UserChangePasswordUseCase);
@@ -210,6 +195,7 @@ describe('UserChangePasswordUseCase', () => {
             mfaService.checkReauthentication.mockResolvedValue(
                 TestUnitReauthenticationMfaOff
             );
+            mfaService.getFactorState.mockResolvedValue(factorState);
             userAuthService.getReauthenticationVerificationId.mockResolvedValue(
                 null
             );
@@ -423,7 +409,22 @@ describe('UserChangePasswordUseCase', () => {
 
             expect(
                 userAuthService.completeReauthenticationInTx
-            ).toHaveBeenCalledWith(tx, authContext, true, null);
+            ).toHaveBeenCalledWith(tx, authContext, true, null, true);
+            expect(mfaService.getFactorState).toHaveBeenCalledTimes(1);
+            expect(mfaService.getFactorState).toHaveBeenCalledWith(
+                'user-linden'
+            );
+            expect(mfaService.checkReauthentication).toHaveBeenCalledWith(
+                'user-linden',
+                expect.objectContaining({
+                    action: EnumUserReauthenticationAction.changePassword,
+                }),
+                true,
+                factorState
+            );
+            expect(mfaService.getFactorState).toHaveBeenCalledBefore(
+                mfaService.checkReauthentication
+            );
             expect(
                 mfaService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
@@ -672,10 +673,9 @@ describe('UserChangePasswordUseCase', () => {
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('answers MfaInvalidException when a verified MFA user loses a write conflict', async () => {
-            const conflict = buildPrismaKnownRequestError('P2034');
-            mfaService.checkReauthentication.mockResolvedValue(withMfa);
-            databaseService.withTransaction.mockRejectedValue(conflict);
+        it('passes the UserNotFoundException the password write rejected through untouched', async () => {
+            const rejected = new UserNotFoundException();
+            databaseService.withTransaction.mockRejectedValue(rejected);
 
             await expect(
                 useCase.execute(
@@ -685,48 +685,7 @@ describe('UserChangePasswordUseCase', () => {
                     userContext,
                     dto
                 )
-            ).rejects.toMatchObject({
-                statusCode: EnumMfaStatusCodeError.invalid,
-
-                module: 'mfa',
-            });
-        });
-
-        it('wraps a write conflict in AppUnknownException when no MFA proof was checked', async () => {
-            databaseService.withTransaction.mockRejectedValue(
-                buildPrismaKnownRequestError('P2034')
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    dto
-                )
-            ).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-            });
-        });
-
-        it('wraps an unknown transaction failure in AppUnknownException', async () => {
-            const cause = new Error('boom');
-            databaseService.withTransaction.mockRejectedValue(cause);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    dto
-                )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(rejected);
         });
     });
 });

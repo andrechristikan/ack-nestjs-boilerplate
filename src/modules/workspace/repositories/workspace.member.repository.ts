@@ -1,5 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
     IPaginationCursorReturn,
     IPaginationIn,
@@ -13,12 +14,21 @@ import {
     Prisma,
 } from '@generated/prisma-client/client';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
-import { UserRefSelect } from '@modules/user/constants/user.constant';
+import {
+    WorkspaceMemberRefSelect,
+    WorkspaceMemberWithUserInclude,
+    WorkspaceMemberWithUserRecipientInclude,
+    WorkspaceMemberWithUserStateInclude,
+} from '@modules/workspace/constants/workspace.constant';
 import type {
     IWorkspaceMember,
     IWorkspaceMemberWithEmail,
+    IWorkspaceOwnedUser,
     IWorkspaceTransferMember,
 } from '@modules/workspace/interfaces/workspace.interface';
+import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
+import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
+import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/exceptions/workspace.member-peer-forbidden.exception';
 import type { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -26,6 +36,7 @@ import { Injectable } from '@nestjs/common';
 export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
     constructor(
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService
     ) {}
 
@@ -62,7 +73,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                 workspaceId,
                 userId,
             },
-            include: { user: { select: { status: true, deletedAt: true } } },
+            include: WorkspaceMemberWithUserStateInclude,
         });
     }
 
@@ -77,7 +88,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                     userId,
                     workspace: { is: { deletedAt: null } },
                 },
-                select: { id: true },
+                select: WorkspaceMemberRefSelect,
             });
 
         return member !== null;
@@ -92,18 +103,29 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                 id: workspaceMemberId,
                 workspaceId,
             },
-            include: { user: { select: { email: true } } },
+            include: WorkspaceMemberWithUserRecipientInclude,
         });
     }
 
-    async findWorkspaceIdsByUser(
-        userId: string,
-        role: EnumWorkspaceMemberRole | null
-    ): Promise<string[]> {
+    async findWorkspaceIdsByUser(userId: string): Promise<string[]> {
         const members =
             await this.databaseService.client.workspaceMember.findMany({
-                where: { userId, ...(role !== null && { role }) },
-                select: { workspaceId: true },
+                where: { userId },
+                select: WorkspaceMemberRefSelect,
+            });
+
+        return members.map(member => member.workspaceId);
+    }
+
+    async findLiveOwnedWorkspaceIdsByUser(userId: string): Promise<string[]> {
+        const members =
+            await this.databaseService.client.workspaceMember.findMany({
+                where: {
+                    userId,
+                    role: EnumWorkspaceMemberRole.owner,
+                    workspace: { is: { deletedAt: null } },
+                },
+                select: WorkspaceMemberRefSelect,
             });
 
         return members.map(member => member.workspaceId);
@@ -135,11 +157,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
             {
                 ...others,
                 where: scopedWhere,
-                include: {
-                    user: {
-                        select: UserRefSelect,
-                    },
-                },
+                include: WorkspaceMemberWithUserInclude,
             }
         );
     }
@@ -160,11 +178,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
             {
                 ...others,
                 where: scopedWhere,
-                include: {
-                    user: {
-                        select: UserRefSelect,
-                    },
-                },
+                include: WorkspaceMemberWithUserInclude,
             }
         );
     }
@@ -185,6 +199,21 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         });
     }
 
+    async createOwnersInTx(
+        tx: IDatabaseTransactionClient,
+        users: IWorkspaceOwnedUser[]
+    ): Promise<void> {
+        await tx.workspaceMember.createMany({
+            data: users.map(({ userId, workspaceId }) => ({
+                workspaceId,
+                userId,
+                role: EnumWorkspaceMemberRole.owner,
+                createdBy: userId,
+                updatedBy: userId,
+            })),
+        });
+    }
+
     async createInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
@@ -192,15 +221,28 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         role: EnumWorkspaceMemberRole,
         actorId: string
     ): Promise<WorkspaceMember> {
-        return tx.workspaceMember.create({
-            data: {
-                workspaceId,
-                userId,
-                role,
-                createdBy: actorId,
-                updatedBy: actorId,
-            },
-        });
+        try {
+            return await tx.workspaceMember.create({
+                data: {
+                    workspaceId,
+                    userId,
+                    role,
+                    createdBy: actorId,
+                    updatedBy: actorId,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'userId',
+                        exception: new WorkspaceMemberAlreadyExistsException(),
+                    },
+                ],
+                new WorkspaceMemberAlreadyExistsException()
+            );
+        }
     }
 
     async updateRoleInTx(
@@ -208,27 +250,38 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         targetMemberId: string,
         expectedRole: EnumWorkspaceMemberRole,
         newRole: EnumWorkspaceMemberRole
-    ): Promise<boolean> {
-        const { count } = await tx.workspaceMember.updateMany({
-            where: { id: targetMemberId, role: expectedRole },
-            data: {
-                role: newRole,
-            },
-        });
-
-        return count > 0;
+    ): Promise<WorkspaceMember> {
+        try {
+            return await tx.workspaceMember.update({
+                where: { id: targetMemberId, role: expectedRole },
+                data: {
+                    role: newRole,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new WorkspaceMemberPeerForbiddenException()
+            );
+        }
     }
 
     async removeMemberInTx(
         tx: IDatabaseTransactionClient,
         targetMemberId: string,
         expectedRole: EnumWorkspaceMemberRole
-    ): Promise<boolean> {
-        const { count } = await tx.workspaceMember.deleteMany({
-            where: { id: targetMemberId, role: expectedRole },
-        });
-
-        return count > 0;
+    ): Promise<IWorkspaceMemberWithEmail> {
+        try {
+            return await tx.workspaceMember.delete({
+                where: { id: targetMemberId, role: expectedRole },
+                include: WorkspaceMemberWithUserRecipientInclude,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new WorkspaceMemberNotFoundException()
+            );
+        }
     }
 
     async removeByUserInTx(
@@ -247,45 +300,55 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         workspaceId: string,
         fromMemberId: string,
         toMemberId: string
-    ): Promise<boolean> {
-        const { count } = await tx.workspaceMember.updateMany({
-            where: {
-                id: toMemberId,
-                workspaceId,
-                role: { not: EnumWorkspaceMemberRole.owner },
-                workspace: {
-                    members: {
-                        some: {
-                            id: fromMemberId,
-                            role: EnumWorkspaceMemberRole.owner,
+    ): Promise<WorkspaceMember> {
+        try {
+            return await tx.workspaceMember.update({
+                where: {
+                    id: toMemberId,
+                    workspaceId,
+                    role: { not: EnumWorkspaceMemberRole.owner },
+                    workspace: {
+                        members: {
+                            some: {
+                                id: fromMemberId,
+                                role: EnumWorkspaceMemberRole.owner,
+                            },
                         },
                     },
                 },
-            },
-            data: {
-                role: EnumWorkspaceMemberRole.owner,
-            },
-        });
-
-        return count > 0;
+                data: {
+                    role: EnumWorkspaceMemberRole.owner,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new WorkspaceMemberPeerForbiddenException()
+            );
+        }
     }
 
     async demoteOwnerInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,
         fromMemberId: string
-    ): Promise<boolean> {
-        const { count } = await tx.workspaceMember.updateMany({
-            where: {
-                id: fromMemberId,
-                workspaceId,
-                role: EnumWorkspaceMemberRole.owner,
-            },
-            data: {
-                role: EnumWorkspaceMemberRole.admin,
-            },
-        });
-
-        return count > 0;
+    ): Promise<WorkspaceMember> {
+        try {
+            return await tx.workspaceMember.update({
+                where: {
+                    id: fromMemberId,
+                    workspaceId,
+                    role: EnumWorkspaceMemberRole.owner,
+                },
+                data: {
+                    role: EnumWorkspaceMemberRole.admin,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new WorkspaceMemberPeerForbiddenException()
+            );
+        }
     }
 }

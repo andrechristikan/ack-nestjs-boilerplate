@@ -32,10 +32,12 @@ export class NotificationProcessUseCase implements IAppUseCase<
 
     async execute(
         outboxId: string,
-        { kind, context, ...recorded }: INotificationNotifyPayload
+        payload: INotificationNotifyPayload
     ): Promise<IQueueResponse> {
+        const { kind, context, ...recorded } = payload;
         const properties = { process: kind };
         let { recipient, notificationId } = recorded;
+        const isFresh = recorded.notificationId === null;
         const { snapshot } = context;
         if (recipient === null && snapshot !== null) {
             recipient = this.notificationService.toSnapshotRecipientRecord(
@@ -93,7 +95,8 @@ export class NotificationProcessUseCase implements IAppUseCase<
 
         if (recorded.recipient === null || notificationId === null) {
             notificationId ??= this.databaseUtil.createId();
-            await this.outboxService.updateData(outboxId, {
+            await this.outboxService.replaceData(outboxId, {
+                ...payload,
                 recipient,
                 notificationId,
             });
@@ -105,7 +108,8 @@ export class NotificationProcessUseCase implements IAppUseCase<
                 notificationId,
                 kind,
                 context,
-                recipient
+                recipient,
+                isFresh
             )
         );
 

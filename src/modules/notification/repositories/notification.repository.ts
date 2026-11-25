@@ -4,7 +4,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import { NotificationReadStateSelect } from '@modules/notification/constants/notification.constant';
+import { NotificationRefSelect } from '@modules/notification/constants/notification.constant';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
 import type {
@@ -29,20 +29,11 @@ export class NotificationRepository implements INotificationRepository {
         private readonly helperDateService: HelperDateService
     ) {}
 
-    private buildCreateData(
+    private buildNotificationRow(
         kind: EnumNotificationKind,
-        { id, userId, metadata, createdBy, channels }: INotificationCreate,
-        today: Date
-    ): Prisma.NotificationUncheckedCreateInput {
-        const {
-            type,
-            priority,
-            title,
-            body,
-            pendingChannels,
-            deliveredChannels,
-        } = NotificationKindContract[kind];
-        const selected = new Set(channels);
+        { id, userId, metadata, createdBy }: INotificationCreate
+    ): Prisma.NotificationCreateManyInput {
+        const { type, priority, title, body } = NotificationKindContract[kind];
 
         return {
             id,
@@ -54,29 +45,36 @@ export class NotificationRepository implements INotificationRepository {
             isRead: false,
             priority,
             createdBy,
-            deliveries: {
-                createMany: {
-                    data: [
-                        ...pendingChannels
-                            .filter(channel => selected.has(channel))
-                            .map(channel => ({
-                                channel,
-                                processedAt: null,
-                                sentAt: null,
-                                createdBy,
-                            })),
-                        ...deliveredChannels
-                            .filter(channel => selected.has(channel))
-                            .map(channel => ({
-                                channel,
-                                processedAt: today,
-                                sentAt: today,
-                                createdBy,
-                            })),
-                    ],
-                },
-            },
         };
+    }
+
+    private buildDeliveryRows(
+        kind: EnumNotificationKind,
+        { createdBy, channels }: INotificationCreate,
+        today: Date
+    ): Prisma.NotificationDeliveryCreateManyNotificationInput[] {
+        const { pendingChannels, deliveredChannels } =
+            NotificationKindContract[kind];
+        const selected = new Set(channels);
+
+        return [
+            ...pendingChannels
+                .filter(channel => selected.has(channel))
+                .map(channel => ({
+                    channel,
+                    processedAt: null,
+                    sentAt: null,
+                    createdBy,
+                })),
+            ...deliveredChannels
+                .filter(channel => selected.has(channel))
+                .map(channel => ({
+                    channel,
+                    processedAt: today,
+                    sentAt: today,
+                    createdBy,
+                })),
+        ];
     }
 
     private buildVisibleWhere(
@@ -122,7 +120,7 @@ export class NotificationRepository implements INotificationRepository {
                 id: notificationId,
                 userId,
             },
-            select: NotificationReadStateSelect,
+            select: NotificationRefSelect,
         });
     }
 
@@ -131,29 +129,57 @@ export class NotificationRepository implements INotificationRepository {
         kind: EnumNotificationKind,
         payload: INotificationCreate
     ): Promise<void> {
+        const today = this.helperDateService.now();
+        const notification = this.buildNotificationRow(kind, payload);
+        const deliveries = this.buildDeliveryRows(kind, payload, today);
+        await tx.notification.create({
+            data: {
+                ...notification,
+                deliveries: { createMany: { data: deliveries } },
+            },
+        });
+    }
+
+    async createIfAbsentInTx(
+        tx: IDatabaseTransactionClient,
+        kind: EnumNotificationKind,
+        payload: INotificationCreate
+    ): Promise<void> {
         const existing = await tx.notification.findUnique({
             where: { id: payload.id },
-            select: { id: true },
+            select: NotificationRefSelect,
         });
         if (existing) {
             return;
         }
 
-        const today = this.helperDateService.now();
-        const createData = this.buildCreateData(kind, payload, today);
-        await tx.notification.create({ data: createData });
+        await this.createInTx(tx, kind, payload);
     }
 
     async createManyInTx(
         tx: IDatabaseTransactionClient,
         entries: INotificationCreateEntry[]
     ): Promise<void> {
-        const today = this.helperDateService.now();
-
-        for (const { kind, payload } of entries) {
-            const createData = this.buildCreateData(kind, payload, today);
-            await tx.notification.create({ data: createData });
+        if (entries.length === 0) {
+            return;
         }
+
+        const today = this.helperDateService.now();
+        const notifications = entries.map(({ kind, payload }) => {
+            const row = this.buildNotificationRow(kind, payload);
+
+            return row;
+        });
+        const deliveries = entries.flatMap(({ kind, payload }) => {
+            const rows = this.buildDeliveryRows(kind, payload, today);
+
+            return rows.map(row => ({ ...row, notificationId: payload.id }));
+        });
+
+        await Promise.all([
+            tx.notification.createMany({ data: notifications }),
+            tx.notificationDelivery.createMany({ data: deliveries }),
+        ]);
     }
 
     async markEmailSentInTx(

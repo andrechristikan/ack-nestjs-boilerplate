@@ -30,7 +30,6 @@ import type {
     IWorkspaceTransfer,
     IWorkspaceTransferMember,
 } from '@modules/workspace/interfaces/workspace.interface';
-import { WorkspaceJoinRequestRepository } from '@modules/workspace/repositories/workspace.join-request.repository';
 import { WorkspaceMemberRepository } from '@modules/workspace/repositories/workspace.member.repository';
 import { WorkspaceRepository } from '@modules/workspace/repositories/workspace.repository';
 import { Injectable } from '@nestjs/common';
@@ -42,7 +41,6 @@ export class WorkspaceMemberService {
     constructor(
         private readonly workspaceMemberRepository: WorkspaceMemberRepository,
         private readonly workspaceRepository: WorkspaceRepository,
-        private readonly workspaceJoinRequestRepository: WorkspaceJoinRequestRepository,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue
     ) {}
@@ -96,7 +94,7 @@ export class WorkspaceMemberService {
         workspaceId: string,
         ownerMember: WorkspaceMember,
         targetMember: WorkspaceMember
-    ): Promise<void> {
+    ): Promise<IWorkspaceTransfer> {
         const promoted =
             await this.workspaceMemberRepository.promoteToOwnerInTx(
                 tx,
@@ -104,18 +102,13 @@ export class WorkspaceMemberService {
                 ownerMember.id,
                 targetMember.id
             );
-        if (!promoted) {
-            throw new WorkspaceMemberPeerForbiddenException();
-        }
-
         const demoted = await this.workspaceMemberRepository.demoteOwnerInTx(
             tx,
             workspaceId,
             ownerMember.id
         );
-        if (!demoted) {
-            throw new WorkspaceMemberPeerForbiddenException();
-        }
+
+        return { ownerMember: demoted, targetMember: promoted };
     }
 
     /** An `owner` passes without being in `allowedRoles`; with a non-empty list any other role must be in it. */
@@ -268,7 +261,12 @@ export class WorkspaceMemberService {
         actorMember: WorkspaceMember,
         targetMember: WorkspaceMember
     ): Promise<void> {
-        await this.swapOwnerInTx(tx, workspaceId, actorMember, targetMember);
+        const { targetMember: promoted } = await this.swapOwnerInTx(
+            tx,
+            workspaceId,
+            actorMember,
+            targetMember
+        );
 
         const ownerEntry = this.activityLogQueue.recordEffect(
             requestContext,
@@ -280,7 +278,7 @@ export class WorkspaceMemberService {
                 userId: authContext.userId,
                 createdBy: authContext.userId,
                 workspaceId,
-                metadata: { targetUserId: targetMember.userId },
+                metadata: { targetUserId: promoted.userId },
             }
         );
         const newOwnerEntry = this.activityLogQueue.recordEffect(
@@ -290,7 +288,7 @@ export class WorkspaceMemberService {
             null,
             {
                 action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
-                userId: targetMember.userId,
+                userId: promoted.userId,
                 createdBy: authContext.userId,
                 workspaceId,
                 metadata: { actorUserId: authContext.userId },
@@ -305,9 +303,15 @@ export class WorkspaceMemberService {
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
         workspaceId: string,
-        { ownerMember, targetMember }: IWorkspaceTransfer
+        transfer: IWorkspaceTransfer
     ): Promise<void> {
-        await this.swapOwnerInTx(tx, workspaceId, ownerMember, targetMember);
+        const { ownerMember: demoted, targetMember: promoted } =
+            await this.swapOwnerInTx(
+                tx,
+                workspaceId,
+                transfer.ownerMember,
+                transfer.targetMember
+            );
 
         const adminEntry = this.activityLogQueue.recordEffect(
             requestContext,
@@ -321,8 +325,8 @@ export class WorkspaceMemberService {
                 workspaceId,
                 metadata: {
                     workspaceId,
-                    previousOwnerUserId: ownerMember.userId,
-                    targetUserId: targetMember.userId,
+                    previousOwnerUserId: demoted.userId,
+                    targetUserId: promoted.userId,
                 },
             }
         );
@@ -333,12 +337,12 @@ export class WorkspaceMemberService {
             null,
             {
                 action: EnumActivityLogAction.workspaceOwnershipRemovedByAdmin,
-                userId: ownerMember.userId,
+                userId: demoted.userId,
                 createdBy: authContext.userId,
                 workspaceId,
                 metadata: {
                     actorUserId: authContext.userId,
-                    targetUserId: targetMember.userId,
+                    targetUserId: promoted.userId,
                 },
             }
         );
@@ -349,7 +353,7 @@ export class WorkspaceMemberService {
             null,
             {
                 action: EnumActivityLogAction.workspaceOwnershipTransferredByAdmin,
-                userId: targetMember.userId,
+                userId: promoted.userId,
                 createdBy: authContext.userId,
                 workspaceId,
                 metadata: { actorUserId: authContext.userId },
@@ -375,25 +379,14 @@ export class WorkspaceMemberService {
         }
     }
 
-    /** Removes the member and cancels that user's pending join request to the workspace; throws and cancels nothing when the guarded removal misses. */
     async leaveWorkspaceInTx(
         tx: IDatabaseTransactionClient,
         member: WorkspaceMember
-    ): Promise<void> {
-        // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
-        const removed = await this.workspaceMemberRepository.removeMemberInTx(
+    ): Promise<IWorkspaceMemberWithEmail> {
+        return this.workspaceMemberRepository.removeMemberInTx(
             tx,
             member.id,
             member.role
-        );
-        if (!removed) {
-            throw new WorkspaceMemberNotFoundException();
-        }
-
-        await this.workspaceJoinRequestRepository.cancelPendingByUserInTx(
-            tx,
-            member.workspaceId,
-            member.userId
         );
     }
 
@@ -424,9 +417,6 @@ export class WorkspaceMemberService {
             targetMember.role,
             newRole
         );
-        if (!updated) {
-            throw new WorkspaceMemberPeerForbiddenException();
-        }
 
         const actorEntry = this.activityLogQueue.recordEffect(
             requestContext,
@@ -438,7 +428,7 @@ export class WorkspaceMemberService {
                 userId: authContext.userId,
                 createdBy: authContext.userId,
                 workspaceId,
-                metadata: { targetUserId: targetMember.userId },
+                metadata: { targetUserId: updated.userId },
             }
         );
         const targetEntry = this.activityLogQueue.recordEffect(
@@ -448,7 +438,7 @@ export class WorkspaceMemberService {
             null,
             {
                 action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
-                userId: targetMember.userId,
+                userId: updated.userId,
                 createdBy: authContext.userId,
                 workspaceId,
                 metadata: { actorUserId: authContext.userId },
@@ -481,25 +471,14 @@ export class WorkspaceMemberService {
         return targetMember;
     }
 
-    /** Removes the target member and cancels that user's pending join request to the workspace; throws and cancels nothing when the guarded removal misses. */
     async removeMemberInTx(
         tx: IDatabaseTransactionClient,
         targetMember: WorkspaceMember
-    ): Promise<void> {
-        // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
-        const removed = await this.workspaceMemberRepository.removeMemberInTx(
+    ): Promise<IWorkspaceMemberWithEmail> {
+        return this.workspaceMemberRepository.removeMemberInTx(
             tx,
             targetMember.id,
             targetMember.role
-        );
-        if (!removed) {
-            throw new WorkspaceMemberPeerForbiddenException();
-        }
-
-        await this.workspaceJoinRequestRepository.cancelPendingByUserInTx(
-            tx,
-            targetMember.workspaceId,
-            targetMember.userId
         );
     }
 

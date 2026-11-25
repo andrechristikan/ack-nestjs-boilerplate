@@ -1,3 +1,4 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -8,9 +9,13 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import type { Project } from '@generated/prisma-client/client';
+import type { Prisma, Project } from '@generated/prisma-client/client';
+import { ProjectRefSelect } from '@modules/project/constants/project.constant';
+import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
+import { ProjectSlugAlreadyExistsException } from '@modules/project/exceptions/project.slug-already-exists.exception';
 import type {
     IProjectCreate,
+    IProjectRef,
     IProjectUpdate,
     IProjectWithMembers,
 } from '@modules/project/interfaces/project.interface';
@@ -31,6 +36,14 @@ export class ProjectRepository implements IProjectRepository {
         this.deletedSlugPattern = this.configService.get<string>(
             'project.deletedSlugPattern'
         )!;
+    }
+
+    private memberInclude(userId: string): {
+        members: { where: Prisma.ProjectMemberWhereInput; take: 1 };
+    } {
+        return {
+            members: { where: { userId }, take: 1 },
+        };
     }
 
     async findActiveByIdAndWorkspace(
@@ -61,13 +74,15 @@ export class ProjectRepository implements IProjectRepository {
             return null;
         }
 
+        const include = this.memberInclude(userId);
+
         return this.databaseService.client.project.findFirst({
             where: {
                 id: projectId,
                 workspaceId,
                 deletedAt: null,
             },
-            include: { members: { where: { userId }, take: 1 } },
+            include,
         });
     }
 
@@ -122,15 +137,28 @@ export class ProjectRepository implements IProjectRepository {
         { name, description }: IProjectCreate,
         slug: string
     ): Promise<Project> {
-        return tx.project.create({
-            data: {
-                workspaceId,
-                name,
-                slug,
-                description,
-                deletedAt: null,
-            },
-        });
+        try {
+            return await tx.project.create({
+                data: {
+                    workspaceId,
+                    name,
+                    slug,
+                    description,
+                    deletedAt: null,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'slug',
+                        exception: new ProjectSlugAlreadyExistsException(),
+                    },
+                ],
+                new AppUnknownException(error)
+            );
+        }
     }
 
     async updateDetailsInTx(
@@ -149,12 +177,25 @@ export class ProjectRepository implements IProjectRepository {
         projectId: string,
         slug: string
     ): Promise<Project> {
-        return tx.project.update({
-            where: { id: projectId },
-            data: {
-                slug,
-            },
-        });
+        try {
+            return await tx.project.update({
+                where: { id: projectId },
+                data: {
+                    slug,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'slug',
+                        exception: new ProjectSlugAlreadyExistsException(),
+                    },
+                ],
+                new ProjectNotFoundException()
+            );
+        }
     }
 
     async softDeleteInTx(
@@ -162,25 +203,31 @@ export class ProjectRepository implements IProjectRepository {
         projectId: string,
         deletedAt: Date,
         deletedBy: string
-    ): Promise<boolean> {
+    ): Promise<IProjectRef> {
         const deletedSlugPattern = this.deletedSlugPattern;
-        const { count } = await tx.project.updateMany({
-            where: {
-                id: projectId,
-                deletedAt: null,
-            },
-            data: {
-                slug: deletedSlugPattern.replace('{id}', () => projectId),
-                deletedAt,
-                deletedBy,
-            },
-        });
-
-        return count > 0;
+        try {
+            return await tx.project.update({
+                where: {
+                    id: projectId,
+                    deletedAt: null,
+                },
+                data: {
+                    slug: deletedSlugPattern.replace('{id}', () => projectId),
+                    deletedAt,
+                    deletedBy,
+                },
+                select: ProjectRefSelect,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new ProjectNotFoundException()
+            );
+        }
     }
 
-    async softDeleteChunkByWorkspace(
-        workspaceId: string,
+    async softDeleteChunkByWorkspaces(
+        workspaceIds: string[],
         deletedAt: Date,
         deletedBy: string,
         take: number
@@ -188,10 +235,10 @@ export class ProjectRepository implements IProjectRepository {
         const client = this.databaseService.client;
         const projects = await client.project.findMany({
             where: {
-                workspaceId,
+                workspaceId: { in: workspaceIds },
                 deletedAt: null,
             },
-            select: { id: true },
+            select: ProjectRefSelect,
             take,
         });
 

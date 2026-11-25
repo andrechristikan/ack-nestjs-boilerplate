@@ -19,6 +19,7 @@ import {
 import type { Policy } from '@generated/prisma-client/client';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
+import { PolicyNotFoundException } from '@modules/policy/exceptions/policy.not-found.exception';
 import { PolicyAbilityFactory } from '@modules/policy/factories/policy.ability.factory';
 import { PolicyRepository } from '@modules/policy/repositories/policy.repository';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
@@ -199,8 +200,9 @@ describe('PolicyService', () => {
             action: [EnumPolicyAction.read],
         };
 
-        it('throws PolicyNotFoundException when the statement misses', async () => {
-            policyRepository.updateInTx.mockResolvedValue(null);
+        it('passes the exception the guarded update rejects with', async () => {
+            const failure = new PolicyNotFoundException();
+            policyRepository.updateInTx.mockRejectedValue(failure);
 
             const promise = service.updateByAdminInTx(
                 tx,
@@ -209,10 +211,7 @@ describe('PolicyService', () => {
                 body
             );
 
-            await expect(promise).rejects.toMatchObject({
-                module: 'policy',
-                statusCode: EnumPolicyStatusCodeError.notFound,
-            });
+            await expect(promise).rejects.toBe(failure);
             expect(policyRepository.updateInTx).toHaveBeenCalledWith(
                 tx,
                 'role-1',
@@ -270,15 +269,13 @@ describe('PolicyService', () => {
     });
 
     describe('deleteByAdminInTx', () => {
-        it('throws PolicyNotFoundException when the statement misses', async () => {
-            policyRepository.deleteInTx.mockResolvedValue(false);
+        it('passes the exception the guarded delete rejects with', async () => {
+            const failure = new PolicyNotFoundException();
+            policyRepository.deleteInTx.mockRejectedValue(failure);
 
             await expect(
-                service.deleteByAdminInTx(tx, policy)
-            ).rejects.toMatchObject({
-                module: 'policy',
-                statusCode: EnumPolicyStatusCodeError.notFound,
-            });
+                service.deleteByAdminInTx(tx, 'role-1', 'policy-1')
+            ).rejects.toBe(failure);
             expect(policyRepository.deleteInTx).toHaveBeenCalledWith(
                 tx,
                 'role-1',
@@ -286,10 +283,14 @@ describe('PolicyService', () => {
             );
         });
 
-        it('deletes the policy and returns the row it was given', async () => {
-            policyRepository.deleteInTx.mockResolvedValue(true);
+        it('deletes the policy and returns the deleted row', async () => {
+            policyRepository.deleteInTx.mockResolvedValue(policy);
 
-            const result = await service.deleteByAdminInTx(tx, policy);
+            const result = await service.deleteByAdminInTx(
+                tx,
+                'role-1',
+                'policy-1'
+            );
 
             expect(result).toBe(policy);
             expect(policyRepository.deleteInTx).toHaveBeenCalledWith(

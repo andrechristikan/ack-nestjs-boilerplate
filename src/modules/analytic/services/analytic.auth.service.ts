@@ -14,6 +14,7 @@ import {
 } from '@modules/analytic/enums/analytic.enum';
 import type {
     IAnalyticBucketsResult,
+    IAnalyticBucketsSnapshotMeta,
     IAnalyticCountBucket,
     IAnalyticCounted,
     IAnalyticForgotPasswordConversion,
@@ -30,13 +31,12 @@ import type {
 } from '@modules/analytic/interfaces/analytic.interface';
 import { AnalyticAuthRepository } from '@modules/analytic/repositories/analytic.auth.repository';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
-import { AnalyticBucketUtil } from '@modules/analytic/utils/analytic.bucket.util';
 import { UserLoginAnalyticActions } from '@modules/user/constants/user.constant';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
+import { AnalyticBucketsSnapshotMetaSchema } from '@modules/analytic/dtos/analytic.buckets-snapshot-meta.dto';
 import { AnalyticBucketsResultCacheSchema } from '@modules/analytic/dtos/analytic.buckets-result-cache.dto';
-import { AnalyticConcurrentSessionsSnapshotDataSchema } from '@modules/analytic/dtos/analytic.concurrent-sessions-snapshot-data.dto';
 import { AnalyticForgotPasswordConversionCacheSchema } from '@modules/analytic/dtos/analytic.forgot-password-conversion-cache.dto';
 import { AnalyticLockoutMetricsCacheSchema } from '@modules/analytic/dtos/analytic.lockout-metrics-cache.dto';
 import { AnalyticMetricCountCacheSchema } from '@modules/analytic/dtos/analytic.metric-count-cache.dto';
@@ -51,7 +51,6 @@ export class AnalyticAuthService {
         private readonly configService: ConfigService,
         private readonly analyticCache: AnalyticCache,
         private readonly cacheService: CacheService,
-        private readonly analyticBucketUtil: AnalyticBucketUtil,
         private readonly analyticSnapshotService: AnalyticSnapshotService,
         private readonly helperDateService: HelperDateService,
         private readonly helperNumberService: HelperNumberService,
@@ -343,7 +342,7 @@ export class AnalyticAuthService {
     }
 
     async computeConcurrentSessions(): Promise<
-        IAnalyticSnapshotResult<IAnalyticCountBucket, null>
+        IAnalyticSnapshotResult<never, IAnalyticBucketsSnapshotMeta>
     > {
         const now = this.helperDateService.now();
         const idleSince = this.idleSince(now);
@@ -353,14 +352,22 @@ export class AnalyticAuthService {
                 idleSince
             );
 
-        return this.analyticBucketUtil.toBucketSnapshot(buckets);
+        return {
+            items: [],
+            metadata: { buckets },
+            windowStart: null,
+            windowEnd: null,
+        };
     }
 
     async getAuthConcurrentSessions(): Promise<IAnalyticSnapshotBucketsResult> {
-        return this.analyticSnapshotService.getBuckets(
-            EnumAnalyticSnapshotSignal.concurrentSessions,
-            AnalyticConcurrentSessionsSnapshotDataSchema
-        );
+        const { metadata, computedAt } =
+            await this.analyticSnapshotService.getSummary(
+                EnumAnalyticSnapshotSignal.concurrentSessions,
+                AnalyticBucketsSnapshotMetaSchema
+            );
+
+        return { buckets: metadata?.buckets ?? [], computedAt };
     }
 
     async getAuthSessionsGeo(

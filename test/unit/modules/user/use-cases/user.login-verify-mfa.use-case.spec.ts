@@ -12,9 +12,7 @@ import {
     EnumUserLoginFrom,
     EnumUserLoginWith,
 } from '@generated/prisma-client/client';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -31,6 +29,7 @@ import type {
     IDeviceLoginUpsert,
 } from '@modules/device/interfaces/device.interface';
 import { DeviceService } from '@modules/device/services/device.service';
+import { buildMfaFactorState } from '@test/unit/helpers/test.unit.mfa.helper';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { EnumMfaStatusCodeError } from '@modules/mfa/enums/mfa.status-code.enum';
 import { MfaAttemptMaxException } from '@modules/mfa/exceptions/mfa.attempt-max.exception';
@@ -54,7 +53,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserLoginVerifyMfaUseCase', () => {
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
@@ -160,7 +158,6 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
                 HelperDateService,
-                DatabaseUtil,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
@@ -171,6 +168,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
     });
 
     describe('execute', () => {
+        const factorState = buildMfaFactorState('user-bramble');
         const dto = {
             challengeToken: 'challenge-token',
             method: EnumMfaMethod.totp,
@@ -180,6 +178,7 @@ describe('UserLoginVerifyMfaUseCase', () => {
         beforeEach(() => {
             mfaChallengeService.getLogin.mockResolvedValue(challenge);
             userAuthService.getOneForMfaLogin.mockResolvedValue(baseUser);
+            mfaService.getFactorState.mockResolvedValue(factorState);
             mfaService.assertEnabled.mockResolvedValue();
             mfaService.check.mockResolvedValue({
                 check: checked,
@@ -263,9 +262,11 @@ describe('UserLoginVerifyMfaUseCase', () => {
             expect(userAuthService.getOneForMfaLogin).toHaveBeenCalledWith(
                 'user-bramble'
             );
-            expect(mfaService.assertEnabled).toHaveBeenCalledWith(
+            expect(mfaService.getFactorState).toHaveBeenCalledTimes(1);
+            expect(mfaService.getFactorState).toHaveBeenCalledWith(
                 'user-bramble'
             );
+            expect(mfaService.assertEnabled).toHaveBeenCalledWith(factorState);
             expect(mfaService.check).toHaveBeenCalledWith(
                 'user-bramble',
                 {
@@ -274,7 +275,8 @@ describe('UserLoginVerifyMfaUseCase', () => {
                     method: EnumMfaMethod.totp,
                     passkeyResponse: null,
                 },
-                null
+                null,
+                factorState
             );
             expect(mfaService.completeChallengeInTx).toHaveBeenCalledWith(
                 tx,
@@ -304,7 +306,9 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 upserted,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
-                now
+                now,
+                false,
+                false
             );
             expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
                 tx,
@@ -336,7 +340,8 @@ describe('UserLoginVerifyMfaUseCase', () => {
                     method: EnumMfaMethod.backupCode,
                     passkeyResponse: null,
                 },
-                null
+                null,
+                factorState
             );
         });
 
@@ -372,7 +377,8 @@ describe('UserLoginVerifyMfaUseCase', () => {
                     method: EnumMfaMethod.passkey,
                     passkeyResponse,
                 },
-                'challenge-webauthn'
+                'challenge-webauthn',
+                factorState
             );
             expect(mfaService.completeChallengeInTx).toHaveBeenCalledWith(
                 tx,
@@ -467,29 +473,13 @@ describe('UserLoginVerifyMfaUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('throws MfaChallengeInvalidException on a write conflict', async () => {
-            const conflict = buildPrismaKnownRequestError('P2034');
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                useCase.execute(requestContext, apiKeyContext, dto)
-            ).rejects.toMatchObject({
-                module: 'mfa',
-
-                statusCode: EnumMfaStatusCodeError.challengeInvalid,
-            });
-        });
-
-        it('wraps an unknown error of the transaction in AppUnknownException', async () => {
+        it('rethrows any other failure of the transaction untouched', async () => {
             const cause = new Error('boom');
             databaseService.withTransaction.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

@@ -1,5 +1,5 @@
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
-import type { Outbox } from '@generated/prisma-client/client';
+import type { Outbox, Prisma } from '@generated/prisma-client/client';
 import type { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 
 export interface IOutboxEffect {
@@ -12,6 +12,17 @@ export interface IOutboxEffect {
 
 export interface IOutboxJobPayload {
     outboxId: string;
+}
+
+export type IOutboxDispatchRow = Pick<
+    Outbox,
+    'id' | 'queue' | 'name' | 'priority' | 'idempotencyKey'
+>;
+
+export interface IOutboxBuffer {
+    rows: Prisma.OutboxCreateManyInput[];
+    dispatchRows: IOutboxDispatchRow[];
+    idsByKey: Map<string, string>;
 }
 
 export interface IOutboxReconcileResult {

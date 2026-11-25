@@ -1,8 +1,4 @@
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -19,9 +15,6 @@ import type { MfaPasskeyRegisterRequestDto } from '@modules/mfa/dtos/request/mfa
 import type { MfaPasskeyRegisterResponseDto } from '@modules/mfa/dtos/response/mfa.passkey-register.response.dto';
 import type { IMfaPasskeyRegistration } from '@modules/mfa/interfaces/mfa.interface';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
-import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
-import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
-import { MfaPasskeyAlreadyRegisteredException } from '@modules/mfa/exceptions/mfa.passkey-already-registered.exception';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
@@ -48,8 +41,7 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
         private readonly userAuthService: UserAuthService,
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
-        private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly outboxService: OutboxService
     ) {}
 
     private async getRegistration(
@@ -89,12 +81,13 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
             otp,
         }: MfaPasskeyRegisterRequestDto
     ): Promise<IResponseReturn<MfaPasskeyRegisterResponseDto>> {
-        const [registration] = await Promise.all([
+        const [registration, state] = await Promise.all([
             this.getRegistration(
                 authContext.userId,
                 challengeToken,
                 registrationResponse
             ),
+            this.mfaService.getFactorState(authContext.userId),
             this.mfaService.assertEnrollmentAllowed(EnumMfaMethod.passkey),
         ]);
         // Sequential by design: a credential proof, awaited alone
@@ -132,7 +125,8 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
         const mfaCheck = await this.mfaService.checkReauthentication(
             user.id,
             input,
-            passwordCheck.isPasswordChecked
+            passwordCheck.isPasswordChecked,
+            state
         );
         if (mfaCheck.failure !== null) {
             const failure = mfaCheck.failure;
@@ -158,69 +152,47 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
                 mfaCheck.isEnabled
             );
 
-        try {
-            return await this.databaseService.withTransaction(async tx => {
-                await this.userAuthService.completeReauthenticationInTx(
-                    tx,
-                    authContext,
-                    passwordCheck.isPasswordChecked,
-                    verificationId
-                );
-                await this.mfaService.completeReauthenticationInTx(
-                    tx,
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    mfaCheck
-                );
-                await this.mfaChallengeService.consumeInTx(
-                    tx,
-                    challengeToken,
-                    EnumMfaChallengePurpose.registration,
-                    authContext.userId
-                );
-                const passkey = await this.mfaPasskeyService.registerInTx(
-                    tx,
-                    authContext.userId,
-                    name,
-                    registration
-                );
-                const backupCodes = await this.mfaService.createBackupCodesInTx(
-                    tx,
-                    authContext.userId
-                );
-                const entry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    { action: EnumActivityLogAction.userMfaPasskeyRegistered }
-                );
-                await this.outboxService.addInTx(tx, entry);
-
-                return { data: { passkey, backupCodes } };
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const isCredentialCollision = this.databaseUtil.isUniqueCollision(
-                err,
-                'credentialId'
+        return await this.databaseService.withTransaction(async tx => {
+            await this.userAuthService.completeReauthenticationInTx(
+                tx,
+                authContext,
+                passwordCheck.isPasswordChecked,
+                verificationId,
+                false
             );
-            if (isCredentialCollision) {
-                throw new MfaPasskeyAlreadyRegisteredException();
-            }
+            await this.mfaService.completeReauthenticationInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                mfaCheck
+            );
+            await this.mfaChallengeService.consumeInTx(
+                tx,
+                challengeToken,
+                EnumMfaChallengePurpose.registration,
+                authContext.userId
+            );
+            const passkey = await this.mfaPasskeyService.registerInTx(
+                tx,
+                authContext.userId,
+                name,
+                registration
+            );
+            const backupCodes = await this.mfaService.createBackupCodesInTx(
+                tx,
+                authContext.userId
+            );
+            const entry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                { action: EnumActivityLogAction.userMfaPasskeyRegistered }
+            );
+            await this.outboxService.addInTx(tx, entry);
 
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw mfaCheck.check !== null
-                    ? new MfaInvalidException()
-                    : new MfaChallengeInvalidException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+            return { data: { passkey, backupCodes } };
+        });
     }
 }

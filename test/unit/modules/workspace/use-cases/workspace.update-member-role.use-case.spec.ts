@@ -3,8 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
@@ -16,7 +14,6 @@ import type { WorkspaceMemberUpdateRoleRequestDto } from '@modules/workspace/dto
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { WorkspaceUpdateMemberRoleUseCase } from '@modules/workspace/use-cases/workspace.update-member-role.use-case';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -41,7 +38,12 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
     const targetMember = {
         ...buildWorkspaceMember('user-2'),
         id: 'member-2',
-        user: { email: 'user-2@example.com' },
+        user: {
+            id: 'user-2',
+            email: 'user-2@example.com',
+            username: 'user-2',
+            name: null,
+        },
     };
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
@@ -132,7 +134,7 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('rethrows an AppBaseException from the write as is', async () => {
+        it('lets WorkspaceMemberPeerForbiddenException of the guarded write reach the caller untouched', async () => {
             const typed = new WorkspaceMemberPeerForbiddenException();
             workspaceMemberService.updateMemberRoleInTx.mockRejectedValue(
                 typed
@@ -150,28 +152,7 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
             ).rejects.toBe(typed);
         });
 
-        it('maps a write conflict to WorkspaceMemberPeerForbiddenException', async () => {
-            workspaceMemberService.updateMemberRoleInTx.mockRejectedValue(
-                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    'member-2',
-                    body
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceMemberPeerForbiddenException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-            });
-        });
-
-        it('wraps any other transaction error in AppUnknownException', async () => {
+        it('lets any other transaction error reach the caller untouched', async () => {
             const otherError = new Error('boom');
             workspaceMemberService.updateMemberRoleInTx.mockRejectedValue(
                 otherError
@@ -186,10 +167,7 @@ describe('WorkspaceUpdateMemberRoleUseCase', () => {
                     'member-2',
                     body
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: otherError,
-            });
+            ).rejects.toBe(otherError);
         });
     });
 });

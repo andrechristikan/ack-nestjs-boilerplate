@@ -1,9 +1,5 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -16,7 +12,6 @@ import type { ISessionRef } from '@modules/session/interfaces/session.interface'
 import { SessionService } from '@modules/session/services/session.service';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { UserStatusInvalidException } from '@modules/user/exceptions/user.status-invalid.exception';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
 import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
@@ -47,7 +42,6 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
         private readonly userUtil: UserUtil,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -73,116 +67,97 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
         const revokesSessions = this.userService.revokesSessionsOn(status);
         const resetsMfaAttempt = this.userService.resetsMfaAttemptOn(status);
         const action = this.userService.resolveStatusActivityLogAction(status);
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                const row = await this.userService.updateStatusByAdminInTx(
+        await this.databaseService.withTransaction(async tx => {
+            const row = await this.userService.updateStatusByAdminInTx(
+                tx,
+                target,
+                status
+            );
+            let revoke: Promise<ISessionRef[]> = Promise.resolve([]);
+            if (revokesSessions) {
+                revoke = this.sessionService.revokeActiveByUserInTx(
                     tx,
-                    target,
-                    status
+                    userId,
+                    authContext.userId,
+                    now
                 );
-                let revoke: Promise<ISessionRef[]> = Promise.resolve([]);
-                if (revokesSessions) {
-                    revoke = this.sessionService.revokeActiveByUserInTx(
-                        tx,
+            }
+
+            let resetMfaAttempt: Promise<void> = Promise.resolve();
+            if (resetsMfaAttempt) {
+                resetMfaAttempt = this.mfaService.resetAttemptInTx(tx, userId);
+            }
+
+            const [revoked] = await Promise.all([revoke, resetMfaAttempt]);
+
+            const entries: IOutboxEffect[] = [];
+            if (revoked.length > 0) {
+                const revokeAllActorMetadata =
+                    this.sessionUtil.mapActivityLogRevokeAllActorMetadata(
                         userId,
+                        revoked.length
+                    );
+                const revokeAllTargetMetadata =
+                    this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
                         authContext.userId,
-                        now
+                        revoked.length
                     );
-                }
-
-                let resetMfaAttempt: Promise<void> = Promise.resolve();
-                if (resetsMfaAttempt) {
-                    resetMfaAttempt = this.mfaService.resetAttemptInTx(
-                        tx,
-                        userId
-                    );
-                }
-
-                const [revoked] = await Promise.all([revoke, resetMfaAttempt]);
-
-                const entries: IOutboxEffect[] = [];
-                if (revoked.length > 0) {
-                    const revokeAllActorMetadata =
-                        this.sessionUtil.mapActivityLogRevokeAllActorMetadata(
-                            userId,
-                            revoked.length
-                        );
-                    const revokeAllTargetMetadata =
-                        this.sessionUtil.mapActivityLogRevokeAllTargetMetadata(
-                            authContext.userId,
-                            revoked.length
-                        );
-                    const revokeAllActorEntry =
-                        this.activityLogQueue.recordEffect(
-                            requestContext,
-                            apiKeyContext,
-                            authContext,
-                            null,
-                            {
-                                action: EnumActivityLogAction.adminAllSessionsRevoked,
-                                metadata: revokeAllActorMetadata,
-                            }
-                        );
-                    const revokeAllTargetEntry =
-                        this.activityLogQueue.recordEffect(
-                            requestContext,
-                            apiKeyContext,
-                            authContext,
-                            null,
-                            {
-                                action: EnumActivityLogAction.userAllSessionsRevokedByAdmin,
-                                userId,
-                                createdBy: authContext.userId,
-                                metadata: revokeAllTargetMetadata,
-                            }
-                        );
-                    entries.push(revokeAllActorEntry, revokeAllTargetEntry);
-                }
-
-                const actorMetadata =
-                    this.userUtil.mapActivityLogActorMetadata(row);
-                const targetMetadata =
-                    this.userUtil.mapActivityLogTargetMetadata(
-                        row,
-                        authContext.userId
-                    );
-                const actorEntry = this.activityLogQueue.recordEffect(
+                const revokeAllActorEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
                     null,
                     {
-                        action: EnumActivityLogAction.adminUserStatusUpdated,
-                        metadata: actorMetadata,
+                        action: EnumActivityLogAction.adminAllSessionsRevoked,
+                        metadata: revokeAllActorMetadata,
                     }
                 );
-                const targetEntry = this.activityLogQueue.recordEffect(
+                const revokeAllTargetEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
                     null,
                     {
-                        action,
+                        action: EnumActivityLogAction.userAllSessionsRevokedByAdmin,
                         userId,
                         createdBy: authContext.userId,
-                        metadata: targetMetadata,
+                        metadata: revokeAllTargetMetadata,
                     }
                 );
-                entries.push(actorEntry, targetEntry);
-                await this.outboxService.addManyInTx(tx, entries);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
+                entries.push(revokeAllActorEntry, revokeAllTargetEntry);
             }
 
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new UserStatusInvalidException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+            const actorMetadata =
+                this.userUtil.mapActivityLogActorMetadata(row);
+            const targetMetadata = this.userUtil.mapActivityLogTargetMetadata(
+                row,
+                authContext.userId
+            );
+            const actorEntry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.adminUserStatusUpdated,
+                    metadata: actorMetadata,
+                }
+            );
+            const targetEntry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action,
+                    userId,
+                    createdBy: authContext.userId,
+                    metadata: targetMetadata,
+                }
+            );
+            entries.push(actorEntry, targetEntry);
+            await this.outboxService.addManyInTx(tx, entries);
+        });
 
         return {};
     }

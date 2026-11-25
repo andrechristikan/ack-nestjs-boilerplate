@@ -3,18 +3,16 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import type { Workspace } from '@generated/prisma-client/client';
-import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
+import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceSlugInvalidException } from '@modules/workspace/exceptions/workspace.slug-invalid.exception';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import type { WorkspaceUpdateSlugRequestDto } from '@modules/workspace/dtos/request/workspace.update-slug.request.dto';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceUpdateSlugUseCase } from '@modules/workspace/use-cases/workspace.update-slug.use-case';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -120,27 +118,8 @@ describe('WorkspaceUpdateSlugUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('maps a unique collision on slug to WorkspaceSlugAlreadyExistsException', async () => {
-            workspaceService.updateWorkspaceSlugInTx.mockRejectedValue(
-                buildPrismaKnownRequestError('P2002', 'slug')
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    body
-                )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.slugAlreadyExists,
-            });
-        });
-
-        it('rethrows an AppBaseException as is', async () => {
-            const typed = new WorkspaceNotFoundException();
+        it('lets WorkspaceSlugAlreadyExistsException of the write reach the caller untouched', async () => {
+            const typed = new WorkspaceSlugAlreadyExistsException();
             workspaceService.updateWorkspaceSlugInTx.mockRejectedValue(typed);
 
             await expect(
@@ -154,7 +133,7 @@ describe('WorkspaceUpdateSlugUseCase', () => {
             ).rejects.toBe(typed);
         });
 
-        it('wraps any other error in AppUnknownException', async () => {
+        it('lets any other error reach the caller untouched', async () => {
             const otherError = new Error('unexpected');
             workspaceService.updateWorkspaceSlugInTx.mockRejectedValue(
                 otherError
@@ -168,10 +147,7 @@ describe('WorkspaceUpdateSlugUseCase', () => {
                     workspaceContext,
                     body
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: otherError,
-            });
+            ).rejects.toBe(otherError);
         });
     });
 });

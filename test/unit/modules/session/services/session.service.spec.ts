@@ -33,11 +33,10 @@ import {
     EnumUserQueue,
 } from '@modules/user/enums/user.enum';
 import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
+import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type {
-    ISession,
     ISessionList,
     ISessionRef,
-    ISessionUserRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { CacheService } from '@common/cache/services/cache.service';
@@ -111,7 +110,7 @@ describe('SessionService', () => {
 
     let service: SessionService;
 
-    const session: ISession = {
+    const session: Session = {
         id: 'session-1',
         userId: 'user-1',
         deviceOwnershipId: 'device-ownership-1',
@@ -128,6 +127,23 @@ describe('SessionService', () => {
         geoLocation: null,
         expiredAt: new Date('2026-02-01T00:00:00.000Z'),
         lastActiveAt: new Date('2026-01-01T00:00:00.000Z'),
+        revokedAt: null,
+        isRevoked: false,
+        revokedById: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+    };
+
+    const sessionList: ISessionList = {
+        id: 'session-1',
+        userId: 'user-1',
+        deviceOwnershipId: 'device-ownership-1',
+        ipAddress: '127.0.0.1',
+        userAgent: session.userAgent,
+        geoLocation: null,
+        expiredAt: new Date('2026-02-01T00:00:00.000Z'),
         revokedAt: null,
         isRevoked: false,
         revokedById: null,
@@ -269,7 +285,10 @@ describe('SessionService', () => {
         });
 
         it('reads through the login key, schema, and TTL with the repository read as the loader', async () => {
-            sessionRepository.findLoginById.mockResolvedValue(matching);
+            sessionRepository.findLoginById.mockResolvedValue({
+                ...session,
+                jtiDigest: JtiDigest,
+            });
             cacheService.readThrough.mockImplementation(
                 async (_key, _schema, _ttl, loader) => loader()
             );
@@ -291,6 +310,41 @@ describe('SessionService', () => {
                 'session-1',
                 idleSince
             );
+        });
+
+        it('loads only the jtiDigest of the session row into the login entry', async () => {
+            sessionRepository.findLoginById.mockResolvedValue({
+                ...session,
+                jtiDigest: JtiDigest,
+            });
+            let loaded: unknown;
+            cacheService.readThrough.mockImplementation(
+                async (_key, _schema, _ttl, loader) => {
+                    loaded = await loader();
+
+                    return { jtiDigest: JtiDigest };
+                }
+            );
+
+            await service.isLoginActive('user-1', 'session-1', 'jti');
+
+            expect(loaded).toEqual({ jtiDigest: JtiDigest });
+        });
+
+        it('loads null into the login entry when no live row is found', async () => {
+            sessionRepository.findLoginById.mockResolvedValue(null);
+            let loaded: unknown = 'unset';
+            cacheService.readThrough.mockImplementation(
+                async (_key, _schema, _ttl, loader) => {
+                    loaded = await loader();
+
+                    return null;
+                }
+            );
+
+            await service.isLoginActive('user-1', 'session-1', 'jti');
+
+            expect(loaded).toBeNull();
         });
 
         it('rethrows a cache failure', async () => {
@@ -323,8 +377,8 @@ describe('SessionService', () => {
                 .mockReturnValueOnce('key-2');
 
             await service.deleteLogins('user-1', [
-                { id: 'session-1' },
-                { id: 'session-2' },
+                { id: 'session-1', userId: 'user-1' },
+                { id: 'session-2', userId: 'user-1' },
             ]);
 
             expect(sessionCache.buildLoginKey).toHaveBeenNthCalledWith(
@@ -349,7 +403,7 @@ describe('SessionService', () => {
             cacheService.invalidate.mockRejectedValue(failure);
 
             const rejection = service.deleteLogins('user-1', [
-                { id: 'session-1' },
+                { id: 'session-1', userId: 'user-1' },
             ]);
 
             await expect(rejection).rejects.toBe(failure);
@@ -570,7 +624,7 @@ describe('SessionService', () => {
             expect(sessionRepository.revokeInTx).not.toHaveBeenCalled();
             expect(userAuthQueue.purgeLoginsEffect).toHaveBeenCalledWith(
                 'user-1',
-                [{ id: 'session-1' }]
+                [{ id: 'session-1', userId: 'user-1' }]
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
         });
@@ -639,7 +693,7 @@ describe('SessionService', () => {
             );
             expect(userAuthQueue.purgeLoginsEffect).toHaveBeenCalledWith(
                 'user-1',
-                [{ id: 'session-1' }]
+                [{ id: 'session-1', userId: 'user-1' }]
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, purgeEffect);
         });
@@ -668,8 +722,8 @@ describe('SessionService', () => {
 
         it('revokes on the given tx, adds the purge row on it, and returns the refs', async () => {
             const refs: ISessionRef[] = [
-                { id: 'session-1' },
-                { id: 'session-2' },
+                { id: 'session-1', userId: 'user-1' },
+                { id: 'session-2', userId: 'user-1' },
             ];
             sessionRepository.revokeActiveByUserInTx.mockResolvedValue(refs);
 
@@ -711,8 +765,8 @@ describe('SessionService', () => {
 
         it('revokes all but the excepted session on the given tx, adds the purge row on it, and returns the refs', async () => {
             const refs: ISessionRef[] = [
-                { id: 'session-1' },
-                { id: 'session-2' },
+                { id: 'session-1', userId: 'user-1' },
+                { id: 'session-2', userId: 'user-1' },
             ];
             sessionRepository.revokeActiveByUserInTx.mockResolvedValue(refs);
 
@@ -761,7 +815,7 @@ describe('SessionService', () => {
         const revokedAt = new Date('2026-01-05T00:00:00.000Z');
 
         it('revokes on the given tx, adds the purge row on it, and returns the refs', async () => {
-            const refs: ISessionRef[] = [{ id: 'session-1' }];
+            const refs: ISessionRef[] = [{ id: 'session-1', userId: 'user-1' }];
             sessionRepository.revokeByDeviceOwnershipInTx.mockResolvedValue(
                 refs
             );
@@ -809,7 +863,7 @@ describe('SessionService', () => {
     describe('revokeByDeviceOwnershipIdsInTx', () => {
         it('revokes on the caller transaction and adds one purge effect and one userSessionRevokedByDeviceLogin entry per affected user in one addManyInTx', async () => {
             const revokedAt = new Date('2026-01-05T00:00:00.000Z');
-            const rows: ISessionUserRef[] = [
+            const rows: ISessionRef[] = [
                 { id: 'session-2', userId: 'user-2' },
                 { id: 'session-3', userId: 'user-2' },
                 { id: 'session-4', userId: 'user-3' },
@@ -844,12 +898,15 @@ describe('SessionService', () => {
             expect(userAuthQueue.purgeLoginsEffect).toHaveBeenNthCalledWith(
                 1,
                 'user-2',
-                [{ id: 'session-2' }, { id: 'session-3' }]
+                [
+                    { id: 'session-2', userId: 'user-2' },
+                    { id: 'session-3', userId: 'user-2' },
+                ]
             );
             expect(userAuthQueue.purgeLoginsEffect).toHaveBeenNthCalledWith(
                 2,
                 'user-3',
-                [{ id: 'session-4' }]
+                [{ id: 'session-4', userId: 'user-3' }]
             );
             expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
                 1,
@@ -915,7 +972,7 @@ describe('SessionService', () => {
         });
 
         it('adds the purge effect and both entries in one addManyInTx call when the admin targets another user', async () => {
-            sessionRepository.revokeByAdminInTx.mockResolvedValue(session);
+            sessionRepository.revokeByAdminInTx.mockResolvedValue(sessionList);
 
             await service.revokeByAdminInTx(
                 tx,
@@ -971,7 +1028,7 @@ describe('SessionService', () => {
 
         it('adds only the actor entry when the admin revokes their own session', async () => {
             sessionRepository.revokeByAdminInTx.mockResolvedValue({
-                ...session,
+                ...sessionList,
                 userId: 'admin-1',
             });
 
@@ -993,8 +1050,8 @@ describe('SessionService', () => {
             ]);
         });
 
-        it('returns the session the guarded revoke wrote and adds its purge row', async () => {
-            sessionRepository.revokeByAdminInTx.mockResolvedValue(session);
+        it('returns the row the guarded revoke wrote and adds its purge row', async () => {
+            sessionRepository.revokeByAdminInTx.mockResolvedValue(sessionList);
 
             const result = await service.revokeByAdminInTx(
                 tx,
@@ -1006,7 +1063,7 @@ describe('SessionService', () => {
                 revokedAt
             );
 
-            expect(result).toBe(session);
+            expect(result).toBe(sessionList);
             expect(sessionRepository.revokeByAdminInTx).toHaveBeenCalledWith(
                 tx,
                 'user-1',
@@ -1016,7 +1073,7 @@ describe('SessionService', () => {
             );
             expect(userAuthQueue.purgeLoginsEffect).toHaveBeenCalledWith(
                 'user-1',
-                [{ id: 'session-1' }]
+                [{ id: 'session-1', userId: 'user-1' }]
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(
                 tx,
@@ -1024,8 +1081,9 @@ describe('SessionService', () => {
             );
         });
 
-        it('throws SessionNotFoundException and adds no row when the guarded revoke matches no active session', async () => {
-            sessionRepository.revokeByAdminInTx.mockResolvedValue(null);
+        it('rethrows the SessionNotFoundException of the guarded revoke untouched and adds no row', async () => {
+            const notFound = new SessionNotFoundException();
+            sessionRepository.revokeByAdminInTx.mockRejectedValue(notFound);
 
             const rejection = service.revokeByAdminInTx(
                 tx,
@@ -1037,10 +1095,7 @@ describe('SessionService', () => {
                 revokedAt
             );
 
-            await expect(rejection).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.notFound,
-            });
+            await expect(rejection).rejects.toBe(notFound);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
@@ -1056,8 +1111,8 @@ describe('SessionService', () => {
 
         it('adds the actor and target entries from the revoked count on the same tx after the purge row', async () => {
             sessionRepository.revokeActiveByUserInTx.mockResolvedValue([
-                { id: 'session-1' },
-                { id: 'session-2' },
+                { id: 'session-1', userId: 'user-1' },
+                { id: 'session-2', userId: 'user-1' },
             ]);
 
             await service.revokeAllByAdminInTx(
@@ -1101,8 +1156,8 @@ describe('SessionService', () => {
 
         it('revokes every active session of the user with one purge row and returns the revoked refs', async () => {
             const refs: ISessionRef[] = [
-                { id: 'session-1' },
-                { id: 'session-2' },
+                { id: 'session-1', userId: 'user-1' },
+                { id: 'session-2', userId: 'user-1' },
             ];
             sessionRepository.revokeActiveByUserInTx.mockResolvedValue(refs);
 
@@ -1148,11 +1203,11 @@ describe('SessionService', () => {
     });
 
     describe('mapActivityLogActorMetadata', () => {
-        it('maps the session to the actor metadata shape', () => {
+        it('maps the returned row to the actor metadata shape', () => {
             const timestamp = new Date('2026-01-05T00:00:00.000Z');
 
             const result = service['mapActivityLogActorMetadata'](
-                session,
+                sessionList,
                 timestamp
             );
 
@@ -1166,11 +1221,11 @@ describe('SessionService', () => {
     });
 
     describe('mapActivityLogTargetMetadata', () => {
-        it('maps the session to the target metadata shape', () => {
+        it('maps the returned row to the target metadata shape', () => {
             const timestamp = new Date('2026-01-05T00:00:00.000Z');
 
             const result = service['mapActivityLogTargetMetadata'](
-                session,
+                sessionList,
                 'actor-1',
                 timestamp
             );
@@ -1184,8 +1239,8 @@ describe('SessionService', () => {
     });
 
     describe('groupRefsByUser', () => {
-        it('groups the refs per user in first-seen order, keeping only the id in each ref', () => {
-            const sessions: ISessionUserRef[] = [
+        it('groups the refs per user in first-seen order', () => {
+            const sessions: ISessionRef[] = [
                 { id: 'session-1', userId: 'user-2' },
                 { id: 'session-2', userId: 'user-3' },
                 { id: 'session-3', userId: 'user-2' },
@@ -1196,9 +1251,15 @@ describe('SessionService', () => {
             expect(result).toEqual([
                 {
                     userId: 'user-2',
-                    sessions: [{ id: 'session-1' }, { id: 'session-3' }],
+                    sessions: [
+                        { id: 'session-1', userId: 'user-2' },
+                        { id: 'session-3', userId: 'user-2' },
+                    ],
                 },
-                { userId: 'user-3', sessions: [{ id: 'session-2' }] },
+                {
+                    userId: 'user-3',
+                    sessions: [{ id: 'session-2', userId: 'user-3' }],
+                },
             ]);
         });
 

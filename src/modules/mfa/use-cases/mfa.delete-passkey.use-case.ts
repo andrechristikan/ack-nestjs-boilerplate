@@ -1,8 +1,4 @@
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -16,8 +12,6 @@ import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queu
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 import type { MfaPasskeyDeleteRequestDto } from '@modules/mfa/dtos/request/mfa.passkey-delete.request.dto';
-import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
-import { MfaPasskeyNotFoundException } from '@modules/mfa/exceptions/mfa.passkey-not-found.exception';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { SessionService } from '@modules/session/services/session.service';
@@ -45,7 +39,6 @@ export class MfaDeletePasskeyUseCase implements IAppUseCase<
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -65,6 +58,7 @@ export class MfaDeletePasskeyUseCase implements IAppUseCase<
             otp,
         }: MfaPasskeyDeleteRequestDto
     ): Promise<IResponseReturn<void>> {
+        const state = await this.mfaService.getFactorState(authContext.userId);
         const input = {
             action: EnumUserReauthenticationAction.mfaPasskeyDelete,
             password: password ?? null,
@@ -99,7 +93,8 @@ export class MfaDeletePasskeyUseCase implements IAppUseCase<
         const mfaCheck = await this.mfaService.checkReauthentication(
             user.id,
             input,
-            passwordCheck.isPasswordChecked
+            passwordCheck.isPasswordChecked,
+            state
         );
         if (mfaCheck.failure !== null) {
             const failure = mfaCheck.failure;
@@ -126,60 +121,46 @@ export class MfaDeletePasskeyUseCase implements IAppUseCase<
             );
 
         const now = this.helperDateService.now();
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                await this.userAuthService.completeReauthenticationInTx(
-                    tx,
-                    authContext,
-                    passwordCheck.isPasswordChecked,
-                    verificationId
-                );
-                await this.mfaService.completeReauthenticationInTx(
-                    tx,
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    mfaCheck
-                );
-                await this.mfaPasskeyService.deleteInTx(
-                    tx,
-                    authContext.userId,
-                    passkeyId
-                );
-                await this.mfaService.clearBackupCodesIfNoFactorInTx(
-                    tx,
-                    authContext.userId
-                );
-                await this.sessionService.revokeActiveByUserExceptInTx(
-                    tx,
-                    authContext.userId,
-                    authContext.sessionId,
-                    authContext.userId,
-                    now
-                );
-                const entry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    { action: EnumActivityLogAction.userMfaPasskeyDeleted }
-                );
-                await this.outboxService.addInTx(tx, entry);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw mfaCheck.check !== null
-                    ? new MfaInvalidException()
-                    : new MfaPasskeyNotFoundException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        await this.databaseService.withTransaction(async tx => {
+            await this.userAuthService.completeReauthenticationInTx(
+                tx,
+                authContext,
+                passwordCheck.isPasswordChecked,
+                verificationId,
+                false
+            );
+            await this.mfaService.completeReauthenticationInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                mfaCheck
+            );
+            await this.mfaPasskeyService.deleteInTx(
+                tx,
+                authContext.userId,
+                passkeyId
+            );
+            await this.mfaService.clearBackupCodesIfNoFactorInTx(
+                tx,
+                authContext.userId
+            );
+            await this.sessionService.revokeActiveByUserExceptInTx(
+                tx,
+                authContext.userId,
+                authContext.sessionId,
+                authContext.userId,
+                now
+            );
+            const entry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                { action: EnumActivityLogAction.userMfaPasskeyDeleted }
+            );
+            await this.outboxService.addInTx(tx, entry);
+        });
 
         return {};
     }

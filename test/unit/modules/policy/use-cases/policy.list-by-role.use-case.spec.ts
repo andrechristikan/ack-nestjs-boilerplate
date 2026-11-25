@@ -73,7 +73,6 @@ describe('PolicyListByRoleUseCase', () => {
 
             expect(result).toEqual({ data: { policies: [policy] } });
             expect(roleService.getOneWithPolicies).toHaveBeenCalledTimes(1);
-            expect(roleService.getOne).not.toHaveBeenCalled();
         });
     });
 });

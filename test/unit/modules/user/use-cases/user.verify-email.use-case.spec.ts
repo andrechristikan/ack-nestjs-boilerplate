@@ -12,11 +12,10 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { User, Verification } from '@generated/prisma-client/client';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserVerificationService } from '@modules/user/services/user.verification.service';
 import type { UserVerifyEmailRequestDto } from '@modules/user/dtos/request/user.verify-email.request.dto';
@@ -25,7 +24,6 @@ import {
     buildRequestContext,
     buildApiKeyContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
 
@@ -106,7 +104,6 @@ describe('UserVerifyEmailUseCase', () => {
                     useValue: userVerificationService,
                 },
                 { provide: DatabaseService, useValue: databaseService },
-                DatabaseUtil,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
@@ -156,39 +153,13 @@ describe('UserVerifyEmailUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('maps a write conflict to UserTokenInvalidException', async () => {
-            userVerificationService.verifyEmailInTx.mockRejectedValue(
-                buildPrismaKnownRequestError('P2034')
-            );
-
-            await expect(
-                useCase.execute(requestContext, apiKeyContext, dto)
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.tokenInvalid,
-            });
-        });
-
-        it('rethrows an AppBaseException raised in the transaction', async () => {
-            const error = new UserNotFoundException();
+        it('passes the UserTokenInvalidException the transaction rejected through untouched', async () => {
+            const error = new UserTokenInvalidException();
             userVerificationService.verifyEmailInTx.mockRejectedValue(error);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toBe(error);
-        });
-
-        it('wraps an unknown error raised in the transaction', async () => {
-            const error = new Error('boom');
-            userVerificationService.verifyEmailInTx.mockRejectedValue(error);
-
-            await expect(
-                useCase.execute(requestContext, apiKeyContext, dto)
-            ).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: error,
-            });
         });
     });
 });

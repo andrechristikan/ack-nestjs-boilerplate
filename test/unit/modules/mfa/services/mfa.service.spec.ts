@@ -23,7 +23,7 @@ import {
     EnumMfaPasskeyDeviceType,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
-import type { Mfa } from '@generated/prisma-client/client';
+import type { Mfa, MfaPasskey, MfaTotp } from '@generated/prisma-client/client';
 import {
     EnumActivityLogProcess,
     EnumActivityLogQueue,
@@ -37,6 +37,7 @@ import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import type {
     IMfaAttemptFailure,
     IMfaCheck,
+    IMfaFactorState,
     IMfaReauthenticationInput,
     IMfaReauthenticationResult,
 } from '@modules/mfa/interfaces/mfa.interface';
@@ -133,6 +134,45 @@ describe('MfaService', () => {
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         updatedBy: null,
+    };
+    const baseTotp: MfaTotp = {
+        id: 'totp-quartz',
+        userId: 'user-quartz',
+        secret: 'encrypted-secret',
+        pendingSecret: null,
+        lastUsedStep: null,
+        confirmedAt: new Date('2026-01-01T00:00:00.000Z'),
+        lastUsedAt: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: null,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+    };
+    const basePasskey: MfaPasskey = {
+        id: 'passkey-one',
+        userId: 'user-quartz',
+        credentialId: 'credential-one',
+        publicKey: 'ZGVm-w',
+        counter: 5,
+        transports: ['internal'],
+        deviceType: EnumMfaPasskeyDeviceType.multiDevice,
+        backedUp: true,
+        name: 'iPhone',
+        lastUsedAt: null,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdBy: 'user-quartz',
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedBy: null,
+    };
+    const fullState: IMfaFactorState = {
+        mfa: baseMfa,
+        totp: baseTotp,
+        passkeys: [basePasskey],
+    };
+    const emptyState: IMfaFactorState = {
+        mfa: baseMfa,
+        totp: null,
+        passkeys: [],
     };
     const passkeyResponse: AuthenticationResponseJSON = {
         id: 'credential-one',
@@ -265,12 +305,58 @@ describe('MfaService', () => {
         });
     });
 
+    describe('getFactorState', () => {
+        it('reads the Mfa row, the TOTP row, and the passkeys once each and answers them as the state', async () => {
+            mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
+            mfaTotpService.getOneByUser.mockResolvedValue(baseTotp);
+            mfaPasskeyService.getManyForCheckByUser.mockResolvedValue([
+                basePasskey,
+            ]);
+
+            await expect(
+                service.getFactorState('user-quartz')
+            ).resolves.toEqual(fullState);
+            expect(mfaRepository.findOneByUserId).toHaveBeenCalledTimes(1);
+            expect(mfaRepository.findOneByUserId).toHaveBeenCalledWith(
+                'user-quartz'
+            );
+            expect(mfaTotpService.getOneByUser).toHaveBeenCalledTimes(1);
+            expect(mfaTotpService.getOneByUser).toHaveBeenCalledWith(
+                'user-quartz'
+            );
+            expect(
+                mfaPasskeyService.getManyForCheckByUser
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                mfaPasskeyService.getManyForCheckByUser
+            ).toHaveBeenCalledWith('user-quartz');
+        });
+
+        it('starts the three reads together', async () => {
+            const mfa = buildDeferred<Mfa | null>();
+            mfaRepository.findOneByUserId.mockReturnValue(mfa.promise);
+            mfaTotpService.getOneByUser.mockResolvedValue(null);
+            mfaPasskeyService.getManyForCheckByUser.mockResolvedValue([]);
+
+            const pending = service.getFactorState('user-quartz');
+
+            expect(mfaTotpService.getOneByUser).toHaveBeenCalledTimes(1);
+            expect(
+                mfaPasskeyService.getManyForCheckByUser
+            ).toHaveBeenCalledTimes(1);
+
+            mfa.resolve(null);
+            await expect(pending).resolves.toEqual({
+                mfa: null,
+                totp: null,
+                passkeys: [],
+            });
+        });
+    });
+
     describe('check', () => {
         beforeEach(() => {
-            mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
             mfaRepository.incrementAttemptInTx.mockResolvedValue(false);
-            mfaTotpService.existsConfirmed.mockResolvedValue(true);
-            mfaPasskeyService.existsByUser.mockResolvedValue(true);
             featureFlagService.isMetadataAllowed.mockResolvedValue(true);
         });
 
@@ -289,7 +375,12 @@ describe('MfaService', () => {
                 );
 
                 await expect(
-                    service.check('user-quartz', input, 'challenge-quartz')
+                    service.check(
+                        'user-quartz',
+                        input,
+                        'challenge-quartz',
+                        fullState
+                    )
                 ).rejects.toMatchObject({
                     module: 'mfa',
 
@@ -306,7 +397,7 @@ describe('MfaService', () => {
             featureFlagService.isMetadataAllowed.mockResolvedValue(false);
 
             await expect(
-                service.check('user-quartz', backupInput, null)
+                service.check('user-quartz', backupInput, null, fullState)
             ).rejects.toMatchObject({
                 module: 'mfa',
 
@@ -317,12 +408,13 @@ describe('MfaService', () => {
         });
 
         it('answers the failure with the flag budget and writes nothing for a wrong totp code', async () => {
-            mfaTotpService.checkCode.mockResolvedValue(null);
+            mfaTotpService.checkCode.mockReturnValue(null);
 
             await expect(
-                service.check('user-quartz', totpInput, null)
+                service.check('user-quartz', totpInput, null, fullState)
             ).resolves.toEqual({ check: null, failure: totpFailure });
             expect(mfaTotpService.checkCode).toHaveBeenCalledWith(
+                baseTotp,
                 'user-quartz',
                 ' 123456 '
             );
@@ -350,7 +442,7 @@ describe('MfaService', () => {
                     EnumFeatureFlagKey.mfa,
                     failing
                 );
-                mfaTotpService.checkCode.mockResolvedValue(null);
+                mfaTotpService.checkCode.mockReturnValue(null);
                 featureFlagService.getMetadataNumber.mockImplementation(
                     async (_key, metadataKey) => {
                         if (metadataKey === failing) {
@@ -362,16 +454,16 @@ describe('MfaService', () => {
                 );
 
                 await expect(
-                    service.check('user-quartz', totpInput, null)
+                    service.check('user-quartz', totpInput, null, fullState)
                 ).rejects.toBe(failure);
             }
         );
 
         it('answers the step of a correct totp code and counts nothing', async () => {
-            mfaTotpService.checkCode.mockResolvedValue(58123456);
+            mfaTotpService.checkCode.mockReturnValue(58123456);
 
             await expect(
-                service.check('user-quartz', totpInput, null)
+                service.check('user-quartz', totpInput, null, fullState)
             ).resolves.toEqual({
                 check: {
                     method: EnumMfaMethod.totp,
@@ -384,6 +476,22 @@ describe('MfaService', () => {
             expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
         });
 
+        it('checks a backup code against the state alone, reading no factor row', async () => {
+            vi.spyOn(helperHashService, 'argon2Compare').mockResolvedValue(
+                false
+            );
+
+            await service.check('user-quartz', backupInput, null, fullState);
+
+            expect(mfaRepository.findOneByUserId).not.toHaveBeenCalled();
+            expect(mfaTotpService.existsConfirmed).not.toHaveBeenCalled();
+            expect(mfaPasskeyService.existsByUser).not.toHaveBeenCalled();
+            expect(mfaTotpService.getOneByUser).not.toHaveBeenCalled();
+            expect(
+                mfaPasskeyService.getManyForCheckByUser
+            ).not.toHaveBeenCalled();
+        });
+
         it('throws MfaMethodRequiredException uncounted for a null method', async () => {
             await expect(
                 service.check(
@@ -394,7 +502,8 @@ describe('MfaService', () => {
                         backupCode: null,
                         passkeyResponse: null,
                     },
-                    null
+                    null,
+                    fullState
                 )
             ).rejects.toMatchObject({
                 module: 'mfa',
@@ -405,19 +514,18 @@ describe('MfaService', () => {
         });
 
         it('throws MfaAttemptMaxException during a lock before any check', async () => {
-            mfaRepository.findOneByUserId.mockResolvedValue({
-                ...baseMfa,
-                lockedUntil,
-            });
-
             await expect(
-                service.check('user-quartz', totpInput, null)
+                service.check('user-quartz', totpInput, null, {
+                    ...fullState,
+                    mfa: { ...baseMfa, lockedUntil },
+                })
             ).rejects.toMatchObject({
                 module: 'mfa',
 
                 statusCode: EnumMfaStatusCodeError.attemptMax,
             });
             expect(mfaTotpService.checkCode).not.toHaveBeenCalled();
+            expect(mfaPasskeyService.checkAssertion).not.toHaveBeenCalled();
         });
 
         it('verifies a backup code against the stored hashes and answers the matched hash', async () => {
@@ -426,7 +534,7 @@ describe('MfaService', () => {
             );
 
             await expect(
-                service.check('user-quartz', backupInput, null)
+                service.check('user-quartz', backupInput, null, fullState)
             ).resolves.toEqual({
                 check: {
                     method: EnumMfaMethod.backupCode,
@@ -448,7 +556,7 @@ describe('MfaService', () => {
             );
 
             await expect(
-                service.check('user-quartz', backupInput, null)
+                service.check('user-quartz', backupInput, null, fullState)
             ).resolves.toMatchObject({
                 check: { backupCodeHash: 'hash-one' },
             });
@@ -469,7 +577,7 @@ describe('MfaService', () => {
             );
 
             await expect(
-                service.check('user-quartz', backupInput, null)
+                service.check('user-quartz', backupInput, null, fullState)
             ).resolves.toEqual({ check: null, failure: backupCodeFailure });
             expect(helperHashService.argon2Compare).toHaveBeenCalledTimes(2);
             expect(mfaRepository.incrementAttemptInTx).not.toHaveBeenCalled();
@@ -484,7 +592,8 @@ describe('MfaService', () => {
                         ...backupInput,
                         backupCode: '  ',
                     },
-                    null
+                    null,
+                    fullState
                 )
             ).resolves.toEqual({ check: null, failure: backupCodeFailure });
             expect(compare).not.toHaveBeenCalled();
@@ -492,13 +601,11 @@ describe('MfaService', () => {
         });
 
         it('throws MfaMethodUnavailableException uncounted for a backup code with no codes left', async () => {
-            mfaRepository.findOneByUserId.mockResolvedValue({
-                ...baseMfa,
-                backupCodes: [],
-            });
-
             await expect(
-                service.check('user-quartz', backupInput, null)
+                service.check('user-quartz', backupInput, null, {
+                    ...fullState,
+                    mfa: { ...baseMfa, backupCodes: [] },
+                })
             ).rejects.toMatchObject({
                 module: 'mfa',
 
@@ -508,10 +615,11 @@ describe('MfaService', () => {
         });
 
         it('throws MfaMethodUnavailableException for a backup code when the user has no Mfa row', async () => {
-            mfaRepository.findOneByUserId.mockResolvedValue(null);
-
             await expect(
-                service.check('user-quartz', backupInput, null)
+                service.check('user-quartz', backupInput, null, {
+                    ...fullState,
+                    mfa: null,
+                })
             ).rejects.toMatchObject({
                 module: 'mfa',
 
@@ -522,7 +630,6 @@ describe('MfaService', () => {
 
     describe('check with a passkey', () => {
         beforeEach(() => {
-            mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
             mfaRepository.incrementAttemptInTx.mockResolvedValue(false);
             featureFlagService.isMetadataAllowed.mockResolvedValue(true);
         });
@@ -531,10 +638,15 @@ describe('MfaService', () => {
             mfaPasskeyService.checkAssertion.mockResolvedValue(null);
 
             await expect(
-                service.check('user-quartz', passkeyInput, 'challenge-quartz')
+                service.check(
+                    'user-quartz',
+                    passkeyInput,
+                    'challenge-quartz',
+                    fullState
+                )
             ).resolves.toEqual({ check: null, failure: passkeyFailure });
             expect(mfaPasskeyService.checkAssertion).toHaveBeenCalledWith(
-                'user-quartz',
+                [basePasskey],
                 passkeyResponse,
                 'challenge-quartz'
             );
@@ -549,7 +661,12 @@ describe('MfaService', () => {
             });
 
             await expect(
-                service.check('user-quartz', passkeyInput, 'challenge-quartz')
+                service.check(
+                    'user-quartz',
+                    passkeyInput,
+                    'challenge-quartz',
+                    fullState
+                )
             ).resolves.toEqual({
                 check: {
                     method: EnumMfaMethod.passkey,
@@ -568,7 +685,12 @@ describe('MfaService', () => {
             );
 
             await expect(
-                service.check('user-quartz', passkeyInput, 'challenge-quartz')
+                service.check(
+                    'user-quartz',
+                    passkeyInput,
+                    'challenge-quartz',
+                    fullState
+                )
             ).rejects.toMatchObject({
                 module: 'mfa',
 
@@ -581,10 +703,10 @@ describe('MfaService', () => {
             mfaPasskeyService.checkAssertion.mockResolvedValue(null);
 
             await expect(
-                service.check('user-quartz', passkeyInput, null)
+                service.check('user-quartz', passkeyInput, null, fullState)
             ).resolves.toEqual({ check: null, failure: passkeyFailure });
             expect(mfaPasskeyService.checkAssertion).toHaveBeenCalledWith(
-                'user-quartz',
+                [basePasskey],
                 passkeyResponse,
                 null
             );
@@ -607,6 +729,7 @@ describe('MfaService', () => {
             await expect(
                 service.checkPasskeyLogin(
                     'user-quartz',
+                    basePasskey,
                     passkeyResponse,
                     'challenge-quartz'
                 )
@@ -619,11 +742,16 @@ describe('MfaService', () => {
                 },
                 failure: null,
             });
+            expect(mfaRepository.findOneByUserId).toHaveBeenCalledTimes(1);
+            expect(mfaRepository.findOneByUserId).toHaveBeenCalledWith(
+                'user-quartz'
+            );
             expect(mfaPasskeyService.checkAssertion).toHaveBeenCalledWith(
-                'user-quartz',
+                [basePasskey],
                 passkeyResponse,
                 'challenge-quartz'
             );
+            expect(mfaTotpService.checkCode).not.toHaveBeenCalled();
             expect(featureFlagService.isMetadataAllowed).not.toHaveBeenCalled();
         });
 
@@ -636,6 +764,7 @@ describe('MfaService', () => {
             await expect(
                 service.checkPasskeyLogin(
                     'user-quartz',
+                    basePasskey,
                     passkeyResponse,
                     'challenge-quartz'
                 )
@@ -653,6 +782,7 @@ describe('MfaService', () => {
             await expect(
                 service.checkPasskeyLogin(
                     'user-quartz',
+                    basePasskey,
                     passkeyResponse,
                     'challenge-quartz'
                 )
@@ -936,11 +1066,24 @@ describe('MfaService', () => {
             passkey: null,
         };
 
+        const totpState: IMfaFactorState = {
+            mfa: baseMfa,
+            totp: baseTotp,
+            passkeys: [],
+        };
+
         beforeEach(() => {
-            mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
-            mfaTotpService.existsConfirmed.mockResolvedValue(true);
-            mfaPasskeyService.existsByUser.mockResolvedValue(false);
             featureFlagService.isMetadataAllowed.mockResolvedValue(true);
+        });
+
+        afterEach(() => {
+            expect(mfaRepository.findOneByUserId).not.toHaveBeenCalled();
+            expect(mfaTotpService.getOneByUser).not.toHaveBeenCalled();
+            expect(mfaTotpService.existsConfirmed).not.toHaveBeenCalled();
+            expect(
+                mfaPasskeyService.getManyForCheckByUser
+            ).not.toHaveBeenCalled();
+            expect(mfaPasskeyService.existsByUser).not.toHaveBeenCalled();
         });
 
         it('answers enabled with nothing checked and calls no proof check for mfaTotpEnable after a password check', async () => {
@@ -951,7 +1094,8 @@ describe('MfaService', () => {
                         ...baseInput,
                         action: EnumUserReauthenticationAction.mfaTotpEnable,
                     },
-                    true
+                    true,
+                    totpState
                 )
             ).resolves.toEqual({
                 isEnabled: true,
@@ -961,14 +1105,16 @@ describe('MfaService', () => {
             });
             expect(mfaTotpService.checkCode).not.toHaveBeenCalled();
             expect(mfaPasskeyService.checkAssertion).not.toHaveBeenCalled();
-            expect(mfaRepository.findOneByUserId).not.toHaveBeenCalled();
         });
 
         it('answers disabled with nothing checked and calls no proof check for a user with MFA off', async () => {
-            mfaTotpService.existsConfirmed.mockResolvedValue(false);
-
             await expect(
-                service.checkReauthentication('user-quartz', baseInput, true)
+                service.checkReauthentication(
+                    'user-quartz',
+                    baseInput,
+                    true,
+                    emptyState
+                )
             ).resolves.toEqual({
                 isEnabled: false,
                 check: null,
@@ -979,7 +1125,7 @@ describe('MfaService', () => {
         });
 
         it('checks the proof for mfaTotpEnable when no password was checked and answers the check', async () => {
-            mfaTotpService.checkCode.mockResolvedValue(7);
+            mfaTotpService.checkCode.mockReturnValue(7);
 
             await expect(
                 service.checkReauthentication(
@@ -988,7 +1134,8 @@ describe('MfaService', () => {
                         ...baseInput,
                         action: EnumUserReauthenticationAction.mfaTotpEnable,
                     },
-                    false
+                    false,
+                    totpState
                 )
             ).resolves.toEqual({
                 isEnabled: true,
@@ -997,16 +1144,22 @@ describe('MfaService', () => {
                 passkeyChallengeToken: null,
             });
             expect(mfaTotpService.checkCode).toHaveBeenCalledWith(
+                baseTotp,
                 'user-quartz',
                 ' 123456 '
             );
         });
 
         it('checks the proof for another action after a password check and answers the check', async () => {
-            mfaTotpService.checkCode.mockResolvedValue(7);
+            mfaTotpService.checkCode.mockReturnValue(7);
 
             await expect(
-                service.checkReauthentication('user-quartz', baseInput, true)
+                service.checkReauthentication(
+                    'user-quartz',
+                    baseInput,
+                    true,
+                    totpState
+                )
             ).resolves.toEqual({
                 isEnabled: true,
                 check: totpCheck,
@@ -1016,10 +1169,15 @@ describe('MfaService', () => {
         });
 
         it('answers the failure and writes nothing for a mismatch', async () => {
-            mfaTotpService.checkCode.mockResolvedValue(null);
+            mfaTotpService.checkCode.mockReturnValue(null);
 
             await expect(
-                service.checkReauthentication('user-quartz', baseInput, false)
+                service.checkReauthentication(
+                    'user-quartz',
+                    baseInput,
+                    false,
+                    totpState
+                )
             ).resolves.toEqual({
                 isEnabled: true,
                 check: null,
@@ -1048,7 +1206,8 @@ describe('MfaService', () => {
                         passkeyChallengeToken: 'token-quartz',
                         passkeyResponse,
                     },
-                    true
+                    true,
+                    fullState
                 )
             ).resolves.toEqual({
                 isEnabled: true,
@@ -1069,7 +1228,7 @@ describe('MfaService', () => {
                 'user-quartz'
             );
             expect(mfaPasskeyService.checkAssertion).toHaveBeenCalledWith(
-                'user-quartz',
+                [basePasskey],
                 passkeyResponse,
                 'challenge-quartz'
             );
@@ -1090,7 +1249,8 @@ describe('MfaService', () => {
                         passkeyChallengeToken: 'token-quartz',
                         passkeyResponse,
                     },
-                    false
+                    false,
+                    fullState
                 )
             ).resolves.toEqual({
                 isEnabled: true,
@@ -1416,9 +1576,15 @@ describe('MfaService', () => {
     });
 
     describe('getLoginMethods', () => {
-        const passkeyCredentials = [
-            { credentialId: 'credential-one', transports: ['internal'] },
-        ];
+        afterEach(() => {
+            expect(mfaRepository.findOneByUserId).not.toHaveBeenCalled();
+            expect(mfaTotpService.getOneByUser).not.toHaveBeenCalled();
+            expect(mfaTotpService.existsConfirmed).not.toHaveBeenCalled();
+            expect(
+                mfaPasskeyService.getManyForCheckByUser
+            ).not.toHaveBeenCalled();
+            expect(mfaPasskeyService.existsByUser).not.toHaveBeenCalled();
+        });
 
         it.each([
             [
@@ -1447,41 +1613,47 @@ describe('MfaService', () => {
         ])(
             'answers the methods of a user with %s and backup codes left',
             async (_label, hasTotp, hasPasskey, expected) => {
-                mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
-                mfaTotpService.existsConfirmed.mockResolvedValue(hasTotp);
                 featureFlagService.isMetadataAllowed.mockResolvedValue(true);
 
                 await expect(
-                    service.getLoginMethods(
-                        'user-quartz',
-                        hasPasskey ? passkeyCredentials : []
-                    )
+                    service.getLoginMethods({
+                        ...fullState,
+                        totp: hasTotp ? baseTotp : null,
+                        passkeys: hasPasskey ? [basePasskey] : [],
+                    })
                 ).resolves.toEqual(expected);
             }
         );
 
         it('leaves out backupCode when no codes remain', async () => {
-            mfaRepository.findOneByUserId.mockResolvedValue({
-                ...baseMfa,
-                backupCodes: [],
-            });
-            mfaTotpService.existsConfirmed.mockResolvedValue(true);
             featureFlagService.isMetadataAllowed.mockResolvedValue(true);
 
             await expect(
-                service.getLoginMethods('user-quartz', passkeyCredentials)
+                service.getLoginMethods({
+                    ...fullState,
+                    mfa: { ...baseMfa, backupCodes: [] },
+                })
             ).resolves.toEqual([EnumMfaMethod.totp, EnumMfaMethod.passkey]);
         });
 
-        it('reads no flag for a user with no stored factor', async () => {
-            mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
-            mfaTotpService.existsConfirmed.mockResolvedValue(false);
+        it('treats a TOTP row with no confirmed secret as no TOTP', async () => {
+            featureFlagService.isMetadataAllowed.mockResolvedValue(true);
 
             await expect(
-                service.getLoginMethods('user-quartz', [])
+                service.getLoginMethods({
+                    mfa: baseMfa,
+                    totp: { ...baseTotp, secret: null },
+                    passkeys: [],
+                })
             ).resolves.toEqual([]);
             expect(featureFlagService.isMetadataAllowed).not.toHaveBeenCalled();
-            expect(mfaPasskeyService.existsByUser).not.toHaveBeenCalled();
+        });
+
+        it('reads no flag for a user with no stored factor', async () => {
+            await expect(service.getLoginMethods(emptyState)).resolves.toEqual(
+                []
+            );
+            expect(featureFlagService.isMetadataAllowed).not.toHaveBeenCalled();
         });
 
         it.each([
@@ -1511,8 +1683,6 @@ describe('MfaService', () => {
                 passkeyAllowed,
                 expected
             ) => {
-                mfaRepository.findOneByUserId.mockResolvedValue(baseMfa);
-                mfaTotpService.existsConfirmed.mockResolvedValue(hasTotp);
                 featureFlagService.isMetadataAllowed.mockImplementation(
                     async (_key, metadataKey) =>
                         metadataKey === EnumFeatureFlagMetadataKey.totpAllowed
@@ -1521,31 +1691,52 @@ describe('MfaService', () => {
                 );
 
                 await expect(
-                    service.getLoginMethods(
-                        'user-quartz',
-                        hasPasskey ? passkeyCredentials : []
-                    )
+                    service.getLoginMethods({
+                        ...fullState,
+                        totp: hasTotp ? baseTotp : null,
+                        passkeys: hasPasskey ? [basePasskey] : [],
+                    })
                 ).resolves.toEqual(expected);
             }
         );
 
-        it('leaves out backupCode when the user has no Mfa row', async () => {
-            mfaRepository.findOneByUserId.mockResolvedValue(null);
-            mfaTotpService.existsConfirmed.mockResolvedValue(true);
+        it('leaves out backupCode when the state holds no Mfa row', async () => {
             featureFlagService.isMetadataAllowed.mockResolvedValue(true);
 
             await expect(
-                service.getLoginMethods('user-quartz', [])
+                service.getLoginMethods({
+                    mfa: null,
+                    totp: baseTotp,
+                    passkeys: [],
+                })
             ).resolves.toEqual([EnumMfaMethod.totp]);
         });
     });
 
     describe('isEnabled', () => {
-        it('answers false and reads no flag for a user with no stored factor', async () => {
-            mfaTotpService.existsConfirmed.mockResolvedValue(false);
-            mfaPasskeyService.existsByUser.mockResolvedValue(false);
+        afterEach(() => {
+            expect(mfaRepository.findOneByUserId).not.toHaveBeenCalled();
+            expect(mfaTotpService.getOneByUser).not.toHaveBeenCalled();
+            expect(mfaTotpService.existsConfirmed).not.toHaveBeenCalled();
+            expect(
+                mfaPasskeyService.getManyForCheckByUser
+            ).not.toHaveBeenCalled();
+            expect(mfaPasskeyService.existsByUser).not.toHaveBeenCalled();
+        });
 
-            await expect(service.isEnabled('user-quartz')).resolves.toBe(false);
+        it('answers false and reads no flag for a state with no stored factor', async () => {
+            await expect(service.isEnabled(emptyState)).resolves.toBe(false);
+            expect(featureFlagService.isMetadataAllowed).not.toHaveBeenCalled();
+        });
+
+        it('answers false for a TOTP row with no confirmed secret', async () => {
+            await expect(
+                service.isEnabled({
+                    mfa: baseMfa,
+                    totp: { ...baseTotp, secret: null },
+                    passkeys: [],
+                })
+            ).resolves.toBe(false);
             expect(featureFlagService.isMetadataAllowed).not.toHaveBeenCalled();
         });
 
@@ -1571,8 +1762,6 @@ describe('MfaService', () => {
                 passkeyAllowed,
                 expected
             ) => {
-                mfaTotpService.existsConfirmed.mockResolvedValue(hasTotp);
-                mfaPasskeyService.existsByUser.mockResolvedValue(hasPasskey);
                 featureFlagService.isMetadataAllowed.mockImplementation(
                     async (_key, metadataKey) =>
                         metadataKey === EnumFeatureFlagMetadataKey.totpAllowed
@@ -1580,9 +1769,13 @@ describe('MfaService', () => {
                             : passkeyAllowed
                 );
 
-                await expect(service.isEnabled('user-quartz')).resolves.toBe(
-                    expected
-                );
+                await expect(
+                    service.isEnabled({
+                        mfa: baseMfa,
+                        totp: hasTotp ? baseTotp : null,
+                        passkeys: hasPasskey ? [basePasskey] : [],
+                    })
+                ).resolves.toBe(expected);
             }
         );
     });
@@ -1620,22 +1813,22 @@ describe('MfaService', () => {
     });
 
     describe('assertEnabled', () => {
-        it('answers nothing with MFA on', async () => {
-            mfaTotpService.existsConfirmed.mockResolvedValue(false);
-            mfaPasskeyService.existsByUser.mockResolvedValue(true);
+        it('answers nothing with MFA on, reading no factor row', async () => {
             featureFlagService.isMetadataAllowed.mockResolvedValue(true);
 
             await expect(
-                service.assertEnabled('user-quartz')
+                service.assertEnabled({
+                    ...emptyState,
+                    passkeys: [basePasskey],
+                })
             ).resolves.toBeUndefined();
+            expect(mfaRepository.findOneByUserId).not.toHaveBeenCalled();
+            expect(mfaPasskeyService.existsByUser).not.toHaveBeenCalled();
         });
 
         it('throws MfaNotEnabledException with MFA off', async () => {
-            mfaTotpService.existsConfirmed.mockResolvedValue(false);
-            mfaPasskeyService.existsByUser.mockResolvedValue(false);
-
             await expect(
-                service.assertEnabled('user-quartz')
+                service.assertEnabled(emptyState)
             ).rejects.toMatchObject({
                 module: 'mfa',
 
@@ -1727,16 +1920,19 @@ describe('MfaService', () => {
         });
     });
 
-    describe('createInTx', () => {
-        it('creates the Mfa row on the tx', async () => {
-            mfaRepository.createInTx.mockResolvedValue(baseMfa);
+    describe('createManyInTx', () => {
+        it('forwards every entry to the repository in one call', async () => {
+            const entries = [
+                { userId: 'user-quartz', createdBy: 'user-quartz' },
+                { userId: 'user-agate', createdBy: 'admin-quartz' },
+            ];
 
-            await service.createInTx(tx, 'user-quartz', 'admin-quartz');
+            await service.createManyInTx(tx, entries);
 
-            expect(mfaRepository.createInTx).toHaveBeenCalledWith(
+            expect(mfaRepository.createManyInTx).toHaveBeenCalledTimes(1);
+            expect(mfaRepository.createManyInTx).toHaveBeenCalledWith(
                 tx,
-                'user-quartz',
-                'admin-quartz'
+                entries
             );
         });
     });

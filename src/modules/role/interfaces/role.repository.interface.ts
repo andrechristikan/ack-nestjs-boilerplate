@@ -39,9 +39,9 @@ export interface IRoleRepository {
         id: string,
         expectedType: EnumRoleType,
         data: IRoleUpdate
-    ): Promise<IRoleWithPolicies | null>;
+    ): Promise<IRoleWithPolicies>;
     deleteUnusedInTx(
         tx: IDatabaseTransactionClient,
         id: string
-    ): Promise<boolean>;
+    ): Promise<IRole>;
 }

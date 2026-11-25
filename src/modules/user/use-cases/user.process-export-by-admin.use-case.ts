@@ -180,7 +180,8 @@ export class UserProcessExportByAdminUseCase implements IAppUseCase<
             );
             await Promise.all([
                 this.outboxService.addManyInTx(tx, [notification, entry]),
-                this.outboxService.updateDataInTx(tx, outboxId, {
+                this.outboxService.replaceDataInTx(tx, outboxId, {
+                    ...payload,
                     exported: count,
                 }),
             ]);

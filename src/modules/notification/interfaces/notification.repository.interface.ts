@@ -28,6 +28,11 @@ export interface INotificationRepository {
         kind: EnumNotificationKind,
         payload: INotificationCreate
     ): Promise<void>;
+    createIfAbsentInTx(
+        tx: IDatabaseTransactionClient,
+        kind: EnumNotificationKind,
+        payload: INotificationCreate
+    ): Promise<void>;
     createManyInTx(
         tx: IDatabaseTransactionClient,
         entries: INotificationCreateEntry[]

@@ -26,4 +26,5 @@ export enum EnumWorkspaceStatusCodeError {
     memberAlreadyExists = 51623,
     ownerTransferRequired = 51624,
     transferTargetInactive = 51625,
+    inviteReferenceExist = 51626,
 }

@@ -7,7 +7,10 @@ import type {
     IUserVerificationEmailCreate,
     IUserVerificationWithUser,
 } from '@modules/user/interfaces/user.interface';
-import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
+import type {
+    IUserCreateVerification,
+    IUserCreateVerificationEntry,
+} from '@modules/user/interfaces/user.create.interface';
 
 export interface IUserVerificationRepository {
     findOneActiveByVerificationEmailToken(
@@ -51,6 +54,12 @@ export interface IUserVerificationRepository {
         id: string,
         verifiedAt: Date,
         updatedBy: string
+    ): Promise<Verification>;
+    markReauthenticationUsedInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        verifiedAt: Date,
+        updatedBy: string
     ): Promise<boolean>;
     createInTx(
         tx: IDatabaseTransactionClient,
@@ -68,6 +77,10 @@ export interface IUserVerificationRepository {
         }: IUserCreateVerification,
         createdBy: string
     ): Promise<Verification>;
+    createManyInTx(
+        tx: IDatabaseTransactionClient,
+        entries: IUserCreateVerificationEntry[]
+    ): Promise<void>;
     createReplacingActiveInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

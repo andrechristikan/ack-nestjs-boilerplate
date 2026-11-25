@@ -103,7 +103,10 @@ const thisCall =
 const thisCallWrapper =
     ':matches(AwaitExpression, TSAsExpression, TSNonNullExpression, TSSatisfiesExpression, ChainExpression)';
 
-/** Each parent of a this-call, with the field the call fills ('' when it is the whole child). */
+/** The this-call a throw may carry: the repository's database error mapper, which returns the exception. */
+const thisCallNotDatabaseErrorMapper = `${thisCall}:not([callee.object.type="MemberExpression"][callee.object.object.type="ThisExpression"][callee.object.property.name="databaseUtil"][callee.property.name=/^(toWriteException|toUniqueException)$/])`;
+
+/** Each parent of a this-call, with the field the call fills ('' when it is the whole child) and the call selector it refuses. */
 const thisCallParents = [
     [':matches(CallExpression, NewExpression)', '.arguments'],
     [':matches(IfStatement, WhileStatement, ConditionalExpression)', '.test'],
@@ -115,16 +118,16 @@ const thisCallParents = [
         '',
     ],
     ['MemberExpression', '.object'],
-    ['ThrowStatement', ''],
+    ['ThrowStatement', '', thisCallNotDatabaseErrorMapper],
     ['ForOfStatement', '.right'],
     ['MemberExpression[computed=true]', '.property'],
 ];
 
 /** A this-call used as a value, bare or through a wrapper, refused. */
 const thisCallRestrictions = thisCallParents
-    .flatMap(([parent, field]) => [
-        `${parent} > ${thisCall}${field}`,
-        `${parent} > ${thisCallWrapper}${field} > ${thisCall}`,
+    .flatMap(([parent, field, call = thisCall]) => [
+        `${parent} > ${call}${field}`,
+        `${parent} > ${thisCallWrapper}${field} > ${call}`,
     ])
     .map(selector => ({
         selector,

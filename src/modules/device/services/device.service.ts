@@ -13,7 +13,6 @@ import {
     EnumDevicePlatform,
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
     IDeviceIdentity,
     IDeviceLoginUpsert,
@@ -266,20 +265,15 @@ export class DeviceService {
             now,
             Duration.fromObject({ milliseconds: this.idleTimeoutInMs })
         );
-        const deviceOwnership =
-            await this.deviceOwnershipRepository.removeOwnershipInTx(
-                tx,
-                userId,
-                deviceOwnershipId,
-                removedBy,
-                now,
-                idleSince
-            );
-        if (deviceOwnership === null) {
-            throw new DeviceNotFoundException();
-        }
 
-        return deviceOwnership;
+        return this.deviceOwnershipRepository.removeOwnershipInTx(
+            tx,
+            userId,
+            deviceOwnershipId,
+            removedBy,
+            now,
+            idleSince
+        );
     }
 
     /** Refreshes the ownership and its device on the caller's transaction, clears the token from other users, and adds the refresh entry; no live ownership throws DeviceNotFoundException. */
@@ -306,9 +300,6 @@ export class DeviceService {
             notificationProvider,
             now
         );
-        if (deviceId === null) {
-            throw new DeviceNotFoundException();
-        }
         await Promise.all([
             this.deviceRepository.refreshInTx(tx, deviceId, data, now),
             this.clearTokenFromOtherUsersInTx(

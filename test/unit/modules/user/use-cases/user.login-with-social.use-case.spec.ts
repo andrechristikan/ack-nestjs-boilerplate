@@ -63,7 +63,10 @@ import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.e
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
-import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
+import type {
+    ITermPolicyAcceptanceCreate,
+    ITermPolicyRef,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRequiredNotPublishedException } from '@modules/term-policy/exceptions/term-policy.required-not-published.exception';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
@@ -73,7 +76,7 @@ import { UserService } from '@modules/user/services/user.service';
 import { UserSocialService } from '@modules/user/services/user.social.service';
 import type { UserCreateSocialRequestDto } from '@modules/user/dtos/request/user.create-social.request.dto';
 import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
+import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type {
@@ -89,7 +92,7 @@ import type {
 import type { IUserAuthSession } from '@modules/user/interfaces/user.auth.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
-import type { IMfaPasskeyCredential } from '@modules/mfa/interfaces/mfa.interface';
+import { buildMfaFactorState } from '@test/unit/helpers/test.unit.mfa.helper';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaPasskeyService } from '@modules/mfa/services/mfa.passkey.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
@@ -98,6 +101,8 @@ import { UserUtil } from '@modules/user/utils/user.util';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
+import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
+import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -227,9 +232,7 @@ describe('UserLoginWithSocialUseCase', () => {
     const passkeyOptions: PublicKeyCredentialRequestOptionsJSON = {
         challenge: 'challenge-webauthn',
     };
-    const passkeyCredentials: IMfaPasskeyCredential[] = [
-        { credentialId: 'credential-bramble', transports: ['internal'] },
-    ];
+    const factorState = buildMfaFactorState('user-bramble');
     const mfaChallenge: IUserAuthMfaChallenge = {
         challengeToken: 'challenge-token',
         expiresInMs: 60000,
@@ -299,7 +302,9 @@ describe('UserLoginWithSocialUseCase', () => {
             verifiedAt: null,
             isUsed: false,
         },
+        login: null,
         workspaceContext: personalContext,
+        createdAt: new Date('2026-03-01T00:00:00.000Z'),
         createdBy: 'user-bramble',
     };
     const inviteInput: IUserCreateWithWorkspaceInput = {
@@ -311,6 +316,13 @@ describe('UserLoginWithSocialUseCase', () => {
         types: [EnumTermPolicyType.termsOfService],
         createdBy: 'user-bramble',
     };
+    const termPolicyRefs: ITermPolicyRef[] = [
+        {
+            id: 'term-policy-terms',
+            type: EnumTermPolicyType.termsOfService,
+            version: 1,
+        },
+    ];
     const stageInput = {
         action: EnumActivityLogAction.userCreated,
         userId: 'user-bramble',
@@ -364,7 +376,7 @@ describe('UserLoginWithSocialUseCase', () => {
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         notificationQueue.notify.mockReturnValue(welcomeSocialEffect);
         mfaService.isEnabled.mockResolvedValue(false);
-        mfaPasskeyService.getCredentialsByUser.mockResolvedValue([]);
+        mfaService.getFactorState.mockResolvedValue(factorState);
         mfaService.getLoginMethods.mockResolvedValue([EnumMfaMethod.totp]);
         deviceService.upsertForLoginInTx.mockResolvedValue(upserted);
         mfaChallengeService.createInTx.mockResolvedValue({
@@ -372,7 +384,10 @@ describe('UserLoginWithSocialUseCase', () => {
             expiresInMs: mfaChallenge.expiresInMs,
         });
         userAuthService.createTokenAndSessionInTx.mockResolvedValue(session);
-        userService.createManyInTx.mockResolvedValue([committedUser]);
+        userService.createInTx.mockResolvedValue(committedUser);
+        termPolicyAcceptanceService.getPublishedForAcceptance.mockResolvedValue(
+            termPolicyRefs
+        );
         roleService.getByName.mockResolvedValue(role);
         countryService.getOne.mockResolvedValue(country);
         workspaceMemberService.resolveLastWorkspaceId.mockResolvedValue(null);
@@ -476,7 +491,8 @@ describe('UserLoginWithSocialUseCase', () => {
             userSocialService.getUserIdBySubject.mockResolvedValue(null);
             userRegistrationService.buildSocialCreate.mockReturnValue(input);
             userService.checkUsername.mockResolvedValue(clearUsername);
-            userAuthService.getOneForSocialLogin.mockResolvedValue(baseUser);
+            userAuthService.getOneByEmail.mockResolvedValue(null);
+            userAuthService.assertSocialLoginAllowed.mockReturnValue(baseUser);
         });
 
         it('logs the user linked to the subject in without the email lookup or the sign-up check', async () => {
@@ -504,10 +520,13 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(
                 userAuthService.getOneForSocialLoginById
             ).toHaveBeenCalledWith('user-bramble');
+            expect(userAuthService.getOneByEmail).not.toHaveBeenCalled();
             expect(
                 userRegistrationService.isSocialSignUpAllowed
             ).not.toHaveBeenCalled();
-            expect(userAuthService.getOneForSocialLogin).not.toHaveBeenCalled();
+            expect(
+                userAuthService.assertSocialLoginAllowed
+            ).not.toHaveBeenCalled();
             expect(userSocialService.assertLinkable).not.toHaveBeenCalled();
             expect(userSocialService.linkInTx).not.toHaveBeenCalled();
             expect(
@@ -520,7 +539,9 @@ describe('UserLoginWithSocialUseCase', () => {
                 upserted,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.socialGoogle,
-                now
+                now,
+                false,
+                false
             );
             expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
                 tx,
@@ -532,7 +553,6 @@ describe('UserLoginWithSocialUseCase', () => {
 
         it('commits the new user, the social welcome effect, the created entries, and the session on one tx', async () => {
             const callOrder: string[] = [];
-            userService.createManyInTx.mockResolvedValue([committedUser]);
             userAuthService.createTokenAndSessionInTx.mockImplementation(
                 async () => {
                     callOrder.push('login');
@@ -551,19 +571,26 @@ describe('UserLoginWithSocialUseCase', () => {
                 )
             ).resolves.toEqual({ data: tokenOutcome });
 
+            expect(userAuthService.getOneByEmail).toHaveBeenCalledTimes(1);
+            expect(userAuthService.getOneByEmail).toHaveBeenCalledWith(
+                'bramble@example.com'
+            );
             expect(
                 userRegistrationService.isSocialSignUpAllowed
-            ).toHaveBeenCalledWith(
-                'bramble@example.com',
-                EnumUserLoginWith.socialGoogle
-            );
+            ).toHaveBeenCalledWith(null, EnumUserLoginWith.socialGoogle);
             expect(
                 userRegistrationService.buildSocialCreate
             ).toHaveBeenCalledWith(
                 'bramble@example.com',
                 EnumUserLoginWith.socialGoogle,
                 social,
-                { roleId: 'role-bramble', workspaceContext: personalContext }
+                { roleId: 'role-bramble', workspaceContext: personalContext },
+                {
+                    loginAt: now,
+                    ipAddress: requestContext.requestLog.ipAddress,
+                    loginFrom: EnumUserLoginFrom.website,
+                    loginWith: EnumUserLoginWith.socialGoogle,
+                }
             );
             expect(databaseService.withTransaction).toHaveBeenNthCalledWith(
                 1,
@@ -587,10 +614,12 @@ describe('UserLoginWithSocialUseCase', () => {
                 entryEffect,
                 entryEffect,
             ]);
-            expect(userAuthService.getOneForSocialLogin).not.toHaveBeenCalled();
+            expect(
+                userAuthService.assertSocialLoginAllowed
+            ).not.toHaveBeenCalled();
             expect(
                 workspaceMemberService.resolveLastWorkspaceId
-            ).toHaveBeenCalledWith('user-bramble', null);
+            ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(
                 userAuthService.createTokenAndSessionInTx
@@ -602,7 +631,9 @@ describe('UserLoginWithSocialUseCase', () => {
                 upserted,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.socialGoogle,
-                now
+                now,
+                true,
+                false
             );
             expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
                 tx,
@@ -620,6 +651,7 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 false
             );
+            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
 
             await expect(
                 useCase.execute(
@@ -632,9 +664,16 @@ describe('UserLoginWithSocialUseCase', () => {
             ).resolves.toEqual({ data: tokenOutcome });
 
             expect(roleService.getByName).not.toHaveBeenCalled();
-            expect(userAuthService.getOneForSocialLogin).toHaveBeenCalledWith(
+            expect(userAuthService.getOneByEmail).toHaveBeenCalledTimes(1);
+            expect(userAuthService.getOneByEmail).toHaveBeenCalledWith(
                 'bramble@example.com'
             );
+            expect(
+                userRegistrationService.isSocialSignUpAllowed
+            ).toHaveBeenCalledWith(baseUser, EnumUserLoginWith.socialGoogle);
+            expect(
+                userAuthService.assertSocialLoginAllowed
+            ).toHaveBeenCalledWith(baseUser);
             expect(
                 userAuthService.verifyEmailBySocialInTx
             ).not.toHaveBeenCalled();
@@ -654,7 +693,9 @@ describe('UserLoginWithSocialUseCase', () => {
                 upserted,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.socialGoogle,
-                now
+                now,
+                false,
+                false
             );
             expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
                 tx,
@@ -662,9 +703,8 @@ describe('UserLoginWithSocialUseCase', () => {
                 deviceIdentity,
                 now
             );
-            expect(
-                mfaPasskeyService.getCredentialsByUser
-            ).not.toHaveBeenCalled();
+            expect(mfaService.getFactorState).toHaveBeenCalledTimes(1);
+            expect(mfaService.isEnabled).toHaveBeenCalledWith(factorState);
             expect(mfaService.getLoginMethods).not.toHaveBeenCalled();
             expect(
                 mfaPasskeyService.getAssertionOptions
@@ -687,10 +727,12 @@ describe('UserLoginWithSocialUseCase', () => {
                 'subject-bramble',
                 'user-bramble'
             );
-            expect(userService.createManyInTx).toHaveBeenCalledBefore(
+            expect(userService.createInTx).toHaveBeenCalledBefore(
                 userSocialService.linkInTx
             );
-            expect(userAuthService.getOneForSocialLogin).not.toHaveBeenCalled();
+            expect(
+                userAuthService.assertSocialLoginAllowed
+            ).not.toHaveBeenCalled();
             expect(userSocialService.assertLinkable).not.toHaveBeenCalled();
         });
 
@@ -698,6 +740,7 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 false
             );
+            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
 
             await expect(
                 useCase.execute(
@@ -734,7 +777,11 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 false
             );
-            userAuthService.getOneForSocialLogin.mockRejectedValue(failure);
+            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
+            userAuthService.getOneByEmail.mockResolvedValue(null);
+            userAuthService.assertSocialLoginAllowed.mockImplementation(() => {
+                throw failure;
+            });
 
             await expect(
                 useCase.execute(
@@ -757,6 +804,7 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 false
             );
+            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
             userSocialService.assertLinkable.mockRejectedValue(failure);
 
             await expect(
@@ -780,11 +828,10 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 false
             );
-            userAuthService.getOneForSocialLogin.mockResolvedValue(baseUser);
+            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
+            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
+            userAuthService.assertSocialLoginAllowed.mockReturnValue(baseUser);
             mfaService.isEnabled.mockResolvedValue(true);
-            mfaPasskeyService.getCredentialsByUser.mockResolvedValue(
-                passkeyCredentials
-            );
             mfaService.getLoginMethods.mockResolvedValue(mfaChallenge.methods);
             mfaPasskeyService.getAssertionOptions.mockResolvedValue(
                 passkeyOptions
@@ -819,26 +866,24 @@ describe('UserLoginWithSocialUseCase', () => {
                 loginWith: EnumUserLoginWith.socialGoogle,
                 webAuthnChallenge: 'challenge-webauthn',
             });
-            expect(mfaPasskeyService.getCredentialsByUser).toHaveBeenCalledWith(
-                baseUser.id
-            );
+            expect(mfaService.getFactorState).toHaveBeenCalledTimes(1);
+            expect(mfaService.getFactorState).toHaveBeenCalledWith(baseUser.id);
             expect(mfaService.getLoginMethods).toHaveBeenCalledWith(
-                baseUser.id,
-                passkeyCredentials
+                factorState
             );
             expect(mfaPasskeyService.getAssertionOptions).toHaveBeenCalledWith(
-                passkeyCredentials
+                factorState.passkeys
             );
-            expect(
-                mfaPasskeyService.getCredentialsByUser
-            ).toHaveBeenCalledBefore(databaseService.withTransaction);
+            expect(mfaService.getFactorState).toHaveBeenCalledBefore(
+                databaseService.withTransaction
+            );
             expect(mfaService.getLoginMethods).toHaveBeenCalledBefore(
                 databaseService.withTransaction
             );
             expect(
                 mfaPasskeyService.getAssertionOptions
             ).toHaveBeenCalledBefore(databaseService.withTransaction);
-            expect(mfaService.isEnabled).toHaveBeenCalledWith('user-bramble');
+            expect(mfaService.isEnabled).toHaveBeenCalledWith(factorState);
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
@@ -855,10 +900,7 @@ describe('UserLoginWithSocialUseCase', () => {
 
             expect(
                 userRegistrationService.isSocialSignUpAllowed
-            ).toHaveBeenCalledWith(
-                'bramble@example.com',
-                EnumUserLoginWith.socialApple
-            );
+            ).toHaveBeenCalledWith(null, EnumUserLoginWith.socialApple);
         });
 
         it('creates a new invited user, joins the workspace, and issues tokens', async () => {
@@ -923,13 +965,16 @@ describe('UserLoginWithSocialUseCase', () => {
             ).rejects.toBe(failure);
 
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(userService.createManyInTx).toHaveBeenCalledWith(tx, [
-                inviteInput,
-            ]);
+            expect(userService.createInTx).toHaveBeenCalledWith(
+                tx,
+                inviteInput
+            );
             expect(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
             ).not.toHaveBeenCalled();
-            expect(userAuthService.getOneForSocialLogin).not.toHaveBeenCalled();
+            expect(
+                userAuthService.assertSocialLoginAllowed
+            ).not.toHaveBeenCalled();
             expect(
                 userAuthService.createTokenAndSessionInTx
             ).not.toHaveBeenCalled();
@@ -968,7 +1013,10 @@ describe('UserLoginWithSocialUseCase', () => {
                     name: null,
                     inviteToken: 'invite-bramble',
                 }),
-                { roleId: 'role-bramble', workspaceContext: inviteContext }
+                { roleId: 'role-bramble', workspaceContext: inviteContext },
+                expect.objectContaining({
+                    loginWith: EnumUserLoginWith.socialGoogle,
+                })
             );
         });
 
@@ -979,6 +1027,7 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 false
             );
+            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
 
             await expect(
                 useCase.execute(
@@ -1047,6 +1096,7 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 false
             );
+            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
 
             await useCase.execute(
                 requestContext,
@@ -1116,7 +1166,11 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 false
             );
-            userAuthService.getOneForSocialLogin.mockResolvedValue(unverified);
+            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
+            userAuthService.getOneByEmail.mockResolvedValue(unverified);
+            userAuthService.assertSocialLoginAllowed.mockReturnValue(
+                unverified
+            );
             userAuthService.verifyEmailBySocialInTx.mockResolvedValue(baseUser);
 
             await useCase.execute(
@@ -1147,7 +1201,9 @@ describe('UserLoginWithSocialUseCase', () => {
                 upserted,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.socialGoogle,
-                now
+                now,
+                false,
+                false
             );
             expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
                 tx,
@@ -1166,7 +1222,11 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 false
             );
-            userAuthService.getOneForSocialLogin.mockResolvedValue(unverified);
+            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
+            userAuthService.getOneByEmail.mockResolvedValue(unverified);
+            userAuthService.assertSocialLoginAllowed.mockReturnValue(
+                unverified
+            );
             userAuthService.verifyEmailBySocialInTx.mockResolvedValue(baseUser);
             userSocialService.linkInTx.mockReturnValue(link.promise);
 
@@ -1204,7 +1264,9 @@ describe('UserLoginWithSocialUseCase', () => {
                 upserted,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.socialGoogle,
-                now
+                now,
+                false,
+                false
             );
             expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
                 tx,
@@ -1219,7 +1281,9 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 false
             );
-            userAuthService.getOneForSocialLogin.mockResolvedValue(mfaUser);
+            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
+            userAuthService.getOneByEmail.mockResolvedValue(mfaUser);
+            userAuthService.assertSocialLoginAllowed.mockReturnValue(mfaUser);
             mfaService.isEnabled.mockResolvedValue(true);
             userAuthService.verifyEmailBySocialInTx.mockResolvedValue({
                 ...mfaUser,
@@ -1259,7 +1323,11 @@ describe('UserLoginWithSocialUseCase', () => {
             userRegistrationService.isSocialSignUpAllowed.mockResolvedValue(
                 false
             );
-            userAuthService.getOneForSocialLogin.mockRejectedValue(failure);
+            userAuthService.getOneByEmail.mockResolvedValue(baseUser);
+            userAuthService.getOneByEmail.mockResolvedValue(null);
+            userAuthService.assertSocialLoginAllowed.mockImplementation(() => {
+                throw failure;
+            });
 
             await expect(
                 useCase.execute(
@@ -1318,7 +1386,7 @@ describe('UserLoginWithSocialUseCase', () => {
             userService.checkUsername.mockResolvedValue(clearUsername);
         });
 
-        it("writes each user's Mfa row, password history, and notification defaults on tx right after the users", async () => {
+        it('writes the Mfa rows, password history, and notification defaults on tx right after the users', async () => {
             await useCase['signUpWithSocial'](
                 requestContext,
                 apiKeyContext,
@@ -1329,11 +1397,10 @@ describe('UserLoginWithSocialUseCase', () => {
                 'subject-bramble'
             );
 
-            expect(mfaService.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'user-bramble'
-            );
+            expect(mfaService.createManyInTx).toHaveBeenCalledTimes(1);
+            expect(mfaService.createManyInTx).toHaveBeenCalledWith(tx, [
+                inviteInput,
+            ]);
             expect(passwordHistoryService.createManyInTx).toHaveBeenCalledWith(
                 tx,
                 [
@@ -1350,16 +1417,16 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(
                 notificationService.createDefaultsManyInTx
             ).toHaveBeenCalledWith(tx, ['user-bramble'], 'user-bramble');
-            expect(userService.createManyInTx).toHaveBeenCalledBefore(
-                mfaService.createInTx
+            expect(userService.createInTx).toHaveBeenCalledBefore(
+                mfaService.createManyInTx
             );
-            expect(userService.createManyInTx).toHaveBeenCalledBefore(
+            expect(userService.createInTx).toHaveBeenCalledBefore(
                 passwordHistoryService.createManyInTx
             );
-            expect(userService.createManyInTx).toHaveBeenCalledBefore(
+            expect(userService.createInTx).toHaveBeenCalledBefore(
                 notificationService.createDefaultsManyInTx
             );
-            expect(mfaService.createInTx).toHaveBeenCalledBefore(
+            expect(mfaService.createManyInTx).toHaveBeenCalledBefore(
                 workspaceService.createOwnedForUsersInTx
             );
         });
@@ -1376,14 +1443,20 @@ describe('UserLoginWithSocialUseCase', () => {
             );
 
             expect(
-                termPolicyAcceptanceService.assertRequiredPublished
-            ).toHaveBeenCalledWith([
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
-            ]);
-            expect(userService.createManyInTx).toHaveBeenCalledWith(tx, [
-                inviteInput,
-            ]);
+                termPolicyAcceptanceService.getPublishedForAcceptance
+            ).toHaveBeenCalledWith(
+                [EnumTermPolicyType.termsOfService, EnumTermPolicyType.privacy],
+                [
+                    EnumTermPolicyType.termsOfService,
+                    EnumTermPolicyType.privacy,
+                    EnumTermPolicyType.cookies,
+                    EnumTermPolicyType.marketing,
+                ]
+            );
+            expect(userService.createInTx).toHaveBeenCalledWith(
+                tx,
+                inviteInput
+            );
             expect(
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenCalledWith(tx, []);
@@ -1399,12 +1472,12 @@ describe('UserLoginWithSocialUseCase', () => {
             );
             expect(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
-            ).toHaveBeenCalledWith(tx, [acceptanceEntry]);
+            ).toHaveBeenCalledWith(tx, termPolicyRefs, [acceptanceEntry]);
 
             expect(
-                termPolicyAcceptanceService.assertRequiredPublished
+                termPolicyAcceptanceService.getPublishedForAcceptance
             ).toHaveBeenCalledBefore(databaseService.withTransaction);
-            expect(userService.createManyInTx).toHaveBeenCalledBefore(
+            expect(userService.createInTx).toHaveBeenCalledBefore(
                 workspaceService.createOwnedForUsersInTx
             );
             expect(
@@ -1455,7 +1528,9 @@ describe('UserLoginWithSocialUseCase', () => {
                 upserted,
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.socialGoogle,
-                now
+                now,
+                true,
+                false
             );
             expect(deviceService.upsertForLoginInTx).toHaveBeenCalledWith(
                 tx,
@@ -1491,7 +1566,7 @@ describe('UserLoginWithSocialUseCase', () => {
 
             expect(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
-            ).toHaveBeenCalledWith(tx, [acceptanceEntry]);
+            ).toHaveBeenCalledWith(tx, termPolicyRefs, [acceptanceEntry]);
             expect(userSocialService.linkInTx).not.toHaveBeenCalled();
             expect(projectMemberService.createInTx).not.toHaveBeenCalled();
 
@@ -1581,7 +1656,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 workspaceInviteService.acceptOnSignUpInTx
             ).not.toHaveBeenCalled();
             expect(
-                termPolicyAcceptanceService.assertRequiredPublished
+                termPolicyAcceptanceService.getPublishedForAcceptance
             ).toHaveBeenCalledTimes(1);
         });
 
@@ -1609,7 +1684,7 @@ describe('UserLoginWithSocialUseCase', () => {
                 'country-bramble'
             );
             expect(
-                termPolicyAcceptanceService.assertRequiredPublished
+                termPolicyAcceptanceService.getPublishedForAcceptance
             ).toHaveBeenCalled();
 
             inviteRead.resolve(invite);
@@ -1618,7 +1693,7 @@ describe('UserLoginWithSocialUseCase', () => {
 
         it('opens no transaction when a required term policy is not published', async () => {
             const failure = new TermPolicyRequiredNotPublishedException();
-            termPolicyAcceptanceService.assertRequiredPublished.mockRejectedValue(
+            termPolicyAcceptanceService.getPublishedForAcceptance.mockRejectedValue(
                 failure
             );
 
@@ -1634,12 +1709,12 @@ describe('UserLoginWithSocialUseCase', () => {
                 )
             ).rejects.toBe(failure);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(userService.createManyInTx).not.toHaveBeenCalled();
+            expect(userService.createInTx).not.toHaveBeenCalled();
         });
 
         it('retries with the next slug candidate after a slug collision and commits', async () => {
             userRegistrationService.buildSocialCreate.mockReturnValue(input);
-            const collision = buildPrismaKnownRequestError('P2002', 'slug');
+            const collision = new WorkspaceSlugAlreadyExistsException();
             databaseService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(async fn => fn(tx) as never);
@@ -1670,7 +1745,7 @@ describe('UserLoginWithSocialUseCase', () => {
         it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
             userRegistrationService.buildSocialCreate.mockReturnValue(input);
             databaseService.withTransaction.mockRejectedValue(
-                buildPrismaKnownRequestError('P2002', 'slug')
+                new WorkspaceSlugAlreadyExistsException()
             );
 
             await expect(
@@ -1691,10 +1766,9 @@ describe('UserLoginWithSocialUseCase', () => {
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });
 
-        it('throws the exception the create util maps a non-slug collision to', async () => {
-            databaseService.withTransaction.mockRejectedValue(
-                buildPrismaKnownRequestError('P2002', 'email')
-            );
+        it('passes a rejected UserEmailExistException through untouched', async () => {
+            const collision = new UserEmailExistException();
+            databaseService.withTransaction.mockRejectedValue(collision);
 
             await expect(
                 useCase['signUpWithSocial'](
@@ -1706,16 +1780,13 @@ describe('UserLoginWithSocialUseCase', () => {
                     now,
                     'subject-bramble'
                 )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.emailExist,
-            });
+            ).rejects.toBe(collision);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
-        it('maps a write conflict on the invite path to WorkspaceInviteAlreadyProcessedException', async () => {
-            databaseService.withTransaction.mockRejectedValue(
-                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
-            );
+        it('passes a rejected WorkspaceInviteAlreadyProcessedException through untouched', async () => {
+            const processed = new WorkspaceInviteAlreadyProcessedException();
+            databaseService.withTransaction.mockRejectedValue(processed);
 
             await expect(
                 useCase['signUpWithSocial'](
@@ -1727,13 +1798,10 @@ describe('UserLoginWithSocialUseCase', () => {
                     now,
                     'subject-bramble'
                 )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-            });
+            ).rejects.toBe(processed);
         });
 
-        it('wraps a write conflict on the personal path in the unknown exception', async () => {
+        it('wraps a raw write conflict in the unknown exception', async () => {
             const conflict = buildPrismaKnownRequestError(
                 DatabaseWriteConflictCode
             );
@@ -1757,7 +1825,7 @@ describe('UserLoginWithSocialUseCase', () => {
             });
         });
 
-        it('wraps a non-collision error the create util leaves unmapped in the unknown exception', async () => {
+        it('wraps an untyped error in the unknown exception', async () => {
             const otherError = new Error('unexpected');
             databaseService.withTransaction.mockRejectedValue(otherError);
 

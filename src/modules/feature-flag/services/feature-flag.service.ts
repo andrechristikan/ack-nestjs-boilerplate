@@ -256,9 +256,6 @@ export class FeatureFlagService {
             id,
             data
         );
-        if (!updated) {
-            throw new FeatureFlagNotFoundException();
-        }
 
         await this.addInvalidateEffectInTx(tx, updated.key);
 

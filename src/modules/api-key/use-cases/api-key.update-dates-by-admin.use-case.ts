@@ -1,14 +1,9 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { ApiKeyUpdateDateRequestDto } from '@modules/api-key/dtos/request/api-key.update-date.request.dto';
-import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
 import type {
     IApiKey,
     IApiKeyContext,
@@ -38,7 +33,6 @@ export class ApiKeyUpdateDatesByAdminUseCase implements IAppUseCase<
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -53,50 +47,34 @@ export class ApiKeyUpdateDatesByAdminUseCase implements IAppUseCase<
         const row = await this.apiKeyService.getOneById(id);
         this.apiKeyService.assertActive(row);
 
-        try {
-            const updated = await this.databaseService.withTransaction(
-                async tx => {
-                    const apiKey =
-                        await this.apiKeyService.updateDatesByAdminInTx(
-                            tx,
-                            row,
-                            startAt,
-                            endAt
-                        );
-
-                    const timestamp = this.helperDateService.now();
-                    const metadata = this.apiKeyUtil.mapActivityLogMetadata(
-                        apiKey,
-                        timestamp
-                    );
-                    const effect = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.adminApiKeyDatesUpdated,
-                            metadata,
-                        }
-                    );
-                    await this.outboxService.addInTx(tx, effect);
-
-                    return apiKey;
-                }
+        const updated = await this.databaseService.withTransaction(async tx => {
+            const apiKey = await this.apiKeyService.updateDatesByAdminInTx(
+                tx,
+                row,
+                startAt,
+                endAt
             );
 
-            return { data: updated };
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
+            const timestamp = this.helperDateService.now();
+            const metadata = this.apiKeyUtil.mapActivityLogMetadata(
+                apiKey,
+                timestamp
+            );
+            const effect = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.adminApiKeyDatesUpdated,
+                    metadata,
+                }
+            );
+            await this.outboxService.addInTx(tx, effect);
 
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new ApiKeyInactiveException();
-            }
+            return apiKey;
+        });
 
-            throw new AppUnknownException(err);
-        }
+        return { data: updated };
     }
 }

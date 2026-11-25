@@ -22,7 +22,7 @@ import type {
     IUserVerificationMobileCreate,
     IUserVerificationReauthenticationCreate,
 } from '@modules/user/interfaces/user.interface';
-import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
+import type { IUserCreateVerificationEntry } from '@modules/user/interfaces/user.create.interface';
 import { UserRepository } from '@modules/user/repositories/user.repository';
 import { UserVerificationRepository } from '@modules/user/repositories/user.verification.repository';
 import { UserUtil } from '@modules/user/utils/user.util';
@@ -135,7 +135,7 @@ export class UserVerificationService {
         return { verification, user };
     }
 
-    /** Marks the verification used and the user verified, and adds the verifiedEmail effect and the activity entry on the caller's transaction; a verification used first throws UserTokenInvalidException. */
+    /** Marks the verification used and the user verified from the consumed row, and adds the verifiedEmail effect and the activity entry on the caller's transaction; a verification used first throws UserTokenInvalidException, a user verified first UserEmailAlreadyVerifiedException. */
     async verifyEmailInTx(
         tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
@@ -143,26 +143,20 @@ export class UserVerificationService {
         verification: Verification
     ): Promise<void> {
         const verifiedAt = this.helperDateService.now();
-        const isMarkedUsed = await this.userVerificationRepository.markUsedInTx(
-            tx,
-            verification.id,
-            verifiedAt,
-            verification.userId
-        );
-        if (!isMarkedUsed) {
-            throw new UserTokenInvalidException();
-        }
-        await this.userRepository.markVerifiedInTx(
-            tx,
-            verification.userId,
-            verifiedAt
-        );
+        const { userId, reference } =
+            await this.userVerificationRepository.markUsedInTx(
+                tx,
+                verification.id,
+                verifiedAt,
+                verification.userId
+            );
+        await this.userRepository.markVerifiedInTx(tx, userId, verifiedAt);
         const effect = this.notificationQueue.notify(
             EnumNotificationKind.verifiedEmail,
             {
-                userId: verification.userId,
-                proceedBy: verification.userId,
-                reference: verification.reference,
+                userId,
+                proceedBy: userId,
+                reference,
             }
         );
         const entry = this.activityLogQueue.recordEffect(
@@ -172,8 +166,8 @@ export class UserVerificationService {
             null,
             {
                 action: EnumActivityLogAction.userEmailVerified,
-                userId: verification.userId,
-                createdBy: verification.userId,
+                userId,
+                createdBy: userId,
             }
         );
         await this.outboxService.addManyInTx(tx, [entry, effect]);
@@ -429,15 +423,15 @@ export class UserVerificationService {
         await this.outboxService.addInTx(tx, effect);
     }
 
-    /** Marks the verification used now; false when it was used or expired first. */
-    async markUsedInTx(
+    /** Marks the reauthentication code used now; false when it was used or expired first. */
+    async markReauthenticationUsedInTx(
         tx: IDatabaseTransactionClient,
         id: string,
         userId: string
     ): Promise<boolean> {
         const verifiedAt = this.helperDateService.now();
 
-        return this.userVerificationRepository.markUsedInTx(
+        return this.userVerificationRepository.markReauthenticationUsedInTx(
             tx,
             id,
             verifiedAt,
@@ -445,34 +439,27 @@ export class UserVerificationService {
         );
     }
 
-    /** Marks the mobile verification used now; a verification used or expired first throws UserTokenInvalidException. */
+    /** Marks the mobile verification used now and returns its row; a verification used or expired first rejects with UserTokenInvalidException. */
     async markMobileUsedInTx(
         tx: IDatabaseTransactionClient,
         verificationId: string,
         userId: string
-    ): Promise<void> {
-        const isMarkedUsed = await this.markUsedInTx(
+    ): Promise<Verification> {
+        const verifiedAt = this.helperDateService.now();
+
+        return this.userVerificationRepository.markUsedInTx(
             tx,
             verificationId,
+            verifiedAt,
             userId
         );
-        if (!isMarkedUsed) {
-            throw new UserTokenInvalidException();
-        }
     }
 
-    async createInTx(
+    async createManyInTx(
         tx: IDatabaseTransactionClient,
-        userId: string,
-        verification: IUserCreateVerification,
-        createdBy: string
-    ): Promise<Verification> {
-        return this.userVerificationRepository.createInTx(
-            tx,
-            userId,
-            verification,
-            createdBy
-        );
+        entries: IUserCreateVerificationEntry[]
+    ): Promise<void> {
+        await this.userVerificationRepository.createManyInTx(tx, entries);
     }
 
     /** Deletes the verifications that expired longer ago than verification.retentionInMs; returns the count. */

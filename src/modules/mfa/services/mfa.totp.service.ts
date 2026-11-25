@@ -4,6 +4,7 @@ import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.d
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
+import type { MfaTotp } from '@generated/prisma-client/client';
 import { MfaTotpSecretEncryptionPurpose } from '@modules/mfa/constants/mfa.constant';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { MfaMethodUnavailableException } from '@modules/mfa/exceptions/mfa.method-unavailable.exception';
@@ -146,10 +147,12 @@ export class MfaTotpService {
         return this.mfaTotpRepository.existsConfirmed(userId);
     }
 
-    async assertConfirmed(userId: string): Promise<void> {
-        const isConfirmed =
-            await this.mfaTotpRepository.existsConfirmed(userId);
-        if (!isConfirmed) {
+    async getOneByUser(userId: string): Promise<MfaTotp | null> {
+        return this.mfaTotpRepository.findOneByUserId(userId);
+    }
+
+    assertConfirmed(totp: MfaTotp | null): void {
+        if (!totp?.secret) {
             throw new MfaTotpNotEnabledException();
         }
     }
@@ -168,9 +171,8 @@ export class MfaTotpService {
         await this.mfaTotpRepository.deleteInTx(tx, userId);
     }
 
-    /** Reads the TOTP row on the client; a confirmed TOTP throws MfaTotpAlreadyEnabledException. */
-    async assertSetupAllowed(userId: string): Promise<void> {
-        const totp = await this.mfaTotpRepository.findOneByUserId(userId);
+    /** Reads nothing; a confirmed TOTP in the given row throws MfaTotpAlreadyEnabledException. */
+    assertSetupAllowed(totp: MfaTotp | null): void {
         if (totp?.secret) {
             throw new MfaTotpAlreadyEnabledException();
         }
@@ -190,12 +192,12 @@ export class MfaTotpService {
         return { secret, otpauthUrl };
     }
 
-    /** Answers the TOTP step of a code against the confirmed secret, null for a wrong or blank code; counts nothing. */
-    async checkCode(
+    /** Answers the TOTP step of a code against the confirmed secret of the given row, null for a wrong or blank code; a row without a confirmed secret throws MfaMethodUnavailableException; reads and counts nothing. */
+    checkCode(
+        totp: MfaTotp | null,
         userId: string,
         code: string | null
-    ): Promise<number | null> {
-        const totp = await this.mfaTotpRepository.findOneByUserId(userId);
+    ): number | null {
         if (!totp?.secret) {
             throw new MfaMethodUnavailableException();
         }

@@ -3,11 +3,9 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
@@ -23,7 +21,6 @@ import {
 import { DeviceService } from '@modules/device/services/device.service';
 import type { IDeviceLoginUpsert } from '@modules/device/interfaces/device.interface';
 import { SessionService } from '@modules/session/services/session.service';
-import { EnumSessionStatusCodeError } from '@modules/session/enums/session.status-code.enum';
 import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { UserLogoutUseCase } from '@modules/user/use-cases/user.logout.use-case';
 import {
@@ -34,7 +31,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserLogoutUseCase', () => {
     const deviceService: MockProxy<DeviceService> = mock<DeviceService>();
@@ -117,7 +113,6 @@ describe('UserLogoutUseCase', () => {
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
-                DatabaseUtil,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
@@ -196,32 +191,13 @@ describe('UserLogoutUseCase', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('answers SessionNotFoundException on a write conflict with one run and no entry', async () => {
-            const conflict = buildPrismaKnownRequestError('P2034');
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                useCase.execute(requestContext, apiKeyContext, authContext)
-            ).rejects.toMatchObject({
-                module: 'session',
-                statusCode: EnumSessionStatusCodeError.notFound,
-            });
-
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('wraps any other failure raised while logging out in the unknown exception without an entry', async () => {
+        it('rethrows any other failure raised while logging out untouched and adds no entry', async () => {
             const failure = new Error('boom');
             databaseService.withTransaction.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, authContext)
-            ).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: failure,
-            });
+            ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });

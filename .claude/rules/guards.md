@@ -43,6 +43,7 @@ Nest runs guards bottom-up: the decorator nearest the method executes first, so 
 
 - A guard reads transport inputs and delegates to a service.
 - The workspace and project guards read the database on every request; no cache sits in front of a membership read.
+- `UserGuard` reads the user with its role and policies in one call (`UserWithRoleInclude`), with no cache in front.
 - `TermPolicyGuard` reads the latest published policies with the caller's acceptances in one call, with no cache in front.
 - A guard that loads its subject passes the id as it arrived, from the header through `WorkspaceIdStoreKey` (`WorkspaceGuard`) or the route (`ProjectGuard`), bound to no schema: the service answers a malformed id as that subject's not-found, never 422.
 - A guard checks the context a guard below it wrote before calling the service (`ProjectGuard.canActivate`, `src/modules/project/guards/project.guard.ts`), so a service `validate*Guard` takes a guard-provided subject non-null. A missing context throws that subject's guard-only exception, owned by its module, apart from its service exceptions, and shared by every guard reading it: 401 for identity (`AuthJwtGuardMissingException` for the JWT contexts, `UserGuardMissingException`, `ApiKeyGuardMissingException`), 403 for authorization (`PolicyGuardMissingException`, `WorkspaceGuardMissingException`), never 500. The kit's `RequestThrottleUserGuard` alone answers a missing `RequestActorStoreKey` with `RequestContextMissingException` (500).

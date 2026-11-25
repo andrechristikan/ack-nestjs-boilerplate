@@ -14,6 +14,7 @@ import {
     EnumTermPolicyType,
     EnumUserGender,
     EnumUserLoginFrom,
+    EnumUserLoginWith,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumUserStatus,
@@ -27,7 +28,6 @@ import type {
     Country,
     EnumAwsS3Accessibility,
     EnumUserReauthenticationAction,
-    ForgotPassword,
     Prisma,
     User,
     UserMobileNumber,
@@ -36,9 +36,10 @@ import type {
 } from '@generated/prisma-client/client';
 import type {
     UserAdminListSelect,
+    UserForgotPasswordWithUserRecipientInclude,
     UserMobileNumberSummarySelect,
-    UserNameSelect,
     UserRecipientSelect,
+    UserVerificationWithUserStateInclude,
 } from '@modules/user/constants/user.constant';
 import type {
     IAuthPassword,
@@ -76,9 +77,7 @@ export type IUserList = Prisma.UserGetPayload<{
     select: typeof UserAdminListSelect;
 }>;
 
-export type IUserName = Prisma.UserGetPayload<{
-    select: typeof UserNameSelect;
-}>;
+export type IUserName = Pick<User, 'name' | 'username'>;
 
 export type IUserRecipient = Prisma.UserGetPayload<{
     select: typeof UserRecipientSelect;
@@ -146,12 +145,12 @@ export interface IUserVerificationMobileCreate {
 }
 
 export type IUserVerificationWithUser = Prisma.VerificationGetPayload<{
-    include: { user: true };
+    include: typeof UserVerificationWithUserStateInclude;
 }>;
 
 export interface IUserVerificationEmailTarget {
     verification: Verification;
-    user: User;
+    user: IUserVerificationWithUser['user'];
 }
 
 export interface IUserCreateWorkspacePersonal {
@@ -193,6 +192,13 @@ export interface IUserTermPolicyContract {
     requiredTypes: EnumTermPolicyType[];
 }
 
+export interface IUserCreateLogin {
+    loginAt: Date;
+    ipAddress: string | null;
+    loginFrom: EnumUserLoginFrom;
+    loginWith: EnumUserLoginWith;
+}
+
 export interface IUserCreateWithWorkspaceInput {
     userId: string;
     email: string;
@@ -208,7 +214,9 @@ export interface IUserCreateWithWorkspaceInput {
     password: IAuthPassword | null;
     passwordHistoryType: EnumPasswordHistoryType | null;
     verification: IUserCreateVerification | null;
+    login: IUserCreateLogin | null;
     workspaceContext: IUserCreateWorkspaceContext;
+    createdAt: Date;
     createdBy: string;
 }
 
@@ -224,6 +232,11 @@ export interface IUserCheckUsername extends IUserCheckEmail {
 export interface IUserImportUsernameChecks {
     existing: string[];
     badWords: boolean[];
+}
+
+export interface IUserImportChecks {
+    existingEmails: string[];
+    usernameChecks: IUserImportUsernameChecks;
 }
 
 export interface IUserCreateByAdmin {
@@ -325,9 +338,9 @@ export interface IUserPasswordTemporary {
     passwordString: string;
 }
 
-export interface IUserForgotPassword extends ForgotPassword {
-    user: IUser;
-}
+export type IUserForgotPassword = Prisma.ForgotPasswordGetPayload<{
+    include: typeof UserForgotPasswordWithUserRecipientInclude;
+}>;
 
 export interface IUserForgotPasswordPrepared {
     user: User;

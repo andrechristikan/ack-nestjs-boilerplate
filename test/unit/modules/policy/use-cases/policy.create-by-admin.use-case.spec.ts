@@ -7,7 +7,6 @@ import {
     EnumActivityLogAction,
     EnumPolicyAction,
     EnumPolicySubject,
-    Prisma,
     EnumRoleType,
 } from '@generated/prisma-client/client';
 import type { Policy } from '@generated/prisma-client/client';
@@ -33,17 +32,9 @@ import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUniqueConstraintCode } from '@common/database/constants/database.constant';
-import { EnumPolicyStatusCodeError } from '@modules/policy/enums/policy.status-code.enum';
 import { PolicyService } from '@modules/policy/services/policy.service';
 import { PolicyUtil } from '@modules/policy/utils/policy.util';
 import type { PolicyRequestDto } from '@modules/policy/dtos/request/policy.request.dto';
-import {
-    EnumCacheProcess,
-    EnumCacheQueue,
-} from '@common/cache/enums/cache.enum';
-import type { ICacheInvalidateEffect } from '@common/cache/interfaces/cache.interface';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import { RoleService } from '@modules/role/services/role.service';
 import { PolicyRoleTypeInvalidException } from '@modules/policy/exceptions/policy.role-type-invalid.exception';
@@ -98,14 +89,6 @@ describe('PolicyCreateByAdminUseCase', () => {
         idempotencyKey: null,
     };
 
-    const roleInvalidateEffect: ICacheInvalidateEffect = {
-        queue: EnumCacheQueue.cache,
-        name: EnumCacheProcess.invalidate,
-        data: { keys: ['Role:role-1', 'Role:Lease:role-1'] },
-        priority: EnumQueuePriority.high,
-        idempotencyKey: null,
-    };
-
     const targetRole: IRole = {
         id: 'role-1',
         type: EnumRoleType.admin,
@@ -117,7 +100,6 @@ describe('PolicyCreateByAdminUseCase', () => {
 
     beforeEach(async () => {
         activityLogQueue.recordEffect.mockReturnValue(effect);
-        roleService.invalidateEffect.mockReturnValue(roleInvalidateEffect);
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
         );
@@ -234,7 +216,7 @@ describe('PolicyCreateByAdminUseCase', () => {
             );
         });
 
-        it('adds the create activity entry and the role invalidation in one addManyInTx call on the same tx', async () => {
+        it('adds the create activity entry alone in one addInTx call on the same tx', async () => {
             roleService.getWritableByActor.mockResolvedValue(targetRole);
             policyService.createByAdminInTx.mockResolvedValue(policy);
 
@@ -257,16 +239,12 @@ describe('PolicyCreateByAdminUseCase', () => {
                     metadata: policyMetadata,
                 }
             );
-            expect(roleService.invalidateEffect).toHaveBeenCalledWith('role-1');
-            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
-            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                effect,
-                roleInvalidateEffect,
-            ]);
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
+            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);
+            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('rethrows a typed exception of the write and adds no entry', async () => {
+        it('passes a rejected exception of the write through untouched and adds no entry', async () => {
             const failure = new PolicyRoleTypeInvalidException();
             roleService.getWritableByActor.mockResolvedValue(targetRole);
             policyService.createByAdminInTx.mockRejectedValue(failure);
@@ -284,32 +262,7 @@ describe('PolicyCreateByAdminUseCase', () => {
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('maps a unique collision on subject to PolicyExistException', async () => {
-            roleService.getWritableByActor.mockResolvedValue(targetRole);
-            policyService.createByAdminInTx.mockRejectedValue(
-                new Prisma.PrismaClientKnownRequestError('collision', {
-                    code: DatabaseUniqueConstraintCode,
-                    clientVersion: 'test',
-                    meta: { target: ['subject'] },
-                })
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    'role-1',
-                    body
-                )
-            ).rejects.toMatchObject({
-                module: 'policy',
-                statusCode: EnumPolicyStatusCodeError.exist,
-            });
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
+        it('passes any other rejection through untouched', async () => {
             const cause = new Error('boom');
             roleService.getWritableByActor.mockResolvedValue(targetRole);
             policyService.createByAdminInTx.mockRejectedValue(cause);
@@ -323,10 +276,7 @@ describe('PolicyCreateByAdminUseCase', () => {
                     'role-1',
                     body
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

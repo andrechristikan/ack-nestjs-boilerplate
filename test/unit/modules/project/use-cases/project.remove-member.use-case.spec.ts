@@ -1,11 +1,7 @@
 import { ConfigService } from '@nestjs/config';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -157,21 +153,7 @@ describe('ProjectRemoveMemberUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('maps a write conflict to ProjectMemberPeerForbiddenException', async () => {
-            projectMemberService.getRemovableMember.mockResolvedValue(
-                targetMember
-            );
-            projectMemberService.removeMemberInTx.mockRejectedValue(
-                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
-            );
-
-            await expect(useCase.execute(...args)).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.memberPeerForbidden,
-            });
-        });
-
-        it('rethrows an AppBaseException from the transaction as is', async () => {
+        it('passes a rejected typed exception through untouched', async () => {
             const failure = new ProjectMemberPeerForbiddenException();
             projectMemberService.getRemovableMember.mockResolvedValue(
                 targetMember
@@ -179,19 +161,6 @@ describe('ProjectRemoveMemberUseCase', () => {
             projectMemberService.removeMemberInTx.mockRejectedValue(failure);
 
             await expect(useCase.execute(...args)).rejects.toBe(failure);
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
-            const otherError = new Error('boom');
-            projectMemberService.getRemovableMember.mockResolvedValue(
-                targetMember
-            );
-            projectMemberService.removeMemberInTx.mockRejectedValue(otherError);
-
-            await expect(useCase.execute(...args)).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: otherError,
-            });
         });
     });
 });

@@ -118,8 +118,16 @@ describe('MfaPasskeyService', () => {
     describe('getRegistrationOptions', () => {
         it('passes the relying party, the required verification, and the passkeys of the user as excluded credentials to the library', async () => {
             mfaPasskeyRepository.findCredentialsByUserId.mockResolvedValue([
-                { credentialId: 'credential-one', transports: ['internal'] },
-                { credentialId: 'credential-two', transports: [] },
+                {
+                    id: 'passkey-one',
+                    credentialId: 'credential-one',
+                    transports: ['internal'],
+                },
+                {
+                    id: 'passkey-two',
+                    credentialId: 'credential-two',
+                    transports: [],
+                },
             ]);
             vi.mocked(generateRegistrationOptions).mockResolvedValue(options);
 
@@ -152,7 +160,11 @@ describe('MfaPasskeyService', () => {
     describe('getCredentialsByUser', () => {
         it('answers the credentials the repository finds for the user', async () => {
             const credentials = [
-                { credentialId: 'credential-one', transports: ['internal'] },
+                {
+                    id: 'passkey-one',
+                    credentialId: 'credential-one',
+                    transports: ['internal'],
+                },
             ];
             mfaPasskeyRepository.findCredentialsByUserId.mockResolvedValue(
                 credentials
@@ -164,6 +176,21 @@ describe('MfaPasskeyService', () => {
 
             expect(
                 mfaPasskeyRepository.findCredentialsByUserId
+            ).toHaveBeenCalledWith('user-quartz');
+        });
+    });
+
+    describe('getManyForCheckByUser', () => {
+        it('answers the full passkey rows the repository finds for the user', async () => {
+            mfaPasskeyRepository.findManyForCheckByUserId.mockResolvedValue([
+                stored,
+            ]);
+
+            await expect(
+                service.getManyForCheckByUser('user-quartz')
+            ).resolves.toEqual([stored]);
+            expect(
+                mfaPasskeyRepository.findManyForCheckByUserId
             ).toHaveBeenCalledWith('user-quartz');
         });
     });
@@ -181,10 +208,15 @@ describe('MfaPasskeyService', () => {
             await expect(
                 service.getAssertionOptions([
                     {
+                        id: 'passkey-one',
                         credentialId: 'credential-one',
                         transports: ['internal'],
                     },
-                    { credentialId: 'credential-two', transports: [] },
+                    {
+                        id: 'passkey-two',
+                        credentialId: 'credential-two',
+                        transports: [],
+                    },
                 ])
             ).resolves.toBe(requestOptions);
 
@@ -244,35 +276,29 @@ describe('MfaPasskeyService', () => {
 
     describe('checkAssertion', () => {
         beforeEach(() => {
-            mfaPasskeyRepository.existsByUserId.mockResolvedValue(true);
-            mfaPasskeyRepository.findOneByCredentialId.mockResolvedValue(
-                stored
-            );
             vi.mocked(verifyAuthenticationResponse).mockResolvedValue({
                 verified: true,
                 authenticationInfo: { newCounter: 8 },
             } as Awaited<ReturnType<typeof verifyAuthenticationResponse>>);
         });
 
-        it('throws MfaMethodUnavailableException for a user without a passkey', async () => {
-            mfaPasskeyRepository.existsByUserId.mockResolvedValue(false);
-
+        it('throws MfaMethodUnavailableException for an empty list, reading nothing', async () => {
             await expect(
-                service.checkAssertion(
-                    'user-quartz',
-                    assertion,
-                    'challenge-stored'
-                )
+                service.checkAssertion([], assertion, 'challenge-stored')
             ).rejects.toMatchObject({
                 module: 'mfa',
                 statusCode: EnumMfaStatusCodeError.methodUnavailable,
             });
             expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+            expect(mfaPasskeyRepository.existsByUserId).not.toHaveBeenCalled();
+            expect(
+                mfaPasskeyRepository.findOneByCredentialId
+            ).not.toHaveBeenCalled();
         });
 
         it('verifies the assertion against the stored challenge, the response origin, the relying party id, and the stored credential', async () => {
             await service.checkAssertion(
-                'user-quartz',
+                [stored],
                 assertion,
                 'challenge-stored'
             );
@@ -306,7 +332,7 @@ describe('MfaPasskeyService', () => {
             'passes the response origin of %s to the library',
             async (_label, origin) => {
                 await service.checkAssertion(
-                    'user-quartz',
+                    [stored],
                     {
                         ...assertion,
                         response: {
@@ -344,7 +370,7 @@ describe('MfaPasskeyService', () => {
 
                 await expect(
                     service.checkAssertion(
-                        'user-quartz',
+                        [stored],
                         {
                             ...assertion,
                             response: { ...assertion.response, clientDataJSON },
@@ -365,7 +391,7 @@ describe('MfaPasskeyService', () => {
             async (_label, clientDataJSON) => {
                 await expect(
                     service.checkAssertion(
-                        'user-quartz',
+                        [stored],
                         {
                             ...assertion,
                             response: { ...assertion.response, clientDataJSON },
@@ -402,7 +428,7 @@ describe('MfaPasskeyService', () => {
                 'passes the response origin of %s to the library',
                 async (_label, origin) => {
                     await service.checkAssertion(
-                        'user-quartz',
+                        [stored],
                         {
                             ...assertion,
                             response: {
@@ -430,7 +456,7 @@ describe('MfaPasskeyService', () => {
                 async (_label, clientDataJSON) => {
                     await expect(
                         service.checkAssertion(
-                            'user-quartz',
+                            [stored],
                             {
                                 ...assertion,
                                 response: {
@@ -448,55 +474,53 @@ describe('MfaPasskeyService', () => {
 
         it('answers the passkey id and the new counter of a valid assertion and counts nothing', async () => {
             await expect(
-                service.checkAssertion(
-                    'user-quartz',
-                    assertion,
-                    'challenge-stored'
-                )
+                service.checkAssertion([stored], assertion, 'challenge-stored')
             ).resolves.toEqual({ id: 'passkey-one', counter: 8 });
         });
 
         it('answers null for a null response without verifying', async () => {
             await expect(
-                service.checkAssertion('user-quartz', null, 'challenge-stored')
+                service.checkAssertion([stored], null, 'challenge-stored')
             ).resolves.toBeNull();
             expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
         });
 
         it('answers null for a null challenge without verifying', async () => {
             await expect(
-                service.checkAssertion('user-quartz', assertion, null)
+                service.checkAssertion([stored], assertion, null)
             ).resolves.toBeNull();
             expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
         });
 
-        it('answers null for an unknown credential id', async () => {
-            mfaPasskeyRepository.findOneByCredentialId.mockResolvedValue(null);
-
+        it('answers null for a credential id absent from the list, reading nothing', async () => {
             await expect(
                 service.checkAssertion(
-                    'user-quartz',
+                    [{ ...stored, credentialId: 'credential-other' }],
                     assertion,
                     'challenge-stored'
                 )
             ).resolves.toBeNull();
             expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+            expect(
+                mfaPasskeyRepository.findOneByCredentialId
+            ).not.toHaveBeenCalled();
         });
 
-        it('answers null for a credential of another user even when its assertion is valid', async () => {
-            mfaPasskeyRepository.findOneByCredentialId.mockResolvedValue({
-                ...stored,
-                userId: 'user-other',
-            });
-
+        it('verifies the passkey whose credential id the response names among several', async () => {
             await expect(
                 service.checkAssertion(
-                    'user-quartz',
+                    [
+                        {
+                            ...stored,
+                            id: 'passkey-two',
+                            credentialId: 'credential-two',
+                        },
+                        stored,
+                    ],
                     assertion,
                     'challenge-stored'
                 )
-            ).resolves.toBeNull();
-            expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+            ).resolves.toEqual({ id: 'passkey-one', counter: 8 });
         });
 
         it('answers null when the library throws', async () => {
@@ -505,11 +529,7 @@ describe('MfaPasskeyService', () => {
             );
 
             await expect(
-                service.checkAssertion(
-                    'user-quartz',
-                    assertion,
-                    'challenge-stored'
-                )
+                service.checkAssertion([stored], assertion, 'challenge-stored')
             ).resolves.toBeNull();
         });
 
@@ -520,11 +540,7 @@ describe('MfaPasskeyService', () => {
             } as Awaited<ReturnType<typeof verifyAuthenticationResponse>>);
 
             await expect(
-                service.checkAssertion(
-                    'user-quartz',
-                    assertion,
-                    'challenge-stored'
-                )
+                service.checkAssertion([stored], assertion, 'challenge-stored')
             ).resolves.toBeNull();
         });
 
@@ -535,19 +551,11 @@ describe('MfaPasskeyService', () => {
             } as Awaited<ReturnType<typeof verifyAuthenticationResponse>>);
 
             await expect(
-                service.checkAssertion(
-                    'user-quartz',
-                    assertion,
-                    'challenge-stored'
-                )
+                service.checkAssertion([stored], assertion, 'challenge-stored')
             ).resolves.toBeNull();
         });
 
         it('accepts a counter of 0 against a stored 0', async () => {
-            mfaPasskeyRepository.findOneByCredentialId.mockResolvedValue({
-                ...stored,
-                counter: 0,
-            });
             vi.mocked(verifyAuthenticationResponse).mockResolvedValue({
                 verified: true,
                 authenticationInfo: { newCounter: 0 },
@@ -555,7 +563,7 @@ describe('MfaPasskeyService', () => {
 
             await expect(
                 service.checkAssertion(
-                    'user-quartz',
+                    [{ ...stored, counter: 0 }],
                     assertion,
                     'challenge-stored'
                 )
@@ -1038,7 +1046,11 @@ describe('MfaPasskeyService', () => {
         it('returns when the credentials are not empty, with no repository call', () => {
             expect(() =>
                 service.assertHasPasskey([
-                    { credentialId: 'credential-quartz', transports: [] },
+                    {
+                        id: 'passkey-quartz',
+                        credentialId: 'credential-quartz',
+                        transports: [],
+                    },
                 ])
             ).not.toThrow();
 

@@ -148,6 +148,16 @@ describe('TermPolicyContentService', () => {
         updatedAt: new Date('2026-01-02T00:00:00.000Z'),
     };
 
+    const writtenTermPolicy: TermPolicy = {
+        ...draftTermPolicy,
+        version: 2,
+    };
+
+    const writtenMetadata = {
+        ...activityMetadata,
+        termPolicyVersion: 2,
+    };
+
     const emptyDraftTermPolicy: TermPolicy = {
         ...draftTermPolicy,
         contents: [],
@@ -568,7 +578,9 @@ describe('TermPolicyContentService', () => {
         };
 
         beforeEach(() => {
-            termPolicyRepository.updateContentInTx.mockResolvedValue(true);
+            termPolicyRepository.updateContentInTx.mockResolvedValue(
+                writtenTermPolicy
+            );
         });
 
         it('passes the contents, the mapped content, and the updatedAt of the draft to the guarded write on the tx', async () => {
@@ -627,7 +639,7 @@ describe('TermPolicyContentService', () => {
             ]);
         });
 
-        it('adds the update-content entry from the draft on the same tx after the write', async () => {
+        it('adds the update-content entry from the written row on the same tx after the write', async () => {
             await service.updateContentByAdminInTx(
                 tx,
                 requestContext,
@@ -643,7 +655,7 @@ describe('TermPolicyContentService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.adminTermPolicyContentUpdated,
-                    metadata: activityMetadata,
+                    metadata: writtenMetadata,
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(
@@ -652,8 +664,9 @@ describe('TermPolicyContentService', () => {
             );
         });
 
-        it('throws TermPolicyStatusInvalidException and adds no row when the guarded write matches no draft', async () => {
-            termPolicyRepository.updateContentInTx.mockResolvedValue(false);
+        it('passes the exception the guarded write rejects with and adds no row', async () => {
+            const failure = new TermPolicyStatusInvalidException();
+            termPolicyRepository.updateContentInTx.mockRejectedValue(failure);
 
             await expect(
                 service.updateContentByAdminInTx(
@@ -663,11 +676,7 @@ describe('TermPolicyContentService', () => {
                     authContext,
                     replacing
                 )
-            ).rejects.toMatchObject({
-                constructor: TermPolicyStatusInvalidException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-            });
+            ).rejects.toBe(failure);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
@@ -810,7 +819,9 @@ describe('TermPolicyContentService', () => {
         };
 
         beforeEach(() => {
-            termPolicyRepository.addContentInTx.mockResolvedValue(true);
+            termPolicyRepository.addContentInTx.mockResolvedValue(
+                writtenTermPolicy
+            );
         });
 
         it('adds the mapped content to the draft on the tx', async () => {
@@ -829,7 +840,7 @@ describe('TermPolicyContentService', () => {
             );
         });
 
-        it('adds the add-content entry from the draft on the same tx after the write', async () => {
+        it('adds the add-content entry from the written row on the same tx after the write', async () => {
             await service.addContentByAdminInTx(
                 tx,
                 requestContext,
@@ -845,7 +856,7 @@ describe('TermPolicyContentService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.adminTermPolicyContentAdded,
-                    metadata: activityMetadata,
+                    metadata: writtenMetadata,
                 }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
@@ -854,8 +865,9 @@ describe('TermPolicyContentService', () => {
             );
         });
 
-        it('throws TermPolicyStatusInvalidException and adds no row when the guarded write matches no draft', async () => {
-            termPolicyRepository.addContentInTx.mockResolvedValue(false);
+        it('passes the exception the guarded write rejects with and adds no row', async () => {
+            const failure = new TermPolicyStatusInvalidException();
+            termPolicyRepository.addContentInTx.mockRejectedValue(failure);
 
             await expect(
                 service.addContentByAdminInTx(
@@ -865,11 +877,7 @@ describe('TermPolicyContentService', () => {
                     authContext,
                     adding
                 )
-            ).rejects.toMatchObject({
-                constructor: TermPolicyStatusInvalidException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-            });
+            ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
@@ -969,7 +977,9 @@ describe('TermPolicyContentService', () => {
         };
 
         beforeEach(() => {
-            termPolicyRepository.removeContentInTx.mockResolvedValue(true);
+            termPolicyRepository.removeContentInTx.mockResolvedValue(
+                writtenTermPolicy
+            );
         });
 
         it('passes the contents, the language, and the updatedAt of the draft to the guarded write on the tx', async () => {
@@ -1013,7 +1023,7 @@ describe('TermPolicyContentService', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('adds the remove-content entry from the draft on the same tx after the write', async () => {
+        it('adds the remove-content entry from the written row on the same tx after the write', async () => {
             await service.removeContentByAdminInTx(
                 tx,
                 requestContext,
@@ -1029,10 +1039,7 @@ describe('TermPolicyContentService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.adminTermPolicyContentRemoved,
-                    metadata: {
-                        ...activityMetadata,
-                        timestamp,
-                    },
+                    metadata: writtenMetadata,
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(
@@ -1041,8 +1048,9 @@ describe('TermPolicyContentService', () => {
             );
         });
 
-        it('throws TermPolicyStatusInvalidException and adds no row when the guarded write matches no draft', async () => {
-            termPolicyRepository.removeContentInTx.mockResolvedValue(false);
+        it('passes the exception the guarded write rejects with and adds no row', async () => {
+            const failure = new TermPolicyStatusInvalidException();
+            termPolicyRepository.removeContentInTx.mockRejectedValue(failure);
 
             await expect(
                 service.removeContentByAdminInTx(
@@ -1052,11 +1060,7 @@ describe('TermPolicyContentService', () => {
                     authContext,
                     removing
                 )
-            ).rejects.toMatchObject({
-                constructor: TermPolicyStatusInvalidException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-            });
+            ).rejects.toBe(failure);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });

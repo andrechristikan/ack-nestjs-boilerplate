@@ -62,13 +62,14 @@ export class TermPolicyAcceptanceService {
         }
     }
 
-    async assertRequiredPublished(
-        required: EnumTermPolicyType[]
+    /** Reads the latest published policy of every required and accepted type in one statement; throws when a required type has none, drops an accepted optional type with none. */
+    async getPublishedForAcceptance(
+        required: EnumTermPolicyType[],
+        accepted: EnumTermPolicyType[]
     ): Promise<ITermPolicyRef[]> {
-        const refs =
-            await this.termPolicyRepository.findLatestPublishedByTypes(
-                required
-            );
+        const refs = await this.termPolicyRepository.findLatestPublishedByTypes(
+            [...new Set([...required, ...accepted])]
+        );
         const published = new Set(refs.map(ref => ref.type));
         const allPublished = required.every(type => published.has(type));
         if (!allPublished) {
@@ -99,6 +100,7 @@ export class TermPolicyAcceptanceService {
 
     async acceptPublishedManyInTx(
         tx: IDatabaseTransactionClient,
+        refs: ITermPolicyRef[],
         entries: ITermPolicyAcceptanceCreate[]
     ): Promise<void> {
         if (entries.length === 0) {
@@ -106,12 +108,6 @@ export class TermPolicyAcceptanceService {
         }
 
         const acceptedAt = this.helperDateService.now();
-        const types = [...new Set(entries.flatMap(entry => entry.types))];
-        const refs =
-            await this.termPolicyRepository.findLatestPublishedByTypesInTx(
-                tx,
-                types
-            );
         const rows = entries.flatMap(
             ({ userId, types: acceptedTypes, createdBy }) => {
                 const accepted = new Set(acceptedTypes);

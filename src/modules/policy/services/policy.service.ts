@@ -61,17 +61,7 @@ export class PolicyService {
         id: string,
         data: PolicyUpdateRequestDto
     ): Promise<Policy> {
-        const updated = await this.policyRepository.updateInTx(
-            tx,
-            roleId,
-            id,
-            data
-        );
-        if (!updated) {
-            throw new PolicyNotFoundException();
-        }
-
-        return updated;
+        return this.policyRepository.updateInTx(tx, roleId, id, data);
     }
 
     async getOneByRoleAndId(roleId: string, id: string): Promise<Policy> {
@@ -88,17 +78,9 @@ export class PolicyService {
 
     async deleteByAdminInTx(
         tx: IDatabaseTransactionClient,
-        policy: Policy
+        roleId: string,
+        id: string
     ): Promise<Policy> {
-        const deleted = await this.policyRepository.deleteInTx(
-            tx,
-            policy.roleId,
-            policy.id
-        );
-        if (!deleted) {
-            throw new PolicyNotFoundException();
-        }
-
-        return policy;
+        return this.policyRepository.deleteInTx(tx, roleId, id);
     }
 }

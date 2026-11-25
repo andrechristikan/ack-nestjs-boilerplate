@@ -28,6 +28,7 @@ import {
     EnumFeatureFlagKey,
     EnumFeatureFlagMetadataKey,
 } from '@modules/feature-flag/enums/feature-flag.enum';
+import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
 import { EnumFeatureFlagStatusCodeError } from '@modules/feature-flag/enums/feature-flag.status-code.enum';
 import { FeatureFlagService } from '@modules/feature-flag/services/feature-flag.service';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
@@ -730,8 +731,9 @@ describe('FeatureFlagService', () => {
             targetUserIds: [],
         };
 
-        it('throws FeatureFlagNotFoundException when the statement misses', async () => {
-            featureFlagRepository.updateStatusInTx.mockResolvedValue(null);
+        it('passes the exception the guarded update rejects with and adds no effect', async () => {
+            const failure = new FeatureFlagNotFoundException();
+            featureFlagRepository.updateStatusInTx.mockRejectedValue(failure);
 
             await expect(
                 service.updateStatusByAdminInTx(
@@ -739,10 +741,7 @@ describe('FeatureFlagService', () => {
                     '507f1f77bcf86cd799439011',
                     statusUpdate
                 )
-            ).rejects.toMatchObject({
-                module: 'featureFlag',
-                statusCode: EnumFeatureFlagStatusCodeError.notFound,
-            });
+            ).rejects.toBe(failure);
             expect(featureFlagRepository.updateStatusInTx).toHaveBeenCalledWith(
                 tx,
                 '507f1f77bcf86cd799439011',

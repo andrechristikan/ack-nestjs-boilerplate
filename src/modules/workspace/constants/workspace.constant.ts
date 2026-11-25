@@ -3,7 +3,11 @@ import { HttpStatus } from '@nestjs/common';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
-import { UserNameSelect } from '@modules/user/constants/user.constant';
+import {
+    UserRecipientSelect,
+    UserRefSelect,
+    UserStateSelect,
+} from '@modules/user/constants/user.constant';
 
 /** @public */
 export const WorkspaceIdHeaderName = 'x-workspace-id';
@@ -27,16 +31,55 @@ export const WorkspaceInviteNoncePattern = '{workspaceId}:{email}';
 export const WorkspaceJoinRequestNoncePattern = '{workspaceId}:{userId}';
 
 /** @public */
-export const WorkspaceInviteInviterSelect = {
-    ...UserNameSelect,
-    deletedAt: true,
-} satisfies Prisma.UserSelect;
-
-/** @public */
 export const WorkspaceInvitePreviewInclude = {
     workspace: true,
-    invitedBy: { select: WorkspaceInviteInviterSelect },
+    invitedBy: { select: UserRefSelect },
 } satisfies Prisma.WorkspaceInviteInclude;
+
+/** @public */
+export const WorkspaceRefSelect = {
+    id: true,
+} satisfies Prisma.WorkspaceSelect;
+
+/** @public */
+export const WorkspaceMemberRefSelect = {
+    id: true,
+    workspaceId: true,
+    userId: true,
+    role: true,
+} satisfies Prisma.WorkspaceMemberSelect;
+
+/** @public */
+export const WorkspaceMemberWithUserInclude = {
+    user: { select: UserRefSelect },
+} satisfies Prisma.WorkspaceMemberInclude;
+
+/** @public */
+export const WorkspaceInviteRefSelect = {
+    id: true,
+    expiredAt: true,
+} satisfies Prisma.WorkspaceInviteSelect;
+
+/** @public */
+export const WorkspaceJoinRequestRefSelect = {
+    id: true,
+    expiredAt: true,
+} satisfies Prisma.WorkspaceJoinRequestSelect;
+
+/** @public */
+export const WorkspaceMemberWithUserStateInclude = {
+    user: { select: UserStateSelect },
+} satisfies Prisma.WorkspaceMemberInclude;
+
+/** @public */
+export const WorkspaceMemberWithUserRecipientInclude = {
+    user: { select: UserRecipientSelect },
+} satisfies Prisma.WorkspaceMemberInclude;
+
+/** @public */
+export const WorkspaceJoinRequestWithUserRecipientInclude = {
+    user: { select: UserRecipientSelect },
+} satisfies Prisma.WorkspaceJoinRequestInclude;
 
 /** @public */
 export const WorkspaceInviteUserListSelect = {

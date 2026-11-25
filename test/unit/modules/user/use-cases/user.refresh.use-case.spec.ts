@@ -6,7 +6,6 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
     EnumActivityLogAction,
@@ -31,7 +30,9 @@ import type {
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
 import { SessionService } from '@modules/session/services/session.service';
+import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
+import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { DeviceService } from '@modules/device/services/device.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { IUser } from '@modules/user/interfaces/user.interface';
@@ -51,7 +52,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserRefreshUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -94,7 +94,6 @@ describe('UserRefreshUseCase', () => {
         deviceOwnershipId: 'device-ownership-bramble',
     };
     const { requestLog } = requestContext;
-    const committedUser: IUser = baseUser;
     beforeAll(() => {
         vi.useFakeTimers();
     });
@@ -114,7 +113,6 @@ describe('UserRefreshUseCase', () => {
             value: 2592000,
             configurable: true,
         });
-        userService.createManyInTx.mockResolvedValue([committedUser]);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -126,7 +124,6 @@ describe('UserRefreshUseCase', () => {
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
-                DatabaseUtil,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
@@ -206,7 +203,8 @@ describe('UserRefreshUseCase', () => {
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 requestLog.ipAddress,
-                now
+                now,
+                false
             );
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
@@ -267,7 +265,8 @@ describe('UserRefreshUseCase', () => {
                 EnumUserLoginFrom.website,
                 EnumUserLoginWith.credential,
                 requestLog.ipAddress,
-                expect.any(Date)
+                expect.any(Date),
+                false
             );
             expect(outboxService.addInTx).not.toHaveBeenCalled();
 
@@ -404,33 +403,38 @@ describe('UserRefreshUseCase', () => {
             );
         });
 
-        it('answers SessionRevokedException on a write conflict of the refresh transaction', async () => {
-            stubUserRefreshSession(refreshSessionDoubles, {
-                payload,
-                oldJti: 'old-jti',
-                refreshed,
-            });
-            sessionService.getRefreshedTokens.mockImplementation(() => {
-                throw new SessionRevokedException();
-            });
-            const conflict = buildPrismaKnownRequestError('P2034');
-            databaseService.withTransaction.mockRejectedValue(conflict);
+        it.each([
+            ['the session row', new SessionNotFoundException()],
+            ['the device ownership', new DeviceNotFoundException()],
+        ])(
+            'answers SessionRevokedException when the refresh transaction loses a conflict on %s',
+            async (_subject, conflict) => {
+                stubUserRefreshSession(refreshSessionDoubles, {
+                    payload,
+                    oldJti: 'old-jti',
+                    refreshed,
+                });
+                sessionService.getRefreshedTokens.mockImplementation(() => {
+                    throw new SessionRevokedException();
+                });
+                databaseService.withTransaction.mockRejectedValue(conflict);
 
-            await expectSessionRevoked(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext
-                )
-            );
+                await expectSessionRevoked(
+                    useCase.execute(
+                        requestContext,
+                        apiKeyContext,
+                        authContext,
+                        userContext
+                    )
+                );
 
-            expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
-                null
-            );
-        });
+                expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
+                    null
+                );
+            }
+        );
 
-        it('answers SessionRevokedException, not the general conflict, on a write conflict of the reuse transaction', async () => {
+        it('answers SessionRevokedException, not the general conflict, when the reuse transaction loses its conflict on the session row', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 oldJti: 'old-jti',
@@ -440,8 +444,9 @@ describe('UserRefreshUseCase', () => {
             sessionService.getRefreshedTokens.mockImplementation(() => {
                 throw new SessionRevokedException();
             });
-            const conflict = buildPrismaKnownRequestError('P2034');
-            databaseService.withTransaction.mockRejectedValue(conflict);
+            databaseService.withTransaction.mockRejectedValue(
+                new SessionNotFoundException()
+            );
 
             await expectSessionRevoked(
                 useCase.execute(

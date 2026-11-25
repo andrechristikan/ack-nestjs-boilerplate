@@ -1,15 +1,9 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumUserReauthenticationAction } from '@generated/prisma-client/client';
-import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { CountryService } from '@modules/country/services/country.service';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
-import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
 import type {
     IUserContext,
     IUserMobileNumber,
@@ -40,7 +34,6 @@ export class UserAddMobileNumberUseCase implements IAppUseCase<
         private readonly mfaService: MfaService,
         private readonly countryService: CountryService,
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly userUtil: UserUtil
     ) {}
 
@@ -63,6 +56,7 @@ export class UserAddMobileNumberUseCase implements IAppUseCase<
         }: UserAddMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
         const { user } = userContext;
+        const state = await this.mfaService.getFactorState(user.id);
         // Sequential by design: a credential proof, awaited alone
         const input = {
             action: EnumUserReauthenticationAction.mobileNumberAdd,
@@ -98,7 +92,8 @@ export class UserAddMobileNumberUseCase implements IAppUseCase<
         const mfaCheck = await this.mfaService.checkReauthentication(
             user.id,
             input,
-            passwordCheck.isPasswordChecked
+            passwordCheck.isPasswordChecked,
+            state
         );
         if (mfaCheck.failure !== null) {
             const failure = mfaCheck.failure;
@@ -138,58 +133,36 @@ export class UserAddMobileNumberUseCase implements IAppUseCase<
             isDuplicate
         );
 
-        try {
-            const mobileNumber = await this.databaseService.withTransaction(
-                async tx => {
-                    await this.userAuthService.completeReauthenticationInTx(
-                        tx,
-                        authContext,
-                        passwordCheck.isPasswordChecked,
-                        verificationId
-                    );
-                    await this.mfaService.completeReauthenticationInTx(
-                        tx,
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        mfaCheck
-                    );
+        const mobileNumber = await this.databaseService.withTransaction(
+            async tx => {
+                await this.userAuthService.completeReauthenticationInTx(
+                    tx,
+                    authContext,
+                    passwordCheck.isPasswordChecked,
+                    verificationId,
+                    true
+                );
+                await this.mfaService.completeReauthenticationInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    mfaCheck
+                );
 
-                    return this.userMobileNumberService.addMobileNumberInTx(
-                        tx,
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        { number, countryId, phoneCode }
-                    );
-                }
-            );
-
-            const censored = this.userUtil.toCensoredMobileNumber(mobileNumber);
-
-            return { data: censored };
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
+                return this.userMobileNumberService.addMobileNumberInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    { number, countryId, phoneCode },
+                    passwordCheck.isPasswordChecked
+                );
             }
+        );
 
-            const isCollision = this.databaseUtil.isUniqueCollision(
-                err,
-                'number'
-            );
-            if (isCollision) {
-                throw new UserMobileNumberExistException();
-            }
+        const censored = this.userUtil.toCensoredMobileNumber(mobileNumber);
 
-            const mapped = this.databaseUtil.toException(err);
-            if (
-                mfaCheck.check !== null &&
-                mapped instanceof DatabaseWriteConflictException
-            ) {
-                throw new MfaInvalidException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return { data: censored };
     }
 }

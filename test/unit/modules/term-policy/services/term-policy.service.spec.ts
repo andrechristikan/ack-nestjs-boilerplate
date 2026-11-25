@@ -619,13 +619,15 @@ describe('TermPolicyService', () => {
             idempotencyKey: null,
         };
 
-        it('deletes the draft and adds the content delete row on the tx', async () => {
+        it('deletes the draft, adds the content delete row on the tx, and returns the deleted row', async () => {
             termPolicyQueue.deleteContentEffect.mockReturnValue(
                 deleteContentEffect
             );
-            termPolicyRepository.deleteDraftInTx.mockResolvedValue(true);
+            termPolicyRepository.deleteDraftInTx.mockResolvedValue(
+                draftTermPolicy
+            );
 
-            await service.deleteByAdminInTx(
+            const result = await service.deleteByAdminInTx(
                 tx,
                 requestContext,
                 apiKeyContext,
@@ -633,6 +635,7 @@ describe('TermPolicyService', () => {
                 draftTermPolicy
             );
 
+            expect(result).toBe(draftTermPolicy);
             expect(termPolicyRepository.deleteDraftInTx).toHaveBeenCalledWith(
                 tx,
                 'term-policy-1'
@@ -651,26 +654,10 @@ describe('TermPolicyService', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('adds no content delete effect for a draft with no content', async () => {
-            termPolicyRepository.deleteDraftInTx.mockResolvedValue(true);
-
-            await service.deleteByAdminInTx(
-                tx,
-                requestContext,
-                apiKeyContext,
-                authContext,
+        it('adds no content delete effect when the deleted row holds no content', async () => {
+            termPolicyRepository.deleteDraftInTx.mockResolvedValue(
                 emptyDraftTermPolicy
             );
-
-            expect(termPolicyQueue.deleteContentEffect).not.toHaveBeenCalled();
-            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
-            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
-                entryEffect,
-            ]);
-        });
-
-        it('adds the delete entry from the deleted term policy on the same tx after the delete', async () => {
-            termPolicyRepository.deleteDraftInTx.mockResolvedValue(true);
 
             await service.deleteByAdminInTx(
                 tx,
@@ -680,6 +667,33 @@ describe('TermPolicyService', () => {
                 draftTermPolicy
             );
 
+            expect(termPolicyQueue.deleteContentEffect).not.toHaveBeenCalled();
+            expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
+            expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
+                entryEffect,
+            ]);
+        });
+
+        it('builds the content keys and the delete entry from the deleted row, not the row read before the transaction', async () => {
+            termPolicyQueue.deleteContentEffect.mockReturnValue(
+                deleteContentEffect
+            );
+            termPolicyRepository.deleteDraftInTx.mockResolvedValue({
+                ...draftTermPolicy,
+                version: 2,
+            });
+
+            await service.deleteByAdminInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                emptyDraftTermPolicy
+            );
+
+            expect(termPolicyQueue.deleteContentEffect).toHaveBeenCalledWith([
+                contentEn.key,
+            ]);
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
@@ -687,7 +701,7 @@ describe('TermPolicyService', () => {
                 null,
                 {
                     action: EnumActivityLogAction.adminTermPolicyDeleted,
-                    metadata: activityMetadata,
+                    metadata: { ...activityMetadata, termPolicyVersion: 2 },
                 }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(
@@ -699,8 +713,9 @@ describe('TermPolicyService', () => {
             );
         });
 
-        it('throws TermPolicyStatusInvalidException and adds no row when the guarded delete removes no row', async () => {
-            termPolicyRepository.deleteDraftInTx.mockResolvedValue(false);
+        it('passes the exception the guarded delete rejects with and adds no row', async () => {
+            const failure = new TermPolicyStatusInvalidException();
+            termPolicyRepository.deleteDraftInTx.mockRejectedValue(failure);
 
             await expect(
                 service.deleteByAdminInTx(
@@ -710,11 +725,7 @@ describe('TermPolicyService', () => {
                     authContext,
                     draftTermPolicy
                 )
-            ).rejects.toMatchObject({
-                constructor: TermPolicyStatusInvalidException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-            });
+            ).rejects.toBe(failure);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
     });
@@ -837,8 +848,7 @@ describe('TermPolicyService', () => {
         };
 
         beforeEach(() => {
-            termPolicyRepository.publishInTx.mockResolvedValue(true);
-            termPolicyRepository.findOneByIdInTx.mockResolvedValue(
+            termPolicyRepository.publishInTx.mockResolvedValue(
                 publishedTermPolicy
             );
             termPolicyRepository.archivePublishedByTypeInTx.mockResolvedValue(
@@ -847,7 +857,7 @@ describe('TermPolicyService', () => {
             termPolicyQueue.publishEffect.mockReturnValue(publishEffect);
         });
 
-        it('publishes the public contents with its guard, reads the row back, archives the earlier versions, and returns the row', async () => {
+        it('publishes the public contents with the drawn publishedAt, archives the earlier versions from the returned row, and returns the row', async () => {
             const result = await service.publishByAdminInTx(
                 tx,
                 requestContext,
@@ -856,29 +866,23 @@ describe('TermPolicyService', () => {
                 prepared
             );
 
-            expect(result).toEqual(publishedTermPolicy);
+            expect(result).toBe(publishedTermPolicy);
             expect(termPolicyRepository.publishInTx).toHaveBeenCalledWith(
                 tx,
                 'term-policy-1',
-                prepared.publicContents
-            );
-            expect(termPolicyRepository.findOneByIdInTx).toHaveBeenCalledWith(
-                tx,
-                'term-policy-1'
+                prepared.publicContents,
+                timestamp
             );
             expect(
                 termPolicyRepository.archivePublishedByTypeInTx
             ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy, 1);
-            expect(termPolicyRepository.findOneByIdInTx).toHaveBeenCalledAfter(
-                termPolicyRepository.publishInTx
-            );
             expect(
                 termPolicyRepository.archivePublishedByTypeInTx
-            ).toHaveBeenCalledAfter(termPolicyRepository.findOneByIdInTx);
+            ).toHaveBeenCalledAfter(termPolicyRepository.publishInTx);
         });
 
-        it('archives only the versions below the one it publishes', async () => {
-            termPolicyRepository.findOneByIdInTx.mockResolvedValue({
+        it('archives only the versions below the one the returned row carries', async () => {
+            termPolicyRepository.publishInTx.mockResolvedValue({
                 ...publishedTermPolicy,
                 version: 3,
             });
@@ -896,7 +900,7 @@ describe('TermPolicyService', () => {
             ).toHaveBeenCalledWith(tx, EnumTermPolicyType.privacy, 3);
         });
 
-        it('adds the publish row and the entry from the published row on the same tx after the archive', async () => {
+        it('builds the publish effect and the entry from the returned row and adds both on the same tx after the archive', async () => {
             await service.publishByAdminInTx(
                 tx,
                 requestContext,
@@ -936,8 +940,9 @@ describe('TermPolicyService', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('throws TermPolicyStatusInvalidException and adds no row when the guarded publish changes no row', async () => {
-            termPolicyRepository.publishInTx.mockResolvedValue(false);
+        it('passes the exception the guarded publish rejects with and adds no row', async () => {
+            const failure = new TermPolicyStatusInvalidException();
+            termPolicyRepository.publishInTx.mockRejectedValue(failure);
 
             await expect(
                 service.publishByAdminInTx(
@@ -947,31 +952,7 @@ describe('TermPolicyService', () => {
                     authContext,
                     prepared
                 )
-            ).rejects.toMatchObject({
-                constructor: TermPolicyStatusInvalidException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.statusInvalid,
-            });
-            expect(termPolicyRepository.findOneByIdInTx).not.toHaveBeenCalled();
-            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-        });
-
-        it('throws TermPolicyNotFoundException when the published row cannot be read back', async () => {
-            termPolicyRepository.findOneByIdInTx.mockResolvedValue(null);
-
-            await expect(
-                service.publishByAdminInTx(
-                    tx,
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    prepared
-                )
-            ).rejects.toMatchObject({
-                constructor: TermPolicyNotFoundException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.notFound,
-            });
+            ).rejects.toBe(failure);
             expect(
                 termPolicyRepository.archivePublishedByTypeInTx
             ).not.toHaveBeenCalled();

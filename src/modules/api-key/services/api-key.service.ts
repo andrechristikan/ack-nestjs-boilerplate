@@ -226,9 +226,6 @@ export class ApiKeyService {
             apiKey.isActive,
             isActive
         );
-        if (!updated) {
-            throw new ApiKeyNotFoundException();
-        }
 
         await this.addInvalidateEffectInTx(tx, apiKey.key);
 
@@ -245,6 +242,7 @@ export class ApiKeyService {
             apiKey.id,
             name
         );
+
         await this.addInvalidateEffectInTx(tx, apiKey.key);
 
         return updated;
@@ -273,9 +271,6 @@ export class ApiKeyService {
             newStartAt,
             newEndAt
         );
-        if (!updated) {
-            throw new ApiKeyInactiveException();
-        }
 
         await this.addInvalidateEffectInTx(tx, apiKey.key);
 
@@ -296,9 +291,6 @@ export class ApiKeyService {
             apiKey.id,
             hash
         );
-        if (!updated) {
-            throw new ApiKeyInactiveException();
-        }
 
         await this.addInvalidateEffectInTx(tx, apiKey.key);
 
@@ -307,16 +299,12 @@ export class ApiKeyService {
 
     async deleteByAdminInTx(
         tx: IDatabaseTransactionClient,
-        apiKey: IApiKey
+        id: string
     ): Promise<IApiKey> {
-        const deleted = await this.apiKeyRepository.deleteInTx(tx, apiKey.id);
-        if (!deleted) {
-            throw new ApiKeyNotFoundException();
-        }
+        const deleted = await this.apiKeyRepository.deleteInTx(tx, id);
+        await this.addInvalidateEffectInTx(tx, deleted.key);
 
-        await this.addInvalidateEffectInTx(tx, apiKey.key);
-
-        return apiKey;
+        return deleted;
     }
 
     async validateXApiKey(xApiKeyHeader: string | null): Promise<ApiKey> {

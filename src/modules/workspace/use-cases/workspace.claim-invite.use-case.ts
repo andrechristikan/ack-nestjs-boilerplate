@@ -1,7 +1,3 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -9,15 +5,12 @@ import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceJoinRequestService } from '@modules/workspace/services/workspace.join-request.service';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
-import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
-import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -44,7 +37,6 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -67,98 +59,76 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
         );
 
         const acceptedAt = this.helperDateService.now();
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
+        await this.databaseService.withTransaction(async tx => {
+            const accepted =
                 await this.workspaceInviteService.acceptPendingInTx(
                     tx,
                     invite.id,
                     userId,
                     acceptedAt
                 );
-                await this.workspaceMemberService.createInTx(
+            await this.workspaceMemberService.createInTx(
+                tx,
+                accepted.workspaceId,
+                userId,
+                accepted.workspaceRole,
+                userId
+            );
+            let membership: Promise<void> = Promise.resolve();
+            if (accepted.projectId && accepted.projectRole) {
+                membership = this.projectMemberService.createInTx(
                     tx,
-                    invite.workspaceId,
+                    accepted.projectId,
                     userId,
-                    invite.workspaceRole,
+                    accepted.projectRole,
                     userId
                 );
-                let membership: Promise<IProjectMember | null> =
-                    Promise.resolve(null);
-                if (invite.projectId && invite.projectRole) {
-                    membership = this.projectMemberService.createInTx(
-                        tx,
-                        invite.projectId,
-                        userId,
-                        invite.projectRole,
-                        userId
-                    );
+            }
+            await Promise.all([
+                this.workspaceJoinRequestService.cancelPendingByUserInTx(
+                    tx,
+                    accepted.workspaceId,
+                    userId
+                ),
+                this.userService.setLastWorkspaceInTx(
+                    tx,
+                    userId,
+                    accepted.workspaceId
+                ),
+                membership,
+            ]);
+            const inviteeEntry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.workspaceInviteAccepted,
+                    userId,
+                    createdBy: userId,
+                    workspaceId: accepted.workspaceId,
+                    metadata: { targetUserId: accepted.invitedByUserId },
                 }
-                await Promise.all([
-                    this.workspaceJoinRequestService.cancelPendingByUserInTx(
-                        tx,
-                        invite.workspaceId,
-                        userId
-                    ),
-                    this.userService.setLastWorkspaceInTx(
-                        tx,
-                        userId,
-                        invite.workspaceId
-                    ),
-                    membership,
-                ]);
-                const inviteeEntry = this.activityLogQueue.recordEffect(
+            );
+            const entries = [inviteeEntry];
+            if (accepted.invitedByUserId !== userId) {
+                const inviterEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
                     authContext,
                     null,
                     {
-                        action: EnumActivityLogAction.workspaceInviteAccepted,
-                        userId,
+                        action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
+                        userId: accepted.invitedByUserId,
                         createdBy: userId,
-                        workspaceId: invite.workspaceId,
-                        metadata: { targetUserId: invite.invitedByUserId },
+                        workspaceId: accepted.workspaceId,
+                        metadata: { actorUserId: userId },
                     }
                 );
-                const entries = [inviteeEntry];
-                if (invite.invitedByUserId !== userId) {
-                    const inviterEntry = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
-                            userId: invite.invitedByUserId,
-                            createdBy: userId,
-                            workspaceId: invite.workspaceId,
-                            metadata: { actorUserId: userId },
-                        }
-                    );
-                    entries.push(inviterEntry);
-                }
-                await this.outboxService.addManyInTx(tx, entries);
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
+                entries.push(inviterEntry);
             }
-
-            const isAlreadyMember = this.databaseUtil.isUniqueCollision(
-                err,
-                'userId'
-            );
-            if (isAlreadyMember) {
-                throw new WorkspaceMemberAlreadyExistsException();
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new WorkspaceInviteAlreadyProcessedException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+            await this.outboxService.addManyInTx(tx, entries);
+        });
 
         return {};
     }

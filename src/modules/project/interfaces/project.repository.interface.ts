@@ -8,6 +8,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type { Project } from '@generated/prisma-client/client';
 import type {
     IProjectCreate,
+    IProjectRef,
     IProjectUpdate,
     IProjectWithMembers,
 } from '@modules/project/interfaces/project.interface';
@@ -53,9 +54,9 @@ export interface IProjectRepository {
         projectId: string,
         deletedAt: Date,
         deletedBy: string
-    ): Promise<boolean>;
-    softDeleteChunkByWorkspace(
-        workspaceId: string,
+    ): Promise<IProjectRef>;
+    softDeleteChunkByWorkspaces(
+        workspaceIds: string[],
         deletedAt: Date,
         deletedBy: string,
         take: number

@@ -18,7 +18,6 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import type { IRoleWithPolicies } from '@modules/role/interfaces/role.interface';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
-import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import type {
     IUser,
     IUserCreateWithWorkspaceInput,
@@ -26,7 +25,6 @@ import type {
     IUserCreateWorkspacePersonal,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
@@ -87,7 +85,9 @@ describe('UserCreateUtil', () => {
         password: null,
         passwordHistoryType: null,
         verification: null,
+        login: null,
         workspaceContext: personalContext,
+        createdAt: new Date('2026-02-01T00:00:00.000Z'),
         createdBy: user.id,
     };
 
@@ -242,11 +242,9 @@ describe('UserCreateUtil', () => {
 
     describe('buildStages', () => {
         it('builds the stage inputs of every input, omitting a null workspace id', () => {
-            const result = util.buildStages(
-                UserCreateContract.signUp,
-                [personalInput],
-                [user]
-            );
+            const result = util.buildStages(UserCreateContract.signUp, [
+                personalInput,
+            ]);
 
             expect(result).toEqual([
                 {
@@ -268,6 +266,69 @@ describe('UserCreateUtil', () => {
                     workspaceId: personalContext.workspaceId,
                     metadata: {},
                 },
+            ]);
+        });
+
+        it('reads the created timestamp from each input', () => {
+            const second: IUserCreateWithWorkspaceInput = {
+                ...personalInput,
+                userId: 'user-second',
+                createdAt: new Date('2026-02-02T00:00:00.000Z'),
+                createdBy: 'admin-harbor',
+            };
+
+            const result = util.buildStages(UserCreateContract.admin, [
+                { ...personalInput, createdBy: 'admin-harbor' },
+                second,
+            ]);
+
+            expect(result[0]).toMatchObject({
+                action: UserCreateContract.admin.createdAction,
+                metadata: {
+                    actorUserId: 'admin-harbor',
+                    timestamp: new Date('2026-02-01T00:00:00.000Z'),
+                },
+            });
+            expect(result[2]).toMatchObject({
+                action: UserCreateContract.admin.createdAction,
+                metadata: {
+                    actorUserId: 'admin-harbor',
+                    timestamp: new Date('2026-02-02T00:00:00.000Z'),
+                },
+            });
+        });
+    });
+
+    describe('buildAcceptedTermPolicyTypes', () => {
+        it('returns the required types followed by cookies and marketing when both are accepted', () => {
+            expect(util.buildAcceptedTermPolicyTypes(true, true)).toEqual([
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
+                EnumTermPolicyType.cookies,
+                EnumTermPolicyType.marketing,
+            ]);
+        });
+
+        it('returns the required types alone when neither is accepted', () => {
+            expect(util.buildAcceptedTermPolicyTypes(false, false)).toEqual([
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
+            ]);
+        });
+
+        it('adds cookies alone when only cookies is accepted', () => {
+            expect(util.buildAcceptedTermPolicyTypes(true, false)).toEqual([
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
+                EnumTermPolicyType.cookies,
+            ]);
+        });
+
+        it('adds marketing alone when only marketing is accepted', () => {
+            expect(util.buildAcceptedTermPolicyTypes(false, true)).toEqual([
+                EnumTermPolicyType.termsOfService,
+                EnumTermPolicyType.privacy,
+                EnumTermPolicyType.marketing,
             ]);
         });
     });
@@ -322,46 +383,13 @@ describe('UserCreateUtil', () => {
         });
     });
 
-    describe('mapCreateCollision', () => {
-        it('returns UserUsernameExistException when the collision is on username', () => {
-            const error = buildPrismaKnownRequestError('P2002', 'username');
-
-            const result = util.mapCreateCollision(error);
-
-            expect(result).toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.usernameExist,
-            });
-        });
-
-        it('returns UserEmailExistException when the collision is on email', () => {
-            const error = buildPrismaKnownRequestError('P2002', 'email');
-
-            const result = util.mapCreateCollision(error);
-
-            expect(result).toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.emailExist,
-            });
-        });
-
-        it('returns the error untouched when it is neither collision', () => {
-            const error = new Error('unrelated');
-
-            const result = util.mapCreateCollision(error);
-
-            expect(result).toBe(error);
-        });
-    });
-
     describe('buildActivities', () => {
         it('builds a sign-up personal create activity set with no acting admin', () => {
             const input = personalInput;
 
             const result = util['buildActivities'](
                 UserCreateContract.signUp,
-                input,
-                user
+                input
             );
 
             expect(result).toEqual([
@@ -394,8 +422,7 @@ describe('UserCreateUtil', () => {
 
             const result = util['buildActivities'](
                 UserCreateContract.admin,
-                input,
-                user
+                input
             );
 
             expect(result).toEqual([
@@ -406,7 +433,7 @@ describe('UserCreateUtil', () => {
                     createdBy: 'admin-harbor',
                     metadata: {
                         actorUserId: 'admin-harbor',
-                        timestamp: user.createdAt,
+                        timestamp: personalInput.createdAt,
                     },
                 },
                 {
@@ -433,8 +460,7 @@ describe('UserCreateUtil', () => {
 
             const result = util['buildActivities'](
                 UserCreateContract.social,
-                input,
-                user
+                input
             );
 
             expect(result).toEqual([
@@ -476,8 +502,7 @@ describe('UserCreateUtil', () => {
 
             const result = util['buildActivities'](
                 UserCreateContract.social,
-                input,
-                user
+                input
             );
 
             expect(result).toEqual([

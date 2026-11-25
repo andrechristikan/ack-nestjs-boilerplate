@@ -15,6 +15,8 @@ import {
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
 import { generateSync } from 'otplib';
+import { EnumMfaPasskeyDeviceType } from '@generated/prisma-client/client';
+import type { IMfaFactorState } from '@modules/mfa/interfaces/mfa.interface';
 import type { MockProxy } from 'vitest-mock-extended';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { HelperHashService } from '@common/helper/services/helper.hash.service';
@@ -169,4 +171,53 @@ export async function createMfaTotpService(
     }).compile();
 
     return module.get(MfaTotpService);
+}
+
+export function buildMfaFactorState(userId: string): IMfaFactorState {
+    const at = new Date('2026-01-01T00:00:00.000Z');
+
+    return {
+        mfa: {
+            id: `mfa-${userId}`,
+            userId,
+            backupCodes: ['hash-one', 'hash-two'],
+            attempt: 0,
+            lockedUntil: null,
+            createdAt: at,
+            createdBy: null,
+            updatedAt: at,
+            updatedBy: null,
+        },
+        totp: {
+            id: `totp-${userId}`,
+            userId,
+            secret: 'encrypted-secret',
+            pendingSecret: null,
+            lastUsedStep: null,
+            confirmedAt: at,
+            lastUsedAt: null,
+            createdAt: at,
+            createdBy: null,
+            updatedAt: at,
+            updatedBy: null,
+        },
+        passkeys: [
+            {
+                id: `passkey-${userId}`,
+                userId,
+                credentialId: `credential-${userId}`,
+                publicKey: 'ZGVm-w',
+                counter: 5,
+                transports: ['internal'],
+                deviceType: EnumMfaPasskeyDeviceType.multiDevice,
+                backedUp: true,
+                name: 'iPhone',
+                lastUsedAt: null,
+                createdAt: at,
+                createdBy: userId,
+                updatedAt: at,
+                updatedBy: null,
+            },
+        ],
+    };
 }

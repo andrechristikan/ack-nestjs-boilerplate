@@ -1,12 +1,13 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
-import { PaginationService } from '@common/pagination/services/pagination.service';
+import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import { Prisma } from '@generated/prisma-client/client';
 import type {
     AnalyticSnapshot,
-    AnalyticSnapshotItem,
     EnumAnalyticSnapshotSignal,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type {
     IAnalyticSnapshotHeaderInput,
@@ -14,13 +15,17 @@ import type {
     IAnalyticSnapshotValueFilter,
 } from '@modules/analytic/interfaces/analytic.interface';
 import type { IAnalyticSnapshotRepository } from '@modules/analytic/interfaces/analytic.snapshot-repository.interface';
+import { AnalyticSnapshotListPipelineSchema } from '@modules/analytic/dtos/analytic.snapshot-list-pipeline.dto';
+import { AnalyticPipelineUtil } from '@modules/analytic/utils/analytic.pipeline.util';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class AnalyticSnapshotRepository implements IAnalyticSnapshotRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly databaseUtil: DatabaseUtil,
+        private readonly paginationOffsetUtil: PaginationOffsetUtil,
+        private readonly analyticPipelineUtil: AnalyticPipelineUtil
     ) {}
 
     async createItems(
@@ -66,19 +71,36 @@ export class AnalyticSnapshotRepository implements IAnalyticSnapshotRepository {
     async createHeader(
         signal: EnumAnalyticSnapshotSignal,
         header: IAnalyticSnapshotHeaderInput
-    ): Promise<void> {
-        await this.databaseService.client.analyticSnapshot.create({
-            data: {
-                signal,
-                runId: header.runId,
-                startedAt: header.startedAt,
-                count: header.count,
-                metadata: header.metadata,
-                windowStart: header.windowStart,
-                windowEnd: header.windowEnd,
-                computedAt: header.computedAt,
-            },
-        });
+    ): Promise<boolean> {
+        try {
+            await this.databaseService.client.analyticSnapshot.create({
+                data: {
+                    signal,
+                    runId: header.runId,
+                    startedAt: header.startedAt,
+                    count: header.count,
+                    metadata: header.metadata,
+                    windowStart: header.windowStart,
+                    windowEnd: header.windowEnd,
+                    computedAt: header.computedAt,
+                },
+            });
+
+            return true;
+        } catch (error: unknown) {
+            const isLostWrite = this.databaseUtil.isUniqueCollision(
+                error,
+                Prisma.AnalyticSnapshotScalarFieldEnum.signal
+            );
+            if (isLostWrite) {
+                return false;
+            }
+
+            throw this.databaseUtil.toWriteException(
+                error,
+                new AppUnknownException(error)
+            );
+        }
     }
 
     async deleteItemsStartedBefore(
@@ -107,33 +129,72 @@ export class AnalyticSnapshotRepository implements IAnalyticSnapshotRepository {
         });
     }
 
-    async findWithPaginationOffset(
+    async findListOffset(
         signal: EnumAnalyticSnapshotSignal,
-        runId: string,
-        { where, ...params }: IPaginationQueryOffsetParams,
+        params: IPaginationQueryOffsetParams,
         valueFilter: IAnalyticSnapshotValueFilter | null
-    ): Promise<IResponsePaginationReturn<AnalyticSnapshotItem>> {
-        return this.paginationService.offset(
-            this.databaseService.client.analyticSnapshotItem,
-            {
-                ...params,
-                where: {
-                    ...where,
-                    signal,
-                    runId,
-                    ...(valueFilter !== null && valueFilter),
-                },
-            }
-        );
-    }
+    ): Promise<IResponsePaginationReturn<Prisma.JsonValue>> {
+        const result =
+            await this.databaseService.client.analyticSnapshot.aggregateRaw({
+                pipeline: [
+                    { $match: { signal } },
+                    {
+                        $lookup: {
+                            from: 'AnalyticSnapshotItems',
+                            let: { runId: '$runId' },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: {
+                                            $and: [
+                                                { $eq: ['$signal', signal] },
+                                                { $eq: ['$runId', '$$runId'] },
+                                            ],
+                                        },
+                                        ...(valueFilter !== null && {
+                                            value: {
+                                                $gte: valueFilter.value.gte,
+                                            },
+                                        }),
+                                    },
+                                },
+                                this.analyticPipelineUtil.pageStage(
+                                    params,
+                                    '_id'
+                                ),
+                            ],
+                            as: 'page',
+                        },
+                    },
+                    {
+                        $project: {
+                            _id: 0,
+                            computedAt: {
+                                $dateToString: { date: '$computedAt' },
+                            },
+                            page: 1,
+                        },
+                    },
+                ],
+            });
+        const parsed = AnalyticSnapshotListPipelineSchema.safeParse(result);
+        if (!parsed.success) {
+            throw new AppUnknownException(parsed.error);
+        }
 
-    async findItemByKey(
-        signal: EnumAnalyticSnapshotSignal,
-        runId: string,
-        key: string
-    ): Promise<AnalyticSnapshotItem | null> {
-        return this.databaseService.client.analyticSnapshotItem.findFirst({
-            where: { signal, runId, key },
-        });
+        const [row] = parsed.data;
+        if (row === undefined) {
+            return this.paginationOffsetUtil.page([], 0, params);
+        }
+
+        const [facet] = row.page;
+
+        const page = this.paginationOffsetUtil.page(
+            facet?.data.map(item => item.data) ?? [],
+            facet?.total[0]?.n ?? 0,
+            params
+        );
+
+        return { ...page, metadata: { computedAt: row.computedAt } };
     }
 }

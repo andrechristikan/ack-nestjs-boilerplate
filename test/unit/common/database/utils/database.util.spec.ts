@@ -3,11 +3,13 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { Prisma } from '@generated/prisma-client/client';
 import { ObjectId } from 'bson';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseIdInvalidException } from '@common/database/exceptions/database.id-invalid.exception';
 import { DatabaseTransactionExpiredException } from '@common/database/exceptions/database.transaction-expired.exception';
 import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUtil } from '@common/database/utils/database.util';
+import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('DatabaseUtil', () => {
@@ -199,6 +201,30 @@ describe('DatabaseUtil', () => {
         });
     });
 
+    describe('isRecordNotFound', () => {
+        it('returns true for a P2025 known-request error', () => {
+            const error = new Prisma.PrismaClientKnownRequestError('missing', {
+                code: 'P2025',
+                clientVersion: '6.19.0',
+            });
+
+            expect(util.isRecordNotFound(error)).toBe(true);
+        });
+
+        it('returns false for a P2002 known-request error', () => {
+            const error = new Prisma.PrismaClientKnownRequestError('dup', {
+                code: 'P2002',
+                clientVersion: '6.19.0',
+            });
+
+            expect(util.isRecordNotFound(error)).toBe(false);
+        });
+
+        it('returns false for a plain Error', () => {
+            expect(util.isRecordNotFound(new Error('boom'))).toBe(false);
+        });
+    });
+
     describe('toException', () => {
         it('maps a P2034 write conflict to DatabaseWriteConflictException', () => {
             const error = new Prisma.PrismaClientKnownRequestError('conflict', {
@@ -293,6 +319,125 @@ describe('DatabaseUtil', () => {
 
         it('returns null for a value that is not an Error', () => {
             expect(util.toException('boom')).toBeNull();
+        });
+    });
+
+    describe('toWriteException', () => {
+        it('returns the given miss exception for a P2025', () => {
+            const miss = new DatabaseIdInvalidException();
+
+            expect(
+                util.toWriteException(
+                    buildPrismaKnownRequestError('P2025'),
+                    miss
+                )
+            ).toBe(miss);
+        });
+
+        it('returns the given miss exception for a P2034', () => {
+            const miss = new DatabaseIdInvalidException();
+
+            expect(
+                util.toWriteException(
+                    buildPrismaKnownRequestError('P2034'),
+                    miss
+                )
+            ).toBe(miss);
+        });
+
+        it('maps a P2023 to DatabaseIdInvalidException', () => {
+            const result = util.toWriteException(
+                buildPrismaKnownRequestError('P2023'),
+                new DatabaseUnavailableException()
+            );
+
+            expect(result).toBeInstanceOf(DatabaseIdInvalidException);
+        });
+
+        it('maps an initialization error to DatabaseUnavailableException', () => {
+            const error = new Prisma.PrismaClientInitializationError(
+                'down',
+                '6.19.0'
+            );
+
+            const result = util.toWriteException(
+                error,
+                new DatabaseIdInvalidException()
+            );
+
+            expect(result).toBeInstanceOf(DatabaseUnavailableException);
+        });
+
+        it('wraps a plain error in AppUnknownException carrying it as rawError', () => {
+            const error = new Error('boom');
+
+            const result = util.toWriteException(
+                error,
+                new DatabaseIdInvalidException()
+            );
+
+            expect(result).toBeInstanceOf(AppUnknownException);
+            expect(result.rawError).toBe(error);
+        });
+    });
+
+    describe('toUniqueException', () => {
+        const first = new DatabaseIdInvalidException();
+        const second = new DatabaseTransactionExpiredException();
+        const miss = new DatabaseUnavailableException();
+        const collisions = [
+            { field: 'email', exception: first },
+            { field: 'username', exception: second },
+        ] as const;
+
+        it('returns the exception of the listed field the P2002 names', () => {
+            const result = util.toUniqueException(
+                buildPrismaKnownRequestError('P2002', 'email'),
+                [...collisions],
+                miss
+            );
+
+            expect(result).toBe(first);
+        });
+
+        it('returns the second entry when the first does not match', () => {
+            const result = util.toUniqueException(
+                buildPrismaKnownRequestError('P2002', 'username'),
+                [...collisions],
+                miss
+            );
+
+            expect(result).toBe(second);
+        });
+
+        it('returns AppUnknownException for a P2002 on an unlisted field', () => {
+            const result = util.toUniqueException(
+                buildPrismaKnownRequestError('P2002', 'name'),
+                [...collisions],
+                miss
+            );
+
+            expect(result).toBeInstanceOf(AppUnknownException);
+        });
+
+        it.each(['P2025', 'P2034'])('returns miss for a %s', code => {
+            const result = util.toUniqueException(
+                buildPrismaKnownRequestError(code),
+                [...collisions],
+                miss
+            );
+
+            expect(result).toBe(miss);
+        });
+
+        it('returns AppUnknownException for a plain error', () => {
+            const result = util.toUniqueException(
+                new Error('boom'),
+                [...collisions],
+                miss
+            );
+
+            expect(result).toBeInstanceOf(AppUnknownException);
         });
     });
 

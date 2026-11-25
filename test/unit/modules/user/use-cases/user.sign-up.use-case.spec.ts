@@ -50,7 +50,10 @@ import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.e
 import { EnumRoleStatusCodeError } from '@modules/role/enums/role.status-code.enum';
 import type { IRole } from '@modules/role/interfaces/role.interface';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
-import type { ITermPolicyAcceptanceCreate } from '@modules/term-policy/interfaces/term-policy.interface';
+import type {
+    ITermPolicyAcceptanceCreate,
+    ITermPolicyRef,
+} from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRequiredNotPublishedException } from '@modules/term-policy/exceptions/term-policy.required-not-published.exception';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -64,7 +67,6 @@ import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enu
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type {
-    IUser,
     IUserCheckUsername,
     IUserCreateWithWorkspaceInput,
     IUserRegistration,
@@ -76,6 +78,8 @@ import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
+import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
+import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceInviteInvalidException } from '@modules/workspace/exceptions/workspace.invite-invalid.exception';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
@@ -90,7 +94,6 @@ import { UserSignUpUseCase } from '@modules/user/use-cases/user.sign-up.use-case
 import {
     buildApiKeyContext,
     buildRequestContext,
-    buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
@@ -169,8 +172,6 @@ describe('UserSignUpUseCase', () => {
         },
         idempotencyKey: 'verificationEmail-VRF-bramble',
     };
-    const baseUser: IUser = buildUser('user-bramble', 'bramble@example.com');
-    const committedUser: IUser = baseUser;
     const country: Country = {
         id: 'country-bramble',
         name: 'Indonesia',
@@ -230,7 +231,9 @@ describe('UserSignUpUseCase', () => {
             verifiedAt: null,
             isUsed: false,
         },
+        login: null,
         workspaceContext: personalContext,
+        createdAt: new Date('2026-03-01T00:00:00.000Z'),
         createdBy: 'user-bramble',
     };
     const inviteInput: IUserCreateWithWorkspaceInput = {
@@ -260,6 +263,13 @@ describe('UserSignUpUseCase', () => {
         types: [EnumTermPolicyType.termsOfService],
         createdBy: 'user-bramble',
     };
+    const termPolicyRefs: ITermPolicyRef[] = [
+        {
+            id: 'term-policy-terms',
+            type: EnumTermPolicyType.termsOfService,
+            version: 1,
+        },
+    ];
     const stageInput = {
         action: EnumActivityLogAction.userSignedUp,
         userId: 'user-bramble',
@@ -308,7 +318,6 @@ describe('UserSignUpUseCase', () => {
                 ? welcomeEffect
                 : verificationEffect
         );
-        userService.createManyInTx.mockResolvedValue([committedUser]);
         roleService.getByName.mockResolvedValue(role);
         countryService.getOne.mockResolvedValue(country);
 
@@ -404,6 +413,9 @@ describe('UserSignUpUseCase', () => {
             });
             userService.existsByEmail.mockResolvedValue(false);
             userService.checkUsername.mockResolvedValue(clearUsername);
+            termPolicyAcceptanceService.getPublishedForAcceptance.mockResolvedValue(
+                termPolicyRefs
+            );
         });
 
         it('commits the new user on one transaction, adds the created entries and the welcome and verification effects on the same tx, and returns an empty envelope', async () => {
@@ -418,6 +430,17 @@ describe('UserSignUpUseCase', () => {
             expect(roleService.getByName).toHaveBeenCalledWith('user');
             expect(countryService.getOne).toHaveBeenCalledWith(
                 'country-bramble'
+            );
+            expect(
+                termPolicyAcceptanceService.getPublishedForAcceptance
+            ).toHaveBeenCalledWith(
+                [EnumTermPolicyType.termsOfService, EnumTermPolicyType.privacy],
+                [
+                    EnumTermPolicyType.termsOfService,
+                    EnumTermPolicyType.privacy,
+                    EnumTermPolicyType.cookies,
+                    EnumTermPolicyType.marketing,
+                ]
             );
             expect(userRegistrationService.prepareSignUp).toHaveBeenCalledWith(
                 signUpInput,
@@ -454,6 +477,9 @@ describe('UserSignUpUseCase', () => {
                 welcomeEffect,
                 verificationEffect,
             ]);
+            expect(
+                termPolicyAcceptanceService.acceptPublishedManyInTx
+            ).toHaveBeenCalledWith(tx, termPolicyRefs, [acceptanceEntry]);
         });
 
         it('refuses a disallowed password with the application name, the email local part, the username, and the name before it prepares the user', async () => {
@@ -560,7 +586,7 @@ describe('UserSignUpUseCase', () => {
             );
             expect(authPasswordService.assertAllowed).toHaveBeenCalled();
             expect(
-                termPolicyAcceptanceService.assertRequiredPublished
+                termPolicyAcceptanceService.getPublishedForAcceptance
             ).toHaveBeenCalled();
 
             inviteRead.resolve(null);
@@ -657,7 +683,7 @@ describe('UserSignUpUseCase', () => {
 
         it('asserts the required term policies are published before it prepares the user and opens no transaction when one is not', async () => {
             const failure = new TermPolicyRequiredNotPublishedException();
-            termPolicyAcceptanceService.assertRequiredPublished.mockRejectedValue(
+            termPolicyAcceptanceService.getPublishedForAcceptance.mockRejectedValue(
                 failure
             );
 
@@ -665,11 +691,16 @@ describe('UserSignUpUseCase', () => {
                 useCase.execute(requestContext, apiKeyContext, dto)
             ).rejects.toBe(failure);
             expect(
-                termPolicyAcceptanceService.assertRequiredPublished
-            ).toHaveBeenCalledWith([
-                EnumTermPolicyType.termsOfService,
-                EnumTermPolicyType.privacy,
-            ]);
+                termPolicyAcceptanceService.getPublishedForAcceptance
+            ).toHaveBeenCalledWith(
+                [EnumTermPolicyType.termsOfService, EnumTermPolicyType.privacy],
+                [
+                    EnumTermPolicyType.termsOfService,
+                    EnumTermPolicyType.privacy,
+                    EnumTermPolicyType.cookies,
+                    EnumTermPolicyType.marketing,
+                ]
+            );
             expect(
                 userRegistrationService.prepareSignUp
             ).not.toHaveBeenCalled();
@@ -694,7 +725,8 @@ describe('UserSignUpUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     inviteInput,
-                    emailVerification
+                    emailVerification,
+                    termPolicyRefs
                 )
             ).resolves.toBeUndefined();
 
@@ -716,7 +748,7 @@ describe('UserSignUpUseCase', () => {
             );
             expect(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
-            ).toHaveBeenCalledWith(tx, [acceptanceEntry]);
+            ).toHaveBeenCalledWith(tx, termPolicyRefs, [acceptanceEntry]);
 
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 workspaceService.createOwnedForUsersInTx
@@ -739,19 +771,17 @@ describe('UserSignUpUseCase', () => {
             );
         });
 
-        it("writes each user's Mfa row, password history, and notification defaults on tx right after the users", async () => {
+        it('writes the Mfa rows, password history, and notification defaults on tx right after the users', async () => {
             await useCase['createSignUpUser'](
                 requestContext,
                 apiKeyContext,
                 input,
-                emailVerification
+                emailVerification,
+                termPolicyRefs
             );
 
-            expect(mfaService.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'user-bramble'
-            );
+            expect(mfaService.createManyInTx).toHaveBeenCalledTimes(1);
+            expect(mfaService.createManyInTx).toHaveBeenCalledWith(tx, [input]);
             expect(passwordHistoryService.createManyInTx).toHaveBeenCalledWith(
                 tx,
                 [
@@ -769,7 +799,7 @@ describe('UserSignUpUseCase', () => {
                 notificationService.createDefaultsManyInTx
             ).toHaveBeenCalledWith(tx, ['user-bramble'], 'user-bramble');
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
-                mfaService.createInTx
+                mfaService.createManyInTx
             );
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 passwordHistoryService.createManyInTx
@@ -777,17 +807,17 @@ describe('UserSignUpUseCase', () => {
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 notificationService.createDefaultsManyInTx
             );
-            expect(mfaService.createInTx).toHaveBeenCalledBefore(
+            expect(mfaService.createManyInTx).toHaveBeenCalledBefore(
                 workspaceService.createOwnedForUsersInTx
             );
         });
 
-        it("runs createInTx on each attempt's tx after a slug collision", async () => {
+        it("runs createManyInTx on each attempt's tx after a slug collision", async () => {
             const retryTx = {} as IDatabaseTransactionClient;
             databaseService.withTransaction
                 .mockImplementationOnce(async fn => {
                     await fn(tx);
-                    throw buildPrismaKnownRequestError('P2002', 'slug');
+                    throw new WorkspaceSlugAlreadyExistsException();
                 })
                 .mockImplementationOnce(async fn => fn(retryTx) as never);
 
@@ -795,7 +825,8 @@ describe('UserSignUpUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 input,
-                emailVerification
+                emailVerification,
+                termPolicyRefs
             );
 
             expect(userService.createManyInTx).toHaveBeenNthCalledWith(1, tx, [
@@ -813,7 +844,8 @@ describe('UserSignUpUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 input,
-                emailVerification
+                emailVerification,
+                termPolicyRefs
             );
 
             expect(
@@ -835,13 +867,14 @@ describe('UserSignUpUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 inviteInput,
-                emailVerification
+                emailVerification,
+                termPolicyRefs
             );
             await setImmediate();
 
             expect(
                 termPolicyAcceptanceService.acceptPublishedManyInTx
-            ).toHaveBeenCalledWith(tx, [acceptanceEntry]);
+            ).toHaveBeenCalledWith(tx, termPolicyRefs, [acceptanceEntry]);
             expect(projectMemberService.createInTx).not.toHaveBeenCalled();
 
             acceptance.resolve();
@@ -870,7 +903,8 @@ describe('UserSignUpUseCase', () => {
                         projectMemberRole: null,
                     },
                 },
-                emailVerification
+                emailVerification,
+                termPolicyRefs
             );
 
             expect(
@@ -884,7 +918,8 @@ describe('UserSignUpUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 input,
-                emailVerification
+                emailVerification,
+                termPolicyRefs
             );
 
             expect(
@@ -893,7 +928,7 @@ describe('UserSignUpUseCase', () => {
         });
 
         it('retries with the next slug candidate after a slug collision and commits', async () => {
-            const collision = buildPrismaKnownRequestError('P2002', 'slug');
+            const collision = new WorkspaceSlugAlreadyExistsException();
             databaseService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(async fn => fn(tx) as never);
@@ -903,7 +938,8 @@ describe('UserSignUpUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     input,
-                    emailVerification
+                    emailVerification,
+                    termPolicyRefs
                 )
             ).resolves.toBeUndefined();
 
@@ -922,7 +958,7 @@ describe('UserSignUpUseCase', () => {
 
         it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
             databaseService.withTransaction.mockRejectedValue(
-                buildPrismaKnownRequestError('P2002', 'slug')
+                new WorkspaceSlugAlreadyExistsException()
             );
 
             await expect(
@@ -930,7 +966,8 @@ describe('UserSignUpUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     input,
-                    emailVerification
+                    emailVerification,
+                    termPolicyRefs
                 )
             ).rejects.toMatchObject({
                 module: 'database',
@@ -940,42 +977,38 @@ describe('UserSignUpUseCase', () => {
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });
 
-        it('throws the exception the create util maps a non-slug collision to', async () => {
-            const otherError = buildPrismaKnownRequestError('P2002', 'email');
-            databaseService.withTransaction.mockRejectedValue(otherError);
+        it('passes a rejected UserEmailExistException through untouched', async () => {
+            const collision = new UserEmailExistException();
+            databaseService.withTransaction.mockRejectedValue(collision);
 
             await expect(
                 useCase['createSignUpUser'](
                     requestContext,
                     apiKeyContext,
                     input,
-                    emailVerification
+                    emailVerification,
+                    termPolicyRefs
                 )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.emailExist,
-            });
+            ).rejects.toBe(collision);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
-        it('maps a write conflict on the invite path to WorkspaceInviteAlreadyProcessedException', async () => {
-            databaseService.withTransaction.mockRejectedValue(
-                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
-            );
+        it('passes a rejected WorkspaceInviteAlreadyProcessedException through untouched', async () => {
+            const processed = new WorkspaceInviteAlreadyProcessedException();
+            databaseService.withTransaction.mockRejectedValue(processed);
 
             await expect(
                 useCase['createSignUpUser'](
                     requestContext,
                     apiKeyContext,
                     inviteInput,
-                    emailVerification
+                    emailVerification,
+                    termPolicyRefs
                 )
-            ).rejects.toMatchObject({
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-            });
+            ).rejects.toBe(processed);
         });
 
-        it('wraps a write conflict on the personal path in the unknown exception', async () => {
+        it('wraps a raw write conflict in the unknown exception', async () => {
             const conflict = buildPrismaKnownRequestError(
                 DatabaseWriteConflictCode
             );
@@ -986,7 +1019,8 @@ describe('UserSignUpUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     input,
-                    emailVerification
+                    emailVerification,
+                    termPolicyRefs
                 )
             ).rejects.toMatchObject({
                 module: 'app',
@@ -995,7 +1029,7 @@ describe('UserSignUpUseCase', () => {
             });
         });
 
-        it('wraps a non-collision error the create util leaves unmapped in the unknown exception', async () => {
+        it('wraps an untyped error in the unknown exception', async () => {
             const otherError = new Error('unexpected');
             databaseService.withTransaction.mockRejectedValue(otherError);
 
@@ -1004,7 +1038,8 @@ describe('UserSignUpUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     input,
-                    emailVerification
+                    emailVerification,
+                    termPolicyRefs
                 )
             ).rejects.toMatchObject({
                 module: 'app',

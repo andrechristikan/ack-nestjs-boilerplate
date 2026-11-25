@@ -130,16 +130,18 @@ describe('UserImportByAdminUseCase', () => {
                 module: 'aws',
                 statusCode: EnumAwsStatusCodeError.sesNotConfigured,
             });
-            expect(userImportService.getExistingEmails).not.toHaveBeenCalled();
+            expect(
+                userImportService.getImportByAdminChecks
+            ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         beforeEach(() => {
-            userImportService.getExistingEmails.mockResolvedValue([]);
-            userImportService.getUsernameChecks.mockResolvedValue(
-                usernameChecks
-            );
+            userImportService.getImportByAdminChecks.mockResolvedValue({
+                existingEmails: [],
+                usernameChecks,
+            });
         });
 
         it('adds one importByAdmin effect holding the rows and the context and answers its outbox id', async () => {
@@ -179,12 +181,12 @@ describe('UserImportByAdminUseCase', () => {
                 rows
             );
 
-            expect(userImportService.getExistingEmails).toHaveBeenCalledWith([
-                'bramble@example.com',
-            ]);
-            expect(userImportService.getUsernameChecks).toHaveBeenCalledWith([
-                'bramble2fox',
-            ]);
+            expect(
+                userImportService.getImportByAdminChecks
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                userImportService.getImportByAdminChecks
+            ).toHaveBeenCalledWith(['bramble@example.com'], ['bramble2fox']);
             expect(
                 userImportService.assertEmailsAvailable
             ).toHaveBeenCalledWith([]);
@@ -200,9 +202,10 @@ describe('UserImportByAdminUseCase', () => {
         });
 
         it('throws the email error and adds no effect when an email exists', async () => {
-            userImportService.getExistingEmails.mockResolvedValue([
-                'bramble@example.com',
-            ]);
+            userImportService.getImportByAdminChecks.mockResolvedValue({
+                existingEmails: ['bramble@example.com'],
+                usernameChecks,
+            });
             userImportService.assertEmailsAvailable.mockImplementation(() => {
                 throw new UserImportEmailExistException('bramble@example.com');
             });

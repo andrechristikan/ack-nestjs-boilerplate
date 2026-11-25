@@ -25,6 +25,9 @@ export const DatabaseUnavailableMessages: readonly string[] = [
 export const DatabaseUniqueConstraintCode = 'P2002';
 
 /** @public */
+export const DatabaseRecordNotFoundCode = 'P2025';
+
+/** @public */
 export const DatabaseWriteConflictCode = 'P2034';
 
 /** @public */

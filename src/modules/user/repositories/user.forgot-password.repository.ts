@@ -1,5 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import { EnumUserStatus } from '@generated/prisma-client/client';
@@ -9,13 +10,15 @@ import type {
     IUserForgotPasswordCreate,
 } from '@modules/user/interfaces/user.interface';
 import type { IUserForgotPasswordRepository } from '@modules/user/interfaces/user.forgot-password-repository.interface';
-import { UserWithRoleInclude } from '@modules/user/constants/user.constant';
+import { UserForgotPasswordWithUserRecipientInclude } from '@modules/user/constants/user.constant';
+import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UserForgotPasswordRepository implements IUserForgotPasswordRepository {
     constructor(
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -36,9 +39,7 @@ export class UserForgotPasswordRepository implements IUserForgotPasswordReposito
                     status: EnumUserStatus.active,
                 },
             },
-            include: {
-                user: { include: UserWithRoleInclude },
-            },
+            include: UserForgotPasswordWithUserRecipientInclude,
         });
     }
 
@@ -84,17 +85,22 @@ export class UserForgotPasswordRepository implements IUserForgotPasswordReposito
         forgotPasswordId: string,
         resetAt: Date,
         updatedBy: string
-    ): Promise<boolean> {
-        const { count } = await tx.forgotPassword.updateMany({
-            where: { id: forgotPasswordId, isUsed: false },
-            data: {
-                isUsed: true,
-                resetAt,
-                updatedBy,
-            },
-        });
-
-        return count > 0;
+    ): Promise<ForgotPassword> {
+        try {
+            return await tx.forgotPassword.update({
+                where: { id: forgotPasswordId, isUsed: false },
+                data: {
+                    isUsed: true,
+                    resetAt,
+                    updatedBy,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new UserTokenInvalidException()
+            );
+        }
     }
 
     async markUnusedUsedByUserInTx(

@@ -14,7 +14,7 @@ Rule: `authoring.md`, Decisions.
 
 ### `reviewer` runs at opus, high, on every dispatch
 
-Rule: `.claude/CLAUDE.md`, Levels.
+Rule: `.claude/agents/reviewer.md`, frontmatter; `.claude/CLAUDE.md`, Levels.
 
 - Effort medium: the reviewer is the only judge of a build and may miss no rule.
 - The reviewer's effort set per review by Jev: a low-effort review misses a rule, and the reviewer is the only judge.
@@ -37,10 +37,9 @@ Rule: `.claude/hooks/rules-gate.sh`, registered in `.claude/settings.json`.
 
 ### The code follows the rule, never the count of sites
 
-Rule: `discipline.md`, Boilerplate stance and Hard rules.
+Rule: `discipline.md`, Boilerplate stance.
 
 - Rewording a rule to what most sites do: a site count measures what was written, not what is right, and an audit would then ratify each drift it finds.
-- The hard rules kept in an agent's memory alone: a memory binds one tool on one machine, where a rule binds every agent, every skill, and the review.
 
 ### `discipline.md` is locked by an `ask` permission
 
@@ -69,6 +68,12 @@ Rule: `package.json`, `devDependencies`; `pnpm-workspace.yaml`, `allowBuilds`.
 - `brew install vale` with `errata-ai/vale-action` in CI: each developer installs it by hand, versions drift, and a commit hook cannot require it; a community wrapper whose download script needs `allowBuilds` costs less.
 
 ## Authoring
+
+### The owner's working agreements live in `.claude/CLAUDE.md`, Etiquette, and the hard rules in `discipline.md`
+
+Rule: `.claude/CLAUDE.md`, Etiquette; `discipline.md`, Hard rules.
+
+- Claude's memory alone, for the working agreements or the hard rules: a memory binds one tool on one machine, and another machine or contributor never reads it, where a rule binds every agent, every skill, and the review.
 
 ### Every tree is spelled American English
 

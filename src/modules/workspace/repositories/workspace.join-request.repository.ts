@@ -1,5 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type {
@@ -16,6 +17,12 @@ import type {
     Prisma,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
+import {
+    WorkspaceJoinRequestRefSelect,
+    WorkspaceJoinRequestWithUserRecipientInclude,
+} from '@modules/workspace/constants/workspace.constant';
+import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
+import { WorkspaceJoinRequestDuplicateException } from '@modules/workspace/exceptions/workspace.join-request-duplicate.exception';
 import type { IWorkspaceJoinRequestRepository } from '@modules/workspace/interfaces/workspace.join-request-repository.interface';
 import type {
     IWorkspaceJoinRequestCreateData,
@@ -30,6 +37,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
 
     constructor(
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
@@ -71,7 +79,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 ...filter,
                 status: EnumWorkspaceJoinRequestStatus.pending,
             },
-            select: { id: true, expiredAt: true },
+            select: WorkspaceJoinRequestRefSelect,
         });
 
         await Promise.all(
@@ -111,7 +119,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                                 lte: today,
                             },
                         },
-                        select: { id: true },
+                        select: WorkspaceJoinRequestRefSelect,
                         take: this.expireChunkSize,
                     }
                 );
@@ -134,7 +142,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 id: workspaceJoinRequestId,
                 workspaceId,
             },
-            include: { user: { select: { email: true } } },
+            include: WorkspaceJoinRequestWithUserRecipientInclude,
         });
     }
 
@@ -173,7 +181,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 status: EnumWorkspaceJoinRequestStatus.pending,
                 expiredAt: { lte: now },
             },
-            select: { id: true },
+            select: WorkspaceJoinRequestRefSelect,
         });
         if (stale) {
             const staleNonce = this.helperHashService.sha256Hash(stale.id);
@@ -189,15 +197,28 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
             });
         }
 
-        return tx.workspaceJoinRequest.create({
-            data: {
-                workspaceId,
-                userId,
-                message,
-                expiredAt,
-                nonce,
-            },
-        });
+        try {
+            return await tx.workspaceJoinRequest.create({
+                data: {
+                    workspaceId,
+                    userId,
+                    message,
+                    expiredAt,
+                    nonce,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'nonce',
+                        exception: new WorkspaceJoinRequestDuplicateException(),
+                    },
+                ],
+                new WorkspaceJoinRequestDuplicateException()
+            );
+        }
     }
 
     async acceptInTx(
@@ -205,23 +226,29 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         workspaceJoinRequestId: string,
         reviewerId: string,
         reviewedAt: Date
-    ): Promise<boolean> {
+    ): Promise<IWorkspaceJoinRequestWithEmail> {
         const nonce = this.helperHashService.sha256Hash(workspaceJoinRequestId);
-        const { count } = await tx.workspaceJoinRequest.updateMany({
-            where: {
-                id: workspaceJoinRequestId,
-                status: EnumWorkspaceJoinRequestStatus.pending,
-                expiredAt: { gt: reviewedAt },
-            },
-            data: {
-                status: EnumWorkspaceJoinRequestStatus.accepted,
-                nonce,
-                reviewedByUserId: reviewerId,
-                reviewedAt,
-            },
-        });
-
-        return count > 0;
+        try {
+            return await tx.workspaceJoinRequest.update({
+                where: {
+                    id: workspaceJoinRequestId,
+                    status: EnumWorkspaceJoinRequestStatus.pending,
+                    expiredAt: { gt: reviewedAt },
+                },
+                data: {
+                    status: EnumWorkspaceJoinRequestStatus.accepted,
+                    nonce,
+                    reviewedByUserId: reviewerId,
+                    reviewedAt,
+                },
+                include: WorkspaceJoinRequestWithUserRecipientInclude,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new WorkspaceJoinRequestAlreadyProcessedException()
+            );
+        }
     }
 
     async rejectInTx(
@@ -230,32 +257,41 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
         reviewerId: string,
         rejectReasonCode: EnumWorkspaceJoinRejectReason,
         reviewedAt: Date
-    ): Promise<boolean> {
+    ): Promise<WorkspaceJoinRequest> {
         const nonce = this.helperHashService.sha256Hash(workspaceJoinRequestId);
-        const { count } = await tx.workspaceJoinRequest.updateMany({
-            where: {
-                id: workspaceJoinRequestId,
-                status: EnumWorkspaceJoinRequestStatus.pending,
-                expiredAt: { gt: reviewedAt },
-            },
-            data: {
-                status: EnumWorkspaceJoinRequestStatus.rejected,
-                nonce,
-                rejectReasonCode,
-                reviewedByUserId: reviewerId,
-                reviewedAt,
-            },
-        });
-
-        return count > 0;
+        try {
+            return await tx.workspaceJoinRequest.update({
+                where: {
+                    id: workspaceJoinRequestId,
+                    status: EnumWorkspaceJoinRequestStatus.pending,
+                    expiredAt: { gt: reviewedAt },
+                },
+                data: {
+                    status: EnumWorkspaceJoinRequestStatus.rejected,
+                    nonce,
+                    rejectReasonCode,
+                    reviewedByUserId: reviewerId,
+                    reviewedAt,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new WorkspaceJoinRequestAlreadyProcessedException()
+            );
+        }
     }
 
-    async cancelPendingByWorkspaceInTx(
+    async cancelPendingByWorkspacesInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string,
+        workspaceIds: string[],
         updatedBy: string
     ): Promise<void> {
-        await this.cancelPendingInTx(tx, { workspaceId }, updatedBy);
+        await this.cancelPendingInTx(
+            tx,
+            { workspaceId: { in: workspaceIds } },
+            updatedBy
+        );
     }
 
     async cancelPendingByRequesterInTx(
@@ -278,7 +314,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 userId,
                 status: EnumWorkspaceJoinRequestStatus.pending,
             },
-            select: { id: true, expiredAt: true },
+            select: WorkspaceJoinRequestRefSelect,
         });
         if (!pending) {
             return 0;

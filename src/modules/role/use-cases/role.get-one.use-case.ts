@@ -12,7 +12,7 @@ export class RoleGetOneUseCase implements IAppUseCase<
     constructor(private readonly roleService: RoleService) {}
 
     async execute(id: string): Promise<IResponseReturn<RoleDto>> {
-        const role = await this.roleService.getOne(id);
+        const role = await this.roleService.getOneWithPolicies(id);
 
         return { data: role };
     }

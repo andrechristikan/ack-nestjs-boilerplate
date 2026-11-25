@@ -566,18 +566,13 @@ export class AnalyticFraudService {
     async getFraudRiskScore(
         userId: string
     ): Promise<IAnalyticFraudRiskScoreUser> {
-        const [{ item, computedAt }, exists] = await Promise.all([
-            this.analyticSnapshotService.getOneByKey(
-                EnumAnalyticSnapshotSignal.riskScore,
-                userId,
-                AnalyticRiskScoreSnapshotDataSchema
-            ),
-            this.analyticFraudRepository.existsUserById(userId),
-        ]);
-        if (!exists) {
+        const row =
+            await this.analyticFraudRepository.findRiskScoreByUser(userId);
+        if (row === null) {
             throw new UserNotFoundException();
         }
 
+        const { item, computedAt } = row;
         if (item !== null) {
             return { ...item, computedAt };
         }

@@ -11,12 +11,12 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { Workspace } from '@generated/prisma-client/client';
 import { WorkspaceCapReachedException } from '@modules/workspace/exceptions/workspace.cap-reached.exception';
+import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
 import type { WorkspaceCreateRequestDto } from '@modules/workspace/dtos/request/workspace.create.request.dto';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceCreateUseCase } from '@modules/workspace/use-cases/workspace.create.use-case';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -150,10 +150,10 @@ describe('WorkspaceCreateUseCase', () => {
             );
         });
 
-        it('opens a second transaction with the next slug candidate and a new id after a slug collision', async () => {
+        it('opens a second transaction with the next slug candidate and a new id after WorkspaceSlugAlreadyExistsException', async () => {
             workspaceService.createWorkspaceInTx
                 .mockRejectedValueOnce(
-                    buildPrismaKnownRequestError('P2002', 'slug')
+                    new WorkspaceSlugAlreadyExistsException()
                 )
                 .mockResolvedValueOnce(workspace);
 
@@ -186,7 +186,7 @@ describe('WorkspaceCreateUseCase', () => {
 
         it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
             workspaceService.createWorkspaceInTx.mockRejectedValue(
-                buildPrismaKnownRequestError('P2002', 'slug')
+                new WorkspaceSlugAlreadyExistsException()
             );
 
             await expect(

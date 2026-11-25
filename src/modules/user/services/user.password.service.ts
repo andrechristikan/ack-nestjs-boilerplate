@@ -4,7 +4,7 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
-import type { User } from '@generated/prisma-client/client';
+import type { ForgotPassword, User } from '@generated/prisma-client/client';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
@@ -355,22 +355,19 @@ export class UserPasswordService {
         return reset;
     }
 
+    /** Marks the reset used and returns its row; a reset used first rejects with UserTokenInvalidException. */
     async markResetUsedInTx(
         tx: IDatabaseTransactionClient,
         forgotPasswordId: string,
         usedAt: Date,
         userId: string
-    ): Promise<void> {
-        const isMarkedUsed =
-            await this.userForgotPasswordRepository.markUsedInTx(
-                tx,
-                forgotPasswordId,
-                usedAt,
-                userId
-            );
-        if (!isMarkedUsed) {
-            throw new UserTokenInvalidException();
-        }
+    ): Promise<ForgotPassword> {
+        return this.userForgotPasswordRepository.markUsedInTx(
+            tx,
+            forgotPasswordId,
+            usedAt,
+            userId
+        );
     }
 
     /** Writes the new password and marks the user's unused reset rows used; returns the updated user row. */

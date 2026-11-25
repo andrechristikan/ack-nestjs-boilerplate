@@ -20,22 +20,29 @@ export interface IProjectMemberRepository {
         userId: string,
         role: EnumProjectMemberRole,
         createdBy: string
+    ): Promise<void>;
+    createWithUserInTx(
+        tx: IDatabaseTransactionClient,
+        projectId: string,
+        userId: string,
+        role: EnumProjectMemberRole,
+        createdBy: string
     ): Promise<IProjectMember>;
     updateRoleInTx(
         tx: IDatabaseTransactionClient,
         targetMemberId: string,
         expectedRole: EnumProjectMemberRole,
         newRole: EnumProjectMemberRole
-    ): Promise<boolean>;
+    ): Promise<ProjectMember>;
     removeMemberInTx(
         tx: IDatabaseTransactionClient,
         targetMemberId: string,
         expectedRole: EnumProjectMemberRole
-    ): Promise<boolean>;
+    ): Promise<ProjectMember>;
     removeByIdInTx(
         tx: IDatabaseTransactionClient,
         memberId: string
-    ): Promise<boolean>;
+    ): Promise<ProjectMember>;
     removeByWorkspaceAndUserInTx(
         tx: IDatabaseTransactionClient,
         workspaceId: string,

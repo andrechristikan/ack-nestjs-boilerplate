@@ -1,12 +1,17 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IPaginationQueryCursorParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import type { ProjectMember } from '@generated/prisma-client/client';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
-import { UserRefSelect } from '@modules/user/constants/user.constant';
+import { ProjectMemberWithUserInclude } from '@modules/project/constants/project.constant';
+import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
+import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
+import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
 import type { IProjectMemberRepository } from '@modules/project/interfaces/project.member-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -14,7 +19,8 @@ import { Injectable } from '@nestjs/common';
 export class ProjectMemberRepository implements IProjectMemberRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly paginationService: PaginationService
+        private readonly paginationService: PaginationService,
+        private readonly databaseUtil: DatabaseUtil
     ) {}
 
     async findByIdAndProject(
@@ -41,11 +47,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
                     ...where,
                     projectId,
                 },
-                include: {
-                    user: {
-                        select: UserRefSelect,
-                    },
-                },
+                include: ProjectMemberWithUserInclude,
             }
         );
     }
@@ -56,20 +58,59 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
         userId: string,
         role: EnumProjectMemberRole,
         createdBy: string
-    ): Promise<IProjectMember> {
-        return tx.projectMember.create({
-            data: {
-                projectId,
-                userId,
-                role,
-                createdBy,
-            },
-            include: {
-                user: {
-                    select: UserRefSelect,
+    ): Promise<void> {
+        try {
+            await tx.projectMember.create({
+                data: {
+                    projectId,
+                    userId,
+                    role,
+                    createdBy,
                 },
-            },
-        });
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'userId',
+                        exception: new ProjectMemberAlreadyAssignedException(),
+                    },
+                ],
+                new ProjectMemberAlreadyAssignedException()
+            );
+        }
+    }
+
+    async createWithUserInTx(
+        tx: IDatabaseTransactionClient,
+        projectId: string,
+        userId: string,
+        role: EnumProjectMemberRole,
+        createdBy: string
+    ): Promise<IProjectMember> {
+        try {
+            return await tx.projectMember.create({
+                data: {
+                    projectId,
+                    userId,
+                    role,
+                    createdBy,
+                },
+                include: ProjectMemberWithUserInclude,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'userId',
+                        exception: new ProjectMemberAlreadyAssignedException(),
+                    },
+                ],
+                new AppUnknownException(error)
+            );
+        }
     }
 
     async updateRoleInTx(
@@ -77,38 +118,53 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
         targetMemberId: string,
         expectedRole: EnumProjectMemberRole,
         newRole: EnumProjectMemberRole
-    ): Promise<boolean> {
-        const { count } = await tx.projectMember.updateMany({
-            where: { id: targetMemberId, role: expectedRole },
-            data: {
-                role: newRole,
-            },
-        });
-
-        return count > 0;
+    ): Promise<ProjectMember> {
+        try {
+            return await tx.projectMember.update({
+                where: { id: targetMemberId, role: expectedRole },
+                data: {
+                    role: newRole,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new ProjectMemberPeerForbiddenException()
+            );
+        }
     }
 
     async removeMemberInTx(
         tx: IDatabaseTransactionClient,
         targetMemberId: string,
         expectedRole: EnumProjectMemberRole
-    ): Promise<boolean> {
-        const { count } = await tx.projectMember.deleteMany({
-            where: { id: targetMemberId, role: expectedRole },
-        });
-
-        return count > 0;
+    ): Promise<ProjectMember> {
+        try {
+            return await tx.projectMember.delete({
+                where: { id: targetMemberId, role: expectedRole },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new ProjectMemberPeerForbiddenException()
+            );
+        }
     }
 
     async removeByIdInTx(
         tx: IDatabaseTransactionClient,
         memberId: string
-    ): Promise<boolean> {
-        const { count } = await tx.projectMember.deleteMany({
-            where: { id: memberId },
-        });
-
-        return count > 0;
+    ): Promise<ProjectMember> {
+        try {
+            return await tx.projectMember.delete({
+                where: { id: memberId },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new ProjectMemberNotFoundException()
+            );
+        }
     }
 
     async removeByWorkspaceAndUserInTx(

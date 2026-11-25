@@ -8,9 +8,7 @@ import {
     EnumVerificationType,
 } from '@generated/prisma-client/client';
 import type { Verification } from '@generated/prisma-client/client';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
@@ -39,7 +37,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserVerifyMobileNumberUseCase', () => {
     const userMobileNumberService: MockProxy<UserMobileNumberService> =
@@ -100,6 +97,12 @@ describe('UserVerifyMobileNumberUseCase', () => {
         updatedAt: new Date('2026-03-01T00:00:00.000Z'),
         updatedBy: null,
     };
+    const consumed: Verification = {
+        ...verification,
+        reference: 'VRF-consumed',
+        to: '+6281200000000',
+        isUsed: true,
+    };
     const dto = { otp: '482913' };
 
     beforeEach(async () => {
@@ -114,7 +117,7 @@ describe('UserVerifyMobileNumberUseCase', () => {
         userVerificationService.getOneActiveByMobileOtp.mockResolvedValue(
             verification
         );
-        userVerificationService.markMobileUsedInTx.mockResolvedValue();
+        userVerificationService.markMobileUsedInTx.mockResolvedValue(consumed);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -131,7 +134,6 @@ describe('UserVerifyMobileNumberUseCase', () => {
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 { provide: DatabaseService, useValue: databaseService },
                 { provide: OutboxService, useValue: outboxService },
-                DatabaseUtil,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
@@ -142,7 +144,7 @@ describe('UserVerifyMobileNumberUseCase', () => {
     });
 
     describe('execute', () => {
-        it('marks the row used and the number verified on one tx, then adds the verifiedMobileNumber effect and the entry', async () => {
+        it('marks the row used and the number verified on one tx, then reads the reference and number from the consumed row for the verifiedMobileNumber effect and the entry', async () => {
             const result = await useCase.execute(
                 requestContext,
                 apiKeyContext,
@@ -166,8 +168,8 @@ describe('UserVerifyMobileNumberUseCase', () => {
                 {
                     userId: 'user-swift',
                     proceedBy: 'user-swift',
-                    reference: 'VRF-swift',
-                    mobileNumber: '+6281234567890',
+                    reference: 'VRF-consumed',
+                    mobileNumber: '+6281200000000',
                 }
             );
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
@@ -287,46 +289,6 @@ describe('UserVerifyMobileNumberUseCase', () => {
                 userMobileNumberService.markVerifiedInTx
             ).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-        });
-
-        it('maps a write conflict to UserTokenInvalidException', async () => {
-            const conflict = buildPrismaKnownRequestError('P2034');
-            userVerificationService.markMobileUsedInTx.mockRejectedValue(
-                conflict
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'mobile-swift',
-                    dto
-                )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.tokenInvalid,
-            });
-        });
-
-        it('wraps an unknown error in AppUnknownException', async () => {
-            const failure = new Error('boom');
-            userVerificationService.markMobileUsedInTx.mockRejectedValue(
-                failure
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    'mobile-swift',
-                    dto
-                )
-            ).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-            });
         });
     });
 });

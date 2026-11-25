@@ -41,7 +41,7 @@ describe('NotificationPushProcessSendUseCase', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
     let useCase: NotificationPushProcessSendUseCase;
-    let updatedPatches: object[];
+    let replacedPayloads: object[];
 
     const data: INotificationPushSendPayload = {
         kind: EnumNotificationKind.workspaceInvite,
@@ -69,9 +69,9 @@ describe('NotificationPushProcessSendUseCase', () => {
 
     beforeEach(async () => {
         messageService.setMessage.mockImplementation((path: string) => path);
-        updatedPatches = [];
-        outboxService.updateData.mockImplementation(async (_id, patch) => {
-            updatedPatches.push(structuredClone(patch));
+        replacedPayloads = [];
+        outboxService.replaceData.mockImplementation(async (_id, replaced) => {
+            replacedPayloads.push(structuredClone(replaced));
         });
         firebaseService.isInitialized.mockReturnValue(true);
         databaseService.withTransaction.mockImplementation(async fn => fn(tx));
@@ -186,8 +186,8 @@ describe('NotificationPushProcessSendUseCase', () => {
                     txCalls.push('cleanup');
                 }
             );
-            outboxService.updateDataInTx.mockImplementation(async () => {
-                txCalls.push('updateData');
+            outboxService.replaceDataInTx.mockImplementation(async () => {
+                txCalls.push('replaceData');
             });
 
             const result = await useCase.execute('outbox-id', data);
@@ -235,10 +235,11 @@ describe('NotificationPushProcessSendUseCase', () => {
                 deviceService.cleanupNotificationTokensInTx
             ).toHaveBeenCalledWith(tx, 'user-id', ['token-2']);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
-            expect(outboxService.updateDataInTx).toHaveBeenCalledWith(
+            expect(outboxService.replaceDataInTx).toHaveBeenCalledWith(
                 tx,
                 'outbox-id',
                 {
+                    ...data,
                     completedSteps: [
                         EnumNotificationStep.updateProcessAt,
                         EnumNotificationStep.sendMulticast,
@@ -248,9 +249,10 @@ describe('NotificationPushProcessSendUseCase', () => {
                     encryptedFailureTokens: ['cipher(token-2)'],
                 }
             );
-            expect(txCalls).toEqual(['stampSent', 'updateData', 'cleanup']);
-            expect(updatedPatches).toEqual([
+            expect(txCalls).toEqual(['stampSent', 'replaceData', 'cleanup']);
+            expect(replacedPayloads).toEqual([
                 {
+                    ...data,
                     completedSteps: [
                         EnumNotificationStep.updateProcessAt,
                         EnumNotificationStep.sendMulticast,
@@ -262,7 +264,7 @@ describe('NotificationPushProcessSendUseCase', () => {
             expect(result).toEqual({ message: 'notification.queue.push.send' });
         });
 
-        it('stamps sent alone, then patches the step state and clears the dead tokens together', async () => {
+        it('stamps sent alone, then replaces the step state and clears the dead tokens together', async () => {
             notificationPushDeliveryService.sendMulticast.mockResolvedValue({
                 encryptedFailureTokens: ['cipher(token-2)'],
                 encryptedPendingTokens: [],
@@ -282,8 +284,8 @@ describe('NotificationPushProcessSendUseCase', () => {
                     return stamp.promise;
                 }
             );
-            outboxService.updateDataInTx.mockImplementation(() => {
-                started.push('updateData');
+            outboxService.replaceDataInTx.mockImplementation(() => {
+                started.push('replaceData');
 
                 return patch.promise;
             });
@@ -303,7 +305,7 @@ describe('NotificationPushProcessSendUseCase', () => {
             stamp.resolve();
             await setImmediate();
 
-            expect(started).toEqual(['stampSent', 'updateData', 'cleanup']);
+            expect(started).toEqual(['stampSent', 'replaceData', 'cleanup']);
 
             patch.resolve();
             cleanup.resolve();
@@ -326,8 +328,9 @@ describe('NotificationPushProcessSendUseCase', () => {
                 rawError
             );
 
-            expect(updatedPatches).toEqual([
+            expect(replacedPayloads).toEqual([
                 {
+                    ...data,
                     completedSteps: [
                         EnumNotificationStep.updateProcessAt,
                         EnumNotificationStep.sendMulticast,
@@ -390,11 +393,15 @@ describe('NotificationPushProcessSendUseCase', () => {
                 notificationPushDeliveryService.toStepSummary
             ).toHaveBeenCalledWith([failure]);
 
-            expect(outboxService.updateData).toHaveBeenCalledWith('outbox-id', {
-                completedSteps: [EnumNotificationStep.updateProcessAt],
-                encryptedPendingTokens: ['cipher(token-1)'],
-                encryptedFailureTokens: [],
-            });
+            expect(outboxService.replaceData).toHaveBeenCalledWith(
+                'outbox-id',
+                {
+                    ...data,
+                    completedSteps: [EnumNotificationStep.updateProcessAt],
+                    encryptedPendingTokens: ['cipher(token-1)'],
+                    encryptedFailureTokens: [],
+                }
+            );
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
@@ -443,8 +450,8 @@ describe('NotificationPushProcessSendUseCase', () => {
                 notificationPushDeliveryService.sendMulticast
             ).not.toHaveBeenCalled();
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(outboxService.updateData).not.toHaveBeenCalled();
-            expect(outboxService.updateDataInTx).not.toHaveBeenCalled();
+            expect(outboxService.replaceData).not.toHaveBeenCalled();
+            expect(outboxService.replaceDataInTx).not.toHaveBeenCalled();
         });
 
         it('stamps the sent time with no failed tokens when the send is recorded and none were kept', async () => {
@@ -487,7 +494,7 @@ describe('NotificationPushProcessSendUseCase', () => {
             expect(
                 notificationPushDeliveryService.stampProcessed
             ).not.toHaveBeenCalled();
-            expect(outboxService.updateData).not.toHaveBeenCalled();
+            expect(outboxService.replaceData).not.toHaveBeenCalled();
             expect(result).toEqual({
                 message: 'notification.queue.push.error.firebaseNotInitialized',
             });

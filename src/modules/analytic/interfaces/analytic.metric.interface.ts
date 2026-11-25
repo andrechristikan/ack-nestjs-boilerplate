@@ -207,3 +207,7 @@ export type IAnalyticMfaAdoptionCount = {
     enabled: number;
     total: number;
 };
+
+export type IAnalyticBucketsSnapshotMeta = {
+    buckets: IAnalyticCountBucket[];
+};

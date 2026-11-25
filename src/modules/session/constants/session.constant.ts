@@ -26,12 +26,7 @@ export const SessionListSelect = {
 } satisfies Prisma.SessionSelect;
 
 /** @public */
-export const SessionUserRefSelect = {
+export const SessionRefSelect = {
     id: true,
     userId: true,
-} satisfies Prisma.SessionSelect;
-
-/** @public */
-export const SessionLoginSelect = {
-    jtiDigest: true,
 } satisfies Prisma.SessionSelect;

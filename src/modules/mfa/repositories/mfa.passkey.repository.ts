@@ -1,10 +1,14 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { MfaPasskey } from '@generated/prisma-client/client';
 import {
-    MfaPasskeyCredentialSelect,
+    MfaPasskeyRefSelect,
     MfaPasskeySelect,
 } from '@modules/mfa/constants/mfa.constant';
+import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
+import { MfaPasskeyAlreadyRegisteredException } from '@modules/mfa/exceptions/mfa.passkey-already-registered.exception';
+import { MfaPasskeyNotFoundException } from '@modules/mfa/exceptions/mfa.passkey-not-found.exception';
 import type {
     IMfaPasskey,
     IMfaPasskeyCreate,
@@ -15,7 +19,10 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class MfaPasskeyRepository implements IMfaPasskeyRepository {
-    constructor(private readonly databaseService: DatabaseService) {}
+    constructor(
+        private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil
+    ) {}
 
     async findManyByUserId(userId: string): Promise<IMfaPasskey[]> {
         return this.databaseService.client.mfaPasskey.findMany({
@@ -25,12 +32,18 @@ export class MfaPasskeyRepository implements IMfaPasskeyRepository {
         });
     }
 
+    async findManyForCheckByUserId(userId: string): Promise<MfaPasskey[]> {
+        return this.databaseService.client.mfaPasskey.findMany({
+            where: { userId },
+        });
+    }
+
     async findCredentialsByUserId(
         userId: string
     ): Promise<IMfaPasskeyCredential[]> {
         return this.databaseService.client.mfaPasskey.findMany({
             where: { userId },
-            select: MfaPasskeyCredentialSelect,
+            select: MfaPasskeyRefSelect,
         });
     }
 
@@ -69,10 +82,23 @@ export class MfaPasskeyRepository implements IMfaPasskeyRepository {
         tx: IDatabaseTransactionClient,
         data: IMfaPasskeyCreate
     ): Promise<IMfaPasskey> {
-        return tx.mfaPasskey.create({
-            data: { ...data, lastUsedAt: null, createdBy: data.userId },
-            select: MfaPasskeySelect,
-        });
+        try {
+            return await tx.mfaPasskey.create({
+                data: { ...data, lastUsedAt: null, createdBy: data.userId },
+                select: MfaPasskeySelect,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'credentialId',
+                        exception: new MfaPasskeyAlreadyRegisteredException(),
+                    },
+                ],
+                new MfaPasskeyAlreadyRegisteredException()
+            );
+        }
     }
 
     async markUsedInTx(
@@ -82,12 +108,19 @@ export class MfaPasskeyRepository implements IMfaPasskeyRepository {
         now: Date,
         updatedBy: string
     ): Promise<boolean> {
-        const { count } = await tx.mfaPasskey.updateMany({
-            where: { id: passkeyId },
-            data: { counter, lastUsedAt: now, updatedBy },
-        });
+        try {
+            const { count } = await tx.mfaPasskey.updateMany({
+                where: { id: passkeyId },
+                data: { counter, lastUsedAt: now, updatedBy },
+            });
 
-        return count > 0;
+            return count > 0;
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new MfaInvalidException()
+            );
+        }
     }
 
     async updateNameInTx(
@@ -109,11 +142,18 @@ export class MfaPasskeyRepository implements IMfaPasskeyRepository {
         userId: string,
         passkeyId: string
     ): Promise<boolean> {
-        const { count } = await tx.mfaPasskey.deleteMany({
-            where: { id: passkeyId, userId },
-        });
+        try {
+            const { count } = await tx.mfaPasskey.deleteMany({
+                where: { id: passkeyId, userId },
+            });
 
-        return count > 0;
+            return count > 0;
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new MfaPasskeyNotFoundException()
+            );
+        }
     }
 
     async deleteByUserInTx(

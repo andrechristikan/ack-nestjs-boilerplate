@@ -10,7 +10,7 @@ import {
     EnumMfaChallengePurpose,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
-import type { Mfa } from '@generated/prisma-client/client';
+import type { Mfa, MfaPasskey } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
@@ -26,7 +26,8 @@ import type {
     IMfaBackupCodes,
     IMfaCheck,
     IMfaCheckResult,
-    IMfaPasskeyCredential,
+    IMfaCreate,
+    IMfaFactorState,
     IMfaReauthenticationInput,
     IMfaReauthenticationResult,
     IMfaStatus,
@@ -189,15 +190,18 @@ export class MfaService {
         userId: string,
         method: EnumMfaMethod,
         { code, backupCode, passkeyResponse }: IMfaVerifyInput,
-        webAuthnChallenge: string | null
+        webAuthnChallenge: string | null,
+        state: IMfaFactorState
     ): Promise<IMfaCheckResult> {
-        // Sequential by design: a credential proof, awaited alone
-        const mfa = await this.mfaRepository.findOneByUserId(userId);
-        this.assertNotLocked(mfa);
+        this.assertNotLocked(state.mfa);
 
         let checked: IMfaCheck | null;
         if (method === EnumMfaMethod.totp) {
-            const totpStep = await this.mfaTotpService.checkCode(userId, code);
+            const totpStep = this.mfaTotpService.checkCode(
+                state.totp,
+                userId,
+                code
+            );
             checked =
                 totpStep === null
                     ? null
@@ -209,7 +213,7 @@ export class MfaService {
                       };
         } else if (method === EnumMfaMethod.passkey) {
             const passkey = await this.mfaPasskeyService.checkAssertion(
-                userId,
+                state.passkeys,
                 passkeyResponse,
                 webAuthnChallenge
             );
@@ -223,7 +227,7 @@ export class MfaService {
                           passkey,
                       };
         } else {
-            checked = await this.checkBackupCode(mfa, backupCode);
+            checked = await this.checkBackupCode(state.mfa, backupCode);
         }
 
         if (checked === null) {
@@ -257,18 +261,14 @@ export class MfaService {
         }
     }
 
-    async isEnabled(userId: string): Promise<boolean> {
-        const [hasTotp, hasPasskey] = await Promise.all([
-            this.mfaTotpService.existsConfirmed(userId),
-            this.mfaPasskeyService.existsByUser(userId),
-        ]);
+    async isEnabled({ totp, passkeys }: IMfaFactorState): Promise<boolean> {
         const [isTotpEffective, isPasskeyEffective] = await Promise.all([
             this.isFactorEffective(
-                hasTotp,
+                Boolean(totp?.secret),
                 EnumFeatureFlagMetadataKey.totpAllowed
             ),
             this.isFactorEffective(
-                hasPasskey,
+                passkeys.length > 0,
                 EnumFeatureFlagMetadataKey.passkeyAllowed
             ),
         ]);
@@ -276,30 +276,23 @@ export class MfaService {
         return isTotpEffective || isPasskeyEffective;
     }
 
-    async assertEnabled(userId: string): Promise<void> {
-        const isEnabled = await this.isEnabled(userId);
+    async assertEnabled(state: IMfaFactorState): Promise<void> {
+        const isEnabled = await this.isEnabled(state);
         if (!isEnabled) {
             throw new MfaNotEnabledException();
         }
     }
 
     /** Answers the methods a login can finish with: totp and passkey for the factors the mfa flag allows, backupCode while one is effective and codes remain; empty when MFA is off. */
-    async getLoginMethods(
-        userId: string,
-        passkeyCredentials: IMfaPasskeyCredential[]
-    ): Promise<EnumMfaMethod[]> {
-        const [mfa, hasTotp] = await Promise.all([
-            this.mfaRepository.findOneByUserId(userId),
-            this.mfaTotpService.existsConfirmed(userId),
-        ]);
-        const hasPasskey = passkeyCredentials.length > 0;
+    async getLoginMethods(state: IMfaFactorState): Promise<EnumMfaMethod[]> {
+        const { mfa, totp, passkeys } = state;
         const [isTotpEffective, isPasskeyEffective] = await Promise.all([
             this.isFactorEffective(
-                hasTotp,
+                Boolean(totp?.secret),
                 EnumFeatureFlagMetadataKey.totpAllowed
             ),
             this.isFactorEffective(
-                hasPasskey,
+                passkeys.length > 0,
                 EnumFeatureFlagMetadataKey.passkeyAllowed
             ),
         ]);
@@ -319,6 +312,16 @@ export class MfaService {
         }
 
         return methods;
+    }
+
+    async getFactorState(userId: string): Promise<IMfaFactorState> {
+        const [mfa, totp, passkeys] = await Promise.all([
+            this.mfaRepository.findOneByUserId(userId),
+            this.mfaTotpService.getOneByUser(userId),
+            this.mfaPasskeyService.getManyForCheckByUser(userId),
+        ]);
+
+        return { mfa, totp, passkeys };
     }
 
     async getStatus(userId: string): Promise<IMfaStatus> {
@@ -346,12 +349,11 @@ export class MfaService {
         };
     }
 
-    async createInTx(
+    async createManyInTx(
         tx: IDatabaseTransactionClient,
-        userId: string,
-        createdBy: string
-    ): Promise<Mfa> {
-        return this.mfaRepository.createInTx(tx, userId, createdBy);
+        entries: IMfaCreate[]
+    ): Promise<void> {
+        await this.mfaRepository.createManyInTx(tx, entries);
     }
 
     async resetAttemptInTx(
@@ -453,7 +455,8 @@ export class MfaService {
     async check(
         userId: string,
         input: IMfaVerifyInput,
-        webAuthnChallenge: string | null
+        webAuthnChallenge: string | null,
+        state: IMfaFactorState
     ): Promise<IMfaCheckResult> {
         if (input.method === null) {
             throw new MfaMethodRequiredException();
@@ -462,7 +465,7 @@ export class MfaService {
         // Sequential by design: a credential proof, awaited alone
         let isAllowed: boolean;
         if (input.method === EnumMfaMethod.backupCode) {
-            isAllowed = await this.isEnabled(userId);
+            isAllowed = await this.isEnabled(state);
         } else {
             const metadataKey = this.getMetadataKey(input.method);
             isAllowed = await this.featureFlagService.isMetadataAllowed(
@@ -474,7 +477,13 @@ export class MfaService {
             throw new MfaMethodUnavailableException();
         }
 
-        return this.checkProof(userId, input.method, input, webAuthnChallenge);
+        return this.checkProof(
+            userId,
+            input.method,
+            input,
+            webAuthnChallenge,
+            state
+        );
     }
 
     /** Checks the MFA part of a re-authentication and writes nothing: both passkey fields present make one passkey proof against the reauthentication challenge the whole proof, answering its token; otherwise a code or backup code is checked when MFA is on, except for mfaTotpEnable after a password check. A mismatch answers the failure; a missing method, an unavailable method, and a lock throw as check does. */
@@ -488,7 +497,8 @@ export class MfaService {
             passkeyChallengeToken,
             passkeyResponse,
         }: IMfaReauthenticationInput,
-        isPasswordChecked: boolean
+        isPasswordChecked: boolean,
+        state: IMfaFactorState
     ): Promise<IMfaReauthenticationResult> {
         if (passkeyChallengeToken !== null && passkeyResponse !== null) {
             const webAuthnChallenge =
@@ -505,7 +515,8 @@ export class MfaService {
                     backupCode: null,
                     passkeyResponse,
                 },
-                webAuthnChallenge
+                webAuthnChallenge,
+                state
             );
             if (failure !== null) {
                 return {
@@ -524,7 +535,7 @@ export class MfaService {
             };
         }
 
-        const isEnabled = await this.isEnabled(userId);
+        const isEnabled = await this.isEnabled(state);
         const requiresMfa =
             isEnabled &&
             (action !== EnumUserReauthenticationAction.mfaTotpEnable ||
@@ -541,7 +552,8 @@ export class MfaService {
         const { check, failure } = await this.check(
             userId,
             { method, code, backupCode, passkeyResponse: null },
-            null
+            null,
+            state
         );
 
         return { isEnabled, check, failure, passkeyChallengeToken: null };
@@ -580,12 +592,15 @@ export class MfaService {
         }
     }
 
-    /** Checks a passkey assertion for the passkey sign-in without reading the mfa flag; the lock and the failure answer are those of check. */
+    /** Checks a passkey assertion for the passkey sign-in against the given passkey without reading the mfa flag, reading the Mfa row once; the lock and the failure answer are those of check. */
     async checkPasskeyLogin(
         userId: string,
+        passkey: MfaPasskey,
         passkeyResponse: AuthenticationResponseJSON,
         webAuthnChallenge: string | null
     ): Promise<IMfaCheckResult> {
+        const mfa = await this.mfaRepository.findOneByUserId(userId);
+
         return this.checkProof(
             userId,
             EnumMfaMethod.passkey,
@@ -595,7 +610,8 @@ export class MfaService {
                 backupCode: null,
                 passkeyResponse,
             },
-            webAuthnChallenge
+            webAuthnChallenge,
+            { mfa, totp: null, passkeys: [passkey] }
         );
     }
 

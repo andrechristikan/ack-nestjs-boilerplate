@@ -20,9 +20,6 @@ import {
     EnumDevicePlatform,
     EnumUserReauthenticationAction,
 } from '@generated/prisma-client/client';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
-import { Prisma } from '@generated/prisma-client/client';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -35,13 +32,13 @@ import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queu
 import { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
 import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
-import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
 import type { IDeviceOwnership } from '@modules/device/interfaces/device.interface';
 import { DeviceService } from '@modules/device/services/device.service';
 import { DeviceUtil } from '@modules/device/utils/device.util';
 import { DeviceRemoveUseCase } from '@modules/device/use-cases/device.remove.use-case';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserPasswordNotMatchException } from '@modules/user/exceptions/user.password-not-match.exception';
+import { buildMfaFactorState } from '@test/unit/helpers/test.unit.mfa.helper';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import {
@@ -78,6 +75,7 @@ describe('DeviceRemoveUseCase', () => {
     const user = buildUser('user-1', 'actor@example.com');
     const userContext = buildUserContext(user);
     const authContext = buildAuthJwtAccessContext(user.id);
+    const factorState = buildMfaFactorState('user-1');
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-01-05T00:00:00.000Z');
     const entryEffect: IActivityLogCreateManyEffect = {
@@ -155,13 +153,14 @@ describe('DeviceRemoveUseCase', () => {
         mfaService.checkReauthentication.mockResolvedValue(
             TestUnitReauthenticationMfaOff
         );
+        mfaService.getFactorState.mockResolvedValue(factorState);
         userAuthService.getReauthenticationVerificationId.mockResolvedValue(
             null
         );
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         sessionService.revokeByDeviceOwnershipInTx.mockResolvedValue([
-            { id: 'session-1' },
-            { id: 'session-2' },
+            { id: 'session-1', userId: 'user-1' },
+            { id: 'session-2', userId: 'user-1' },
         ]);
         deviceService.removeOwnershipInTx.mockResolvedValue(deviceOwnership);
 
@@ -312,7 +311,7 @@ describe('DeviceRemoveUseCase', () => {
                 async () => {
                     calls.push('revoke');
 
-                    return [{ id: 'session-1' }];
+                    return [{ id: 'session-1', userId: 'user-1' }];
                 }
             );
             deviceService.removeOwnershipInTx.mockImplementation(async () => {
@@ -351,7 +350,20 @@ describe('DeviceRemoveUseCase', () => {
             });
             expect(
                 userAuthService.completeReauthenticationInTx
-            ).toHaveBeenCalledWith(tx, authContext, true, null);
+            ).toHaveBeenCalledWith(tx, authContext, true, null, false);
+            expect(mfaService.getFactorState).toHaveBeenCalledTimes(1);
+            expect(mfaService.getFactorState).toHaveBeenCalledWith('user-1');
+            expect(mfaService.checkReauthentication).toHaveBeenCalledWith(
+                'user-1',
+                expect.objectContaining({
+                    action: EnumUserReauthenticationAction.deviceRemove,
+                }),
+                true,
+                factorState
+            );
+            expect(mfaService.getFactorState).toHaveBeenCalledBefore(
+                mfaService.checkReauthentication
+            );
             expect(
                 mfaService.completeReauthenticationInTx
             ).toHaveBeenCalledWith(
@@ -497,32 +509,7 @@ describe('DeviceRemoveUseCase', () => {
             expect(deviceService.removeOwnershipInTx).not.toHaveBeenCalled();
         });
 
-        it('answers DeviceNotFoundException on a write conflict', async () => {
-            const conflict = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                }
-            );
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    'device-ownership-1',
-                    dto
-                )
-            ).rejects.toMatchObject({
-                module: 'device',
-                statusCode: EnumDeviceStatusCodeError.notFound,
-            });
-        });
-
-        it('wraps an unknown error of the transaction in AppUnknownException', async () => {
+        it('rethrows any other failure of the transaction untouched', async () => {
             const cause = new Error('boom');
             databaseService.withTransaction.mockRejectedValue(cause);
 
@@ -535,10 +522,7 @@ describe('DeviceRemoveUseCase', () => {
                     'device-ownership-1',
                     dto
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

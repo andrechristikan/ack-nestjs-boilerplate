@@ -51,7 +51,18 @@ describe('WorkspacePreviewInviteUseCase', () => {
     const previewInvite: IWorkspaceInvitePreview = {
         ...invite,
         workspace,
-        invitedBy: { name: 'Jane Doe', username: 'jane', deletedAt: null },
+        invitedBy: {
+            id: 'user-1',
+            name: 'Jane Doe',
+            username: 'jane',
+            photo: null,
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            createdBy: null,
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+            updatedBy: null,
+            deletedAt: null,
+            deletedBy: null,
+        },
     };
     let useCase: WorkspacePreviewInviteUseCase;
 

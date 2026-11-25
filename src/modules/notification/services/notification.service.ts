@@ -24,6 +24,7 @@ import { NotificationKindContract } from '@modules/notification/contracts/notifi
 import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { NotificationSettingInvalidException } from '@modules/notification/exceptions/notification.setting-invalid.exception';
 import type {
+    INotificationCreate,
     INotificationCreateEntry,
     INotificationCreateRecipient,
     INotificationRecipientRecord,
@@ -180,13 +181,14 @@ export class NotificationService {
         return { userId, ...snapshot, encryptedMobileNumber: null, channels };
     }
 
-    /** Creates the notification on the caller's transaction and adds its channel rows: email when the channels hold it, push when they hold it and the recipient has tokens, sms when they hold it and the recipient has a number. */
+    /** Creates the notification on the caller's transaction, with no existence read when `isFresh` and skipping a row already created when not, and adds its channel rows: email when the channels hold it, push when they hold it and the recipient has tokens, sms when they hold it and the recipient has a number. */
     async createInTx(
         tx: IDatabaseTransactionClient,
         notificationId: string,
         kind: EnumNotificationKind,
         context: INotificationSealedData,
-        recipient: INotificationRecipientRecord
+        recipient: INotificationRecipientRecord,
+        isFresh: boolean
     ): Promise<void> {
         const {
             userId,
@@ -200,13 +202,22 @@ export class NotificationService {
             context,
             username
         );
-        await this.notificationRepository.createInTx(tx, kind, {
+        const payload: INotificationCreate = {
             id: notificationId,
             userId,
             metadata,
             createdBy: context.proceedBy,
             channels,
-        });
+        };
+        if (isFresh) {
+            await this.notificationRepository.createInTx(tx, kind, payload);
+        } else {
+            await this.notificationRepository.createIfAbsentInTx(
+                tx,
+                kind,
+                payload
+            );
+        }
 
         const effects: IOutboxEffect[] = [];
         if (channels.includes(EnumNotificationChannel.email)) {

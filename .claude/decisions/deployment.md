@@ -7,7 +7,7 @@
 Rule: `workflows.md`.
 
 - An SSH workflow: a stored private key and registry password, and an open SSH port.
-- An ECS workflow or task-definition example: every container runs on one instance, and an orchestrator is the deployment's.
+- An ECS workflow or task-definition example: an orchestrator is the deployment's.
 
 ### A release applies the schema with `prisma db push` before it replaces the application
 
@@ -68,7 +68,7 @@ Rule: `docker.md`, Local; `docker-production.md`.
 - Seeding a path from `.env.example`: a deployed Vault would serve placeholder values as secrets.
 - A default environment on the pull: a run with no argument would render another environment's secrets on the instance.
 - A `.production` segment in a `ci/` file name: the folder already says it.
-- Vault on an instance of its own: pull and push would need a network address, TLS in front of Vault, and AppRole credentials stored on the application instance.
+- Vault as a network service every application host reaches: pull and push would need its network address, a TLS listener or a TLS proxy in front, and AppRole credentials stored on each application host, and the boilerplate would own the certificates, the unsealing (auto-unseal, the `aws` auth method), and the storage backups (integrated storage with snapshots) each deployment runs its own way; pull and push stay helpers on the Vault host.
 
 ### The production application binds to loopback and TLS ends in front of it
 
@@ -93,7 +93,7 @@ Rule: `docker.md`, Credentials and variables.
 
 Rule: `docker-production.md`.
 
-- An internal certificate authority for MongoDB, Redis, and the JWKS server: the traffic never leaves the bridge network of one host.
+- An internal certificate authority for MongoDB, Redis, and the JWKS server: the compose network stays on one host, and a connection between hosts takes TLS through its URL, its certificates the deployment's.
 
 ### The encryption roots have no rotation path
 
@@ -122,8 +122,14 @@ Rule: `docker.md`, Local.
 
 - The production hardening on the local compose file too: the local stack stays minimal so that it runs smoothly for any task.
 
+### The application runs as several interchangeable instances
+
+Rule: `discipline.md`, Hard rules; `AGENTS.md`, Stack.
+
+- One instance assumed: process memory or local disk would hold state a second instance misses, and scaling out would need a code change.
+
 ### Vault keeps its unseal key, root token, and AppRole credentials on the host disk
 
 Rule: `docker-production.md`.
 
-- KMS auto-unseal: every container runs on one instance only the operator reaches, and securing that host belongs to the deployment.
+- KMS auto-unseal: securing the hosts that run Vault belongs to the deployment.

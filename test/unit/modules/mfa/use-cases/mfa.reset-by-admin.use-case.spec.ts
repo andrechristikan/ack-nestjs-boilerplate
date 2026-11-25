@@ -94,7 +94,7 @@ describe('MfaResetByAdminUseCase', () => {
         priority: EnumQueuePriority.high,
         idempotencyKey: null,
     };
-    const revoked: ISessionRef[] = [{ id: 'session-one' }];
+    const revoked: ISessionRef[] = [{ id: 'session-one', userId: 'user-1' }];
     const tx = {} as IDatabaseTransactionClient;
     const now = new Date('2026-03-05T00:00:00.000Z');
 

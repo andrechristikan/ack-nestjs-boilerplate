@@ -11,7 +11,6 @@ import {
     EnumActivityLogAction,
     EnumPasswordHistoryType,
     EnumRoleType,
-    EnumTermPolicyType,
     EnumUserSignUpFrom,
     EnumUserSignUpWith,
     EnumVerificationType,
@@ -39,6 +38,7 @@ import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not
 import { UserService } from '@modules/user/services/user.service';
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
+import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
 import type {
     IUser,
@@ -54,7 +54,6 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
-import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { PasswordHistoryService } from '@modules/password-history/services/password-history.service';
@@ -72,7 +71,6 @@ import {
     buildUser,
     buildUserContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserCreateByAdminUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -89,8 +87,6 @@ describe('UserCreateByAdminUseCase', () => {
     const outboxService: MockProxy<OutboxService> = mock<OutboxService>();
     const userRegistrationService: MockProxy<UserRegistrationService> =
         mock<UserRegistrationService>();
-    const termPolicyAcceptanceService: MockProxy<TermPolicyAcceptanceService> =
-        mock<TermPolicyAcceptanceService>();
     const mfaService: MockProxy<MfaService> = mock<MfaService>();
     const passwordHistoryService: MockProxy<PasswordHistoryService> =
         mock<PasswordHistoryService>();
@@ -125,7 +121,6 @@ describe('UserCreateByAdminUseCase', () => {
         idempotencyKey: 'welcomeByAdmin-user-bramble',
     };
     const baseUser: IUser = buildUser('user-bramble', 'bramble@example.com');
-    const committedUser: IUser = baseUser;
     const country: Country = {
         id: 'country-bramble',
         name: 'Indonesia',
@@ -162,7 +157,7 @@ describe('UserCreateByAdminUseCase', () => {
         signUpWith: EnumUserSignUpWith.credential,
         isVerified: false,
         verifiedAt: null,
-        acceptedTermPolicyTypes: [EnumTermPolicyType.termsOfService],
+        acceptedTermPolicyTypes: [],
         password,
         passwordHistoryType: EnumPasswordHistoryType.signUp,
         verification: {
@@ -176,7 +171,9 @@ describe('UserCreateByAdminUseCase', () => {
             verifiedAt: null,
             isUsed: false,
         },
+        login: null,
         workspaceContext: personalContext,
+        createdAt: new Date('2026-03-01T00:00:00.000Z'),
         createdBy: 'user-bramble',
     };
     const stageInput = {
@@ -213,7 +210,6 @@ describe('UserCreateByAdminUseCase', () => {
         ]);
         notificationQueue.notify.mockReturnValue(welcomeEffect);
         databaseService.withTransaction.mockImplementation(async fn => fn(tx));
-        userService.createManyInTx.mockResolvedValue([committedUser]);
         roleService.getByName.mockResolvedValue(role);
         countryService.getOne.mockResolvedValue(country);
 
@@ -229,10 +225,6 @@ describe('UserCreateByAdminUseCase', () => {
                 {
                     provide: UserRegistrationService,
                     useValue: userRegistrationService,
-                },
-                {
-                    provide: TermPolicyAcceptanceService,
-                    useValue: termPolicyAcceptanceService,
                 },
                 { provide: MfaService, useValue: mfaService },
                 {
@@ -313,7 +305,7 @@ describe('UserCreateByAdminUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('commits once without the policy assertion, and adds the entries and the welcome effect with the generated password on the same tx', async () => {
+        it('commits once, reads and records no term policy, and adds the entries and the welcome effect with the generated password on the same tx', async () => {
             await expect(
                 useCase.execute(
                     requestContext,
@@ -361,7 +353,7 @@ describe('UserCreateByAdminUseCase', () => {
             );
             expect(
                 userRegistrationService.buildCreateByAdminStages
-            ).toHaveBeenCalledWith(input, committedUser);
+            ).toHaveBeenCalledWith(input);
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
@@ -511,11 +503,6 @@ describe('UserCreateByAdminUseCase', () => {
         const requestContext = buildRequestContext();
         const apiKeyContext = buildApiKeyContext();
         const authContext = buildAuthJwtAccessContext('admin-bramble');
-        const acceptanceEntry = {
-            userId: 'user-bramble',
-            types: [EnumTermPolicyType.termsOfService],
-            createdBy: 'user-bramble',
-        };
         const owned = {
             userId: 'user-bramble',
             workspaceId: 'workspace-bramble',
@@ -523,17 +510,18 @@ describe('UserCreateByAdminUseCase', () => {
             slug: 'w-bramble',
         };
 
-        it('creates the users, their owned workspaces, and the term-policy acceptances on one tx, in that order', async () => {
-            const users = await useCase['createAdminUsers'](
-                requestContext,
-                apiKeyContext,
-                authContext,
-                [input],
-                [welcomeEffect],
-                7000
-            );
+        it('creates the users and their owned workspaces on one tx, in that order', async () => {
+            await expect(
+                useCase['createAdminUsers'](
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    [input],
+                    [welcomeEffect],
+                    7000
+                )
+            ).resolves.toBeUndefined();
 
-            expect(users).toEqual([committedUser]);
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
             expect(userService.createManyInTx).toHaveBeenCalledWith(tx, [
                 input,
@@ -541,27 +529,19 @@ describe('UserCreateByAdminUseCase', () => {
             expect(
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenCalledWith(tx, [owned]);
-            expect(
-                termPolicyAcceptanceService.acceptPublishedManyInTx
-            ).toHaveBeenCalledWith(tx, [acceptanceEntry]);
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 workspaceService.createOwnedForUsersInTx
             );
             expect(
                 workspaceService.createOwnedForUsersInTx
-            ).toHaveBeenCalledBefore(
-                termPolicyAcceptanceService.acceptPublishedManyInTx
-            );
+            ).toHaveBeenCalledBefore(outboxService.addManyInTx);
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 activityEntry,
                 welcomeEffect,
             ]);
-            expect(
-                termPolicyAcceptanceService.acceptPublishedManyInTx
-            ).toHaveBeenCalledBefore(outboxService.addManyInTx);
         });
 
-        it("writes each user's Mfa row, password history, and notification defaults on tx after the users", async () => {
+        it('writes the Mfa rows, password history, and notification defaults on tx after the users', async () => {
             await useCase['createAdminUsers'](
                 requestContext,
                 apiKeyContext,
@@ -571,11 +551,8 @@ describe('UserCreateByAdminUseCase', () => {
                 7000
             );
 
-            expect(mfaService.createInTx).toHaveBeenCalledWith(
-                tx,
-                'user-bramble',
-                'user-bramble'
-            );
+            expect(mfaService.createManyInTx).toHaveBeenCalledTimes(1);
+            expect(mfaService.createManyInTx).toHaveBeenCalledWith(tx, [input]);
             expect(passwordHistoryService.createManyInTx).toHaveBeenCalledWith(
                 tx,
                 [
@@ -593,7 +570,7 @@ describe('UserCreateByAdminUseCase', () => {
                 notificationService.createDefaultsManyInTx
             ).toHaveBeenCalledWith(tx, ['user-bramble'], 'admin-bramble');
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
-                mfaService.createInTx
+                mfaService.createManyInTx
             );
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 passwordHistoryService.createManyInTx
@@ -601,7 +578,7 @@ describe('UserCreateByAdminUseCase', () => {
             expect(userService.createManyInTx).toHaveBeenCalledBefore(
                 notificationService.createDefaultsManyInTx
             );
-            expect(mfaService.createInTx).toHaveBeenCalledBefore(
+            expect(mfaService.createManyInTx).toHaveBeenCalledBefore(
                 workspaceService.createOwnedForUsersInTx
             );
         });
@@ -623,12 +600,12 @@ describe('UserCreateByAdminUseCase', () => {
         });
 
         it('retries with the next attempt after a slug collision', async () => {
-            const collision = buildPrismaKnownRequestError('P2002', 'slug');
+            const collision = new WorkspaceSlugAlreadyExistsException();
             databaseService.withTransaction
                 .mockRejectedValueOnce(collision)
                 .mockImplementationOnce(async fn => fn(tx));
 
-            const users = await useCase['createAdminUsers'](
+            await useCase['createAdminUsers'](
                 requestContext,
                 apiKeyContext,
                 authContext,
@@ -637,16 +614,15 @@ describe('UserCreateByAdminUseCase', () => {
                 5000
             );
 
-            expect(users).toEqual([committedUser]);
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
             expect(
                 workspaceService.createOwnedForUsersInTx
             ).toHaveBeenLastCalledWith(tx, [{ ...owned, slug: 'w-bramble-b' }]);
         });
 
-        it('throws the mapped AppBaseException of mapCreateCollision', async () => {
-            const otherError = buildPrismaKnownRequestError('P2002', 'email');
-            databaseService.withTransaction.mockRejectedValue(otherError);
+        it('passes a rejected UserEmailExistException through untouched', async () => {
+            const collision = new UserEmailExistException();
+            databaseService.withTransaction.mockRejectedValue(collision);
 
             await expect(
                 useCase['createAdminUsers'](
@@ -657,13 +633,11 @@ describe('UserCreateByAdminUseCase', () => {
                     [welcomeEffect],
                     5000
                 )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.emailExist,
-            });
+            ).rejects.toBe(collision);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
-        it('wraps an unmapped error in AppUnknownException', async () => {
+        it('wraps an untyped error in AppUnknownException', async () => {
             const otherError = new Error('unexpected');
             databaseService.withTransaction.mockRejectedValue(otherError);
 
@@ -684,7 +658,7 @@ describe('UserCreateByAdminUseCase', () => {
 
         it('throws DatabaseUniqueValueGenerationFailedException after the last attempt', async () => {
             databaseService.withTransaction.mockRejectedValue(
-                buildPrismaKnownRequestError('P2002', 'slug')
+                new WorkspaceSlugAlreadyExistsException()
             );
 
             await expect(

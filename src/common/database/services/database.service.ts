@@ -12,6 +12,7 @@ import { DatabaseClientFactory } from '@common/database/factories/database.clien
 import type {
     IDatabaseClient,
     IDatabaseQueryLog,
+    IDatabaseTransactionCallbacks,
     IDatabaseTransactionClient,
     IDatabaseTransactionOptions,
 } from '@common/database/interfaces/database.client.interface';
@@ -23,7 +24,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     private readonly slowQueryThresholdInMs: number;
     private readonly callbacksByTx: WeakMap<
         IDatabaseTransactionClient,
-        Array<() => Promise<void>>
+        IDatabaseTransactionCallbacks
     > = new WeakMap();
     readonly client: IDatabaseClient;
 
@@ -132,19 +133,36 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         fn: (tx: IDatabaseTransactionClient) => Promise<T>,
         options?: IDatabaseTransactionOptions
     ): Promise<T> {
-        const callbacks: Array<() => Promise<void>> = [];
+        const callbacks: IDatabaseTransactionCallbacks = {
+            beforeCommit: [],
+            afterCommit: [],
+        };
         const result = await this.client.$transaction(async tx => {
             this.callbacksByTx.set(tx, callbacks);
+            const fnResult = await fn(tx);
 
-            return fn(tx);
+            for (const callback of callbacks.beforeCommit) {
+                // Sequential by design: side effects whose order is part of the contract
+                await callback();
+            }
+
+            return fnResult;
         }, options);
 
-        for (const callback of callbacks) {
-            // Sequential by design: side effects whose order is part of the contract
+        for (const callback of callbacks.afterCommit) {
             await callback();
         }
 
         return result;
+    }
+
+    /** Runs the callback after `fn` resolves and before the commit, inside the transaction that opened the tx, in registration order; a rejection rolls the transaction back. */
+    beforeCommit(
+        tx: IDatabaseTransactionClient,
+        callback: () => Promise<void>
+    ): void {
+        const callbacks = this.callbacksByTx.get(tx)!;
+        callbacks.beforeCommit.push(callback);
     }
 
     /** Runs the callback after the commit of the transaction that opened the tx, in registration order; a rollback runs none. */
@@ -153,6 +171,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         callback: () => Promise<void>
     ): void {
         const callbacks = this.callbacksByTx.get(tx)!;
-        callbacks.push(callback);
+        callbacks.afterCommit.push(callback);
     }
 }

@@ -4,17 +4,15 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Project } from '@generated/prisma-client/client';
+import type { IProjectRef } from '@modules/project/interfaces/project.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
-import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { ProjectSoftDeleteUseCase } from '@modules/project/use-cases/project.soft-delete.use-case';
 import {
@@ -29,7 +27,6 @@ import {
     buildProjectContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
@@ -69,6 +66,11 @@ describe('ProjectSoftDeleteUseCase', () => {
         deletedBy: null,
     };
 
+    const softDeleted: IProjectRef = {
+        id: project.id,
+        workspaceId: '507f1f77bcf86cd799439099',
+    };
+
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const userContext = buildUserContext(
@@ -91,6 +93,7 @@ describe('ProjectSoftDeleteUseCase', () => {
             .mockReturnValueOnce(secondEntry);
         vi.setSystemTime(deletedAt);
         databaseService.withTransaction.mockImplementation(async fn => fn(tx));
+        projectService.softDeleteProjectInTx.mockResolvedValue(softDeleted);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -124,6 +127,8 @@ describe('ProjectSoftDeleteUseCase', () => {
             projectService.softDeleteProjectInTx.mockImplementation(
                 async () => {
                     callOrder.push('project');
+
+                    return softDeleted;
                 }
             );
             workspaceInviteService.clearProjectInTx.mockImplementation(
@@ -154,7 +159,7 @@ describe('ProjectSoftDeleteUseCase', () => {
             expect(callOrder).toEqual(['project', 'invites']);
         });
 
-        it('adds the deleted entry on the same tx after the cascade', async () => {
+        it('adds the deleted entry on the same tx after the cascade, with the workspace id the soft delete returned', async () => {
             await useCase.execute(
                 requestContext,
                 apiKeyContext,
@@ -172,7 +177,7 @@ describe('ProjectSoftDeleteUseCase', () => {
                     action: EnumActivityLogAction.projectDeleted,
                     userId: '507f1f77bcf86cd799439015',
                     createdBy: '507f1f77bcf86cd799439015',
-                    workspaceId: project.workspaceId,
+                    workspaceId: softDeleted.workspaceId,
                 }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, firstEntry);
@@ -197,46 +202,6 @@ describe('ProjectSoftDeleteUseCase', () => {
             expect(
                 workspaceInviteService.clearProjectInTx
             ).not.toHaveBeenCalled();
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('answers ProjectNotFoundException on a write conflict', async () => {
-            projectService.softDeleteProjectInTx.mockRejectedValue(
-                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    projectContext
-                )
-            ).rejects.toMatchObject({
-                module: 'project',
-                statusCode: EnumProjectStatusCodeError.notFound,
-            });
-            expect(outboxService.addInTx).not.toHaveBeenCalled();
-        });
-
-        it('wraps an unknown error', async () => {
-            projectService.softDeleteProjectInTx.mockRejectedValue(
-                new Error('boom')
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    projectContext
-                )
-            ).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-            });
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });

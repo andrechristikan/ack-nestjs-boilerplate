@@ -34,19 +34,11 @@ export interface ITermPolicyRepository {
         { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<ITermPolicyUserAcceptance>>;
     findOneById(termPolicyId: string): Promise<TermPolicy | null>;
-    findOneByIdInTx(
-        tx: IDatabaseTransactionClient,
-        termPolicyId: string
-    ): Promise<TermPolicy | null>;
     findLatestPublishedWithAcceptanceByUser(
         types: EnumTermPolicyType[],
         userId: string
     ): Promise<ITermPolicyRefAcceptance[]>;
     findLatestPublishedByTypes(
-        types: EnumTermPolicyType[]
-    ): Promise<ITermPolicyRef[]>;
-    findLatestPublishedByTypesInTx(
-        tx: IDatabaseTransactionClient,
         types: EnumTermPolicyType[]
     ): Promise<ITermPolicyRef[]>;
     existsByVersionAndType(
@@ -63,7 +55,7 @@ export interface ITermPolicyRepository {
         termPolicyId: string,
         createdBy: string,
         acceptedAt: Date
-    ): Promise<ITermPolicyUserAcceptance>;
+    ): Promise<void>;
     acceptManyInTx(
         tx: IDatabaseTransactionClient,
         rows: ITermPolicyAcceptanceRow[]
@@ -78,31 +70,32 @@ export interface ITermPolicyRepository {
     deleteDraftInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string
-    ): Promise<boolean>;
+    ): Promise<TermPolicy>;
     updateContentInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
         contents: ITermPolicyContent[],
         content: ITermPolicyContent,
         expectedUpdatedAt: Date
-    ): Promise<boolean>;
+    ): Promise<TermPolicy>;
     addContentInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
         newContent: ITermPolicyContent
-    ): Promise<boolean>;
+    ): Promise<TermPolicy>;
     removeContentInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
         contents: ITermPolicyContent[],
         language: EnumMessageLanguage,
         expectedUpdatedAt: Date
-    ): Promise<boolean>;
+    ): Promise<TermPolicy>;
     publishInTx(
         tx: IDatabaseTransactionClient,
         termPolicyId: string,
-        contents: ITermPolicyContent[]
-    ): Promise<boolean>;
+        contents: ITermPolicyContent[],
+        publishedAt: Date
+    ): Promise<TermPolicy>;
     archivePublishedByTypeInTx(
         tx: IDatabaseTransactionClient,
         type: EnumTermPolicyType,

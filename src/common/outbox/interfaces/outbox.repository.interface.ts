@@ -6,17 +6,12 @@ export interface IOutboxRepository {
         tx: IDatabaseTransactionClient,
         keys: Prisma.OutboxQueueNameIdempotencyKeyCompoundUniqueInput[]
     ): Promise<Outbox[]>;
-    findManyPendingByIds(ids: string[]): Promise<Outbox[]>;
     findManyPendingBefore(createdBefore: Date, take: number): Promise<Outbox[]>;
     findManyEnqueuedBefore(
         enqueuedBefore: Date,
         take: number
     ): Promise<Outbox[]>;
     findOneById(id: string): Promise<Outbox | null>;
-    findOneByIdInTx(
-        tx: IDatabaseTransactionClient,
-        id: string
-    ): Promise<Outbox | null>;
     createManyInTx(
         tx: IDatabaseTransactionClient,
         rows: Prisma.OutboxCreateManyInput[]
@@ -34,8 +29,8 @@ export interface IOutboxRepository {
         lastError: string,
         failedAt: Date
     ): Promise<void>;
-    updateData(id: string, data: Prisma.InputJsonObject): Promise<void>;
-    updateDataInTx(
+    replaceData(id: string, data: Prisma.InputJsonObject): Promise<void>;
+    replaceDataInTx(
         tx: IDatabaseTransactionClient,
         id: string,
         data: Prisma.InputJsonObject

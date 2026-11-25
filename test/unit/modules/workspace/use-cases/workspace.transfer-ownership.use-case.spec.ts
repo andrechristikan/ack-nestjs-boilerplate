@@ -3,8 +3,6 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import type { WorkspaceMember } from '@generated/prisma-client/client';
@@ -17,7 +15,6 @@ import { WorkspaceMemberService } from '@modules/workspace/services/workspace.me
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceTransferOwnershipUseCase } from '@modules/workspace/use-cases/workspace.transfer-ownership.use-case';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import {
     TestUnitKitConfigValues,
@@ -187,7 +184,7 @@ describe('WorkspaceTransferOwnershipUseCase', () => {
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
         });
 
-        it('rethrows an AppBaseException from the swap as is', async () => {
+        it('lets WorkspaceMemberPeerForbiddenException of the guarded write reach the caller untouched', async () => {
             const typed = new WorkspaceMemberPeerForbiddenException();
             workspaceMemberService.transferOwnershipInTx.mockRejectedValue(
                 typed
@@ -204,27 +201,7 @@ describe('WorkspaceTransferOwnershipUseCase', () => {
             ).rejects.toBe(typed);
         });
 
-        it('maps a write conflict to WorkspaceMemberPeerForbiddenException', async () => {
-            workspaceMemberService.transferOwnershipInTx.mockRejectedValue(
-                buildPrismaKnownRequestError(DatabaseWriteConflictCode)
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    workspaceContext,
-                    body
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceMemberPeerForbiddenException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberPeerForbidden,
-            });
-        });
-
-        it('wraps any other transaction error in AppUnknownException', async () => {
+        it('lets any other transaction error reach the caller untouched', async () => {
             const otherError = new Error('boom');
             workspaceMemberService.transferOwnershipInTx.mockRejectedValue(
                 otherError
@@ -238,10 +215,7 @@ describe('WorkspaceTransferOwnershipUseCase', () => {
                     workspaceContext,
                     body
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: otherError,
-            });
+            ).rejects.toBe(otherError);
         });
     });
 });

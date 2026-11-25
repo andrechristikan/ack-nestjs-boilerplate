@@ -11,6 +11,8 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import { EnumQueueJobState } from '@common/queue/enums/queue.enum';
 import type {
+    IOutboxBuffer,
+    IOutboxDispatchRow,
     IOutboxEffect,
     IOutboxReconcileResult,
 } from '@common/outbox/interfaces/outbox.interface';
@@ -23,8 +25,10 @@ export class OutboxService implements OnApplicationBootstrap {
     private readonly pendingAfterInMs: number;
     private readonly enqueuedAfterInMs: number;
     private readonly sweepBatch: number;
-    private readonly idsByTx: WeakMap<IDatabaseTransactionClient, string[]> =
-        new WeakMap();
+    private readonly bufferByTx: WeakMap<
+        IDatabaseTransactionClient,
+        IOutboxBuffer
+    > = new WeakMap();
 
     constructor(
         private readonly outboxRepository: OutboxRepository,
@@ -43,8 +47,8 @@ export class OutboxService implements OnApplicationBootstrap {
         this.sweepBatch = this.configService.get<number>('outbox.sweepBatch')!;
     }
 
-    private async enqueue(rows: Outbox[]): Promise<number> {
-        const rowsByQueue = new Map<string, Outbox[]>();
+    private async enqueue(rows: IOutboxDispatchRow[]): Promise<number> {
+        const rowsByQueue = new Map<string, IOutboxDispatchRow[]>();
         for (const row of rows) {
             const group = rowsByQueue.get(row.queue) ?? [];
             group.push(row);
@@ -67,13 +71,12 @@ export class OutboxService implements OnApplicationBootstrap {
         return enqueuedIds.length;
     }
 
-    private async dispatch(ids: string[]): Promise<void> {
-        if (ids.length === 0) {
+    private async dispatch(rows: IOutboxDispatchRow[]): Promise<void> {
+        if (rows.length === 0) {
             return;
         }
 
         try {
-            const rows = await this.outboxRepository.findManyPendingByIds(ids);
             await this.enqueue(rows);
         } catch (error: unknown) {
             this.warnDispatchFailure(error);
@@ -114,7 +117,7 @@ export class OutboxService implements OnApplicationBootstrap {
 
     private async enqueueGroup(
         queueName: string,
-        rows: Outbox[]
+        rows: IOutboxDispatchRow[]
     ): Promise<string[]> {
         try {
             const queueClass = this.moduleRef.get<QueueBase>(queueName, {
@@ -128,6 +131,31 @@ export class OutboxService implements OnApplicationBootstrap {
         }
 
         return rows.map(row => row.id);
+    }
+
+    private getBuffer(tx: IDatabaseTransactionClient): IOutboxBuffer {
+        const registered = this.bufferByTx.get(tx);
+        const found = registered ?? null;
+        if (found !== null) {
+            return found;
+        }
+
+        const buffer: IOutboxBuffer = {
+            rows: [],
+            dispatchRows: [],
+            idsByKey: new Map(),
+        };
+        this.bufferByTx.set(tx, buffer);
+        this.databaseService.beforeCommit(tx, async () => {
+            if (buffer.rows.length > 0) {
+                await this.outboxRepository.createManyInTx(tx, buffer.rows);
+            }
+        });
+        this.databaseService.afterCommit(tx, async () =>
+            this.dispatch(buffer.dispatchRows)
+        );
+
+        return buffer;
     }
 
     private warnDispatchFailure(error: unknown): void {
@@ -159,15 +187,25 @@ export class OutboxService implements OnApplicationBootstrap {
         return id!;
     }
 
-    /** Adds the rows on the tx and returns their ids, an effect whose key already has a row returning that row's id; the rows are dispatched after the commit. */
+    /** Buffers the rows on the tx and returns their ids, an effect whose key the tx buffered or whose key has a stored row returning that row's id; one before-commit insert writes the buffer and the after-commit callback dispatches it. */
     async addManyInTx(
         tx: IDatabaseTransactionClient,
         effects: IOutboxEffect[]
     ): Promise<string[]> {
+        const buffer = this.getBuffer(tx);
         const keys: Prisma.OutboxQueueNameIdempotencyKeyCompoundUniqueInput[] =
             [];
         for (const effect of effects) {
-            if (effect.idempotencyKey !== null) {
+            if (effect.idempotencyKey === null) {
+                continue;
+            }
+
+            const dedupeKey = this.toDedupeKey(
+                effect.queue,
+                effect.name,
+                effect.idempotencyKey
+            );
+            if (!buffer.idsByKey.has(dedupeKey)) {
                 keys.push({
                     queue: effect.queue,
                     name: effect.name,
@@ -185,42 +223,50 @@ export class OutboxService implements OnApplicationBootstrap {
                 );
         }
 
-        const idByKey = new Map(
+        const storedByKey = new Map(
             existing.map(row => [
                 this.toDedupeKey(row.queue, row.name, row.idempotencyKey),
-                row.id,
+                row,
             ])
         );
 
         const ids: string[] = [];
-        const rows: Prisma.OutboxCreateManyInput[] = [];
         for (const effect of effects) {
             const key = effect.idempotencyKey;
-            let existingId: string | null = null;
             if (key !== null) {
                 const lookupKey = this.toDedupeKey(
                     effect.queue,
                     effect.name,
                     key
                 );
-                existingId = idByKey.get(lookupKey) ?? null;
-            }
+                const bufferedId = buffer.idsByKey.get(lookupKey) ?? null;
+                if (bufferedId !== null) {
+                    ids.push(bufferedId);
+                    continue;
+                }
 
-            if (existingId !== null) {
-                ids.push(existingId);
-                continue;
+                const stored = storedByKey.get(lookupKey) ?? null;
+                if (stored !== null) {
+                    buffer.idsByKey.set(lookupKey, stored.id);
+                    if (stored.status === EnumOutboxStatus.pending) {
+                        buffer.dispatchRows.push(stored);
+                    }
+
+                    ids.push(stored.id);
+                    continue;
+                }
             }
 
             const id = this.databaseUtil.createId();
             const idempotencyKey = key ?? id;
-            const data = this.databaseUtil.toPlainObject(effect.data);
             const dedupeKey = this.toDedupeKey(
                 effect.queue,
                 effect.name,
                 idempotencyKey
             );
-            idByKey.set(dedupeKey, id);
-            rows.push({
+            const data = this.databaseUtil.toPlainObject(effect.data);
+            buffer.idsByKey.set(dedupeKey, id);
+            buffer.rows.push({
                 id,
                 queue: effect.queue,
                 name: effect.name,
@@ -229,23 +275,14 @@ export class OutboxService implements OnApplicationBootstrap {
                 idempotencyKey,
                 status: EnumOutboxStatus.pending,
             });
+            buffer.dispatchRows.push({
+                id,
+                queue: effect.queue,
+                name: effect.name,
+                priority: effect.priority,
+                idempotencyKey,
+            });
             ids.push(id);
-        }
-
-        if (rows.length > 0) {
-            await this.outboxRepository.createManyInTx(tx, rows);
-        }
-
-        const registered = this.idsByTx.get(tx);
-        const txIds = registered ?? null;
-        if (txIds === null) {
-            const addedIds = [...ids];
-            this.idsByTx.set(tx, addedIds);
-            this.databaseService.afterCommit(tx, async () =>
-                this.dispatch(addedIds)
-            );
-        } else {
-            txIds.push(...ids);
         }
 
         return ids;
@@ -279,37 +316,20 @@ export class OutboxService implements OnApplicationBootstrap {
         );
     }
 
-    /** Merges the patch over the row's data at the top level; writes nothing when the row does not exist. */
-    async updateData(
-        outboxId: string,
-        patch: Prisma.InputJsonObject
-    ): Promise<void> {
-        const row = await this.outboxRepository.findOneById(outboxId);
-        if (row === null) {
-            return;
-        }
-
-        await this.outboxRepository.updateData(outboxId, {
-            ...(row.data as Prisma.JsonObject),
-            ...patch,
-        });
+    /** Writes the whole payload as the row's data: the data the job received with the step's changes spread over it; reads no row, writes nothing when the row does not exist. */
+    async replaceData(outboxId: string, data: object): Promise<void> {
+        const plain = this.databaseUtil.toPlainObject(data);
+        await this.outboxRepository.replaceData(outboxId, plain);
     }
 
-    /** Merges the patch over the row's data at the top level; writes nothing when the row does not exist. */
-    async updateDataInTx(
+    /** Writes the whole payload as the row's data on the given transaction; reads no row, writes nothing when the row does not exist. */
+    async replaceDataInTx(
         tx: IDatabaseTransactionClient,
         outboxId: string,
-        patch: Prisma.InputJsonObject
+        data: object
     ): Promise<void> {
-        const row = await this.outboxRepository.findOneByIdInTx(tx, outboxId);
-        if (row === null) {
-            return;
-        }
-
-        await this.outboxRepository.updateDataInTx(tx, outboxId, {
-            ...(row.data as Prisma.JsonObject),
-            ...patch,
-        });
+        const plain = this.databaseUtil.toPlainObject(data);
+        await this.outboxRepository.replaceDataInTx(tx, outboxId, plain);
     }
 
     /** Stamps the rows it reads as swept, then dispatches those pending longer than outbox.pendingAfterInMs and reconciles those enqueued longer than outbox.enqueuedAfterInMs with their job, at most outbox.sweepBatch of each, the rows swept longest ago first and never-swept ones before them; returns the count dispatched or stamped and never throws. */

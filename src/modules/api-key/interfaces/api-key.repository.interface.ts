@@ -30,7 +30,7 @@ export interface IApiKeyRepository {
         id: string,
         expectedIsActive: boolean,
         isActive: boolean
-    ): Promise<IApiKey | null>;
+    ): Promise<IApiKey>;
     updateNameInTx(
         tx: IDatabaseTransactionClient,
         id: string,
@@ -41,12 +41,12 @@ export interface IApiKeyRepository {
         id: string,
         startAt: Date | null,
         endAt: Date | null
-    ): Promise<IApiKey | null>;
+    ): Promise<IApiKey>;
     updateHashInTx(
         tx: IDatabaseTransactionClient,
         id: string,
         hash: string
-    ): Promise<IApiKey | null>;
-    deleteInTx(tx: IDatabaseTransactionClient, id: string): Promise<boolean>;
+    ): Promise<IApiKey>;
+    deleteInTx(tx: IDatabaseTransactionClient, id: string): Promise<IApiKey>;
     findOneByKey(key: string): Promise<ApiKey | null>;
 }

@@ -1,5 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumPaginationOrderDirectionType } from '@common/pagination/enums/pagination.enum';
 import {
@@ -12,7 +13,13 @@ import type {
     IUserVerificationEmailCreate,
     IUserVerificationWithUser,
 } from '@modules/user/interfaces/user.interface';
-import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
+import type {
+    IUserCreateVerification,
+    IUserCreateVerificationEntry,
+} from '@modules/user/interfaces/user.create.interface';
+import { UserVerificationWithUserStateInclude } from '@modules/user/constants/user.constant';
+import { UserReauthenticationOtpInvalidException } from '@modules/user/exceptions/user.reauthentication-otp-invalid.exception';
+import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type { IUserVerificationRepository } from '@modules/user/interfaces/user.verification-repository.interface';
 import { Injectable } from '@nestjs/common';
 
@@ -20,6 +27,7 @@ import { Injectable } from '@nestjs/common';
 export class UserVerificationRepository implements IUserVerificationRepository {
     constructor(
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -41,7 +49,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
                     status: EnumUserStatus.active,
                 },
             },
-            include: { user: true },
+            include: UserVerificationWithUserStateInclude,
         });
     }
 
@@ -194,17 +202,47 @@ export class UserVerificationRepository implements IUserVerificationRepository {
         id: string,
         verifiedAt: Date,
         updatedBy: string
-    ): Promise<boolean> {
-        const { count } = await tx.verification.updateMany({
-            where: { id, isUsed: false, expiredAt: { gt: verifiedAt } },
-            data: {
-                isUsed: true,
-                verifiedAt,
-                updatedBy,
-            },
-        });
+    ): Promise<Verification> {
+        try {
+            return await tx.verification.update({
+                where: { id, isUsed: false, expiredAt: { gt: verifiedAt } },
+                data: {
+                    isUsed: true,
+                    verifiedAt,
+                    updatedBy,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new UserTokenInvalidException()
+            );
+        }
+    }
 
-        return count > 0;
+    async markReauthenticationUsedInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        verifiedAt: Date,
+        updatedBy: string
+    ): Promise<boolean> {
+        try {
+            const { count } = await tx.verification.updateMany({
+                where: { id, isUsed: false, expiredAt: { gt: verifiedAt } },
+                data: {
+                    isUsed: true,
+                    verifiedAt,
+                    updatedBy,
+                },
+            });
+
+            return count > 0;
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new UserReauthenticationOtpInvalidException()
+            );
+        }
     }
 
     async createInTx(
@@ -238,6 +276,13 @@ export class UserVerificationRepository implements IUserVerificationRepository {
                 createdBy,
             },
         });
+    }
+
+    async createManyInTx(
+        tx: IDatabaseTransactionClient,
+        entries: IUserCreateVerificationEntry[]
+    ): Promise<void> {
+        await tx.verification.createMany({ data: entries });
     }
 
     async createReplacingActiveInTx(

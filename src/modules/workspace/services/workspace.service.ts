@@ -7,10 +7,7 @@ import type {
 } from '@common/pagination/interfaces/pagination.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
-import {
-    EnumActivityLogAction,
-    EnumWorkspaceMemberRole,
-} from '@generated/prisma-client/client';
+import { EnumActivityLogAction } from '@generated/prisma-client/client';
 import type { Workspace } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -72,20 +69,20 @@ export class WorkspaceService {
         return slug.length <= this.slugMaxLength && isPatternValid;
     }
 
-    private async closePendingByWorkspaceInTx(
+    private async closePendingByWorkspacesInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string,
+        workspaceIds: string[],
         updatedBy: string
     ): Promise<void> {
         await Promise.all([
-            this.workspaceInviteService.revokePendingByWorkspaceInTx(
+            this.workspaceInviteService.revokePendingByWorkspacesInTx(
                 tx,
-                workspaceId,
+                workspaceIds,
                 updatedBy
             ),
-            this.workspaceJoinRequestService.cancelPendingByWorkspaceInTx(
+            this.workspaceJoinRequestService.cancelPendingByWorkspacesInTx(
                 tx,
-                workspaceId,
+                workspaceIds,
                 updatedBy
             ),
         ]);
@@ -104,10 +101,7 @@ export class WorkspaceService {
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<Workspace>> {
         const workspaceIds =
-            await this.workspaceMemberRepository.findWorkspaceIdsByUser(
-                userId,
-                null
-            );
+            await this.workspaceMemberRepository.findWorkspaceIdsByUser(userId);
 
         return this.workspaceRepository.findWithPaginationCursorByMember(
             workspaceIds,
@@ -138,35 +132,17 @@ export class WorkspaceService {
         return workspace;
     }
 
-    async createPersonalInTx(
-        tx: IDatabaseTransactionClient,
-        ownerId: string,
-        name: string,
-        slug: string,
-        workspaceId: string
-    ): Promise<Workspace> {
-        return this.createInTx(
-            tx,
-            ownerId,
-            { name, description: null, isPublic: null },
-            slug,
-            workspaceId
-        );
-    }
-
     async createOwnedForUsersInTx(
         tx: IDatabaseTransactionClient,
         users: IWorkspaceOwnedUser[]
     ): Promise<void> {
-        for (const user of users) {
-            await this.createPersonalInTx(
-                tx,
-                user.userId,
-                user.name,
-                user.slug,
-                user.workspaceId
-            );
+        if (users.length === 0) {
+            return;
         }
+
+        // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
+        await this.workspaceRepository.createManyInTx(tx, users);
+        await this.workspaceMemberRepository.createOwnersInTx(tx, users);
     }
 
     async createWorkspaceInTx(
@@ -300,26 +276,31 @@ export class WorkspaceService {
         }
     }
 
-    /** Soft-deletes the workspace and closes its pending invites and join requests; returns `false` and closes nothing when the workspace was already deleted. */
-    async softDeleteInTx(
+    /** Soft-deletes the workspaces and closes the pending invites and join requests of those it deleted; returns their ids, leaving out one already deleted. */
+    async softDeleteManyInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string,
+        workspaceIds: string[],
         deletedAt: Date,
         deletedBy: string
-    ): Promise<boolean> {
-        const softDeleted = await this.workspaceRepository.softDeleteInTx(
-            tx,
-            workspaceId,
-            deletedAt,
-            deletedBy
+    ): Promise<string[]> {
+        const softDeleted = await Promise.all(
+            workspaceIds.map(workspaceId =>
+                this.workspaceRepository.softDeleteInTx(
+                    tx,
+                    workspaceId,
+                    deletedAt,
+                    deletedBy
+                )
+            )
         );
-        if (!softDeleted) {
-            return false;
+        const deletedIds = softDeleted.filter(
+            (workspaceId): workspaceId is string => workspaceId !== null
+        );
+        if (deletedIds.length > 0) {
+            await this.closePendingByWorkspacesInTx(tx, deletedIds, deletedBy);
         }
 
-        await this.closePendingByWorkspaceInTx(tx, workspaceId, deletedBy);
-
-        return true;
+        return deletedIds;
     }
 
     /** Reads `maxWorkspacesPerUser` and the owner's active workspace count; throws at the cap. */
@@ -336,13 +317,16 @@ export class WorkspaceService {
         }
     }
 
-    /** Returns the ids of the workspaces the user owns; one with another member throws the owner-transfer-required exception. */
+    /** Returns the ids of the live workspaces the user owns; one with another member throws the owner-transfer-required exception. */
     async getOwnedForSelfDelete(userId: string): Promise<string[]> {
         const workspaceIds =
-            await this.workspaceMemberRepository.findWorkspaceIdsByUser(
-                userId,
-                EnumWorkspaceMemberRole.owner
+            await this.workspaceMemberRepository.findLiveOwnedWorkspaceIdsByUser(
+                userId
             );
+        if (workspaceIds.length === 0) {
+            return [];
+        }
+
         const hasOtherMembers =
             await this.workspaceRepository.existsOwnedWithOtherMembers(
                 workspaceIds,

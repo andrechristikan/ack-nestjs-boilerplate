@@ -19,15 +19,6 @@ export class OutboxRepository implements IOutboxRepository {
         });
     }
 
-    async findManyPendingByIds(ids: string[]): Promise<Outbox[]> {
-        return this.databaseService.client.outbox.findMany({
-            where: {
-                id: { in: ids },
-                status: EnumOutboxStatus.pending,
-            },
-        });
-    }
-
     async findManyPendingBefore(
         createdBefore: Date,
         take: number
@@ -64,15 +55,6 @@ export class OutboxRepository implements IOutboxRepository {
 
     async findOneById(id: string): Promise<Outbox | null> {
         return this.databaseService.client.outbox.findUnique({
-            where: { id },
-        });
-    }
-
-    async findOneByIdInTx(
-        tx: IDatabaseTransactionClient,
-        id: string
-    ): Promise<Outbox | null> {
-        return tx.outbox.findUnique({
             where: { id },
         });
     }
@@ -138,19 +120,19 @@ export class OutboxRepository implements IOutboxRepository {
         });
     }
 
-    async updateData(id: string, data: Prisma.InputJsonObject): Promise<void> {
-        await this.databaseService.client.outbox.update({
+    async replaceData(id: string, data: Prisma.InputJsonObject): Promise<void> {
+        await this.databaseService.client.outbox.updateMany({
             where: { id },
             data: { data },
         });
     }
 
-    async updateDataInTx(
+    async replaceDataInTx(
         tx: IDatabaseTransactionClient,
         id: string,
         data: Prisma.InputJsonObject
     ): Promise<void> {
-        await tx.outbox.update({
+        await tx.outbox.updateMany({
             where: { id },
             data: { data },
         });

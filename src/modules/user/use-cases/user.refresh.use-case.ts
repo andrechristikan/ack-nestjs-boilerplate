@@ -1,7 +1,5 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -15,7 +13,9 @@ import type {
     IAuthJwtRefreshTokenPayload,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
+import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { DeviceService } from '@modules/device/services/device.service';
+import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
@@ -39,7 +39,6 @@ export class UserRefreshUseCase implements IAppUseCase<
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -72,13 +71,14 @@ export class UserRefreshUseCase implements IAppUseCase<
             });
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
+                if (err instanceof SessionNotFoundException) {
+                    return;
+                }
+
                 throw err;
             }
 
-            const mapped = this.databaseUtil.toException(err);
-            if (!(mapped instanceof DatabaseWriteConflictException)) {
-                throw new AppUnknownException(err);
-            }
+            throw new AppUnknownException(err);
         }
     }
 
@@ -118,7 +118,8 @@ export class UserRefreshUseCase implements IAppUseCase<
                         loginFrom,
                         loginWith,
                         requestLog.ipAddress,
-                        now
+                        now,
+                        false
                     ),
                     this.deviceService.touchOwnershipInTx(
                         tx,
@@ -139,13 +140,14 @@ export class UserRefreshUseCase implements IAppUseCase<
                 return tokens;
             });
         } catch (err: unknown) {
+            if (
+                err instanceof SessionNotFoundException ||
+                err instanceof DeviceNotFoundException
+            ) {
+                return null;
+            }
             if (err instanceof AppBaseException) {
                 throw err;
-            }
-
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                return null;
             }
 
             throw new AppUnknownException(err);

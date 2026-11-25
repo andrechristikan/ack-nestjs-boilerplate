@@ -21,7 +21,6 @@ import { RoleService } from '@modules/role/services/role.service';
 import { SessionUtil } from '@modules/session/utils/session.util';
 import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 import { UserUtil } from '@modules/user/utils/user.util';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserStatusInvalidException } from '@modules/user/exceptions/user.status-invalid.exception';
 import type { UserUpdateStatusRequestDto } from '@modules/user/dtos/request/user.update-status.request.dto';
@@ -36,7 +35,6 @@ import {
 } from '@test/unit/helpers/test.unit.request.helper';
 import { ConfigService } from '@nestjs/config';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 
 describe('UserUpdateStatusByAdminUseCase', () => {
@@ -83,7 +81,6 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 { provide: ActivityLogQueue, useValue: activityLogQueue },
                 SessionUtil,
                 UserUtil,
-                DatabaseUtil,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitUserConfigValues),
@@ -94,7 +91,9 @@ describe('UserUpdateStatusByAdminUseCase', () => {
     });
 
     describe('execute', () => {
-        const revoked: ISessionRef[] = [{ id: 'session-one' }];
+        const revoked: ISessionRef[] = [
+            { id: 'session-one', userId: 'user-1' },
+        ];
 
         const row = {
             ...baseUser,
@@ -443,7 +442,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
             );
         });
 
-        it('adds nothing and wraps the failure when the transaction fails', async () => {
+        it('adds nothing and passes the failure of the transaction through untouched', async () => {
             const cause = new Error('database exploded');
             databaseService.withTransaction.mockRejectedValue(cause);
 
@@ -458,7 +457,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                         status: EnumUserStatus.blocked,
                     }
                 )
-            ).rejects.toMatchObject({ rawError: cause });
+            ).rejects.toBe(cause);
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
@@ -478,28 +477,6 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                     }
                 )
             ).rejects.toBe(failure);
-        });
-
-        it('answers UserStatusInvalidException when the guarded write conflicts', async () => {
-            const conflict = buildPrismaKnownRequestError('P2034');
-            databaseService.withTransaction.mockRejectedValue(conflict);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    'user-cinder',
-                    {
-                        status: EnumUserStatus.blocked,
-                    }
-                )
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.statusInvalid,
-            });
-            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
         it('asserts the status is changeable before it opens the transaction', async () => {

@@ -29,7 +29,6 @@ import {
 } from '@generated/prisma-client/client';
 import type { Device, DeviceOwnership } from '@generated/prisma-client/client';
 import { DeviceService } from '@modules/device/services/device.service';
-import { EnumDeviceStatusCodeError } from '@modules/device/enums/device.status-code.enum';
 import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import type {
     IDeviceIdentity,
@@ -616,8 +615,9 @@ describe('DeviceService', () => {
             notificationToken: null,
         };
 
-        it('throws DeviceNotFoundException when the guarded refresh matches no live ownership, writing no device row', async () => {
-            deviceOwnershipRepository.refreshInTx.mockResolvedValue(null);
+        it('rethrows the DeviceNotFoundException of the guarded refresh untouched, writing no device row', async () => {
+            const notFound = new DeviceNotFoundException();
+            deviceOwnershipRepository.refreshInTx.mockRejectedValue(notFound);
 
             await expect(
                 service.refreshInTx(
@@ -628,11 +628,7 @@ describe('DeviceService', () => {
                     'device-ownership-1',
                     data
                 )
-            ).rejects.toMatchObject({
-                constructor: DeviceNotFoundException,
-                module: 'device',
-                statusCode: EnumDeviceStatusCodeError.notFound,
-            });
+            ).rejects.toBe(notFound);
             expect(deviceRepository.refreshInTx).not.toHaveBeenCalled();
             expect(
                 deviceOwnershipRepository.clearTokenFromOtherUsersInTx
@@ -662,8 +658,10 @@ describe('DeviceService', () => {
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
         });
 
-        it('adds no entry when the guarded refresh matches no live ownership', async () => {
-            deviceOwnershipRepository.refreshInTx.mockResolvedValue(null);
+        it('adds no entry when the guarded refresh throws', async () => {
+            deviceOwnershipRepository.refreshInTx.mockRejectedValue(
+                new DeviceNotFoundException()
+            );
 
             await expect(
                 service.refreshInTx(
@@ -674,10 +672,7 @@ describe('DeviceService', () => {
                     'device-ownership-1',
                     data
                 )
-            ).rejects.toMatchObject({
-                module: 'device',
-                statusCode: EnumDeviceStatusCodeError.notFound,
-            });
+            ).rejects.toBeInstanceOf(DeviceNotFoundException);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
@@ -871,9 +866,10 @@ describe('DeviceService', () => {
             );
         });
 
-        it('throws DeviceNotFoundException when the guarded revoke matches no live ownership, as on a second removal', async () => {
-            deviceOwnershipRepository.removeOwnershipInTx.mockResolvedValue(
-                null
+        it('rethrows the DeviceNotFoundException of the guarded revoke untouched, as on a second removal', async () => {
+            const notFound = new DeviceNotFoundException();
+            deviceOwnershipRepository.removeOwnershipInTx.mockRejectedValue(
+                notFound
             );
 
             await expect(
@@ -884,11 +880,7 @@ describe('DeviceService', () => {
                     'admin-1',
                     now
                 )
-            ).rejects.toMatchObject({
-                constructor: DeviceNotFoundException,
-                module: 'device',
-                statusCode: EnumDeviceStatusCodeError.notFound,
-            });
+            ).rejects.toBe(notFound);
         });
     });
 

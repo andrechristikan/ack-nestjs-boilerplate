@@ -17,10 +17,18 @@ export const MfaPasskeySelect = {
 } satisfies Prisma.MfaPasskeySelect;
 
 /** @public */
-export const MfaPasskeyCredentialSelect = {
+export const MfaPasskeyRefSelect = {
+    id: true,
     credentialId: true,
     transports: true,
 } satisfies Prisma.MfaPasskeySelect;
+
+/** @public */
+export const MfaRefSelect = {
+    id: true,
+    userId: true,
+    attempt: true,
+} satisfies Prisma.MfaSelect;
 
 /** @public */
 export const MfaTotpCodeRegex = /^[0-9]+$/;

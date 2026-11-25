@@ -24,7 +24,6 @@ import type {
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
 import type {
     Workspace,
-    WorkspaceInvite,
     WorkspaceJoinRequest,
 } from '@generated/prisma-client/client';
 import {
@@ -549,7 +548,7 @@ export class WorkspaceUserController {
         @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @Body({ schema: WorkspaceInviteCreateRequestSchema })
         body: WorkspaceInviteCreateRequestDto
-    ): Promise<IResponseReturn<WorkspaceInvite>> {
+    ): Promise<IResponseReturn<IWorkspaceInviteList>> {
         return this.workspaceCreateInviteUseCase.execute(
             requestContext,
             apiKeyContext,
@@ -586,7 +585,7 @@ export class WorkspaceUserController {
         workspaceInviteId: string,
         @Body({ schema: WorkspaceInviteResendRequestSchema })
         body: WorkspaceInviteResendRequestDto
-    ): Promise<IResponseReturn<WorkspaceInvite>> {
+    ): Promise<IResponseReturn<IWorkspaceInviteList>> {
         return this.workspaceResendInviteUseCase.execute(
             requestContext,
             apiKeyContext,

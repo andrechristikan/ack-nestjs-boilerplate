@@ -27,7 +27,7 @@ import {
     EnumNotificationStep,
 } from '@modules/notification/enums/notification.enum';
 import type { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { NotificationReadStateSelect } from '@modules/notification/constants/notification.constant';
+import type { NotificationRefSelect } from '@modules/notification/constants/notification.constant';
 import type { ITermPolicyPublishPayload } from '@modules/term-policy/interfaces/term-policy.interface';
 import type { NotificationUserSetting } from '@generated/prisma-client/client';
 
@@ -37,7 +37,7 @@ export type INotificationSendProcess =
     | EnumNotificationSmsProcess;
 
 export type INotificationReadState = Prisma.NotificationGetPayload<{
-    select: typeof NotificationReadStateSelect;
+    select: typeof NotificationRefSelect;
 }>;
 
 export interface INotificationContextBase {

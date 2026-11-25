@@ -2,7 +2,6 @@ import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { DatabaseIdResponseDto } from '@common/database/dtos/response/database.id.response.dto';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -17,16 +16,15 @@ import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { RoleService } from '@modules/role/services/role.service';
-import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { UserCreateRequestDto } from '@modules/user/dtos/request/user.create.request.dto';
 import type {
-    IUser,
     IUserContext,
     IUserCreateWithWorkspaceInput,
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserRegistrationService } from '@modules/user/services/user.registration.service';
+import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
 import { Injectable } from '@nestjs/common';
@@ -60,11 +58,9 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         private readonly mfaService: MfaService,
         private readonly passwordHistoryService: PasswordHistoryService,
         private readonly notificationService: NotificationService,
-        private readonly termPolicyAcceptanceService: TermPolicyAcceptanceService,
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
@@ -80,30 +76,19 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         inputs: IUserCreateWithWorkspaceInput[],
         effects: IOutboxEffect[],
         createTimeoutInMs: number
-    ): Promise<IUser[]> {
+    ): Promise<void> {
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
-        const termPolicyAcceptances =
-            this.userCreateUtil.buildTermPolicyAcceptanceEntries(inputs);
         const passwordHistories =
             this.userCreateUtil.buildPasswordHistoryEntries(inputs);
         const userIds = inputs.map(({ userId }) => userId);
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
-                return await this.databaseService.withTransaction(
+                await this.databaseService.withTransaction(
                     async tx => {
-                        const users = await this.userService.createManyInTx(
-                            tx,
-                            inputs
-                        );
+                        await this.userService.createManyInTx(tx, inputs);
                         await Promise.all([
-                            ...inputs.map(({ userId, createdBy }) =>
-                                this.mfaService.createInTx(
-                                    tx,
-                                    userId,
-                                    createdBy
-                                )
-                            ),
+                            this.mfaService.createManyInTx(tx, inputs),
                             this.passwordHistoryService.createManyInTx(
                                 tx,
                                 passwordHistories
@@ -123,15 +108,10 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
                             tx,
                             ownedUsers
                         );
-                        await this.termPolicyAcceptanceService.acceptPublishedManyInTx(
-                            tx,
-                            termPolicyAcceptances
-                        );
-                        const entries = inputs.flatMap((input, index) => {
+                        const entries = inputs.flatMap(input => {
                             const stages =
                                 this.userRegistrationService.buildCreateByAdminStages(
-                                    input,
-                                    users[index]!
+                                    input
                                 );
 
                             return stages.map(stage =>
@@ -148,26 +128,21 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
                             ...entries,
                             ...effects,
                         ]);
-
-                        return users;
                     },
                     { timeout: createTimeoutInMs }
                 );
+
+                return;
             } catch (error: unknown) {
-                const isSlugCollision = this.databaseUtil.isUniqueCollision(
-                    error,
-                    'slug'
-                );
-                if (isSlugCollision) {
+                if (error instanceof WorkspaceSlugAlreadyExistsException) {
                     continue;
                 }
 
-                const mapped = this.userCreateUtil.mapCreateCollision(error);
-                if (mapped instanceof AppBaseException) {
-                    throw mapped;
+                if (error instanceof AppBaseException) {
+                    throw error;
                 }
 
-                throw new AppUnknownException(mapped);
+                throw new AppUnknownException(error);
             }
         }
 
@@ -220,7 +195,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
         );
         const effects: IOutboxEffect[] = [welcome];
 
-        const users = await this.createAdminUsers(
+        await this.createAdminUsers(
             requestContext,
             apiKeyContext,
             authContext,
@@ -228,8 +203,7 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
             effects,
             this.createTimeoutInMs
         );
-        const created = users[0]!;
 
-        return { data: { id: created.id } };
+        return { data: { id: input.userId } };
     }
 }

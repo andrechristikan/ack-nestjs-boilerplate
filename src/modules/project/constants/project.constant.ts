@@ -1,8 +1,10 @@
 import { EnumWorkspaceMemberRole } from '@generated/prisma-client/client';
+import type { Prisma } from '@generated/prisma-client/client';
 import { HttpStatus } from '@nestjs/common';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumProjectStatusCodeError } from '@modules/project/enums/project.status-code.enum';
 import { EnumWorkspaceStatusCodeError } from '@modules/workspace/enums/workspace.status-code.enum';
+import { UserRefSelect } from '@modules/user/constants/user.constant';
 
 /** @public */
 export const ProjectSlugRegex = /^[0-9a-z-]+$/;
@@ -12,6 +14,17 @@ export const ProjectRoleMetaKey = 'ProjectRoleMetaKey';
 
 /** @public */
 export const ProjectContextStoreKey = 'ProjectContextStoreKey';
+
+/** @public */
+export const ProjectRefSelect = {
+    id: true,
+    workspaceId: true,
+} satisfies Prisma.ProjectSelect;
+
+/** @public */
+export const ProjectMemberWithUserInclude = {
+    user: { select: UserRefSelect },
+} satisfies Prisma.ProjectMemberInclude;
 
 /** @public */
 export const ProjectBypassRoles: ReadonlySet<EnumWorkspaceMemberRole> = new Set(

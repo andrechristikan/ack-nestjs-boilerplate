@@ -1,8 +1,6 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
 import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
@@ -18,6 +16,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { RoleService } from '@modules/role/services/role.service';
+import type { ITermPolicyRef } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
 import { UserCreateContract } from '@modules/user/contracts/user.create.contract';
 import { UserTermPolicyContract } from '@modules/user/contracts/user.term-policy.contract';
@@ -32,7 +31,7 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { UserVerificationUtil } from '@modules/user/utils/user.verification.util';
-import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
+import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { WorkspaceInviteService } from '@modules/workspace/services/workspace.invite.service';
 import { WorkspaceUtil } from '@modules/workspace/utils/workspace.util';
@@ -71,7 +70,6 @@ export class UserSignUpUseCase implements IAppUseCase<
         private readonly workspaceUtil: WorkspaceUtil,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
     ) {
         this.appName = this.configService.get<string>('app.name')!;
@@ -85,7 +83,8 @@ export class UserSignUpUseCase implements IAppUseCase<
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         input: IUserCreateWithWorkspaceInput,
-        emailVerification: IUserVerificationEmailCreate
+        emailVerification: IUserVerificationEmailCreate,
+        termPolicyRefs: ITermPolicyRef[]
     ): Promise<void> {
         const inputs = [input];
         const attempts = this.workspaceUtil.countSlugAttempts(inputs);
@@ -100,18 +99,9 @@ export class UserSignUpUseCase implements IAppUseCase<
             try {
                 await this.databaseService.withTransaction(
                     async tx => {
-                        const created = await this.userService.createManyInTx(
-                            tx,
-                            inputs
-                        );
+                        await this.userService.createManyInTx(tx, inputs);
                         await Promise.all([
-                            ...inputs.map(({ userId, createdBy }) =>
-                                this.mfaService.createInTx(
-                                    tx,
-                                    userId,
-                                    createdBy
-                                )
-                            ),
+                            this.mfaService.createManyInTx(tx, inputs),
                             this.passwordHistoryService.createManyInTx(
                                 tx,
                                 passwordHistories
@@ -145,6 +135,7 @@ export class UserSignUpUseCase implements IAppUseCase<
 
                         await this.termPolicyAcceptanceService.acceptPublishedManyInTx(
                             tx,
+                            termPolicyRefs,
                             termPolicyAcceptances
                         );
                         if (
@@ -177,8 +168,7 @@ export class UserSignUpUseCase implements IAppUseCase<
                         );
                         const stages = this.userCreateUtil.buildStages(
                             UserCreateContract.signUp,
-                            inputs,
-                            created
+                            inputs
                         );
                         const entries = stages.map(stage =>
                             this.activityLogQueue.recordEffect(
@@ -200,29 +190,15 @@ export class UserSignUpUseCase implements IAppUseCase<
 
                 return;
             } catch (error: unknown) {
-                const isSlugCollision = this.databaseUtil.isUniqueCollision(
-                    error,
-                    'slug'
-                );
-                if (isSlugCollision) {
+                if (error instanceof WorkspaceSlugAlreadyExistsException) {
                     continue;
                 }
 
-                const mapped = this.userCreateUtil.mapCreateCollision(error);
-                if (mapped instanceof AppBaseException) {
-                    throw mapped;
+                if (error instanceof AppBaseException) {
+                    throw error;
                 }
 
-                const exception = this.databaseUtil.toException(error);
-                const isInviteConflict =
-                    workspaceContext.type ===
-                        EnumUserCreateWorkspaceContextType.invite &&
-                    exception instanceof DatabaseWriteConflictException;
-                if (isInviteConflict) {
-                    throw new WorkspaceInviteAlreadyProcessedException();
-                }
-
-                throw new AppUnknownException(mapped);
+                throw new AppUnknownException(error);
             }
         }
 
@@ -263,23 +239,30 @@ export class UserSignUpUseCase implements IAppUseCase<
             signUp.username,
             signUp.name
         );
-        const [invite, role, emailExist, usernameCheck] = await Promise.all([
-            this.workspaceInviteService.getSignUpInvite(
-                signUp.inviteToken,
-                signUp.email
-            ),
-            this.roleService.getByName(this.defaultRole),
-            this.userService.existsByEmail(signUp.email),
-            this.userService.checkUsername(signUp.username),
-            this.countryService.getOne(signUp.countryId),
-            this.authPasswordService.assertAllowed(
-                signUp.password,
-                contextWords
-            ),
-            this.termPolicyAcceptanceService.assertRequiredPublished(
-                UserTermPolicyContract.requiredTypes
-            ),
-        ]);
+        const acceptedTermPolicyTypes =
+            this.userCreateUtil.buildAcceptedTermPolicyTypes(
+                signUp.cookies,
+                signUp.marketing
+            );
+        const [invite, role, emailExist, usernameCheck, termPolicyRefs] =
+            await Promise.all([
+                this.workspaceInviteService.getSignUpInvite(
+                    signUp.inviteToken,
+                    signUp.email
+                ),
+                this.roleService.getByName(this.defaultRole),
+                this.userService.existsByEmail(signUp.email),
+                this.userService.checkUsername(signUp.username),
+                this.termPolicyAcceptanceService.getPublishedForAcceptance(
+                    UserTermPolicyContract.requiredTypes,
+                    acceptedTermPolicyTypes
+                ),
+                this.countryService.getOne(signUp.countryId),
+                this.authPasswordService.assertAllowed(
+                    signUp.password,
+                    contextWords
+                ),
+            ]);
         const workspaceContext =
             this.userCreateUtil.buildSignUpWorkspaceContext(
                 invite,
@@ -297,7 +280,8 @@ export class UserSignUpUseCase implements IAppUseCase<
             requestContext,
             apiKeyContext,
             input,
-            emailVerification
+            emailVerification,
+            termPolicyRefs
         );
 
         return {};

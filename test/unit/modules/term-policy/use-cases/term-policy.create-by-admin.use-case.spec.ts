@@ -3,19 +3,15 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUniqueConstraintCode } from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import {
     EnumTermPolicyStatus,
     EnumTermPolicyType,
-    Prisma,
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
-import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import type { ITermPolicyCreatePrepared } from '@modules/term-policy/interfaces/term-policy.interface';
 import type { TermPolicyCreateRequestDto } from '@modules/term-policy/dtos/request/term-policy.create.request.dto';
@@ -130,7 +126,7 @@ describe('TermPolicyCreateByAdminUseCase', () => {
             );
         });
 
-        it('rethrows a typed exception of the write', async () => {
+        it('passes a rejected exception of the write through untouched', async () => {
             const failure = new TermPolicyExistException();
             termPolicyService.createByAdminInTx.mockRejectedValue(failure);
 
@@ -144,29 +140,7 @@ describe('TermPolicyCreateByAdminUseCase', () => {
             ).rejects.toBe(failure);
         });
 
-        it('maps a unique collision on version to TermPolicyExistException', async () => {
-            termPolicyService.createByAdminInTx.mockRejectedValue(
-                new Prisma.PrismaClientKnownRequestError('unique', {
-                    code: DatabaseUniqueConstraintCode,
-                    clientVersion: 'test',
-                    meta: { target: ['version'] },
-                })
-            );
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    body
-                )
-            ).rejects.toMatchObject({
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.exist,
-            });
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
+        it('passes any other rejection through untouched', async () => {
             const cause = new Error('boom');
             termPolicyService.createByAdminInTx.mockRejectedValue(cause);
 
@@ -177,10 +151,7 @@ describe('TermPolicyCreateByAdminUseCase', () => {
                     authContext,
                     body
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

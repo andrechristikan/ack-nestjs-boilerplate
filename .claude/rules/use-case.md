@@ -19,9 +19,7 @@ Its place in the layer chain and what it injects: `layering.md`, Roles.
     2. the transaction it opens: each service's `*InTx` write, the side effects and activity entries added inside it (`effects.md`).
 - A use case taking the request takes its controller's contexts in the `http.md` order, and passes each service and effect builder `requestContext`, `apiKeyContext`, and `authContext` whole, `recordEffect` also `workspaceContext` (the actor: `service.md`, Shape). A job use case passes on what its payload carries.
 - A row a guard loaded is the fail-fast read, taken from its context (`guards.md`, Contexts).
-- Originates only these (a rethrow or wrap originates nothing: `exceptions.md`, The hierarchy); `UserSignUpUseCase` (`src/modules/user/use-cases/user.sign-up.use-case.ts`) shows the second and third:
-    - a mapped write conflict: `DatabaseWriteConflictCode` through `DatabaseUtil.toException` to the guard's own exception (`transaction.md`, Transactions);
-    - a mapped unique collision: a statement's `DatabaseUniqueConstraintCode` on a named column through `DatabaseUtil.isUniqueCollision`, inline or in the feature's util (`UserCreateUtil.mapCreateCollision`), to the feature's own exception;
+- Originates only these (a rethrow or wrap originates nothing: `exceptions.md`, The hierarchy); `UserSignUpUseCase` (`src/modules/user/use-cases/user.sign-up.use-case.ts`) shows the first:
     - the slug retry exhaustion `DatabaseUniqueValueGenerationFailedException` after the retry loop's last attempt (`transaction.md`, Generated unique values);
     - on a job, `QueueException` (`queue.md`).
 
@@ -30,7 +28,7 @@ Its place in the layer chain and what it injects: `layering.md`, Roles.
 - One transaction per flow, a job's chunks aside (Jobs), opened in `execute` or a private method of the same use case; each service joins as `*InTx(tx, ...)` (`transaction.md`, Transactions).
 - A sequence several use cases share over one module and the levels below it: `service.md`, Shared transactions.
 - A sequence over two modules of one level is sequenced by each use case, in its own transaction, through each module's `*InTx` call (`UserCreateByAdminUseCase`, `UserProcessImportByAdminUseCase`).
-- A call made twice is sequencing, not duplication (`code-style.md`, Types and comments): two use cases calling the same service method with the same arguments copy nothing. The same sequence of one module's `*InTx` calls in two use cases is one `*InTx` method of that module's service (`service.md`, Shared transactions), and each use case, a request's or a job's, composes its own sequence around it (`WorkspaceService.softDeleteInTx` in `WorkspaceProcessSoftDeleteUseCase` and `UserProcessDeleteSelfUseCase`).
+- A call made twice is sequencing, not duplication (`code-style.md`, Types and comments): two use cases calling the same service method with the same arguments copy nothing. The same sequence of one module's `*InTx` calls in two use cases is one `*InTx` method of that module's service (`service.md`, Shared transactions), and each use case, a request's or a job's, composes its own sequence around it (`WorkspaceService.softDeleteManyInTx` in `WorkspaceProcessSoftDeleteUseCase` and `UserProcessDeleteSelfUseCase`).
 
 ## Jobs
 

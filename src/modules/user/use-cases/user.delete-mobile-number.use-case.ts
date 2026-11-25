@@ -1,13 +1,8 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumUserReauthenticationAction } from '@generated/prisma-client/client';
 import type { UserDeleteMobileNumberRequestDto } from '@modules/user/dtos/request/user.delete-mobile-number.request.dto';
-import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
 import type {
     IUserContext,
     IUserMobileNumber,
@@ -38,7 +33,6 @@ export class UserDeleteMobileNumberUseCase implements IAppUseCase<
         private readonly userAuthService: UserAuthService,
         private readonly mfaService: MfaService,
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly userUtil: UserUtil
     ) {}
 
@@ -59,6 +53,7 @@ export class UserDeleteMobileNumberUseCase implements IAppUseCase<
         }: UserDeleteMobileNumberRequestDto
     ): Promise<IResponseReturn<IUserMobileNumber>> {
         const { user } = userContext;
+        const state = await this.mfaService.getFactorState(user.id);
         // Sequential by design: a credential proof, awaited alone
         const input = {
             action: EnumUserReauthenticationAction.mobileNumberDelete,
@@ -94,7 +89,8 @@ export class UserDeleteMobileNumberUseCase implements IAppUseCase<
         const mfaCheck = await this.mfaService.checkReauthentication(
             user.id,
             input,
-            passwordCheck.isPasswordChecked
+            passwordCheck.isPasswordChecked,
+            state
         );
         if (mfaCheck.failure !== null) {
             const failure = mfaCheck.failure;
@@ -125,47 +121,36 @@ export class UserDeleteMobileNumberUseCase implements IAppUseCase<
             mobileNumberId
         );
 
-        try {
-            const mobileNumber = await this.databaseService.withTransaction(
-                async tx => {
-                    await this.userAuthService.completeReauthenticationInTx(
-                        tx,
-                        authContext,
-                        passwordCheck.isPasswordChecked,
-                        verificationId
-                    );
-                    await this.mfaService.completeReauthenticationInTx(
-                        tx,
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        mfaCheck
-                    );
+        const mobileNumber = await this.databaseService.withTransaction(
+            async tx => {
+                await this.userAuthService.completeReauthenticationInTx(
+                    tx,
+                    authContext,
+                    passwordCheck.isPasswordChecked,
+                    verificationId,
+                    true
+                );
+                await this.mfaService.completeReauthenticationInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    mfaCheck
+                );
 
-                    return this.userMobileNumberService.deleteMobileNumberInTx(
-                        tx,
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        mobileNumberId
-                    );
-                }
-            );
-
-            const censored = this.userUtil.toCensoredMobileNumber(mobileNumber);
-
-            return { data: censored };
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
+                return this.userMobileNumberService.deleteMobileNumberInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    mobileNumberId,
+                    passwordCheck.isPasswordChecked
+                );
             }
+        );
 
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new UserMobileNumberNotFoundException();
-            }
+        const censored = this.userUtil.toCensoredMobileNumber(mobileNumber);
 
-            throw new AppUnknownException(err);
-        }
+        return { data: censored };
     }
 }

@@ -2,7 +2,6 @@ import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type {
     AnalyticSnapshot,
-    AnalyticSnapshotItem,
     EnumAnalyticSnapshotSignal,
     Prisma,
 } from '@generated/prisma-client/client';
@@ -26,7 +25,7 @@ export interface IAnalyticSnapshotRepository {
     createHeader(
         signal: EnumAnalyticSnapshotSignal,
         header: IAnalyticSnapshotHeaderInput
-    ): Promise<void>;
+    ): Promise<boolean>;
     deleteItemsStartedBefore(
         signal: EnumAnalyticSnapshotSignal,
         startedAt: Date
@@ -38,15 +37,9 @@ export interface IAnalyticSnapshotRepository {
     findHeader(
         signal: EnumAnalyticSnapshotSignal
     ): Promise<AnalyticSnapshot | null>;
-    findWithPaginationOffset(
+    findListOffset(
         signal: EnumAnalyticSnapshotSignal,
-        runId: string,
-        { where, ...params }: IPaginationQueryOffsetParams,
+        params: IPaginationQueryOffsetParams,
         valueFilter: IAnalyticSnapshotValueFilter | null
-    ): Promise<IResponsePaginationReturn<AnalyticSnapshotItem>>;
-    findItemByKey(
-        signal: EnumAnalyticSnapshotSignal,
-        runId: string,
-        key: string
-    ): Promise<AnalyticSnapshotItem | null>;
+    ): Promise<IResponsePaginationReturn<Prisma.JsonValue>>;
 }

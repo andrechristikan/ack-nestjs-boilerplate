@@ -57,6 +57,12 @@ Rule: `login.md`.
 
 - Substring matching: a name such as Hassan or Cassandra, or an address at `essex.ac.uk`, could not sign up, and one such row fails a whole import file.
 
+### A user accepts their own term policies on the first guarded request
+
+Rule: `role.md`.
+
+- An admin create or import recording the acceptance for the user: the row names the admin as `createdBy` of an acceptance the user never gave, while the term-policy guard asks the user on their first guarded request.
+
 ## Social sign-in
 
 ### A social login is matched by the provider subject
@@ -195,6 +201,12 @@ Rule: `mfa.md`.
 Rule: `mfa.md`.
 
 - A budget per method: switching method would hand an attacker a fresh set of tries.
+
+### A flow reads a user's MFA factor rows once and passes the state
+
+Rule: `mfa.md`.
+
+- Each `MfaService` method reading its own rows: a flow that gates MFA, lists the methods, and checks a proof reads the same factor rows two or three times.
 
 ### Backup codes follow the first and last factor
 

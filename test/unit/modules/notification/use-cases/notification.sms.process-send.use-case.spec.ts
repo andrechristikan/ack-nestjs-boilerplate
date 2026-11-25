@@ -80,7 +80,7 @@ describe('NotificationSmsProcessSendUseCase', () => {
             notificationSmsDeliveryService.send.mockImplementation(async () => {
                 callOrder.push('send');
             });
-            outboxService.updateData.mockImplementation(async () => {
+            outboxService.replaceData.mockImplementation(async () => {
                 callOrder.push('recorded');
             });
             notificationSmsDeliveryService.stampSent.mockImplementation(
@@ -124,9 +124,13 @@ describe('NotificationSmsProcessSendUseCase', () => {
                 '+6281234567890',
                 'sms body'
             );
-            expect(outboxService.updateData).toHaveBeenCalledWith('outbox-id', {
-                completedSteps: [EnumNotificationStep.sendSms],
-            });
+            expect(outboxService.replaceData).toHaveBeenCalledWith(
+                'outbox-id',
+                {
+                    ...data,
+                    completedSteps: [EnumNotificationStep.sendSms],
+                }
+            );
             expect(
                 notificationSmsDeliveryService.stampSent
             ).toHaveBeenCalledWith('notification-id', 'user-id');
@@ -146,7 +150,7 @@ describe('NotificationSmsProcessSendUseCase', () => {
             expect(
                 notificationSmsDeliveryService.stampSent
             ).not.toHaveBeenCalled();
-            expect(outboxService.updateData).not.toHaveBeenCalled();
+            expect(outboxService.replaceData).not.toHaveBeenCalled();
         });
 
         it('skips processed and the send on a retry that holds sendSms, then stamps sent', async () => {
@@ -159,7 +163,7 @@ describe('NotificationSmsProcessSendUseCase', () => {
                 notificationSmsDeliveryService.stampProcessed
             ).not.toHaveBeenCalled();
             expect(notificationSmsDeliveryService.send).not.toHaveBeenCalled();
-            expect(outboxService.updateData).not.toHaveBeenCalled();
+            expect(outboxService.replaceData).not.toHaveBeenCalled();
             expect(
                 notificationSmsDeliveryService.stampSent
             ).toHaveBeenCalledWith('notification-id', 'user-id');

@@ -4,14 +4,11 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import {
     EnumActivityLogAction,
@@ -27,7 +24,6 @@ import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queu
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { FeatureFlagDisabledException } from '@modules/feature-flag/exceptions/feature-flag.disabled.exception';
-import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberService } from '@modules/project/services/project.member.service';
 import { UserService } from '@modules/user/services/user.service';
 import type { WorkspaceInviteClaimRequestDto } from '@modules/workspace/dtos/request/workspace.invite-claim.request.dto';
@@ -84,6 +80,12 @@ describe('WorkspaceClaimInviteUseCase', () => {
         acceptedAt: null,
         acceptedByUserId: null,
         nonce: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    };
+    const accepted: WorkspaceInvite = {
+        ...invite,
+        status: EnumWorkspaceInviteStatus.accepted,
+        acceptedAt: new Date('2026-01-01T00:00:00.000Z'),
+        acceptedByUserId: 'user-2',
     };
     const existingMember: WorkspaceMember = buildWorkspaceMember('user-2');
     const tx: IDatabaseTransactionClient = mock<IDatabaseTransactionClient>();
@@ -155,6 +157,9 @@ describe('WorkspaceClaimInviteUseCase', () => {
             workspaceInviteService.validateInviteForEmail.mockResolvedValue(
                 invite
             );
+            workspaceInviteService.acceptPendingInTx.mockResolvedValue(
+                accepted
+            );
         });
 
         it('validates, accepts the invite before the member insert on one transaction, then adds the accepted entries on the same tx', async () => {
@@ -174,6 +179,8 @@ describe('WorkspaceClaimInviteUseCase', () => {
             workspaceInviteService.acceptPendingInTx.mockImplementation(
                 async () => {
                     callOrder.push('acceptInvite');
+
+                    return accepted;
                 }
             );
             workspaceMemberService.createInTx.mockImplementation(async () => {
@@ -276,20 +283,22 @@ describe('WorkspaceClaimInviteUseCase', () => {
         });
 
         it('awaits the accept and the member insert in turn, then starts the join request cancel, the last workspace set, and the project membership together', async () => {
-            const projectInvite: WorkspaceInvite = {
-                ...invite,
+            const projectFields = {
                 projectId: 'project-1',
                 projectRole: EnumProjectMemberRole.member,
             };
-            workspaceInviteService.validateInviteForEmail.mockResolvedValue(
-                projectInvite
-            );
+            workspaceInviteService.validateInviteForEmail.mockResolvedValue({
+                ...invite,
+                ...projectFields,
+            });
             const events: string[] = [];
             workspaceInviteService.acceptPendingInTx.mockImplementation(
                 async () => {
                     events.push('start:accept');
                     await Promise.resolve();
                     events.push('end:accept');
+
+                    return { ...accepted, ...projectFields };
                 }
             );
             workspaceMemberService.createInTx.mockImplementation(async () => {
@@ -317,8 +326,6 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 events.push('start:projectMember');
                 await Promise.resolve();
                 events.push('end:projectMember');
-
-                return mock<IProjectMember>();
             });
             outboxService.addManyInTx.mockImplementation(async () => {
                 events.push('addEntries');
@@ -350,22 +357,24 @@ describe('WorkspaceClaimInviteUseCase', () => {
         });
 
         it('creates the project membership on the same transaction when the invite carries a project and role', async () => {
-            const projectInvite: WorkspaceInvite = {
-                ...invite,
+            const projectFields = {
                 projectId: 'project-1',
                 projectRole: EnumProjectMemberRole.member,
             };
-            workspaceInviteService.validateInviteForEmail.mockResolvedValue(
-                projectInvite
-            );
+            workspaceInviteService.validateInviteForEmail.mockResolvedValue({
+                ...invite,
+                ...projectFields,
+            });
+            workspaceInviteService.acceptPendingInTx.mockResolvedValue({
+                ...accepted,
+                ...projectFields,
+            });
             const callOrder: string[] = [];
             userService.setLastWorkspaceInTx.mockImplementation(async () => {
                 callOrder.push('setLastWorkspace');
             });
             projectMemberService.createInTx.mockImplementation(async () => {
                 callOrder.push('createProjectMember');
-
-                return mock();
             });
 
             await useCase.execute(
@@ -392,6 +401,10 @@ describe('WorkspaceClaimInviteUseCase', () => {
         it('adds a single entry when the caller invited itself', async () => {
             workspaceInviteService.validateInviteForEmail.mockResolvedValue({
                 ...invite,
+                invitedByUserId: 'user-2',
+            });
+            workspaceInviteService.acceptPendingInTx.mockResolvedValue({
+                ...accepted,
                 invitedByUserId: 'user-2',
             });
 
@@ -471,51 +484,8 @@ describe('WorkspaceClaimInviteUseCase', () => {
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
         });
 
-        it('maps a unique collision on the member insert to WorkspaceMemberAlreadyExistsException and adds no entry', async () => {
-            const collision = buildPrismaKnownRequestError('P2002', 'userId');
-            workspaceMemberService.createInTx.mockRejectedValue(collision);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    body
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceMemberAlreadyExistsException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.memberAlreadyExists,
-            });
-            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-        });
-
-        it('answers WorkspaceInviteAlreadyProcessedException on a write conflict after the accept', async () => {
-            const conflict = buildPrismaKnownRequestError(
-                DatabaseWriteConflictCode
-            );
-            workspaceMemberService.createInTx.mockRejectedValue(conflict);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext,
-                    body
-                )
-            ).rejects.toMatchObject({
-                constructor: WorkspaceInviteAlreadyProcessedException,
-                module: 'workspace',
-                statusCode: EnumWorkspaceStatusCodeError.inviteAlreadyProcessed,
-            });
-            expect(workspaceInviteService.acceptPendingInTx).toHaveBeenCalled();
-            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-        });
-
-        it('wraps another transaction failure in AppUnknownException and adds no entry', async () => {
-            const failure = new Error('db-down');
+        it('lets the exception the member insert throws reach the caller untouched and adds no entry', async () => {
+            const failure = new WorkspaceMemberAlreadyExistsException();
             workspaceMemberService.createInTx.mockRejectedValue(failure);
 
             await expect(
@@ -526,11 +496,62 @@ describe('WorkspaceClaimInviteUseCase', () => {
                     userContext,
                     body
                 )
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: failure,
-            });
+            ).rejects.toBe(failure);
+            expect(workspaceInviteService.acceptPendingInTx).toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+        });
+
+        it('takes the workspace, roles, project, and inviter from the accepted row', async () => {
+            workspaceInviteService.acceptPendingInTx.mockResolvedValue({
+                ...accepted,
+                workspaceId: 'workspace-9',
+                workspaceRole: EnumWorkspaceMemberRole.admin,
+                projectId: 'project-9',
+                projectRole: EnumProjectMemberRole.member,
+                invitedByUserId: 'user-9',
+            });
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                userContext,
+                body
+            );
+
+            expect(workspaceMemberService.createInTx).toHaveBeenCalledWith(
+                tx,
+                'workspace-9',
+                'user-2',
+                EnumWorkspaceMemberRole.admin,
+                'user-2'
+            );
+            expect(projectMemberService.createInTx).toHaveBeenCalledWith(
+                tx,
+                'project-9',
+                'user-2',
+                EnumProjectMemberRole.member,
+                'user-2'
+            );
+            expect(
+                workspaceJoinRequestService.cancelPendingByUserInTx
+            ).toHaveBeenCalledWith(tx, 'workspace-9', 'user-2');
+            expect(userService.setLastWorkspaceInTx).toHaveBeenCalledWith(
+                tx,
+                'user-2',
+                'workspace-9'
+            );
+            expect(activityLogQueue.recordEffect).toHaveBeenNthCalledWith(
+                1,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                expect.objectContaining({
+                    workspaceId: 'workspace-9',
+                    metadata: { targetUserId: 'user-9' },
+                })
+            );
         });
 
         it('propagates WorkspaceInviteAlreadyProcessedException from the guarded accept, writes nothing after it, and adds no entry', async () => {

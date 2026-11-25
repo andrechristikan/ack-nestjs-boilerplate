@@ -1,5 +1,6 @@
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperHashService } from '@common/helper/services/helper.hash.service';
 import type {
@@ -12,8 +13,12 @@ import { EnumWorkspaceInviteStatus } from '@generated/prisma-client/client';
 import type { Prisma, WorkspaceInvite } from '@generated/prisma-client/client';
 import {
     WorkspaceInvitePreviewInclude,
+    WorkspaceInviteRefSelect,
     WorkspaceInviteUserListSelect,
 } from '@modules/workspace/constants/workspace.constant';
+import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
+import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
+import { WorkspaceInviteReferenceExistException } from '@modules/workspace/exceptions/workspace.invite-reference-exist.exception';
 import type { IWorkspaceInviteRepository } from '@modules/workspace/interfaces/workspace.invite-repository.interface';
 import type {
     IWorkspaceInviteCreateData,
@@ -29,6 +34,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
 
     constructor(
         private readonly databaseService: DatabaseService,
+        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
         private readonly paginationService: PaginationService,
@@ -70,7 +76,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 ...filter,
                 status: EnumWorkspaceInviteStatus.pending,
             },
-            select: { id: true, expiredAt: true },
+            select: WorkspaceInviteRefSelect,
         });
 
         await Promise.all(
@@ -109,7 +115,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                             lte: today,
                         },
                     },
-                    select: { id: true },
+                    select: WorkspaceInviteRefSelect,
                     take: this.expireChunkSize,
                 });
             const counts = await Promise.all(
@@ -122,12 +128,16 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         return total;
     }
 
-    async revokePendingByWorkspaceInTx(
+    async revokePendingByWorkspacesInTx(
         tx: IDatabaseTransactionClient,
-        workspaceId: string,
+        workspaceIds: string[],
         updatedBy: string
     ): Promise<void> {
-        await this.revokePendingInTx(tx, { workspaceId }, updatedBy);
+        await this.revokePendingInTx(
+            tx,
+            { workspaceId: { in: workspaceIds } },
+            updatedBy
+        );
     }
 
     async revokePendingByEmailInTx(
@@ -142,7 +152,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 email,
                 status: EnumWorkspaceInviteStatus.pending,
             },
-            select: { id: true, expiredAt: true },
+            select: WorkspaceInviteRefSelect,
         });
         if (!pending) {
             return;
@@ -251,7 +261,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
             invitedByUserId,
             nonce,
         }: IWorkspaceInviteCreateData
-    ): Promise<WorkspaceInvite> {
+    ): Promise<IWorkspaceInviteList> {
         const now = this.helperDateService.now();
         const stale = await tx.workspaceInvite.findFirst({
             where: {
@@ -259,7 +269,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 status: EnumWorkspaceInviteStatus.pending,
                 expiredAt: { lte: now },
             },
-            select: { id: true },
+            select: WorkspaceInviteRefSelect,
         });
         if (stale) {
             const staleNonce = this.helperHashService.sha256Hash(stale.id);
@@ -275,21 +285,39 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
             });
         }
 
-        return tx.workspaceInvite.create({
-            data: {
-                id: workspaceInviteId,
-                workspaceId,
-                email,
-                workspaceRole,
-                projectId,
-                projectRole,
-                token: hashedToken,
-                reference,
-                expiredAt,
-                invitedByUserId,
-                nonce,
-            },
-        });
+        try {
+            return await tx.workspaceInvite.create({
+                data: {
+                    id: workspaceInviteId,
+                    workspaceId,
+                    email,
+                    workspaceRole,
+                    projectId,
+                    projectRole,
+                    token: hashedToken,
+                    reference,
+                    expiredAt,
+                    invitedByUserId,
+                    nonce,
+                },
+                select: WorkspaceInviteUserListSelect,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'nonce',
+                        exception: new WorkspaceInviteDuplicateException(),
+                    },
+                    {
+                        field: 'reference',
+                        exception: new WorkspaceInviteReferenceExistException(),
+                    },
+                ],
+                new WorkspaceInviteDuplicateException()
+            );
+        }
     }
 
     async rotateForResendInTx(
@@ -299,28 +327,35 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         reference: string,
         expiredAt: Date,
         resentAt: Date
-    ): Promise<WorkspaceInvite | null> {
-        const { count } = await tx.workspaceInvite.updateMany({
-            where: {
-                id: workspaceInviteId,
-                status: EnumWorkspaceInviteStatus.pending,
-                expiredAt: {
-                    gt: resentAt,
+    ): Promise<IWorkspaceInviteList> {
+        try {
+            return await tx.workspaceInvite.update({
+                where: {
+                    id: workspaceInviteId,
+                    status: EnumWorkspaceInviteStatus.pending,
+                    expiredAt: {
+                        gt: resentAt,
+                    },
                 },
-            },
-            data: {
-                token: hashedToken,
-                reference,
-                expiredAt,
-            },
-        });
-        if (count === 0) {
-            return null;
+                data: {
+                    token: hashedToken,
+                    reference,
+                    expiredAt,
+                },
+                select: WorkspaceInviteUserListSelect,
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toUniqueException(
+                error,
+                [
+                    {
+                        field: 'reference',
+                        exception: new WorkspaceInviteReferenceExistException(),
+                    },
+                ],
+                new WorkspaceInviteAlreadyProcessedException()
+            );
         }
-
-        return tx.workspaceInvite.findUnique({
-            where: { id: workspaceInviteId },
-        });
     }
 
     async revokeInTx(
@@ -328,18 +363,25 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         workspaceInviteId: string
     ): Promise<boolean> {
         const nonce = this.helperHashService.sha256Hash(workspaceInviteId);
-        const { count } = await tx.workspaceInvite.updateMany({
-            where: {
-                id: workspaceInviteId,
-                status: EnumWorkspaceInviteStatus.pending,
-            },
-            data: {
-                status: EnumWorkspaceInviteStatus.revoked,
-                nonce,
-            },
-        });
+        try {
+            const { count } = await tx.workspaceInvite.updateMany({
+                where: {
+                    id: workspaceInviteId,
+                    status: EnumWorkspaceInviteStatus.pending,
+                },
+                data: {
+                    status: EnumWorkspaceInviteStatus.revoked,
+                    nonce,
+                },
+            });
 
-        return count > 0;
+            return count > 0;
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new WorkspaceInviteAlreadyProcessedException()
+            );
+        }
     }
 
     async acceptInTx(
@@ -347,25 +389,30 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
         workspaceInviteId: string,
         userId: string,
         acceptedAt: Date
-    ): Promise<boolean> {
+    ): Promise<WorkspaceInvite> {
         const nonce = this.helperHashService.sha256Hash(workspaceInviteId);
-        const { count } = await tx.workspaceInvite.updateMany({
-            where: {
-                id: workspaceInviteId,
-                status: EnumWorkspaceInviteStatus.pending,
-                expiredAt: {
-                    gt: acceptedAt,
+        try {
+            return await tx.workspaceInvite.update({
+                where: {
+                    id: workspaceInviteId,
+                    status: EnumWorkspaceInviteStatus.pending,
+                    expiredAt: {
+                        gt: acceptedAt,
+                    },
                 },
-            },
-            data: {
-                status: EnumWorkspaceInviteStatus.accepted,
-                nonce,
-                acceptedAt,
-                acceptedByUserId: userId,
-                updatedBy: userId,
-            },
-        });
-
-        return count > 0;
+                data: {
+                    status: EnumWorkspaceInviteStatus.accepted,
+                    nonce,
+                    acceptedAt,
+                    acceptedByUserId: userId,
+                    updatedBy: userId,
+                },
+            });
+        } catch (error: unknown) {
+            throw this.databaseUtil.toWriteException(
+                error,
+                new WorkspaceInviteAlreadyProcessedException()
+            );
+        }
     }
 }

@@ -3,16 +3,10 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import {
-    DatabaseUniqueConstraintCode,
-    DatabaseWriteConflictCode,
-} from '@common/database/constants/database.constant';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { EnumTermPolicyType, Prisma } from '@generated/prisma-client/client';
+import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
-import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import type { ITermPolicyRef } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyAcceptanceService } from '@modules/term-policy/services/term-policy.acceptance.service';
@@ -112,7 +106,7 @@ describe('TermPolicyUserAcceptUseCase', () => {
             );
         });
 
-        it('rethrows a typed exception of the write', async () => {
+        it('passes a rejected exception of the write through untouched', async () => {
             const failure = new TermPolicyAlreadyAcceptedException();
             termPolicyAcceptanceService.userAcceptInTx.mockRejectedValue(
                 failure
@@ -123,49 +117,13 @@ describe('TermPolicyUserAcceptUseCase', () => {
             ).rejects.toBe(failure);
         });
 
-        it('maps a unique collision on termPolicyId to TermPolicyAlreadyAcceptedException', async () => {
-            termPolicyAcceptanceService.userAcceptInTx.mockRejectedValue(
-                new Prisma.PrismaClientKnownRequestError('unique', {
-                    code: DatabaseUniqueConstraintCode,
-                    clientVersion: 'test',
-                    meta: { target: ['termPolicyId'] },
-                })
-            );
-
-            await expect(
-                useCase.execute(requestContext, apiKeyContext, authContext, dto)
-            ).rejects.toMatchObject({
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.alreadyAccepted,
-            });
-        });
-
-        it('maps a write conflict to TermPolicyAlreadyAcceptedException', async () => {
-            termPolicyAcceptanceService.userAcceptInTx.mockRejectedValue(
-                new Prisma.PrismaClientKnownRequestError('conflict', {
-                    code: DatabaseWriteConflictCode,
-                    clientVersion: 'test',
-                })
-            );
-
-            await expect(
-                useCase.execute(requestContext, apiKeyContext, authContext, dto)
-            ).rejects.toMatchObject({
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.alreadyAccepted,
-            });
-        });
-
-        it('wraps any other error in AppUnknownException', async () => {
+        it('passes any other rejection through untouched', async () => {
             const cause = new Error('boom');
             termPolicyAcceptanceService.userAcceptInTx.mockRejectedValue(cause);
 
             await expect(
                 useCase.execute(requestContext, apiKeyContext, authContext, dto)
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: cause,
-            });
+            ).rejects.toBe(cause);
         });
     });
 });

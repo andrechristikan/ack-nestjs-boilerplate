@@ -8,7 +8,6 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
-import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
     TestUnitKitConfigValues,
@@ -745,70 +744,8 @@ describe('AnalyticFraudService', () => {
             ],
         };
 
-        it('returns the stored item with the computedAt of the header', async () => {
-            analyticFraudRepository.existsUserById.mockResolvedValue(true);
-            analyticSnapshotService.getOneByKey.mockResolvedValue({
-                item: stored,
-                computedAt,
-            });
-
-            const result = await service.getFraudRiskScore('user-1');
-
-            expect(result).toEqual({ ...stored, computedAt });
-            expect(analyticSnapshotService.getOneByKey).toHaveBeenCalledWith(
-                EnumAnalyticSnapshotSignal.riskScore,
-                'user-1',
-                AnalyticRiskScoreSnapshotDataSchema
-            );
-            expect(analyticSnapshotService.getSummary).not.toHaveBeenCalled();
-        });
-
-        it('answers score zero in the monitor band with the header computedAt when no item names the user', async () => {
-            analyticFraudRepository.existsUserById.mockResolvedValue(true);
-            analyticSnapshotService.getOneByKey.mockResolvedValue({
-                item: null,
-                computedAt,
-            });
-
-            const result = await service.getFraudRiskScore('user-1');
-
-            expect(result).toEqual({
-                userId: 'user-1',
-                score: 0,
-                band: EnumAnalyticFraudBand.monitor,
-                contributingSignalCodes: [],
-                computedAt,
-            });
-            expect(analyticSnapshotService.getOneByKey).toHaveBeenCalledTimes(
-                1
-            );
-            expect(analyticSnapshotService.getSummary).not.toHaveBeenCalled();
-        });
-
-        it('answers a null computedAt before the first run', async () => {
-            analyticFraudRepository.existsUserById.mockResolvedValue(true);
-            analyticSnapshotService.getOneByKey.mockResolvedValue({
-                item: null,
-                computedAt: null,
-            });
-
-            const result = await service.getFraudRiskScore('user-1');
-
-            expect(result).toEqual({
-                userId: 'user-1',
-                score: 0,
-                band: EnumAnalyticFraudBand.monitor,
-                contributingSignalCodes: [],
-                computedAt: null,
-            });
-        });
-
-        it('throws UserNotFoundException for a missing user', async () => {
-            analyticFraudRepository.existsUserById.mockResolvedValue(false);
-            analyticSnapshotService.getOneByKey.mockResolvedValue({
-                item: null,
-                computedAt,
-            });
+        it('throws UserNotFoundException when the read finds no live user and reads nothing else', async () => {
+            analyticFraudRepository.findRiskScoreByUser.mockResolvedValue(null);
 
             await expect(
                 service.getFraudRiskScore('missing')
@@ -816,25 +753,67 @@ describe('AnalyticFraudService', () => {
                 module: 'user',
                 statusCode: EnumUserStatusCodeError.notFound,
             });
+            expect(
+                analyticFraudRepository.findRiskScoreByUser
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                analyticFraudRepository.findRiskScoreByUser
+            ).toHaveBeenCalledWith('missing');
+            expect(analyticSnapshotService.getSummary).not.toHaveBeenCalled();
+            expect(
+                analyticSnapshotService.getListOffset
+            ).not.toHaveBeenCalled();
         });
 
-        it('reads the snapshot while the user check is still pending', async () => {
-            const exists = buildDeferred<boolean>();
-            analyticFraudRepository.existsUserById.mockReturnValue(
-                exists.promise
-            );
-            analyticSnapshotService.getOneByKey.mockResolvedValue({
+        it('returns the stored item with the computedAt of the header', async () => {
+            analyticFraudRepository.findRiskScoreByUser.mockResolvedValue({
+                item: stored,
+                computedAt,
+            });
+
+            const result = await service.getFraudRiskScore('user-1');
+
+            expect(result).toEqual({ ...stored, computedAt });
+            expect(
+                analyticFraudRepository.findRiskScoreByUser
+            ).toHaveBeenCalledTimes(1);
+            expect(
+                analyticFraudRepository.findRiskScoreByUser
+            ).toHaveBeenCalledWith('user-1');
+        });
+
+        it('answers score zero in the monitor band with the header computedAt when no item names the user', async () => {
+            analyticFraudRepository.findRiskScoreByUser.mockResolvedValue({
                 item: null,
                 computedAt,
             });
 
-            const pending = service.getFraudRiskScore('user-1');
+            const result = await service.getFraudRiskScore('user-1');
 
-            expect(analyticSnapshotService.getOneByKey).toHaveBeenCalledTimes(
-                1
-            );
-            exists.resolve(true);
-            await pending;
+            expect(result).toEqual({
+                userId: 'user-1',
+                score: 0,
+                band: EnumAnalyticFraudBand.monitor,
+                contributingSignalCodes: [],
+                computedAt,
+            });
+        });
+
+        it('answers a null computedAt before the first run', async () => {
+            analyticFraudRepository.findRiskScoreByUser.mockResolvedValue({
+                item: null,
+                computedAt: null,
+            });
+
+            const result = await service.getFraudRiskScore('user-1');
+
+            expect(result).toEqual({
+                userId: 'user-1',
+                score: 0,
+                band: EnumAnalyticFraudBand.monitor,
+                contributingSignalCodes: [],
+                computedAt: null,
+            });
         });
     });
 

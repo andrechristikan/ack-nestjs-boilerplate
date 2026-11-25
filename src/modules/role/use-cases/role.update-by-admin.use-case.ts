@@ -1,7 +1,3 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { EnumActivityLogAction } from '@generated/prisma-client/client';
@@ -11,7 +7,6 @@ import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { RoleUpdateRequestDto } from '@modules/role/dtos/request/role.update.request.dto';
 import type { RoleDto } from '@modules/role/dtos/role.dto';
-import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleService } from '@modules/role/services/role.service';
 import { RoleUtil } from '@modules/role/utils/role.util';
 import { Injectable } from '@nestjs/common';
@@ -38,7 +33,6 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
         private readonly activityLogQueue: ActivityLogQueue,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -60,48 +54,33 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
             update
         );
 
-        try {
-            const updated = await this.databaseService.withTransaction(
-                async tx => {
-                    const role = await this.roleService.updateByAdminInTx(
-                        tx,
-                        target,
-                        update
-                    );
-
-                    const timestamp = this.helperDateService.now();
-                    const metadata = this.roleUtil.mapActivityLogMetadata(
-                        role,
-                        timestamp
-                    );
-                    const effect = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        {
-                            action: EnumActivityLogAction.adminRoleUpdated,
-                            metadata,
-                        }
-                    );
-                    await this.outboxService.addInTx(tx, effect);
-
-                    return role;
-                }
+        const updated = await this.databaseService.withTransaction(async tx => {
+            const role = await this.roleService.updateByAdminInTx(
+                tx,
+                target,
+                update
             );
 
-            return { data: updated };
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
+            const timestamp = this.helperDateService.now();
+            const metadata = this.roleUtil.mapActivityLogMetadata(
+                role,
+                timestamp
+            );
+            const effect = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                {
+                    action: EnumActivityLogAction.adminRoleUpdated,
+                    metadata,
+                }
+            );
+            await this.outboxService.addInTx(tx, effect);
 
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new RoleNotFoundException();
-            }
+            return role;
+        });
 
-            throw new AppUnknownException(err);
-        }
+        return { data: updated };
     }
 }

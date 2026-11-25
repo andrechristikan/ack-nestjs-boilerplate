@@ -28,6 +28,8 @@ import {
 } from '@common/cache/enums/cache.enum';
 import { EnumApiKeyType } from '@generated/prisma-client/client';
 import type { ApiKey } from '@generated/prisma-client/client';
+import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
+import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import { ApiKeyService } from '@modules/api-key/services/api-key.service';
 import { EnumApiKeyStatusCodeError } from '@modules/api-key/enums/api-key.status-code.enum';
@@ -428,15 +430,13 @@ describe('ApiKeyService', () => {
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
         });
 
-        it('throws ApiKeyNotFoundException when the guarded write misses', async () => {
-            apiKeyRepository.updateStatusInTx.mockResolvedValue(null);
+        it('lets the repository rejection through and adds no effect', async () => {
+            const failure = new ApiKeyNotFoundException();
+            apiKeyRepository.updateStatusInTx.mockRejectedValue(failure);
 
             await expect(
                 service.updateStatusByAdminInTx(tx, apiKey, false)
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.notFound,
-            });
+            ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
@@ -562,15 +562,13 @@ describe('ApiKeyService', () => {
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
         });
 
-        it('throws ApiKeyInactiveException when the guarded write misses', async () => {
-            apiKeyRepository.updateDatesInTx.mockResolvedValue(null);
+        it('lets the repository rejection through and adds no effect', async () => {
+            const failure = new ApiKeyInactiveException();
+            apiKeyRepository.updateDatesInTx.mockRejectedValue(failure);
 
             await expect(
                 service.updateDatesByAdminInTx(tx, apiKey, startAt, endAt)
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.inactive,
-            });
+            ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
@@ -598,25 +596,23 @@ describe('ApiKeyService', () => {
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
         });
 
-        it('throws ApiKeyInactiveException when the guarded write misses', async () => {
+        it('lets the repository rejection through and adds no effect', async () => {
             stubRandom(random, 'unused', 'new-secret');
-            apiKeyRepository.updateHashInTx.mockResolvedValue(null);
+            const failure = new ApiKeyInactiveException();
+            apiKeyRepository.updateHashInTx.mockRejectedValue(failure);
 
-            await expect(
-                service.resetByAdminInTx(tx, apiKey)
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.inactive,
-            });
+            await expect(service.resetByAdminInTx(tx, apiKey)).rejects.toBe(
+                failure
+            );
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });
 
     describe('deleteByAdminInTx', () => {
-        it('deletes the api key, adds the cache invalidation effect on the tx, and returns the row it was given', async () => {
-            apiKeyRepository.deleteInTx.mockResolvedValue(true);
+        it('deletes the api key by id, adds the cache invalidation effect from the deleted row key on the tx, and returns the deleted row', async () => {
+            apiKeyRepository.deleteInTx.mockResolvedValue(apiKey);
 
-            const result = await service.deleteByAdminInTx(tx, apiKey);
+            const result = await service.deleteByAdminInTx(tx, apiKey.id);
 
             expect(result).toBe(apiKey);
             expect(apiKeyRepository.deleteInTx).toHaveBeenCalledWith(
@@ -630,15 +626,13 @@ describe('ApiKeyService', () => {
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, cacheEffect);
         });
 
-        it('throws ApiKeyNotFoundException when the guarded write misses', async () => {
-            apiKeyRepository.deleteInTx.mockResolvedValue(false);
+        it('lets the repository rejection through and adds no effect', async () => {
+            const failure = new ApiKeyNotFoundException();
+            apiKeyRepository.deleteInTx.mockRejectedValue(failure);
 
-            await expect(
-                service.deleteByAdminInTx(tx, apiKey)
-            ).rejects.toMatchObject({
-                module: 'apiKey',
-                statusCode: EnumApiKeyStatusCodeError.notFound,
-            });
+            await expect(service.deleteByAdminInTx(tx, apiKey.id)).rejects.toBe(
+                failure
+            );
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });

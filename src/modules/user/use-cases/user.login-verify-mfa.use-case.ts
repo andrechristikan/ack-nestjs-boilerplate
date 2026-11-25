@@ -1,7 +1,3 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -12,7 +8,6 @@ import {
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import type { IAuthToken } from '@modules/auth/interfaces/auth.interface';
 import { DeviceService } from '@modules/device/services/device.service';
-import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import { MfaChallengeService } from '@modules/mfa/services/mfa.challenge.service';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -36,8 +31,7 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
         private readonly deviceService: DeviceService,
         private readonly databaseService: DatabaseService,
         private readonly outboxService: OutboxService,
-        private readonly helperDateService: HelperDateService,
-        private readonly databaseUtil: DatabaseUtil
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async execute(
@@ -54,10 +48,11 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
         const { userId, device, loginFrom, loginWith, webAuthnChallenge } =
             await this.mfaChallengeService.getLogin(challengeToken);
 
-        const [user] = await Promise.all([
+        const [user, state] = await Promise.all([
             this.userAuthService.getOneForMfaLogin(userId),
-            this.mfaService.assertEnabled(userId),
+            this.mfaService.getFactorState(userId),
         ]);
+        await this.mfaService.assertEnabled(state);
         const { check, failure } = await this.mfaService.check(
             user.id,
             {
@@ -66,7 +61,8 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
                 method,
                 passkeyResponse: passkeyResponse ?? null,
             },
-            webAuthnChallenge
+            webAuthnChallenge,
+            state
         );
         if (failure !== null) {
             const isLocked = await this.databaseService.withTransaction(
@@ -83,61 +79,49 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
             return this.mfaService.throwFailedAttempt(failure, isLocked);
         }
         const loginAt = this.helperDateService.now();
-        try {
-            const { tokens } = await this.databaseService.withTransaction(
-                async tx => {
-                    await this.mfaService.completeChallengeInTx(
-                        tx,
-                        user.id,
-                        challengeToken,
-                        EnumMfaChallengePurpose.login,
-                        check
-                    );
-                    const entry = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        null,
-                        null,
-                        {
-                            action: EnumActivityLogAction.userMfaVerified,
-                            userId: user.id,
-                            createdBy: user.id,
-                        }
-                    );
-                    await this.outboxService.addInTx(tx, entry);
-                    const upserted =
-                        await this.deviceService.upsertForLoginInTx(
-                            tx,
-                            user.id,
-                            device,
-                            loginAt
-                        );
+        const { tokens } = await this.databaseService.withTransaction(
+            async tx => {
+                await this.mfaService.completeChallengeInTx(
+                    tx,
+                    user.id,
+                    challengeToken,
+                    EnumMfaChallengePurpose.login,
+                    check
+                );
+                const entry = this.activityLogQueue.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    null,
+                    null,
+                    {
+                        action: EnumActivityLogAction.userMfaVerified,
+                        userId: user.id,
+                        createdBy: user.id,
+                    }
+                );
+                await this.outboxService.addInTx(tx, entry);
+                const upserted = await this.deviceService.upsertForLoginInTx(
+                    tx,
+                    user.id,
+                    device,
+                    loginAt
+                );
 
-                    return this.userAuthService.createTokenAndSessionInTx(
-                        tx,
-                        requestContext,
-                        apiKeyContext,
-                        user,
-                        upserted,
-                        loginFrom,
-                        loginWith,
-                        loginAt
-                    );
-                }
-            );
-
-            return { data: tokens };
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                throw err;
+                return this.userAuthService.createTokenAndSessionInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    user,
+                    upserted,
+                    loginFrom,
+                    loginWith,
+                    loginAt,
+                    false,
+                    false
+                );
             }
+        );
 
-            const mapped = this.databaseUtil.toException(err);
-            if (mapped instanceof DatabaseWriteConflictException) {
-                throw new MfaChallengeInvalidException();
-            }
-
-            throw new AppUnknownException(err);
-        }
+        return { data: tokens };
     }
 }

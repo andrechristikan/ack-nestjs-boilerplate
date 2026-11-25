@@ -124,8 +124,10 @@ describe('UserProcessDeleteSelfUseCase', () => {
         );
         messageService.setMessage.mockImplementation(path => path);
         userService.getOneLive.mockResolvedValue(baseUser);
-        workspaceService.softDeleteInTx.mockResolvedValue(true);
-        projectService.softDeleteChunkByWorkspace.mockResolvedValue(0);
+        workspaceService.softDeleteManyInTx.mockImplementation(
+            async (_tx, workspaceIds) => workspaceIds
+        );
+        projectService.softDeleteChunkByWorkspaces.mockResolvedValue(0);
         activityLogQueue.recordEffectFromPayload.mockReturnValue(entryEffect);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -192,11 +194,12 @@ describe('UserProcessDeleteSelfUseCase', () => {
             expect(userService.deleteSelfInTx).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).not.toHaveBeenCalled();
             expect(
-                projectService.softDeleteChunkByWorkspace
-            ).toHaveBeenCalledWith('workspace-one', now, 'user-cinder');
-            expect(
-                projectService.softDeleteChunkByWorkspace
-            ).toHaveBeenCalledWith('workspace-two', now, 'user-cinder');
+                projectService.softDeleteChunkByWorkspaces
+            ).toHaveBeenCalledWith(
+                ['workspace-one', 'workspace-two'],
+                now,
+                'user-cinder'
+            );
         });
 
         it('runs every participant on one transaction with the row email, the row photo, and the user id as the audit actor', async () => {
@@ -205,16 +208,12 @@ describe('UserProcessDeleteSelfUseCase', () => {
             });
 
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
-            expect(workspaceService.softDeleteInTx).toHaveBeenCalledTimes(2);
-            expect(workspaceService.softDeleteInTx).toHaveBeenCalledWith(
-                tx,
-                'workspace-one',
-                now,
-                'user-cinder'
+            expect(workspaceService.softDeleteManyInTx).toHaveBeenCalledTimes(
+                1
             );
-            expect(workspaceService.softDeleteInTx).toHaveBeenCalledWith(
+            expect(workspaceService.softDeleteManyInTx).toHaveBeenCalledWith(
                 tx,
-                'workspace-two',
+                ['workspace-one', 'workspace-two'],
                 now,
                 'user-cinder'
             );
@@ -267,10 +266,10 @@ describe('UserProcessDeleteSelfUseCase', () => {
             ).toHaveBeenCalledWith(tx, 'user-cinder', photo);
         });
 
-        it('adds the session and user entries and one workspace entry for each workspace whose soft delete answered true, in one addManyInTx', async () => {
-            workspaceService.softDeleteInTx.mockImplementation(
-                async (_tx, workspaceId) => workspaceId === 'workspace-one'
-            );
+        it('adds the session and user entries and one workspace entry for each id the soft delete returned, in one addManyInTx', async () => {
+            workspaceService.softDeleteManyInTx.mockResolvedValue([
+                'workspace-one',
+            ]);
 
             await useCase.execute(payload);
 
@@ -308,9 +307,14 @@ describe('UserProcessDeleteSelfUseCase', () => {
         it('adds no workspace entry when the user owns none', async () => {
             await useCase.execute({ ...payload, ownedWorkspaceIds: [] });
 
-            expect(workspaceService.softDeleteInTx).not.toHaveBeenCalled();
+            expect(workspaceService.softDeleteManyInTx).toHaveBeenCalledWith(
+                tx,
+                [],
+                now,
+                'user-cinder'
+            );
             expect(
-                projectService.softDeleteChunkByWorkspace
+                projectService.softDeleteChunkByWorkspaces
             ).not.toHaveBeenCalled();
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [
                 entryEffect,
@@ -318,18 +322,15 @@ describe('UserProcessDeleteSelfUseCase', () => {
             ]);
         });
 
-        it('pages the projects of every owned workspace after the commit until a chunk returns 0', async () => {
-            const chunks = new Map<string, number[]>([
-                ['workspace-one', [5, 3, 0]],
-                ['workspace-two', [0]],
-            ]);
-            projectService.softDeleteChunkByWorkspace.mockImplementation(
-                async workspaceId => chunks.get(workspaceId)!.shift() ?? 0
-            );
+        it('pages the projects of every payload workspace together after the commit until a chunk returns 0', async () => {
+            projectService.softDeleteChunkByWorkspaces
+                .mockResolvedValueOnce(5)
+                .mockResolvedValueOnce(3)
+                .mockResolvedValueOnce(0);
             databaseService.withTransaction.mockImplementation(async fn => {
                 const result = await fn(tx);
                 expect(
-                    projectService.softDeleteChunkByWorkspace
+                    projectService.softDeleteChunkByWorkspaces
                 ).not.toHaveBeenCalled();
 
                 return result as never;
@@ -338,14 +339,15 @@ describe('UserProcessDeleteSelfUseCase', () => {
             await useCase.execute(payload);
 
             expect(
-                projectService.softDeleteChunkByWorkspace
-            ).toHaveBeenCalledTimes(4);
+                projectService.softDeleteChunkByWorkspaces
+            ).toHaveBeenCalledTimes(3);
             expect(
-                projectService.softDeleteChunkByWorkspace
-            ).toHaveBeenCalledWith('workspace-one', now, 'user-cinder');
-            expect(
-                projectService.softDeleteChunkByWorkspace
-            ).toHaveBeenCalledWith('workspace-two', now, 'user-cinder');
+                projectService.softDeleteChunkByWorkspaces
+            ).toHaveBeenCalledWith(
+                ['workspace-one', 'workspace-two'],
+                now,
+                'user-cinder'
+            );
         });
 
         it('opens the transaction with user.deleteSelfTimeoutInMs', async () => {
@@ -387,7 +389,7 @@ describe('UserProcessDeleteSelfUseCase', () => {
 
         it('throws a fatal QueueException carrying the cause for an unknown error in the paging', async () => {
             const cause = new Error('database exploded');
-            projectService.softDeleteChunkByWorkspace.mockRejectedValue(cause);
+            projectService.softDeleteChunkByWorkspaces.mockRejectedValue(cause);
 
             const running = useCase.execute(payload);
 

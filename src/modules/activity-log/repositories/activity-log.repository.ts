@@ -11,7 +11,10 @@ import type {
     IActivityLog,
     IActivityLogCreate,
 } from '@modules/activity-log/interfaces/activity-log.interface';
-import { UserRefSelect } from '@modules/user/constants/user.constant';
+import {
+    ActivityLogRefSelect,
+    ActivityLogWithUserInclude,
+} from '@modules/activity-log/constants/activity-log.constant';
 import type { IActivityLogRepository } from '@modules/activity-log/interfaces/activity-log.repository.interface';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
@@ -98,11 +101,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
             {
                 ...params,
                 where: scopedWhere,
-                include: {
-                    user: {
-                        select: UserRefSelect,
-                    },
-                },
+                include: ActivityLogWithUserInclude,
             }
         );
     }
@@ -118,11 +117,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
             {
                 ...params,
                 where: scopedWhere,
-                include: {
-                    user: {
-                        select: UserRefSelect,
-                    },
-                },
+                include: ActivityLogWithUserInclude,
             }
         );
     }
@@ -143,11 +138,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
             {
                 ...params,
                 where: scopedWhere,
-                include: {
-                    user: {
-                        select: UserRefSelect,
-                    },
-                },
+                include: ActivityLogWithUserInclude,
             }
         );
     }
@@ -168,11 +159,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
             {
                 ...params,
                 where: scopedWhere,
-                include: {
-                    user: {
-                        select: UserRefSelect,
-                    },
-                },
+                include: ActivityLogWithUserInclude,
             }
         );
     }
@@ -183,7 +170,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
         const existing = await this.databaseService.client.activityLog.findMany(
             {
                 where: { id: { in: ids } },
-                select: { id: true },
+                select: ActivityLogRefSelect,
             }
         );
         const existingIds = new Set(existing.map(row => row.id));
